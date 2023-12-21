@@ -14,6 +14,8 @@ conda env create -f environment.yml
 
 ### Example 1: Toon Shading
 
+https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/53532f0e-39b1-4791-b920-c975d52ec24a
+
 You can download the models as follows:
 
 * `models/stable_diffusion/flat2DAnimerge_v45Sharp.safetensors`: [link](https://civitai.com/api/download/models/266360?type=Model&format=SafeTensor&size=pruned&fp=fp16)
