@@ -1,53 +1,75 @@
 # DiffSynth Studio
 
-## 介绍
+## Introduction
 
-DiffSynth is a new Diffusion engine. We have restructured architectures like Text Encoder, UNet, VAE, among others, maintaining compatibility with models from the open-source community while enhancing computational performance. This version is currently in its initial stage, supporting text-to-image and image-to-image functionalities, supporting SD and SDXL architectures. In the future, we plan to develop more interesting features based on this new codebase.
+This branch supports video-to-video translation and is still under development.
 
-## 安装
-
-If you only want to use DiffSynth Studio at the Python code level, you just need to install torch (a deep learning framework) and transformers (only used for implementing a tokenizer).
+## Installation
 
 ```
-pip install torch transformers
+conda env create -f environment.yml
 ```
 
-If you wish to use the UI, you'll also need to additionally install `streamlit` (a web UI framework) and `streamlit-drawable-canvas` (used for the image-to-image canvas).
+## Usage
 
-```
-pip install streamlit streamlit-drawable-canvas
-```
+### Example 1: Toon Shading
 
-## 使用
+You can download the models as follows:
 
-Use DiffSynth Studio in Python
+* `models/stable_diffusion/flat2DAnimerge_v45Sharp.safetensors`: [link](https://civitai.com/api/download/models/266360?type=Model&format=SafeTensor&size=pruned&fp=fp16)
+* `models/AnimateDiff/mm_sd_v15_v2.ckpt`: [link](https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v15_v2.ckpt)
+* `models/ControlNet/control_v11p_sd15_lineart.pth`: [link](https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11p_sd15_lineart.pth)
+* `models/ControlNet/control_v11f1e_sd15_tile.pth`: [link](https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11f1e_sd15_tile.pth)
+* `models/Annotators/sk_model.pth`: [link](https://huggingface.co/lllyasviel/Annotators/resolve/main/sk_model.pth)
+* `models/Annotators/sk_model2.pth`: [link](https://huggingface.co/lllyasviel/Annotators/resolve/main/sk_model2.pth)
 
 ```python
-from diffsynth.models import ModelManager
-from diffsynth.prompts import SDPrompter, SDXLPrompter
-from diffsynth.pipelines import SDPipeline, SDXLPipeline
+from diffsynth import ModelManager, SDVideoPipeline, ControlNetConfigUnit, VideoData, save_video, save_frames
+import torch
 
 
-model_manager = ModelManager()
-model_manager.load_from_safetensors("xxxxxxxx.safetensors")
-prompter = SDPrompter()
-pipe = SDPipeline()
-
-prompt = "a girl"
-negative_prompt = ""
-
-image = pipe(
-    model_manager, prompter,
-    prompt, negative_prompt=negative_prompt,
-    num_inference_steps=20, height=512, width=512,
+# Load models
+model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")
+model_manager.load_textual_inversions("models/textual_inversion")
+model_manager.load_models([
+    "models/stable_diffusion/flat2DAnimerge_v45Sharp.safetensors",
+    "models/AnimateDiff/mm_sd_v15_v2.ckpt",
+    "models/ControlNet/control_v11p_sd15_lineart.pth",
+    "models/ControlNet/control_v11f1e_sd15_tile.pth",
+])
+pipe = SDVideoPipeline.from_model_manager(
+    model_manager,
+    [
+        ControlNetConfigUnit(
+            processor_id="lineart",
+            model_path="models/ControlNet/control_v11p_sd15_lineart.pth",
+            scale=1.0
+        ),
+        ControlNetConfigUnit(
+            processor_id="tile",
+            model_path="models/ControlNet/control_v11f1e_sd15_tile.pth",
+            scale=0.5
+        ),
+    ]
 )
-image.save("image.png")
+
+# Load video
+video = VideoData(video_file="data/66dance/raw.mp4", height=1536, width=1536)
+input_video = [video[i] for i in range(40*60, 40*60+16)]
+
+# Toon shading
+torch.manual_seed(0)
+output_video = pipe(
+    prompt="best quality, perfect anime illustration, light, a girl is dancing, smile, solo",
+    negative_prompt="verybadimagenegative_v1.3",
+    cfg_scale=5, clip_skip=2,
+    controlnet_frames=input_video, num_frames=16,
+    num_inference_steps=10, height=1536, width=1536,
+    vram_limit_level=0,
+)
+
+# Save images and video
+save_frames(output_video, "data/text2video/frames")
+save_video(output_video, "data/text2video/video.mp4", fps=16)
 ```
 
-If you want to use SDXL architecture models, replace `SDPrompter` and `SDPipeline` with `SDXLPrompter` and `SDXLPipeline`, respectively.
-
-Of course, you can also use the UI we provide. The UI is simple but may be changed in the future.
-
-```
-python -m streamlit run Diffsynth_Studio.py
-```
