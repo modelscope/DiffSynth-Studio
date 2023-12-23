@@ -41,7 +41,7 @@ class Attention(torch.nn.Module):
         v = v.view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
 
         hidden_states = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask)
-        hidden_states = hidden_states.transpose(1, 2).view(batch_size, -1, self.num_heads * self.head_dim)
+        hidden_states = hidden_states.transpose(1, 2).reshape(batch_size, -1, self.num_heads * self.head_dim)
         hidden_states = hidden_states.to(q.dtype)
 
         hidden_states = self.to_out(hidden_states)

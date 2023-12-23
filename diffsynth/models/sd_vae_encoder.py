@@ -1,7 +1,7 @@
 import torch
 from .sd_unet import ResnetBlock, DownSampler
 from .sd_vae_decoder import VAEAttentionBlock
-from .tiler import Tiler
+from .tiler import TileWorker
 
 
 class SDVAEEncoder(torch.nn.Module):
@@ -38,11 +38,13 @@ class SDVAEEncoder(torch.nn.Module):
         self.conv_out = torch.nn.Conv2d(512, 8, kernel_size=3, padding=1)
 
     def tiled_forward(self, sample, tile_size=64, tile_stride=32):
-        hidden_states = Tiler()(
+        hidden_states = TileWorker().tiled_forward(
             lambda x: self.forward(x),
             sample,
             tile_size,
-            tile_stride
+            tile_stride,
+            tile_device=sample.device,
+            tile_dtype=sample.dtype
         )
         return hidden_states
 

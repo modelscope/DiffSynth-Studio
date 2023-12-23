@@ -36,10 +36,17 @@ class MultiControlNetManager:
         ], dim=0)
         return processed_image
     
-    def __call__(self, sample, timestep, encoder_hidden_states, conditionings):
+    def __call__(
+        self,
+        sample, timestep, encoder_hidden_states, conditionings,
+        tiled=False, tile_size=64, tile_stride=32
+    ):
         res_stack = None
         for conditioning, model, scale in zip(conditionings, self.models, self.scales):
-            res_stack_ = model(sample, timestep, encoder_hidden_states, conditioning)
+            res_stack_ = model(
+                sample, timestep, encoder_hidden_states, conditioning,
+                tiled=tiled, tile_size=tile_size, tile_stride=tile_stride
+            )
             res_stack_ = [res * scale for res in res_stack_]
             if res_stack is None:
                 res_stack = res_stack_

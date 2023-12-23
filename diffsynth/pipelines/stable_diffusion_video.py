@@ -1,104 +1,13 @@
 from ..models import ModelManager, SDTextEncoder, SDUNet, SDVAEDecoder, SDVAEEncoder, SDMotionModel
-from ..models.sd_unet import PushBlock, PopBlock
 from ..controlnets import MultiControlNetManager, ControlNetUnit, ControlNetConfigUnit, Annotator
 from ..prompts import SDPrompter
 from ..schedulers import EnhancedDDIMScheduler
+from .dancer import lets_dance
 from typing import List
 import torch
 from tqdm import tqdm
 from PIL import Image
 import numpy as np
-
-
-def lets_dance(
-    unet: SDUNet,
-    motion_modules: SDMotionModel = None,
-    controlnet: MultiControlNetManager = None,
-    sample = None,
-    timestep = None,
-    encoder_hidden_states = None,
-    controlnet_frames = None,
-    unet_batch_size = 1,
-    controlnet_batch_size = 1,
-    device = "cuda",
-    vram_limit_level = 0,
-):
-    # 1. ControlNet
-    #     This part will be repeated on overlapping frames if animatediff_batch_size > animatediff_stride.
-    #     I leave it here because I intend to do something interesting on the ControlNets.
-    controlnet_insert_block_id = 30
-    if controlnet is not None and controlnet_frames is not None:
-        res_stacks = []
-        # process controlnet frames with batch
-        for batch_id in range(0, sample.shape[0], controlnet_batch_size):
-            batch_id_ = min(batch_id + controlnet_batch_size, sample.shape[0])
-            res_stack = controlnet(
-                sample[batch_id: batch_id_],
-                timestep,
-                encoder_hidden_states[batch_id: batch_id_],
-                controlnet_frames[:, batch_id: batch_id_]
-            )
-            if vram_limit_level >= 1:
-                res_stack = [res.cpu() for res in res_stack]
-            res_stacks.append(res_stack)
-        # concat the residual
-        additional_res_stack = []
-        for i in range(len(res_stacks[0])):
-            res = torch.concat([res_stack[i] for res_stack in res_stacks], dim=0)
-            additional_res_stack.append(res)
-    else:
-        additional_res_stack = None
-
-    # 2. time
-    time_emb = unet.time_proj(timestep[None]).to(sample.dtype)
-    time_emb = unet.time_embedding(time_emb)
-
-    # 3. pre-process
-    hidden_states = unet.conv_in(sample)
-    text_emb = encoder_hidden_states
-    res_stack = [hidden_states.cpu() if vram_limit_level>=1 else hidden_states]
-
-    # 4. blocks
-    for block_id, block in enumerate(unet.blocks):
-        # 4.1 UNet
-        if isinstance(block, PushBlock):
-            hidden_states, time_emb, text_emb, res_stack = block(hidden_states, time_emb, text_emb, res_stack)
-            if vram_limit_level>=1:
-                res_stack[-1] = res_stack[-1].cpu()
-        elif isinstance(block, PopBlock):
-            if vram_limit_level>=1:
-                res_stack[-1] = res_stack[-1].to(device)
-            hidden_states, time_emb, text_emb, res_stack = block(hidden_states, time_emb, text_emb, res_stack)
-        else:
-            hidden_states_input = hidden_states
-            hidden_states_output = []
-            for batch_id in range(0, sample.shape[0], unet_batch_size):
-                batch_id_ = min(batch_id + unet_batch_size, sample.shape[0])
-                hidden_states, _, _, _ = block(hidden_states_input[batch_id: batch_id_], time_emb, text_emb[batch_id: batch_id_], res_stack)
-                hidden_states_output.append(hidden_states)
-            hidden_states = torch.concat(hidden_states_output, dim=0)
-        # 4.2 AnimateDiff
-        if motion_modules is not None:
-            if block_id in motion_modules.call_block_id:
-                motion_module_id = motion_modules.call_block_id[block_id]
-                hidden_states, time_emb, text_emb, res_stack = motion_modules.motion_modules[motion_module_id](
-                    hidden_states, time_emb, text_emb, res_stack,
-                    batch_size=1
-                )
-        # 4.3 ControlNet
-        if block_id == controlnet_insert_block_id and additional_res_stack is not None:
-            hidden_states += additional_res_stack.pop().to(device)
-            if vram_limit_level>=1:
-                res_stack = [(res.to(device) + additional_res.to(device)).cpu() for res, additional_res in zip(res_stack, additional_res_stack)]
-            else:
-                res_stack = [res + additional_res for res, additional_res in zip(res_stack, additional_res_stack)]
-    
-    # 5. output
-    hidden_states = unet.conv_norm_out(hidden_states)
-    hidden_states = unet.conv_act(hidden_states)
-    hidden_states = unet.conv_out(hidden_states)
-
-    return hidden_states
 
 
 def lets_dance_with_long_video(
@@ -187,6 +96,11 @@ class SDVideoPipeline(torch.nn.Module):
             self.motion_modules = model_manager.motion_modules
 
 
+    def fetch_beautiful_prompt(self, model_manager: ModelManager):
+        if "beautiful_prompt" in model_manager.model:
+            self.prompter.load_beautiful_prompt(model_manager.model["beautiful_prompt"], model_manager.model_path["beautiful_prompt"])
+
+
     @staticmethod
     def from_model_manager(model_manager: ModelManager, controlnet_config_units: List[ControlNetConfigUnit]=[]):
         pipe = SDVideoPipeline(
@@ -196,6 +110,7 @@ class SDVideoPipeline(torch.nn.Module):
         )
         pipe.fetch_main_models(model_manager)
         pipe.fetch_motion_modules(model_manager)
+        pipe.fetch_beautiful_prompt(model_manager)
         pipe.fetch_controlnet_models(model_manager, controlnet_config_units)
         return pipe
     
@@ -248,12 +163,6 @@ class SDVideoPipeline(torch.nn.Module):
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
     ):
-        # Encode prompts
-        prompt_emb_posi = self.prompter.encode_prompt(self.text_encoder, prompt, clip_skip=clip_skip, device=self.device).cpu()
-        prompt_emb_nega = self.prompter.encode_prompt(self.text_encoder, negative_prompt, clip_skip=clip_skip, device=self.device).cpu()
-        prompt_emb_posi = prompt_emb_posi.repeat(num_frames, 1, 1)
-        prompt_emb_nega = prompt_emb_nega.repeat(num_frames, 1, 1)
-
         # Prepare scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength)
 
@@ -264,6 +173,12 @@ class SDVideoPipeline(torch.nn.Module):
         else:
             latents = self.encode_images(input_frames)
             latents = self.scheduler.add_noise(latents, noise, timestep=self.scheduler.timesteps[0])
+
+        # Encode prompts
+        prompt_emb_posi = self.prompter.encode_prompt(self.text_encoder, prompt, clip_skip=clip_skip, device=self.device, positive=True).cpu()
+        prompt_emb_nega = self.prompter.encode_prompt(self.text_encoder, negative_prompt, clip_skip=clip_skip, device=self.device, positive=False).cpu()
+        prompt_emb_posi = prompt_emb_posi.repeat(num_frames, 1, 1)
+        prompt_emb_nega = prompt_emb_nega.repeat(num_frames, 1, 1)
 
         # Prepare ControlNets
         if controlnet_frames is not None:

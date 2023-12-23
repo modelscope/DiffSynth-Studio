@@ -12,7 +12,7 @@ Processor_id: TypeAlias = Literal[
 ]
 
 class Annotator:
-    def __init__(self, processor_id: Processor_id, model_path="models/Annotators", detect_resolution=512):
+    def __init__(self, processor_id: Processor_id, model_path="models/Annotators", detect_resolution=None):
         if processor_id == "canny":
             self.processor = CannyDetector()
         elif processor_id == "depth":
@@ -44,7 +44,8 @@ class Annotator:
         else:
             kwargs = {}
         if self.processor is not None:
-            image = self.processor(image, detect_resolution=self.detect_resolution, image_resolution=min(width, height), **kwargs)
+            detect_resolution = self.detect_resolution if self.detect_resolution is not None else min(width, height)
+            image = self.processor(image, detect_resolution=detect_resolution, image_resolution=min(width, height), **kwargs)
         image = image.resize((width, height))
         return image
 

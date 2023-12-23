@@ -2,76 +2,56 @@
 
 ## Introduction
 
-This branch supports video-to-video translation and is still under development.
+DiffSynth is a new Diffusion engine. We have restructured architectures including Text Encoder, UNet, VAE, among others, maintaining compatibility with models from the open-source community while enhancing computational performance. This version is currently in its initial stage, supporting SD and SDXL architectures. In the future, we plan to develop more interesting features based on this new codebase.
 
 ## Installation
+
+Create Python environment:
 
 ```
 conda env create -f environment.yml
 ```
 
-## Usage
+Enter the Python environment:
 
-### Example 1: Toon Shading
-
-https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/53532f0e-39b1-4791-b920-c975d52ec24a
-
-You can download the models as follows:
-
-* `models/stable_diffusion/flat2DAnimerge_v45Sharp.safetensors`: [link](https://civitai.com/api/download/models/266360?type=Model&format=SafeTensor&size=pruned&fp=fp16)
-* `models/AnimateDiff/mm_sd_v15_v2.ckpt`: [link](https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v15_v2.ckpt)
-* `models/ControlNet/control_v11p_sd15_lineart.pth`: [link](https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11p_sd15_lineart.pth)
-* `models/ControlNet/control_v11f1e_sd15_tile.pth`: [link](https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11f1e_sd15_tile.pth)
-* `models/Annotators/sk_model.pth`: [link](https://huggingface.co/lllyasviel/Annotators/resolve/main/sk_model.pth)
-* `models/Annotators/sk_model2.pth`: [link](https://huggingface.co/lllyasviel/Annotators/resolve/main/sk_model2.pth)
-
-```python
-from diffsynth import ModelManager, SDVideoPipeline, ControlNetConfigUnit, VideoData, save_video, save_frames
-import torch
-
-
-# Load models
-model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")
-model_manager.load_textual_inversions("models/textual_inversion")
-model_manager.load_models([
-    "models/stable_diffusion/flat2DAnimerge_v45Sharp.safetensors",
-    "models/AnimateDiff/mm_sd_v15_v2.ckpt",
-    "models/ControlNet/control_v11p_sd15_lineart.pth",
-    "models/ControlNet/control_v11f1e_sd15_tile.pth",
-])
-pipe = SDVideoPipeline.from_model_manager(
-    model_manager,
-    [
-        ControlNetConfigUnit(
-            processor_id="lineart",
-            model_path="models/ControlNet/control_v11p_sd15_lineart.pth",
-            scale=1.0
-        ),
-        ControlNetConfigUnit(
-            processor_id="tile",
-            model_path="models/ControlNet/control_v11f1e_sd15_tile.pth",
-            scale=0.5
-        ),
-    ]
-)
-
-# Load video
-video = VideoData(video_file="data/66dance/raw.mp4", height=1536, width=1536)
-input_video = [video[i] for i in range(40*60, 40*60+16)]
-
-# Toon shading
-torch.manual_seed(0)
-output_video = pipe(
-    prompt="best quality, perfect anime illustration, light, a girl is dancing, smile, solo",
-    negative_prompt="verybadimagenegative_v1.3",
-    cfg_scale=5, clip_skip=2,
-    controlnet_frames=input_video, num_frames=16,
-    num_inference_steps=10, height=1536, width=1536,
-    vram_limit_level=0,
-)
-
-# Save images and video
-save_frames(output_video, "data/text2video/frames")
-save_video(output_video, "data/text2video/video.mp4", fps=16)
+```
+conda activate DiffSynthStudio
 ```
 
+## Usage (in WebUI)
+
+```
+python -m streamlit run Diffsynth_Studio.py
+```
+
+## Usage (in Python code)
+
+### Example 1: Stable Diffusion
+
+We can generate images with very high resolution. Please see `examples/sd_text_to_image.py` for more details.
+
+|512*512|1024*1024|2048*2048|4096*4096|
+|-|-|-|-|
+|![512](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/55f679e9-7445-4605-9315-302e93d11370)|![1024](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5)|![2048](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/9087a73c-9164-4c58-b2a0-effc694143fb)|![4096](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/edee9e71-fc39-4d1c-9ca9-fa52002c67ac)|
+
+### Example 2: Stable Diffusion XL
+
+Generate images with Stable Diffusion XL. Please see `examples/sdxl_text_to_image.py` for more details.
+
+|1024*1024|2048*2048|
+|-|-|
+|![1024](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90)|![2048](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/584186bc-9855-4140-878e-99541f9a757f)|
+
+### Example 3: Stable Diffusion XL Turbo
+
+Generate images with Stable Diffusion XL Turbo. You can see `examples/sdxl_turbo.py` for more details, but we highly recommend you to use it in the WebUI.
+
+|"black car"|"red car"|
+|-|-|
+|![black_car](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/7fbfd803-68d4-44f3-8713-8c925fec47d0)|![black_car_to_red_car](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/aaf886e4-c33c-4fd8-98e2-29eef117ba00)|
+
+### Example 4: Toon Shading
+
+A very interesting example. Please see `examples/sd_toon_shading.py` for more details.
+
+https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/53532f0e-39b1-4791-b920-c975d52ec24a

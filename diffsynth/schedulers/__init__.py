@@ -18,7 +18,7 @@ class EnhancedDDIMScheduler():
     def set_timesteps(self, num_inference_steps, denoising_strength=1.0):
         # The timesteps are aligned to 999...0, which is different from other implementations,
         # but I think this implementation is more reasonable in theory.
-        max_timestep = round(self.num_train_timesteps * denoising_strength) - 1
+        max_timestep = max(round(self.num_train_timesteps * denoising_strength) - 1, 0)
         num_inference_steps = min(num_inference_steps, max_timestep + 1)
         if num_inference_steps == 1:
             self.timesteps = [max_timestep]
