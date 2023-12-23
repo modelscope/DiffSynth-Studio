@@ -5,47 +5,40 @@ import streamlit as st
 st.set_page_config(layout="wide")
 from streamlit_drawable_canvas import st_canvas
 from diffsynth.models import ModelManager
-from diffsynth.prompts import SDXLPrompter, SDPrompter
-from diffsynth.pipelines import SDXLPipeline, SDPipeline
+from diffsynth.pipelines import SDImagePipeline, SDXLImagePipeline
 
 
-torch.cuda.set_per_process_memory_fraction(0.999, 0)
+config = {
+    "Stable Diffusion": {
+        "model_folder": "models/stable_diffusion",
+        "pipeline_class": SDImagePipeline,
+        "fixed_parameters": {}
+    },
+    "Stable Diffusion XL": {
+        "model_folder": "models/stable_diffusion_xl",
+        "pipeline_class": SDXLImagePipeline,
+        "fixed_parameters": {}
+    },
+    "Stable Diffusion XL Turbo": {
+        "model_folder": "models/stable_diffusion_xl_turbo",
+        "pipeline_class": SDXLImagePipeline,
+        "fixed_parameters": {
+            "negative_prompt": "",
+            "cfg_scale": 1.0,
+            "num_inference_steps": 1,
+            "height": 512,
+            "width": 512,
+        }
+    }
+}
 
 
-@st.cache_data
-def load_model_list(folder):
+def load_model_list(model_type):
+    folder = config[model_type]["model_folder"]
     file_list = os.listdir(folder)
     file_list = [i for i in file_list if i.endswith(".safetensors")]
     file_list = sorted(file_list)
     return file_list
-
-
-def detect_model_path(sd_model_path, sdxl_model_path):
-    if sd_model_path != "None":
-        model_path = os.path.join("models/stable_diffusion", sd_model_path)
-    elif sdxl_model_path != "None":
-        model_path = os.path.join("models/stable_diffusion_xl", sdxl_model_path)
-    else:
-        model_path = None
-    return model_path
-
-
-def load_model(sd_model_path, sdxl_model_path):
-    if sd_model_path != "None":
-        model_path = os.path.join("models/stable_diffusion", sd_model_path)
-        model_manager = ModelManager()
-        model_manager.load_from_safetensors(model_path)
-        prompter = SDPrompter()
-        pipeline = SDPipeline()
-    elif sdxl_model_path != "None":
-        model_path = os.path.join("models/stable_diffusion_xl", sdxl_model_path)
-        model_manager = ModelManager()
-        model_manager.load_from_safetensors(model_path)
-        prompter = SDXLPrompter()
-        pipeline = SDXLPipeline()
-    else:
-        return None, None, None, None
-    return model_path, model_manager, prompter, pipeline
 
 
 def release_model():
@@ -53,9 +46,18 @@ def release_model():
         st.session_state["model_manager"].to("cpu")
         del st.session_state["loaded_model_path"]
         del st.session_state["model_manager"]
-        del st.session_state["prompter"]
         del st.session_state["pipeline"]
         torch.cuda.empty_cache()
+
+
+def load_model(model_type, model_path):
+    model_manager = ModelManager()
+    model_manager.load_model(model_path)
+    pipeline = config[model_type]["pipeline_class"].from_model_manager(model_manager)
+    st.session_state.loaded_model_path = model_path
+    st.session_state.model_manager = model_manager
+    st.session_state.pipeline = pipeline
+    return model_manager, pipeline
 
 
 def use_output_image_as_input():
@@ -102,68 +104,64 @@ def show_output_image(image):
 
 
 column_input, column_output = st.columns(2)
-
-# with column_input:
 with st.sidebar:
     # Select a model
     with st.expander("Model", expanded=True):
-        sd_model_list = ["None"] + load_model_list("models/stable_diffusion")
-        sd_model_path = st.selectbox(
-            "Stable Diffusion", sd_model_list
-        )
-        sdxl_model_list = ["None"] + load_model_list("models/stable_diffusion_xl")
-        sdxl_model_path = st.selectbox(
-            "Stable Diffusion XL", sdxl_model_list
-        )
+        model_type = st.selectbox("Model type", ["Stable Diffusion", "Stable Diffusion XL", "Stable Diffusion XL Turbo"])
+        fixed_parameters = config[model_type]["fixed_parameters"]
+        model_path_list = ["None"] + load_model_list(model_type)
+        model_path = st.selectbox("Model path", model_path_list)
 
         # Load the model
-        model_path = detect_model_path(sd_model_path, sdxl_model_path)
-        if model_path is None:
-            st.markdown("No models selected.")
+        if model_path == "None":
+            # No models are selected. Release VRAM.
+            st.markdown("No models are selected.")
             release_model()
-        elif st.session_state.get("loaded_model_path", "") != model_path:
-            st.markdown(f"Using model at {model_path}.")
-            release_model()
-            model_path, model_manager, prompter, pipeline = load_model(sd_model_path, sdxl_model_path)
-            st.session_state.loaded_model_path = model_path
-            st.session_state.model_manager = model_manager
-            st.session_state.prompter = prompter
-            st.session_state.pipeline = pipeline
         else:
-            st.markdown(f"Using model at {model_path}.")
-            model_path, model_manager, prompter, pipeline = (
-                st.session_state.loaded_model_path,
-                st.session_state.model_manager,
-                st.session_state.prompter,
-                st.session_state.pipeline,
-            )
+            # A model is selected.
+            model_path = os.path.join(config[model_type]["model_folder"], model_path)
+            if st.session_state.get("loaded_model_path", "") != model_path:
+                # The loaded model is not the selected model. Reload it.
+                st.markdown(f"Using model at {model_path}.")
+                release_model()
+                model_manager, pipeline = load_model(model_type, model_path)
+            else:
+                # The loaded model is not the selected model. Fetch it from `st.session_state`.
+                st.markdown(f"Using model at {model_path}.")
+                model_manager, pipeline = st.session_state.model_manager, st.session_state.pipeline
 
     # Show parameters
     with st.expander("Prompt", expanded=True):
-        column_positive, column_negative = st.columns(2)
         prompt = st.text_area("Positive prompt")
-        negative_prompt = st.text_area("Negative prompt")
-    with st.expander("Classifier-free guidance", expanded=True):
-        use_cfg = st.checkbox("Use classifier-free guidance", value=True)
-        if use_cfg:
-            cfg_scale = st.slider("Classifier-free guidance scale", min_value=1.0, max_value=10.0, step=0.1, value=7.5)
+        if "negative_prompt" in fixed_parameters:
+            negative_prompt = fixed_parameters["negative_prompt"]
         else:
-            cfg_scale = 1.0
-    with st.expander("Inference steps", expanded=True):
-        num_inference_steps = st.slider("Inference steps", min_value=1, max_value=100, value=20, label_visibility="hidden")
-    with st.expander("Image size", expanded=True):
-        height = st.select_slider("Height", options=[256, 512, 768, 1024, 2048], value=512)
-        width = st.select_slider("Width", options=[256, 512, 768, 1024, 2048], value=512)
-    with st.expander("Seed", expanded=True):
+            negative_prompt = st.text_area("Negative prompt")
+        if "cfg_scale" in fixed_parameters:
+            cfg_scale = fixed_parameters["cfg_scale"]
+        else:
+            cfg_scale = st.slider("Classifier-free guidance scale", min_value=1.0, max_value=10.0, value=7.5)
+    with st.expander("Image", expanded=True):
+        if "num_inference_steps" in fixed_parameters:
+            num_inference_steps = fixed_parameters["num_inference_steps"]
+        else:
+            num_inference_steps = st.slider("Inference steps", min_value=1, max_value=100, value=20)
+        if "height" in fixed_parameters:
+            height = fixed_parameters["height"]
+        else:
+            height = st.select_slider("Height", options=[256, 512, 768, 1024, 2048], value=512)
+        if "width" in fixed_parameters:
+            width = fixed_parameters["width"]
+        else:
+            width = st.select_slider("Width", options=[256, 512, 768, 1024, 2048], value=512)
+        num_images = st.number_input("Number of images", value=2)
         use_fixed_seed = st.checkbox("Use fixed seed", value=False)
         if use_fixed_seed:
-            seed = st.number_input("Random seed", value=0, label_visibility="hidden")
-    with st.expander("Number of images", expanded=True):
-        num_images = st.number_input("Number of images", value=4, label_visibility="hidden")
-    with st.expander("Tile (for high resolution)", expanded=True):
-        tiled = st.checkbox("Use tile", value=False)
-        tile_size = st.select_slider("Tile size", options=[64, 128], value=64)
-        tile_stride = st.select_slider("Tile stride", options=[8, 16, 32, 64], value=32)
+            seed = st.number_input("Random seed", min_value=0, max_value=10**9, step=1, value=0)
+
+    # Other fixed parameters
+    denoising_strength = 1.0
+    repetition = 1
 
 
 # Show input image
@@ -180,7 +178,7 @@ with column_input:
         if upload_image is not None:
             st.session_state["input_image"] = Image.open(upload_image)
         elif create_white_board:
-            st.session_state["input_image"] = Image.fromarray(np.ones((1024, 1024, 3), dtype=np.uint8) * 255)
+            st.session_state["input_image"] = Image.fromarray(np.ones((height, width, 3), dtype=np.uint8) * 255)
         else:
             use_output_image_as_input()
 
@@ -202,6 +200,7 @@ with column_input:
                 stroke_width = st.slider("Stroke width", min_value=1, max_value=50, value=10)
             with st.container(border=True):
                 denoising_strength = st.slider("Denoising strength", min_value=0.0, max_value=1.0, value=0.7)
+                repetition = st.slider("Repetition", min_value=1, max_value=8, value=1)
             with st.container(border=True):
                 input_width, input_height = input_image.size
                 canvas_result = st_canvas(
@@ -225,34 +224,32 @@ with column_output:
     image_columns = st.columns(num_image_columns)
 
     # Run
-    if (run_button or auto_update) and model_path is not None:
+    if (run_button or auto_update) and model_path != "None":
 
-        if not use_fixed_seed:
-            torch.manual_seed(np.random.randint(0, 10**9))
+        if input_image is not None:
+            input_image = input_image.resize((width, height))
+            if canvas_result.image_data is not None:
+                input_image = apply_stroke_to_image(canvas_result.image_data, input_image)
 
         output_images = []
-        for image_id in range(num_images):
+        for image_id in range(num_images * repetition):
             if use_fixed_seed:
                 torch.manual_seed(seed + image_id)
-            if input_image is not None:
-                input_image = input_image.resize((width, height))
-                if canvas_result.image_data is not None:
-                    input_image = apply_stroke_to_image(canvas_result.image_data, input_image)
             else:
-                denoising_strength = 1.0
+                torch.manual_seed(np.random.randint(0, 10**9))
+            if image_id >= num_images:
+                input_image = output_images[image_id - num_images]
             with image_columns[image_id % num_image_columns]:
-                progress_bar = st.progress(0.0)
+                progress_bar_st = st.progress(0.0)
                 image = pipeline(
-                    model_manager, prompter,
-                    prompt, negative_prompt=negative_prompt, cfg_scale=cfg_scale,
-                    num_inference_steps=num_inference_steps,
+                    prompt, negative_prompt=negative_prompt,
+                    cfg_scale=cfg_scale, num_inference_steps=num_inference_steps,
                     height=height, width=width,
-                    init_image=input_image, denoising_strength=denoising_strength,
-                    tiled=tiled, tile_size=tile_size, tile_stride=tile_stride,
-                    progress_bar_st=progress_bar
+                    input_image=input_image, denoising_strength=denoising_strength,
+                    progress_bar_st=progress_bar_st
                 )
                 output_images.append(image)
-                progress_bar.progress(1.0)
+                progress_bar_st.progress(1.0)
                 show_output_image(image)
                 st.session_state["output_images"] = output_images
 
