@@ -18,10 +18,11 @@ def lets_dance_with_long_video(
     timestep = None,
     encoder_hidden_states = None,
     controlnet_frames = None,
-    unet_batch_size = 1,
-    controlnet_batch_size = 1,
     animatediff_batch_size = 16,
     animatediff_stride = 8,
+    unet_batch_size = 1,
+    controlnet_batch_size = 1,
+    cross_frame_attention = False,
     device = "cuda",
     vram_limit_level = 0,
 ):
@@ -38,12 +39,14 @@ def lets_dance_with_long_video(
             timestep,
             encoder_hidden_states[batch_id: batch_id_].to(device),
             controlnet_frames[:, batch_id: batch_id_].to(device) if controlnet_frames is not None else None,
-            unet_batch_size=unet_batch_size, controlnet_batch_size=controlnet_batch_size, device=device, vram_limit_level=vram_limit_level
+            unet_batch_size=unet_batch_size, controlnet_batch_size=controlnet_batch_size,
+            cross_frame_attention=cross_frame_attention,
+            device=device, vram_limit_level=vram_limit_level
         ).cpu()
 
         # update hidden_states
         for i, hidden_states_updated in zip(range(batch_id, batch_id_), hidden_states_batch):
-            bias = max(1 - abs(i - (batch_id + batch_id_ - 1) / 2) / ((batch_id_ - batch_id - 1) / 2), 1e-2)
+            bias = max(1 - abs(i - (batch_id + batch_id_ - 1) / 2) / ((batch_id_ - batch_id - 1 + 1e-2) / 2), 1e-2)
             hidden_states, num = hidden_states_output[i]
             hidden_states = hidden_states * (num / (num + bias)) + hidden_states_updated * (bias / (num + bias))
             hidden_states_output[i] = (hidden_states, num + 1)
@@ -159,6 +162,13 @@ class SDVideoPipeline(torch.nn.Module):
         height=512,
         width=512,
         num_inference_steps=20,
+        animatediff_batch_size = 16,
+        animatediff_stride = 8,
+        unet_batch_size = 1,
+        controlnet_batch_size = 1,
+        cross_frame_attention = False,
+        smoother=None,
+        smoother_progress_ids=[],
         vram_limit_level=0,
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
@@ -167,8 +177,11 @@ class SDVideoPipeline(torch.nn.Module):
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength)
 
         # Prepare latent tensors
-        noise = torch.randn((num_frames, 4, height//8, width//8), device="cpu", dtype=self.torch_dtype)
-        if input_frames is None:
+        if self.motion_modules is None:
+            noise = torch.randn((1, 4, height//8, width//8), device="cpu", dtype=self.torch_dtype).repeat(num_frames, 1, 1, 1)
+        else:
+            noise = torch.randn((num_frames, 4, height//8, width//8), device="cpu", dtype=self.torch_dtype)
+        if input_frames is None or denoising_strength == 1.0:
             latents = noise
         else:
             latents = self.encode_images(input_frames)
@@ -195,16 +208,28 @@ class SDVideoPipeline(torch.nn.Module):
             noise_pred_posi = lets_dance_with_long_video(
                 self.unet, motion_modules=self.motion_modules, controlnet=self.controlnet,
                 sample=latents, timestep=timestep, encoder_hidden_states=prompt_emb_posi, controlnet_frames=controlnet_frames,
+                animatediff_batch_size=animatediff_batch_size, animatediff_stride=animatediff_stride,
+                unet_batch_size=unet_batch_size, controlnet_batch_size=controlnet_batch_size,
+                cross_frame_attention=cross_frame_attention,
                 device=self.device, vram_limit_level=vram_limit_level
             )
             noise_pred_nega = lets_dance_with_long_video(
                 self.unet, motion_modules=self.motion_modules, controlnet=self.controlnet,
                 sample=latents, timestep=timestep, encoder_hidden_states=prompt_emb_nega, controlnet_frames=controlnet_frames,
+                animatediff_batch_size=animatediff_batch_size, animatediff_stride=animatediff_stride,
+                unet_batch_size=unet_batch_size, controlnet_batch_size=controlnet_batch_size,
+                cross_frame_attention=cross_frame_attention,
                 device=self.device, vram_limit_level=vram_limit_level
             )
             noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
 
-            # DDIM
+            # DDIM and smoother
+            if smoother is not None and progress_id in smoother_progress_ids:
+                rendered_frames = self.scheduler.step(noise_pred, timestep, latents, to_final=True)
+                rendered_frames = self.decode_images(rendered_frames)
+                rendered_frames = smoother(rendered_frames, original_frames=input_frames)
+                target_latents = self.encode_images(rendered_frames)
+                noise_pred = self.scheduler.return_to_timestep(timestep, latents, target_latents)
             latents = self.scheduler.step(noise_pred, timestep, latents)
 
             # UI
