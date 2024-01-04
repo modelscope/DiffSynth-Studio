@@ -61,7 +61,7 @@ def load_model(model_type, model_path):
     return model_manager, pipeline
 
 
-def use_output_image_as_input():
+def use_output_image_as_input(update=True):
     # Search for input image
     output_image_id = 0
     selected_output_image = None
@@ -72,8 +72,9 @@ def use_output_image_as_input():
             selected_output_image = st.session_state["output_images"][output_image_id]
             break
         output_image_id += 1
-    if selected_output_image is not None:
+    if update and selected_output_image is not None:
         st.session_state["input_image"] = selected_output_image
+    return selected_output_image is not None
 
 
 def apply_stroke_to_image(stroke_image, image):
@@ -260,3 +261,5 @@ with column_output:
                 image = st.session_state.output_images[image_id]
                 progress_bar = st.progress(1.0)
                 show_output_image(image)
+    if "upload_image" in st.session_state and use_output_image_as_input(update=False):
+        st.markdown("If you want to use an output image as input image, please delete the uploaded image manually.")
