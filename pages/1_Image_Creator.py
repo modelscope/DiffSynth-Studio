@@ -6,6 +6,7 @@ st.set_page_config(layout="wide")
 from streamlit_drawable_canvas import st_canvas
 from diffsynth.models import ModelManager
 from diffsynth.pipelines import SDImagePipeline, SDXLImagePipeline
+from diffsynth.data.video import crop_and_resize
 
 
 config = {
@@ -176,7 +177,7 @@ with column_input:
                 upload_image = st.file_uploader("Upload image", type=["png", "jpg"], key="upload_image")
 
         if upload_image is not None:
-            st.session_state["input_image"] = Image.open(upload_image)
+            st.session_state["input_image"] = crop_and_resize(Image.open(upload_image), height, width)
         elif create_white_board:
             st.session_state["input_image"] = Image.fromarray(np.ones((height, width, 3), dtype=np.uint8) * 255)
         else:
