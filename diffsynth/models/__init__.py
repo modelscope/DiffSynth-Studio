@@ -153,6 +153,8 @@ class ModelManager:
 
         # Load every textual inversion file
         for file_name in os.listdir(folder):
+            if file_name.endswith(".txt"):
+                continue
             keyword = os.path.splitext(file_name)[0]
             state_dict = load_state_dict(os.path.join(folder, file_name))
 
