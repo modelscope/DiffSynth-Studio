@@ -189,6 +189,7 @@ class ModelManager:
                     model.to(device)
             else:
                 self.model[component].to(device)
+        torch.cuda.empty_cache()
 
     def get_model_with_model_path(self, model_path):
         for component in self.model_path:

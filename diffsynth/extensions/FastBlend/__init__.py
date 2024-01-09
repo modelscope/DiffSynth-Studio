@@ -7,7 +7,7 @@ import cupy as cp
 class FastBlendSmoother:
     def __init__(self):
         self.batch_size = 8
-        self.window_size = 32
+        self.window_size = 64
         self.ebsynth_config = {
             "minimum_patch_size": 5,
             "threads_per_block": 8,

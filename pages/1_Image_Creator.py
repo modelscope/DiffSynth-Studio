@@ -2,7 +2,6 @@ import torch, os, io
 import numpy as np
 from PIL import Image
 import streamlit as st
-st.set_page_config(layout="wide")
 from streamlit_drawable_canvas import st_canvas
 from diffsynth.models import ModelManager
 from diffsynth.pipelines import SDImagePipeline, SDXLImagePipeline

@@ -12,6 +12,8 @@ Create Python environment:
 conda env create -f environment.yml
 ```
 
+We find that sometimes `conda` cannot install `cupy` correctly, please install it manually. See [this document](https://docs.cupy.dev/en/stable/install.html) for more details.
+
 Enter the Python environment:
 
 ```

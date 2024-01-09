@@ -8,6 +8,7 @@ dependencies:
   - pip=23.0.1
   - cudatoolkit
   - pytorch
+  - cupy
   - pip:
     - transformers
     - controlnet-aux==0.0.7

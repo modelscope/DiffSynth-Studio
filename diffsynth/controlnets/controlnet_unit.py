@@ -23,13 +23,11 @@ class MultiControlNetManager:
         self.models = [unit.model for unit in controlnet_units]
         self.scales = [unit.scale for unit in controlnet_units]
 
-    def process_image(self, image, return_image=False):
-        processed_image = [
-            processor(image)
-            for processor in self.processors
-        ]
-        if return_image:
-            return processed_image
+    def process_image(self, image, processor_id=None):
+        if processor_id is None:
+            processed_image = [processor(image) for processor in self.processors]
+        else:
+            processed_image = [self.processors[processor_id](image)]
         processed_image = torch.concat([
             torch.Tensor(np.array(image_, dtype=np.float32) / 255).permute(2, 0, 1).unsqueeze(0)
             for image_ in processed_image

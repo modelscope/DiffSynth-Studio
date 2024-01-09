@@ -51,6 +51,9 @@ def lets_dance_with_long_video(
             hidden_states = hidden_states * (num / (num + bias)) + hidden_states_updated * (bias / (num + bias))
             hidden_states_output[i] = (hidden_states, num + 1)
 
+        if batch_id_ == num_frames:
+            break
+
     # output
     hidden_states = torch.stack([h for h, _ in hidden_states_output])
     return hidden_states
@@ -195,10 +198,21 @@ class SDVideoPipeline(torch.nn.Module):
 
         # Prepare ControlNets
         if controlnet_frames is not None:
-            controlnet_frames = torch.stack([
-                self.controlnet.process_image(controlnet_frame).to(self.torch_dtype)
-                for controlnet_frame in progress_bar_cmd(controlnet_frames)
-            ], dim=1)
+            if isinstance(controlnet_frames[0], list):
+                controlnet_frames_ = []
+                for processor_id in range(len(controlnet_frames)):
+                    controlnet_frames_.append(
+                        torch.stack([
+                            self.controlnet.process_image(controlnet_frame, processor_id=processor_id).to(self.torch_dtype)
+                            for controlnet_frame in progress_bar_cmd(controlnet_frames[processor_id])
+                        ], dim=1)
+                    )
+                controlnet_frames = torch.concat(controlnet_frames_, dim=0)
+            else:
+                controlnet_frames = torch.stack([
+                    self.controlnet.process_image(controlnet_frame).to(self.torch_dtype)
+                    for controlnet_frame in progress_bar_cmd(controlnet_frames)
+                ], dim=1)
         
         # Denoise
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
