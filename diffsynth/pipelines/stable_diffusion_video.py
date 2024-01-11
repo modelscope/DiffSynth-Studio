@@ -50,7 +50,7 @@ def lets_dance_with_long_video(
             bias = max(1 - abs(i - (batch_id + batch_id_ - 1) / 2) / ((batch_id_ - batch_id - 1 + 1e-2) / 2), 1e-2)
             hidden_states, num = hidden_states_output[i]
             hidden_states = hidden_states * (num / (num + bias)) + hidden_states_updated * (bias / (num + bias))
-            hidden_states_output[i] = (hidden_states, num + 1)
+            hidden_states_output[i] = (hidden_states, num + bias)
 
         if batch_id_ == num_frames:
             break
