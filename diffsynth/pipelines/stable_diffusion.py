@@ -31,8 +31,6 @@ class SDImagePipeline(torch.nn.Module):
         self.unet = model_manager.unet
         self.vae_decoder = model_manager.vae_decoder
         self.vae_encoder = model_manager.vae_encoder
-        # load textual inversion
-        self.prompter.load_textual_inversion(model_manager.textual_inversion_dict)
 
 
     def fetch_controlnet_models(self, model_manager: ModelManager, controlnet_config_units: List[ControlNetConfigUnit]=[]):
@@ -47,9 +45,8 @@ class SDImagePipeline(torch.nn.Module):
         self.controlnet = MultiControlNetManager(controlnet_units)
 
 
-    def fetch_beautiful_prompt(self, model_manager: ModelManager):
-        if "beautiful_prompt" in model_manager.model:
-            self.prompter.load_beautiful_prompt(model_manager.model["beautiful_prompt"], model_manager.model_path["beautiful_prompt"])
+    def fetch_prompter(self, model_manager: ModelManager):
+        self.prompter.load_from_model_manager(model_manager)
 
 
     @staticmethod
@@ -59,7 +56,7 @@ class SDImagePipeline(torch.nn.Module):
             torch_dtype=model_manager.torch_dtype,
         )
         pipe.fetch_main_models(model_manager)
-        pipe.fetch_beautiful_prompt(model_manager)
+        pipe.fetch_prompter(model_manager)
         pipe.fetch_controlnet_models(model_manager, controlnet_config_units)
         return pipe
     

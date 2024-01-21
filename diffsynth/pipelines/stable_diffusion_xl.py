@@ -39,9 +39,8 @@ class SDXLImagePipeline(torch.nn.Module):
         pass
 
 
-    def fetch_beautiful_prompt(self, model_manager: ModelManager):
-        if "beautiful_prompt" in model_manager.model:
-            self.prompter.load_beautiful_prompt(model_manager.model["beautiful_prompt"], model_manager.model_path["beautiful_prompt"])
+    def fetch_prompter(self, model_manager: ModelManager):
+        self.prompter.load_from_model_manager(model_manager)
 
 
     @staticmethod
@@ -51,7 +50,7 @@ class SDXLImagePipeline(torch.nn.Module):
             torch_dtype=model_manager.torch_dtype,
         )
         pipe.fetch_main_models(model_manager)
-        pipe.fetch_beautiful_prompt(model_manager)
+        pipe.fetch_prompter(model_manager)
         pipe.fetch_controlnet_models(model_manager, controlnet_config_units=controlnet_config_units)
         return pipe
     
@@ -106,7 +105,8 @@ class SDXLImagePipeline(torch.nn.Module):
             self.text_encoder_2,
             prompt,
             clip_skip=clip_skip, clip_skip_2=clip_skip_2,
-            device=self.device
+            device=self.device,
+            positive=True,
         )
         if cfg_scale != 1.0:
             add_prompt_emb_nega, prompt_emb_nega = self.prompter.encode_prompt(
@@ -114,7 +114,8 @@ class SDXLImagePipeline(torch.nn.Module):
                 self.text_encoder_2,
                 negative_prompt,
                 clip_skip=clip_skip, clip_skip_2=clip_skip_2,
-                device=self.device
+                device=self.device,
+                positive=False,
             )
         
         # Prepare scheduler

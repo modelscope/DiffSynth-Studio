@@ -55,6 +55,10 @@ class ModelManager:
         param_name = "lora_unet_up_blocks_3_attentions_2_transformer_blocks_0_ff_net_2.lora_up.weight"
         return param_name in state_dict
     
+    def is_translator(self, state_dict):
+        param_name = "model.encoder.layers.5.self_attn_layer_norm.weight"
+        return param_name in state_dict and len(state_dict) == 254
+    
     def load_stable_diffusion(self, state_dict, components=None, file_path=""):
         component_dict = {
             "text_encoder": SDTextEncoder,
@@ -147,6 +151,15 @@ class ModelManager:
         SDLoRA().add_lora_to_text_encoder(self.model["text_encoder"], state_dict, alpha=alpha, device=self.device)
         SDLoRA().add_lora_to_unet(self.model["unet"], state_dict, alpha=alpha, device=self.device)
 
+    def load_translator(self, state_dict, file_path=""):
+        # This model is lightweight, we do not place it on GPU.
+        component = "translator"
+        from transformers import AutoModelForSeq2SeqLM
+        model_folder = os.path.dirname(file_path)
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_folder).eval()
+        self.model[component] = model
+        self.model_path[component] = file_path
+
     def search_for_embeddings(self, state_dict):
         embeddings = []
         for k in state_dict:
@@ -190,6 +203,8 @@ class ModelManager:
             self.load_beautiful_prompt(state_dict, file_path=file_path)
         elif self.is_RIFE(state_dict):
             self.load_RIFE(state_dict, file_path=file_path)
+        elif self.is_translator(state_dict):
+            self.load_translator(state_dict, file_path=file_path)
 
     def load_models(self, file_path_list, lora_alphas=[]):
         for file_path in file_path_list:
