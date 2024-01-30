@@ -16,7 +16,7 @@ class CLIPEncoderLayer(torch.nn.Module):
     def quickGELU(self, x):
         return x * torch.sigmoid(1.702 * x)
     
-    def forward(self, hidden_states, attn_mask):
+    def forward(self, hidden_states, attn_mask=None):
         residual = hidden_states
 
         hidden_states = self.layer_norm1(hidden_states)
