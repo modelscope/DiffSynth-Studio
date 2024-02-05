@@ -62,7 +62,7 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/b54c05c5-d747-47
 
 ### Example 5: Toon Shading with Editing Signals (Diffutoon)
 
-Coming soon.
+This example is implemented based on [Diffutoon](https://arxiv.org/abs/2401.16224), supporting video editing signals. See `examples\diffutoon_toon_shading_with_editing_signals.py`.
 
 https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/20528af5-5100-474a-8cdc-440b9efdd86c
 

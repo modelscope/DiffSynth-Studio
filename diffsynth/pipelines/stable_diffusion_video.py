@@ -4,6 +4,7 @@ from ..prompts import SDPrompter
 from ..schedulers import EnhancedDDIMScheduler
 from ..data import VideoData, save_frames, save_video
 from .dancer import lets_dance
+from ..processors.sequencial_processor import SequencialProcessor
 from typing import List
 import torch, os, json
 from tqdm import tqdm
@@ -251,6 +252,10 @@ class SDVideoPipeline(torch.nn.Module):
         # Decode image
         output_frames = self.decode_images(latents)
 
+        # Post-process
+        if smoother is not None and (num_inference_steps in smoother_progress_ids or -1 in smoother_progress_ids):
+            output_frames = smoother(output_frames, original_frames=input_frames)
+
         return output_frames
 
 
@@ -278,21 +283,30 @@ class SDVideoPipelineRunner:
         return model_manager, pipe
     
 
-    def synthesize_video(self, model_manager, pipe, seed, **pipeline_inputs):
+    def load_smoother(self, model_manager, smoother_configs):
+        smoother = SequencialProcessor.from_model_manager(model_manager, smoother_configs)
+        return smoother
+
+
+    def synthesize_video(self, model_manager, pipe, seed, smoother, **pipeline_inputs):
         torch.manual_seed(seed)
         if self.in_streamlit:
             import streamlit as st
             progress_bar_st = st.progress(0.0)
-            output_video = pipe(**pipeline_inputs, progress_bar_st=progress_bar_st)
+            output_video = pipe(**pipeline_inputs, smoother=smoother, progress_bar_st=progress_bar_st)
             progress_bar_st.progress(1.0)
         else:
-            output_video = pipe(**pipeline_inputs)
+            output_video = pipe(**pipeline_inputs, smoother=smoother)
         model_manager.to("cpu")
         return output_video
 
 
     def load_video(self, video_file, image_folder, height, width, start_frame_id, end_frame_id):
         video = VideoData(video_file=video_file, image_folder=image_folder, height=height, width=width)
+        if start_frame_id is None:
+            start_frame_id = 0
+        if end_frame_id is None:
+            end_frame_id = len(video)
         frames = [video[i] for i in range(start_frame_id, end_frame_id)]
         return frames
 
@@ -325,8 +339,14 @@ class SDVideoPipelineRunner:
         if self.in_streamlit: st.markdown("Loading models ...")
         model_manager, pipe = self.load_pipeline(**config["models"])
         if self.in_streamlit: st.markdown("Loading models ... done!")
+        if "smoother_configs" in config:
+            if self.in_streamlit: st.markdown("Loading smoother ...")
+            smoother = self.load_smoother(model_manager, config["smoother_configs"])
+            if self.in_streamlit: st.markdown("Loading smoother ... done!")
+        else:
+            smoother = None
         if self.in_streamlit: st.markdown("Synthesizing videos ...")
-        output_video = self.synthesize_video(model_manager, pipe, config["pipeline"]["seed"], **config["pipeline"]["pipeline_inputs"])
+        output_video = self.synthesize_video(model_manager, pipe, config["pipeline"]["seed"], smoother, **config["pipeline"]["pipeline_inputs"])
         if self.in_streamlit: st.markdown("Synthesizing videos ... done!")
         if self.in_streamlit: st.markdown("Saving videos ...")
         self.save_output(output_video, config["data"]["output_folder"], config["data"]["fps"], config)
