@@ -56,13 +56,13 @@ Generate images with Stable Diffusion XL Turbo. You can see `examples/sdxl_turbo
 
 ### Example 4: Toon Shading (Diffutoon)
 
-This example is implemented based on [Diffutoon](https://arxiv.org/abs/2401.16224). This approach is adept for rendering high-resoluton videos with rapid motion. You can easily modify the parameters in the config dict. See `examples/diffutoon_toon_shading.py`. We also provide [an example on Colab](https://colab.research.google.com/github/Artiprocher/DiffSynth-Studio/blob/main/examples/Diffutoon_toon_shading.ipynb).
+This example is implemented based on [Diffutoon](https://arxiv.org/abs/2401.16224). This approach is adept for rendering high-resoluton videos with rapid motion. You can easily modify the parameters in the config dict. See `examples/diffutoon_toon_shading.py`. We also provide [an example on Colab](https://colab.research.google.com/github/Artiprocher/DiffSynth-Studio/blob/main/examples/Diffutoon.ipynb).
 
 https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/b54c05c5-d747-4709-be5e-b39af82404dd
 
 ### Example 5: Toon Shading with Editing Signals (Diffutoon)
 
-This example is implemented based on [Diffutoon](https://arxiv.org/abs/2401.16224), supporting video editing signals. See `examples\diffutoon_toon_shading_with_editing_signals.py`.
+This example is implemented based on [Diffutoon](https://arxiv.org/abs/2401.16224), supporting video editing signals. See `examples\diffutoon_toon_shading_with_editing_signals.py`. The editing feature is also supported in the [Colab example](https://colab.research.google.com/github/Artiprocher/DiffSynth-Studio/blob/main/examples/Diffutoon.ipynb).
 
 https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/20528af5-5100-474a-8cdc-440b9efdd86c
 
