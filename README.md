@@ -23,7 +23,7 @@ conda activate DiffSynthStudio
 ## Usage (in WebUI)
 
 ```
-python -m streamlit run Diffsynth_Studio.py
+python -m streamlit run DiffSynth_Studio.py
 ```
 
 https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/93085557-73f3-4eee-a205-9829591ef954
