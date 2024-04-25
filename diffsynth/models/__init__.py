@@ -45,7 +45,8 @@ class ModelManager:
     
     def is_controlnet(self, state_dict):
         param_name = "control_model.time_embed.0.weight"
-        return param_name in state_dict
+        param_name_2 = "mid_block.resnets.1.time_emb_proj.weight" # For controlnets in diffusers format
+        return param_name in state_dict or param_name_2 in state_dict
     
     def is_animatediff(self, state_dict):
         param_name = "mid_block.motion_modules.0.temporal_transformer.proj_out.weight"

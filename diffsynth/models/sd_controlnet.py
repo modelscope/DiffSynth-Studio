@@ -232,6 +232,9 @@ class SDControlNetStateDictConverter:
         return state_dict_
     
     def from_civitai(self, state_dict):
+        if "mid_block.resnets.1.time_emb_proj.weight" in state_dict:
+            # For controlnets in diffusers format
+            return self.from_diffusers(state_dict)
         rename_dict = {
             "control_model.time_embed.0.weight": "time_embedding.0.weight",
             "control_model.time_embed.0.bias": "time_embedding.0.bias",
