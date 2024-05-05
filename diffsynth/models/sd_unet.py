@@ -165,6 +165,8 @@ class AttentionBlock(torch.nn.Module):
             encoder_hidden_states = text_emb.mean(dim=0, keepdim=True)
         else:
             encoder_hidden_states = text_emb
+            if encoder_hidden_states.shape[0] != hidden_states.shape[0]:
+                encoder_hidden_states = encoder_hidden_states.repeat(hidden_states.shape[0], 1, 1)
 
         if tiled:
             tile_size = min(tile_size, min(height, width))
