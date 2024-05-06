@@ -1,6 +1,5 @@
 from ..models import ModelManager, SVDImageEncoder, SVDUNet, SVDVAEEncoder, SVDVAEDecoder
 from ..schedulers import ContinuousODEScheduler
-from ..data import save_video
 import torch
 from tqdm import tqdm
 from PIL import Image
@@ -93,16 +92,14 @@ class SVDVideoPipeline(torch.nn.Module):
         image_emb_vae_posi, image_emb_clip_posi,
         image_emb_vae_nega, image_emb_clip_nega
     ):
-        latents_input = self.scheduler.scale_model_input(latents, timestep)
-
         # Positive side
         noise_pred_posi = self.unet(
-            torch.cat([latents_input, image_emb_vae_posi], dim=1),
+            torch.cat([latents, image_emb_vae_posi], dim=1),
             timestep, image_emb_clip_posi, add_time_id
         )
         # Negative side
         noise_pred_nega = self.unet(
-            torch.cat([latents_input, image_emb_vae_nega], dim=1),
+            torch.cat([latents, image_emb_vae_nega], dim=1),
             timestep, image_emb_clip_nega, add_time_id
         )
 
@@ -136,7 +133,7 @@ class SVDVideoPipeline(torch.nn.Module):
         # Prepare latent tensors
         noise = torch.randn((num_frames, 4, height//8, width//8), device="cpu", dtype=self.torch_dtype).to(self.device)
         if denoising_strength == 1.0:
-            latents = noise * self.scheduler.init_noise_sigma
+            latents = noise
         else:
             latents = self.encode_video_with_vae(input_video)
             latents = self.scheduler.add_noise(latents, noise, self.scheduler.timesteps[0])

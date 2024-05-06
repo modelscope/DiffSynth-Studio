@@ -1,4 +1,4 @@
-import torch, math
+import torch
 
 
 class ContinuousODEScheduler():
@@ -7,12 +7,11 @@ class ContinuousODEScheduler():
         self.sigma_max = sigma_max
         self.sigma_min = sigma_min
         self.rho = rho
-        self.init_noise_sigma = math.sqrt(sigma_max*sigma_max + 1)
         self.set_timesteps(num_inference_steps)
 
 
     def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0):
-        ramp = torch.linspace(0, denoising_strength, num_inference_steps)
+        ramp = torch.linspace(1-denoising_strength, 1, num_inference_steps)
         min_inv_rho = torch.pow(torch.tensor((self.sigma_min,)), (1 / self.rho))
         max_inv_rho = torch.pow(torch.tensor((self.sigma_max,)), (1 / self.rho))
         self.sigmas = torch.pow(max_inv_rho + ramp * (min_inv_rho - max_inv_rho), self.rho)
@@ -22,22 +21,17 @@ class ContinuousODEScheduler():
     def step(self, model_output, timestep, sample, to_final=False):
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
+        sample *= (sigma*sigma + 1).sqrt()
         estimated_sample = -sigma / (sigma*sigma + 1).sqrt() * model_output + 1 / (sigma*sigma + 1) * sample
         if to_final or timestep_id + 1 >= len(self.timesteps):
             prev_sample = estimated_sample
         else:
-            dt = self.sigmas[timestep_id + 1] - sigma
+            sigma_ = self.sigmas[timestep_id + 1]
             derivative = 1 / sigma * (sample - estimated_sample)
-            prev_sample = sample + derivative * dt
+            prev_sample = sample + derivative * (sigma_ - sigma)
+            prev_sample /= (sigma_*sigma_ + 1).sqrt()
         return prev_sample
     
-    
-    def scale_model_input(self, sample, timestep):
-        timestep_id = torch.argmin((self.timesteps - timestep).abs())
-        sigma = self.sigmas[timestep_id]
-        sample = sample / (sigma*sigma + 1).sqrt()
-        return sample
-
 
     def return_to_timestep(self, timestep, sample, sample_stablized):
         # This scheduler doesn't support this function.
@@ -47,6 +41,5 @@ class ContinuousODEScheduler():
     def add_noise(self, original_samples, noise, timestep):
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
-        sample = original_samples + noise * sigma
+        sample = (original_samples + noise * sigma) / (sigma*sigma + 1).sqrt()
         return sample
-
