@@ -119,6 +119,7 @@ def lets_dance_xl(
     add_text_embeds = None,
     timestep = None,
     encoder_hidden_states = None,
+    ipadapter_kwargs_list = {},
     controlnet_frames = None,
     unet_batch_size = 1,
     controlnet_batch_size = 1,
@@ -151,7 +152,8 @@ def lets_dance_xl(
     for block_id, block in enumerate(unet.blocks):
         hidden_states, time_emb, text_emb, res_stack = block(
             hidden_states, time_emb, text_emb, res_stack,
-            tiled=tiled, tile_size=tile_size, tile_stride=tile_stride
+            tiled=tiled, tile_size=tile_size, tile_stride=tile_stride,
+            ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id, {})
         )
         # 4.2 AnimateDiff
         if motion_modules is not None:

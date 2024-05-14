@@ -1,7 +1,8 @@
-from ..models import ModelManager, SDXLTextEncoder, SDXLTextEncoder2, SDXLUNet, SDXLVAEDecoder, SDXLVAEEncoder
+from ..models import ModelManager, SDXLTextEncoder, SDXLTextEncoder2, SDXLUNet, SDXLVAEDecoder, SDXLVAEEncoder, SDXLIpAdapter, IpAdapterCLIPImageEmbedder
 # TODO: SDXL ControlNet
 from ..prompts import SDXLPrompter
 from ..schedulers import EnhancedDDIMScheduler
+from .dancer import lets_dance_xl
 import torch
 from tqdm import tqdm
 from PIL import Image
@@ -22,6 +23,8 @@ class SDXLImagePipeline(torch.nn.Module):
         self.unet: SDXLUNet = None
         self.vae_decoder: SDXLVAEDecoder = None
         self.vae_encoder: SDXLVAEEncoder = None
+        self.ipadapter_image_encoder: IpAdapterCLIPImageEmbedder = None
+        self.ipadapter: SDXLIpAdapter = None
         # TODO: SDXL ControlNet
     
     def fetch_main_models(self, model_manager: ModelManager):
@@ -35,6 +38,13 @@ class SDXLImagePipeline(torch.nn.Module):
     def fetch_controlnet_models(self, model_manager: ModelManager, **kwargs):
         # TODO: SDXL ControlNet
         pass
+    
+
+    def fetch_ipadapter(self, model_manager: ModelManager):
+        if "ipadapter_xl" in model_manager.model:
+            self.ipadapter = model_manager.ipadapter_xl
+        if "ipadapter_xl_image_encoder" in model_manager.model:
+            self.ipadapter_image_encoder = model_manager.ipadapter_xl_image_encoder
 
 
     def fetch_prompter(self, model_manager: ModelManager):
@@ -50,6 +60,7 @@ class SDXLImagePipeline(torch.nn.Module):
         pipe.fetch_main_models(model_manager)
         pipe.fetch_prompter(model_manager)
         pipe.fetch_controlnet_models(model_manager, controlnet_config_units=controlnet_config_units)
+        pipe.fetch_ipadapter(model_manager)
         return pipe
     
 
@@ -74,6 +85,7 @@ class SDXLImagePipeline(torch.nn.Module):
         clip_skip=1,
         clip_skip_2=2,
         input_image=None,
+        ipadapter_images=None,
         controlnet_image=None,
         denoising_strength=1.0,
         height=1024,
@@ -118,30 +130,38 @@ class SDXLImagePipeline(torch.nn.Module):
 
         # Prepare positional id
         add_time_id = torch.tensor([height, width, 0, 0, height, width], device=self.device)
+
+        # IP-Adapter
+        if ipadapter_images is not None:
+            ipadapter_image_encoding = self.ipadapter_image_encoder(ipadapter_images)
+            ipadapter_kwargs_list_posi = self.ipadapter(ipadapter_image_encoding)
+            ipadapter_kwargs_list_nega = self.ipadapter(torch.zeros_like(ipadapter_image_encoding))
+        else:
+            ipadapter_kwargs_list_posi, ipadapter_kwargs_list_nega = {}, {}
         
         # Denoise
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = torch.IntTensor((timestep,))[0].to(self.device)
 
             # Classifier-free guidance
+            noise_pred_posi = lets_dance_xl(
+                self.unet,
+                sample=latents, timestep=timestep, encoder_hidden_states=prompt_emb_posi,
+                add_time_id=add_time_id, add_text_embeds=add_prompt_emb_posi,
+                tiled=tiled, tile_size=tile_size, tile_stride=tile_stride,
+                ipadapter_kwargs_list=ipadapter_kwargs_list_posi,
+            )
             if cfg_scale != 1.0:
-                noise_pred_posi = self.unet(
-                    latents, timestep, prompt_emb_posi,
-                    add_time_id=add_time_id, add_text_embeds=add_prompt_emb_posi,
-                    tiled=tiled, tile_size=tile_size, tile_stride=tile_stride
-                )
-                noise_pred_nega = self.unet(
-                    latents, timestep, prompt_emb_nega,
+                noise_pred_nega = lets_dance_xl(
+                    self.unet,
+                    sample=latents, timestep=timestep, encoder_hidden_states=prompt_emb_nega,
                     add_time_id=add_time_id, add_text_embeds=add_prompt_emb_nega,
-                    tiled=tiled, tile_size=tile_size, tile_stride=tile_stride
+                    tiled=tiled, tile_size=tile_size, tile_stride=tile_stride,
+                    ipadapter_kwargs_list=ipadapter_kwargs_list_nega,
                 )
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
             else:
-                noise_pred = self.unet(
-                    latents, timestep, prompt_emb_posi,
-                    add_time_id=add_time_id, add_text_embeds=add_prompt_emb_posi,
-                    tiled=tiled, tile_size=tile_size, tile_stride=tile_stride
-                )
+                noise_pred = noise_pred_posi
 
             latents = self.scheduler.step(noise_pred, timestep, latents)
             

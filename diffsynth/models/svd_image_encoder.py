@@ -25,11 +25,13 @@ class CLIPVisionEmbeddings(torch.nn.Module):
 
 
 class SVDImageEncoder(torch.nn.Module):
-    def __init__(self, embed_dim=1280, layer_norm_eps=1e-5, num_encoder_layers=32, encoder_intermediate_size=5120, projection_dim=1024):
+    def __init__(self, embed_dim=1280, layer_norm_eps=1e-5, num_encoder_layers=32, encoder_intermediate_size=5120, projection_dim=1024, num_heads=16, head_dim=80):
         super().__init__()
         self.embeddings = CLIPVisionEmbeddings(embed_dim=embed_dim)
         self.pre_layernorm = torch.nn.LayerNorm(embed_dim, eps=layer_norm_eps)
-        self.encoders = torch.nn.ModuleList([CLIPEncoderLayer(embed_dim, encoder_intermediate_size, num_heads=16, head_dim=80, use_quick_gelu=False) for _ in range(num_encoder_layers)])
+        self.encoders = torch.nn.ModuleList([
+            CLIPEncoderLayer(embed_dim, encoder_intermediate_size, num_heads=num_heads, head_dim=head_dim, use_quick_gelu=False)
+            for _ in range(num_encoder_layers)])
         self.post_layernorm = torch.nn.LayerNorm(embed_dim, eps=layer_norm_eps)
         self.visual_projection = torch.nn.Linear(embed_dim, projection_dim, bias=False)
 
@@ -78,7 +80,7 @@ class SVDImageEncoderStateDictConverter:
                 if name == "vision_model.embeddings.class_embedding":
                     param = state_dict[name].view(1, 1, -1)
                 elif name == "vision_model.embeddings.position_embedding.weight":
-                    param = state_dict[name].view(1, 257, 1280)
+                    param = state_dict[name].unsqueeze(0)
                 state_dict_[rename_dict[name]] = param
             elif name.startswith("vision_model.encoder.layers."):
                 param = state_dict[name]

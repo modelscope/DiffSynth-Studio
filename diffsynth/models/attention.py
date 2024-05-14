@@ -26,7 +26,15 @@ class Attention(torch.nn.Module):
         self.to_v = torch.nn.Linear(kv_dim, dim_inner, bias=bias_kv)
         self.to_out = torch.nn.Linear(dim_inner, q_dim, bias=bias_out)
 
-    def torch_forward(self, hidden_states, encoder_hidden_states=None, attn_mask=None):
+    def interact_with_ipadapter(self, hidden_states, q, ip_k, ip_v, scale=1.0):
+        batch_size = q.shape[0]
+        ip_k = ip_k.view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
+        ip_v = ip_v.view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
+        ip_hidden_states = torch.nn.functional.scaled_dot_product_attention(q, ip_k, ip_v)
+        hidden_states = hidden_states + scale * ip_hidden_states
+        return hidden_states
+
+    def torch_forward(self, hidden_states, encoder_hidden_states=None, attn_mask=None, ipadapter_kwargs=None):
         if encoder_hidden_states is None:
             encoder_hidden_states = hidden_states
 
@@ -41,6 +49,8 @@ class Attention(torch.nn.Module):
         v = v.view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
 
         hidden_states = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask)
+        if ipadapter_kwargs is not None:
+            hidden_states = self.interact_with_ipadapter(hidden_states, q, **ipadapter_kwargs)
         hidden_states = hidden_states.transpose(1, 2).reshape(batch_size, -1, self.num_heads * self.head_dim)
         hidden_states = hidden_states.to(q.dtype)
 
@@ -72,5 +82,5 @@ class Attention(torch.nn.Module):
 
         return hidden_states
 
-    def forward(self, hidden_states, encoder_hidden_states=None, attn_mask=None):
-        return self.torch_forward(hidden_states, encoder_hidden_states=encoder_hidden_states, attn_mask=attn_mask)
+    def forward(self, hidden_states, encoder_hidden_states=None, attn_mask=None, ipadapter_kwargs=None):
+        return self.torch_forward(hidden_states, encoder_hidden_states=encoder_hidden_states, attn_mask=attn_mask, ipadapter_kwargs=ipadapter_kwargs)
