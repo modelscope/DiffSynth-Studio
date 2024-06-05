@@ -34,7 +34,7 @@ class Attention(torch.nn.Module):
         hidden_states = hidden_states + scale * ip_hidden_states
         return hidden_states
 
-    def torch_forward(self, hidden_states, encoder_hidden_states=None, attn_mask=None, ipadapter_kwargs=None):
+    def torch_forward(self, hidden_states, encoder_hidden_states=None, attn_mask=None, ipadapter_kwargs=None, qkv_preprocessor=None):
         if encoder_hidden_states is None:
             encoder_hidden_states = hidden_states
 
@@ -47,6 +47,9 @@ class Attention(torch.nn.Module):
         q = q.view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
         k = k.view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
         v = v.view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
+
+        if qkv_preprocessor is not None:
+            q, k, v = qkv_preprocessor(q, k, v)
 
         hidden_states = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask)
         if ipadapter_kwargs is not None:
@@ -82,5 +85,5 @@ class Attention(torch.nn.Module):
 
         return hidden_states
 
-    def forward(self, hidden_states, encoder_hidden_states=None, attn_mask=None, ipadapter_kwargs=None):
-        return self.torch_forward(hidden_states, encoder_hidden_states=encoder_hidden_states, attn_mask=attn_mask, ipadapter_kwargs=ipadapter_kwargs)
+    def forward(self, hidden_states, encoder_hidden_states=None, attn_mask=None, ipadapter_kwargs=None, qkv_preprocessor=None):
+        return self.torch_forward(hidden_states, encoder_hidden_states=encoder_hidden_states, attn_mask=attn_mask, ipadapter_kwargs=ipadapter_kwargs, qkv_preprocessor=qkv_preprocessor)
