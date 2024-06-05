@@ -2,6 +2,24 @@
 
 Hunyuan DiT is an image generation model based on DiT. We provide training and inference support for Hunyuan DiT.
 
+## Download models
+
+Four files will be used for constructing Hunyuan DiT. You can download them from [huggingface](https://huggingface.co/Tencent-Hunyuan/HunyuanDiT) or [modelscope](https://www.modelscope.cn/models/modelscope/HunyuanDiT/summary).
+
+```
+models/HunyuanDiT/
+├── Put Hunyuan DiT checkpoints here.txt
+└── t2i
+    ├── clip_text_encoder
+    │   └── pytorch_model.bin
+    ├── model
+    │   └── pytorch_model_ema.pt
+    ├── mt5
+    │   └── pytorch_model.bin
+    └── sdxl-vae-fp16-fix
+        └── diffusion_pytorch_model.bin
+```
+
 ## Inference
 
 ### Text-to-image with highres-fix
