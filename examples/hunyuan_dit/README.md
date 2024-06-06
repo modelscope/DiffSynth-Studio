@@ -26,6 +26,8 @@ models/HunyuanDiT/
 
 The original resolution of Hunyuan DiT is 1024x1024. If you want to use larger resolutions, please use highres-fix.
 
+Hunyuan DiT is also supported in our UI.
+
 ```python
 from diffsynth import ModelManager, HunyuanDiTImagePipeline
 import torch
