@@ -4,7 +4,7 @@ Image synthesis is the base feature of DiffSynth Studio.
 
 ### Example: Stable Diffusion
 
-We can generate images with very high resolution. Please see `examples/sd_text_to_image.py` for more details.
+We can generate images with very high resolution. Please see [`sd_text_to_image.py`](./sd_text_to_image.py) for more details.
 
 |512*512|1024*1024|2048*2048|4096*4096|
 |-|-|-|-|
@@ -12,7 +12,7 @@ We can generate images with very high resolution. Please see `examples/sd_text_t
 
 ### Example: Stable Diffusion XL
 
-Generate images with Stable Diffusion XL. Please see `examples/sdxl_text_to_image.py` for more details.
+Generate images with Stable Diffusion XL. Please see [`sdxl_text_to_image.py`](./sdxl_text_to_image.py) for more details.
 
 |1024*1024|2048*2048|
 |-|-|
@@ -20,7 +20,7 @@ Generate images with Stable Diffusion XL. Please see `examples/sdxl_text_to_imag
 
 ### Example: Stable Diffusion XL Turbo
 
-Generate images with Stable Diffusion XL Turbo. You can see `examples/sdxl_turbo.py` for more details, but we highly recommend you to use it in the WebUI.
+Generate images with Stable Diffusion XL Turbo. You can see [`sdxl_turbo.py`](./sdxl_turbo.py) for more details, but we highly recommend you to use it in the WebUI.
 
 |"black car"|"red car"|
 |-|-|
@@ -28,7 +28,7 @@ Generate images with Stable Diffusion XL Turbo. You can see `examples/sdxl_turbo
 
 ### Example: Prompt Processing
 
-If you are not native English user, we provide translation service for you. Our prompter can translate other language to English and refine it using "BeautifulPrompt" models. Please see `examples/sd_prompt_refining.py` for more details.
+If you are not native English user, we provide translation service for you. Our prompter can translate other language to English and refine it using "BeautifulPrompt" models. Please see [`sd_prompt_refining.py`](./sd_prompt_refining.py) for more details.
 
 Prompt: "一个漂亮的女孩". The [translation model](https://huggingface.co/Helsinki-NLP/opus-mt-en-zh) will translate it to English.
 

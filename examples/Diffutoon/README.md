@@ -10,12 +10,12 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/b54c05c5-d747-47
 
 ## Example: Toon Shading with Editing Signals (Diffutoon)
 
-This example supports video editing signals. See `examples\diffutoon_toon_shading_with_editing_signals.py`. The editing feature is also supported in the [Colab example](https://colab.research.google.com/github/Artiprocher/DiffSynth-Studio/blob/main/examples/Diffutoon/Diffutoon.ipynb).
+This example supports video editing signals. See [`diffutoon_toon_shading_with_editing_signals.py`](./diffutoon_toon_shading_with_editing_signals.py). The editing feature is also supported in the [Colab example](https://colab.research.google.com/github/Artiprocher/DiffSynth-Studio/blob/main/examples/Diffutoon/Diffutoon.ipynb).
 
 https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/20528af5-5100-474a-8cdc-440b9efdd86c
 
 ## Example: Toon Shading (in native Python code)
 
-This example is provided for developers. If you don't want to use the config to manage parameters, you can see `examples/sd_toon_shading.py` to learn how to use it in native Python code.
+This example is provided for developers. If you don't want to use the config to manage parameters, you can see [`sd_toon_shading.py`](./sd_toon_shading.py) to learn how to use it in native Python code.
 
 https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/607c199b-6140-410b-a111-3e4ffb01142c
