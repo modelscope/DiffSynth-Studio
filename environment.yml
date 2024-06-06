@@ -18,3 +18,4 @@ dependencies:
     - imageio[ffmpeg]
     - safetensors
     - einops
+    - sentencepiece
