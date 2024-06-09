@@ -11,6 +11,7 @@ def lets_dance(
     sample = None,
     timestep = None,
     encoder_hidden_states = None,
+    ipadapter_kwargs_list = {},
     controlnet_frames = None,
     unet_batch_size = 1,
     controlnet_batch_size = 1,
@@ -80,6 +81,7 @@ def lets_dance(
                     text_emb[batch_id: batch_id_],
                     res_stack,
                     cross_frame_attention=cross_frame_attention,
+                    ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id, {}),
                     tiled=tiled, tile_size=tile_size, tile_stride=tile_stride
                 )
                 hidden_states_output.append(hidden_states)

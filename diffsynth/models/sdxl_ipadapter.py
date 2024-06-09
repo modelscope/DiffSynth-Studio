@@ -3,7 +3,7 @@ from transformers import CLIPImageProcessor
 import torch
 
 
-class IpAdapterCLIPImageEmbedder(SVDImageEncoder):
+class IpAdapterXLCLIPImageEmbedder(SVDImageEncoder):
     def __init__(self):
         super().__init__(embed_dim=1664, encoder_intermediate_size=8192, projection_dim=1280, num_encoder_layers=48, num_heads=16, head_dim=104)
         self.image_processor = CLIPImageProcessor()

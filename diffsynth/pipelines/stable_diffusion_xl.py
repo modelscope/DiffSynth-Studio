@@ -1,4 +1,4 @@
-from ..models import ModelManager, SDXLTextEncoder, SDXLTextEncoder2, SDXLUNet, SDXLVAEDecoder, SDXLVAEEncoder, SDXLIpAdapter, IpAdapterCLIPImageEmbedder
+from ..models import ModelManager, SDXLTextEncoder, SDXLTextEncoder2, SDXLUNet, SDXLVAEDecoder, SDXLVAEEncoder, SDXLIpAdapter, IpAdapterXLCLIPImageEmbedder
 # TODO: SDXL ControlNet
 from ..prompts import SDXLPrompter
 from ..schedulers import EnhancedDDIMScheduler
@@ -23,7 +23,7 @@ class SDXLImagePipeline(torch.nn.Module):
         self.unet: SDXLUNet = None
         self.vae_decoder: SDXLVAEDecoder = None
         self.vae_encoder: SDXLVAEEncoder = None
-        self.ipadapter_image_encoder: IpAdapterCLIPImageEmbedder = None
+        self.ipadapter_image_encoder: IpAdapterXLCLIPImageEmbedder = None
         self.ipadapter: SDXLIpAdapter = None
         # TODO: SDXL ControlNet
     
@@ -86,6 +86,7 @@ class SDXLImagePipeline(torch.nn.Module):
         clip_skip_2=2,
         input_image=None,
         ipadapter_images=None,
+        ipadapter_scale=1.0,
         controlnet_image=None,
         denoising_strength=1.0,
         height=1024,
@@ -134,7 +135,7 @@ class SDXLImagePipeline(torch.nn.Module):
         # IP-Adapter
         if ipadapter_images is not None:
             ipadapter_image_encoding = self.ipadapter_image_encoder(ipadapter_images)
-            ipadapter_kwargs_list_posi = self.ipadapter(ipadapter_image_encoding)
+            ipadapter_kwargs_list_posi = self.ipadapter(ipadapter_image_encoding, scale=ipadapter_scale)
             ipadapter_kwargs_list_nega = self.ipadapter(torch.zeros_like(ipadapter_image_encoding))
         else:
             ipadapter_kwargs_list_posi, ipadapter_kwargs_list_nega = {}, {}
