@@ -1,4 +1,4 @@
-from ..models import ModelManager, SDTextEncoder, SDUNet, SDVAEDecoder, SDVAEEncoder
+from ..models import ModelManager, SDTextEncoder, SDUNet, SDVAEDecoder, SDVAEEncoder, SDIpAdapter, IpAdapterCLIPImageEmbedder
 from ..controlnets import MultiControlNetManager, ControlNetUnit, ControlNetConfigUnit, Annotator
 from ..prompts import SDPrompter
 from ..schedulers import EnhancedDDIMScheduler
@@ -24,6 +24,8 @@ class SDImagePipeline(torch.nn.Module):
         self.vae_decoder: SDVAEDecoder = None
         self.vae_encoder: SDVAEEncoder = None
         self.controlnet: MultiControlNetManager = None
+        self.ipadapter_image_encoder: IpAdapterCLIPImageEmbedder = None
+        self.ipadapter: SDIpAdapter = None
 
 
     def fetch_main_models(self, model_manager: ModelManager):
@@ -44,6 +46,13 @@ class SDImagePipeline(torch.nn.Module):
             controlnet_units.append(controlnet_unit)
         self.controlnet = MultiControlNetManager(controlnet_units)
 
+    
+    def fetch_ipadapter(self, model_manager: ModelManager):
+        if "ipadapter" in model_manager.model:
+            self.ipadapter = model_manager.ipadapter
+        if "ipadapter_image_encoder" in model_manager.model:
+            self.ipadapter_image_encoder = model_manager.ipadapter_image_encoder
+
 
     def fetch_prompter(self, model_manager: ModelManager):
         self.prompter.load_from_model_manager(model_manager)
@@ -58,6 +67,7 @@ class SDImagePipeline(torch.nn.Module):
         pipe.fetch_main_models(model_manager)
         pipe.fetch_prompter(model_manager)
         pipe.fetch_controlnet_models(model_manager, controlnet_config_units)
+        pipe.fetch_ipadapter(model_manager)
         return pipe
     
 
@@ -81,6 +91,8 @@ class SDImagePipeline(torch.nn.Module):
         cfg_scale=7.5,
         clip_skip=1,
         input_image=None,
+        ipadapter_images=None,
+        ipadapter_scale=1.0,
         controlnet_image=None,
         denoising_strength=1.0,
         height=512,
@@ -108,6 +120,14 @@ class SDImagePipeline(torch.nn.Module):
         prompt_emb_posi = self.prompter.encode_prompt(self.text_encoder, prompt, clip_skip=clip_skip, device=self.device, positive=True)
         prompt_emb_nega = self.prompter.encode_prompt(self.text_encoder, negative_prompt, clip_skip=clip_skip, device=self.device, positive=False)
 
+        # IP-Adapter
+        if ipadapter_images is not None:
+            ipadapter_image_encoding = self.ipadapter_image_encoder(ipadapter_images)
+            ipadapter_kwargs_list_posi = self.ipadapter(ipadapter_image_encoding, scale=ipadapter_scale)
+            ipadapter_kwargs_list_nega = self.ipadapter(torch.zeros_like(ipadapter_image_encoding))
+        else:
+            ipadapter_kwargs_list_posi, ipadapter_kwargs_list_nega = {}, {}
+
         # Prepare ControlNets
         if controlnet_image is not None:
             controlnet_image = self.controlnet.process_image(controlnet_image).to(device=self.device, dtype=self.torch_dtype)
@@ -122,12 +142,14 @@ class SDImagePipeline(torch.nn.Module):
                 self.unet, motion_modules=None, controlnet=self.controlnet,
                 sample=latents, timestep=timestep, encoder_hidden_states=prompt_emb_posi, controlnet_frames=controlnet_image,
                 tiled=tiled, tile_size=tile_size, tile_stride=tile_stride,
+                ipadapter_kwargs_list=ipadapter_kwargs_list_posi,
                 device=self.device, vram_limit_level=0
             )
             noise_pred_nega = lets_dance(
                 self.unet, motion_modules=None, controlnet=self.controlnet,
                 sample=latents, timestep=timestep, encoder_hidden_states=prompt_emb_nega, controlnet_frames=controlnet_image,
                 tiled=tiled, tile_size=tile_size, tile_stride=tile_stride,
+                ipadapter_kwargs_list=ipadapter_kwargs_list_nega,
                 device=self.device, vram_limit_level=0
             )
             noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)

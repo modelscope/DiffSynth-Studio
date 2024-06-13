@@ -22,7 +22,8 @@ from .svd_unet import SVDUNet
 from .svd_vae_decoder import SVDVAEDecoder
 from .svd_vae_encoder import SVDVAEEncoder
 
-from .sdxl_ipadapter import SDXLIpAdapter, IpAdapterCLIPImageEmbedder
+from .sd_ipadapter import SDIpAdapter, IpAdapterCLIPImageEmbedder
+from .sdxl_ipadapter import SDXLIpAdapter, IpAdapterXLCLIPImageEmbedder
 
 from .hunyuan_dit_text_encoder import HunyuanDiTCLIPTextEncoder, HunyuanDiTT5TextEncoder
 from .hunyuan_dit import HunyuanDiT
@@ -79,12 +80,19 @@ class ModelManager:
         param_name = "model.encoder.layers.5.self_attn_layer_norm.weight"
         return param_name in state_dict and len(state_dict) == 254
     
+    def is_ipadapter(self, state_dict):
+        return "image_proj" in state_dict and "ip_adapter" in state_dict and state_dict["image_proj"]["proj.weight"].shape == torch.Size([3072, 1024])
+    
+    def is_ipadapter_image_encoder(self, state_dict):
+        param_name = "vision_model.encoder.layers.31.self_attn.v_proj.weight"
+        return param_name in state_dict and len(state_dict) == 521
+    
     def is_ipadapter_xl(self, state_dict):
-        return "image_proj" in state_dict and "ip_adapter" in state_dict
+        return "image_proj" in state_dict and "ip_adapter" in state_dict and state_dict["image_proj"]["proj.weight"].shape == torch.Size([8192, 1280])
     
     def is_ipadapter_xl_image_encoder(self, state_dict):
         param_name = "vision_model.encoder.layers.47.self_attn.v_proj.weight"
-        return param_name in state_dict
+        return param_name in state_dict and len(state_dict) == 777
     
     def is_hunyuan_dit_clip_text_encoder(self, state_dict):
         param_name = "bert.encoder.layer.23.attention.output.dense.weight"
@@ -226,6 +234,22 @@ class ModelManager:
         self.model[component] = model
         self.model_path[component] = file_path
 
+    def load_ipadapter(self, state_dict, file_path=""):
+        component = "ipadapter"
+        model = SDIpAdapter()
+        model.load_state_dict(model.state_dict_converter().from_civitai(state_dict))
+        model.to(self.torch_dtype).to(self.device)
+        self.model[component] = model
+        self.model_path[component] = file_path
+
+    def load_ipadapter_image_encoder(self, state_dict, file_path=""):
+        component = "ipadapter_image_encoder"
+        model = IpAdapterCLIPImageEmbedder()
+        model.load_state_dict(model.state_dict_converter().from_diffusers(state_dict))
+        model.to(self.torch_dtype).to(self.device)
+        self.model[component] = model
+        self.model_path[component] = file_path
+
     def load_ipadapter_xl(self, state_dict, file_path=""):
         component = "ipadapter_xl"
         model = SDXLIpAdapter()
@@ -236,7 +260,7 @@ class ModelManager:
 
     def load_ipadapter_xl_image_encoder(self, state_dict, file_path=""):
         component = "ipadapter_xl_image_encoder"
-        model = IpAdapterCLIPImageEmbedder()
+        model = IpAdapterXLCLIPImageEmbedder()
         model.load_state_dict(model.state_dict_converter().from_diffusers(state_dict))
         model.to(self.torch_dtype).to(self.device)
         self.model[component] = model
@@ -330,6 +354,10 @@ class ModelManager:
             self.load_RIFE(state_dict, file_path=file_path)
         elif self.is_translator(state_dict):
             self.load_translator(state_dict, file_path=file_path)
+        elif self.is_ipadapter(state_dict):
+            self.load_ipadapter(state_dict, file_path=file_path)
+        elif self.is_ipadapter_image_encoder(state_dict):
+            self.load_ipadapter_image_encoder(state_dict, file_path=file_path)
         elif self.is_ipadapter_xl(state_dict):
             self.load_ipadapter_xl(state_dict, file_path=file_path)
         elif self.is_ipadapter_xl_image_encoder(state_dict):
