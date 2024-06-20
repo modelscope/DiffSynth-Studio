@@ -107,6 +107,14 @@ class SVDVideoPipeline(torch.nn.Module):
         noise_pred = noise_pred_nega + cfg_scales * (noise_pred_posi - noise_pred_nega)
 
         return noise_pred
+    
+
+    def post_process_latents(self, latents, post_normalize=True, contrast_enhance_scale=1.0):
+        if post_normalize:
+            mean, std = latents.mean(), latents.std()
+            latents = (latents - latents.mean(dim=[1, 2, 3], keepdim=True)) / latents.std(dim=[1, 2, 3], keepdim=True) * std + mean
+        latents = latents * contrast_enhance_scale
+        return latents
 
 
     @torch.no_grad()
@@ -126,6 +134,8 @@ class SVDVideoPipeline(torch.nn.Module):
         motion_bucket_id=127,
         noise_aug_strength=0.02,
         num_inference_steps=20,
+        post_normalize=True,
+        contrast_enhance_scale=1.2,
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
     ):
@@ -178,6 +188,7 @@ class SVDVideoPipeline(torch.nn.Module):
                 progress_bar_st.progress(progress_id / len(self.scheduler.timesteps))
 
         # Decode image
+        latents = self.post_process_latents(latents, post_normalize=post_normalize, contrast_enhance_scale=contrast_enhance_scale)
         video = self.vae_decoder.decode_video(latents, progress_bar=progress_bar_cmd)
         video = self.tensor2video(video)
 

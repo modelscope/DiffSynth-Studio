@@ -43,3 +43,17 @@ class ContinuousODEScheduler():
         sigma = self.sigmas[timestep_id]
         sample = (original_samples + noise * sigma) / (sigma*sigma + 1).sqrt()
         return sample
+    
+
+    def training_target(self, sample, noise, timestep):
+        timestep_id = torch.argmin((self.timesteps - timestep).abs())
+        sigma = self.sigmas[timestep_id]
+        target = (-(sigma*sigma + 1).sqrt() / sigma + 1 / (sigma*sigma + 1).sqrt() / sigma) * sample + 1 / (sigma*sigma + 1).sqrt() * noise
+        return target
+    
+
+    def training_weight(self, timestep):
+        timestep_id = torch.argmin((self.timesteps - timestep).abs())
+        sigma = self.sigmas[timestep_id]
+        weight = (1 + sigma*sigma).sqrt() / sigma
+        return weight
