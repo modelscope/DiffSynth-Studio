@@ -3,7 +3,6 @@
 ExVideo is a post-tuning technique aimed at enhancing the capability of video generation models. We have extended Stable Video Diffusion to achieve the generation of long videos up to 128 frames.
 
 * [Project Page](https://ecnu-cilab.github.io/ExVideoProjectPage/)
-* [Source Code](https://github.com/modelscope/DiffSynth-Studio)
 * [Technical report](https://arxiv.org/abs/2406.14130)
 * Extended models
     * [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
@@ -78,4 +77,4 @@ python ExVideo_ema.py --output_path "path/to/save/models/lightning_logs/version_
 
 * Step 6: Enjoy your model
 
-The EMA model is at `path/to/save/models/lightning_logs/version_xx/checkpoints/epoch=0-step=25-ema.safetensors`. Load it in [ExVideo_svd_test.py](./ExVideo_svd_test.py) and then enjoy your model.
+The EMA model is at `path/to/save/models/lightning_logs/version_xx/checkpoints/epoch=xx-step=yyy-ema.safetensors`. Load it in [ExVideo_svd_test.py](./ExVideo_svd_test.py) and then enjoy your model.
