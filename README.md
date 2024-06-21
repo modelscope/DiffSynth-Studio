@@ -6,18 +6,18 @@ DiffSynth Studio is a Diffusion engine. We have restructured architectures inclu
 
 ## Roadmap
 
-* Aug 29, 2023. I propose DiffSynth, a video synthesis framework.
+* Aug 29, 2023. We propose DiffSynth, a video synthesis framework.
     * [Project Page](https://ecnu-cilab.github.io/DiffSynth.github.io/).
     * The source codes are released in [EasyNLP](https://github.com/alibaba/EasyNLP/tree/master/diffusion/DiffSynth).
     * The technical report (ECML PKDD 2024) is released on [arXiv](https://arxiv.org/abs/2308.03463).
-* Oct 1, 2023. I release an early version of this project, namely FastSDXL. A try for building a diffusion engine.
+* Oct 1, 2023. We release an early version of this project, namely FastSDXL. A try for building a diffusion engine.
     * The source codes are released on [GitHub](https://github.com/Artiprocher/FastSDXL).
     * FastSDXL includes a trainable OLSS scheduler for efficiency improvement.
         * The original repo of OLSS is [here](https://github.com/alibaba/EasyNLP/tree/master/diffusion/olss_scheduler).
         * The technical report (CIKM 2023) is released on [arXiv](https://arxiv.org/abs/2305.14677).
         * A demo video is shown on [Bilibili](https://www.bilibili.com/video/BV1w8411y7uj).
         * Since OLSS requires additional training, we don't implement it in this project.
-* Nov 15, 2023. I propose FastBlend, a powerful video deflickering algorithm.
+* Nov 15, 2023. We propose FastBlend, a powerful video deflickering algorithm.
     * The sd-webui extension is released on [GitHub](https://github.com/Artiprocher/sd-webui-fastblend).
     * Demo videos are shown on Bilibili, including three tasks.
         * [Video deflickering](https://www.bilibili.com/video/BV1d94y1W7PE)
@@ -25,11 +25,17 @@ DiffSynth Studio is a Diffusion engine. We have restructured architectures inclu
         * [Image-driven video rendering](https://www.bilibili.com/video/BV1RB4y1Z7LF)
     * The technical report is released on [arXiv](https://arxiv.org/abs/2311.09265).
     * An unofficial ComfyUI extension developed by other users is released on [GitHub](https://github.com/AInseven/ComfyUI-fastblend).
-* Dec 8, 2023. I decide to develop a new Project, aiming to release the potential of diffusion models, especially in video synthesis.
-* Jan 29, 2024. I propose Diffutoon, a fantastic solution for toon shading.
+* Dec 8, 2023. We decide to develop a new Project, aiming to release the potential of diffusion models, especially in video synthesis. The development of this project is started.
+* Jan 29, 2024. We propose Diffutoon, a fantastic solution for toon shading.
     * [Project Page](https://ecnu-cilab.github.io/DiffutoonProjectPage/).
     * The source codes are released in this project.
     * The technical report (IJCAI 2024) is released on [arXiv](https://arxiv.org/abs/2401.16224).
+* June 13, 2024. DiffSynth Studio is transfered to ModelScope. The developers have transitioned from "I" to "we". Of course, I will still participate in development and maintenance.
+* June 21, 2024. We propose ExVideo, a post-tuning technique aimed at enhancing the capability of video generation models. We have extended Stable Video Diffusion to achieve the generation of long videos up to 128 frames.
+    * [Project Page](https://ecnu-cilab.github.io/ExVideoProjectPage/).
+    * Source code is released in this repo. See [`examples/ExVideo`](./examples/ExVideo/).
+    * Models are released on [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1) and [ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-SVD-128f-v1).
+    * Technical report is released on [arXiv](https://arxiv.org/abs/2406.14130).
 * Until now, DiffSynth Studio has supported the following models:
     * [Stable Diffusion](https://huggingface.co/runwayml/stable-diffusion-v1-5)
     * [Stable Diffusion XL](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0)
@@ -39,6 +45,8 @@ DiffSynth Studio is a Diffusion engine. We have restructured architectures inclu
     * [ESRGAN](https://github.com/xinntao/ESRGAN)
     * [RIFE](https://github.com/hzwer/ECCV2022-RIFE)
     * [Hunyuan-DiT](https://github.com/Tencent/HunyuanDiT)
+    * [Stable Video Diffusion](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt)
+    * [ExVideo](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
 
 ## Installation
 
@@ -56,17 +64,15 @@ Enter the Python environment:
 conda activate DiffSynthStudio
 ```
 
-## Usage (in WebUI)
-
-```
-python -m streamlit run DiffSynth_Studio.py
-```
-
-https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/93085557-73f3-4eee-a205-9829591ef954
-
 ## Usage (in Python code)
 
 The Python examples are in [`examples`](./examples/). We provide an overview here.
+
+### Long Video Synthesis
+
+We trained an extended video synthesis model, which can generate 128 frames. [`examples/ExVideo`](./examples/ExVideo/)
+
+https://github.com/modelscope/DiffSynth-Studio/assets/35051019/d97f6aa9-8064-4b5b-9d49-ed6001bb9acc
 
 ### Image Synthesis
 
@@ -109,3 +115,11 @@ Prompt: 一只小狗蹦蹦跳跳，周围是姹紫嫣红的鲜花，远处是山
 |Without LoRA|With LoRA|
 |-|-|
 |![image_without_lora](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/1aa21de5-a992-4b66-b14f-caa44e08876e)|![image_with_lora](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/83a0a41a-691f-4610-8e7b-d8e17c50a282)|
+
+## Usage (in WebUI)
+
+```
+python -m streamlit run DiffSynth_Studio.py
+```
+
+https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/93085557-73f3-4eee-a205-9829591ef954
