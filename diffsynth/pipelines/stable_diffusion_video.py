@@ -40,7 +40,7 @@ def lets_dance_with_long_video(
             sample[batch_id: batch_id_].to(device),
             timestep,
             encoder_hidden_states[batch_id: batch_id_].to(device),
-            controlnet_frames[:, batch_id: batch_id_].to(device) if controlnet_frames is not None else None,
+            controlnet_frames=controlnet_frames[:, batch_id: batch_id_].to(device) if controlnet_frames is not None else None,
             unet_batch_size=unet_batch_size, controlnet_batch_size=controlnet_batch_size,
             cross_frame_attention=cross_frame_attention,
             device=device, vram_limit_level=vram_limit_level
