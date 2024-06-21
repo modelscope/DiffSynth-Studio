@@ -3,6 +3,30 @@ from diffsynth import ModelManager
 import torch, os
 
 
+# Download models (from Huggingface)
+#   Text-to-image model:
+#     `models/HunyuanDiT/t2i/clip_text_encoder/pytorch_model.bin`: [link](https://huggingface.co/Tencent-Hunyuan/HunyuanDiT/resolve/main/t2i/clip_text_encoder/pytorch_model.bin)
+#     `models/HunyuanDiT/t2i/mt5/pytorch_model.bin`: [link](https://huggingface.co/Tencent-Hunyuan/HunyuanDiT/resolve/main/t2i/mt5/pytorch_model.bin)
+#     `models/HunyuanDiT/t2i/model/pytorch_model_ema.pt`: [link](https://huggingface.co/Tencent-Hunyuan/HunyuanDiT/resolve/main/t2i/model/pytorch_model_ema.pt)
+#     `models/HunyuanDiT/t2i/sdxl-vae-fp16-fix/diffusion_pytorch_model.bin`: [link](https://huggingface.co/Tencent-Hunyuan/HunyuanDiT/resolve/main/t2i/sdxl-vae-fp16-fix/diffusion_pytorch_model.bin)
+#   Stable Video Diffusion model:
+#     `models/stable_video_diffusion/svd_xt.safetensors`: [link](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt/resolve/main/svd_xt.safetensors)
+#   ExVideo extension blocks:
+#     `models/stable_video_diffusion/model.fp16.safetensors`: [link](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1/resolve/main/model.fp16.safetensors)
+
+
+# Download models (from Modelscope)
+#   Text-to-image model:
+#     `models/HunyuanDiT/t2i/clip_text_encoder/pytorch_model.bin`: [link](https://www.modelscope.cn/api/v1/models/modelscope/HunyuanDiT/repo?Revision=master&FilePath=t2i%2Fclip_text_encoder%2Fpytorch_model.bin)
+#     `models/HunyuanDiT/t2i/mt5/pytorch_model.bin`: [link](https://www.modelscope.cn/api/v1/models/modelscope/HunyuanDiT/repo?Revision=master&FilePath=t2i%2Fmt5%2Fpytorch_model.bin)
+#     `models/HunyuanDiT/t2i/model/pytorch_model_ema.pt`: [link](https://www.modelscope.cn/api/v1/models/modelscope/HunyuanDiT/repo?Revision=master&FilePath=t2i%2Fmodel%2Fpytorch_model_ema.pt)
+#     `models/HunyuanDiT/t2i/sdxl-vae-fp16-fix/diffusion_pytorch_model.bin`: [link](https://www.modelscope.cn/api/v1/models/modelscope/HunyuanDiT/repo?Revision=master&FilePath=t2i%2Fsdxl-vae-fp16-fix%2Fdiffusion_pytorch_model.bin)
+#   Stable Video Diffusion model:
+#     `models/stable_video_diffusion/svd_xt.safetensors`: [link](https://www.modelscope.cn/api/v1/models/AI-ModelScope/stable-video-diffusion-img2vid-xt/repo?Revision=master&FilePath=svd_xt.safetensors)
+#   ExVideo extension blocks:
+#     `models/stable_video_diffusion/model.fp16.safetensors`: [link](https://modelscope.cn/api/v1/models/ECNU-CILab/ExVideo-SVD-128f-v1/repo?Revision=master&FilePath=model.fp16.safetensors)
+
+
 def generate_image():
     # Load models
     os.environ["TOKENIZERS_PARALLELISM"] = "True"
@@ -51,7 +75,7 @@ def upscale_video(image, video):
     model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")
     model_manager.load_models([
         "models/stable_video_diffusion/svd_xt.safetensors",
-        "models/stable_video_diffusion/model.fp16.safetensors"
+        "models/stable_video_diffusion/model.fp16.safetensors",
     ])
     pipe = SVDVideoPipeline.from_model_manager(model_manager)
 
