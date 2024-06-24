@@ -36,7 +36,7 @@ def tokenize_long_prompt(tokenizer, prompt):
 
 
 class BeautifulPrompt:
-    def __init__(self, tokenizer_path="configs/beautiful_prompt/tokenizer", model=None):
+    def __init__(self, tokenizer_path=None, model=None):
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
         self.model = model
         self.template = 'Instruction: Give a simple description of the image to generate a drawing prompt.\nInput: {raw_prompt}\nOutput:'
@@ -62,7 +62,7 @@ class BeautifulPrompt:
     
 
 class Translator:
-    def __init__(self, tokenizer_path="configs/translator/tokenizer", model=None):
+    def __init__(self, tokenizer_path=None, model=None):
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
         self.model = model
 

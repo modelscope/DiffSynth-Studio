@@ -1,15 +1,21 @@
 from .utils import Prompter, tokenize_long_prompt
 from transformers import CLIPTokenizer
 from ..models import SDXLTextEncoder, SDXLTextEncoder2
-import torch
+import torch, os
 
 
 class SDXLPrompter(Prompter):
     def __init__(
         self,
-        tokenizer_path="configs/stable_diffusion/tokenizer",
-        tokenizer_2_path="configs/stable_diffusion_xl/tokenizer_2"
+        tokenizer_path=None,
+        tokenizer_2_path=None
     ):
+        if tokenizer_path is None:
+            base_path = os.path.dirname(os.path.dirname(__file__))
+            tokenizer_path = os.path.join(base_path, "tokenizer_configs/stable_diffusion/tokenizer")
+        if tokenizer_2_path is None:
+            base_path = os.path.dirname(os.path.dirname(__file__))
+            tokenizer_2_path = os.path.join(base_path, "tokenizer_configs/stable_diffusion_xl/tokenizer_2")
         super().__init__()
         self.tokenizer = CLIPTokenizer.from_pretrained(tokenizer_path)
         self.tokenizer_2 = CLIPTokenizer.from_pretrained(tokenizer_2_path)

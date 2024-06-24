@@ -1,5 +1,9 @@
 import torch, os
 from safetensors import safe_open
+from typing_extensions import Literal, TypeAlias
+from typing import List
+
+from .downloader import download_from_huggingface, download_from_modelscope
 
 from .sd_text_encoder import SDTextEncoder
 from .sd_unet import SDUNet
@@ -29,13 +33,89 @@ from .hunyuan_dit_text_encoder import HunyuanDiTCLIPTextEncoder, HunyuanDiTT5Tex
 from .hunyuan_dit import HunyuanDiT
 
 
+preset_models_on_huggingface = {
+    "HunyuanDiT": [
+        ("Tencent-Hunyuan/HunyuanDiT", "t2i/clip_text_encoder/pytorch_model.bin", "models/HunyuanDiT/t2i/clip_text_encoder"),
+        ("Tencent-Hunyuan/HunyuanDiT", "t2i/mt5/pytorch_model.bin", "models/HunyuanDiT/t2i/mt5"),
+        ("Tencent-Hunyuan/HunyuanDiT", "t2i/model/pytorch_model_ema.pt", "models/HunyuanDiT/t2i/model"),
+        ("Tencent-Hunyuan/HunyuanDiT", "t2i/sdxl-vae-fp16-fix/diffusion_pytorch_model.bin", "models/HunyuanDiT/t2i/sdxl-vae-fp16-fix"),
+    ],
+    "stable-video-diffusion-img2vid-xt": [
+        ("stabilityai/stable-video-diffusion-img2vid-xt", "svd_xt.safetensors", "models/stable_video_diffusion"),
+    ],
+    "ExVideo-SVD-128f-v1": [
+        ("ECNU-CILab/ExVideo-SVD-128f-v1", "model.fp16.safetensors", "models/stable_video_diffusion"),
+    ],
+}
+preset_models_on_modelscope = {
+    "HunyuanDiT": [
+        ("modelscope/HunyuanDiT", "t2i/clip_text_encoder/pytorch_model.bin", "models/HunyuanDiT/t2i/clip_text_encoder"),
+        ("modelscope/HunyuanDiT", "t2i/mt5/pytorch_model.bin", "models/HunyuanDiT/t2i/mt5"),
+        ("modelscope/HunyuanDiT", "t2i/model/pytorch_model_ema.pt", "models/HunyuanDiT/t2i/model"),
+        ("modelscope/HunyuanDiT", "t2i/sdxl-vae-fp16-fix/diffusion_pytorch_model.bin", "models/HunyuanDiT/t2i/sdxl-vae-fp16-fix"),
+    ],
+    "stable-video-diffusion-img2vid-xt": [
+        ("AI-ModelScope/stable-video-diffusion-img2vid-xt", "svd_xt.safetensors", "models/stable_video_diffusion"),
+    ],
+    "ExVideo-SVD-128f-v1": [
+        ("ECNU-CILab/ExVideo-SVD-128f-v1", "model.fp16.safetensors", "models/stable_video_diffusion"),
+    ],
+}
+Preset_model_id: TypeAlias = Literal[
+    "HunyuanDiT",
+    "stable-video-diffusion-img2vid-xt",
+    "ExVideo-SVD-128f-v1"
+]
+Preset_model_website: TypeAlias = Literal[
+    "HuggingFace",
+    "ModelScope",
+]
+website_to_preset_models = {
+    "HuggingFace": preset_models_on_huggingface,
+    "ModelScope": preset_models_on_modelscope,
+}
+website_to_download_fn = {
+    "HuggingFace": download_from_huggingface,
+    "ModelScope": download_from_modelscope,
+}
+
+
 class ModelManager:
-    def __init__(self, torch_dtype=torch.float16, device="cuda"):
+    def __init__(
+        self,
+        torch_dtype=torch.float16,
+        device="cuda",
+        model_id_list: List[Preset_model_id] = [],
+        downloading_priority: List[Preset_model_website] = ["ModelScope", "HuggingFace"],
+        file_path_list: List[str] = [],
+    ):
         self.torch_dtype = torch_dtype
         self.device = device
         self.model = {}
         self.model_path = {}
         self.textual_inversion_dict = {}
+        downloaded_files = self.download_models(model_id_list, downloading_priority)
+        self.load_models(downloaded_files + file_path_list)
+
+    def download_models(
+        self,
+        model_id_list: List[Preset_model_id] = [],
+        downloading_priority: List[Preset_model_website] = ["ModelScope", "HuggingFace"],
+    ):
+        downloaded_files = []
+        for model_id in model_id_list:
+            for website in downloading_priority:
+                if model_id in website_to_preset_models[website]:
+                    for model_id, origin_file_path, local_dir in website_to_preset_models[website][model_id]:
+                        # Check if the file is downloaded.
+                        file_to_download = os.path.join(local_dir, os.path.basename(origin_file_path))
+                        if file_to_download in downloaded_files:
+                            continue
+                        # Download
+                        website_to_download_fn[website](model_id, origin_file_path, local_dir)
+                        if os.path.basename(origin_file_path) in os.listdir(local_dir):
+                            downloaded_files.append(file_to_download)
+        return downloaded_files
 
     def is_stable_video_diffusion(self, state_dict):
         param_name = "model.diffusion_model.output_blocks.9.1.time_stack.0.norm_in.weight"

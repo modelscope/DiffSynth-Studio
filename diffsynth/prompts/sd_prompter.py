@@ -1,10 +1,14 @@
 from .utils import Prompter, tokenize_long_prompt
 from transformers import CLIPTokenizer
 from ..models import SDTextEncoder
+import os
 
 
 class SDPrompter(Prompter):
-    def __init__(self, tokenizer_path="configs/stable_diffusion/tokenizer"):
+    def __init__(self, tokenizer_path=None):
+        if tokenizer_path is None:
+            base_path = os.path.dirname(os.path.dirname(__file__))
+            tokenizer_path = os.path.join(base_path, "tokenizer_configs/stable_diffusion/tokenizer")
         super().__init__()
         self.tokenizer = CLIPTokenizer.from_pretrained(tokenizer_path)
 

@@ -50,18 +50,10 @@ DiffSynth Studio is a Diffusion engine. We have restructured architectures inclu
 
 ## Installation
 
-Create Python environment:
-
 ```
-conda env create -f environment.yml
-```
-
-We find that sometimes `conda` cannot install `cupy` correctly, please install it manually. See [this document](https://docs.cupy.dev/en/stable/install.html) for more details.
-
-Enter the Python environment:
-
-```
-conda activate DiffSynthStudio
+git clone https://github.com/modelscope/DiffSynth-Studio.git
+cd DiffSynth-Studio
+pip install -e .
 ```
 
 ## Usage (in Python code)
