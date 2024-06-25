@@ -51,7 +51,9 @@ DiffSynth Studio is a Diffusion engine. We have restructured architectures inclu
 ## Installation
 
 ```
-pip install git+https://github.com/modelscope/DiffSynth-Studio.git
+git clone https://github.com/modelscope/DiffSynth-Studio.git
+cd DiffSynth-Studio
+pip install -e .
 ```
 
 ## Usage (in Python code)
