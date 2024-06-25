@@ -9,7 +9,7 @@ setup(
     version="1.0.0",
     description="",
     author="Artiprocher",
-    packages=find_packages(exclude=["diffsynth"]),
+    packages=find_packages(),
     install_requires=[
         str(r)
         for r in pkg_resources.parse_requirements(
