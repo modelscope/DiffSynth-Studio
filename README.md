@@ -30,7 +30,7 @@ DiffSynth Studio is a Diffusion engine. We have restructured architectures inclu
     * [Project Page](https://ecnu-cilab.github.io/DiffutoonProjectPage/).
     * The source codes are released in this project.
     * The technical report (IJCAI 2024) is released on [arXiv](https://arxiv.org/abs/2401.16224).
-* June 13, 2024. DiffSynth Studio is transfered to ModelScope. The developers have transitioned from "I" to "we". Of course, I will still participate in development and maintenance.
+* June 13, 2024. DiffSynth Studio is transferred to ModelScope. The developers have transitioned from "I" to "we". Of course, I will still participate in development and maintenance.
 * June 21, 2024. We propose ExVideo, a post-tuning technique aimed at enhancing the capability of video generation models. We have extended Stable Video Diffusion to achieve the generation of long videos up to 128 frames.
     * [Project Page](https://ecnu-cilab.github.io/ExVideoProjectPage/).
     * Source code is released in this repo. See [`examples/ExVideo`](./examples/ExVideo/).
