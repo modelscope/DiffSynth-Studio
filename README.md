@@ -1,6 +1,6 @@
 # DiffSynth Studio
 
-
+# cá estamos amigos
 ## Introduction
 
 DiffSynth Studio is a Diffusion engine. We have restructured architectures including Text Encoder, UNet, VAE, among others, maintaining compatibility with models from the open-source community while enhancing computational performance. We provide many interesting features. Enjoy the magic of Diffusion models!
