@@ -1,5 +1,6 @@
 # DiffSynth Studio
 
+
 ## Introduction
 
 DiffSynth Studio is a Diffusion engine. We have restructured architectures including Text Encoder, UNet, VAE, among others, maintaining compatibility with models from the open-source community while enhancing computational performance. We provide many interesting features. Enjoy the magic of Diffusion models!
@@ -20,7 +21,7 @@ Until now, DiffSynth Studio has supported the following models:
 ## News
 
 
-- **June 21, 2024.** We propose ExVideo, a post-tuning technique aimed at enhancing the capability of video generation models. We have extended Stable Video Diffusion to achieve the generation of long videos up to 128 frames.
+- **June 21, 2024.** 🔥🔥🔥 We propose ExVideo, a post-tuning technique aimed at enhancing the capability of video generation models. We have extended Stable Video Diffusion to achieve the generation of long videos up to 128 frames.
   - [Project Page](https://ecnu-cilab.github.io/ExVideoProjectPage/)
   - Source code is released in this repo. See [`examples/ExVideo`](./examples/ExVideo/).
   - Models are released on [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1) and [ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-SVD-128f-v1).
