@@ -1,23 +1,23 @@
-from diffsynth import ModelManager, SDImagePipeline, ControlNetConfigUnit
+from diffsynth import ModelManager, SDImagePipeline, ControlNetConfigUnit, download_models
 import torch
 
 
-# Download models
+# Download models (automatically)
 # `models/stable_diffusion/aingdiffusion_v12.safetensors`: [link](https://civitai.com/api/download/models/229575?type=Model&format=SafeTensor&size=full&fp=fp16)
 # `models/ControlNet/control_v11p_sd15_lineart.pth`: [link](https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11p_sd15_lineart.pth)
 # `models/ControlNet/control_v11f1e_sd15_tile.pth`: [link](https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11f1e_sd15_tile.pth)
 # `models/Annotators/sk_model.pth`: [link](https://huggingface.co/lllyasviel/Annotators/resolve/main/sk_model.pth)
 # `models/Annotators/sk_model2.pth`: [link](https://huggingface.co/lllyasviel/Annotators/resolve/main/sk_model2.pth)
+download_models(["AingDiffusion_v12", "ControlNet_v11p_sd15_lineart", "ControlNet_v11f1e_sd15_tile"])
 
 
 # Load models
-model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")
-model_manager.load_textual_inversions("models/textual_inversion")
-model_manager.load_models([
-    "models/stable_diffusion/aingdiffusion_v12.safetensors",
-    "models/ControlNet/control_v11f1e_sd15_tile.pth",
-    "models/ControlNet/control_v11p_sd15_lineart.pth"
-])
+model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
+                             file_path_list=[
+                                 "models/stable_diffusion/aingdiffusion_v12.safetensors",
+                                 "models/ControlNet/control_v11f1e_sd15_tile.pth",
+                                 "models/ControlNet/control_v11p_sd15_lineart.pth"
+                             ])
 pipe = SDImagePipeline.from_model_manager(
     model_manager,
     [

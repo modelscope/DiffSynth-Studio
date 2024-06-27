@@ -1,10 +1,10 @@
-from diffsynth import ModelManager, SDXLImagePipeline
+from diffsynth import ModelManager, SDXLImagePipeline, download_models
 import torch
 
 
-# Download models
+# Download models (automatically)
 # `models/stable_diffusion_xl_turbo/sd_xl_turbo_1.0_fp16.safetensors`: [link](https://huggingface.co/stabilityai/sdxl-turbo/resolve/main/sd_xl_turbo_1.0_fp16.safetensors)
-
+download_models(["StableDiffusionXL_Turbo"])
 
 # Load models
 model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")

@@ -20,6 +20,14 @@ models/HunyuanDiT/
         └── diffusion_pytorch_model.bin
 ```
 
+You can use the following code to download these files:
+
+```python
+from diffsynth import download_models
+
+download_models(["HunyuanDiT"])
+```
+
 ## Inference
 
 ### Text-to-image with highres-fix

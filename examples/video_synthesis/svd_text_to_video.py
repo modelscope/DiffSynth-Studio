@@ -1,12 +1,12 @@
-from diffsynth import save_video, SDXLImagePipeline, ModelManager, SVDVideoPipeline
+from diffsynth import save_video, SDXLImagePipeline, ModelManager, SVDVideoPipeline, download_models
 from diffsynth import ModelManager
 import torch
 
 
-# Download models
+# Download models (automatically)
 # `models/stable_diffusion_xl/sd_xl_base_1.0.safetensors`: [link](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors)
 # `models/stable_video_diffusion/svd_xt.safetensors`: [link](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt/resolve/main/svd_xt.safetensors)
-
+download_models(["StableDiffusionXL_v1", "stable-video-diffusion-img2vid-xt"])
 
 prompt = "cloud, wind"
 torch.manual_seed(0)
@@ -21,8 +21,7 @@ image = pipe(
     cfg_scale=6,
     height=1024, width=1024, num_inference_steps=50,
 )
-pipe.to("cpu")
-torch.cuda.empty_cache()
+model_manager.to("cpu")
 
 # 2. Image-to-video using SVD
 model_manager = ModelManager()
@@ -34,4 +33,4 @@ video = pipe(
     motion_bucket_id=127,
     num_inference_steps=50
 )
-save_video(video, "video.mp4", fps=15)
+save_video(video, "output_video.mp4", fps=15)

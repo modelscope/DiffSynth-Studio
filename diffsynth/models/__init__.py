@@ -48,23 +48,129 @@ preset_models_on_huggingface = {
     ],
 }
 preset_models_on_modelscope = {
+    # Hunyuan DiT
     "HunyuanDiT": [
         ("modelscope/HunyuanDiT", "t2i/clip_text_encoder/pytorch_model.bin", "models/HunyuanDiT/t2i/clip_text_encoder"),
         ("modelscope/HunyuanDiT", "t2i/mt5/pytorch_model.bin", "models/HunyuanDiT/t2i/mt5"),
         ("modelscope/HunyuanDiT", "t2i/model/pytorch_model_ema.pt", "models/HunyuanDiT/t2i/model"),
         ("modelscope/HunyuanDiT", "t2i/sdxl-vae-fp16-fix/diffusion_pytorch_model.bin", "models/HunyuanDiT/t2i/sdxl-vae-fp16-fix"),
     ],
+    # Stable Video Diffusion
     "stable-video-diffusion-img2vid-xt": [
         ("AI-ModelScope/stable-video-diffusion-img2vid-xt", "svd_xt.safetensors", "models/stable_video_diffusion"),
     ],
+    # ExVideo
     "ExVideo-SVD-128f-v1": [
         ("ECNU-CILab/ExVideo-SVD-128f-v1", "model.fp16.safetensors", "models/stable_video_diffusion"),
+    ],
+    # Stable Diffusion
+    "StableDiffusion_v15": [
+        ("AI-ModelScope/stable-diffusion-v1-5", "v1-5-pruned-emaonly.safetensors", "models/stable_diffusion"),
+    ],
+    "DreamShaper_8": [
+        ("sd_lora/dreamshaper_8", "dreamshaper_8.safetensors", "models/stable_diffusion"),
+    ],
+    "AingDiffusion_v12": [
+        ("sd_lora/aingdiffusion_v12", "aingdiffusion_v12.safetensors", "models/stable_diffusion"),
+    ],
+    "Flat2DAnimerge_v45Sharp": [
+        ("sd_lora/Flat-2D-Animerge", "flat2DAnimerge_v45Sharp.safetensors", "models/stable_diffusion"),
+    ],
+    # Textual Inversion
+    "TextualInversion_VeryBadImageNegative_v1.3": [
+        ("sd_lora/verybadimagenegative_v1.3", "verybadimagenegative_v1.3.pt", "models/textual_inversion"),
+    ],
+    # Stable Diffusion XL
+    "StableDiffusionXL_v1": [
+        ("AI-ModelScope/stable-diffusion-xl-base-1.0", "sd_xl_base_1.0.safetensors", "models/stable_diffusion_xl"),
+    ],
+    "BluePencilXL_v200": [
+        ("sd_lora/bluePencilXL_v200", "bluePencilXL_v200.safetensors", "models/stable_diffusion_xl"),
+    ],
+    "StableDiffusionXL_Turbo": [
+        ("AI-ModelScope/sdxl-turbo", "sd_xl_turbo_1.0_fp16.safetensors", "models/stable_diffusion_xl_turbo"),
+    ],
+    # ControlNet
+    "ControlNet_v11f1p_sd15_depth": [
+        ("AI-ModelScope/ControlNet-v1-1", "control_v11f1p_sd15_depth.pth", "models/ControlNet"),
+        ("sd_lora/Annotators", "dpt_hybrid-midas-501f0c75.pt", "models/Annotators")
+    ],
+    "ControlNet_v11p_sd15_softedge": [
+        ("AI-ModelScope/ControlNet-v1-1", "control_v11p_sd15_softedge.pth", "models/ControlNet"),
+        ("sd_lora/Annotators", "ControlNetHED.pth", "models/Annotators")
+    ],
+    "ControlNet_v11f1e_sd15_tile": [
+        ("AI-ModelScope/ControlNet-v1-1", "control_v11f1e_sd15_tile.pth", "models/ControlNet")
+    ],
+    "ControlNet_v11p_sd15_lineart": [
+        ("AI-ModelScope/ControlNet-v1-1", "control_v11p_sd15_lineart.pth", "models/ControlNet"),
+        ("sd_lora/Annotators", "sk_model.pth", "models/Annotators"),
+        ("sd_lora/Annotators", "sk_model2.pth", "models/Annotators")
+    ],
+    # AnimateDiff
+    "AnimateDiff_v2": [
+        ("Shanghai_AI_Laboratory/animatediff", "mm_sd_v15_v2.ckpt", "models/AnimateDiff"),
+    ],
+    "AnimateDiff_xl_beta": [
+        ("Shanghai_AI_Laboratory/animatediff", "mm_sdxl_v10_beta.ckpt", "models/AnimateDiff"),
+    ],
+    # RIFE
+    "RIFE": [
+        ("Damo_XR_Lab/cv_rife_video-frame-interpolation", "flownet.pkl", "models/RIFE"),
+    ],
+    # Beautiful Prompt
+    "BeautifulPrompt": [
+        ("AI-ModelScope/pai-bloom-1b1-text2prompt-sd", "config.json", "models/BeautifulPrompt/pai-bloom-1b1-text2prompt-sd"),
+        ("AI-ModelScope/pai-bloom-1b1-text2prompt-sd", "generation_config.json", "models/BeautifulPrompt/pai-bloom-1b1-text2prompt-sd"),
+        ("AI-ModelScope/pai-bloom-1b1-text2prompt-sd", "model.safetensors", "models/BeautifulPrompt/pai-bloom-1b1-text2prompt-sd"),
+        ("AI-ModelScope/pai-bloom-1b1-text2prompt-sd", "special_tokens_map.json", "models/BeautifulPrompt/pai-bloom-1b1-text2prompt-sd"),
+        ("AI-ModelScope/pai-bloom-1b1-text2prompt-sd", "tokenizer.json", "models/BeautifulPrompt/pai-bloom-1b1-text2prompt-sd"),
+        ("AI-ModelScope/pai-bloom-1b1-text2prompt-sd", "tokenizer_config.json", "models/BeautifulPrompt/pai-bloom-1b1-text2prompt-sd"),
+    ],
+    # Translator
+    "opus-mt-zh-en": [
+        ("moxying/opus-mt-zh-en", "config.json", "models/translator/opus-mt-zh-en"),
+        ("moxying/opus-mt-zh-en", "generation_config.json", "models/translator/opus-mt-zh-en"),
+        ("moxying/opus-mt-zh-en", "metadata.json", "models/translator/opus-mt-zh-en"),
+        ("moxying/opus-mt-zh-en", "pytorch_model.bin", "models/translator/opus-mt-zh-en"),
+        ("moxying/opus-mt-zh-en", "source.spm", "models/translator/opus-mt-zh-en"),
+        ("moxying/opus-mt-zh-en", "target.spm", "models/translator/opus-mt-zh-en"),
+        ("moxying/opus-mt-zh-en", "tokenizer_config.json", "models/translator/opus-mt-zh-en"),
+        ("moxying/opus-mt-zh-en", "vocab.json", "models/translator/opus-mt-zh-en"),
+    ],
+    # IP-Adapter
+    "IP-Adapter-SD": [
+        ("AI-ModelScope/IP-Adapter", "models/image_encoder/model.safetensors", "models/IpAdapter/stable_diffusion/image_encoder"),
+        ("AI-ModelScope/IP-Adapter", "models/ip-adapter_sd15.bin", "models/IpAdapter/stable_diffusion"),
+    ],
+    "IP-Adapter-SDXL": [
+        ("AI-ModelScope/IP-Adapter", "sdxl_models/image_encoder/model.safetensors", "models/IpAdapter/stable_diffusion_xl/image_encoder"),
+        ("AI-ModelScope/IP-Adapter", "sdxl_models/ip-adapter_sdxl.bin", "models/IpAdapter/stable_diffusion_xl"),
     ],
 }
 Preset_model_id: TypeAlias = Literal[
     "HunyuanDiT",
     "stable-video-diffusion-img2vid-xt",
-    "ExVideo-SVD-128f-v1"
+    "ExVideo-SVD-128f-v1",
+    "StableDiffusion_v15",
+    "DreamShaper_8",
+    "AingDiffusion_v12",
+    "Flat2DAnimerge_v45Sharp",
+    "TextualInversion_VeryBadImageNegative_v1.3",
+    "StableDiffusionXL_v1",
+    "BluePencilXL_v200",
+    "StableDiffusionXL_Turbo",
+    "ControlNet_v11f1p_sd15_depth",
+    "ControlNet_v11p_sd15_softedge",
+    "ControlNet_v11f1e_sd15_tile",
+    "ControlNet_v11p_sd15_lineart",
+    "AnimateDiff_v2",
+    "AnimateDiff_xl_beta",
+    "RIFE",
+    "BeautifulPrompt",
+    "opus-mt-zh-en",
+    "IP-Adapter-SD",
+    "IP-Adapter-SDXL",
 ]
 Preset_model_website: TypeAlias = Literal[
     "HuggingFace",
@@ -78,6 +184,26 @@ website_to_download_fn = {
     "HuggingFace": download_from_huggingface,
     "ModelScope": download_from_modelscope,
 }
+
+
+def download_models(
+    model_id_list: List[Preset_model_id] = [],
+    downloading_priority: List[Preset_model_website] = ["ModelScope", "HuggingFace"],
+):
+    downloaded_files = []
+    for model_id in model_id_list:
+        for website in downloading_priority:
+            if model_id in website_to_preset_models[website]:
+                for model_id, origin_file_path, local_dir in website_to_preset_models[website][model_id]:
+                    # Check if the file is downloaded.
+                    file_to_download = os.path.join(local_dir, os.path.basename(origin_file_path))
+                    if file_to_download in downloaded_files:
+                        continue
+                    # Download
+                    website_to_download_fn[website](model_id, origin_file_path, local_dir)
+                    if os.path.basename(origin_file_path) in os.listdir(local_dir):
+                        downloaded_files.append(file_to_download)
+    return downloaded_files
 
 
 class ModelManager:
@@ -94,28 +220,19 @@ class ModelManager:
         self.model = {}
         self.model_path = {}
         self.textual_inversion_dict = {}
-        downloaded_files = self.download_models(model_id_list, downloading_priority)
+        downloaded_files = download_models(model_id_list, downloading_priority)
         self.load_models(downloaded_files + file_path_list)
 
-    def download_models(
+    def load_model_from_origin(
         self,
-        model_id_list: List[Preset_model_id] = [],
-        downloading_priority: List[Preset_model_website] = ["ModelScope", "HuggingFace"],
+        download_from: Preset_model_website = "ModelScope",
+        model_id = "",
+        origin_file_path = "",
+        local_dir = ""
     ):
-        downloaded_files = []
-        for model_id in model_id_list:
-            for website in downloading_priority:
-                if model_id in website_to_preset_models[website]:
-                    for model_id, origin_file_path, local_dir in website_to_preset_models[website][model_id]:
-                        # Check if the file is downloaded.
-                        file_to_download = os.path.join(local_dir, os.path.basename(origin_file_path))
-                        if file_to_download in downloaded_files:
-                            continue
-                        # Download
-                        website_to_download_fn[website](model_id, origin_file_path, local_dir)
-                        if os.path.basename(origin_file_path) in os.listdir(local_dir):
-                            downloaded_files.append(file_to_download)
-        return downloaded_files
+        website_to_download_fn[download_from](model_id, origin_file_path, local_dir)
+        file_to_download = os.path.join(local_dir, os.path.basename(origin_file_path))
+        self.load_model(file_to_download)
 
     def is_stable_video_diffusion(self, state_dict):
         param_name = "model.diffusion_model.output_blocks.9.1.time_stack.0.norm_in.weight"
@@ -158,7 +275,7 @@ class ModelManager:
     
     def is_translator(self, state_dict):
         param_name = "model.encoder.layers.5.self_attn_layer_norm.weight"
-        return param_name in state_dict and len(state_dict) == 254
+        return param_name in state_dict and len(state_dict) == 258
     
     def is_ipadapter(self, state_dict):
         return "image_proj" in state_dict and "ip_adapter" in state_dict and state_dict["image_proj"]["proj.weight"].shape == torch.Size([3072, 1024])

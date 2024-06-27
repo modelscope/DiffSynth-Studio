@@ -1,24 +1,31 @@
-from diffsynth import ModelManager, SDVideoPipeline, ControlNetConfigUnit, VideoData, save_video
+from diffsynth import ModelManager, SDVideoPipeline, ControlNetConfigUnit, VideoData, save_video, download_models
 from diffsynth.processors.FastBlend import FastBlendSmoother
 from diffsynth.processors.PILEditor import ContrastEditor, SharpnessEditor
 from diffsynth.processors.sequencial_processor import SequencialProcessor
 import torch
 
 
-# Download models
+# Download models (automatically)
 # `models/stable_diffusion/dreamshaper_8.safetensors`: [link](https://civitai.com/api/download/models/128713?type=Model&format=SafeTensor&size=pruned&fp=fp16)
 # `models/ControlNet/control_v11f1p_sd15_depth.pth`: [link](https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11f1p_sd15_depth.pth)
 # `models/ControlNet/control_v11p_sd15_softedge.pth`: [link](https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11p_sd15_softedge.pth)
 # `models/Annotators/dpt_hybrid-midas-501f0c75.pt`: [link](https://huggingface.co/lllyasviel/Annotators/resolve/main/dpt_hybrid-midas-501f0c75.pt)
 # `models/Annotators/ControlNetHED.pth`: [link](https://huggingface.co/lllyasviel/Annotators/resolve/main/ControlNetHED.pth)
+download_models([
+    "ControlNet_v11f1p_sd15_depth",
+    "ControlNet_v11p_sd15_softedge",
+    "DreamShaper_8"
+])
 
 # Load models
-model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")
-model_manager.load_models([
-    "models/stable_diffusion/dreamshaper_8.safetensors",
-    "models/ControlNet/control_v11f1p_sd15_depth.pth",
-    "models/ControlNet/control_v11p_sd15_softedge.pth"
-])
+model_manager = ModelManager(
+    torch_dtype=torch.float16, device="cuda",
+    file_path_list=[
+        "models/stable_diffusion/dreamshaper_8.safetensors",
+        "models/ControlNet/control_v11f1p_sd15_depth.pth",
+        "models/ControlNet/control_v11p_sd15_softedge.pth",
+    ]
+)
 pipe = SDVideoPipeline.from_model_manager(
     model_manager,
     [
@@ -38,7 +45,7 @@ smoother = SequencialProcessor([FastBlendSmoother(), ContrastEditor(rate=1.1), S
 
 # Load video
 # Original video: https://pixabay.com/videos/flow-rocks-water-fluent-stones-159627/
-video = VideoData(video_file="data/pixabay100/159627 (1080p).mp4", height=512, width=768)
+video = VideoData(video_file="data/examples/pixabay100/159627 (1080p).mp4", height=512, width=768)
 input_video = [video[i] for i in range(128)]
 
 # Rerender

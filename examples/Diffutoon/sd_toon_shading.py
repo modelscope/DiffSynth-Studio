@@ -1,9 +1,8 @@
-from diffsynth import ModelManager, SDVideoPipeline, ControlNetConfigUnit, VideoData, save_video, save_frames
-from diffsynth.extensions.RIFE import RIFESmoother
+from diffsynth import ModelManager, SDVideoPipeline, ControlNetConfigUnit, VideoData, save_video, download_models
 import torch
 
 
-# Download models
+# Download models (automatically)
 # `models/stable_diffusion/flat2DAnimerge_v45Sharp.safetensors`: [link](https://civitai.com/api/download/models/266360?type=Model&format=SafeTensor&size=pruned&fp=fp16)
 # `models/AnimateDiff/mm_sd_v15_v2.ckpt`: [link](https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v15_v2.ckpt)
 # `models/ControlNet/control_v11p_sd15_lineart.pth`: [link](https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11p_sd15_lineart.pth)
@@ -11,8 +10,13 @@ import torch
 # `models/Annotators/sk_model.pth`: [link](https://huggingface.co/lllyasviel/Annotators/resolve/main/sk_model.pth)
 # `models/Annotators/sk_model2.pth`: [link](https://huggingface.co/lllyasviel/Annotators/resolve/main/sk_model2.pth)
 # `models/textual_inversion/verybadimagenegative_v1.3.pt`: [link](https://civitai.com/api/download/models/25820?type=Model&format=PickleTensor&size=full&fp=fp16)
-# `models/RIFE/flownet.pkl`: [link](https://drive.google.com/file/d/1APIzVeI-4ZZCEuIRE1m6WYfSCaOsi_7_/view?usp=sharing)
-
+download_models([
+    "Flat2DAnimerge_v45Sharp",
+    "AnimateDiff_v2",
+    "ControlNet_v11p_sd15_lineart",
+    "ControlNet_v11f1e_sd15_tile",
+    "TextualInversion_VeryBadImageNegative_v1.3"
+])
 
 # Load models
 model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")
@@ -22,7 +26,6 @@ model_manager.load_models([
     "models/AnimateDiff/mm_sd_v15_v2.ckpt",
     "models/ControlNet/control_v11p_sd15_lineart.pth",
     "models/ControlNet/control_v11f1e_sd15_tile.pth",
-    "models/RIFE/flownet.pkl"
 ])
 pipe = SDVideoPipeline.from_model_manager(
     model_manager,
@@ -39,12 +42,11 @@ pipe = SDVideoPipeline.from_model_manager(
         )
     ]
 )
-smoother = RIFESmoother.from_model_manager(model_manager)
 
 # Load video (we only use 60 frames for quick testing)
 # The original video is here: https://www.bilibili.com/video/BV19w411A7YJ/
 video = VideoData(
-    video_file="data/bilibili_videos/៸៸᳐_⩊_៸៸᳐ 66 微笑调查队🌻/៸៸᳐_⩊_៸៸᳐ 66 微笑调查队🌻 - 1.66 微笑调查队🌻(Av278681824,P1).mp4",
+    video_file="data/examples/bilibili/BV19w411A7YJ.mp4",
     height=1024, width=1024)
 input_video = [video[i] for i in range(40*60, 41*60)]
 
@@ -59,7 +61,6 @@ output_video = pipe(
     animatediff_batch_size=32, animatediff_stride=16,
     vram_limit_level=0,
 )
-output_video = smoother(output_video)
 
 # Save video
 save_video(output_video, "output_video.mp4", fps=60)
