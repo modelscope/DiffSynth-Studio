@@ -1,4 +1,4 @@
-from diffsynth import save_video, ModelManager, SVDVideoPipeline, HunyuanDiTImagePipeline
+from diffsynth import save_video, ModelManager, SVDVideoPipeline, HunyuanDiTImagePipeline, download_models
 from diffsynth import ModelManager
 import torch, os
 
@@ -31,7 +31,14 @@ import torch, os
 def generate_image():
     # Load models
     os.environ["TOKENIZERS_PARALLELISM"] = "True"
-    model_manager = ModelManager(torch_dtype=torch.float16, device="cuda", model_id_list=["HunyuanDiT"])
+    download_models(["HunyuanDiT"])
+    model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
+                                 file_path_list=[
+                                     "models/HunyuanDiT/t2i/clip_text_encoder/pytorch_model.bin",
+                                     "models/HunyuanDiT/t2i/mt5/pytorch_model.bin",
+                                     "models/HunyuanDiT/t2i/model/pytorch_model_ema.pt",
+                                     "models/HunyuanDiT/t2i/sdxl-vae-fp16-fix/diffusion_pytorch_model.bin",
+                                 ])
     pipe = HunyuanDiTImagePipeline.from_model_manager(model_manager)
 
     # Generate an image
@@ -47,7 +54,12 @@ def generate_image():
 
 def generate_video(image):
     # Load models
-    model_manager = ModelManager(torch_dtype=torch.float16, device="cuda", model_id_list=["stable-video-diffusion-img2vid-xt", "ExVideo-SVD-128f-v1"])
+    download_models(["stable-video-diffusion-img2vid-xt", "ExVideo-SVD-128f-v1"])
+    model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
+                                 file_path_list=[
+                                     "models/stable_video_diffusion/svd_xt.safetensors",
+                                     "models/stable_video_diffusion/model.fp16.safetensors",
+                                 ])
     pipe = SVDVideoPipeline.from_model_manager(model_manager)
 
     # Generate a video
@@ -65,7 +77,12 @@ def generate_video(image):
 
 def upscale_video(image, video):
     # Load models
-    model_manager = ModelManager(torch_dtype=torch.float16, device="cuda", model_id_list=["stable-video-diffusion-img2vid-xt", "ExVideo-SVD-128f-v1"])
+    download_models(["stable-video-diffusion-img2vid-xt", "ExVideo-SVD-128f-v1"])
+    model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
+                                 file_path_list=[
+                                     "models/stable_video_diffusion/svd_xt.safetensors",
+                                     "models/stable_video_diffusion/model.fp16.safetensors",
+                                 ])
     pipe = SVDVideoPipeline.from_model_manager(model_manager)
 
     # Generate a video

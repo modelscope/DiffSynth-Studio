@@ -87,6 +87,7 @@ class SDXLImagePipeline(torch.nn.Module):
         input_image=None,
         ipadapter_images=None,
         ipadapter_scale=1.0,
+        ipadapter_use_instant_style=False,
         controlnet_image=None,
         denoising_strength=1.0,
         height=1024,
@@ -134,6 +135,10 @@ class SDXLImagePipeline(torch.nn.Module):
 
         # IP-Adapter
         if ipadapter_images is not None:
+            if ipadapter_use_instant_style:
+                self.ipadapter.set_less_adapter()
+            else:
+                self.ipadapter.set_full_adapter()
             ipadapter_image_encoding = self.ipadapter_image_encoder(ipadapter_images)
             ipadapter_kwargs_list_posi = self.ipadapter(ipadapter_image_encoding, scale=ipadapter_scale)
             ipadapter_kwargs_list_nega = self.ipadapter(torch.zeros_like(ipadapter_image_encoding))

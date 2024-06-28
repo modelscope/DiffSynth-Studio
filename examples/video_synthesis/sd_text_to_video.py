@@ -1,13 +1,13 @@
-from diffsynth import ModelManager, SDImagePipeline, SDVideoPipeline, ControlNetConfigUnit, VideoData, save_video, save_frames
+from diffsynth import ModelManager, SDImagePipeline, SDVideoPipeline, save_video, download_models
 from diffsynth.extensions.RIFE import RIFEInterpolater
 import torch
 
 
-# Download models
+# Download models (automatically)
 # `models/stable_diffusion/dreamshaper_8.safetensors`: [link](https://civitai.com/api/download/models/128713?type=Model&format=SafeTensor&size=pruned&fp=fp16)
 # `models/AnimateDiff/mm_sd_v15_v2.ckpt`: [link](https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v15_v2.ckpt)
 # `models/RIFE/flownet.pkl`: [link](https://drive.google.com/file/d/1APIzVeI-4ZZCEuIRE1m6WYfSCaOsi_7_/view?usp=sharing)
-
+download_models(["DreamShaper_8", "AnimateDiff_v2", "RIFE"])
 
 # Load models
 model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")

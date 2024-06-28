@@ -41,6 +41,10 @@ class SDXLPrompter(Prompter):
         add_text_embeds, prompt_emb_2 = text_encoder_2(input_ids_2, clip_skip=clip_skip_2)
 
         # Merge
+        if prompt_emb_1.shape[0] != prompt_emb_2.shape[0]:
+            max_batch_size = min(prompt_emb_1.shape[0], prompt_emb_2.shape[0])
+            prompt_emb_1 = prompt_emb_1[: max_batch_size]
+            prompt_emb_2 = prompt_emb_2[: max_batch_size]
         prompt_emb = torch.concatenate([prompt_emb_1, prompt_emb_2], dim=-1)
 
         # For very long prompt, we only use the first 77 tokens to compute `add_text_embeds`.

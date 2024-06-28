@@ -1,10 +1,10 @@
-from diffsynth import ModelManager, SDXLImagePipeline
+from diffsynth import ModelManager, SDXLImagePipeline, download_models
 import torch
 
 
-# Download models
+# Download models (automatically)
 # `models/stable_diffusion_xl/bluePencilXL_v200.safetensors`: [link](https://civitai.com/api/download/models/245614?type=Model&format=SafeTensor&size=pruned&fp=fp16)
-
+download_models(["BluePencilXL_v200"])
 
 # Load models
 model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")

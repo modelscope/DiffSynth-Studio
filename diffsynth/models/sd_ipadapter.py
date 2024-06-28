@@ -29,7 +29,7 @@ class SDIpAdapter(torch.nn.Module):
 
     def set_less_adapter(self):
         # IP-Adapter for SD v1.5 doesn't support this feature.
-        self.set_full_adapter(self)
+        self.set_full_adapter()
 
     def forward(self, hidden_states, scale=1.0):
         hidden_states = self.image_proj(hidden_states)
