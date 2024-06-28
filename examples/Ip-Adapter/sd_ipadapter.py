@@ -3,11 +3,11 @@ import torch
 
 
 # Download models (automatically)
-# `models/stable_diffusion/dreamshaper_8.safetensors`: [link](https://civitai.com/api/download/models/128713?type=Model&format=SafeTensor&size=pruned&fp=fp16)
+# `models/stable_diffusion/aingdiffusion_v12.safetensors`: [link](https://civitai.com/api/download/models/229575?type=Model&format=SafeTensor&size=full&fp=fp16)
 # `models/IpAdapter/stable_diffusion/image_encoder/model.safetensors`: [link](https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors)
 # `models/IpAdapter/stable_diffusion/ip-adapter_sd15.bin`: [link](https://huggingface.co/h94/IP-Adapter/resolve/main/models/ip-adapter_sd15.bin)
 # `models/textual_inversion/verybadimagenegative_v1.3.pt`: [link](https://civitai.com/api/download/models/25820?type=Model&format=PickleTensor&size=full&fp=fp16)
-download_models(["DreamShaper_8", "IP-Adapter-SD", "TextualInversion_VeryBadImageNegative_v1.3"])
+download_models(["AingDiffusion_v12", "IP-Adapter-SD", "TextualInversion_VeryBadImageNegative_v1.3"])
 
 # Load models
 model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")
