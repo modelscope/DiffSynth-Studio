@@ -1,4 +1,4 @@
-# DiffSynth Studio
+# DiffSynth Studio 
 
 
 ## Introduction
