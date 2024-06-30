@@ -10,3 +10,5 @@ imageio[ffmpeg]
 safetensors
 einops
 sentencepiece
+basicsr==1.4.2
+numpy==1.25.1
