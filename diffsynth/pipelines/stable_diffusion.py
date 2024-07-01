@@ -39,14 +39,14 @@ class SDImagePipeline(torch.nn.Module):
         controlnet_units = []
         for config in controlnet_config_units:
             controlnet_unit = ControlNetUnit(
-                Annotator(config.processor_id),
+                Annotator(config.processor_id, device=self.device),
                 model_manager.get_model_with_model_path(config.model_path),
                 config.scale
             )
             controlnet_units.append(controlnet_unit)
         self.controlnet = MultiControlNetManager(controlnet_units)
 
-    
+
     def fetch_ipadapter(self, model_manager: ModelManager):
         if "ipadapter" in model_manager.model:
             self.ipadapter = model_manager.ipadapter

@@ -12,24 +12,24 @@ Processor_id: TypeAlias = Literal[
 ]
 
 class Annotator:
-    def __init__(self, processor_id: Processor_id, model_path="models/Annotators", detect_resolution=None):
+    def __init__(self, processor_id: Processor_id, model_path="models/Annotators", detect_resolution=None, device='cuda'):
         if processor_id == "canny":
             self.processor = CannyDetector()
         elif processor_id == "depth":
-            self.processor = MidasDetector.from_pretrained(model_path).to("cuda")
+            self.processor = MidasDetector.from_pretrained(model_path).to(device)
         elif processor_id == "softedge":
-            self.processor = HEDdetector.from_pretrained(model_path).to("cuda")
+            self.processor = HEDdetector.from_pretrained(model_path).to(device)
         elif processor_id == "lineart":
-            self.processor = LineartDetector.from_pretrained(model_path).to("cuda")
+            self.processor = LineartDetector.from_pretrained(model_path).to(device)
         elif processor_id == "lineart_anime":
-            self.processor = LineartAnimeDetector.from_pretrained(model_path).to("cuda")
+            self.processor = LineartAnimeDetector.from_pretrained(model_path).to(device)
         elif processor_id == "openpose":
-            self.processor = OpenposeDetector.from_pretrained(model_path).to("cuda")
+            self.processor = OpenposeDetector.from_pretrained(model_path).to(device)
         elif processor_id == "tile":
             self.processor = None
         else:
             raise ValueError(f"Unsupported processor_id: {processor_id}")
-        
+
         self.processor_id = processor_id
         self.detect_resolution = detect_resolution
 
