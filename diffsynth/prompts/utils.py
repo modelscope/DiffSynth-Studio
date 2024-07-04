@@ -87,7 +87,8 @@ class Prompter:
             tokens, _ = textual_inversion_dict[keyword]
             additional_tokens += tokens
             self.keyword_dict[keyword] = " " + " ".join(tokens) + " "
-        self.tokenizer.add_tokens(additional_tokens)
+        if self.tokenizer is not None:
+            self.tokenizer.add_tokens(additional_tokens)
 
     def load_beautiful_prompt(self, model, model_path):
         model_folder = os.path.dirname(model_path)

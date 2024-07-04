@@ -16,6 +16,11 @@ from .sdxl_unet import SDXLUNet
 from .sdxl_vae_decoder import SDXLVAEDecoder
 from .sdxl_vae_encoder import SDXLVAEEncoder
 
+from .sd3_text_encoder import SD3TextEncoder1, SD3TextEncoder2, SD3TextEncoder3
+from .sd3_dit import SD3DiT
+from .sd3_vae_decoder import SD3VAEDecoder
+from .sd3_vae_encoder import SD3VAEEncoder
+
 from .sd_controlnet import SDControlNet
 
 from .sd_motion import SDMotionModel
@@ -89,6 +94,13 @@ preset_models_on_modelscope = {
     ],
     "StableDiffusionXL_Turbo": [
         ("AI-ModelScope/sdxl-turbo", "sd_xl_turbo_1.0_fp16.safetensors", "models/stable_diffusion_xl_turbo"),
+    ],
+    # Stable Diffusion 3
+    "StableDiffusion3": [
+        ("AI-ModelScope/stable-diffusion-3-medium", "sd3_medium_incl_clips_t5xxlfp16.safetensors", "models/stable_diffusion_3"),
+    ],
+    "StableDiffusion3_without_T5": [
+        ("AI-ModelScope/stable-diffusion-3-medium", "sd3_medium_incl_clips.safetensors", "models/stable_diffusion_3"),
     ],
     # ControlNet
     "ControlNet_v11f1p_sd15_depth": [
@@ -171,6 +183,8 @@ Preset_model_id: TypeAlias = Literal[
     "opus-mt-zh-en",
     "IP-Adapter-SD",
     "IP-Adapter-SDXL",
+    "StableDiffusion3",
+    "StableDiffusion3_without_T5"
 ]
 Preset_model_website: TypeAlias = Literal[
     "HuggingFace",
@@ -297,7 +311,8 @@ class ModelManager:
     
     def is_hunyuan_dit_t5_text_encoder(self, state_dict):
         param_name = "encoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight"
-        return param_name in state_dict
+        param_name_ = "decoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight"
+        return param_name in state_dict and param_name_ in state_dict
     
     def is_hunyuan_dit(self, state_dict):
         param_name = "final_layer.adaLN_modulation.1.weight"
@@ -309,6 +324,23 @@ class ModelManager:
     
     def is_ExVideo_StableVideoDiffusion(self, state_dict):
         param_name = "blocks.185.positional_embedding.embeddings"
+        return param_name in state_dict
+    
+    def is_stable_diffusion_3(self, state_dict):
+        param_names = [
+            "text_encoders.clip_l.transformer.text_model.encoder.layers.9.self_attn.v_proj.weight",
+            "text_encoders.clip_g.transformer.text_model.encoder.layers.9.self_attn.v_proj.weight",
+            "model.diffusion_model.joint_blocks.9.x_block.mlp.fc2.weight",
+            "first_stage_model.encoder.mid.block_2.norm2.weight",
+            "first_stage_model.decoder.mid.block_2.norm2.weight",
+        ]
+        for param_name in param_names:
+            if param_name not in state_dict:
+                return False
+        return True
+    
+    def is_stable_diffusion_3_t5(self, state_dict):
+        param_name = "encoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight"
         return param_name in state_dict
     
     def load_stable_video_diffusion(self, state_dict, components=None, file_path="", add_positional_conv=None):
@@ -520,6 +552,34 @@ class ModelManager:
         self.model["unet"].load_state_dict(state_dict, strict=False)
         self.model["unet"].to(self.torch_dtype).to(self.device)
 
+    def load_stable_diffusion_3(self, state_dict, components=None, file_path=""):
+        component_dict = {
+            "sd3_text_encoder_1": SD3TextEncoder1,
+            "sd3_text_encoder_2": SD3TextEncoder2,
+            "sd3_text_encoder_3": SD3TextEncoder3,
+            "sd3_dit": SD3DiT,
+            "sd3_vae_decoder": SD3VAEDecoder,
+            "sd3_vae_encoder": SD3VAEEncoder,
+        }
+        if components is None:
+            components = ["sd3_text_encoder_1", "sd3_text_encoder_2", "sd3_text_encoder_3", "sd3_dit", "sd3_vae_decoder", "sd3_vae_encoder"]
+        for component in components:
+            if component == "sd3_text_encoder_3":
+                if "text_encoders.t5xxl.transformer.encoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight" not in state_dict:
+                    continue
+            self.model[component] = component_dict[component]()
+            self.model[component].load_state_dict(self.model[component].state_dict_converter().from_civitai(state_dict))
+            self.model[component].to(self.torch_dtype).to(self.device)
+            self.model_path[component] = file_path
+
+    def load_stable_diffusion_3_t5(self, state_dict, file_path=""):
+        component = "sd3_text_encoder_3"
+        model = SD3TextEncoder3()
+        model.load_state_dict(model.state_dict_converter().from_civitai(state_dict))
+        model.to(self.torch_dtype).to(self.device)
+        self.model[component] = model
+        self.model_path[component] = file_path
+
     def search_for_embeddings(self, state_dict):
         embeddings = []
         for k in state_dict:
@@ -587,6 +647,10 @@ class ModelManager:
             self.load_diffusers_vae(state_dict, file_path=file_path)
         elif self.is_ExVideo_StableVideoDiffusion(state_dict):
             self.load_ExVideo_StableVideoDiffusion(state_dict, file_path=file_path)
+        elif self.is_stable_diffusion_3(state_dict):
+            self.load_stable_diffusion_3(state_dict, components=components, file_path=file_path)
+        elif self.is_stable_diffusion_3_t5(state_dict):
+            self.load_stable_diffusion_3_t5(state_dict, file_path=file_path)
 
     def load_models(self, file_path_list, lora_alphas=[]):
         for file_path in file_path_list:
