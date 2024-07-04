@@ -89,7 +89,7 @@ class SDVideoPipeline(torch.nn.Module):
         controlnet_units = []
         for config in controlnet_config_units:
             controlnet_unit = ControlNetUnit(
-                Annotator(config.processor_id),
+                Annotator(config.processor_id, device=self.device),
                 model_manager.get_model_with_model_path(config.model_path),
                 config.scale
             )
