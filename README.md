@@ -8,6 +8,7 @@ DiffSynth Studio is a Diffusion engine. We have restructured architectures inclu
 Until now, DiffSynth Studio has supported the following models:
 
 * [ExVideo](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
+* [Stable Diffusion 3](https://huggingface.co/stabilityai/stable-diffusion-3-medium)
 * [Stable Video Diffusion](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt)
 * [Hunyuan-DiT](https://github.com/Tencent/HunyuanDiT)
 * [RIFE](https://github.com/hzwer/ECCV2022-RIFE)
