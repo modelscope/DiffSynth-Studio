@@ -65,8 +65,8 @@ class SD3ImagePipeline(torch.nn.Module):
     def __call__(
         self,
         prompt,
-        negative_prompt="bad quality, poor quality, doll, disfigured, jpg, toy, bad anatomy, missing limbs, missing fingers, 3d, cgi",
-        cfg_scale=4.5,
+        negative_prompt="",
+        cfg_scale=7.5,
         input_image=None,
         denoising_strength=1.0,
         height=1024,
