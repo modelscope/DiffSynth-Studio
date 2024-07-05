@@ -5,7 +5,7 @@ import streamlit as st
 st.set_page_config(layout="wide")
 from streamlit_drawable_canvas import st_canvas
 from diffsynth.models import ModelManager
-from diffsynth.pipelines import SDImagePipeline, SDXLImagePipeline, HunyuanDiTImagePipeline
+from diffsynth.pipelines import SDImagePipeline, SDXLImagePipeline, SD3ImagePipeline, HunyuanDiTImagePipeline
 from diffsynth.data.video import crop_and_resize
 
 
@@ -18,6 +18,11 @@ config = {
     "Stable Diffusion XL": {
         "model_folder": "models/stable_diffusion_xl",
         "pipeline_class": SDXLImagePipeline,
+        "fixed_parameters": {}
+    },
+    "Stable Diffusion 3": {
+        "model_folder": "models/stable_diffusion_3",
+        "pipeline_class": SD3ImagePipeline,
         "fixed_parameters": {}
     },
     "Stable Diffusion XL Turbo": {
