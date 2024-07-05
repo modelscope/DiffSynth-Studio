@@ -111,14 +111,27 @@ but make sure there is a correlation between the input and output.\n\
         if "beautiful_prompt" in model_manager.model:
             self.load_beautiful_prompt(model_manager.model["beautiful_prompt"], model_manager.model_path["beautiful_prompt"])
 
-    def process_prompt(self, prompt, positive=True):
+    def add_textual_inversion_tokens(self, prompt):
         for keyword in self.keyword_dict:
             if keyword in prompt:
                 prompt = prompt.replace(keyword, self.keyword_dict[keyword])
+        return prompt
+
+    def del_textual_inversion_tokens(self, prompt):
+        for keyword in self.keyword_dict:
+            if keyword in prompt:
+                prompt = prompt.replace(keyword, "")
+        return prompt
+
+    def process_prompt(self, prompt, positive=True, require_pure_prompt=False):
+        prompt, pure_prompt = self.add_textual_inversion_tokens(prompt), self.del_textual_inversion_tokens(prompt)
         if positive and self.translator is not None:
             prompt = self.translator(prompt)
             print(f"Your prompt is translated: \"{prompt}\"")
         if positive and self.beautiful_prompt is not None:
             prompt = self.beautiful_prompt(prompt)
             print(f"Your prompt is refined by BeautifulPrompt: \"{prompt}\"")
-        return prompt
+        if require_pure_prompt:
+            return prompt, pure_prompt
+        else:
+            return prompt

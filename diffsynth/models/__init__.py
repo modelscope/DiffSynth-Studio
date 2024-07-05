@@ -567,10 +567,22 @@ class ModelManager:
             if component == "sd3_text_encoder_3":
                 if "text_encoders.t5xxl.transformer.encoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight" not in state_dict:
                     continue
-            self.model[component] = component_dict[component]()
-            self.model[component].load_state_dict(self.model[component].state_dict_converter().from_civitai(state_dict))
-            self.model[component].to(self.torch_dtype).to(self.device)
-            self.model_path[component] = file_path
+            elif component == "sd3_text_encoder_1":
+                # Add additional token embeddings to text encoder
+                token_embeddings = [state_dict["text_encoders.clip_l.transformer.text_model.embeddings.token_embedding.weight"]]
+                for keyword in self.textual_inversion_dict:
+                    _, embeddings = self.textual_inversion_dict[keyword]
+                    token_embeddings.append(embeddings.to(dtype=token_embeddings[0].dtype))
+                token_embeddings = torch.concat(token_embeddings, dim=0)
+                state_dict["text_encoders.clip_l.transformer.text_model.embeddings.token_embedding.weight"] = token_embeddings
+                self.model[component] = component_dict[component](vocab_size=token_embeddings.shape[0])
+                self.model[component].load_state_dict(self.model[component].state_dict_converter().from_civitai(state_dict))
+                self.model[component].to(self.torch_dtype).to(self.device)
+            else:
+                self.model[component] = component_dict[component]()
+                self.model[component].load_state_dict(self.model[component].state_dict_converter().from_civitai(state_dict))
+                self.model[component].to(self.torch_dtype).to(self.device)
+                self.model_path[component] = file_path
 
     def load_stable_diffusion_3_t5(self, state_dict, file_path=""):
         component = "sd3_text_encoder_3"

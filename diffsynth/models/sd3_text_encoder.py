@@ -5,8 +5,8 @@ from .sdxl_text_encoder import SDXLTextEncoder2, SDXLTextEncoder2StateDictConver
     
 
 class SD3TextEncoder1(SDTextEncoder):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, vocab_size=49408):
+        super().__init__(vocab_size=vocab_size)
 
     def forward(self, input_ids, clip_skip=2):
         embeds = self.token_embedding(input_ids) + self.position_embeds
