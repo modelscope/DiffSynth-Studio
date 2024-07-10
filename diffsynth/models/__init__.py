@@ -567,7 +567,7 @@ class ModelManager:
             if component == "sd3_text_encoder_3":
                 if "text_encoders.t5xxl.transformer.encoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight" not in state_dict:
                     continue
-            elif component == "sd3_text_encoder_1":
+            if component == "sd3_text_encoder_1":
                 # Add additional token embeddings to text encoder
                 token_embeddings = [state_dict["text_encoders.clip_l.transformer.text_model.embeddings.token_embedding.weight"]]
                 for keyword in self.textual_inversion_dict:

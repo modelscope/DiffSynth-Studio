@@ -6,7 +6,7 @@ import torch
 # `models/stable_diffusion_3/sd3_medium_incl_clips.safetensors`: [link](https://huggingface.co/stabilityai/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips.safetensors)
 download_models(["StableDiffusion3"])
 model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
-                             file_path_list=["models/stable_diffusion_3/sd3_medium_incl_clips_t5xxlfp16.safetensors"])
+                             file_path_list=["models/stable_diffusion_3/sd3_medium_incl_clips.safetensors"])
 pipe = SD3ImagePipeline.from_model_manager(model_manager)
 
 

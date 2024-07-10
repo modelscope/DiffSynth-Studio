@@ -124,6 +124,13 @@ but make sure there is a correlation between the input and output.\n\
         return prompt
 
     def process_prompt(self, prompt, positive=True, require_pure_prompt=False):
+        if isinstance(prompt, list):
+            prompt = [self.process_prompt(prompt_, positive=positive, require_pure_prompt=require_pure_prompt) for prompt_ in prompt]
+            if require_pure_prompt:
+                prompt, pure_prompt = [i[0] for i in prompt], [i[1] for i in prompt]
+                return prompt, pure_prompt
+            else:
+                return prompt
         prompt, pure_prompt = self.add_textual_inversion_tokens(prompt), self.del_textual_inversion_tokens(prompt)
         if positive and self.translator is not None:
             prompt = self.translator(prompt)
