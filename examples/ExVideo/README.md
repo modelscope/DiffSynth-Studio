@@ -4,6 +4,7 @@ ExVideo is a post-tuning technique aimed at enhancing the capability of video ge
 
 * [Project Page](https://ecnu-cilab.github.io/ExVideoProjectPage/)
 * [Technical report](https://arxiv.org/abs/2406.14130)
+* [Demo](https://huggingface.co/spaces/modelscope/ExVideo-SVD-128f-v1)
 * Extended models
     * [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
     * [ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-SVD-128f-v1)

@@ -27,6 +27,7 @@ Until now, DiffSynth Studio has supported the following models:
   - Source code is released in this repo. See [`examples/ExVideo`](./examples/ExVideo/).
   - Models are released on [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1) and [ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-SVD-128f-v1).
   - Technical report is released on [arXiv](https://arxiv.org/abs/2406.14130).
+  - You can try ExVideo in this [Demo](https://huggingface.co/spaces/modelscope/ExVideo-SVD-128f-v1)!
 
 - **June 13, 2024.** DiffSynth Studio is transferred to ModelScope. The developers have transitioned from "I" to "we". Of course, I will still participate in development and maintenance.
 
