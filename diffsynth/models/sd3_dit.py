@@ -199,7 +199,7 @@ class SD3DiT(torch.nn.Module):
         )
         return hidden_states
 
-    def forward(self, hidden_states, timestep, prompt_emb, pooled_prompt_emb, tiled=False, tile_size=128, tile_stride=64):
+    def forward(self, hidden_states, timestep, prompt_emb, pooled_prompt_emb, tiled=False, tile_size=128, tile_stride=64, use_gradient_checkpointing=False):
         if tiled:
             return self.tiled_forward(hidden_states, timestep, prompt_emb, pooled_prompt_emb, tile_size, tile_stride)
         conditioning = self.time_embedder(timestep, hidden_states.dtype) + self.pooled_text_embedder(pooled_prompt_emb)
@@ -207,8 +207,22 @@ class SD3DiT(torch.nn.Module):
 
         height, width = hidden_states.shape[-2:]
         hidden_states = self.pos_embedder(hidden_states)
+
+        def create_custom_forward(module):
+            def custom_forward(*inputs):
+                return module(*inputs)
+            return custom_forward
+        
         for block in self.blocks:
-            hidden_states, prompt_emb = block(hidden_states, prompt_emb, conditioning)
+            if self.training and use_gradient_checkpointing:
+                hidden_states, prompt_emb = torch.utils.checkpoint.checkpoint(
+                    create_custom_forward(block),
+                    hidden_states, prompt_emb, conditioning,
+                    use_reentrant=False,
+                )
+            else:
+                hidden_states, prompt_emb = block(hidden_states, prompt_emb, conditioning)
+        
         hidden_states = self.norm_out(hidden_states, conditioning)
         hidden_states = self.proj_out(hidden_states)
         hidden_states = rearrange(hidden_states, "B (H W) (P Q C) -> B C (H P) (W Q)", P=2, Q=2, H=height//2, W=width//2)

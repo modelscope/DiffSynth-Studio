@@ -40,3 +40,8 @@ class FlowMatchScheduler():
         sigma = self.sigmas[timestep_id]
         sample = (1 - sigma) * original_samples + sigma * noise
         return sample
+    
+
+    def training_target(self, sample, noise, timestep):
+        target = noise - sample
+        return target

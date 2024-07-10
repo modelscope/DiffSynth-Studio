@@ -1,10 +1,10 @@
 # Image Synthesis
 
-Image synthesis is the base feature of DiffSynth Studio.
+Image synthesis is the base feature of DiffSynth Studio. We can generate images with very high resolution.
 
 ### Example: Stable Diffusion
 
-We can generate images with very high resolution. Please see [`sd_text_to_image.py`](./sd_text_to_image.py) for more details.
+Example script: [`sd_text_to_image.py`](./sd_text_to_image.py)
 
 |512*512|1024*1024|2048*2048|4096*4096|
 |-|-|-|-|
@@ -12,7 +12,7 @@ We can generate images with very high resolution. Please see [`sd_text_to_image.
 
 ### Example: Stable Diffusion XL
 
-Generate images with Stable Diffusion XL. Please see [`sdxl_text_to_image.py`](./sdxl_text_to_image.py) for more details.
+Example script: [`sdxl_text_to_image.py`](./sdxl_text_to_image.py)
 
 |1024*1024|2048*2048|
 |-|-|
@@ -20,15 +20,29 @@ Generate images with Stable Diffusion XL. Please see [`sdxl_text_to_image.py`](.
 
 ### Example: Stable Diffusion 3
 
-Generate images with Stable Diffusion 3. High resolution is also supported in this model. See [`sd3_text_to_image.py`](./sd3_text_to_image.py).
+Example script: [`sd3_text_to_image.py`](./sd3_text_to_image.py)
+
+LoRA Training: [`../train/stable_diffusion_3/`](../train/stable_diffusion_3/)
 
 |1024*1024|2048*2048|
 |-|-|
 |![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098)|![image_2048](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/1386c802-e580-4101-939d-f1596802df9d)|
 
+### Example: Hunyuan-DiT
+
+Example script: [`hunyuan_dit_text_to_image.py`](./hunyuan_dit_text_to_image.py)
+
+LoRA Training: [`../train/hunyuan_dit/`](../train/hunyuan_dit/)
+
+|1024*1024|2048*2048|
+|-|-|
+|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5)|![image_2048](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/87919ea8-d428-4963-8257-da05f3901bbb)|
+
 ### Example: Stable Diffusion XL Turbo
 
-Generate images with Stable Diffusion XL Turbo. You can see [`sdxl_turbo.py`](./sdxl_turbo.py) for more details, but we highly recommend you to use it in the WebUI.
+Example script: [`sdxl_turbo.py`](./sdxl_turbo.py)
+
+We highly recommend you to use this model in the WebUI.
 
 |"black car"|"red car"|
 |-|-|
