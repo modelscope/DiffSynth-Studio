@@ -10,3 +10,4 @@ imageio[ffmpeg]
 safetensors
 einops
 sentencepiece
+modelscope
