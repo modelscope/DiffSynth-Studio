@@ -216,7 +216,7 @@ class HunyuanDiTImagePipeline(torch.nn.Module):
         # Prepare latent tensors
         noise = torch.randn((1, 4, height//8, width//8), device=self.device, dtype=self.torch_dtype)
         if input_image is not None:
-            image = self.preprocess_image(input_image).to(device=self.device, dtype=self.torch_dtype)
+            image = self.preprocess_image(input_image).to(device=self.device, dtype=torch.float32)
             latents = self.vae_encoder(image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(self.torch_dtype)
             latents = self.scheduler.add_noise(latents, noise, timestep=self.scheduler.timesteps[0])
         else:
