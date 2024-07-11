@@ -15,7 +15,7 @@ def download_from_modelscope(model_id, origin_file_path, local_dir):
     target_file_path = os.path.join(local_dir, os.path.split(origin_file_path)[-1])
     if downloaded_file_path != target_file_path:
         shutil.move(downloaded_file_path, target_file_path)
-        os.rmdir(os.path.join(local_dir, origin_file_path.split("/")[0]))
+        shutil.rmtree(os.path.join(local_dir, origin_file_path.split("/")[0]))
 
 
 def download_from_huggingface(model_id, origin_file_path, local_dir):
