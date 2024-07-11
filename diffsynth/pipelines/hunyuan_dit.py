@@ -293,6 +293,6 @@ class HunyuanDiTImagePipeline(torch.nn.Module):
                 progress_bar_st.progress(progress_id / len(self.scheduler.timesteps))
         
         # Decode image
-        image = self.decode_image(latents, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+        image = self.decode_image(latents.to(torch.float32), tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
 
         return image
