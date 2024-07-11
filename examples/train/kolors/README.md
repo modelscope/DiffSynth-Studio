@@ -1,16 +1,27 @@
-# Stable Diffusion 3
+# Kolors
 
-Stable Diffusion 3 is a powerful text-to-image model. We provide training scripts here.
+Kolors is a Chinese diffusion model, which is based on ChatGLM and Stable Diffusion XL. We provide training scripts here.
 
 ## Download models
 
-Only one file is required in the training script. You can use [`sd3_medium_incl_clips.safetensors`](https://huggingface.co/stabilityai/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips.safetensors) (without T5 encoder) or [`sd3_medium_incl_clips_t5xxlfp16.safetensors`](https://huggingface.co/stabilityai/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips_t5xxlfp16.safetensors) (with T5 encoder).
+The following files will be used for constructing Kolors. You can download them from [huggingface](https://huggingface.co/Kwai-Kolors/Kolors) or [modelscope](https://modelscope.cn/models/Kwai-Kolors/Kolors).
 
 ```
-models/stable_diffusion_3/
-├── Put Stable Diffusion 3 checkpoints here.txt
-├── sd3_medium_incl_clips.safetensors
-└── sd3_medium_incl_clips_t5xxlfp16.safetensors
+models/kolors/Kolors
+├── text_encoder
+│   ├── config.json
+│   ├── pytorch_model-00001-of-00007.bin
+│   ├── pytorch_model-00002-of-00007.bin
+│   ├── pytorch_model-00003-of-00007.bin
+│   ├── pytorch_model-00004-of-00007.bin
+│   ├── pytorch_model-00005-of-00007.bin
+│   ├── pytorch_model-00006-of-00007.bin
+│   ├── pytorch_model-00007-of-00007.bin
+│   └── pytorch_model.bin.index.json
+├── unet
+│   └── diffusion_pytorch_model.safetensors
+└── vae
+    └── diffusion_pytorch_model.safetensors
 ```
 
 You can use the following code to download these files:
@@ -18,7 +29,7 @@ You can use the following code to download these files:
 ```python
 from diffsynth import download_models
 
-download_models(["StableDiffusion3", "StableDiffusion3_without_T5"])
+download_models(["Kolors"])
 ```
 
 ## Train
@@ -48,34 +59,35 @@ data/dog/
 
 ```
 file_name,text
-00.jpg,a dog
-01.jpg,a dog
-02.jpg,a dog
-03.jpg,a dog
-04.jpg,a dog
+00.jpg,一只小狗
+01.jpg,一只小狗
+02.jpg,一只小狗
+03.jpg,一只小狗
+04.jpg,一只小狗
 ```
 
 ### Train a LoRA model
 
-We provide a training script `train_sd3_lora.py`. Before you run this training script, please copy it to the root directory of this project.
+We provide a training script `train_kolors_lora.py`. Before you run this training script, please copy it to the root directory of this project.
 
-We recommand to enable gradient checkpointing. 10GB VRAM is enough if you train LoRA without the T5 encoder (use `sd3_medium_incl_clips.safetensors`), and 19GB VRAM is required if you enable the T5 encoder (use `sd3_medium_incl_clips_t5xxlfp16.safetensors`).
+The following settings are recommended. **We found the UNet model suffers from precision overflow issues, thus the training script doesn't support float16. 40GB VRAM is required. We are working on overcoming this pitfall.**
 
 ```
-CUDA_VISIBLE_DEVICES="0" python train_sd3_lora.py \
-  --pretrained_path models/stable_diffusion_3/sd3_medium_incl_clips.safetensors \
+CUDA_VISIBLE_DEVICES="0" python examples/train/kolors/train_kolors_lora.py \
+  --pretrained_path models/kolors/Kolors \
   --dataset_path data/dog \
   --output_path ./models \
-  --max_epochs 1 \
+  --max_epochs 10 \
   --center_crop \
-  --use_gradient_checkpointing
+  --use_gradient_checkpointing \
+  --precision 32
 ```
 
 Optional arguments:
 ```
   -h, --help            show this help message and exit
   --pretrained_path PRETRAINED_PATH
-                        Path to pretrained model. For example, `models/stable_diffusion_3/sd3_medium_incl_clips.safetensors` or `models/stable_diffusion_3/sd3_medium_incl_clips_t5xxlfp16.safetensors`.
+                        Path to pretrained model. For example, `models/kolors/Kolors`.
   --dataset_path DATASET_PATH
                         The path of the Dataset.
   --output_path OUTPUT_PATH
@@ -113,48 +125,51 @@ Optional arguments:
 After training, you can use your own LoRA model to generate new images. Here are some examples.
 
 ```python
-from diffsynth import ModelManager, SD3ImagePipeline
-import torch
+from diffsynth import ModelManager, KolorsImagePipeline
 from peft import LoraConfig, inject_adapter_in_model
+import torch
 
 
-def load_lora(dit, lora_rank, lora_alpha, lora_path):
+def load_lora(model, lora_rank, lora_alpha, lora_path):
     lora_config = LoraConfig(
         r=lora_rank,
         lora_alpha=lora_alpha,
         init_lora_weights="gaussian",
-        target_modules=["a_to_qkv", "b_to_qkv"],
+        target_modules=["to_q", "to_k", "to_v", "to_out"],
     )
-    dit = inject_adapter_in_model(lora_config, dit)
+    model = inject_adapter_in_model(lora_config, model)
     state_dict = torch.load(lora_path, map_location="cpu")
-    dit.load_state_dict(state_dict, strict=False)
-    return dit
+    model.load_state_dict(state_dict, strict=False)
+    return model
 
 
 # Load models
 model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
-                             file_path_list=["models/stable_diffusion_3/sd3_medium_incl_clips.safetensors"])
-pipe = SD3ImagePipeline.from_model_manager(model_manager)
-
+                             file_path_list=[
+                                 "models/kolors/Kolors/text_encoder",
+                                 "models/kolors/Kolors/unet/diffusion_pytorch_model.safetensors",
+                                 "models/kolors/Kolors/vae/diffusion_pytorch_model.safetensors"
+                             ])
+pipe = KolorsImagePipeline.from_model_manager(model_manager)
 
 # Generate an image with lora
-pipe.dit = load_lora(
-    pipe.dit,
+pipe.unet = load_lora(
+    pipe.unet,
     lora_rank=4, lora_alpha=4.0, # The two parameters should be consistent with those in your training script.
     lora_path="path/to/your/lora/model/lightning_logs/version_x/checkpoints/epoch=x-step=xxx.ckpt"
 )
 torch.manual_seed(0)
 image = pipe(
-    prompt="a dog is jumping, flowers around the dog, the background is mountains and clouds", 
-    negative_prompt="bad quality, poor quality, doll, disfigured, jpg, toy, bad anatomy, missing limbs, missing fingers, 3d, cgi, extra tails",
-    cfg_scale=7.5,
-    num_inference_steps=100, width=1024, height=1024,
+    prompt="一只小狗蹦蹦跳跳，周围是姹紫嫣红的鲜花，远处是山脉",
+    negative_prompt="",
+    cfg_scale=4,
+    num_inference_steps=50, height=1024, width=1024,
 )
 image.save("image_with_lora.jpg")
 ```
 
-Prompt: a dog is jumping, flowers around the dog, the background is mountains and clouds
+Prompt: 一只小狗蹦蹦跳跳，周围是姹紫嫣红的鲜花，远处是山脉
 
 |Without LoRA|With LoRA|
 |-|-|
-|![image_without_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/ddb834a5-6366-412b-93dc-6d957230d66e)|![image_with_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/8e7b2888-d874-4da4-a75b-11b6b214b9bf)|
+|![image_without_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/9d79ed7a-e8cf-4d98-800a-f182809db318)|![image_with_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/02f62323-6ee5-4788-97a1-549732dbe4f0)|

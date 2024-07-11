@@ -1,4 +1,4 @@
-import torch, os
+import torch, os, json
 from safetensors import safe_open
 from typing_extensions import Literal, TypeAlias
 from typing import List
@@ -36,6 +36,7 @@ from .sdxl_ipadapter import SDXLIpAdapter, IpAdapterXLCLIPImageEmbedder
 
 from .hunyuan_dit_text_encoder import HunyuanDiTCLIPTextEncoder, HunyuanDiTT5TextEncoder
 from .hunyuan_dit import HunyuanDiT
+from .kolors_text_encoder import ChatGLMModel
 
 
 preset_models_on_huggingface = {
@@ -159,6 +160,20 @@ preset_models_on_modelscope = {
         ("AI-ModelScope/IP-Adapter", "sdxl_models/image_encoder/model.safetensors", "models/IpAdapter/stable_diffusion_xl/image_encoder"),
         ("AI-ModelScope/IP-Adapter", "sdxl_models/ip-adapter_sdxl.bin", "models/IpAdapter/stable_diffusion_xl"),
     ],
+    # Kolors
+    "Kolors": [
+        ("Kwai-Kolors/Kolors", "text_encoder/config.json", "models/kolors/Kolors/text_encoder"),
+        ("Kwai-Kolors/Kolors", "text_encoder/pytorch_model.bin.index.json", "models/kolors/Kolors/text_encoder"),
+        ("Kwai-Kolors/Kolors", "text_encoder/pytorch_model-00001-of-00007.bin", "models/kolors/Kolors/text_encoder"),
+        ("Kwai-Kolors/Kolors", "text_encoder/pytorch_model-00002-of-00007.bin", "models/kolors/Kolors/text_encoder"),
+        ("Kwai-Kolors/Kolors", "text_encoder/pytorch_model-00003-of-00007.bin", "models/kolors/Kolors/text_encoder"),
+        ("Kwai-Kolors/Kolors", "text_encoder/pytorch_model-00004-of-00007.bin", "models/kolors/Kolors/text_encoder"),
+        ("Kwai-Kolors/Kolors", "text_encoder/pytorch_model-00005-of-00007.bin", "models/kolors/Kolors/text_encoder"),
+        ("Kwai-Kolors/Kolors", "text_encoder/pytorch_model-00006-of-00007.bin", "models/kolors/Kolors/text_encoder"),
+        ("Kwai-Kolors/Kolors", "text_encoder/pytorch_model-00007-of-00007.bin", "models/kolors/Kolors/text_encoder"),
+        ("Kwai-Kolors/Kolors", "unet/diffusion_pytorch_model.safetensors", "models/kolors/Kolors/unet"),
+        ("Kwai-Kolors/Kolors", "vae/diffusion_pytorch_model.safetensors", "models/kolors/Kolors/vae"),
+    ],
 }
 Preset_model_id: TypeAlias = Literal[
     "HunyuanDiT",
@@ -184,7 +199,8 @@ Preset_model_id: TypeAlias = Literal[
     "IP-Adapter-SD",
     "IP-Adapter-SDXL",
     "StableDiffusion3",
-    "StableDiffusion3_without_T5"
+    "StableDiffusion3_without_T5",
+    "Kolors",
 ]
 Preset_model_website: TypeAlias = Literal[
     "HuggingFace",
@@ -272,8 +288,7 @@ class ModelManager:
     
     def is_controlnet(self, state_dict):
         param_name = "control_model.time_embed.0.weight"
-        param_name_2 = "mid_block.resnets.1.time_emb_proj.weight" # For controlnets in diffusers format
-        return param_name in state_dict or param_name_2 in state_dict
+        return param_name in state_dict
     
     def is_animatediff(self, state_dict):
         param_name = "mid_block.motion_modules.0.temporal_transformer.proj_out.weight"
@@ -342,6 +357,21 @@ class ModelManager:
     def is_stable_diffusion_3_t5(self, state_dict):
         param_name = "encoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight"
         return param_name in state_dict
+    
+    def is_kolors_text_encoder(self, file_path):
+        file_list = os.listdir(file_path)
+        if "config.json" in file_list:
+            try:
+                with open(os.path.join(file_path, "config.json"), "r") as f:
+                    config = json.load(f)
+                    if config.get("model_type") == "chatglm":
+                        return True
+            except:
+                pass
+        return False
+    
+    def is_kolors_unet(self, state_dict):
+        return "up_blocks.2.resnets.2.time_emb_proj.weight" in state_dict and "encoder_hid_proj.weight" in state_dict
     
     def load_stable_video_diffusion(self, state_dict, components=None, file_path="", add_positional_conv=None):
         component_dict = {
@@ -532,13 +562,13 @@ class ModelManager:
         component = "vae_encoder"
         model = SDXLVAEEncoder()
         model.load_state_dict(model.state_dict_converter().from_diffusers(state_dict))
-        model.to(self.torch_dtype).to(self.device)
+        model.to(torch.float32).to(self.device)
         self.model[component] = model
         self.model_path[component] = file_path
         component = "vae_decoder"
         model = SDXLVAEDecoder()
         model.load_state_dict(model.state_dict_converter().from_diffusers(state_dict))
-        model.to(self.torch_dtype).to(self.device)
+        model.to(torch.float32).to(self.device)
         self.model[component] = model
         self.model_path[component] = file_path
 
@@ -592,6 +622,21 @@ class ModelManager:
         self.model[component] = model
         self.model_path[component] = file_path
 
+    def load_kolors_text_encoder(self, state_dict=None, file_path=""):
+        component = "kolors_text_encoder"
+        model = ChatGLMModel.from_pretrained(file_path, torch_dtype=self.torch_dtype)
+        model = model.to(dtype=self.torch_dtype, device=self.device)
+        self.model[component] = model
+        self.model_path[component] = file_path
+
+    def load_kolors_unet(self, state_dict, file_path=""):
+        component = "kolors_unet"
+        model = SDXLUNet(is_kolors=True)
+        model.load_state_dict(model.state_dict_converter().from_diffusers(state_dict))
+        model.to(self.torch_dtype).to(self.device)
+        self.model[component] = model
+        self.model_path[component] = file_path
+
     def search_for_embeddings(self, state_dict):
         embeddings = []
         for k in state_dict:
@@ -607,7 +652,11 @@ class ModelManager:
 
         # Load every textual inversion file
         for file_name in os.listdir(folder):
-            if file_name.endswith(".txt"):
+            if os.path.isdir(os.path.join(folder, file_name)) or \
+                not (file_name.endswith(".bin") or \
+                     file_name.endswith(".safetensors") or \
+                     file_name.endswith(".pth") or \
+                     file_name.endswith(".pt")):
                 continue
             keyword = os.path.splitext(file_name)[0]
             state_dict = load_state_dict(os.path.join(folder, file_name))
@@ -620,6 +669,10 @@ class ModelManager:
                     break
         
     def load_model(self, file_path, components=None, lora_alphas=[]):
+        if os.path.isdir(file_path):
+            if self.is_kolors_text_encoder(file_path):
+                self.load_kolors_text_encoder(file_path=file_path)
+            return
         state_dict = load_state_dict(file_path, torch_dtype=self.torch_dtype)
         if self.is_stable_video_diffusion(state_dict):
             self.load_stable_video_diffusion(state_dict, file_path=file_path)
@@ -663,6 +716,8 @@ class ModelManager:
             self.load_stable_diffusion_3(state_dict, components=components, file_path=file_path)
         elif self.is_stable_diffusion_3_t5(state_dict):
             self.load_stable_diffusion_3_t5(state_dict, file_path=file_path)
+        elif self.is_kolors_unet(state_dict):
+            self.load_kolors_unet(state_dict, file_path=file_path)
 
     def load_models(self, file_path_list, lora_alphas=[]):
         for file_path in file_path_list:

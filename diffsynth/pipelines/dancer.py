@@ -147,7 +147,7 @@ def lets_dance_xl(
     # 3. pre-process
     height, width = sample.shape[2], sample.shape[3]
     hidden_states = unet.conv_in(sample)
-    text_emb = encoder_hidden_states
+    text_emb = encoder_hidden_states if unet.text_intermediate_proj is None else unet.text_intermediate_proj(encoder_hidden_states)
     res_stack = [hidden_states]
 
     # 4. blocks

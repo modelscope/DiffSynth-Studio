@@ -28,6 +28,16 @@ LoRA Training: [`../train/stable_diffusion_3/`](../train/stable_diffusion_3/)
 |-|-|
 |![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098)|![image_2048](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/1386c802-e580-4101-939d-f1596802df9d)|
 
+### Example: Kolors
+
+Example script: [`kolors_text_to_image.py`](./kolors_text_to_image.py)
+
+LoRA Training: [`../train/kolors/`](../train/kolors/)
+
+|1024*1024|2048*2048|
+|-|-|
+|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf)|![image_2048](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/66bb7a75-fe31-44e5-90eb-d3140ee4686d)|
+
 ### Example: Hunyuan-DiT
 
 Example script: [`hunyuan_dit_text_to_image.py`](./hunyuan_dit_text_to_image.py)
