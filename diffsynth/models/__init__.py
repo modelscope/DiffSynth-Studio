@@ -652,7 +652,11 @@ class ModelManager:
 
         # Load every textual inversion file
         for file_name in os.listdir(folder):
-            if os.path.isdir(os.path.join(folder, file_name)) or not (file_name.endswith(".bin") or file_name.endswith(".safetensors") or file_name.endswith(".pth")):
+            if os.path.isdir(os.path.join(folder, file_name)) or \
+                not (file_name.endswith(".bin") or \
+                     file_name.endswith(".safetensors") or \
+                     file_name.endswith(".pth") or \
+                     file_name.endswith(".pt")):
                 continue
             keyword = os.path.splitext(file_name)[0]
             state_dict = load_state_dict(os.path.join(folder, file_name))
