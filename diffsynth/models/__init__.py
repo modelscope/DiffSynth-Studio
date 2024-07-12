@@ -174,6 +174,9 @@ preset_models_on_modelscope = {
         ("Kwai-Kolors/Kolors", "unet/diffusion_pytorch_model.safetensors", "models/kolors/Kolors/unet"),
         ("Kwai-Kolors/Kolors", "vae/diffusion_pytorch_model.safetensors", "models/kolors/Kolors/vae"),
     ],
+    "SDXL-vae-fp16-fix": [
+        ("AI-ModelScope/sdxl-vae-fp16-fix", "diffusion_pytorch_model.safetensors", "models/sdxl-vae-fp16-fix")
+    ],
 }
 Preset_model_id: TypeAlias = Literal[
     "HunyuanDiT",
@@ -201,6 +204,7 @@ Preset_model_id: TypeAlias = Literal[
     "StableDiffusion3",
     "StableDiffusion3_without_T5",
     "Kolors",
+    "SDXL-vae-fp16-fix",
 ]
 Preset_model_website: TypeAlias = Literal[
     "HuggingFace",

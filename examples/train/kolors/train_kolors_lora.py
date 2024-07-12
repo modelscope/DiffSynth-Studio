@@ -1,4 +1,4 @@
-from diffsynth import ModelManager, KolorsImagePipeline
+from diffsynth import KolorsImagePipeline, load_state_dict, ChatGLMModel, SDXLUNet, SDXLVAEEncoder
 from peft import LoraConfig, inject_adapter_in_model
 from torchvision import transforms
 from PIL import Image
@@ -40,23 +40,40 @@ class TextImageDataset(torch.utils.data.Dataset):
     
 
 
+def load_model_from_diffsynth(ModelClass, model_kwargs, state_dict_path, torch_dtype, device):
+    model = ModelClass(**model_kwargs).to(dtype=torch_dtype, device=device)
+    state_dict = load_state_dict(state_dict_path, torch_dtype=torch_dtype)
+    model.load_state_dict(model.state_dict_converter().from_diffusers(state_dict))
+    return model
+
+
+def load_model_from_transformers(ModelClass, model_kwargs, state_dict_path, torch_dtype, device):
+    model = ModelClass.from_pretrained(state_dict_path, torch_dtype=torch_dtype)
+    model = model.to(dtype=torch_dtype, device=device)
+    return model
+    
+
+
 class LightningModel(pl.LightningModule):
-    def __init__(self, torch_dtype=torch.float16, learning_rate=1e-4, pretrained_weights=[], lora_rank=4, lora_alpha=4, use_gradient_checkpointing=True):
+    def __init__(
+        self,
+        pretrained_unet_path, pretrained_text_encoder_path, pretrained_fp16_vae_path,
+        torch_dtype=torch.float16, learning_rate=1e-4, lora_rank=4, lora_alpha=4, use_gradient_checkpointing=True
+    ):
         super().__init__()
 
         # Load models
-        model_manager = ModelManager(torch_dtype=torch_dtype, device=self.device)
-        model_manager.load_models(pretrained_weights)
-        self.pipe = KolorsImagePipeline.from_model_manager(model_manager)
+        self.pipe = KolorsImagePipeline(device=self.device, torch_dtype=torch_dtype)
+        self.pipe.text_encoder = load_model_from_transformers(ChatGLMModel, {}, pretrained_text_encoder_path, torch_dtype, self.device)
+        self.pipe.unet = load_model_from_diffsynth(SDXLUNet, {"is_kolors": True}, pretrained_unet_path, torch_dtype, self.device)
+        self.pipe.vae_encoder = load_model_from_diffsynth(SDXLVAEEncoder, {}, pretrained_fp16_vae_path, torch_dtype, self.device)
 
         # Freeze parameters
         self.pipe.text_encoder.requires_grad_(False)
         self.pipe.unet.requires_grad_(False)
-        self.pipe.vae_decoder.requires_grad_(False)
         self.pipe.vae_encoder.requires_grad_(False)
         self.pipe.text_encoder.eval()
         self.pipe.unet.train()
-        self.pipe.vae_decoder.eval()
         self.pipe.vae_encoder.eval()
 
         # Add LoRA to UNet
@@ -88,7 +105,7 @@ class LightningModel(pl.LightningModule):
             self.pipe.text_encoder, text, clip_skip=2, device=self.device, positive=True,
         )
         height, width = image.shape[-2:]
-        latents = self.pipe.vae_encoder(image.to(dtype=torch.float32, device=self.device)).to(self.pipe.torch_dtype)
+        latents = self.pipe.vae_encoder(image.to(self.device))
         noise = torch.randn_like(latents)
         timestep = torch.randint(0, 1100, (1,), device=self.device)[0]
         add_time_id = torch.tensor([height, width, 0, 0, height, width], device=self.device)
@@ -126,11 +143,25 @@ class LightningModel(pl.LightningModule):
 def parse_args():
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser.add_argument(
-        "--pretrained_path",
+        "--pretrained_unet_path",
         type=str,
         default=None,
         required=True,
-        help="Path to pretrained model. For example, `models/kolors/Kolors`.",
+        help="Path to pretrained model (UNet). For example, `models/kolors/Kolors/unet/diffusion_pytorch_model.safetensors`.",
+    )
+    parser.add_argument(
+        "--pretrained_text_encoder_path",
+        type=str,
+        default=None,
+        required=True,
+        help="Path to pretrained model (Text Encoder). For example, `models/kolors/Kolors/text_encoder`.",
+    )
+    parser.add_argument(
+        "--pretrained_fp16_vae_path",
+        type=str,
+        default=None,
+        required=True,
+        help="Path to pretrained model (VAE). For example, `models/kolors/Kolors/sdxl-vae-fp16-fix/diffusion_pytorch_model.safetensors`.",
     )
     parser.add_argument(
         "--dataset_path",
@@ -267,11 +298,9 @@ if __name__ == '__main__':
 
     # model
     model = LightningModel(
-        pretrained_weights=[
-            os.path.join(args.pretrained_path, "text_encoder"),
-            os.path.join(args.pretrained_path, "unet/diffusion_pytorch_model.safetensors"),
-            os.path.join(args.pretrained_path, "vae/diffusion_pytorch_model.safetensors"),
-        ],
+        args.pretrained_unet_path,
+        args.pretrained_text_encoder_path,
+        args.pretrained_fp16_vae_path,
         torch_dtype=torch.float32 if args.precision == "32" else torch.float16,
         learning_rate=args.learning_rate,
         lora_rank=args.lora_rank,
