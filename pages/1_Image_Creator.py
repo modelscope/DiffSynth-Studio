@@ -44,6 +44,14 @@ config = {
             "width": 1024,
         }
     },
+    "Kolors": {
+        "model_folder": "models/Kolors",
+        "pipeline_class": KolorsImagePipeline,
+        "fixed_parameters": {
+            "height": 1024,
+            "width": 1024,
+        }
+    },
 }
 
 
