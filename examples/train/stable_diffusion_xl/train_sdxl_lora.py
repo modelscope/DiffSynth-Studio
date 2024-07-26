@@ -16,10 +16,7 @@ class LightningModel(LightningModelForT2ILoRA):
         model_manager = ModelManager(torch_dtype=torch_dtype, device=self.device)
         model_manager.load_models(pretrained_weights)
         self.pipe = SDXLImagePipeline.from_model_manager(model_manager)
-        self.pipe.scheduler.set_timesteps(1100)
-
-        # Convert the vae encoder to torch.float16
-        self.pipe.vae_encoder.to(torch_dtype)
+        self.pipe.scheduler.set_timesteps(1000)
 
         self.freeze_parameters()
         self.add_lora_to_model(self.pipe.denoising_model(), lora_rank=lora_rank, lora_alpha=lora_alpha, lora_target_modules=lora_target_modules)
@@ -28,25 +25,11 @@ class LightningModel(LightningModelForT2ILoRA):
 def parse_args():
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser.add_argument(
-        "--pretrained_unet_path",
+        "--pretrained_path",
         type=str,
         default=None,
         required=True,
-        help="Path to pretrained model (UNet). For example, `models/kolors/Kolors/unet/diffusion_pytorch_model.safetensors`.",
-    )
-    parser.add_argument(
-        "--pretrained_text_encoder_path",
-        type=str,
-        default=None,
-        required=True,
-        help="Path to pretrained model (Text Encoder). For example, `models/kolors/Kolors/text_encoder`.",
-    )
-    parser.add_argument(
-        "--pretrained_fp16_vae_path",
-        type=str,
-        default=None,
-        required=True,
-        help="Path to pretrained model (VAE). For example, `models/kolors/Kolors/sdxl-vae-fp16-fix/diffusion_pytorch_model.safetensors`.",
+        help="Path to pretrained model. For example, `models/stable_diffusion_xl/sd_xl_base_1.0.safetensors`.",
     )
     parser.add_argument(
         "--lora_target_modules",
@@ -63,11 +46,7 @@ if __name__ == '__main__':
     args = parse_args()
     model = LightningModel(
         torch_dtype=torch.float32 if args.precision == "32" else torch.float16,
-        pretrained_weights=[
-            args.pretrained_unet_path,
-            args.pretrained_text_encoder_path,
-            args.pretrained_fp16_vae_path,
-        ],
+        pretrained_weights=[args.pretrained_path],
         learning_rate=args.learning_rate,
         use_gradient_checkpointing=args.use_gradient_checkpointing,
         lora_rank=args.lora_rank,

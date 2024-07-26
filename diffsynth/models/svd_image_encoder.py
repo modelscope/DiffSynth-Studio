@@ -44,7 +44,8 @@ class SVDImageEncoder(torch.nn.Module):
         embeds = self.visual_projection(embeds)
         return embeds
 
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SVDImageEncoderStateDictConverter()
 
 

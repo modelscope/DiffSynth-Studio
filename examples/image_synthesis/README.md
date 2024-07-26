@@ -73,19 +73,3 @@ Prompt: "一个漂亮的女孩". The [translation model](https://huggingface.co/
 |seed=0|seed=1|seed=2|seed=3|
 |-|-|-|-|
 |![0](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/778b1bd9-44e0-46ac-a99c-712b3fc9aaa4)|![1](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/c03479b8-2082-4c6e-8e1c-3582b98686f6)|![2](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/edb33d21-3288-4a55-96ca-a4bfe1b50b00)|![3](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/7848cfc1-cad5-4848-8373-41d24e98e584)|
-
-### Example: Stable Diffusion 3 with Textual Inversions (Experimental)
-
-Since Stable Diffusion 3 utilizes the same text encoder as Stable Diffusion 1.x, it supports the textual inversions designed for Stable Diffusion 1.x. However, we found that the textual inversions may cause unpredictable effects to the model. We can only guarantee that these textual inversions can be loaded into the model. The example script is [`sd3_text_to_image_textual_inversion.py`](./sd3_text_to_image_textual_inversion.py)
-
-Prompt: "a girl, highly detailed, absurd res, perfect image". Without any textual inversions.
-
-|seed=0|seed=1|seed=2|seed=3|
-|-|-|-|-|
-|![image_without_textual_inversion_0](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4e918bf8-6081-4f79-a043-87adc4047d92)|![image_without_textual_inversion_1](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/2e90a01f-6a83-46ba-99b6-ab085582a5b7)|![image_without_textual_inversion_2](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/83570a6f-cddd-4d0a-8b2f-f50388e2ca8a)|![image_without_textual_inversion_3](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/f4d0f2d4-80ee-4281-923e-77d87e3d37b1)|
-
-Prompt: "a girl, highly detailed, absurd res, perfect image". With [`verybadimagenegative_v1.3`](https://civitai.com/models/11772/verybadimagenegative) on the negative side.
-
-|seed=0|seed=1|seed=2|seed=3|
-|-|-|-|-|
-|![image_with_textual_inversion_0](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/1b3485ee-e7c1-4306-8f93-c9f32d1ac937)|![image_with_textual_inversion_1](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/5d7c6c4b-afdf-42b0-8e94-1959f1a44491)|![image_with_textual_inversion_2](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/92e93c4e-2781-41df-a246-2d2e9bde97c4)|![image_with_textual_inversion_3](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/070966a0-3d5c-48d8-8199-9d7c80408689)|

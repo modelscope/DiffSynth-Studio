@@ -1,5 +1,6 @@
 from ..models import ModelManager, SVDImageEncoder, SVDUNet, SVDVAEEncoder, SVDVAEDecoder
 from ..schedulers import ContinuousODEScheduler
+from .base import BasePipeline
 import torch
 from tqdm import tqdm
 from PIL import Image
@@ -8,13 +9,11 @@ from einops import rearrange, repeat
 
 
 
-class SVDVideoPipeline(torch.nn.Module):
+class SVDVideoPipeline(BasePipeline):
 
     def __init__(self, device="cuda", torch_dtype=torch.float16):
-        super().__init__()
+        super().__init__(device=device, torch_dtype=torch_dtype)
         self.scheduler = ContinuousODEScheduler()
-        self.device = device
-        self.torch_dtype = torch_dtype
         # models
         self.image_encoder: SVDImageEncoder = None
         self.unet: SVDUNet = None
@@ -22,30 +21,21 @@ class SVDVideoPipeline(torch.nn.Module):
         self.vae_decoder: SVDVAEDecoder = None
     
 
-    def fetch_main_models(self, model_manager: ModelManager):
-        self.image_encoder = model_manager.image_encoder
-        self.unet = model_manager.unet
-        self.vae_encoder = model_manager.vae_encoder
-        self.vae_decoder = model_manager.vae_decoder
+    def fetch_models(self, model_manager: ModelManager):
+        self.image_encoder = model_manager.fetch_model("svd_image_encoder")
+        self.unet = model_manager.fetch_model("svd_unet")
+        self.vae_encoder = model_manager.fetch_model("svd_vae_encoder")
+        self.vae_decoder = model_manager.fetch_model("svd_vae_decoder")
 
 
     @staticmethod
     def from_model_manager(model_manager: ModelManager, **kwargs):
-        pipe = SVDVideoPipeline(device=model_manager.device, torch_dtype=model_manager.torch_dtype)
-        pipe.fetch_main_models(model_manager)
+        pipe = SVDVideoPipeline(
+            device=model_manager.device,
+            torch_dtype=model_manager.torch_dtype
+        )
+        pipe.fetch_models(model_manager)
         return pipe
-    
-
-    def preprocess_image(self, image):
-        image = torch.Tensor(np.array(image, dtype=np.float32) * (2 / 255) - 1).permute(2, 0, 1).unsqueeze(0)
-        return image
-    
-
-    def decode_image(self, latent, tiled=False, tile_size=64, tile_stride=32):
-        image = self.vae_decoder(latent.to(self.device), tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0]
-        image = image.cpu().permute(1, 2, 0).numpy()
-        image = Image.fromarray(((image / 2 + 0.5).clip(0, 1) * 255).astype("uint8"))
-        return image
     
 
     def encode_image_with_clip(self, image):

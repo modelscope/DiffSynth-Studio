@@ -6,7 +6,8 @@ class SVDVAEEncoder(SDVAEEncoder):
         super().__init__()
         self.scaling_factor = 0.13025
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SVDVAEEncoderStateDictConverter()
 
 

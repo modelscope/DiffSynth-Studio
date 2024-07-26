@@ -228,7 +228,8 @@ class SD3DiT(torch.nn.Module):
         hidden_states = rearrange(hidden_states, "B (H W) (P Q C) -> B C (H P) (W Q)", P=2, Q=2, H=height//2, W=width//2)
         return hidden_states
         
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SD3DiTStateDictConverter()
 
 

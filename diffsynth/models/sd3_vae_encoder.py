@@ -90,5 +90,6 @@ class SD3VAEEncoder(torch.nn.Module):
         hidden_states = torch.concat(hidden_states, dim=2)
         return hidden_states
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SDVAEEncoderStateDictConverter()

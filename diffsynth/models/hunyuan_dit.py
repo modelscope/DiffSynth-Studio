@@ -1,5 +1,4 @@
 from .attention import Attention
-from .tiler import TileWorker
 from einops import repeat, rearrange
 import math
 import torch
@@ -399,7 +398,8 @@ class HunyuanDiT(torch.nn.Module):
         hidden_states, _ = hidden_states.chunk(2, dim=1)
         return hidden_states
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return HunyuanDiTStateDictConverter()
 
 

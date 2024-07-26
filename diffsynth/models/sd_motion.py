@@ -144,7 +144,8 @@ class SDMotionModel(torch.nn.Module):
     def forward(self):
         pass
 
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SDMotionModelStateDictConverter()
 
 

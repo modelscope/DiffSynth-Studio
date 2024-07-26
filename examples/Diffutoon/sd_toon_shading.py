@@ -20,7 +20,6 @@ download_models([
 
 # Load models
 model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")
-model_manager.load_textual_inversions("models/textual_inversion")
 model_manager.load_models([
     "models/stable_diffusion/flat2DAnimerge_v45Sharp.safetensors",
     "models/AnimateDiff/mm_sd_v15_v2.ckpt",
@@ -42,6 +41,7 @@ pipe = SDVideoPipeline.from_model_manager(
         )
     ]
 )
+pipe.prompter.load_textual_inversions(["models/textual_inversion/verybadimagenegative_v1.3.pt"])
 
 # Load video (we only use 60 frames for quick testing)
 # The original video is here: https://www.bilibili.com/video/BV19w411A7YJ/
@@ -59,7 +59,6 @@ output_video = pipe(
     controlnet_frames=input_video, num_frames=len(input_video),
     num_inference_steps=10, height=1024, width=1024,
     animatediff_batch_size=32, animatediff_stride=16,
-    vram_limit_level=0,
 )
 
 # Save video

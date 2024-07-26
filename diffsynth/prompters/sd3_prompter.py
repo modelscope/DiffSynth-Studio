@@ -1,9 +1,11 @@
-from .utils import Prompter
+from .base_prompter import BasePrompter
+from ..models.model_manager import ModelManager
+from ..models import SD3TextEncoder1, SD3TextEncoder2, SD3TextEncoder3
 from transformers import CLIPTokenizer, T5TokenizerFast
 import os, torch
 
 
-class SD3Prompter(Prompter):
+class SD3Prompter(BasePrompter):
     def __init__(
         self,
         tokenizer_1_path=None,
@@ -20,9 +22,18 @@ class SD3Prompter(Prompter):
             base_path = os.path.dirname(os.path.dirname(__file__))
             tokenizer_3_path = os.path.join(base_path, "tokenizer_configs/stable_diffusion_3/tokenizer_3")
         super().__init__()
-        self.tokenizer = CLIPTokenizer.from_pretrained(tokenizer_1_path)
+        self.tokenizer_1 = CLIPTokenizer.from_pretrained(tokenizer_1_path)
         self.tokenizer_2 = CLIPTokenizer.from_pretrained(tokenizer_2_path)
         self.tokenizer_3 = T5TokenizerFast.from_pretrained(tokenizer_3_path)
+        self.text_encoder_1: SD3TextEncoder1 = None
+        self.text_encoder_2: SD3TextEncoder2 = None
+        self.text_encoder_3: SD3TextEncoder3 = None
+
+
+    def fetch_models(self, text_encoder_1: SD3TextEncoder1 = None, text_encoder_2: SD3TextEncoder2 = None, text_encoder_3: SD3TextEncoder3 = None):
+        self.text_encoder_1 = text_encoder_1
+        self.text_encoder_2 = text_encoder_2
+        self.text_encoder_3 = text_encoder_3
 
 
     def encode_prompt_using_clip(self, prompt, text_encoder, tokenizer, max_length, device):
@@ -54,24 +65,21 @@ class SD3Prompter(Prompter):
 
     def encode_prompt(
         self,
-        text_encoder_1,
-        text_encoder_2,
-        text_encoder_3,
         prompt,
         positive=True,
         device="cuda"
     ):
-        prompt, pure_prompt = self.process_prompt(prompt, positive=positive, require_pure_prompt=True)
+        prompt = self.process_prompt(prompt, positive=positive)
         
         # CLIP
-        pooled_prompt_emb_1, prompt_emb_1 = self.encode_prompt_using_clip(prompt, text_encoder_1, self.tokenizer, 77, device)
-        pooled_prompt_emb_2, prompt_emb_2 = self.encode_prompt_using_clip(pure_prompt, text_encoder_2, self.tokenizer_2, 77, device)
+        pooled_prompt_emb_1, prompt_emb_1 = self.encode_prompt_using_clip(prompt, self.text_encoder_1, self.tokenizer_1, 77, device)
+        pooled_prompt_emb_2, prompt_emb_2 = self.encode_prompt_using_clip(prompt, self.text_encoder_2, self.tokenizer_2, 77, device)
 
         # T5
-        if text_encoder_3 is None:
+        if self.text_encoder_3 is None:
             prompt_emb_3 = torch.zeros((prompt_emb_1.shape[0], 256, 4096), dtype=prompt_emb_1.dtype, device=device)
         else:
-            prompt_emb_3 = self.encode_prompt_using_t5(pure_prompt, text_encoder_3, self.tokenizer_3, 256, device)
+            prompt_emb_3 = self.encode_prompt_using_t5(prompt, self.text_encoder_3, self.tokenizer_3, 256, device)
             prompt_emb_3 = prompt_emb_3.to(prompt_emb_1.dtype) # float32 -> float16
 
         # Merge

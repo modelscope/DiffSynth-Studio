@@ -20,6 +20,8 @@ class FlowMatchScheduler():
 
 
     def step(self, model_output, timestep, sample, to_final=False):
+        if isinstance(timestep, torch.Tensor):
+            timestep = timestep.cpu()
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
         if to_final or timestep_id + 1 >= len(self.timesteps):
@@ -36,6 +38,8 @@ class FlowMatchScheduler():
     
     
     def add_noise(self, original_samples, noise, timestep):
+        if isinstance(timestep, torch.Tensor):
+            timestep = timestep.cpu()
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
         sample = (1 - sigma) * original_samples + sigma * noise

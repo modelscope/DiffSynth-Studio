@@ -1,4 +1,5 @@
-from .utils import Prompter
+from .base_prompter import BasePrompter
+from ..models.model_manager import ModelManager
 import json, os, re
 from typing import List, Optional, Union, Dict
 from sentencepiece import SentencePieceProcessor
@@ -302,7 +303,7 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
 
 
 
-class KolorsPrompter(Prompter):
+class KolorsPrompter(BasePrompter):
     def __init__(
         self,
         tokenizer_path=None
@@ -312,6 +313,11 @@ class KolorsPrompter(Prompter):
             tokenizer_path = os.path.join(base_path, "tokenizer_configs/kolors/tokenizer")
         super().__init__()
         self.tokenizer = ChatGLMTokenizer.from_pretrained(tokenizer_path)
+        self.text_encoder: ChatGLMModel = None
+
+
+    def fetch_models(self, text_encoder: ChatGLMModel = None):
+        self.text_encoder = text_encoder
 
 
     def encode_prompt_using_ChatGLM(self, prompt, text_encoder, tokenizer, max_length, clip_skip, device):
@@ -335,13 +341,13 @@ class KolorsPrompter(Prompter):
 
     def encode_prompt(
         self,
-        text_encoder: ChatGLMModel,
         prompt,
-        clip_skip=2,
+        clip_skip=1,
+        clip_skip_2=2,
         positive=True,
         device="cuda"
     ):
         prompt = self.process_prompt(prompt, positive=positive)
-        prompt_emb, pooled_prompt_emb = self.encode_prompt_using_ChatGLM(prompt, text_encoder, self.tokenizer, 256, clip_skip, device)
+        prompt_emb, pooled_prompt_emb = self.encode_prompt_using_ChatGLM(prompt, self.text_encoder, self.tokenizer, 256, clip_skip_2, device)
         
         return pooled_prompt_emb, prompt_emb

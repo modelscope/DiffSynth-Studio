@@ -1,0 +1,379 @@
+# DiffSynth Training Framework
+
+We have implemented a training framework for text-to-image Diffusion models, enabling users to easily train LoRA models using our framework. Our provided scripts come with the following advantages:
+
+* **Comprehensive Functionality & User-Friendliness**: Our training framework supports multi-GPU and multi-machine setups, facilitates the use of DeepSpeed for acceleration, and includes gradient checkpointing optimizations for models with excessive memory demands.
+* **Code Conciseness & Researcher Accessibility**: We avoid large blocks of complicated code. General-purpose modules are implemented in `diffsynth/trainers/text_to_image.py`, while model-specific training scripts contain only minimal code pertinent to the model architecture, making it researcher-friendly.
+* **Modular Design & Developer Flexibility**: Built on the universal Pytorch-Lightning framework, our training framework is decoupled in terms of functionality, allowing developers to easily introduce additional training techniques by modifying our scripts to suit their needs.
+
+Image Examples of fine-tuned LoRA. The prompt is "一只小狗蹦蹦跳跳，周围是姹紫嫣红的鲜花，远处是山脉" (for Chinese models) or "a dog is jumping, flowers around the dog, the background is mountains and clouds" (for English models).
+
+||Kolors|Stable Diffusion 3|Hunyuan-DiT|
+|-|-|-|-|
+|Without LoRA|![image_without_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/9d79ed7a-e8cf-4d98-800a-f182809db318)|![image_without_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/ddb834a5-6366-412b-93dc-6d957230d66e)|![image_without_lora](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/1aa21de5-a992-4b66-b14f-caa44e08876e)|
+|With LoRA|![image_with_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/02f62323-6ee5-4788-97a1-549732dbe4f0)|![image_with_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/8e7b2888-d874-4da4-a75b-11b6b214b9bf)|![image_with_lora](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/83a0a41a-691f-4610-8e7b-d8e17c50a282)|
+
+## Prepare your dataset
+
+We provide an example dataset [here](https://modelscope.cn/datasets/buptwq/lora-stable-diffusion-finetune/files). You need to manage the training images as follows:
+
+```
+data/dog/
+└── train
+    ├── 00.jpg
+    ├── 01.jpg
+    ├── 02.jpg
+    ├── 03.jpg
+    ├── 04.jpg
+    └── metadata.csv
+```
+
+`metadata.csv`:
+
+```
+file_name,text
+00.jpg,a dog
+01.jpg,a dog
+02.jpg,a dog
+03.jpg,a dog
+04.jpg,a dog
+```
+
+Note that if the model is Chinese model (for example, Hunyuan-DiT and Kolors), we recommand to use Chinese texts in the dataset. For example
+
+```
+file_name,text
+00.jpg,一只小狗
+01.jpg,一只小狗
+02.jpg,一只小狗
+03.jpg,一只小狗
+04.jpg,一只小狗
+```
+
+## Train a LoRA model
+
+### Kolors
+
+The following files will be used for constructing Kolors. You can download Kolors from [huggingface](https://huggingface.co/Kwai-Kolors/Kolors) or [modelscope](https://modelscope.cn/models/Kwai-Kolors/Kolors). Due to precision overflow issues, we need to download an additional VAE model (from [huggingface](https://huggingface.co/madebyollin/sdxl-vae-fp16-fix) or [modelscope](https://modelscope.cn/models/AI-ModelScope/sdxl-vae-fp16-fix)). You can use the following code to download these files:
+
+```python
+from diffsynth import download_models
+
+download_models(["Kolors", "SDXL-vae-fp16-fix"])
+```
+
+```
+models
+├── kolors
+│   └── Kolors
+│       ├── text_encoder
+│       │   ├── config.json
+│       │   ├── pytorch_model-00001-of-00007.bin
+│       │   ├── pytorch_model-00002-of-00007.bin
+│       │   ├── pytorch_model-00003-of-00007.bin
+│       │   ├── pytorch_model-00004-of-00007.bin
+│       │   ├── pytorch_model-00005-of-00007.bin
+│       │   ├── pytorch_model-00006-of-00007.bin
+│       │   ├── pytorch_model-00007-of-00007.bin
+│       │   └── pytorch_model.bin.index.json
+│       ├── unet
+│       │   └── diffusion_pytorch_model.safetensors
+│       └── vae
+│           └── diffusion_pytorch_model.safetensors
+└── sdxl-vae-fp16-fix
+    └── diffusion_pytorch_model.safetensors
+```
+
+Launch the training task using the following command:
+
+```
+CUDA_VISIBLE_DEVICES="0" python examples/train/kolors/train_kolors_lora.py \
+  --pretrained_unet_path models/kolors/Kolors/unet/diffusion_pytorch_model.safetensors \
+  --pretrained_text_encoder_path models/kolors/Kolors/text_encoder \
+  --pretrained_fp16_vae_path models/sdxl-vae-fp16-fix/diffusion_pytorch_model.safetensors \
+  --dataset_path data/dog \
+  --output_path ./models \
+  --max_epochs 1 \
+  --steps_per_epoch 500 \
+  --height 1024 \
+  --width 1024 \
+  --center_crop \
+  --precision "16-mixed" \
+  --learning_rate 1e-4 \
+  --lora_rank 4 \
+  --lora_alpha 4 \
+  --use_gradient_checkpointing
+```
+
+For more information about the parameters, please use `python examples/train/kolors/train_kolors_lora.py -h` to see the details.
+
+After training, use `model_manager.load_lora` to load the LoRA for inference.
+
+```python
+from diffsynth import ModelManager, SDXLImagePipeline
+import torch
+
+model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
+                             file_path_list=[
+                                 "models/kolors/Kolors/text_encoder",
+                                 "models/kolors/Kolors/unet/diffusion_pytorch_model.safetensors",
+                                 "models/sdxl-vae-fp16-fix/diffusion_pytorch_model.safetensors"
+                             ])
+model_manager.load_lora("models/lightning_logs/version_0/checkpoints/epoch=0-step=500.ckpt", lora_alpha=1.0)
+pipe = SDXLImagePipeline.from_model_manager(model_manager)
+
+torch.manual_seed(0)
+image = pipe(
+    prompt="一只小狗蹦蹦跳跳，周围是姹紫嫣红的鲜花，远处是山脉", 
+    negative_prompt="",
+    cfg_scale=7.5,
+    num_inference_steps=100, width=1024, height=1024,
+)
+image.save("image_with_lora.jpg")
+```
+
+### Stable Diffusion 3
+
+Only one file is required in the training script. You can use [`sd3_medium_incl_clips.safetensors`](https://huggingface.co/stabilityai/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips.safetensors) (without T5 encoder) or [`sd3_medium_incl_clips_t5xxlfp16.safetensors`](https://huggingface.co/stabilityai/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips_t5xxlfp16.safetensors) (with T5 encoder). Please use the following code to download these files:
+
+```python
+from diffsynth import download_models
+
+download_models(["StableDiffusion3", "StableDiffusion3_without_T5"])
+```
+
+```
+models/stable_diffusion_3/
+├── Put Stable Diffusion 3 checkpoints here.txt
+├── sd3_medium_incl_clips.safetensors
+└── sd3_medium_incl_clips_t5xxlfp16.safetensors
+```
+
+Launch the training task using the following command:
+
+```
+CUDA_VISIBLE_DEVICES="0" python examples/train/stable_diffusion_3/train_sd3_lora.py \
+  --pretrained_path models/stable_diffusion_3/sd3_medium_incl_clips.safetensors \
+  --dataset_path data/dog \
+  --output_path ./models \
+  --max_epochs 1 \
+  --steps_per_epoch 500 \
+  --height 1024 \
+  --width 1024 \
+  --center_crop \
+  --precision "16-mixed" \
+  --learning_rate 1e-4 \
+  --lora_rank 4 \
+  --lora_alpha 4 \
+  --use_gradient_checkpointing
+```
+
+For more information about the parameters, please use `python examples/train/stable_diffusion_3/train_sd3_lora.py -h` to see the details.
+
+After training, use `model_manager.load_lora` to load the LoRA for inference.
+
+```python
+from diffsynth import ModelManager, SD3ImagePipeline
+import torch
+
+model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
+                             file_path_list=["models/stable_diffusion_3/sd3_medium_incl_clips.safetensors"])
+model_manager.load_lora("models/lightning_logs/version_0/checkpoints/epoch=0-step=500.ckpt", lora_alpha=1.0)
+pipe = SD3ImagePipeline.from_model_manager(model_manager)
+
+torch.manual_seed(0)
+image = pipe(
+    prompt="a dog is jumping, flowers around the dog, the background is mountains and clouds", 
+    negative_prompt="bad quality, poor quality, doll, disfigured, jpg, toy, bad anatomy, missing limbs, missing fingers, 3d, cgi, extra tails",
+    cfg_scale=7.5,
+    num_inference_steps=100, width=1024, height=1024,
+)
+image.save("image_with_lora.jpg")
+```
+
+### Hunyuan-DiT
+
+Four files will be used for constructing Hunyuan DiT. You can download them from [huggingface](https://huggingface.co/Tencent-Hunyuan/HunyuanDiT) or [modelscope](https://www.modelscope.cn/models/modelscope/HunyuanDiT/summary). You can use the following code to download these files:
+
+```python
+from diffsynth import download_models
+
+download_models(["HunyuanDiT"])
+```
+
+```
+models/HunyuanDiT/
+├── Put Hunyuan DiT checkpoints here.txt
+└── t2i
+    ├── clip_text_encoder
+    │   └── pytorch_model.bin
+    ├── model
+    │   └── pytorch_model_ema.pt
+    ├── mt5
+    │   └── pytorch_model.bin
+    └── sdxl-vae-fp16-fix
+        └── diffusion_pytorch_model.bin
+```
+
+Launch the training task using the following command:
+
+```
+CUDA_VISIBLE_DEVICES="0" python examples/train/hunyuan_dit/train_hunyuan_dit_lora.py \
+  --pretrained_path models/HunyuanDiT/t2i \
+  --dataset_path data/dog \
+  --output_path ./models \
+  --max_epochs 1 \
+  --steps_per_epoch 500 \
+  --height 1024 \
+  --width 1024 \
+  --center_crop \
+  --precision "16-mixed" \
+  --learning_rate 1e-4 \
+  --lora_rank 4 \
+  --lora_alpha 4 \
+  --use_gradient_checkpointing
+```
+
+For more information about the parameters, please use `python examples/train/hunyuan_dit/train_hunyuan_dit_lora.py -h` to see the details.
+
+After training, use `model_manager.load_lora` to load the LoRA for inference.
+
+```python
+from diffsynth import ModelManager, HunyuanDiTImagePipeline
+import torch
+
+model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
+                             file_path_list=[
+                                 "models/HunyuanDiT/t2i/clip_text_encoder/pytorch_model.bin",
+                                 "models/HunyuanDiT/t2i/model/pytorch_model_ema.pt",
+                                 "models/HunyuanDiT/t2i/mt5/pytorch_model.bin",
+                                 "models/HunyuanDiT/t2i/sdxl-vae-fp16-fix/diffusion_pytorch_model.bin"
+                             ])
+model_manager.load_lora("models/lightning_logs/version_0/checkpoints/epoch=0-step=500.ckpt", lora_alpha=1.0)
+pipe = HunyuanDiTImagePipeline.from_model_manager(model_manager)
+
+torch.manual_seed(0)
+image = pipe(
+    prompt="一只小狗蹦蹦跳跳，周围是姹紫嫣红的鲜花，远处是山脉", 
+    negative_prompt="",
+    cfg_scale=7.5,
+    num_inference_steps=100, width=1024, height=1024,
+)
+image.save("image_with_lora.jpg")
+```
+
+### Stable Diffusion
+
+Only one file is required in the training script. We support the mainstream checkpoints in [CivitAI](https://civitai.com/). By default, we use the base Stable Diffusion v1.5. You can download it from [huggingface](https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors) or [modelscope](https://www.modelscope.cn/models/AI-ModelScope/stable-diffusion-v1-5/resolve/master/v1-5-pruned-emaonly.safetensors). You can use the following code to download this file:
+
+```python
+from diffsynth import download_models
+
+download_models(["StableDiffusion_v15"])
+```
+
+```
+models/stable_diffusion
+├── Put Stable Diffusion checkpoints here.txt
+└── v1-5-pruned-emaonly.safetensors
+```
+
+Launch the training task using the following command:
+
+```
+CUDA_VISIBLE_DEVICES="0" python examples/train/stable_diffusion/train_sd_lora.py \
+  --pretrained_path models/stable_diffusion/v1-5-pruned-emaonly.safetensors \
+  --dataset_path data/dog \
+  --output_path ./models \
+  --max_epochs 1 \
+  --steps_per_epoch 500 \
+  --height 512 \
+  --width 512 \
+  --center_crop \
+  --precision "16-mixed" \
+  --learning_rate 1e-4 \
+  --lora_rank 4 \
+  --lora_alpha 4 \
+  --use_gradient_checkpointing
+```
+
+For more information about the parameters, please use `python examples/train/stable_diffusion/train_sd_lora.py -h` to see the details.
+
+After training, use `model_manager.load_lora` to load the LoRA for inference.
+
+```python
+from diffsynth import ModelManager, SDImagePipeline
+import torch
+
+model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
+                             file_path_list=["models/stable_diffusion/v1-5-pruned-emaonly.safetensors"])
+model_manager.load_lora("models/lightning_logs/version_0/checkpoints/epoch=0-step=500.ckpt", lora_alpha=1.0)
+pipe = SDImagePipeline.from_model_manager(model_manager)
+
+torch.manual_seed(0)
+image = pipe(
+    prompt="a dog is jumping, flowers around the dog, the background is mountains and clouds", 
+    negative_prompt="bad quality, poor quality, doll, disfigured, jpg, toy, bad anatomy, missing limbs, missing fingers, 3d, cgi, extra tails",
+    cfg_scale=7.5,
+    num_inference_steps=100, width=512, height=512,
+)
+image.save("image_with_lora.jpg")
+```
+
+### Stable Diffusion XL
+
+Only one file is required in the training script. We support the mainstream checkpoints in [CivitAI](https://civitai.com/). By default, we use the base Stable Diffusion XL. You can download it from [huggingface](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors) or [modelscope](https://www.modelscope.cn/models/AI-ModelScope/stable-diffusion-xl-base-1.0/resolve/master/sd_xl_base_1.0.safetensors). You can use the following code to download this file:
+
+```python
+from diffsynth import download_models
+
+download_models(["StableDiffusionXL_v1"])
+```
+
+```
+models/stable_diffusion_xl
+├── Put Stable Diffusion XL checkpoints here.txt
+└── sd_xl_base_1.0.safetensors
+```
+
+We observed that Stable Diffusion XL is not float16-safe, thus we recommand users to use float32.
+
+```
+CUDA_VISIBLE_DEVICES="0" python examples/train/stable_diffusion_xl/train_sdxl_lora.py \
+  --pretrained_path models/stable_diffusion_xl/sd_xl_base_1.0.safetensors \
+  --dataset_path data/dog \
+  --output_path ./models \
+  --max_epochs 1 \
+  --steps_per_epoch 500 \
+  --height 1024 \
+  --width 1024 \
+  --center_crop \
+  --precision "32" \
+  --learning_rate 1e-4 \
+  --lora_rank 4 \
+  --lora_alpha 4 \
+  --use_gradient_checkpointing
+```
+
+For more information about the parameters, please use `python examples/train/stable_diffusion_xl/train_sdxl_lora.py -h` to see the details.
+
+After training, use `model_manager.load_lora` to load the LoRA for inference.
+
+```python
+from diffsynth import ModelManager, SDXLImagePipeline
+import torch
+
+model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
+                             file_path_list=["models/stable_diffusion_xl/sd_xl_base_1.0.safetensors"])
+model_manager.load_lora("models/lightning_logs/version_0/checkpoints/epoch=0-step=500.ckpt", lora_alpha=1.0)
+pipe = SDXLImagePipeline.from_model_manager(model_manager)
+
+torch.manual_seed(0)
+image = pipe(
+    prompt="a dog is jumping, flowers around the dog, the background is mountains and clouds", 
+    negative_prompt="bad quality, poor quality, doll, disfigured, jpg, toy, bad anatomy, missing limbs, missing fingers, 3d, cgi, extra tails",
+    cfg_scale=7.5,
+    num_inference_steps=100, width=1024, height=1024,
+)
+image.save("image_with_lora.jpg")
+```
