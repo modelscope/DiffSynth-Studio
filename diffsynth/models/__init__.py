@@ -194,10 +194,10 @@ class ModelManager:
         self.model[component].append(model)
         self.model_path[component].append(file_path)
 
-    def load_animatediff(self, state_dict, file_path=""):
+    def load_animatediff(self, state_dict, file_path="", add_positional_conv=None):
         component = "motion_modules"
-        model = SDMotionModel()
-        model.load_state_dict(model.state_dict_converter().from_civitai(state_dict))
+        model = SDMotionModel(add_positional_conv=add_positional_conv)
+        model.load_state_dict(model.state_dict_converter().from_civitai(state_dict, add_positional_conv=add_positional_conv))
         model.to(self.torch_dtype).to(self.device)
         self.model[component] = model
         self.model_path[component] = file_path

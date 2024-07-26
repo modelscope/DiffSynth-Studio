@@ -3,12 +3,12 @@ from ..models import ModelManager
 import os
 
 
-def tokenize_long_prompt(tokenizer, prompt):
+def tokenize_long_prompt(tokenizer, prompt, max_length=99999999):
     # Get model_max_length from self.tokenizer
     length = tokenizer.model_max_length
 
     # To avoid the warning. set self.tokenizer.model_max_length to +oo.
-    tokenizer.model_max_length = 99999999
+    tokenizer.model_max_length = max_length
 
     # Tokenize it!
     input_ids = tokenizer(prompt, return_tensors="pt").input_ids
