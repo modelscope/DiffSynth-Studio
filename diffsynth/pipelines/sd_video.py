@@ -257,10 +257,10 @@ class SDVideoPipeline(SDImagePipeline):
                 progress_bar_st.progress(progress_id / len(self.scheduler.timesteps))
         
         # Decode image
-        image = self.decode_video(latents, **tiler_kwargs)
+        output_frames = self.decode_video(latents, **tiler_kwargs)
 
         # Post-process
         if smoother is not None and (num_inference_steps in smoother_progress_ids or -1 in smoother_progress_ids):
             output_frames = smoother(output_frames, original_frames=input_frames)
 
-        return image
+        return output_frames

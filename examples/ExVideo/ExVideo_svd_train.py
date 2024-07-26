@@ -4,7 +4,7 @@ import numpy as np
 from einops import rearrange, repeat
 import lightning as pl
 from diffsynth import ModelManager, SVDImageEncoder, SVDUNet, SVDVAEEncoder, ContinuousODEScheduler, load_state_dict
-from diffsynth.pipelines.stable_video_diffusion import SVDCLIPImageProcessor
+from diffsynth.pipelines.svd_video import SVDCLIPImageProcessor
 from diffsynth.models.svd_unet import TemporalAttentionBlock
 
 
@@ -131,14 +131,14 @@ class LightningModel(pl.LightningModule):
         self.image_encoder.requires_grad_(False)
 
         self.unet = SVDUNet(add_positional_conv=add_positional_conv).to(dtype=torch.float16, device=self.device)
-        self.unet.load_state_dict(SVDUNet.state_dict_converter().from_civitai(state_dict), strict=False)
+        self.unet.load_state_dict(SVDUNet.state_dict_converter().from_civitai(state_dict, add_positional_conv=add_positional_conv), strict=False)
         self.unet.train()
         self.unet.requires_grad_(False)
         for block in self.unet.blocks:
             if isinstance(block, TemporalAttentionBlock):
                 block.requires_grad_(True)
 
-        self.vae_encoder = SVDVAEEncoder.to(dtype=torch.float16, device=self.device)
+        self.vae_encoder = SVDVAEEncoder().to(dtype=torch.float16, device=self.device)
         self.vae_encoder.load_state_dict(SVDVAEEncoder.state_dict_converter().from_civitai(state_dict))
         self.vae_encoder.eval()
         self.vae_encoder.requires_grad_(False)
