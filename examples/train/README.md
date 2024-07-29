@@ -52,6 +52,47 @@ file_name,text
 
 ## Train a LoRA model
 
+General options:
+
+```
+  --lora_target_modules LORA_TARGET_MODULES
+                        Layers with LoRA modules.
+  --dataset_path DATASET_PATH
+                        The path of the Dataset.
+  --output_path OUTPUT_PATH
+                        Path to save the model.
+  --steps_per_epoch STEPS_PER_EPOCH
+                        Number of steps per epoch.
+  --height HEIGHT       Image height.
+  --width WIDTH         Image width.
+  --center_crop         Whether to center crop the input images to the resolution. If not set, the images will be randomly cropped. The images will be resized to the resolution first before cropping.
+  --random_flip         Whether to randomly flip images horizontally
+  --batch_size BATCH_SIZE
+                        Batch size (per device) for the training dataloader.
+  --dataloader_num_workers DATALOADER_NUM_WORKERS
+                        Number of subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
+  --precision {32,16,16-mixed}
+                        Training precision
+  --learning_rate LEARNING_RATE
+                        Learning rate.
+  --lora_rank LORA_RANK
+                        The dimension of the LoRA update matrices.
+  --lora_alpha LORA_ALPHA
+                        The weight of the LoRA update matrices.
+  --use_gradient_checkpointing
+                        Whether to use gradient checkpointing.
+  --accumulate_grad_batches ACCUMULATE_GRAD_BATCHES
+                        The number of batches in gradient accumulation.
+  --training_strategy {auto,deepspeed_stage_1,deepspeed_stage_2,deepspeed_stage_3}
+                        Training strategy
+  --max_epochs MAX_EPOCHS
+                        Number of epochs.
+  --modelscope_model_id MODELSCOPE_MODEL_ID
+                        Model ID on ModelScope (https://www.modelscope.cn/). The model will be uploaded to ModelScope automatically if you provide a Model ID.
+  --modelscope_access_token MODELSCOPE_ACCESS_TOKEN
+                        Access key on ModelScope (https://www.modelscope.cn/). Required if you want to upload the model to ModelScope.
+```
+
 ### Kolors
 
 The following files will be used for constructing Kolors. You can download Kolors from [huggingface](https://huggingface.co/Kwai-Kolors/Kolors) or [modelscope](https://modelscope.cn/models/Kwai-Kolors/Kolors). Due to precision overflow issues, we need to download an additional VAE model (from [huggingface](https://huggingface.co/madebyollin/sdxl-vae-fp16-fix) or [modelscope](https://modelscope.cn/models/AI-ModelScope/sdxl-vae-fp16-fix)). You can use the following code to download these files:
