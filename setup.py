@@ -25,5 +25,6 @@ setup(
         "License :: OSI Approved :: Apache-2.0 License",
         "Operating System :: OS Independent",
     ],
+    package_data={"diffsynth": ["tokenizer_configs/**/**/*.*"]},
     python_requires='>=3.6',
 )
