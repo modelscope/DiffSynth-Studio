@@ -1,6 +1,5 @@
 torch>=2.0.0
 cupy-cuda12x
-pip
 transformers
 controlnet-aux==0.0.7
 streamlit
