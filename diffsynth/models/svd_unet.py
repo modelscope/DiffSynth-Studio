@@ -407,7 +407,8 @@ class SVDUNet(torch.nn.Module):
 
         return hidden_states
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SVDUNetStateDictConverter()
     
 

@@ -96,7 +96,8 @@ class SDXLIpAdapter(torch.nn.Module):
             }
         return ip_kv_dict
 
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SDXLIpAdapterStateDictConverter()
 
 

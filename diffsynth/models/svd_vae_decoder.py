@@ -199,7 +199,8 @@ class SVDVAEDecoder(torch.nn.Module):
         return values
     
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SVDVAEDecoderStateDictConverter()
     
 

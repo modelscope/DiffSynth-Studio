@@ -76,5 +76,6 @@ class SD3VAEDecoder(torch.nn.Module):
 
         return hidden_states
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SDVAEDecoderStateDictConverter()

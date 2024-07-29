@@ -11,13 +11,13 @@ download_models(["AingDiffusion_v12", "IP-Adapter-SD", "TextualInversion_VeryBad
 
 # Load models
 model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")
-model_manager.load_textual_inversions("models/textual_inversion")
 model_manager.load_models([
     "models/stable_diffusion/aingdiffusion_v12.safetensors",
     "models/IpAdapter/stable_diffusion/image_encoder/model.safetensors",
     "models/IpAdapter/stable_diffusion/ip-adapter_sd15.bin"
 ])
 pipe = SDImagePipeline.from_model_manager(model_manager)
+pipe.prompter.load_textual_inversions(["models/textual_inversion/verybadimagenegative_v1.3.pt"])
 
 torch.manual_seed(1)
 style_image = pipe(

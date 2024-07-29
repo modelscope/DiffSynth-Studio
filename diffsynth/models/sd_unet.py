@@ -323,7 +323,7 @@ class SDUNet(torch.nn.Module):
 
     def forward(self, sample, timestep, encoder_hidden_states, **kwargs):
         # 1. time
-        time_emb = self.time_proj(timestep[None]).to(sample.dtype)
+        time_emb = self.time_proj(timestep).to(sample.dtype)
         time_emb = self.time_embedding(time_emb)
 
         # 2. pre-process
@@ -342,7 +342,8 @@ class SDUNet(torch.nn.Module):
 
         return hidden_states
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SDUNetStateDictConverter()
 
 

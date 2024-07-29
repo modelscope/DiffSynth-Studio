@@ -99,7 +99,8 @@ class IFNet(nn.Module):
             merged[i] = merged[i][0] * mask_list[i] + merged[i][1] * (1 - mask_list[i])    
         return flow_list, mask_list[2], merged
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return IFNetStateDictConverter()
 
 

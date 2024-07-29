@@ -71,7 +71,8 @@ class SDTextEncoder(torch.nn.Module):
         embeds = self.final_layer_norm(embeds)
         return embeds
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SDTextEncoderStateDictConverter()
 
 

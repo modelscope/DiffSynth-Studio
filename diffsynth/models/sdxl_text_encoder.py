@@ -36,7 +36,8 @@ class SDXLTextEncoder(torch.nn.Module):
                 break
         return embeds
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SDXLTextEncoderStateDictConverter()
     
 
@@ -80,7 +81,8 @@ class SDXLTextEncoder2(torch.nn.Module):
         pooled_embeds = self.text_projection(pooled_embeds)
         return pooled_embeds, hidden_states
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SDXLTextEncoder2StateDictConverter()
 
 

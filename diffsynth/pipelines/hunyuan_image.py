@@ -3,11 +3,11 @@ from ..models.hunyuan_dit_text_encoder import HunyuanDiTCLIPTextEncoder, Hunyuan
 from ..models.sdxl_vae_encoder import SDXLVAEEncoder
 from ..models.sdxl_vae_decoder import SDXLVAEDecoder
 from ..models import ModelManager
-from ..prompts import HunyuanDiTPrompter
+from ..prompters import HunyuanDiTPrompter
 from ..schedulers import EnhancedDDIMScheduler
+from .base import BasePipeline
 import torch
 from tqdm import tqdm
-from PIL import Image
 import numpy as np
 
 
@@ -122,14 +122,12 @@ class ImageSizeManager:
 
 
 
-class HunyuanDiTImagePipeline(torch.nn.Module):
+class HunyuanDiTImagePipeline(BasePipeline):
 
     def __init__(self, device="cuda", torch_dtype=torch.float16):
-        super().__init__()
+        super().__init__(device=device, torch_dtype=torch_dtype)
         self.scheduler = EnhancedDDIMScheduler(prediction_type="v_prediction", beta_start=0.00085, beta_end=0.03)
         self.prompter = HunyuanDiTPrompter()
-        self.device = device
-        self.torch_dtype = torch_dtype
         self.image_size_manager = ImageSizeManager()
         # models
         self.text_encoder: HunyuanDiTCLIPTextEncoder = None
@@ -139,42 +137,60 @@ class HunyuanDiTImagePipeline(torch.nn.Module):
         self.vae_encoder: SDXLVAEEncoder = None
 
 
-    def fetch_main_models(self, model_manager: ModelManager):
-        self.text_encoder = model_manager.hunyuan_dit_clip_text_encoder
-        self.text_encoder_t5 = model_manager.hunyuan_dit_t5_text_encoder
-        self.dit = model_manager.hunyuan_dit
-        self.vae_decoder = model_manager.vae_decoder
-        self.vae_encoder = model_manager.vae_encoder
+    def denoising_model(self):
+        return self.dit
 
 
-    def fetch_prompter(self, model_manager: ModelManager):
-        self.prompter.load_from_model_manager(model_manager)
+    def fetch_models(self, model_manager: ModelManager, prompt_refiner_classes=[]):
+        # Main models
+        self.text_encoder = model_manager.fetch_model("hunyuan_dit_clip_text_encoder")
+        self.text_encoder_t5 = model_manager.fetch_model("hunyuan_dit_t5_text_encoder")
+        self.dit = model_manager.fetch_model("hunyuan_dit")
+        self.vae_decoder = model_manager.fetch_model("sdxl_vae_decoder")
+        self.vae_encoder = model_manager.fetch_model("sdxl_vae_encoder")
+        self.prompter.fetch_models(self.text_encoder, self.text_encoder_t5)
+        self.prompter.load_prompt_refiners(model_manager, prompt_refiner_classes)
 
 
     @staticmethod
-    def from_model_manager(model_manager: ModelManager):
+    def from_model_manager(model_manager: ModelManager, prompt_refiner_classes=[]):
         pipe = HunyuanDiTImagePipeline(
             device=model_manager.device,
             torch_dtype=model_manager.torch_dtype,
         )
-        pipe.fetch_main_models(model_manager)
-        pipe.fetch_prompter(model_manager)
+        pipe.fetch_models(model_manager, prompt_refiner_classes)
         return pipe
     
 
-    def preprocess_image(self, image):
-        image = torch.Tensor(np.array(image, dtype=np.float32) * (2 / 255) - 1).permute(2, 0, 1).unsqueeze(0)
-        return image
+    def encode_image(self, image, tiled=False, tile_size=64, tile_stride=32):
+        latents = self.vae_encoder(image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+        return latents
     
 
     def decode_image(self, latent, tiled=False, tile_size=64, tile_stride=32):
-        image = self.vae_decoder(latent.to(self.device), tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0]
-        image = image.cpu().permute(1, 2, 0).numpy()
-        image = Image.fromarray(((image / 2 + 0.5).clip(0, 1) * 255).astype("uint8"))
+        image = self.vae_decoder(latent.to(self.device), tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+        image = self.vae_output_to_image(image)
         return image
     
 
-    def prepare_extra_input(self, height=1024, width=1024, tiled=False, tile_size=64, tile_stride=32, batch_size=1):
+    def encode_prompt(self, prompt, clip_skip=1, clip_skip_2=1, positive=True):
+        text_emb, text_emb_mask, text_emb_t5, text_emb_mask_t5 = self.prompter.encode_prompt(
+            prompt,
+            clip_skip=clip_skip,
+            clip_skip_2=clip_skip_2,
+            positive=positive,
+            device=self.device
+        )
+        return {
+            "text_emb": text_emb,
+            "text_emb_mask": text_emb_mask,
+            "text_emb_t5": text_emb_t5,
+            "text_emb_mask_t5": text_emb_mask_t5
+        }
+    
+
+    def prepare_extra_input(self, latents=None, tiled=False, tile_size=64, tile_stride=32):
+        batch_size, height, width = latents.shape[0], latents.shape[2] * 8, latents.shape[3] * 8
         if tiled:
             height, width = tile_size * 16, tile_size * 16
         image_meta_size = torch.as_tensor([width, height, width, height, 0, 0]).to(device=self.device)
@@ -198,7 +214,6 @@ class HunyuanDiTImagePipeline(torch.nn.Module):
         clip_skip=1,
         clip_skip_2=1,
         input_image=None,
-        reference_images=[],
         reference_strengths=[0.4],
         denoising_strength=1.0,
         height=1024,
@@ -222,65 +237,26 @@ class HunyuanDiTImagePipeline(torch.nn.Module):
         else:
             latents = noise.clone()
 
-        # Prepare reference latents
-        reference_latents = []
-        for reference_image in reference_images:
-            reference_image = self.preprocess_image(reference_image).to(device=self.device, dtype=self.torch_dtype)
-            reference_latents.append(self.vae_encoder(reference_image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(self.torch_dtype))
-
         # Encode prompts
-        prompt_emb_posi, attention_mask_posi, prompt_emb_t5_posi, attention_mask_t5_posi = self.prompter.encode_prompt(
-            self.text_encoder,
-            self.text_encoder_t5,
-            prompt,
-            clip_skip=clip_skip,
-            clip_skip_2=clip_skip_2,
-            positive=True,
-            device=self.device
-        )
+        prompt_emb_posi = self.encode_prompt(prompt, clip_skip=clip_skip, clip_skip_2=clip_skip_2, positive=True)
         if cfg_scale != 1.0:
-            prompt_emb_nega, attention_mask_nega, prompt_emb_t5_nega, attention_mask_t5_nega = self.prompter.encode_prompt(
-                self.text_encoder,
-                self.text_encoder_t5,
-                negative_prompt,
-                clip_skip=clip_skip,
-                clip_skip_2=clip_skip_2,
-                positive=False,
-                device=self.device
-            )
+            prompt_emb_nega = self.encode_prompt(negative_prompt, clip_skip=clip_skip, clip_skip_2=clip_skip_2, positive=True)
 
         # Prepare positional id
-        extra_input = self.prepare_extra_input(height, width, tiled, tile_size)
+        extra_input = self.prepare_extra_input(latents, tiled, tile_size)
 
         # Denoise
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = torch.tensor([timestep]).to(dtype=self.torch_dtype, device=self.device)
 
-            # In-context reference
-            for reference_latents_, reference_strength in zip(reference_latents, reference_strengths):
-                if progress_id < num_inference_steps * reference_strength:
-                    noisy_reference_latents = self.scheduler.add_noise(reference_latents_, noise, self.scheduler.timesteps[progress_id])
-                    self.dit(
-                        noisy_reference_latents,
-                        prompt_emb_posi, prompt_emb_t5_posi, attention_mask_posi, attention_mask_t5_posi,
-                        timestep,
-                        **extra_input,
-                        to_cache=True
-                    )
             # Positive side
             noise_pred_posi = self.dit(
-                latents,
-                prompt_emb_posi, prompt_emb_t5_posi, attention_mask_posi, attention_mask_t5_posi,
-                timestep,
-                **extra_input,
+                latents, timestep=timestep, **prompt_emb_posi, **extra_input,
             )
             if cfg_scale != 1.0:
                 # Negative side
                 noise_pred_nega = self.dit(
-                    latents,
-                    prompt_emb_nega, prompt_emb_t5_nega, attention_mask_nega, attention_mask_t5_nega,
-                    timestep,
-                    **extra_input
+                    latents, timestep=timestep, **prompt_emb_nega, **extra_input,
                 )
                 # Classifier-free guidance
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)

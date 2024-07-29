@@ -1,10 +1,12 @@
-from .utils import Prompter, tokenize_long_prompt
-from transformers import CLIPTokenizer
+from .base_prompter import BasePrompter, tokenize_long_prompt
+from ..models.model_manager import ModelManager
 from ..models import SDXLTextEncoder, SDXLTextEncoder2
+from transformers import CLIPTokenizer
 import torch, os
 
 
-class SDXLPrompter(Prompter):
+
+class SDXLPrompter(BasePrompter):
     def __init__(
         self,
         tokenizer_path=None,
@@ -19,11 +21,17 @@ class SDXLPrompter(Prompter):
         super().__init__()
         self.tokenizer = CLIPTokenizer.from_pretrained(tokenizer_path)
         self.tokenizer_2 = CLIPTokenizer.from_pretrained(tokenizer_2_path)
+        self.text_encoder: SDXLTextEncoder = None
+        self.text_encoder_2: SDXLTextEncoder2 = None
+
+    
+    def fetch_models(self, text_encoder: SDXLTextEncoder = None, text_encoder_2: SDXLTextEncoder2 = None):
+        self.text_encoder = text_encoder
+        self.text_encoder_2 = text_encoder_2
+    
     
     def encode_prompt(
         self,
-        text_encoder: SDXLTextEncoder,
-        text_encoder_2: SDXLTextEncoder2,
         prompt,
         clip_skip=1,
         clip_skip_2=2,
@@ -34,11 +42,11 @@ class SDXLPrompter(Prompter):
         
         # 1
         input_ids = tokenize_long_prompt(self.tokenizer, prompt).to(device)
-        prompt_emb_1 = text_encoder(input_ids, clip_skip=clip_skip)
+        prompt_emb_1 = self.text_encoder(input_ids, clip_skip=clip_skip)
 
         # 2
         input_ids_2 = tokenize_long_prompt(self.tokenizer_2, prompt).to(device)
-        add_text_embeds, prompt_emb_2 = text_encoder_2(input_ids_2, clip_skip=clip_skip_2)
+        add_text_embeds, prompt_emb_2 = self.text_encoder_2(input_ids_2, clip_skip=clip_skip_2)
 
         # Merge
         if prompt_emb_1.shape[0] != prompt_emb_2.shape[0]:

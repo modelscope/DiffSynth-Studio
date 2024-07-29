@@ -79,7 +79,8 @@ class HunyuanDiTCLIPTextEncoder(BertModel):
             prompt_emb = (prompt_emb - prompt_emb.mean()) / prompt_emb.std() * std + mean
         return prompt_emb
 
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return HunyuanDiTCLIPTextEncoderStateDictConverter()
 
 
@@ -131,7 +132,8 @@ class HunyuanDiTT5TextEncoder(T5EncoderModel):
             prompt_emb = (prompt_emb - prompt_emb.mean()) / prompt_emb.std() * std + mean
         return prompt_emb
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return HunyuanDiTT5TextEncoderStateDictConverter()
 
 

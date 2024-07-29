@@ -19,7 +19,8 @@ class SD3TextEncoder1(SDTextEncoder):
         pooled_embeds = embeds[torch.arange(embeds.shape[0]), input_ids.to(dtype=torch.int).argmax(dim=-1)]
         return pooled_embeds, hidden_states
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SD3TextEncoder1StateDictConverter()
     
 
@@ -28,7 +29,8 @@ class SD3TextEncoder2(SDXLTextEncoder2):
     def __init__(self):
         super().__init__()
 
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SD3TextEncoder2StateDictConverter()
 
 
@@ -72,7 +74,8 @@ class SD3TextEncoder3(T5EncoderModel):
         prompt_emb = outputs.last_hidden_state
         return prompt_emb
     
-    def state_dict_converter(self):
+    @staticmethod
+    def state_dict_converter():
         return SD3TextEncoder3StateDictConverter()
 
 

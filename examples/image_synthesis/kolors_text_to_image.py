@@ -1,4 +1,4 @@
-from diffsynth import ModelManager, KolorsImagePipeline, download_models
+from diffsynth import ModelManager, SDXLImagePipeline, download_models
 import torch
 
 # Download models
@@ -10,7 +10,7 @@ model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
                                  "models/kolors/Kolors/unet/diffusion_pytorch_model.safetensors",
                                  "models/kolors/Kolors/vae/diffusion_pytorch_model.safetensors"
                              ])
-pipe = KolorsImagePipeline.from_model_manager(model_manager)
+pipe = SDXLImagePipeline.from_model_manager(model_manager)
 
 prompt = "一幅充满诗意美感的全身画，泛红的肤色，画中一位银色长发、蓝色眼睛、肤色红润、身穿蓝色吊带连衣裙的少女漂浮在水下，面向镜头，周围是光彩的气泡，和煦的阳光透过水面折射进水下"
 negative_prompt = "半身，苍白的肤色，蜡黄的肤色，尸体，错误的眼睛，糟糕的人脸，毁容，糟糕的艺术，变形，多余的肢体，模糊的颜色，模糊，重复，病态，残缺，错误的手指，口红，腮红"

@@ -1,4 +1,4 @@
-from diffsynth import ModelManager, SDXLImagePipeline, download_models
+from diffsynth import ModelManager, SDXLImagePipeline, download_models, Translator, BeautifulPrompt
 import torch
 
 
@@ -12,10 +12,10 @@ download_models(["StableDiffusionXL_v1", "BeautifulPrompt", "opus-mt-zh-en"])
 model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")
 model_manager.load_models([
     "models/stable_diffusion_xl/sd_xl_base_1.0.safetensors",
-    "models/BeautifulPrompt/pai-bloom-1b1-text2prompt-sd/model.safetensors",
-    "models/translator/opus-mt-zh-en/pytorch_model.bin"
+    "models/BeautifulPrompt/pai-bloom-1b1-text2prompt-sd",
+    "models/translator/opus-mt-zh-en"
 ])
-pipe = SDXLImagePipeline.from_model_manager(model_manager)
+pipe = SDXLImagePipeline.from_model_manager(model_manager, prompt_refiner_classes=[Translator, BeautifulPrompt])
 
 prompt = "一个漂亮的女孩"
 negative_prompt = ""
