@@ -29,8 +29,7 @@ class SD3ImagePipeline(BasePipeline):
     def fetch_models(self, model_manager: ModelManager, prompt_refiner_classes=[]):
         self.text_encoder_1 = model_manager.fetch_model("sd3_text_encoder_1")
         self.text_encoder_2 = model_manager.fetch_model("sd3_text_encoder_2")
-        if "sd3_text_encoder_3" in model_manager.model:
-            self.text_encoder_3 = model_manager.fetch_model("sd3_text_encoder_3")
+        self.text_encoder_3 = model_manager.fetch_model("sd3_text_encoder_3")
         self.dit = model_manager.fetch_model("sd3_dit")
         self.vae_decoder = model_manager.fetch_model("sd3_vae_decoder")
         self.vae_encoder = model_manager.fetch_model("sd3_vae_encoder")

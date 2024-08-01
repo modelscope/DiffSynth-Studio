@@ -16,6 +16,7 @@ from ..models.sd3_vae_decoder import SD3VAEDecoder
 from ..models.sd3_vae_encoder import SD3VAEEncoder
 
 from ..models.sd_controlnet import SDControlNet
+from ..models.sdxl_controlnet import SDXLControlNetUnion
 
 from ..models.sd_motion import SDMotionModel
 from ..models.sdxl_motion import SDXLMotionModel
@@ -60,6 +61,7 @@ model_loader_configs = [
     (None, "2a07abce74b4bdc696b76254ab474da6", ["svd_image_encoder", "svd_unet", "svd_vae_decoder", "svd_vae_encoder"], [SVDImageEncoder, SVDUNet, SVDVAEDecoder, SVDVAEEncoder], "civitai"),
     (None, "c96a285a6888465f87de22a984d049fb", ["sd_motion_modules"], [SDMotionModel], "civitai"),
     (None, "72907b92caed19bdb2adb89aa4063fe2", ["sdxl_motion_modules"], [SDXLMotionModel], "civitai"),
+    (None, "31d2d9614fba60511fc9bf2604aa01f7", ["sdxl_controlnet"], [SDXLControlNetUnion], "diffusers"),
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.

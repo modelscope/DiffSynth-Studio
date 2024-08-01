@@ -23,6 +23,7 @@ from .sd3_vae_decoder import SD3VAEDecoder
 from .sd3_vae_encoder import SD3VAEEncoder
 
 from .sd_controlnet import SDControlNet
+from .sdxl_controlnet import SDXLControlNetUnion
 
 from .sd_motion import SDMotionModel
 from .sdxl_motion import SDXLMotionModel

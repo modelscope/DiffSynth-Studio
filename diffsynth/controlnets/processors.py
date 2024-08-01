@@ -47,5 +47,6 @@ class Annotator:
             detect_resolution = self.detect_resolution if self.detect_resolution is not None else min(width, height)
             image = self.processor(image, detect_resolution=detect_resolution, image_resolution=min(width, height), **kwargs)
         image = image.resize((width, height))
+        image.save("/mnt/zhongjie/DiffSynth-Studio-kolors/DiffSynth-Studio/input.jpg")
         return image
 

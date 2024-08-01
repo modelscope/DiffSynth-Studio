@@ -83,6 +83,8 @@ class SDXLUNet(torch.nn.Module):
         self.conv_act = torch.nn.SiLU()
         self.conv_out = torch.nn.Conv2d(320, 4, kernel_size=3, padding=1)
 
+        self.is_kolors = is_kolors
+
     def forward(
         self,
         sample, timestep, encoder_hidden_states, add_time_id, add_text_embeds,
