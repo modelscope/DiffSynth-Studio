@@ -255,6 +255,37 @@ with column_input:
                     key="canvas"
                 )
 
+    num_painter_layer = st.number_input("Number of painter layers", min_value=0, max_value=10, step=1, value=0)
+    local_prompts, masks, mask_scales = [], [], []
+    white_board = Image.fromarray(np.ones((512, 512, 3), dtype=np.uint8) * 255)
+    for painter_tab_id in range(num_painter_layer):
+        with st.expander(f"Painter layer {painter_tab_id}", expanded=True):
+            enable_local_prompt = st.checkbox(f"Enable prompt {painter_tab_id}", value=True)
+            local_prompt = st.text_area(f"Prompt {painter_tab_id}")
+            mask_scale = st.slider(f"Mask scale {painter_tab_id}", min_value=0.0, max_value=3.0, value=1.0)
+            stroke_width = st.slider(f"Stroke width {painter_tab_id}", min_value=1, max_value=300, value=100)
+            canvas_result_local = st_canvas(
+                fill_color="#000000",
+                stroke_width=stroke_width,
+                stroke_color="#000000",
+                background_color="rgba(255, 255, 255, 0)",
+                background_image=white_board,
+                update_streamlit=True,
+                height=512,
+                width=512,
+                drawing_mode="freedraw",
+                key=f"canvas_{painter_tab_id}"
+            )
+            if enable_local_prompt:
+                local_prompts.append(local_prompt)
+                if canvas_result_local.image_data is not None:
+                    mask = apply_stroke_to_image(canvas_result_local.image_data, white_board)
+                else:
+                    mask = white_board
+                mask = Image.fromarray(255 - np.array(mask))
+                masks.append(mask)
+                mask_scales.append(mask_scale)
+
 
 with column_output:
     run_button = st.button("Generate image", type="primary")
@@ -282,6 +313,7 @@ with column_output:
                 progress_bar_st = st.progress(0.0)
                 image = pipeline(
                     prompt, negative_prompt=negative_prompt,
+                    local_prompts=local_prompts, masks=masks, mask_scales=mask_scales,
                     cfg_scale=cfg_scale, num_inference_steps=num_inference_steps,
                     height=height, width=width,
                     input_image=input_image, denoising_strength=denoising_strength,

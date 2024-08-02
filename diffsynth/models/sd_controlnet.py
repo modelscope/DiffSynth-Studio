@@ -97,6 +97,7 @@ class SDControlNet(torch.nn.Module):
         self,
         sample, timestep, encoder_hidden_states, conditioning,
         tiled=False, tile_size=64, tile_stride=32,
+        **kwargs
     ):
         # 1. time
         time_emb = self.time_proj(timestep).to(sample.dtype)

@@ -37,13 +37,14 @@ class MultiControlNetManager:
     def __call__(
         self,
         sample, timestep, encoder_hidden_states, conditionings,
-        tiled=False, tile_size=64, tile_stride=32
+        tiled=False, tile_size=64, tile_stride=32, **kwargs
     ):
         res_stack = None
-        for conditioning, model, scale in zip(conditionings, self.models, self.scales):
+        for processor, conditioning, model, scale in zip(self.processors, conditionings, self.models, self.scales):
             res_stack_ = model(
-                sample, timestep, encoder_hidden_states, conditioning,
-                tiled=tiled, tile_size=tile_size, tile_stride=tile_stride
+                sample, timestep, encoder_hidden_states, conditioning, **kwargs,
+                tiled=tiled, tile_size=tile_size, tile_stride=tile_stride,
+                processor_id=processor.processor_id
             )
             res_stack_ = [res * scale for res in res_stack_]
             if res_stack is None:

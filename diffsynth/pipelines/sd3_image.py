@@ -29,8 +29,7 @@ class SD3ImagePipeline(BasePipeline):
     def fetch_models(self, model_manager: ModelManager, prompt_refiner_classes=[]):
         self.text_encoder_1 = model_manager.fetch_model("sd3_text_encoder_1")
         self.text_encoder_2 = model_manager.fetch_model("sd3_text_encoder_2")
-        if "sd3_text_encoder_3" in model_manager.model:
-            self.text_encoder_3 = model_manager.fetch_model("sd3_text_encoder_3")
+        self.text_encoder_3 = model_manager.fetch_model("sd3_text_encoder_3")
         self.dit = model_manager.fetch_model("sd3_dit")
         self.vae_decoder = model_manager.fetch_model("sd3_vae_decoder")
         self.vae_encoder = model_manager.fetch_model("sd3_vae_encoder")
@@ -74,6 +73,9 @@ class SD3ImagePipeline(BasePipeline):
     def __call__(
         self,
         prompt,
+        local_prompts=[],
+        masks=[],
+        mask_scales=[],
         negative_prompt="",
         cfg_scale=7.5,
         input_image=None,
@@ -105,15 +107,17 @@ class SD3ImagePipeline(BasePipeline):
         # Encode prompts
         prompt_emb_posi = self.encode_prompt(prompt, positive=True)
         prompt_emb_nega = self.encode_prompt(negative_prompt, positive=False)
+        prompt_emb_locals = [self.encode_prompt(prompt_local) for prompt_local in local_prompts]
 
         # Denoise
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.unsqueeze(0).to(self.device)
 
             # Classifier-free guidance
-            noise_pred_posi = self.dit(
+            inference_callback = lambda prompt_emb_posi: self.dit(
                 latents, timestep=timestep, **prompt_emb_posi, **tiler_kwargs,
             )
+            noise_pred_posi = self.control_noise_via_local_prompts(prompt_emb_posi, prompt_emb_locals, masks, mask_scales, inference_callback)
             noise_pred_nega = self.dit(
                 latents, timestep=timestep, **prompt_emb_nega, **tiler_kwargs,
             )

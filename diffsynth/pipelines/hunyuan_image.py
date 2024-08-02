@@ -209,6 +209,9 @@ class HunyuanDiTImagePipeline(BasePipeline):
     def __call__(
         self,
         prompt,
+        local_prompts=[],
+        masks=[],
+        mask_scales=[],
         negative_prompt="",
         cfg_scale=7.5,
         clip_skip=1,
@@ -241,6 +244,7 @@ class HunyuanDiTImagePipeline(BasePipeline):
         prompt_emb_posi = self.encode_prompt(prompt, clip_skip=clip_skip, clip_skip_2=clip_skip_2, positive=True)
         if cfg_scale != 1.0:
             prompt_emb_nega = self.encode_prompt(negative_prompt, clip_skip=clip_skip, clip_skip_2=clip_skip_2, positive=True)
+        prompt_emb_locals = [self.encode_prompt(prompt_local, clip_skip=clip_skip, clip_skip_2=clip_skip_2, positive=True) for prompt_local in local_prompts]
 
         # Prepare positional id
         extra_input = self.prepare_extra_input(latents, tiled, tile_size)
@@ -250,9 +254,9 @@ class HunyuanDiTImagePipeline(BasePipeline):
             timestep = torch.tensor([timestep]).to(dtype=self.torch_dtype, device=self.device)
 
             # Positive side
-            noise_pred_posi = self.dit(
-                latents, timestep=timestep, **prompt_emb_posi, **extra_input,
-            )
+            inference_callback = lambda prompt_emb_posi: self.dit(latents, timestep=timestep, **prompt_emb_posi, **extra_input)
+            noise_pred_posi = self.control_noise_via_local_prompts(prompt_emb_posi, prompt_emb_locals, masks, mask_scales, inference_callback)
+            
             if cfg_scale != 1.0:
                 # Negative side
                 noise_pred_nega = self.dit(
