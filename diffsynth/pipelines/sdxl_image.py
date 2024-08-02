@@ -109,6 +109,9 @@ class SDXLImagePipeline(BasePipeline):
     def __call__(
         self,
         prompt,
+        local_prompts=[],
+        masks=[],
+        mask_scales=[],
         negative_prompt="",
         cfg_scale=7.5,
         clip_skip=1,
@@ -146,6 +149,7 @@ class SDXLImagePipeline(BasePipeline):
         # Encode prompts
         prompt_emb_posi = self.encode_prompt(prompt, clip_skip=clip_skip, clip_skip_2=clip_skip_2, positive=True)
         prompt_emb_nega = self.encode_prompt(negative_prompt, clip_skip=clip_skip, clip_skip_2=clip_skip_2, positive=False)
+        prompt_emb_locals = [self.encode_prompt(prompt_local, clip_skip=clip_skip, clip_skip_2=clip_skip_2, positive=True) for prompt_local in local_prompts]
 
         # IP-Adapter
         if ipadapter_images is not None:
@@ -175,12 +179,14 @@ class SDXLImagePipeline(BasePipeline):
             timestep = timestep.unsqueeze(0).to(self.device)
 
             # Classifier-free guidance
-            noise_pred_posi = lets_dance_xl(
+            inference_callback = lambda prompt_emb_posi: lets_dance_xl(
                 self.unet, motion_modules=None, controlnet=self.controlnet,
                 sample=latents, timestep=timestep, **extra_input,
                 **prompt_emb_posi, **controlnet_kwargs, **tiler_kwargs, **ipadapter_kwargs_list_posi,
                 device=self.device,
             )
+            noise_pred_posi = self.control_noise_via_local_prompts(prompt_emb_posi, prompt_emb_locals, masks, mask_scales, inference_callback)
+
             if cfg_scale != 1.0:
                 noise_pred_nega = lets_dance_xl(
                     self.unet, motion_modules=None, controlnet=self.controlnet,
