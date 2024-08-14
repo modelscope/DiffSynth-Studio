@@ -49,8 +49,8 @@ class FLUXTextEncoder2(T5EncoderModel):
             relative_attention_max_distance = 128,
             relative_attention_num_buckets = 32,
             tie_word_embeddings = False,
-            torch_dtype = bfloat16,  # change
-            transformers_version = "4.43.3",  # change
+            torch_dtype = "bfloat16",
+            transformers_version = "4.43.3",
             use_cache = True,
             vocab_size = 32128
         )
