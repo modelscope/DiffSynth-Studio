@@ -22,7 +22,7 @@ class BasePipeline(torch.nn.Module):
     
 
     def vae_output_to_image(self, vae_output):
-        image = vae_output[0].cpu().permute(1, 2, 0).numpy()
+        image = vae_output[0].cpu().float().permute(1, 2, 0).numpy()
         image = Image.fromarray(((image / 2 + 0.5).clip(0, 1) * 255).astype("uint8"))
         return image
     

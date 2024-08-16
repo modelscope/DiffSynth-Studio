@@ -33,6 +33,11 @@ from ..models.hunyuan_dit_text_encoder import HunyuanDiTCLIPTextEncoder, Hunyuan
 from ..models.hunyuan_dit import HunyuanDiT
 
 
+from ..models.flux_dit import FluxDiT
+from ..models.flux_text_encoder import FluxTextEncoder1, FluxTextEncoder2
+from ..models.flux_vae import FluxVAEEncoder, FluxVAEDecoder
+
+
 
 model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -62,13 +67,18 @@ model_loader_configs = [
     (None, "c96a285a6888465f87de22a984d049fb", ["sd_motion_modules"], [SDMotionModel], "civitai"),
     (None, "72907b92caed19bdb2adb89aa4063fe2", ["sdxl_motion_modules"], [SDXLMotionModel], "civitai"),
     (None, "31d2d9614fba60511fc9bf2604aa01f7", ["sdxl_controlnet"], [SDXLControlNetUnion], "diffusers"),
+    (None, "94eefa3dac9cec93cb1ebaf1747d7b78", ["flux_text_encoder_1"], [FluxTextEncoder1], "diffusers"),
+    (None, "1aafa3cc91716fb6b300cc1cd51b85a3", ["flux_vae_encoder", "flux_vae_decoder"], [FluxVAEEncoder, FluxVAEDecoder], "diffusers"),
+    (None, "21ea55f476dfc4fd135587abb59dfe5d", ["flux_vae_encoder", "flux_vae_decoder"], [FluxVAEEncoder, FluxVAEDecoder], "civitai"),
+    (None, "a29710fea6dddb0314663ee823598e50", ["flux_dit"], [FluxDiT], "civitai")
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
-    # The format is (architecture_in_huggingface_config, huggingface_lib, model_name)
-    ("ChatGLMModel", "diffsynth.models.kolors_text_encoder", "kolors_text_encoder"),
-    ("MarianMTModel", "transformers.models.marian.modeling_marian", "translator"),
-    ("BloomForCausalLM", "transformers.models.bloom.modeling_bloom", "beautiful_prompt"),
+    # The format is (architecture_in_huggingface_config, huggingface_lib, model_name, redirected_architecture)
+    ("ChatGLMModel", "diffsynth.models.kolors_text_encoder", "kolors_text_encoder", None),
+    ("MarianMTModel", "transformers.models.marian.modeling_marian", "translator", None),
+    ("BloomForCausalLM", "transformers.models.bloom.modeling_bloom", "beautiful_prompt", None),
+    ("T5EncoderModel", "diffsynth.models.flux_text_encoder", "flux_text_encoder_2", "FluxTextEncoder2"),
 ]
 patch_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -157,6 +167,10 @@ preset_models_on_modelscope = {
         ("sd_lora/Annotators", "sk_model.pth", "models/Annotators"),
         ("sd_lora/Annotators", "sk_model2.pth", "models/Annotators")
     ],
+    "ControlNet_union_sdxl_promax": [
+        ("AI-ModelScope/controlnet-union-sdxl-1.0", "diffusion_pytorch_model_promax.safetensors", "models/ControlNet/controlnet_union"),
+        ("sd_lora/Annotators", "dpt_hybrid-midas-501f0c75.pt", "models/Annotators")
+    ],
     # AnimateDiff
     "AnimateDiff_v2": [
         ("Shanghai_AI_Laboratory/animatediff", "mm_sd_v15_v2.ckpt", "models/AnimateDiff"),
@@ -242,4 +256,5 @@ Preset_model_id: TypeAlias = Literal[
     "StableDiffusion3_without_T5",
     "Kolors",
     "SDXL-vae-fp16-fix",
+    "ControlNet_union_sdxl_promax",
 ]
