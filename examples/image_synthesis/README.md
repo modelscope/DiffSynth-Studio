@@ -38,6 +38,20 @@ LoRA Training: [`../train/kolors/`](../train/kolors/)
 |-|-|
 |![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf)|![image_2048](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/66bb7a75-fe31-44e5-90eb-d3140ee4686d)|
 
+Kolors also support the models trained for SD-XL. For example, ControlNets and LoRAs. See [`kolors_with_sdxl_models.py`](./kolors_with_sdxl_models.py)
+
+LoRA: https://civitai.com/models/73305/zyd232s-ink-style
+
+|Base model|with LoRA (alpha=0.5)|with LoRA (alpha=1.0)|with LoRA (alpha=1.5)|
+|-|-|-|-|
+|![image_0 0](https://github.com/user-attachments/assets/a222eae3-6e0a-4ea6-b301-99e74e2bc11a)|![image_0 5](https://github.com/user-attachments/assets/e429c501-530c-43f6-a30b-9f97996c91a2)|![image_1 0](https://github.com/user-attachments/assets/0ddeed4b-250d-4b5c-a4fa-2db50f63bf1c)|![image_1 5](https://github.com/user-attachments/assets/db35a89d-6325-4422-921e-14fb6ad66c92)|
+
+ControlNet: https://huggingface.co/xinsir/controlnet-union-sdxl-1.0
+
+|Reference image|Depth image|with ControlNet|with ControlNet|
+|-|-|-|-|
+|![image_0 0](https://github.com/user-attachments/assets/a222eae3-6e0a-4ea6-b301-99e74e2bc11a)|![controlnet_input](https://github.com/user-attachments/assets/d16b2785-bc1f-4184-b170-ae90f1d704c1)|![image_depth_1](https://github.com/user-attachments/assets/90a94780-7b56-4786-8a25-aae118eda171)|![image_depth_2](https://github.com/user-attachments/assets/05eb1309-9c98-49e7-a8ee-f376ceedf18e)|
+
 ### Example: Hunyuan-DiT
 
 Example script: [`hunyuan_dit_text_to_image.py`](./hunyuan_dit_text_to_image.py)

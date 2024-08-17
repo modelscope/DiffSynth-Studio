@@ -136,6 +136,10 @@ def lets_dance_xl(
     device = "cuda",
     vram_limit_level = 0,
 ):
+    # 0. Text embedding alignment (only for video processing)
+    if encoder_hidden_states.shape[0] != sample.shape[0]:
+        encoder_hidden_states = encoder_hidden_states.repeat(sample.shape[0], 1, 1, 1)
+    
     # 1. ControlNet
     controlnet_insert_block_id = 22
     if controlnet is not None and controlnet_frames is not None:
