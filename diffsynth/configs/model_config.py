@@ -143,6 +143,9 @@ preset_models_on_modelscope = {
     "StableDiffusionXL_Turbo": [
         ("AI-ModelScope/sdxl-turbo", "sd_xl_turbo_1.0_fp16.safetensors", "models/stable_diffusion_xl_turbo"),
     ],
+    "SDXL_lora_zyd232_ChineseInkStyle_SDXL_v1_0": [
+        ("sd_lora/zyd232_ChineseInkStyle_SDXL_v1_0", "zyd232_ChineseInkStyle_SDXL_v1_0.safetensors", "models/lora"),
+    ],
     # Stable Diffusion 3
     "StableDiffusion3": [
         ("AI-ModelScope/stable-diffusion-3-medium", "sd3_medium_incl_clips_t5xxlfp16.safetensors", "models/stable_diffusion_3"),
@@ -228,6 +231,16 @@ preset_models_on_modelscope = {
     "SDXL-vae-fp16-fix": [
         ("AI-ModelScope/sdxl-vae-fp16-fix", "diffusion_pytorch_model.safetensors", "models/sdxl-vae-fp16-fix")
     ],
+    # FLUX
+    "FLUX.1-dev": [
+        ("AI-ModelScope/FLUX.1-dev", "text_encoder/model.safetensors", "models/FLUX/FLUX.1-dev/text_encoder"),
+        ("AI-ModelScope/FLUX.1-dev", "text_encoder_2/config.json", "models/FLUX/FLUX.1-dev/text_encoder_2"),
+        ("AI-ModelScope/FLUX.1-dev", "text_encoder_2/model-00001-of-00002.safetensors", "models/FLUX/FLUX.1-dev/text_encoder_2"),
+        ("AI-ModelScope/FLUX.1-dev", "text_encoder_2/model-00002-of-00002.safetensors", "models/FLUX/FLUX.1-dev/text_encoder_2"),
+        ("AI-ModelScope/FLUX.1-dev", "text_encoder_2/model.safetensors.index.json", "models/FLUX/FLUX.1-dev/text_encoder_2"),
+        ("AI-ModelScope/FLUX.1-dev", "ae.safetensors", "models/FLUX/FLUX.1-dev"),
+        ("AI-ModelScope/FLUX.1-dev", "flux1-dev.safetensors", "models/FLUX/FLUX.1-dev"),
+    ]
 }
 Preset_model_id: TypeAlias = Literal[
     "HunyuanDiT",
@@ -257,4 +270,6 @@ Preset_model_id: TypeAlias = Literal[
     "Kolors",
     "SDXL-vae-fp16-fix",
     "ControlNet_union_sdxl_promax",
+    "FLUX.1-dev",
+    "SDXL_lora_zyd232_ChineseInkStyle_SDXL_v1_0",
 ]

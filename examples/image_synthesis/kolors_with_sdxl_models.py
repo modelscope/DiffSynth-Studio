@@ -43,7 +43,7 @@ def run_kolors_with_controlnet():
 
 
 def run_kolors_with_lora():
-    download_models(["Kolors"])
+    download_models(["Kolors", "SDXL_lora_zyd232_ChineseInkStyle_SDXL_v1_0"])
     model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
                                 file_path_list=[
                                     "models/kolors/Kolors/text_encoder",
