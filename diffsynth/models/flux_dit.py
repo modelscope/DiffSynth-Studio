@@ -1,6 +1,7 @@
 import torch
 from .sd3_dit import TimestepEmbeddings, AdaLayerNorm
 from einops import rearrange
+from .tiler import TileWorker
 
 
 
@@ -306,9 +307,62 @@ class FluxDiT(torch.nn.Module):
     def unpatchify(self, hidden_states, height, width):
         hidden_states = rearrange(hidden_states, "B (H W) (C P Q) -> B C (H P) (W Q)", P=2, Q=2, H=height//2, W=width//2)
         return hidden_states
+    
+
+    def prepare_image_ids(self, latents):
+        batch_size, _, height, width = latents.shape
+        latent_image_ids = torch.zeros(height // 2, width // 2, 3)
+        latent_image_ids[..., 1] = latent_image_ids[..., 1] + torch.arange(height // 2)[:, None]
+        latent_image_ids[..., 2] = latent_image_ids[..., 2] + torch.arange(width // 2)[None, :]
+
+        latent_image_id_height, latent_image_id_width, latent_image_id_channels = latent_image_ids.shape
+
+        latent_image_ids = latent_image_ids[None, :].repeat(batch_size, 1, 1, 1)
+        latent_image_ids = latent_image_ids.reshape(
+            batch_size, latent_image_id_height * latent_image_id_width, latent_image_id_channels
+        )
+        latent_image_ids = latent_image_ids.to(device=latents.device, dtype=latents.dtype)
+
+        return latent_image_ids
+    
+
+    def tiled_forward(
+        self,
+        hidden_states,
+        timestep, prompt_emb, pooled_prompt_emb, guidance, text_ids,
+        tile_size=128, tile_stride=64,
+        **kwargs
+    ):
+        # Due to the global positional embedding, we cannot implement layer-wise tiled forward.
+        hidden_states = TileWorker().tiled_forward(
+            lambda x: self.forward(x, timestep, prompt_emb, pooled_prompt_emb, guidance, text_ids, image_ids=None),
+            hidden_states,
+            tile_size,
+            tile_stride,
+            tile_device=hidden_states.device,
+            tile_dtype=hidden_states.dtype
+        )
+        return hidden_states
 
 
-    def forward(self, hidden_states, timestep, prompt_emb, pooled_prompt_emb, guidance, text_ids, image_ids, **kwargs):
+    def forward(
+        self,
+        hidden_states,
+        timestep, prompt_emb, pooled_prompt_emb, guidance, text_ids, image_ids=None,
+        tiled=False, tile_size=128, tile_stride=64,
+        **kwargs
+    ):
+        if tiled:
+            return self.tiled_forward(
+                hidden_states,
+                timestep, prompt_emb, pooled_prompt_emb, guidance, text_ids,
+                tile_size=tile_size, tile_stride=tile_stride,
+                **kwargs
+            )
+        
+        if image_ids is None:
+            image_ids = self.prepare_image_ids(hidden_states)
+        
         conditioning = self.time_embedder(timestep, hidden_states.dtype)\
                      + self.guidance_embedder(guidance, hidden_states.dtype)\
                      + self.pooled_text_embedder(pooled_prompt_emb)

@@ -2,9 +2,19 @@
 
 Image synthesis is the base feature of DiffSynth Studio. We can generate images with very high resolution.
 
+### Example: FLUX
+
+Example script: [`flux_text_to_image.py`](./flux_text_to_image.py)
+
+|1024*1024 (original)|1024*1024 (classifier-free guidance)|2048*2048 (highres-fix)|
+|-|-|-|
+|![image_1024](https://github.com/user-attachments/assets/d8e66872-8739-43e4-8c2b-eda9daba0450)|![image_1024_cfg](https://github.com/user-attachments/assets/1073c70d-018f-47e4-9342-bc580b4c7c59)|![image_2048_highres](https://github.com/user-attachments/assets/8719c1a8-b341-48c1-a085-364c3a7d25f0)|
+
 ### Example: Stable Diffusion
 
 Example script: [`sd_text_to_image.py`](./sd_text_to_image.py)
+
+LoRA Training: [`../train/stable_diffusion/`](../train/stable_diffusion/)
 
 |512*512|1024*1024|2048*2048|4096*4096|
 |-|-|-|-|
@@ -13,6 +23,8 @@ Example script: [`sd_text_to_image.py`](./sd_text_to_image.py)
 ### Example: Stable Diffusion XL
 
 Example script: [`sdxl_text_to_image.py`](./sdxl_text_to_image.py)
+
+LoRA Training: [`../train/stable_diffusion_xl/`](../train/stable_diffusion_xl/)
 
 |1024*1024|2048*2048|
 |-|-|
