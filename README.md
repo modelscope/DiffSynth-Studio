@@ -34,6 +34,10 @@ Until now, DiffSynth Studio has supported the following models:
 - **August 22, 2024** We have implemented an interesting painter that supports all text-to-image models. Now you can create stunning images using the painter, with assistance from AI!
   - Use it in our [WebUI](#usage-in-webui).
 
+- **August 21, 2024** FLUX is supported in DiffSynth-Studio.
+  - Enable CFG and highres-fix to improve visual quality. See [here](/examples/image_synthesis/README.md)
+  - LoRA, ControlNet, and additional models will be available soon.
+
 - **June 21, 2024.** 🔥🔥🔥 We propose ExVideo, a post-tuning technique aimed at enhancing the capability of video generation models. We have extended Stable Video Diffusion to achieve the generation of long videos up to 128 frames.
   - [Project Page](https://ecnu-cilab.github.io/ExVideoProjectPage/)
   - Source code is released in this repo. See [`examples/ExVideo`](./examples/ExVideo/).
@@ -92,6 +96,27 @@ pip install diffsynth
 ## Usage (in Python code)
 
 The Python examples are in [`examples`](./examples/). We provide an overview here.
+
+### Download Models
+
+Download the pre-set models. Model IDs can be found in [config file](/diffsynth/configs/model_config.py).
+
+```python
+from diffsynth import download_models
+
+download_models(["FLUX.1-dev", "Kolors"])
+```
+
+Download your own models.
+
+```python
+from diffsynth.models.downloader import download_from_huggingface, download_from_modelscope
+
+# From Modelscope (recommended)
+download_from_modelscope("Kwai-Kolors/Kolors", "vae/diffusion_pytorch_model.fp16.bin", "models/kolors/Kolors/vae")
+# From Huggingface
+download_from_huggingface("Kwai-Kolors/Kolors", "vae/diffusion_pytorch_model.fp16.safetensors", "models/kolors/Kolors/vae")
+```
 
 ### Video Synthesis
 
