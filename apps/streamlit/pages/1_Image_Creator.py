@@ -1,4 +1,4 @@
-import torch, os, io
+import torch, os, io, json, time
 import numpy as np
 from PIL import Image
 import streamlit as st
@@ -275,6 +275,7 @@ with column_input:
     num_painter_layer = st.number_input("Number of painter layers", min_value=0, max_value=10, step=1, value=0)
     local_prompts, masks, mask_scales = [], [], []
     white_board = Image.fromarray(np.ones((512, 512, 3), dtype=np.uint8) * 255)
+    painter_layers_json_data = []
     for painter_tab_id in range(num_painter_layer):
         with st.expander(f"Painter layer {painter_tab_id}", expanded=True):
             enable_local_prompt = st.checkbox(f"Enable prompt {painter_tab_id}", value=True)
@@ -293,6 +294,9 @@ with column_input:
                 drawing_mode="freedraw",
                 key=f"canvas_{painter_tab_id}"
             )
+            if canvas_result_local.json_data is not None:
+                painter_layers_json_data.append(canvas_result_local.json_data.copy())
+                painter_layers_json_data[-1]["prompt"] = local_prompt
             if enable_local_prompt:
                 local_prompts.append(local_prompt)
                 if canvas_result_local.image_data is not None:
@@ -302,6 +306,13 @@ with column_input:
                 mask = Image.fromarray(255 - np.array(mask))
                 masks.append(mask)
                 mask_scales.append(mask_scale)
+    save_painter_layers = st.button("Save painter layers")
+    if save_painter_layers:
+        os.makedirs("data/painter_layers", exist_ok=True)
+        json_file_path = f"data/painter_layers/{time.time_ns()}.json"
+        with open(json_file_path, "w") as f:
+            json.dump(painter_layers_json_data, f, indent=4)
+            st.markdown(f"Painter layers are saved in {json_file_path}.")
 
 
 with column_output:

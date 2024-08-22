@@ -6,9 +6,11 @@ Image synthesis is the base feature of DiffSynth Studio. We can generate images 
 
 Example script: [`flux_text_to_image.py`](./flux_text_to_image.py)
 
+The original version of FLUX doesn't support classifier-free guidance; however, we believe that this guidance mechanism is an important feature for synthesizing beautiful images. You can enable it using the parameter `cfg_scale`, and the extra guidance scale introduced by FLUX is `embedded_guidance`.
+
 |1024*1024 (original)|1024*1024 (classifier-free guidance)|2048*2048 (highres-fix)|
 |-|-|-|
-|![image_1024](https://github.com/user-attachments/assets/d8e66872-8739-43e4-8c2b-eda9daba0450)|![image_1024_cfg](https://github.com/user-attachments/assets/1073c70d-018f-47e4-9342-bc580b4c7c59)|![image_2048_highres](https://github.com/user-attachments/assets/8719c1a8-b341-48c1-a085-364c3a7d25f0)|
+|![image_1024](https://github.com/user-attachments/assets/ce01327f-068f-45f5-aba9-0fa45eb26199)|![image_1024_cfg](https://github.com/user-attachments/assets/6af5b106-0673-4e58-9213-cd9157eef4c0)|![image_2048_highres](https://github.com/user-attachments/assets/a4bb776f-d9f0-4450-968c-c5d090a3ab4c)|
 
 ### Example: Stable Diffusion
 
