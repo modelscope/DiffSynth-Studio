@@ -116,7 +116,7 @@ Video stylization without video models. [`examples/diffsynth`](./examples/diffsy
 
 https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-4481-b79f-0c3a7361a1ea
 
-#### Image Synthesis
+### Image Synthesis
 
 Generate high-resolution images, by breaking the limitation of diffusion models! [`examples/image_synthesis`](./examples/image_synthesis/).
 
