@@ -79,7 +79,7 @@ Until now, DiffSynth Studio has supported the following models:
 
 ## Installation
 
-Install from source code:
+Install from source code (recommended):
 
 ```
 git clone https://github.com/modelscope/DiffSynth-Studio.git
@@ -167,6 +167,8 @@ https://github.com/user-attachments/assets/95265d21-cdd6-4125-a7cb-9fbcf6ceb7b0
 
 **This video is not rendered in real-time.**
 
+Before launching the WebUI, please download models to the folder `./models`. See [here](#download-models).
+
 * `Gradio` version
 
 ```
@@ -176,6 +178,10 @@ python apps/gradio/DiffSynth_Studio.py
 ![20240822102002](https://github.com/user-attachments/assets/59613157-de51-4109-99b3-97cbffd88076)
 
 * `Streamlit` version
+
+```
+pip install streamlit streamlit-drawable-canvas
+```
 
 ```
 python -m streamlit run apps/streamlit/DiffSynth_Studio.py
