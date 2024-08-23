@@ -2,8 +2,7 @@ torch>=2.0.0
 cupy-cuda12x
 transformers
 controlnet-aux==0.0.7
-streamlit
-streamlit-drawable-canvas
+gradio
 imageio
 imageio[ffmpeg]
 safetensors
