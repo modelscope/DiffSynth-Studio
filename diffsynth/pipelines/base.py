@@ -37,7 +37,7 @@ class BasePipeline(torch.nn.Module):
         height, width = value.shape[-2:]
         weight = torch.ones_like(value)
         for latent, mask, scale in zip(latents, masks, scales):
-            mask = self.preprocess_image(mask.resize((height, width))).mean(dim=1, keepdim=True) > 0
+            mask = self.preprocess_image(mask.resize((width, height))).mean(dim=1, keepdim=True) > 0
             mask = mask.repeat(1, latent.shape[1], 1, 1)
             value[mask] += latent[mask] * scale
             weight[mask] += scale
