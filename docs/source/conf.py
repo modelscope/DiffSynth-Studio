@@ -25,7 +25,7 @@ extensions = [
     'sphinx.ext.viewcode',
 ]
 
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+templates_path = ['_templates']
 exclude_patterns = []
 
 
