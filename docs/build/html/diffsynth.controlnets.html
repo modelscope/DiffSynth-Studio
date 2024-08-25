@@ -46,9 +46,20 @@
               <div class="local-toc"><ul>
 <li><a class="reference internal" href="#">diffsynth.controlnets package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#diffsynth-controlnets-controlnet-unit-module">diffsynth.controlnets.controlnet_unit module</a></li>
-<li><a class="reference internal" href="#diffsynth-controlnets-processors-module">diffsynth.controlnets.processors module</a></li>
-<li><a class="reference internal" href="#module-contents">Module contents</a></li>
+<li><a class="reference internal" href="#module-diffsynth.controlnets.controlnet_unit">diffsynth.controlnets.controlnet_unit module</a><ul>
+<li><a class="reference internal" href="#diffsynth.controlnets.controlnet_unit.ControlNetConfigUnit"><code class="docutils literal notranslate"><span class="pre">ControlNetConfigUnit</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.controlnets.controlnet_unit.ControlNetUnit"><code class="docutils literal notranslate"><span class="pre">ControlNetUnit</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.controlnets.controlnet_unit.MultiControlNetManager"><code class="docutils literal notranslate"><span class="pre">MultiControlNetManager</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.controlnets.controlnet_unit.MultiControlNetManager.process_image"><code class="docutils literal notranslate"><span class="pre">MultiControlNetManager.process_image()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.controlnets.processors">diffsynth.controlnets.processors module</a><ul>
+<li><a class="reference internal" href="#diffsynth.controlnets.processors.Annotator"><code class="docutils literal notranslate"><span class="pre">Annotator</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.controlnets">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -82,14 +93,43 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
 </section>
-<section id="diffsynth-controlnets-controlnet-unit-module">
-<h2>diffsynth.controlnets.controlnet_unit module<a class="headerlink" href="#diffsynth-controlnets-controlnet-unit-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.controlnets.controlnet_unit">
+<span id="diffsynth-controlnets-controlnet-unit-module"></span><h2>diffsynth.controlnets.controlnet_unit module<a class="headerlink" href="#module-diffsynth.controlnets.controlnet_unit" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.controlnets.controlnet_unit.ControlNetConfigUnit">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.controlnets.controlnet_unit.</span></span><span class="sig-name descname"><span class="pre">ControlNetConfigUnit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">processor_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'canny'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'depth'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'softedge'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'lineart'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'lineart_anime'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'openpose'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'tile'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/controlnets/controlnet_unit.html#ControlNetConfigUnit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.controlnets.controlnet_unit.ControlNetConfigUnit" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.controlnets.controlnet_unit.ControlNetUnit">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.controlnets.controlnet_unit.</span></span><span class="sig-name descname"><span class="pre">ControlNetUnit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">processor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/controlnets/controlnet_unit.html#ControlNetUnit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.controlnets.controlnet_unit.ControlNetUnit" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.controlnets.controlnet_unit.MultiControlNetManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.controlnets.controlnet_unit.</span></span><span class="sig-name descname"><span class="pre">MultiControlNetManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">controlnet_units</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/controlnets/controlnet_unit.html#MultiControlNetManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.controlnets.controlnet_unit.MultiControlNetManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.controlnets.controlnet_unit.MultiControlNetManager.process_image">
+<span class="sig-name descname"><span class="pre">process_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">processor_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/controlnets/controlnet_unit.html#MultiControlNetManager.process_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.controlnets.controlnet_unit.MultiControlNetManager.process_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="diffsynth-controlnets-processors-module">
-<h2>diffsynth.controlnets.processors module<a class="headerlink" href="#diffsynth-controlnets-processors-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.controlnets.processors">
+<span id="diffsynth-controlnets-processors-module"></span><h2>diffsynth.controlnets.processors module<a class="headerlink" href="#module-diffsynth.controlnets.processors" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.controlnets.processors.Annotator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.controlnets.processors.</span></span><span class="sig-name descname"><span class="pre">Annotator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">processor_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'canny'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'depth'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'softedge'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'lineart'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'lineart_anime'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'openpose'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'tile'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'models/Annotators'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detect_resolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cuda'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/controlnets/processors.html#Annotator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.controlnets.processors.Annotator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
 </section>
-<section id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.controlnets">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diffsynth.controlnets" title="Link to this heading"></a></h2>
 </section>
 </section>
 

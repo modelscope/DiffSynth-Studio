@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>diffsynth.extensions.ESRGAN &mdash; DiffSynth-Studio 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            DiffSynth-Studio
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">DiffSynth-Studio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">diffsynth.extensions.ESRGAN</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for diffsynth.extensions.ESRGAN</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">einops</span> <span class="kn">import</span> <span class="n">repeat</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<div class="viewcode-block" id="ResidualDenseBlock">
+<a class="viewcode-back" href="../../../diffsynth.extensions.ESRGAN.html#diffsynth.extensions.ESRGAN.ResidualDenseBlock">[docs]</a>
+<span class="k">class</span> <span class="nc">ResidualDenseBlock</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_feat</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">num_grow_ch</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ResidualDenseBlock</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">num_feat</span><span class="p">,</span> <span class="n">num_grow_ch</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv2</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">num_feat</span> <span class="o">+</span> <span class="n">num_grow_ch</span><span class="p">,</span> <span class="n">num_grow_ch</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv3</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">num_feat</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">num_grow_ch</span><span class="p">,</span> <span class="n">num_grow_ch</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv4</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">num_feat</span> <span class="o">+</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">num_grow_ch</span><span class="p">,</span> <span class="n">num_grow_ch</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv5</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">num_feat</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">num_grow_ch</span><span class="p">,</span> <span class="n">num_feat</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lrelu</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">LeakyReLU</span><span class="p">(</span><span class="n">negative_slope</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ResidualDenseBlock.forward">
+<a class="viewcode-back" href="../../../diffsynth.extensions.ESRGAN.html#diffsynth.extensions.ESRGAN.ResidualDenseBlock.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lrelu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv1</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lrelu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv2</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">x1</span><span class="p">),</span> <span class="mi">1</span><span class="p">)))</span>
+        <span class="n">x3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lrelu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv3</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">),</span> <span class="mi">1</span><span class="p">)))</span>
+        <span class="n">x4</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lrelu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv4</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">x3</span><span class="p">),</span> <span class="mi">1</span><span class="p">)))</span>
+        <span class="n">x5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv5</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">x3</span><span class="p">,</span> <span class="n">x4</span><span class="p">),</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">x5</span> <span class="o">*</span> <span class="mf">0.2</span> <span class="o">+</span> <span class="n">x</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="RRDB">
+<a class="viewcode-back" href="../../../diffsynth.extensions.ESRGAN.html#diffsynth.extensions.ESRGAN.RRDB">[docs]</a>
+<span class="k">class</span> <span class="nc">RRDB</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_feat</span><span class="p">,</span> <span class="n">num_grow_ch</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">RRDB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rdb1</span> <span class="o">=</span> <span class="n">ResidualDenseBlock</span><span class="p">(</span><span class="n">num_feat</span><span class="p">,</span> <span class="n">num_grow_ch</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rdb2</span> <span class="o">=</span> <span class="n">ResidualDenseBlock</span><span class="p">(</span><span class="n">num_feat</span><span class="p">,</span> <span class="n">num_grow_ch</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rdb3</span> <span class="o">=</span> <span class="n">ResidualDenseBlock</span><span class="p">(</span><span class="n">num_feat</span><span class="p">,</span> <span class="n">num_grow_ch</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RRDB.forward">
+<a class="viewcode-back" href="../../../diffsynth.extensions.ESRGAN.html#diffsynth.extensions.ESRGAN.RRDB.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rdb1</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rdb2</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rdb3</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span> <span class="o">*</span> <span class="mf">0.2</span> <span class="o">+</span> <span class="n">x</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="RRDBNet">
+<a class="viewcode-back" href="../../../diffsynth.extensions.ESRGAN.html#diffsynth.extensions.ESRGAN.RRDBNet">[docs]</a>
+<span class="k">class</span> <span class="nc">RRDBNet</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_in_ch</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">num_out_ch</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">num_feat</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">num_block</span><span class="o">=</span><span class="mi">23</span><span class="p">,</span> <span class="n">num_grow_ch</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">RRDBNet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_first</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">num_in_ch</span><span class="p">,</span> <span class="n">num_feat</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">RRDB</span><span class="p">(</span><span class="n">num_feat</span><span class="o">=</span><span class="n">num_feat</span><span class="p">,</span> <span class="n">num_grow_ch</span><span class="o">=</span><span class="n">num_grow_ch</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_block</span><span class="p">)])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_body</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">num_feat</span><span class="p">,</span> <span class="n">num_feat</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># upsample</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_up1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">num_feat</span><span class="p">,</span> <span class="n">num_feat</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_up2</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">num_feat</span><span class="p">,</span> <span class="n">num_feat</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_hr</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">num_feat</span><span class="p">,</span> <span class="n">num_feat</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_last</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">num_feat</span><span class="p">,</span> <span class="n">num_out_ch</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lrelu</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">LeakyReLU</span><span class="p">(</span><span class="n">negative_slope</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RRDBNet.forward">
+<a class="viewcode-back" href="../../../diffsynth.extensions.ESRGAN.html#diffsynth.extensions.ESRGAN.RRDBNet.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_first</span><span class="p">(</span><span class="n">feat</span><span class="p">)</span>
+        <span class="n">body_feat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_body</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">body</span><span class="p">(</span><span class="n">feat</span><span class="p">))</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="n">feat</span> <span class="o">+</span> <span class="n">body_feat</span>
+        <span class="c1"># upsample</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="n">repeat</span><span class="p">(</span><span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;B C H W -&gt; B C (H 2) (W 2)&quot;</span><span class="p">)</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lrelu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_up1</span><span class="p">(</span><span class="n">feat</span><span class="p">))</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="n">repeat</span><span class="p">(</span><span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;B C H W -&gt; B C (H 2) (W 2)&quot;</span><span class="p">)</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lrelu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_up2</span><span class="p">(</span><span class="n">feat</span><span class="p">))</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_last</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lrelu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_hr</span><span class="p">(</span><span class="n">feat</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">out</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ESRGAN">
+<a class="viewcode-back" href="../../../diffsynth.extensions.ESRGAN.html#diffsynth.extensions.ESRGAN.ESRGAN">[docs]</a>
+<span class="k">class</span> <span class="nc">ESRGAN</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+
+<div class="viewcode-block" id="ESRGAN.from_pretrained">
+<a class="viewcode-back" href="../../../diffsynth.extensions.ESRGAN.html#diffsynth.extensions.ESRGAN.ESRGAN.from_pretrained">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_pretrained</span><span class="p">(</span><span class="n">model_path</span><span class="p">):</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">RRDBNet</span><span class="p">()</span>
+        <span class="n">state_dict</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">map_location</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)[</span><span class="s2">&quot;params_ema&quot;</span><span class="p">]</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">ESRGAN</span><span class="p">(</span><span class="n">model</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ESRGAN.process_image">
+<a class="viewcode-back" href="../../../diffsynth.extensions.ESRGAN.html#diffsynth.extensions.ESRGAN.ESRGAN.process_image">[docs]</a>
+    <span class="k">def</span> <span class="nf">process_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="o">/</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">image</span></div>
+
+    
+<div class="viewcode-block" id="ESRGAN.process_images">
+<a class="viewcode-back" href="../../../diffsynth.extensions.ESRGAN.html#diffsynth.extensions.ESRGAN.ESRGAN.process_images">[docs]</a>
+    <span class="k">def</span> <span class="nf">process_images</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">):</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">process_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">images</span></div>
+
+    
+<div class="viewcode-block" id="ESRGAN.decode_images">
+<a class="viewcode-back" href="../../../diffsynth.extensions.ESRGAN.html#diffsynth.extensions.ESRGAN.ESRGAN.decode_images">[docs]</a>
+    <span class="k">def</span> <span class="nf">decode_images</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">):</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="p">(</span><span class="n">images</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">images</span></div>
+
+    
+<div class="viewcode-block" id="ESRGAN.upscale">
+<a class="viewcode-back" href="../../../diffsynth.extensions.ESRGAN.html#diffsynth.extensions.ESRGAN.ESRGAN.upscale">[docs]</a>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">upscale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">progress_bar</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span><span class="n">x</span><span class="p">):</span>
+        <span class="c1"># Preprocess</span>
+        <span class="n">input_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_images</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+
+        <span class="c1"># Interpolate</span>
+        <span class="n">output_tensor</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">batch_id</span> <span class="ow">in</span> <span class="n">progress_bar</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">input_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">batch_size</span><span class="p">)):</span>
+            <span class="n">batch_id_</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">batch_id</span> <span class="o">+</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">input_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">batch_input_tensor</span> <span class="o">=</span> <span class="n">input_tensor</span><span class="p">[</span><span class="n">batch_id</span><span class="p">:</span> <span class="n">batch_id_</span><span class="p">]</span>
+            <span class="n">batch_input_tensor</span> <span class="o">=</span> <span class="n">batch_input_tensor</span><span class="o">.</span><span class="n">to</span><span class="p">(</span>
+                <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">conv_first</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">conv_first</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="n">batch_output_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">batch_input_tensor</span><span class="p">)</span>
+            <span class="n">output_tensor</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">batch_output_tensor</span><span class="o">.</span><span class="n">cpu</span><span class="p">())</span>
+        
+        <span class="c1"># Output</span>
+        <span class="n">output_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">output_tensor</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># To images</span>
+        <span class="n">output_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_images</span><span class="p">(</span><span class="n">output_tensor</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">output_images</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ModelScope.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -47,11 +47,83 @@
 <li><a class="reference internal" href="#">diffsynth.extensions.FastBlend package</a><ul>
 <li><a class="reference internal" href="#subpackages">Subpackages</a></li>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#diffsynth-extensions-fastblend-api-module">diffsynth.extensions.FastBlend.api module</a></li>
-<li><a class="reference internal" href="#diffsynth-extensions-fastblend-cupy-kernels-module">diffsynth.extensions.FastBlend.cupy_kernels module</a></li>
-<li><a class="reference internal" href="#diffsynth-extensions-fastblend-data-module">diffsynth.extensions.FastBlend.data module</a></li>
-<li><a class="reference internal" href="#diffsynth-extensions-fastblend-patch-match-module">diffsynth.extensions.FastBlend.patch_match module</a></li>
-<li><a class="reference internal" href="#module-contents">Module contents</a></li>
+<li><a class="reference internal" href="#module-diffsynth.extensions.FastBlend.api">diffsynth.extensions.FastBlend.api module</a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.api.KeyFrameMatcher"><code class="docutils literal notranslate"><span class="pre">KeyFrameMatcher</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.extract_number_from_filename"><code class="docutils literal notranslate"><span class="pre">KeyFrameMatcher.extract_number_from_filename()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.extract_number_from_filenames"><code class="docutils literal notranslate"><span class="pre">KeyFrameMatcher.extract_number_from_filenames()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.match_filenames"><code class="docutils literal notranslate"><span class="pre">KeyFrameMatcher.match_filenames()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.match_using_filename"><code class="docutils literal notranslate"><span class="pre">KeyFrameMatcher.match_using_filename()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.match_using_numbers"><code class="docutils literal notranslate"><span class="pre">KeyFrameMatcher.match_using_numbers()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.api.check_input_for_blending"><code class="docutils literal notranslate"><span class="pre">check_input_for_blending()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.api.check_input_for_interpolating"><code class="docutils literal notranslate"><span class="pre">check_input_for_interpolating()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.api.detect_frames"><code class="docutils literal notranslate"><span class="pre">detect_frames()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.api.interpolate_video"><code class="docutils literal notranslate"><span class="pre">interpolate_video()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.api.on_ui_tabs"><code class="docutils literal notranslate"><span class="pre">on_ui_tabs()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.api.smooth_video"><code class="docutils literal notranslate"><span class="pre">smooth_video()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.extensions.FastBlend.cupy_kernels">diffsynth.extensions.FastBlend.cupy_kernels module</a></li>
+<li><a class="reference internal" href="#module-diffsynth.extensions.FastBlend.data">diffsynth.extensions.FastBlend.data module</a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.LowMemoryImageFolder"><code class="docutils literal notranslate"><span class="pre">LowMemoryImageFolder</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.LowMemoryVideo"><code class="docutils literal notranslate"><span class="pre">LowMemoryVideo</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.VideoData"><code class="docutils literal notranslate"><span class="pre">VideoData</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.VideoData.raw_data"><code class="docutils literal notranslate"><span class="pre">VideoData.raw_data()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.VideoData.set_length"><code class="docutils literal notranslate"><span class="pre">VideoData.set_length()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.VideoData.set_shape"><code class="docutils literal notranslate"><span class="pre">VideoData.set_shape()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.VideoData.shape"><code class="docutils literal notranslate"><span class="pre">VideoData.shape()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.get_video_fps"><code class="docutils literal notranslate"><span class="pre">get_video_fps()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.read_images"><code class="docutils literal notranslate"><span class="pre">read_images()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.read_video"><code class="docutils literal notranslate"><span class="pre">read_video()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.save_video"><code class="docutils literal notranslate"><span class="pre">save_video()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.search_for_images"><code class="docutils literal notranslate"><span class="pre">search_for_images()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.data.split_file_name"><code class="docutils literal notranslate"><span class="pre">split_file_name()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.extensions.FastBlend.patch_match">diffsynth.extensions.FastBlend.patch_match module</a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher"><code class="docutils literal notranslate"><span class="pre">PatchMatcher</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.C"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.C()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.apply_nnf_to_image"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.apply_nnf_to_image()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.bezier_step"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.bezier_step()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.clamp_bound"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.clamp_bound()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.estimate_nnf"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.estimate_nnf()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.get_error"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.get_error()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.get_pairwise_patch_error"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.get_pairwise_patch_error()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.get_patch_error"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.get_patch_error()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.iteration"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.iteration()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.neighboor_step"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.neighboor_step()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.pad_image"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.pad_image()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.propagation"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.propagation()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.random_search"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.random_search()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.random_step"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.random_step()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.shift_nnf"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.shift_nnf()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.track"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.track()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.track_step"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.track_step()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.unpad_image"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.unpad_image()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.update"><code class="docutils literal notranslate"><span class="pre">PatchMatcher.update()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher"><code class="docutils literal notranslate"><span class="pre">PyramidPatchMatcher</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.apply_nnf_to_image"><code class="docutils literal notranslate"><span class="pre">PyramidPatchMatcher.apply_nnf_to_image()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.estimate_nnf"><code class="docutils literal notranslate"><span class="pre">PyramidPatchMatcher.estimate_nnf()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.initialize_nnf"><code class="docutils literal notranslate"><span class="pre">PyramidPatchMatcher.initialize_nnf()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.resample_image"><code class="docutils literal notranslate"><span class="pre">PyramidPatchMatcher.resample_image()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.update_nnf"><code class="docutils literal notranslate"><span class="pre">PyramidPatchMatcher.update_nnf()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.extensions.FastBlend">Module contents</a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.FastBlendSmoother"><code class="docutils literal notranslate"><span class="pre">FastBlendSmoother</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.FastBlendSmoother.from_model_manager"><code class="docutils literal notranslate"><span class="pre">FastBlendSmoother.from_model_manager()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.FastBlendSmoother.run"><code class="docutils literal notranslate"><span class="pre">FastBlendSmoother.run()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -88,11 +160,50 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html">diffsynth.extensions.FastBlend.runners package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth-extensions-fastblend-runners-accurate-module">diffsynth.extensions.FastBlend.runners.accurate module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth-extensions-fastblend-runners-balanced-module">diffsynth.extensions.FastBlend.runners.balanced module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth-extensions-fastblend-runners-fast-module">diffsynth.extensions.FastBlend.runners.fast module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth-extensions-fastblend-runners-interpolation-module">diffsynth.extensions.FastBlend.runners.interpolation module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#module-contents">Module contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#module-diffsynth.extensions.FastBlend.runners.accurate">diffsynth.extensions.FastBlend.runners.accurate module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.accurate.AccurateModeRunner"><code class="docutils literal notranslate"><span class="pre">AccurateModeRunner</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.accurate.AccurateModeRunner.run"><code class="docutils literal notranslate"><span class="pre">AccurateModeRunner.run()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#module-diffsynth.extensions.FastBlend.runners.balanced">diffsynth.extensions.FastBlend.runners.balanced module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.balanced.BalancedModeRunner"><code class="docutils literal notranslate"><span class="pre">BalancedModeRunner</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.balanced.BalancedModeRunner.run"><code class="docutils literal notranslate"><span class="pre">BalancedModeRunner.run()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#module-diffsynth.extensions.FastBlend.runners.fast">diffsynth.extensions.FastBlend.runners.fast module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.fast.FastModeRunner"><code class="docutils literal notranslate"><span class="pre">FastModeRunner</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.fast.FastModeRunner.run"><code class="docutils literal notranslate"><span class="pre">FastModeRunner.run()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.fast.TableManager"><code class="docutils literal notranslate"><span class="pre">TableManager</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.fast.TableManager.build_remapping_table"><code class="docutils literal notranslate"><span class="pre">TableManager.build_remapping_table()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.fast.TableManager.process_window_sum"><code class="docutils literal notranslate"><span class="pre">TableManager.process_window_sum()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.fast.TableManager.remapping_table_to_blending_table"><code class="docutils literal notranslate"><span class="pre">TableManager.remapping_table_to_blending_table()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.fast.TableManager.task_list"><code class="docutils literal notranslate"><span class="pre">TableManager.task_list()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.fast.TableManager.tree_query"><code class="docutils literal notranslate"><span class="pre">TableManager.tree_query()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#module-diffsynth.extensions.FastBlend.runners.interpolation">diffsynth.extensions.FastBlend.runners.interpolation module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner"><code class="docutils literal notranslate"><span class="pre">InterpolationModeRunner</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.get_index_dict"><code class="docutils literal notranslate"><span class="pre">InterpolationModeRunner.get_index_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.get_task_group"><code class="docutils literal notranslate"><span class="pre">InterpolationModeRunner.get_task_group()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.get_weight"><code class="docutils literal notranslate"><span class="pre">InterpolationModeRunner.get_weight()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.run"><code class="docutils literal notranslate"><span class="pre">InterpolationModeRunner.run()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeSingleFrameRunner"><code class="docutils literal notranslate"><span class="pre">InterpolationModeSingleFrameRunner</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeSingleFrameRunner.run"><code class="docutils literal notranslate"><span class="pre">InterpolationModeSingleFrameRunner.run()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="diffsynth.extensions.FastBlend.runners.html#module-diffsynth.extensions.FastBlend.runners">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -101,20 +212,297 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
 </section>
-<section id="diffsynth-extensions-fastblend-api-module">
-<h2>diffsynth.extensions.FastBlend.api module<a class="headerlink" href="#diffsynth-extensions-fastblend-api-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.extensions.FastBlend.api">
+<span id="diffsynth-extensions-fastblend-api-module"></span><h2>diffsynth.extensions.FastBlend.api module<a class="headerlink" href="#module-diffsynth.extensions.FastBlend.api" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.api.KeyFrameMatcher">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.api.</span></span><span class="sig-name descname"><span class="pre">KeyFrameMatcher</span></span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/api.html#KeyFrameMatcher"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.api.KeyFrameMatcher" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.api.KeyFrameMatcher.extract_number_from_filename">
+<span class="sig-name descname"><span class="pre">extract_number_from_filename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/api.html#KeyFrameMatcher.extract_number_from_filename"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.extract_number_from_filename" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.api.KeyFrameMatcher.extract_number_from_filenames">
+<span class="sig-name descname"><span class="pre">extract_number_from_filenames</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_names</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/api.html#KeyFrameMatcher.extract_number_from_filenames"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.extract_number_from_filenames" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.api.KeyFrameMatcher.match_filenames">
+<span class="sig-name descname"><span class="pre">match_filenames</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_names_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_names_b</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/api.html#KeyFrameMatcher.match_filenames"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.match_filenames" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.api.KeyFrameMatcher.match_using_filename">
+<span class="sig-name descname"><span class="pre">match_using_filename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_names_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_names_b</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/api.html#KeyFrameMatcher.match_using_filename"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.match_using_filename" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.api.KeyFrameMatcher.match_using_numbers">
+<span class="sig-name descname"><span class="pre">match_using_numbers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_names_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_names_b</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/api.html#KeyFrameMatcher.match_using_numbers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.match_using_numbers" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.api.check_input_for_blending">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.api.</span></span><span class="sig-name descname"><span class="pre">check_input_for_blending</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">video_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">video_guide_folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">video_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">video_style_folder</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/api.html#check_input_for_blending"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.api.check_input_for_blending" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.api.check_input_for_interpolating">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.api.</span></span><span class="sig-name descname"><span class="pre">check_input_for_interpolating</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keyframes_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/api.html#check_input_for_interpolating"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.api.check_input_for_interpolating" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.api.detect_frames">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.api.</span></span><span class="sig-name descname"><span class="pre">detect_frames</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keyframes_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/api.html#detect_frames"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.api.detect_frames" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.api.interpolate_video">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.api.</span></span><span class="sig-name descname"><span class="pre">interpolate_video</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keyframes_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracking_window_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minimum_patch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_iter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">guide_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initialize</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/api.html#interpolate_video"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.api.interpolate_video" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.api.on_ui_tabs">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.api.</span></span><span class="sig-name descname"><span class="pre">on_ui_tabs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/api.html#on_ui_tabs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.api.on_ui_tabs" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.api.smooth_video">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.api.</span></span><span class="sig-name descname"><span class="pre">smooth_video</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">video_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">video_guide_folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">video_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">video_style_folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracking_window_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minimum_patch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_iter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">guide_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initialize</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/api.html#smooth_video"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.api.smooth_video" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </section>
-<section id="diffsynth-extensions-fastblend-cupy-kernels-module">
-<h2>diffsynth.extensions.FastBlend.cupy_kernels module<a class="headerlink" href="#diffsynth-extensions-fastblend-cupy-kernels-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.extensions.FastBlend.cupy_kernels">
+<span id="diffsynth-extensions-fastblend-cupy-kernels-module"></span><h2>diffsynth.extensions.FastBlend.cupy_kernels module<a class="headerlink" href="#module-diffsynth.extensions.FastBlend.cupy_kernels" title="Link to this heading"></a></h2>
 </section>
-<section id="diffsynth-extensions-fastblend-data-module">
-<h2>diffsynth.extensions.FastBlend.data module<a class="headerlink" href="#diffsynth-extensions-fastblend-data-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.extensions.FastBlend.data">
+<span id="diffsynth-extensions-fastblend-data-module"></span><h2>diffsynth.extensions.FastBlend.data module<a class="headerlink" href="#module-diffsynth.extensions.FastBlend.data" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.LowMemoryImageFolder">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.data.</span></span><span class="sig-name descname"><span class="pre">LowMemoryImageFolder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#LowMemoryImageFolder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.LowMemoryImageFolder" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.LowMemoryVideo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.data.</span></span><span class="sig-name descname"><span class="pre">LowMemoryVideo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#LowMemoryVideo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.LowMemoryVideo" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.VideoData">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.data.</span></span><span class="sig-name descname"><span class="pre">VideoData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">video_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_folder</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#VideoData"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.VideoData" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.VideoData.raw_data">
+<span class="sig-name descname"><span class="pre">raw_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#VideoData.raw_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.VideoData.raw_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.VideoData.set_length">
+<span class="sig-name descname"><span class="pre">set_length</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">length</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#VideoData.set_length"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.VideoData.set_length" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.VideoData.set_shape">
+<span class="sig-name descname"><span class="pre">set_shape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#VideoData.set_shape"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.VideoData.set_shape" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.VideoData.shape">
+<span class="sig-name descname"><span class="pre">shape</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#VideoData.shape"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.VideoData.shape" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.get_video_fps">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.data.</span></span><span class="sig-name descname"><span class="pre">get_video_fps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#get_video_fps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.get_video_fps" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.read_images">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.data.</span></span><span class="sig-name descname"><span class="pre">read_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#read_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.read_images" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.read_video">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.data.</span></span><span class="sig-name descname"><span class="pre">read_video</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#read_video"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.read_video" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.save_video">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.data.</span></span><span class="sig-name descname"><span class="pre">save_video</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">video_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_frames</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#save_video"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.save_video" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.search_for_images">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.data.</span></span><span class="sig-name descname"><span class="pre">search_for_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#search_for_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.search_for_images" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.data.split_file_name">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.data.</span></span><span class="sig-name descname"><span class="pre">split_file_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/data.html#split_file_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.data.split_file_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </section>
-<section id="diffsynth-extensions-fastblend-patch-match-module">
-<h2>diffsynth.extensions.FastBlend.patch_match module<a class="headerlink" href="#diffsynth-extensions-fastblend-patch-match-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.extensions.FastBlend.patch_match">
+<span id="diffsynth-extensions-fastblend-patch-match-module"></span><h2>diffsynth.extensions.FastBlend.patch_match module<a class="headerlink" href="#module-diffsynth.extensions.FastBlend.patch_match" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.patch_match.</span></span><span class="sig-name descname"><span class="pre">PatchMatcher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minimum_patch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threads_per_block</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gpu_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">guide_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_search_steps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_search_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_mean_target_style</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_pairwise_patch_error</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracking_window_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.C">
+<span class="sig-name descname"><span class="pre">C</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.C"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.C" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.apply_nnf_to_image">
+<span class="sig-name descname"><span class="pre">apply_nnf_to_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.apply_nnf_to_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.apply_nnf_to_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.bezier_step">
+<span class="sig-name descname"><span class="pre">bezier_step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.bezier_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.bezier_step" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.clamp_bound">
+<span class="sig-name descname"><span class="pre">clamp_bound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.clamp_bound"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.clamp_bound" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.estimate_nnf">
+<span class="sig-name descname"><span class="pre">estimate_nnf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.estimate_nnf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.estimate_nnf" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.get_error">
+<span class="sig-name descname"><span class="pre">get_error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.get_error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.get_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.get_pairwise_patch_error">
+<span class="sig-name descname"><span class="pre">get_pairwise_patch_error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.get_pairwise_patch_error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.get_pairwise_patch_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.get_patch_error">
+<span class="sig-name descname"><span class="pre">get_patch_error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.get_patch_error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.get_patch_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.iteration">
+<span class="sig-name descname"><span class="pre">iteration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">err</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.iteration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.iteration" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.neighboor_step">
+<span class="sig-name descname"><span class="pre">neighboor_step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.neighboor_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.neighboor_step" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.pad_image">
+<span class="sig-name descname"><span class="pre">pad_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.pad_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.pad_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.propagation">
+<span class="sig-name descname"><span class="pre">propagation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">err</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.propagation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.propagation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.random_search">
+<span class="sig-name descname"><span class="pre">random_search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">err</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.random_search"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.random_search" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.random_step">
+<span class="sig-name descname"><span class="pre">random_step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.random_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.random_step" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.shift_nnf">
+<span class="sig-name descname"><span class="pre">shift_nnf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.shift_nnf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.shift_nnf" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.track">
+<span class="sig-name descname"><span class="pre">track</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">err</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.track"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.track" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.track_step">
+<span class="sig-name descname"><span class="pre">track_step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.track_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.track_step" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.unpad_image">
+<span class="sig-name descname"><span class="pre">unpad_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.unpad_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.unpad_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PatchMatcher.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">err</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">upd_nnf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PatchMatcher.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.update" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.patch_match.</span></span><span class="sig-name descname"><span class="pre">PyramidPatchMatcher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minimum_patch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threads_per_block</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gpu_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">guide_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_mean_target_style</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_pairwise_patch_error</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracking_window_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initialize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'identity'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PyramidPatchMatcher"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.apply_nnf_to_image">
+<span class="sig-name descname"><span class="pre">apply_nnf_to_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PyramidPatchMatcher.apply_nnf_to_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.apply_nnf_to_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.estimate_nnf">
+<span class="sig-name descname"><span class="pre">estimate_nnf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_style</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PyramidPatchMatcher.estimate_nnf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.estimate_nnf" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.initialize_nnf">
+<span class="sig-name descname"><span class="pre">initialize_nnf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PyramidPatchMatcher.initialize_nnf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.initialize_nnf" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.resample_image">
+<span class="sig-name descname"><span class="pre">resample_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PyramidPatchMatcher.resample_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.resample_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.update_nnf">
+<span class="sig-name descname"><span class="pre">update_nnf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nnf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/patch_match.html#PyramidPatchMatcher.update_nnf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.update_nnf" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.extensions.FastBlend">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diffsynth.extensions.FastBlend" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.FastBlendSmoother">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.</span></span><span class="sig-name descname"><span class="pre">FastBlendSmoother</span></span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend.html#FastBlendSmoother"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.FastBlendSmoother" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.FastBlendSmoother.from_model_manager">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_model_manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_manager</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend.html#FastBlendSmoother.from_model_manager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.FastBlendSmoother.from_model_manager" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.FastBlendSmoother.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ebsynth_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend.html#FastBlendSmoother.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.FastBlendSmoother.run" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
 </section>
 

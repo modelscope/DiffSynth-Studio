@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>diffsynth.extensions.FastBlend.patch_match &mdash; DiffSynth-Studio 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../../_static/documentation_options.js?v=01f34227"></script>
+        <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            DiffSynth-Studio
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">DiffSynth-Studio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../FastBlend.html">diffsynth.extensions.FastBlend</a></li>
+      <li class="breadcrumb-item active">diffsynth.extensions.FastBlend.patch_match</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for diffsynth.extensions.FastBlend.patch_match</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.cupy_kernels</span> <span class="kn">import</span> <span class="n">remapping_kernel</span><span class="p">,</span> <span class="n">patch_error_kernel</span><span class="p">,</span> <span class="n">pairwise_patch_error_kernel</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">cupy</span> <span class="k">as</span> <span class="nn">cp</span>
+<span class="kn">import</span> <span class="nn">cv2</span>
+
+
+<div class="viewcode-block" id="PatchMatcher">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher">[docs]</a>
+<span class="k">class</span> <span class="nc">PatchMatcher</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">minimum_patch_size</span><span class="p">,</span>
+        <span class="n">threads_per_block</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">num_iter</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">gpu_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">guide_weight</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
+        <span class="n">random_search_steps</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">random_search_range</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">use_mean_target_style</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_pairwise_patch_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">tracking_window_size</span><span class="o">=</span><span class="mi">0</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="n">height</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel</span> <span class="o">=</span> <span class="n">channel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">minimum_patch_size</span> <span class="o">=</span> <span class="n">minimum_patch_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">threads_per_block</span> <span class="o">=</span> <span class="n">threads_per_block</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_iter</span> <span class="o">=</span> <span class="n">num_iter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gpu_id</span> <span class="o">=</span> <span class="n">gpu_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">guide_weight</span> <span class="o">=</span> <span class="n">guide_weight</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">random_search_steps</span> <span class="o">=</span> <span class="n">random_search_steps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">random_search_range</span> <span class="o">=</span> <span class="n">random_search_range</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_mean_target_style</span> <span class="o">=</span> <span class="n">use_mean_target_style</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_pairwise_patch_error</span> <span class="o">=</span> <span class="n">use_pairwise_patch_error</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tracking_window_size</span> <span class="o">=</span> <span class="n">tracking_window_size</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">patch_size_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">minimum_patch_size</span> <span class="o">+</span> <span class="n">i</span><span class="o">*</span><span class="mi">2</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_iter</span><span class="p">)][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_size_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grid</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">height</span> <span class="o">+</span> <span class="n">threads_per_block</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="n">threads_per_block</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">width</span> <span class="o">+</span> <span class="n">threads_per_block</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="n">threads_per_block</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">block</span> <span class="o">=</span> <span class="p">(</span><span class="n">threads_per_block</span><span class="p">,</span> <span class="n">threads_per_block</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PatchMatcher.pad_image">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.pad_image">[docs]</a>
+    <span class="k">def</span> <span class="nf">pad_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">cp</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span><span class="p">),</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.unpad_image">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.unpad_image">[docs]</a>
+    <span class="k">def</span> <span class="nf">unpad_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">image</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span><span class="p">:</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span><span class="p">:</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span><span class="p">,</span> <span class="p">:]</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.apply_nnf_to_image">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.apply_nnf_to_image">[docs]</a>
+    <span class="k">def</span> <span class="nf">apply_nnf_to_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">source</span><span class="p">):</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">remapping_kernel</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grid</span> <span class="o">+</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">block</span><span class="p">,</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">target</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.get_patch_error">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.get_patch_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_patch_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">patch_error_kernel</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grid</span> <span class="o">+</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">block</span><span class="p">,</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">error</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.get_pairwise_patch_error">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.get_pairwise_patch_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_pairwise_patch_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">nnf</span><span class="p">):</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">source_a</span><span class="p">,</span> <span class="n">nnf_a</span> <span class="o">=</span> <span class="n">source</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">nnf</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">source_b</span><span class="p">,</span> <span class="n">nnf_b</span> <span class="o">=</span> <span class="n">source</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">nnf</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">pairwise_patch_error_kernel</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grid</span> <span class="o">+</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">block</span><span class="p">,</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_size</span><span class="p">,</span> <span class="n">source_a</span><span class="p">,</span> <span class="n">nnf_a</span><span class="p">,</span> <span class="n">source_b</span><span class="p">,</span> <span class="n">nnf_b</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="n">error</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">error</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.get_error">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.get_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">):</span>
+        <span class="n">error_guide</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_patch_error</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_mean_target_style</span><span class="p">:</span>
+            <span class="n">target_style</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_nnf_to_image</span><span class="p">(</span><span class="n">nnf</span><span class="p">,</span> <span class="n">source_style</span><span class="p">)</span>
+            <span class="n">target_style</span> <span class="o">=</span> <span class="n">target_style</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">target_style</span> <span class="o">=</span> <span class="n">target_style</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">source_guide</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_pairwise_patch_error</span><span class="p">:</span>
+            <span class="n">error_style</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_pairwise_patch_error</span><span class="p">(</span><span class="n">source_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">error_style</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_patch_error</span><span class="p">(</span><span class="n">source_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">target_style</span><span class="p">)</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="n">error_guide</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">guide_weight</span> <span class="o">+</span> <span class="n">error_style</span>
+        <span class="k">return</span> <span class="n">error</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.clamp_bound">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.clamp_bound">[docs]</a>
+    <span class="k">def</span> <span class="nf">clamp_bound</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nnf</span><span class="p">):</span>
+        <span class="n">nnf</span><span class="p">[:,:,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">nnf</span><span class="p">[:,:,:,</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">nnf</span><span class="p">[:,:,:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">nnf</span><span class="p">[:,:,:,</span><span class="mi">1</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">nnf</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.random_step">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.random_step">[docs]</a>
+    <span class="k">def</span> <span class="nf">random_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="n">nnf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="o">-</span><span class="n">r</span><span class="p">,</span> <span class="n">r</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="n">upd_nnf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clamp_bound</span><span class="p">(</span><span class="n">nnf</span> <span class="o">+</span> <span class="n">step</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">upd_nnf</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.neighboor_step">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.neighboor_step">[docs]</a>
+    <span class="k">def</span> <span class="nf">neighboor_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">d</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">upd_nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">nnf</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="p">:],</span> <span class="n">nnf</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">upd_nnf</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">d</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">upd_nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">nnf</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:</span><span class="mi">1</span><span class="p">],</span> <span class="n">nnf</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">upd_nnf</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">d</span><span class="o">==</span><span class="mi">2</span><span class="p">:</span>
+            <span class="n">upd_nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">nnf</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:,</span> <span class="p">:],</span> <span class="n">nnf</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">:,</span> <span class="p">:]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">upd_nnf</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">d</span><span class="o">==</span><span class="mi">3</span><span class="p">:</span>
+            <span class="n">upd_nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">nnf</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">:],</span> <span class="n">nnf</span><span class="p">[:,</span> <span class="p">:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">:]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">upd_nnf</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="n">upd_nnf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clamp_bound</span><span class="p">(</span><span class="n">upd_nnf</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">upd_nnf</span></div>
+
+        
+<div class="viewcode-block" id="PatchMatcher.shift_nnf">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.shift_nnf">[docs]</a>
+    <span class="k">def</span> <span class="nf">shift_nnf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">d</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">nnf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="p">)</span>
+            <span class="n">upd_nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">nnf</span><span class="p">[</span><span class="n">d</span><span class="p">:]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">nnf</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:]]</span> <span class="o">*</span> <span class="n">d</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="o">-</span><span class="n">nnf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="p">)</span>
+            <span class="n">upd_nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">nnf</span><span class="p">[:</span><span class="mi">1</span><span class="p">]]</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="n">d</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">nnf</span><span class="p">[:</span><span class="n">d</span><span class="p">]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">upd_nnf</span></div>
+
+    
+<div class="viewcode-block" id="PatchMatcher.track_step">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.track_step">[docs]</a>
+    <span class="k">def</span> <span class="nf">track_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_pairwise_patch_error</span><span class="p">:</span>
+            <span class="n">upd_nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">nnf</span><span class="p">)</span>
+            <span class="n">upd_nnf</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift_nnf</span><span class="p">(</span><span class="n">nnf</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">],</span> <span class="n">d</span><span class="p">)</span>
+            <span class="n">upd_nnf</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift_nnf</span><span class="p">(</span><span class="n">nnf</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">],</span> <span class="n">d</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">upd_nnf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift_nnf</span><span class="p">(</span><span class="n">nnf</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">upd_nnf</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.C">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.C">[docs]</a>
+    <span class="k">def</span> <span class="nf">C</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+        <span class="c1"># not used</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">c</span> <span class="o">*=</span> <span class="n">i</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">m</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">c</span> <span class="o">//=</span> <span class="n">i</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="o">-</span><span class="n">m</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">c</span> <span class="o">//=</span> <span class="n">i</span>
+        <span class="k">return</span> <span class="n">c</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.bezier_step">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.bezier_step">[docs]</a>
+    <span class="k">def</span> <span class="nf">bezier_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+        <span class="c1"># not used</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">r</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">upd_nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">nnf</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">r</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">r</span><span class="o">+</span><span class="mi">1</span><span class="p">))):</span>
+            <span class="k">if</span> <span class="n">d</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+                <span class="n">ctl_nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">nnf</span><span class="p">[</span><span class="n">d</span><span class="p">:]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">nnf</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:]]</span> <span class="o">*</span> <span class="n">d</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">d</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">:</span>
+                <span class="n">ctl_nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">nnf</span><span class="p">[:</span><span class="mi">1</span><span class="p">]]</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="n">d</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">nnf</span><span class="p">[:</span><span class="n">d</span><span class="p">]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">upd_nnf</span> <span class="o">+=</span> <span class="n">ctl_nnf</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">C</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="o">**</span><span class="n">n</span><span class="p">)</span>
+        <span class="n">upd_nnf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clamp_bound</span><span class="p">(</span><span class="n">upd_nnf</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">nnf</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">upd_nnf</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.update">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.update">[docs]</a>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">upd_nnf</span><span class="p">):</span>
+        <span class="n">upd_err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_error</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">upd_nnf</span><span class="p">)</span>
+        <span class="n">upd_idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">upd_err</span> <span class="o">&lt;</span> <span class="n">err</span><span class="p">)</span>
+        <span class="n">nnf</span><span class="p">[</span><span class="n">upd_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">upd_nnf</span><span class="p">[</span><span class="n">upd_idx</span><span class="p">]</span>
+        <span class="n">err</span><span class="p">[</span><span class="n">upd_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">upd_err</span><span class="p">[</span><span class="n">upd_idx</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.propagation">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.propagation">[docs]</a>
+    <span class="k">def</span> <span class="nf">propagation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">cp</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">upd_nnf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">neighboor_step</span><span class="p">(</span><span class="n">nnf</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+            <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">upd_nnf</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span></div>
+
+        
+<div class="viewcode-block" id="PatchMatcher.random_search">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.random_search">[docs]</a>
+    <span class="k">def</span> <span class="nf">random_search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_search_steps</span><span class="p">):</span>
+            <span class="n">upd_nnf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_step</span><span class="p">(</span><span class="n">nnf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_search_range</span><span class="p">)</span>
+            <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">upd_nnf</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.track">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.track">[docs]</a>
+    <span class="k">def</span> <span class="nf">track</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracking_window_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">upd_nnf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">track_step</span><span class="p">(</span><span class="n">nnf</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+            <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">upd_nnf</span><span class="p">)</span>
+            <span class="n">upd_nnf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">track_step</span><span class="p">(</span><span class="n">nnf</span><span class="p">,</span> <span class="o">-</span><span class="n">d</span><span class="p">)</span>
+            <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">upd_nnf</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.iteration">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.iteration">[docs]</a>
+    <span class="k">def</span> <span class="nf">iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">):</span>
+        <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">propagation</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+        <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_search</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+        <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">track</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span></div>
+
+
+<div class="viewcode-block" id="PatchMatcher.estimate_nnf">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PatchMatcher.estimate_nnf">[docs]</a>
+    <span class="k">def</span> <span class="nf">estimate_nnf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">cp</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Device</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gpu_id</span><span class="p">):</span>
+            <span class="n">source_guide</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_image</span><span class="p">(</span><span class="n">source_guide</span><span class="p">)</span>
+            <span class="n">target_guide</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_image</span><span class="p">(</span><span class="n">target_guide</span><span class="p">)</span>
+            <span class="n">source_style</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_image</span><span class="p">(</span><span class="n">source_style</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_iter</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">patch_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_size_list</span><span class="p">[</span><span class="n">it</span><span class="p">]</span>
+                <span class="n">target_style</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_nnf_to_image</span><span class="p">(</span><span class="n">nnf</span><span class="p">,</span> <span class="n">source_style</span><span class="p">)</span>
+                <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_error</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">)</span>
+                <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">,</span> <span class="n">target_style</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+            <span class="n">target_style</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unpad_image</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">apply_nnf_to_image</span><span class="p">(</span><span class="n">nnf</span><span class="p">,</span> <span class="n">source_style</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">target_style</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PyramidPatchMatcher">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher">[docs]</a>
+<span class="k">class</span> <span class="nc">PyramidPatchMatcher</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">image_height</span><span class="p">,</span> <span class="n">image_width</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">minimum_patch_size</span><span class="p">,</span>
+        <span class="n">threads_per_block</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">num_iter</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">gpu_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">guide_weight</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
+        <span class="n">use_mean_target_style</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_pairwise_patch_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">tracking_window_size</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">initialize</span><span class="o">=</span><span class="s2">&quot;identity&quot;</span>
+    <span class="p">):</span>
+        <span class="n">maximum_patch_size</span> <span class="o">=</span> <span class="n">minimum_patch_size</span> <span class="o">+</span> <span class="p">(</span><span class="n">num_iter</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_level</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">image_height</span><span class="p">,</span> <span class="n">image_width</span><span class="p">)</span> <span class="o">/</span> <span class="n">maximum_patch_size</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_heights</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_widths</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">patch_matchers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">minimum_patch_size</span> <span class="o">=</span> <span class="n">minimum_patch_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_iter</span> <span class="o">=</span> <span class="n">num_iter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gpu_id</span> <span class="o">=</span> <span class="n">gpu_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initialize</span> <span class="o">=</span> <span class="n">initialize</span>
+        <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pyramid_level</span><span class="p">):</span>
+            <span class="n">height</span> <span class="o">=</span> <span class="n">image_height</span><span class="o">//</span><span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pyramid_level</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">level</span><span class="p">))</span>
+            <span class="n">width</span> <span class="o">=</span> <span class="n">image_width</span><span class="o">//</span><span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pyramid_level</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">level</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_heights</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">height</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_widths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">width</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">patch_matchers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">PatchMatcher</span><span class="p">(</span>
+                <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">minimum_patch_size</span><span class="o">=</span><span class="n">minimum_patch_size</span><span class="p">,</span>
+                <span class="n">threads_per_block</span><span class="o">=</span><span class="n">threads_per_block</span><span class="p">,</span> <span class="n">num_iter</span><span class="o">=</span><span class="n">num_iter</span><span class="p">,</span> <span class="n">gpu_id</span><span class="o">=</span><span class="n">gpu_id</span><span class="p">,</span> <span class="n">guide_weight</span><span class="o">=</span><span class="n">guide_weight</span><span class="p">,</span>
+                <span class="n">use_mean_target_style</span><span class="o">=</span><span class="n">use_mean_target_style</span><span class="p">,</span> <span class="n">use_pairwise_patch_error</span><span class="o">=</span><span class="n">use_pairwise_patch_error</span><span class="p">,</span>
+                <span class="n">tracking_window_size</span><span class="o">=</span><span class="n">tracking_window_size</span>
+            <span class="p">))</span>
+
+<div class="viewcode-block" id="PyramidPatchMatcher.resample_image">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.resample_image">[docs]</a>
+    <span class="k">def</span> <span class="nf">resample_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+        <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_heights</span><span class="p">[</span><span class="n">level</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_widths</span><span class="p">[</span><span class="n">level</span><span class="p">]</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">images_resample</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">:</span>
+            <span class="n">image_resample</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">),</span> <span class="n">interpolation</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">INTER_AREA</span><span class="p">)</span>
+            <span class="n">images_resample</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">image_resample</span><span class="p">)</span>
+        <span class="n">images_resample</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">images_resample</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">images_resample</span></div>
+
+
+<div class="viewcode-block" id="PyramidPatchMatcher.initialize_nnf">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.initialize_nnf">[docs]</a>
+    <span class="k">def</span> <span class="nf">initialize_nnf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialize</span> <span class="o">==</span> <span class="s2">&quot;random&quot;</span><span class="p">:</span>
+            <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_heights</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_widths</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span>
+                <span class="n">cp</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
+                <span class="n">cp</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+            <span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialize</span> <span class="o">==</span> <span class="s2">&quot;identity&quot;</span><span class="p">:</span>
+            <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_heights</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_widths</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span>
+                <span class="n">cp</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">height</span><span class="p">),</span> <span class="n">width</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">),</span>
+                <span class="n">cp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">width</span><span class="p">),</span> <span class="n">height</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span>
+            <span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">nnf</span><span class="p">]</span> <span class="o">*</span> <span class="n">batch_size</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">nnf</span></div>
+
+
+<div class="viewcode-block" id="PyramidPatchMatcher.update_nnf">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.update_nnf">[docs]</a>
+    <span class="k">def</span> <span class="nf">update_nnf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+        <span class="c1"># upscale</span>
+        <span class="n">nnf</span> <span class="o">=</span> <span class="n">nnf</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+        <span class="n">nnf</span><span class="p">[:,[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nnf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="n">i</span><span class="o">&amp;</span><span class="mi">1</span><span class="p">],:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">nnf</span><span class="p">[:,:,[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nnf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="n">i</span><span class="o">&amp;</span><span class="mi">1</span><span class="p">],</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># check if scale is 2</span>
+        <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_heights</span><span class="p">[</span><span class="n">level</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">pyramid_widths</span><span class="p">[</span><span class="n">level</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">height</span> <span class="o">!=</span> <span class="n">nnf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">width</span> <span class="o">!=</span> <span class="n">nnf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">nnf</span> <span class="o">=</span> <span class="n">nnf</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="n">nnf</span> <span class="o">=</span> <span class="p">[</span><span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">),</span> <span class="n">interpolation</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">INTER_LINEAR</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">nnf</span><span class="p">]</span>
+            <span class="n">nnf</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">nnf</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+            <span class="n">nnf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_matchers</span><span class="p">[</span><span class="n">level</span><span class="p">]</span><span class="o">.</span><span class="n">clamp_bound</span><span class="p">(</span><span class="n">nnf</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">nnf</span></div>
+
+
+<div class="viewcode-block" id="PyramidPatchMatcher.apply_nnf_to_image">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.apply_nnf_to_image">[docs]</a>
+    <span class="k">def</span> <span class="nf">apply_nnf_to_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nnf</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">cp</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Device</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gpu_id</span><span class="p">):</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_matchers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">pad_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_matchers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">apply_nnf_to_image</span><span class="p">(</span><span class="n">nnf</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">image</span></div>
+
+
+<div class="viewcode-block" id="PyramidPatchMatcher.estimate_nnf">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher.estimate_nnf">[docs]</a>
+    <span class="k">def</span> <span class="nf">estimate_nnf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_guide</span><span class="p">,</span> <span class="n">target_guide</span><span class="p">,</span> <span class="n">source_style</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">cp</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Device</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gpu_id</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">cp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="n">source_guide</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target_guide</span><span class="p">,</span> <span class="n">cp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="n">target_guide</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">target_guide</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source_style</span><span class="p">,</span> <span class="n">cp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="n">source_style</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">source_style</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pyramid_level</span><span class="p">):</span>
+                <span class="n">nnf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialize_nnf</span><span class="p">(</span><span class="n">source_guide</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="n">level</span><span class="o">==</span><span class="mi">0</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_nnf</span><span class="p">(</span><span class="n">nnf</span><span class="p">,</span> <span class="n">level</span><span class="p">)</span>
+                <span class="n">source_guide_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resample_image</span><span class="p">(</span><span class="n">source_guide</span><span class="p">,</span> <span class="n">level</span><span class="p">)</span>
+                <span class="n">target_guide_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resample_image</span><span class="p">(</span><span class="n">target_guide</span><span class="p">,</span> <span class="n">level</span><span class="p">)</span>
+                <span class="n">source_style_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resample_image</span><span class="p">(</span><span class="n">source_style</span><span class="p">,</span> <span class="n">level</span><span class="p">)</span>
+                <span class="n">nnf</span><span class="p">,</span> <span class="n">target_style</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_matchers</span><span class="p">[</span><span class="n">level</span><span class="p">]</span><span class="o">.</span><span class="n">estimate_nnf</span><span class="p">(</span>
+                    <span class="n">source_guide_</span><span class="p">,</span> <span class="n">target_guide_</span><span class="p">,</span> <span class="n">source_style_</span><span class="p">,</span> <span class="n">nnf</span>
+                <span class="p">)</span>
+        <span class="k">return</span> <span class="n">nnf</span><span class="o">.</span><span class="n">get</span><span class="p">(),</span> <span class="n">target_style</span><span class="o">.</span><span class="n">get</span><span class="p">()</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ModelScope.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

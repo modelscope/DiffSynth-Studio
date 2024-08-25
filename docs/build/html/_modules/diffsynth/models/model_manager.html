@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>diffsynth.models.model_manager &mdash; DiffSynth-Studio 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            DiffSynth-Studio
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">DiffSynth-Studio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">diffsynth.models.model_manager</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for diffsynth.models.model_manager</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">torch</span><span class="o">,</span> <span class="nn">hashlib</span><span class="o">,</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">importlib</span>
+<span class="kn">from</span> <span class="nn">safetensors</span> <span class="kn">import</span> <span class="n">safe_open</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TypeAlias</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
+
+<span class="kn">from</span> <span class="nn">.downloader</span> <span class="kn">import</span> <span class="n">download_models</span><span class="p">,</span> <span class="n">Preset_model_id</span><span class="p">,</span> <span class="n">Preset_model_website</span>
+
+<span class="kn">from</span> <span class="nn">.sd_text_encoder</span> <span class="kn">import</span> <span class="n">SDTextEncoder</span>
+<span class="kn">from</span> <span class="nn">.sd_unet</span> <span class="kn">import</span> <span class="n">SDUNet</span>
+<span class="kn">from</span> <span class="nn">.sd_vae_encoder</span> <span class="kn">import</span> <span class="n">SDVAEEncoder</span>
+<span class="kn">from</span> <span class="nn">.sd_vae_decoder</span> <span class="kn">import</span> <span class="n">SDVAEDecoder</span>
+<span class="kn">from</span> <span class="nn">.lora</span> <span class="kn">import</span> <span class="n">SDLoRAFromCivitai</span><span class="p">,</span> <span class="n">SDXLLoRAFromCivitai</span><span class="p">,</span> <span class="n">GeneralLoRAFromPeft</span>
+
+<span class="kn">from</span> <span class="nn">.sdxl_text_encoder</span> <span class="kn">import</span> <span class="n">SDXLTextEncoder</span><span class="p">,</span> <span class="n">SDXLTextEncoder2</span>
+<span class="kn">from</span> <span class="nn">.sdxl_unet</span> <span class="kn">import</span> <span class="n">SDXLUNet</span>
+<span class="kn">from</span> <span class="nn">.sdxl_vae_decoder</span> <span class="kn">import</span> <span class="n">SDXLVAEDecoder</span>
+<span class="kn">from</span> <span class="nn">.sdxl_vae_encoder</span> <span class="kn">import</span> <span class="n">SDXLVAEEncoder</span>
+
+<span class="kn">from</span> <span class="nn">.sd3_text_encoder</span> <span class="kn">import</span> <span class="n">SD3TextEncoder1</span><span class="p">,</span> <span class="n">SD3TextEncoder2</span><span class="p">,</span> <span class="n">SD3TextEncoder3</span>
+<span class="kn">from</span> <span class="nn">.sd3_dit</span> <span class="kn">import</span> <span class="n">SD3DiT</span>
+<span class="kn">from</span> <span class="nn">.sd3_vae_decoder</span> <span class="kn">import</span> <span class="n">SD3VAEDecoder</span>
+<span class="kn">from</span> <span class="nn">.sd3_vae_encoder</span> <span class="kn">import</span> <span class="n">SD3VAEEncoder</span>
+
+<span class="kn">from</span> <span class="nn">.sd_controlnet</span> <span class="kn">import</span> <span class="n">SDControlNet</span>
+
+<span class="kn">from</span> <span class="nn">.sd_motion</span> <span class="kn">import</span> <span class="n">SDMotionModel</span>
+<span class="kn">from</span> <span class="nn">.sdxl_motion</span> <span class="kn">import</span> <span class="n">SDXLMotionModel</span>
+
+<span class="kn">from</span> <span class="nn">.svd_image_encoder</span> <span class="kn">import</span> <span class="n">SVDImageEncoder</span>
+<span class="kn">from</span> <span class="nn">.svd_unet</span> <span class="kn">import</span> <span class="n">SVDUNet</span>
+<span class="kn">from</span> <span class="nn">.svd_vae_decoder</span> <span class="kn">import</span> <span class="n">SVDVAEDecoder</span>
+<span class="kn">from</span> <span class="nn">.svd_vae_encoder</span> <span class="kn">import</span> <span class="n">SVDVAEEncoder</span>
+
+<span class="kn">from</span> <span class="nn">.sd_ipadapter</span> <span class="kn">import</span> <span class="n">SDIpAdapter</span><span class="p">,</span> <span class="n">IpAdapterCLIPImageEmbedder</span>
+<span class="kn">from</span> <span class="nn">.sdxl_ipadapter</span> <span class="kn">import</span> <span class="n">SDXLIpAdapter</span><span class="p">,</span> <span class="n">IpAdapterXLCLIPImageEmbedder</span>
+
+<span class="kn">from</span> <span class="nn">.hunyuan_dit_text_encoder</span> <span class="kn">import</span> <span class="n">HunyuanDiTCLIPTextEncoder</span><span class="p">,</span> <span class="n">HunyuanDiTT5TextEncoder</span>
+<span class="kn">from</span> <span class="nn">.hunyuan_dit</span> <span class="kn">import</span> <span class="n">HunyuanDiT</span>
+
+<span class="kn">from</span> <span class="nn">..configs.model_config</span> <span class="kn">import</span> <span class="n">model_loader_configs</span><span class="p">,</span> <span class="n">huggingface_model_loader_configs</span><span class="p">,</span> <span class="n">patch_model_loader_configs</span>
+
+
+
+<div class="viewcode-block" id="load_state_dict">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.load_state_dict">[docs]</a>
+<span class="k">def</span> <span class="nf">load_state_dict</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">file_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.safetensors&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">load_state_dict_from_safetensors</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="n">torch_dtype</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">load_state_dict_from_bin</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="n">torch_dtype</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_state_dict_from_safetensors">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.load_state_dict_from_safetensors">[docs]</a>
+<span class="k">def</span> <span class="nf">load_state_dict_from_safetensors</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">state_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">with</span> <span class="n">safe_open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">framework</span><span class="o">=</span><span class="s2">&quot;pt&quot;</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">f</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">state_dict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">get_tensor</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">torch_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">state_dict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">state_dict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch_dtype</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">state_dict</span></div>
+
+
+
+<div class="viewcode-block" id="load_state_dict_from_bin">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.load_state_dict_from_bin">[docs]</a>
+<span class="k">def</span> <span class="nf">load_state_dict_from_bin</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">state_dict</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">map_location</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">torch_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">state_dict</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">state_dict</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+                <span class="n">state_dict</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">state_dict</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch_dtype</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">state_dict</span></div>
+
+
+
+<div class="viewcode-block" id="search_for_embeddings">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.search_for_embeddings">[docs]</a>
+<span class="k">def</span> <span class="nf">search_for_embeddings</span><span class="p">(</span><span class="n">state_dict</span><span class="p">):</span>
+    <span class="n">embeddings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">state_dict</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">state_dict</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+            <span class="n">embeddings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state_dict</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">state_dict</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">embeddings</span> <span class="o">+=</span> <span class="n">search_for_embeddings</span><span class="p">(</span><span class="n">state_dict</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">embeddings</span></div>
+
+
+
+<div class="viewcode-block" id="search_parameter">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.search_parameter">[docs]</a>
+<span class="k">def</span> <span class="nf">search_parameter</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">state_dict</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param_</span> <span class="ow">in</span> <span class="n">state_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">==</span> <span class="n">param_</span><span class="o">.</span><span class="n">numel</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">param_</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">dist</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">param_</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">name</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">dist</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">param_</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">name</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="build_rename_dict">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.build_rename_dict">[docs]</a>
+<span class="k">def</span> <span class="nf">build_rename_dict</span><span class="p">(</span><span class="n">source_state_dict</span><span class="p">,</span> <span class="n">target_state_dict</span><span class="p">,</span> <span class="n">split_qkv</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">matched_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">source_state_dict</span><span class="p">:</span>
+            <span class="n">rename</span> <span class="o">=</span> <span class="n">search_parameter</span><span class="p">(</span><span class="n">source_state_dict</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">target_state_dict</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">rename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&quot;: &quot;</span><span class="si">{</span><span class="n">rename</span><span class="si">}</span><span class="s1">&quot;,&#39;</span><span class="p">)</span>
+                <span class="n">matched_keys</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">rename</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">split_qkv</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">source_state_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">&gt;=</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">source_state_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">%</span><span class="mi">3</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                <span class="n">length</span> <span class="o">=</span> <span class="n">source_state_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">3</span>
+                <span class="n">rename</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+                    <span class="n">rename</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">search_parameter</span><span class="p">(</span><span class="n">source_state_dict</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="n">i</span><span class="o">*</span><span class="n">length</span><span class="p">:</span> <span class="n">i</span><span class="o">*</span><span class="n">length</span><span class="o">+</span><span class="n">length</span><span class="p">],</span> <span class="n">target_state_dict</span><span class="p">))</span>
+                <span class="k">if</span> <span class="kc">None</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">rename</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&quot;: </span><span class="si">{</span><span class="n">rename</span><span class="si">}</span><span class="s1">,&#39;</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">rename_</span> <span class="ow">in</span> <span class="n">rename</span><span class="p">:</span>
+                        <span class="n">matched_keys</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">rename_</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">target_state_dict</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">matched_keys</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cannot find&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">target_state_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="search_for_files">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.search_for_files">[docs]</a>
+<span class="k">def</span> <span class="nf">search_for_files</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">extensions</span><span class="p">):</span>
+    <span class="n">files</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">folder</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">folder</span><span class="p">)):</span>
+            <span class="n">files</span> <span class="o">+=</span> <span class="n">search_for_files</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">file</span><span class="p">),</span> <span class="n">extensions</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">folder</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">extension</span> <span class="ow">in</span> <span class="n">extensions</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">folder</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">extension</span><span class="p">):</span>
+                <span class="n">files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+                <span class="k">break</span>
+    <span class="k">return</span> <span class="n">files</span></div>
+
+
+
+<div class="viewcode-block" id="convert_state_dict_keys_to_single_str">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.convert_state_dict_keys_to_single_str">[docs]</a>
+<span class="k">def</span> <span class="nf">convert_state_dict_keys_to_single_str</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">with_shape</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">keys</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">state_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">with_shape</span><span class="p">:</span>
+                    <span class="n">shape</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="p">)))</span>
+                    <span class="n">keys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span> <span class="o">+</span> <span class="s2">&quot;:&quot;</span> <span class="o">+</span> <span class="n">shape</span><span class="p">)</span>
+                <span class="n">keys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">keys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span> <span class="o">+</span> <span class="s2">&quot;|&quot;</span> <span class="o">+</span> <span class="n">convert_state_dict_keys_to_single_str</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">with_shape</span><span class="o">=</span><span class="n">with_shape</span><span class="p">))</span>
+    <span class="n">keys</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    <span class="n">keys_str</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">keys_str</span></div>
+
+
+
+<div class="viewcode-block" id="split_state_dict_with_prefix">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.split_state_dict_with_prefix">[docs]</a>
+<span class="k">def</span> <span class="nf">split_state_dict_with_prefix</span><span class="p">(</span><span class="n">state_dict</span><span class="p">):</span>
+    <span class="n">keys</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">state_dict</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">)])</span>
+    <span class="n">prefix_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span>  <span class="n">keys</span><span class="p">:</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="n">key</span> <span class="k">if</span> <span class="s2">&quot;.&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">key</span> <span class="k">else</span> <span class="n">key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">prefix</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">prefix_dict</span><span class="p">:</span>
+            <span class="n">prefix_dict</span><span class="p">[</span><span class="n">prefix</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">prefix_dict</span><span class="p">[</span><span class="n">prefix</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+    <span class="n">state_dicts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">keys</span> <span class="ow">in</span> <span class="n">prefix_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">sub_state_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">state_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">}</span>
+        <span class="n">state_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sub_state_dict</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">state_dicts</span></div>
+
+
+
+<div class="viewcode-block" id="hash_state_dict_keys">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.hash_state_dict_keys">[docs]</a>
+<span class="k">def</span> <span class="nf">hash_state_dict_keys</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">with_shape</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">keys_str</span> <span class="o">=</span> <span class="n">convert_state_dict_keys_to_single_str</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">with_shape</span><span class="o">=</span><span class="n">with_shape</span><span class="p">)</span>
+    <span class="n">keys_str</span> <span class="o">=</span> <span class="n">keys_str</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;UTF-8&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">md5</span><span class="p">(</span><span class="n">keys_str</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="load_model_from_single_file">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.load_model_from_single_file">[docs]</a>
+<span class="k">def</span> <span class="nf">load_model_from_single_file</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">model_resource</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">model_class</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    model_name: </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2"> model_class: </span><span class="si">{</span><span class="n">model_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">state_dict_converter</span> <span class="o">=</span> <span class="n">model_class</span><span class="o">.</span><span class="n">state_dict_converter</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">model_resource</span> <span class="o">==</span> <span class="s2">&quot;civitai&quot;</span><span class="p">:</span>
+            <span class="n">state_dict_results</span> <span class="o">=</span> <span class="n">state_dict_converter</span><span class="o">.</span><span class="n">from_civitai</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">model_resource</span> <span class="o">==</span> <span class="s2">&quot;diffusers&quot;</span><span class="p">:</span>
+            <span class="n">state_dict_results</span> <span class="o">=</span> <span class="n">state_dict_converter</span><span class="o">.</span><span class="n">from_diffusers</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">state_dict_results</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">model_state_dict</span><span class="p">,</span> <span class="n">extra_kwargs</span> <span class="o">=</span> <span class="n">state_dict_results</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;        This model is initialized with extra kwargs: </span><span class="si">{</span><span class="n">extra_kwargs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">model_state_dict</span><span class="p">,</span> <span class="n">extra_kwargs</span> <span class="o">=</span> <span class="n">state_dict_results</span><span class="p">,</span> <span class="p">{}</span>
+        <span class="n">torch_dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">extra_kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;upcast_to_float32&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="k">else</span> <span class="n">torch_dtype</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">model_class</span><span class="p">(</span><span class="o">**</span><span class="n">extra_kwargs</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch_dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">model_state_dict</span><span class="p">)</span>
+        <span class="n">loaded_model_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+        <span class="n">loaded_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span></div>
+
+
+
+<div class="viewcode-block" id="load_model_from_huggingface_folder">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.load_model_from_huggingface_folder">[docs]</a>
+<span class="k">def</span> <span class="nf">load_model_from_huggingface_folder</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">model_class</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">):</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">model_class</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="n">torch_dtype</span><span class="p">)</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">torch_dtype</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">float16</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;half&quot;</span><span class="p">):</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">half</span><span class="p">()</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">loaded_model_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+        <span class="n">loaded_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span></div>
+
+
+
+<div class="viewcode-block" id="load_single_patch_model_from_single_file">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.load_single_patch_model_from_single_file">[docs]</a>
+<span class="k">def</span> <span class="nf">load_single_patch_model_from_single_file</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">model_class</span><span class="p">,</span> <span class="n">base_model</span><span class="p">,</span> <span class="n">extra_kwargs</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    model_name: </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2"> model_class: </span><span class="si">{</span><span class="n">model_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> extra_kwargs: </span><span class="si">{</span><span class="n">extra_kwargs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">base_state_dict</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">()</span>
+    <span class="n">base_model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+    <span class="k">del</span> <span class="n">base_model</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">model_class</span><span class="p">(</span><span class="o">**</span><span class="n">extra_kwargs</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">base_state_dict</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch_dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">model</span></div>
+
+
+
+<div class="viewcode-block" id="load_patch_model_from_single_file">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.load_patch_model_from_single_file">[docs]</a>
+<span class="k">def</span> <span class="nf">load_patch_model_from_single_file</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">extra_kwargs</span><span class="p">,</span> <span class="n">model_manager</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">model_class</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">):</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">model_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">model_manager</span><span class="o">.</span><span class="n">model</span><span class="p">)):</span>
+                <span class="n">base_model_name</span> <span class="o">=</span> <span class="n">model_manager</span><span class="o">.</span><span class="n">model_name</span><span class="p">[</span><span class="n">model_id</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">base_model_name</span> <span class="o">==</span> <span class="n">model_name</span><span class="p">:</span>
+                    <span class="n">base_model_path</span> <span class="o">=</span> <span class="n">model_manager</span><span class="o">.</span><span class="n">model_path</span><span class="p">[</span><span class="n">model_id</span><span class="p">]</span>
+                    <span class="n">base_model</span> <span class="o">=</span> <span class="n">model_manager</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="n">model_id</span><span class="p">]</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Adding patch model to </span><span class="si">{</span><span class="n">base_model_name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">base_model_path</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                    <span class="n">patched_model</span> <span class="o">=</span> <span class="n">load_single_patch_model_from_single_file</span><span class="p">(</span>
+                        <span class="n">state_dict</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">model_class</span><span class="p">,</span> <span class="n">base_model</span><span class="p">,</span> <span class="n">extra_kwargs</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
+                    <span class="n">loaded_model_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base_model_name</span><span class="p">)</span>
+                    <span class="n">loaded_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">patched_model</span><span class="p">)</span>
+                    <span class="n">model_manager</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">model_id</span><span class="p">)</span>
+                    <span class="n">model_manager</span><span class="o">.</span><span class="n">model_path</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">model_id</span><span class="p">)</span>
+                    <span class="n">model_manager</span><span class="o">.</span><span class="n">model_name</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">model_id</span><span class="p">)</span>
+                    <span class="k">break</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">break</span>
+    <span class="k">return</span> <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span></div>
+
+
+
+
+<div class="viewcode-block" id="ModelDetectorTemplate">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorTemplate">[docs]</a>
+<span class="k">class</span> <span class="nc">ModelDetectorTemplate</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="ModelDetectorTemplate.match">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorTemplate.match">[docs]</a>
+    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+    
+<div class="viewcode-block" id="ModelDetectorTemplate.load">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorTemplate.load">[docs]</a>
+    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{},</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[],</span> <span class="p">[]</span></div>
+</div>
+
+    
+
+
+<div class="viewcode-block" id="ModelDetectorFromSingleFile">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromSingleFile">[docs]</a>
+<span class="k">class</span> <span class="nc">ModelDetectorFromSingleFile</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_loader_configs</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_with_shape_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">metadata</span> <span class="ow">in</span> <span class="n">model_loader_configs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_model_metadata</span><span class="p">(</span><span class="o">*</span><span class="n">metadata</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ModelDetectorFromSingleFile.add_model_metadata">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromSingleFile.add_model_metadata">[docs]</a>
+    <span class="k">def</span> <span class="nf">add_model_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keys_hash</span><span class="p">,</span> <span class="n">keys_hash_with_shape</span><span class="p">,</span> <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">model_resource</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_with_shape_dict</span><span class="p">[</span><span class="n">keys_hash_with_shape</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">model_resource</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">keys_hash</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_dict</span><span class="p">[</span><span class="n">keys_hash</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">model_resource</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ModelDetectorFromSingleFile.match">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromSingleFile.match">[docs]</a>
+    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">state_dict</span> <span class="o">=</span> <span class="n">load_state_dict</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="n">keys_hash_with_shape</span> <span class="o">=</span> <span class="n">hash_state_dict_keys</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">with_shape</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">keys_hash_with_shape</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_with_shape_dict</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="n">keys_hash</span> <span class="o">=</span> <span class="n">hash_state_dict_keys</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">with_shape</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">keys_hash</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_dict</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="ModelDetectorFromSingleFile.load">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromSingleFile.load">[docs]</a>
+    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{},</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">state_dict</span> <span class="o">=</span> <span class="n">load_state_dict</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+
+        <span class="c1"># Load models with strict matching</span>
+        <span class="n">keys_hash_with_shape</span> <span class="o">=</span> <span class="n">hash_state_dict_keys</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">with_shape</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">keys_hash_with_shape</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_with_shape_dict</span><span class="p">:</span>
+            <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">model_resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_with_shape_dict</span><span class="p">[</span><span class="n">keys_hash_with_shape</span><span class="p">]</span>
+            <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span> <span class="o">=</span> <span class="n">load_model_from_single_file</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">model_resource</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span>
+
+        <span class="c1"># Load models without strict matching</span>
+        <span class="c1"># (the shape of parameters may be inconsistent, and the state_dict_converter will modify the model architecture)</span>
+        <span class="n">keys_hash</span> <span class="o">=</span> <span class="n">hash_state_dict_keys</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">with_shape</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">keys_hash</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_dict</span><span class="p">:</span>
+            <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">model_resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_dict</span><span class="p">[</span><span class="n">keys_hash</span><span class="p">]</span>
+            <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span> <span class="o">=</span> <span class="n">load_model_from_single_file</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">model_resource</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span>
+
+        <span class="k">return</span> <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span></div>
+</div>
+
+
+
+
+<div class="viewcode-block" id="ModelDetectorFromSplitedSingleFile">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromSplitedSingleFile">[docs]</a>
+<span class="k">class</span> <span class="nc">ModelDetectorFromSplitedSingleFile</span><span class="p">(</span><span class="n">ModelDetectorFromSingleFile</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_loader_configs</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model_loader_configs</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ModelDetectorFromSplitedSingleFile.match">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromSplitedSingleFile.match">[docs]</a>
+    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">state_dict</span> <span class="o">=</span> <span class="n">load_state_dict</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="n">splited_state_dict</span> <span class="o">=</span> <span class="n">split_state_dict_with_prefix</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">sub_state_dict</span> <span class="ow">in</span> <span class="n">splited_state_dict</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">sub_state_dict</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="ModelDetectorFromSplitedSingleFile.load">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromSplitedSingleFile.load">[docs]</a>
+    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{},</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># Split the state_dict and load from each component</span>
+        <span class="n">splited_state_dict</span> <span class="o">=</span> <span class="n">split_state_dict_with_prefix</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span>
+        <span class="n">valid_state_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">sub_state_dict</span> <span class="ow">in</span> <span class="n">splited_state_dict</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">sub_state_dict</span><span class="p">):</span>
+                <span class="n">valid_state_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">sub_state_dict</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">valid_state_dict</span><span class="p">):</span>
+            <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">valid_state_dict</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">sub_state_dict</span> <span class="ow">in</span> <span class="n">splited_state_dict</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">sub_state_dict</span><span class="p">):</span>
+                    <span class="n">loaded_model_names_</span><span class="p">,</span> <span class="n">loaded_models_</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">valid_state_dict</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="p">)</span>
+                    <span class="n">loaded_model_names</span> <span class="o">+=</span> <span class="n">loaded_model_names_</span>
+                    <span class="n">loaded_models</span> <span class="o">+=</span> <span class="n">loaded_models_</span>
+        <span class="k">return</span> <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span></div>
+</div>
+
+    
+
+
+<div class="viewcode-block" id="ModelDetectorFromHuggingfaceFolder">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromHuggingfaceFolder">[docs]</a>
+<span class="k">class</span> <span class="nc">ModelDetectorFromHuggingfaceFolder</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_loader_configs</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">architecture_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">metadata</span> <span class="ow">in</span> <span class="n">model_loader_configs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_model_metadata</span><span class="p">(</span><span class="o">*</span><span class="n">metadata</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ModelDetectorFromHuggingfaceFolder.add_model_metadata">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromHuggingfaceFolder.add_model_metadata">[docs]</a>
+    <span class="k">def</span> <span class="nf">add_model_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">architecture</span><span class="p">,</span> <span class="n">huggingface_lib</span><span class="p">,</span> <span class="n">model_name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">architecture_dict</span><span class="p">[</span><span class="n">architecture</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">huggingface_lib</span><span class="p">,</span> <span class="n">model_name</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ModelDetectorFromHuggingfaceFolder.match">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromHuggingfaceFolder.match">[docs]</a>
+    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">file_list</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;config.json&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;config.json&quot;</span><span class="p">),</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;architectures&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+
+<div class="viewcode-block" id="ModelDetectorFromHuggingfaceFolder.load">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromHuggingfaceFolder.load">[docs]</a>
+    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{},</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;config.json&quot;</span><span class="p">),</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">architecture</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;architectures&quot;</span><span class="p">]:</span>
+            <span class="n">huggingface_lib</span><span class="p">,</span> <span class="n">model_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">architecture_dict</span><span class="p">[</span><span class="n">architecture</span><span class="p">]</span>
+            <span class="n">model_class</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">huggingface_lib</span><span class="p">)</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">architecture</span><span class="p">)</span>
+            <span class="n">loaded_model_names_</span><span class="p">,</span> <span class="n">loaded_models_</span> <span class="o">=</span> <span class="n">load_model_from_huggingface_folder</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="p">[</span><span class="n">model_name</span><span class="p">],</span> <span class="p">[</span><span class="n">model_class</span><span class="p">],</span> <span class="n">torch_dtype</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
+            <span class="n">loaded_model_names</span> <span class="o">+=</span> <span class="n">loaded_model_names_</span>
+            <span class="n">loaded_models</span> <span class="o">+=</span> <span class="n">loaded_models_</span>
+        <span class="k">return</span> <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span></div>
+</div>
+
+    
+
+
+<div class="viewcode-block" id="ModelDetectorFromPatchedSingleFile">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromPatchedSingleFile">[docs]</a>
+<span class="k">class</span> <span class="nc">ModelDetectorFromPatchedSingleFile</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_loader_configs</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_with_shape_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">metadata</span> <span class="ow">in</span> <span class="n">model_loader_configs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_model_metadata</span><span class="p">(</span><span class="o">*</span><span class="n">metadata</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ModelDetectorFromPatchedSingleFile.add_model_metadata">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromPatchedSingleFile.add_model_metadata">[docs]</a>
+    <span class="k">def</span> <span class="nf">add_model_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keys_hash_with_shape</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">model_class</span><span class="p">,</span> <span class="n">extra_kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_with_shape_dict</span><span class="p">[</span><span class="n">keys_hash_with_shape</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">model_class</span><span class="p">,</span> <span class="n">extra_kwargs</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ModelDetectorFromPatchedSingleFile.match">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromPatchedSingleFile.match">[docs]</a>
+    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">state_dict</span> <span class="o">=</span> <span class="n">load_state_dict</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="n">keys_hash_with_shape</span> <span class="o">=</span> <span class="n">hash_state_dict_keys</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">with_shape</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">keys_hash_with_shape</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_with_shape_dict</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="ModelDetectorFromPatchedSingleFile.load">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelDetectorFromPatchedSingleFile.load">[docs]</a>
+    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{},</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span> <span class="n">model_manager</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">state_dict</span> <span class="o">=</span> <span class="n">load_state_dict</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+
+        <span class="c1"># Load models with strict matching</span>
+        <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="n">keys_hash_with_shape</span> <span class="o">=</span> <span class="n">hash_state_dict_keys</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">with_shape</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">keys_hash_with_shape</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_with_shape_dict</span><span class="p">:</span>
+            <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">extra_kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_hash_with_shape_dict</span><span class="p">[</span><span class="n">keys_hash_with_shape</span><span class="p">]</span>
+            <span class="n">loaded_model_names_</span><span class="p">,</span> <span class="n">loaded_models_</span> <span class="o">=</span> <span class="n">load_patch_model_from_single_file</span><span class="p">(</span>
+                <span class="n">state_dict</span><span class="p">,</span> <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">extra_kwargs</span><span class="p">,</span> <span class="n">model_manager</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
+            <span class="n">loaded_model_names</span> <span class="o">+=</span> <span class="n">loaded_model_names_</span>
+            <span class="n">loaded_models</span> <span class="o">+=</span> <span class="n">loaded_models_</span>
+        <span class="k">return</span> <span class="n">loaded_model_names</span><span class="p">,</span> <span class="n">loaded_models</span></div>
+</div>
+
+
+
+
+<div class="viewcode-block" id="ModelManager">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelManager">[docs]</a>
+<span class="k">class</span> <span class="nc">ModelManager</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">torch_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span>
+        <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span>
+        <span class="n">model_id_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Preset_model_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span>
+        <span class="n">downloading_priority</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Preset_model_website</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;ModelScope&quot;</span><span class="p">,</span> <span class="s2">&quot;HuggingFace&quot;</span><span class="p">],</span>
+        <span class="n">file_path_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">torch_dtype</span> <span class="o">=</span> <span class="n">torch_dtype</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">downloaded_files</span> <span class="o">=</span> <span class="n">download_models</span><span class="p">(</span><span class="n">model_id_list</span><span class="p">,</span> <span class="n">downloading_priority</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">model_id_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_detector</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">ModelDetectorFromSingleFile</span><span class="p">(</span><span class="n">model_loader_configs</span><span class="p">),</span>
+            <span class="n">ModelDetectorFromSplitedSingleFile</span><span class="p">(</span><span class="n">model_loader_configs</span><span class="p">),</span>
+            <span class="n">ModelDetectorFromHuggingfaceFolder</span><span class="p">(</span><span class="n">huggingface_model_loader_configs</span><span class="p">),</span>
+            <span class="n">ModelDetectorFromPatchedSingleFile</span><span class="p">(</span><span class="n">patch_model_loader_configs</span><span class="p">),</span>
+        <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load_models</span><span class="p">(</span><span class="n">downloaded_files</span> <span class="o">+</span> <span class="n">file_path_list</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ModelManager.load_model_from_single_file">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelManager.load_model_from_single_file">[docs]</a>
+    <span class="k">def</span> <span class="nf">load_model_from_single_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{},</span> <span class="n">model_names</span><span class="o">=</span><span class="p">[],</span> <span class="n">model_classes</span><span class="o">=</span><span class="p">[],</span> <span class="n">model_resource</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading models from file: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">state_dict</span> <span class="o">=</span> <span class="n">load_state_dict</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="n">model_names</span><span class="p">,</span> <span class="n">models</span> <span class="o">=</span> <span class="n">load_model_from_single_file</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">model_resource</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">torch_dtype</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">model_names</span><span class="p">,</span> <span class="n">models</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    The following models are loaded: </span><span class="si">{</span><span class="n">model_names</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ModelManager.load_model_from_huggingface_folder">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelManager.load_model_from_huggingface_folder">[docs]</a>
+    <span class="k">def</span> <span class="nf">load_model_from_huggingface_folder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">model_names</span><span class="o">=</span><span class="p">[],</span> <span class="n">model_classes</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading models from folder: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">model_names</span><span class="p">,</span> <span class="n">models</span> <span class="o">=</span> <span class="n">load_model_from_huggingface_folder</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">torch_dtype</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">model_names</span><span class="p">,</span> <span class="n">models</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    The following models are loaded: </span><span class="si">{</span><span class="n">model_names</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ModelManager.load_patch_model_from_single_file">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelManager.load_patch_model_from_single_file">[docs]</a>
+    <span class="k">def</span> <span class="nf">load_patch_model_from_single_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{},</span> <span class="n">model_names</span><span class="o">=</span><span class="p">[],</span> <span class="n">model_classes</span><span class="o">=</span><span class="p">[],</span> <span class="n">extra_kwargs</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading patch models from file: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">model_names</span><span class="p">,</span> <span class="n">models</span> <span class="o">=</span> <span class="n">load_patch_model_from_single_file</span><span class="p">(</span>
+            <span class="n">state_dict</span><span class="p">,</span> <span class="n">model_names</span><span class="p">,</span> <span class="n">model_classes</span><span class="p">,</span> <span class="n">extra_kwargs</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">torch_dtype</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">model_names</span><span class="p">,</span> <span class="n">models</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    The following patched models are loaded: </span><span class="si">{</span><span class="n">model_names</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ModelManager.load_lora">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelManager.load_lora">[docs]</a>
+    <span class="k">def</span> <span class="nf">load_lora</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state_dict</span><span class="o">=</span><span class="p">{},</span> <span class="n">lora_alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading LoRA models from file: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">state_dict</span> <span class="o">=</span> <span class="n">load_state_dict</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">model_path</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">lora</span> <span class="ow">in</span> <span class="p">[</span><span class="n">SDLoRAFromCivitai</span><span class="p">(),</span> <span class="n">SDXLLoRAFromCivitai</span><span class="p">(),</span> <span class="n">GeneralLoRAFromPeft</span><span class="p">()]:</span>
+                <span class="n">match_results</span> <span class="o">=</span> <span class="n">lora</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">state_dict</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">match_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Adding LoRA to </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
+                    <span class="n">lora_prefix</span><span class="p">,</span> <span class="n">model_resource</span> <span class="o">=</span> <span class="n">match_results</span>
+                    <span class="n">lora</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">state_dict</span><span class="p">,</span> <span class="n">lora_prefix</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">lora_alpha</span><span class="p">,</span> <span class="n">model_resource</span><span class="o">=</span><span class="n">model_resource</span><span class="p">)</span>
+                    <span class="k">break</span></div>
+
+
+
+<div class="viewcode-block" id="ModelManager.load_model">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelManager.load_model">[docs]</a>
+    <span class="k">def</span> <span class="nf">load_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">model_names</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading models from: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+            <span class="n">state_dict</span> <span class="o">=</span> <span class="n">load_state_dict</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">state_dict</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">model_detector</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_detector</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">model_detector</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">state_dict</span><span class="p">):</span>
+                <span class="n">model_names</span><span class="p">,</span> <span class="n">models</span> <span class="o">=</span> <span class="n">model_detector</span><span class="o">.</span><span class="n">load</span><span class="p">(</span>
+                    <span class="n">file_path</span><span class="p">,</span> <span class="n">state_dict</span><span class="p">,</span>
+                    <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">torch_dtype</span><span class="p">,</span>
+                    <span class="n">allowed_model_names</span><span class="o">=</span><span class="n">model_names</span><span class="p">,</span> <span class="n">model_manager</span><span class="o">=</span><span class="bp">self</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">model_names</span><span class="p">,</span> <span class="n">models</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    The following models are loaded: </span><span class="si">{</span><span class="n">model_names</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    We cannot detect the model type. No models are loaded.&quot;</span><span class="p">)</span></div>
+
+        
+
+<div class="viewcode-block" id="ModelManager.load_models">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelManager.load_models">[docs]</a>
+    <span class="k">def</span> <span class="nf">load_models</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path_list</span><span class="p">,</span> <span class="n">model_names</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">file_path</span> <span class="ow">in</span> <span class="n">file_path_list</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">model_names</span><span class="p">)</span></div>
+
+
+    
+<div class="viewcode-block" id="ModelManager.fetch_model">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelManager.fetch_model">[docs]</a>
+    <span class="k">def</span> <span class="nf">fetch_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">require_model_path</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">fetched_models</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">fetched_model_paths</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">model</span><span class="p">,</span> <span class="n">model_path</span><span class="p">,</span> <span class="n">model_name_</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">file_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">file_path</span> <span class="o">!=</span> <span class="n">model_path</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">model_name</span> <span class="o">==</span> <span class="n">model_name_</span><span class="p">:</span>
+                <span class="n">fetched_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+                <span class="n">fetched_model_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fetched_models</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2"> models available.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fetched_models</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2"> from </span><span class="si">{</span><span class="n">fetched_model_paths</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;More than one </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2"> models are loaded in model manager: </span><span class="si">{</span><span class="n">fetched_model_paths</span><span class="si">}</span><span class="s2">. Using </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2"> from </span><span class="si">{</span><span class="n">fetched_model_paths</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">require_model_path</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">fetched_models</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">fetched_model_paths</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">fetched_models</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+        
+
+<div class="viewcode-block" id="ModelManager.to">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.model_manager.ModelManager.to">[docs]</a>
+    <span class="k">def</span> <span class="nf">to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span></div>
+</div>
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ModelScope.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

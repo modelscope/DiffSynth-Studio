@@ -45,7 +45,40 @@
               <!-- Local TOC -->
               <div class="local-toc"><ul>
 <li><a class="reference internal" href="#">diffsynth.extensions.RIFE package</a><ul>
-<li><a class="reference internal" href="#module-contents">Module contents</a></li>
+<li><a class="reference internal" href="#module-diffsynth.extensions.RIFE">Module contents</a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.IFBlock"><code class="docutils literal notranslate"><span class="pre">IFBlock</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.IFBlock.forward"><code class="docutils literal notranslate"><span class="pre">IFBlock.forward()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.IFNet"><code class="docutils literal notranslate"><span class="pre">IFNet</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.IFNet.forward"><code class="docutils literal notranslate"><span class="pre">IFNet.forward()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.IFNet.state_dict_converter"><code class="docutils literal notranslate"><span class="pre">IFNet.state_dict_converter()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.IFNetStateDictConverter"><code class="docutils literal notranslate"><span class="pre">IFNetStateDictConverter</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.IFNetStateDictConverter.from_civitai"><code class="docutils literal notranslate"><span class="pre">IFNetStateDictConverter.from_civitai()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.IFNetStateDictConverter.from_diffusers"><code class="docutils literal notranslate"><span class="pre">IFNetStateDictConverter.from_diffusers()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.RIFEInterpolater"><code class="docutils literal notranslate"><span class="pre">RIFEInterpolater</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.RIFEInterpolater.add_interpolated_images"><code class="docutils literal notranslate"><span class="pre">RIFEInterpolater.add_interpolated_images()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.RIFEInterpolater.decode_images"><code class="docutils literal notranslate"><span class="pre">RIFEInterpolater.decode_images()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.RIFEInterpolater.from_model_manager"><code class="docutils literal notranslate"><span class="pre">RIFEInterpolater.from_model_manager()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.RIFEInterpolater.interpolate"><code class="docutils literal notranslate"><span class="pre">RIFEInterpolater.interpolate()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.RIFEInterpolater.interpolate_"><code class="docutils literal notranslate"><span class="pre">RIFEInterpolater.interpolate_()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.RIFEInterpolater.process_image"><code class="docutils literal notranslate"><span class="pre">RIFEInterpolater.process_image()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.RIFEInterpolater.process_images"><code class="docutils literal notranslate"><span class="pre">RIFEInterpolater.process_images()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.RIFESmoother"><code class="docutils literal notranslate"><span class="pre">RIFESmoother</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.RIFESmoother.from_model_manager"><code class="docutils literal notranslate"><span class="pre">RIFESmoother.from_model_manager()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.RIFESmoother.process_tensors"><code class="docutils literal notranslate"><span class="pre">RIFESmoother.process_tensors()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.conv"><code class="docutils literal notranslate"><span class="pre">conv()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.RIFE.warp"><code class="docutils literal notranslate"><span class="pre">warp()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -76,8 +109,136 @@
              
   <section id="diffsynth-extensions-rife-package">
 <h1>diffsynth.extensions.RIFE package<a class="headerlink" href="#diffsynth-extensions-rife-package" title="Link to this heading"></a></h1>
-<section id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.extensions.RIFE">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diffsynth.extensions.RIFE" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.IFBlock">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.RIFE.</span></span><span class="sig-name descname"><span class="pre">IFBlock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_planes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#IFBlock"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.IFBlock" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.IFBlock.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flow</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#IFBlock.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.IFBlock.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.IFNet">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.RIFE.</span></span><span class="sig-name descname"><span class="pre">IFNet</span></span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#IFNet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.IFNet" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.IFNet.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[4,</span> <span class="pre">2,</span> <span class="pre">1]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">training</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#IFNet.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.IFNet.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.IFNet.state_dict_converter">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">state_dict_converter</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#IFNet.state_dict_converter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.IFNet.state_dict_converter" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.IFNetStateDictConverter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.RIFE.</span></span><span class="sig-name descname"><span class="pre">IFNetStateDictConverter</span></span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#IFNetStateDictConverter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.IFNetStateDictConverter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.IFNetStateDictConverter.from_civitai">
+<span class="sig-name descname"><span class="pre">from_civitai</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state_dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#IFNetStateDictConverter.from_civitai"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.IFNetStateDictConverter.from_civitai" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.IFNetStateDictConverter.from_diffusers">
+<span class="sig-name descname"><span class="pre">from_diffusers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state_dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#IFNetStateDictConverter.from_diffusers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.IFNetStateDictConverter.from_diffusers" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.RIFEInterpolater">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.RIFE.</span></span><span class="sig-name descname"><span class="pre">RIFEInterpolater</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cuda'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#RIFEInterpolater"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.RIFEInterpolater" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.RIFEInterpolater.add_interpolated_images">
+<span class="sig-name descname"><span class="pre">add_interpolated_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolated_images</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#RIFEInterpolater.add_interpolated_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.RIFEInterpolater.add_interpolated_images" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.RIFEInterpolater.decode_images">
+<span class="sig-name descname"><span class="pre">decode_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#RIFEInterpolater.decode_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.RIFEInterpolater.decode_images" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.RIFEInterpolater.from_model_manager">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_model_manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_manager</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#RIFEInterpolater.from_model_manager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.RIFEInterpolater.from_model_manager" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.RIFEInterpolater.interpolate">
+<span class="sig-name descname"><span class="pre">interpolate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale=1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size=4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_iter=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress_bar=&lt;function</span> <span class="pre">RIFEInterpolater.&lt;lambda&gt;&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#RIFEInterpolater.interpolate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.RIFEInterpolater.interpolate" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.RIFEInterpolater.interpolate_">
+<span class="sig-name descname"><span class="pre">interpolate_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#RIFEInterpolater.interpolate_"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.RIFEInterpolater.interpolate_" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.RIFEInterpolater.process_image">
+<span class="sig-name descname"><span class="pre">process_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#RIFEInterpolater.process_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.RIFEInterpolater.process_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.RIFEInterpolater.process_images">
+<span class="sig-name descname"><span class="pre">process_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#RIFEInterpolater.process_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.RIFEInterpolater.process_images" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.RIFESmoother">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.RIFE.</span></span><span class="sig-name descname"><span class="pre">RIFESmoother</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cuda'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#RIFESmoother"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.RIFESmoother" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#diffsynth.extensions.RIFE.RIFEInterpolater" title="diffsynth.extensions.RIFE.RIFEInterpolater"><code class="xref py py-class docutils literal notranslate"><span class="pre">RIFEInterpolater</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.RIFESmoother.from_model_manager">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_model_manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_manager</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#RIFESmoother.from_model_manager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.RIFESmoother.from_model_manager" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.RIFESmoother.process_tensors">
+<span class="sig-name descname"><span class="pre">process_tensors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#RIFESmoother.process_tensors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.RIFESmoother.process_tensors" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.conv">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.RIFE.</span></span><span class="sig-name descname"><span class="pre">conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_planes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_planes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stride</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dilation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#conv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.conv" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.extensions.RIFE.warp">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.RIFE.</span></span><span class="sig-name descname"><span class="pre">warp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tenInput</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenFlow</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/RIFE.html#warp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.RIFE.warp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </section>
 </section>
 

@@ -45,7 +45,29 @@
               <!-- Local TOC -->
               <div class="local-toc"><ul>
 <li><a class="reference internal" href="#">diffsynth.extensions.ESRGAN package</a><ul>
-<li><a class="reference internal" href="#module-contents">Module contents</a></li>
+<li><a class="reference internal" href="#module-diffsynth.extensions.ESRGAN">Module contents</a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.ESRGAN.ESRGAN"><code class="docutils literal notranslate"><span class="pre">ESRGAN</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.ESRGAN.ESRGAN.decode_images"><code class="docutils literal notranslate"><span class="pre">ESRGAN.decode_images()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.ESRGAN.ESRGAN.from_pretrained"><code class="docutils literal notranslate"><span class="pre">ESRGAN.from_pretrained()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.ESRGAN.ESRGAN.process_image"><code class="docutils literal notranslate"><span class="pre">ESRGAN.process_image()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.ESRGAN.ESRGAN.process_images"><code class="docutils literal notranslate"><span class="pre">ESRGAN.process_images()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.ESRGAN.ESRGAN.upscale"><code class="docutils literal notranslate"><span class="pre">ESRGAN.upscale()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.ESRGAN.RRDB"><code class="docutils literal notranslate"><span class="pre">RRDB</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.ESRGAN.RRDB.forward"><code class="docutils literal notranslate"><span class="pre">RRDB.forward()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.ESRGAN.RRDBNet"><code class="docutils literal notranslate"><span class="pre">RRDBNet</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.ESRGAN.RRDBNet.forward"><code class="docutils literal notranslate"><span class="pre">RRDBNet.forward()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.ESRGAN.ResidualDenseBlock"><code class="docutils literal notranslate"><span class="pre">ResidualDenseBlock</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.ESRGAN.ResidualDenseBlock.forward"><code class="docutils literal notranslate"><span class="pre">ResidualDenseBlock.forward()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -76,8 +98,99 @@
              
   <section id="diffsynth-extensions-esrgan-package">
 <h1>diffsynth.extensions.ESRGAN package<a class="headerlink" href="#diffsynth-extensions-esrgan-package" title="Link to this heading"></a></h1>
-<section id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.extensions.ESRGAN">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diffsynth.extensions.ESRGAN" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.ESRGAN.ESRGAN">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.ESRGAN.</span></span><span class="sig-name descname"><span class="pre">ESRGAN</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/ESRGAN.html#ESRGAN"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.ESRGAN.ESRGAN" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.ESRGAN.ESRGAN.decode_images">
+<span class="sig-name descname"><span class="pre">decode_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/ESRGAN.html#ESRGAN.decode_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.ESRGAN.ESRGAN.decode_images" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.ESRGAN.ESRGAN.from_pretrained">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_pretrained</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/ESRGAN.html#ESRGAN.from_pretrained"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.ESRGAN.ESRGAN.from_pretrained" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.ESRGAN.ESRGAN.process_image">
+<span class="sig-name descname"><span class="pre">process_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/ESRGAN.html#ESRGAN.process_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.ESRGAN.ESRGAN.process_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.ESRGAN.ESRGAN.process_images">
+<span class="sig-name descname"><span class="pre">process_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/ESRGAN.html#ESRGAN.process_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.ESRGAN.ESRGAN.process_images" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.ESRGAN.ESRGAN.upscale">
+<span class="sig-name descname"><span class="pre">upscale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size=4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress_bar=&lt;function</span> <span class="pre">ESRGAN.&lt;lambda&gt;&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/ESRGAN.html#ESRGAN.upscale"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.ESRGAN.ESRGAN.upscale" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.ESRGAN.RRDB">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.ESRGAN.</span></span><span class="sig-name descname"><span class="pre">RRDB</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_feat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_grow_ch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/ESRGAN.html#RRDB"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.ESRGAN.RRDB" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.ESRGAN.RRDB.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/ESRGAN.html#RRDB.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.ESRGAN.RRDB.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.ESRGAN.RRDBNet">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.ESRGAN.</span></span><span class="sig-name descname"><span class="pre">RRDBNet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_in_ch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_out_ch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_feat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_block</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">23</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_grow_ch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/ESRGAN.html#RRDBNet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.ESRGAN.RRDBNet" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.ESRGAN.RRDBNet.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/ESRGAN.html#RRDBNet.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.ESRGAN.RRDBNet.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.ESRGAN.ResidualDenseBlock">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.ESRGAN.</span></span><span class="sig-name descname"><span class="pre">ResidualDenseBlock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_feat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_grow_ch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/ESRGAN.html#ResidualDenseBlock"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.ESRGAN.ResidualDenseBlock" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.ESRGAN.ResidualDenseBlock.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/ESRGAN.html#ResidualDenseBlock.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.ESRGAN.ResidualDenseBlock.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 </section>
 

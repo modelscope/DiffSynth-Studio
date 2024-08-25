@@ -46,9 +46,29 @@
               <div class="local-toc"><ul>
 <li><a class="reference internal" href="#">diffsynth.data package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#diffsynth-data-simple-text-image-module">diffsynth.data.simple_text_image module</a></li>
-<li><a class="reference internal" href="#diffsynth-data-video-module">diffsynth.data.video module</a></li>
-<li><a class="reference internal" href="#module-contents">Module contents</a></li>
+<li><a class="reference internal" href="#module-diffsynth.data.simple_text_image">diffsynth.data.simple_text_image module</a><ul>
+<li><a class="reference internal" href="#diffsynth.data.simple_text_image.TextImageDataset"><code class="docutils literal notranslate"><span class="pre">TextImageDataset</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.data.video">diffsynth.data.video module</a><ul>
+<li><a class="reference internal" href="#diffsynth.data.video.LowMemoryImageFolder"><code class="docutils literal notranslate"><span class="pre">LowMemoryImageFolder</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.data.video.LowMemoryVideo"><code class="docutils literal notranslate"><span class="pre">LowMemoryVideo</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.data.video.VideoData"><code class="docutils literal notranslate"><span class="pre">VideoData</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.data.video.VideoData.raw_data"><code class="docutils literal notranslate"><span class="pre">VideoData.raw_data()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.data.video.VideoData.save_images"><code class="docutils literal notranslate"><span class="pre">VideoData.save_images()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.data.video.VideoData.set_length"><code class="docutils literal notranslate"><span class="pre">VideoData.set_length()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.data.video.VideoData.set_shape"><code class="docutils literal notranslate"><span class="pre">VideoData.set_shape()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.data.video.VideoData.shape"><code class="docutils literal notranslate"><span class="pre">VideoData.shape()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.data.video.crop_and_resize"><code class="docutils literal notranslate"><span class="pre">crop_and_resize()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.data.video.save_frames"><code class="docutils literal notranslate"><span class="pre">save_frames()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.data.video.save_video"><code class="docutils literal notranslate"><span class="pre">save_video()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.data.video.search_for_images"><code class="docutils literal notranslate"><span class="pre">search_for_images()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.data.video.split_file_name"><code class="docutils literal notranslate"><span class="pre">split_file_name()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.data">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -82,14 +102,88 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
 </section>
-<section id="diffsynth-data-simple-text-image-module">
-<h2>diffsynth.data.simple_text_image module<a class="headerlink" href="#diffsynth-data-simple-text-image-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.data.simple_text_image">
+<span id="diffsynth-data-simple-text-image-module"></span><h2>diffsynth.data.simple_text_image module<a class="headerlink" href="#module-diffsynth.data.simple_text_image" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.data.simple_text_image.TextImageDataset">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.data.simple_text_image.</span></span><span class="sig-name descname"><span class="pre">TextImageDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps_per_epoch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_crop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_flip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/simple_text_image.html#TextImageDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.simple_text_image.TextImageDataset" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></p>
+</dd></dl>
+
 </section>
-<section id="diffsynth-data-video-module">
-<h2>diffsynth.data.video module<a class="headerlink" href="#diffsynth-data-video-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.data.video">
+<span id="diffsynth-data-video-module"></span><h2>diffsynth.data.video module<a class="headerlink" href="#module-diffsynth.data.video" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.data.video.LowMemoryImageFolder">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.data.video.</span></span><span class="sig-name descname"><span class="pre">LowMemoryImageFolder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#LowMemoryImageFolder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.LowMemoryImageFolder" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.data.video.LowMemoryVideo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.data.video.</span></span><span class="sig-name descname"><span class="pre">LowMemoryVideo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#LowMemoryVideo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.LowMemoryVideo" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.data.video.VideoData">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.data.video.</span></span><span class="sig-name descname"><span class="pre">VideoData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">video_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#VideoData"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.VideoData" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.data.video.VideoData.raw_data">
+<span class="sig-name descname"><span class="pre">raw_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#VideoData.raw_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.VideoData.raw_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.data.video.VideoData.save_images">
+<span class="sig-name descname"><span class="pre">save_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#VideoData.save_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.VideoData.save_images" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.data.video.VideoData.set_length">
+<span class="sig-name descname"><span class="pre">set_length</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">length</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#VideoData.set_length"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.VideoData.set_length" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.data.video.VideoData.set_shape">
+<span class="sig-name descname"><span class="pre">set_shape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#VideoData.set_shape"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.VideoData.set_shape" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.data.video.VideoData.shape">
+<span class="sig-name descname"><span class="pre">shape</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#VideoData.shape"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.VideoData.shape" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.data.video.crop_and_resize">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.data.video.</span></span><span class="sig-name descname"><span class="pre">crop_and_resize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#crop_and_resize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.crop_and_resize" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.data.video.save_frames">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.data.video.</span></span><span class="sig-name descname"><span class="pre">save_frames</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#save_frames"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.save_frames" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.data.video.save_video">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.data.video.</span></span><span class="sig-name descname"><span class="pre">save_video</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quality</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">9</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#save_video"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.save_video" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.data.video.search_for_images">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.data.video.</span></span><span class="sig-name descname"><span class="pre">search_for_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#search_for_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.search_for_images" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.data.video.split_file_name">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.data.video.</span></span><span class="sig-name descname"><span class="pre">split_file_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/data/video.html#split_file_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.data.video.split_file_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </section>
-<section id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.data">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diffsynth.data" title="Link to this heading"></a></h2>
 </section>
 </section>
 

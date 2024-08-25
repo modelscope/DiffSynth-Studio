@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>diffsynth.models.sd_vae_encoder &mdash; DiffSynth-Studio 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            DiffSynth-Studio
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">DiffSynth-Studio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">diffsynth.models.sd_vae_encoder</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for diffsynth.models.sd_vae_encoder</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">.sd_unet</span> <span class="kn">import</span> <span class="n">ResnetBlock</span><span class="p">,</span> <span class="n">DownSampler</span>
+<span class="kn">from</span> <span class="nn">.sd_vae_decoder</span> <span class="kn">import</span> <span class="n">VAEAttentionBlock</span>
+<span class="kn">from</span> <span class="nn">.tiler</span> <span class="kn">import</span> <span class="n">TileWorker</span>
+<span class="kn">from</span> <span class="nn">einops</span> <span class="kn">import</span> <span class="n">rearrange</span>
+
+
+<div class="viewcode-block" id="SDVAEEncoder">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.sd_vae_encoder.SDVAEEncoder">[docs]</a>
+<span class="k">class</span> <span class="nc">SDVAEEncoder</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scaling_factor</span> <span class="o">=</span> <span class="mf">0.18215</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quant_conv</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_in</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">blocks</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">([</span>
+            <span class="c1"># DownEncoderBlock2D</span>
+            <span class="n">ResnetBlock</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span>
+            <span class="n">ResnetBlock</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span>
+            <span class="n">DownSampler</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">extra_padding</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+            <span class="c1"># DownEncoderBlock2D</span>
+            <span class="n">ResnetBlock</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span>
+            <span class="n">ResnetBlock</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span>
+            <span class="n">DownSampler</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">extra_padding</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+            <span class="c1"># DownEncoderBlock2D</span>
+            <span class="n">ResnetBlock</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span>
+            <span class="n">ResnetBlock</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span>
+            <span class="n">DownSampler</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">extra_padding</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+            <span class="c1"># DownEncoderBlock2D</span>
+            <span class="n">ResnetBlock</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span>
+            <span class="n">ResnetBlock</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span>
+            <span class="c1"># UNetMidBlock2D</span>
+            <span class="n">ResnetBlock</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span>
+            <span class="n">VAEAttentionBlock</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span>
+            <span class="n">ResnetBlock</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span>
+        <span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_norm_out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">GroupNorm</span><span class="p">(</span><span class="n">num_channels</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">num_groups</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_act</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">SiLU</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SDVAEEncoder.tiled_forward">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.sd_vae_encoder.SDVAEEncoder.tiled_forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">tiled_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="n">tile_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">tile_stride</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+        <span class="n">hidden_states</span> <span class="o">=</span> <span class="n">TileWorker</span><span class="p">()</span><span class="o">.</span><span class="n">tiled_forward</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">),</span>
+            <span class="n">sample</span><span class="p">,</span>
+            <span class="n">tile_size</span><span class="p">,</span>
+            <span class="n">tile_stride</span><span class="p">,</span>
+            <span class="n">tile_device</span><span class="o">=</span><span class="n">sample</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+            <span class="n">tile_dtype</span><span class="o">=</span><span class="n">sample</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">hidden_states</span></div>
+
+
+<div class="viewcode-block" id="SDVAEEncoder.forward">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.sd_vae_encoder.SDVAEEncoder.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="n">tiled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">tile_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">tile_stride</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">original_dtype</span> <span class="o">=</span> <span class="n">sample</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="n">sample</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">()))</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="c1"># For VAE Decoder, we do not need to apply the tiler on each layer.</span>
+        <span class="k">if</span> <span class="n">tiled</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiled_forward</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">tile_size</span><span class="o">=</span><span class="n">tile_size</span><span class="p">,</span> <span class="n">tile_stride</span><span class="o">=</span><span class="n">tile_stride</span><span class="p">)</span>
+        
+        <span class="c1"># 1. pre-process</span>
+        <span class="n">hidden_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_in</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+        <span class="n">time_emb</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">text_emb</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">res_stack</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 2. blocks</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">block</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blocks</span><span class="p">):</span>
+            <span class="n">hidden_states</span><span class="p">,</span> <span class="n">time_emb</span><span class="p">,</span> <span class="n">text_emb</span><span class="p">,</span> <span class="n">res_stack</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="n">hidden_states</span><span class="p">,</span> <span class="n">time_emb</span><span class="p">,</span> <span class="n">text_emb</span><span class="p">,</span> <span class="n">res_stack</span><span class="p">)</span>
+        
+        <span class="c1"># 3. output</span>
+        <span class="n">hidden_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_norm_out</span><span class="p">(</span><span class="n">hidden_states</span><span class="p">)</span>
+        <span class="n">hidden_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_act</span><span class="p">(</span><span class="n">hidden_states</span><span class="p">)</span>
+        <span class="n">hidden_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_out</span><span class="p">(</span><span class="n">hidden_states</span><span class="p">)</span>
+        <span class="n">hidden_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quant_conv</span><span class="p">(</span><span class="n">hidden_states</span><span class="p">)</span>
+        <span class="n">hidden_states</span> <span class="o">=</span> <span class="n">hidden_states</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">4</span><span class="p">]</span>
+        <span class="n">hidden_states</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scaling_factor</span>
+        <span class="n">hidden_states</span> <span class="o">=</span> <span class="n">hidden_states</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">original_dtype</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">hidden_states</span></div>
+
+    
+<div class="viewcode-block" id="SDVAEEncoder.encode_video">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.sd_vae_encoder.SDVAEEncoder.encode_video">[docs]</a>
+    <span class="k">def</span> <span class="nf">encode_video</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">8</span><span class="p">):</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">sample</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">hidden_states</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">sample</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">batch_size</span><span class="p">):</span>
+
+            <span class="n">j</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">sample</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">sample_batch</span> <span class="o">=</span> <span class="n">rearrange</span><span class="p">(</span><span class="n">sample</span><span class="p">[:,:,</span><span class="n">i</span><span class="p">:</span><span class="n">j</span><span class="p">],</span> <span class="s2">&quot;B C T H W -&gt; (B T) C H W&quot;</span><span class="p">)</span>
+
+            <span class="n">hidden_states_batch</span> <span class="o">=</span> <span class="bp">self</span><span class="p">(</span><span class="n">sample_batch</span><span class="p">)</span>
+            <span class="n">hidden_states_batch</span> <span class="o">=</span> <span class="n">rearrange</span><span class="p">(</span><span class="n">hidden_states_batch</span><span class="p">,</span> <span class="s2">&quot;(B T) C H W -&gt; B C T H W&quot;</span><span class="p">,</span> <span class="n">B</span><span class="o">=</span><span class="n">B</span><span class="p">)</span>
+
+            <span class="n">hidden_states</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">hidden_states_batch</span><span class="p">)</span>
+        
+        <span class="n">hidden_states</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">hidden_states</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">hidden_states</span></div>
+
+    
+<div class="viewcode-block" id="SDVAEEncoder.state_dict_converter">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.sd_vae_encoder.SDVAEEncoder.state_dict_converter">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">state_dict_converter</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">SDVAEEncoderStateDictConverter</span><span class="p">()</span></div>
+</div>
+
+    
+
+<div class="viewcode-block" id="SDVAEEncoderStateDictConverter">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.sd_vae_encoder.SDVAEEncoderStateDictConverter">[docs]</a>
+<span class="k">class</span> <span class="nc">SDVAEEncoderStateDictConverter</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="SDVAEEncoderStateDictConverter.from_diffusers">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.sd_vae_encoder.SDVAEEncoderStateDictConverter.from_diffusers">[docs]</a>
+    <span class="k">def</span> <span class="nf">from_diffusers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_dict</span><span class="p">):</span>
+        <span class="c1"># architecture</span>
+        <span class="n">block_types</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s1">&#39;ResnetBlock&#39;</span><span class="p">,</span> <span class="s1">&#39;ResnetBlock&#39;</span><span class="p">,</span> <span class="s1">&#39;DownSampler&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;ResnetBlock&#39;</span><span class="p">,</span> <span class="s1">&#39;ResnetBlock&#39;</span><span class="p">,</span> <span class="s1">&#39;DownSampler&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;ResnetBlock&#39;</span><span class="p">,</span> <span class="s1">&#39;ResnetBlock&#39;</span><span class="p">,</span> <span class="s1">&#39;DownSampler&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;ResnetBlock&#39;</span><span class="p">,</span> <span class="s1">&#39;ResnetBlock&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;ResnetBlock&#39;</span><span class="p">,</span> <span class="s1">&#39;VAEAttentionBlock&#39;</span><span class="p">,</span> <span class="s1">&#39;ResnetBlock&#39;</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Rename each parameter</span>
+        <span class="n">local_rename_dict</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;quant_conv&quot;</span><span class="p">:</span> <span class="s2">&quot;quant_conv&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.conv_in&quot;</span><span class="p">:</span> <span class="s2">&quot;conv_in&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.attentions.0.group_norm&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.norm&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.attentions.0.to_q&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.transformer_blocks.0.to_q&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.attentions.0.to_k&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.transformer_blocks.0.to_k&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.attentions.0.to_v&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.transformer_blocks.0.to_v&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.attentions.0.to_out.0&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.transformer_blocks.0.to_out&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.resnets.0.norm1&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.11.norm1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.resnets.0.conv1&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.11.conv1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.resnets.0.norm2&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.11.norm2&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.resnets.0.conv2&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.11.conv2&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.resnets.1.norm1&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.13.norm1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.resnets.1.conv1&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.13.conv1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.resnets.1.norm2&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.13.norm2&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.mid_block.resnets.1.conv2&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.13.conv2&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.conv_norm_out&quot;</span><span class="p">:</span> <span class="s2">&quot;conv_norm_out&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;encoder.conv_out&quot;</span><span class="p">:</span> <span class="s2">&quot;conv_out&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">name_list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">state_dict</span><span class="p">])</span>
+        <span class="n">rename_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">block_id</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ResnetBlock&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;DownSampler&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;UpSampler&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">}</span>
+        <span class="n">last_block_type_with_id</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ResnetBlock&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;DownSampler&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;UpSampler&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">name_list</span><span class="p">:</span>
+            <span class="n">names</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+            <span class="n">name_prefix</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">names</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">name_prefix</span> <span class="ow">in</span> <span class="n">local_rename_dict</span><span class="p">:</span>
+                <span class="n">rename_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">local_rename_dict</span><span class="p">[</span><span class="n">name_prefix</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">names</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;encoder.down_blocks&quot;</span><span class="p">):</span>
+                <span class="n">block_type</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;resnets&quot;</span><span class="p">:</span> <span class="s2">&quot;ResnetBlock&quot;</span><span class="p">,</span> <span class="s2">&quot;downsamplers&quot;</span><span class="p">:</span> <span class="s2">&quot;DownSampler&quot;</span><span class="p">,</span> <span class="s2">&quot;upsamplers&quot;</span><span class="p">:</span> <span class="s2">&quot;UpSampler&quot;</span><span class="p">}[</span><span class="n">names</span><span class="p">[</span><span class="mi">3</span><span class="p">]]</span>
+                <span class="n">block_type_with_id</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">names</span><span class="p">[:</span><span class="mi">5</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">block_type_with_id</span> <span class="o">!=</span> <span class="n">last_block_type_with_id</span><span class="p">[</span><span class="n">block_type</span><span class="p">]:</span>
+                    <span class="n">block_id</span><span class="p">[</span><span class="n">block_type</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">last_block_type_with_id</span><span class="p">[</span><span class="n">block_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">block_type_with_id</span>
+                <span class="k">while</span> <span class="n">block_id</span><span class="p">[</span><span class="n">block_type</span><span class="p">]</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">block_types</span><span class="p">)</span> <span class="ow">and</span> <span class="n">block_types</span><span class="p">[</span><span class="n">block_id</span><span class="p">[</span><span class="n">block_type</span><span class="p">]]</span> <span class="o">!=</span> <span class="n">block_type</span><span class="p">:</span>
+                    <span class="n">block_id</span><span class="p">[</span><span class="n">block_type</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">block_type_with_id</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">names</span><span class="p">[:</span><span class="mi">5</span><span class="p">])</span>
+                <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;blocks&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">block_id</span><span class="p">[</span><span class="n">block_type</span><span class="p">])]</span> <span class="o">+</span> <span class="n">names</span><span class="p">[</span><span class="mi">5</span><span class="p">:]</span>
+                <span class="n">rename_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+
+        <span class="c1"># Convert state_dict</span>
+        <span class="n">state_dict_</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">state_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">rename_dict</span><span class="p">:</span>
+                <span class="n">state_dict_</span><span class="p">[</span><span class="n">rename_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]]</span> <span class="o">=</span> <span class="n">param</span>
+        <span class="k">return</span> <span class="n">state_dict_</span></div>
+
+    
+<div class="viewcode-block" id="SDVAEEncoderStateDictConverter.from_civitai">
+<a class="viewcode-back" href="../../../diffsynth.models.html#diffsynth.models.sd_vae_encoder.SDVAEEncoderStateDictConverter.from_civitai">[docs]</a>
+    <span class="k">def</span> <span class="nf">from_civitai</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_dict</span><span class="p">):</span>
+        <span class="n">rename_dict</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;first_stage_model.encoder.conv_in.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;conv_in.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.conv_in.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;conv_in.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.conv_out.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;conv_out.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.conv_out.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;conv_out.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.0.conv1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.0.conv1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.0.conv1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.0.conv1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.0.conv2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.0.conv2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.0.conv2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.0.conv2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.0.norm1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.0.norm1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.0.norm1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.0.norm1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.0.norm2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.0.norm2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.0.norm2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.0.norm2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.1.conv1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.1.conv1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.1.conv1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.1.conv1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.1.conv2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.1.conv2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.1.conv2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.1.conv2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.1.norm1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.1.norm1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.1.norm1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.1.norm1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.1.norm2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.1.norm2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.block.1.norm2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.1.norm2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.downsample.conv.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.2.conv.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.0.downsample.conv.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.2.conv.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.0.conv1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.3.conv1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.0.conv1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.3.conv1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.0.conv2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.3.conv2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.0.conv2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.3.conv2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.0.nin_shortcut.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.3.conv_shortcut.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.0.nin_shortcut.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.3.conv_shortcut.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.0.norm1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.3.norm1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.0.norm1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.3.norm1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.0.norm2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.3.norm2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.0.norm2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.3.norm2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.1.conv1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.4.conv1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.1.conv1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.4.conv1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.1.conv2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.4.conv2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.1.conv2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.4.conv2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.1.norm1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.4.norm1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.1.norm1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.4.norm1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.1.norm2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.4.norm2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.block.1.norm2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.4.norm2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.downsample.conv.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.5.conv.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.1.downsample.conv.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.5.conv.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.0.conv1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.6.conv1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.0.conv1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.6.conv1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.0.conv2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.6.conv2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.0.conv2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.6.conv2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.0.nin_shortcut.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.6.conv_shortcut.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.0.nin_shortcut.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.6.conv_shortcut.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.0.norm1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.6.norm1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.0.norm1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.6.norm1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.0.norm2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.6.norm2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.0.norm2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.6.norm2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.1.conv1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.7.conv1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.1.conv1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.7.conv1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.1.conv2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.7.conv2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.1.conv2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.7.conv2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.1.norm1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.7.norm1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.1.norm1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.7.norm1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.1.norm2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.7.norm2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.block.1.norm2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.7.norm2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.downsample.conv.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.8.conv.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.2.downsample.conv.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.8.conv.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.0.conv1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.9.conv1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.0.conv1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.9.conv1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.0.conv2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.9.conv2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.0.conv2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.9.conv2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.0.norm1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.9.norm1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.0.norm1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.9.norm1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.0.norm2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.9.norm2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.0.norm2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.9.norm2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.1.conv1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.10.conv1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.1.conv1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.10.conv1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.1.conv2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.10.conv2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.1.conv2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.10.conv2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.1.norm1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.10.norm1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.1.norm1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.10.norm1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.1.norm2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.10.norm2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.down.3.block.1.norm2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.10.norm2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.attn_1.k.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.transformer_blocks.0.to_k.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.attn_1.k.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.transformer_blocks.0.to_k.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.attn_1.norm.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.norm.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.attn_1.norm.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.norm.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.attn_1.proj_out.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.transformer_blocks.0.to_out.bias&quot;</span><span class="p">,</span>       
+            <span class="s2">&quot;first_stage_model.encoder.mid.attn_1.proj_out.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.transformer_blocks.0.to_out.weight&quot;</span><span class="p">,</span>   
+            <span class="s2">&quot;first_stage_model.encoder.mid.attn_1.q.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.transformer_blocks.0.to_q.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.attn_1.q.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.transformer_blocks.0.to_q.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.attn_1.v.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.transformer_blocks.0.to_v.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.attn_1.v.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.12.transformer_blocks.0.to_v.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_1.conv1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.11.conv1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_1.conv1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.11.conv1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_1.conv2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.11.conv2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_1.conv2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.11.conv2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_1.norm1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.11.norm1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_1.norm1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.11.norm1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_1.norm2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.11.norm2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_1.norm2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.11.norm2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_2.conv1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.13.conv1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_2.conv1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.13.conv1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_2.conv2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.13.conv2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_2.conv2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.13.conv2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_2.norm1.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.13.norm1.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_2.norm1.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.13.norm1.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_2.norm2.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.13.norm2.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.mid.block_2.norm2.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;blocks.13.norm2.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.norm_out.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;conv_norm_out.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.encoder.norm_out.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;conv_norm_out.weight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.quant_conv.bias&quot;</span><span class="p">:</span> <span class="s2">&quot;quant_conv.bias&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;first_stage_model.quant_conv.weight&quot;</span><span class="p">:</span> <span class="s2">&quot;quant_conv.weight&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">state_dict_</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">state_dict</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">rename_dict</span><span class="p">:</span>
+                <span class="n">param</span> <span class="o">=</span> <span class="n">state_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                <span class="k">if</span> <span class="s2">&quot;transformer_blocks&quot;</span> <span class="ow">in</span> <span class="n">rename_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]:</span>
+                    <span class="n">param</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+                <span class="n">state_dict_</span><span class="p">[</span><span class="n">rename_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]]</span> <span class="o">=</span> <span class="n">param</span>
+        <span class="k">return</span> <span class="n">state_dict_</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ModelScope.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

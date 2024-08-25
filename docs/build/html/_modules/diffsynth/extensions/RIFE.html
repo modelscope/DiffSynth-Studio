@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>diffsynth.extensions.RIFE &mdash; DiffSynth-Studio 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            DiffSynth-Studio
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">DiffSynth-Studio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">diffsynth.extensions.RIFE</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for diffsynth.extensions.RIFE</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">torch.nn.functional</span> <span class="k">as</span> <span class="nn">F</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+
+
+<div class="viewcode-block" id="warp">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.warp">[docs]</a>
+<span class="k">def</span> <span class="nf">warp</span><span class="p">(</span><span class="n">tenInput</span><span class="p">,</span> <span class="n">tenFlow</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="n">backwarp_tenGrid</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">tenFlow</span><span class="o">.</span><span class="n">device</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">tenFlow</span><span class="o">.</span><span class="n">size</span><span class="p">()))</span>
+    <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">backwarp_tenGrid</span><span class="p">:</span>
+        <span class="n">tenHorizontal</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">tenFlow</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span>
+            <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">tenFlow</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">tenFlow</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">tenFlow</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">tenVertical</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">tenFlow</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span>
+            <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">tenFlow</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">tenFlow</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">tenFlow</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+        <span class="n">backwarp_tenGrid</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">tenHorizontal</span><span class="p">,</span> <span class="n">tenVertical</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="n">tenFlow</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">tenFlow</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">/</span> <span class="p">((</span><span class="n">tenInput</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">),</span>
+                         <span class="n">tenFlow</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">/</span> <span class="p">((</span><span class="n">tenInput</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)],</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">g</span> <span class="o">=</span> <span class="p">(</span><span class="n">backwarp_tenGrid</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">+</span> <span class="n">tenFlow</span><span class="p">)</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">grid_sample</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">tenInput</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="n">g</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">,</span> <span class="n">padding_mode</span><span class="o">=</span><span class="s1">&#39;border&#39;</span><span class="p">,</span> <span class="n">align_corners</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="conv">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.conv">[docs]</a>
+<span class="k">def</span> <span class="nf">conv</span><span class="p">(</span><span class="n">in_planes</span><span class="p">,</span> <span class="n">out_planes</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+        <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">in_planes</span><span class="p">,</span> <span class="n">out_planes</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
+                  <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="n">dilation</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>        
+        <span class="n">nn</span><span class="o">.</span><span class="n">PReLU</span><span class="p">(</span><span class="n">out_planes</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="IFBlock">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.IFBlock">[docs]</a>
+<span class="k">class</span> <span class="nc">IFBlock</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_planes</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mi">64</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">IFBlock</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv0</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="n">conv</span><span class="p">(</span><span class="n">in_planes</span><span class="p">,</span> <span class="n">c</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">conv</span><span class="p">(</span><span class="n">c</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">),)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">convblock0</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="n">conv</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="p">),</span> <span class="n">conv</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">convblock1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="n">conv</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="p">),</span> <span class="n">conv</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">convblock2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="n">conv</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="p">),</span> <span class="n">conv</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">convblock3</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="n">conv</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="p">),</span> <span class="n">conv</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">ConvTranspose2d</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="o">.</span><span class="n">PReLU</span><span class="p">(</span><span class="n">c</span><span class="o">//</span><span class="mi">2</span><span class="p">),</span> <span class="n">nn</span><span class="o">.</span><span class="n">ConvTranspose2d</span><span class="p">(</span><span class="n">c</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">ConvTranspose2d</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="o">.</span><span class="n">PReLU</span><span class="p">(</span><span class="n">c</span><span class="o">//</span><span class="mi">2</span><span class="p">),</span> <span class="n">nn</span><span class="o">.</span><span class="n">ConvTranspose2d</span><span class="p">(</span><span class="n">c</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+
+<div class="viewcode-block" id="IFBlock.forward">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.IFBlock.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">scale_factor</span><span class="o">=</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">scale</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;bilinear&quot;</span><span class="p">,</span> <span class="n">align_corners</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">recompute_scale_factor</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">flow</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span><span class="n">flow</span><span class="p">,</span> <span class="n">scale_factor</span><span class="o">=</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">scale</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;bilinear&quot;</span><span class="p">,</span> <span class="n">align_corners</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">recompute_scale_factor</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">scale</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv0</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">flow</span><span class="p">),</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convblock0</span><span class="p">(</span><span class="n">feat</span><span class="p">)</span> <span class="o">+</span> <span class="n">feat</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convblock1</span><span class="p">(</span><span class="n">feat</span><span class="p">)</span> <span class="o">+</span> <span class="n">feat</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convblock2</span><span class="p">(</span><span class="n">feat</span><span class="p">)</span> <span class="o">+</span> <span class="n">feat</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convblock3</span><span class="p">(</span><span class="n">feat</span><span class="p">)</span> <span class="o">+</span> <span class="n">feat</span>        
+        <span class="n">flow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv1</span><span class="p">(</span><span class="n">feat</span><span class="p">)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv2</span><span class="p">(</span><span class="n">feat</span><span class="p">)</span>
+        <span class="n">flow</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span><span class="n">flow</span><span class="p">,</span> <span class="n">scale_factor</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;bilinear&quot;</span><span class="p">,</span> <span class="n">align_corners</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">recompute_scale_factor</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">*</span> <span class="n">scale</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">scale_factor</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;bilinear&quot;</span><span class="p">,</span> <span class="n">align_corners</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">recompute_scale_factor</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">flow</span><span class="p">,</span> <span class="n">mask</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="IFNet">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.IFNet">[docs]</a>
+<span class="k">class</span> <span class="nc">IFNet</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">IFNet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">block0</span> <span class="o">=</span> <span class="n">IFBlock</span><span class="p">(</span><span class="mi">7</span><span class="o">+</span><span class="mi">4</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">block1</span> <span class="o">=</span> <span class="n">IFBlock</span><span class="p">(</span><span class="mi">7</span><span class="o">+</span><span class="mi">4</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">block2</span> <span class="o">=</span> <span class="n">IFBlock</span><span class="p">(</span><span class="mi">7</span><span class="o">+</span><span class="mi">4</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">block_tea</span> <span class="o">=</span> <span class="n">IFBlock</span><span class="p">(</span><span class="mi">10</span><span class="o">+</span><span class="mi">4</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+
+<div class="viewcode-block" id="IFNet.forward">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.IFNet.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">scale_list</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">training</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">training</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="n">channel</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+            <span class="n">img0</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="p">:</span><span class="n">channel</span><span class="p">]</span>
+            <span class="n">img1</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="n">channel</span><span class="p">:]</span>
+        <span class="n">flow_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">merged</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">mask_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">warped_img0</span> <span class="o">=</span> <span class="n">img0</span>
+        <span class="n">warped_img1</span> <span class="o">=</span> <span class="n">img1</span>
+        <span class="n">flow</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">4</span><span class="p">])</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span> <span class="o">*</span> <span class="mi">0</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span> <span class="o">*</span> <span class="mi">0</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">block0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">block1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">block2</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="n">f0</span><span class="p">,</span> <span class="n">m0</span> <span class="o">=</span> <span class="n">block</span><span class="p">[</span><span class="n">i</span><span class="p">](</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">warped_img0</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="n">warped_img1</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="n">mask</span><span class="p">),</span> <span class="mi">1</span><span class="p">),</span> <span class="n">flow</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">scale_list</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">f1</span><span class="p">,</span> <span class="n">m1</span> <span class="o">=</span> <span class="n">block</span><span class="p">[</span><span class="n">i</span><span class="p">](</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">warped_img1</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="n">warped_img0</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="o">-</span><span class="n">mask</span><span class="p">),</span> <span class="mi">1</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">flow</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">],</span> <span class="n">flow</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]),</span> <span class="mi">1</span><span class="p">),</span> <span class="n">scale</span><span class="o">=</span><span class="n">scale_list</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">flow</span> <span class="o">=</span> <span class="n">flow</span> <span class="o">+</span> <span class="p">(</span><span class="n">f0</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">f1</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">],</span> <span class="n">f1</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]),</span> <span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="mi">2</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">+</span> <span class="p">(</span><span class="n">m0</span> <span class="o">+</span> <span class="p">(</span><span class="o">-</span><span class="n">m1</span><span class="p">))</span> <span class="o">/</span> <span class="mi">2</span>
+            <span class="n">mask_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+            <span class="n">flow_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">flow</span><span class="p">)</span>
+            <span class="n">warped_img0</span> <span class="o">=</span> <span class="n">warp</span><span class="p">(</span><span class="n">img0</span><span class="p">,</span> <span class="n">flow</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">warped_img1</span> <span class="o">=</span> <span class="n">warp</span><span class="p">(</span><span class="n">img1</span><span class="p">,</span> <span class="n">flow</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">merged</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">warped_img0</span><span class="p">,</span> <span class="n">warped_img1</span><span class="p">))</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        c0 = self.contextnet(img0, flow[:, :2])</span>
+<span class="sd">        c1 = self.contextnet(img1, flow[:, 2:4])</span>
+<span class="sd">        tmp = self.unet(img0, img1, warped_img0, warped_img1, mask, flow, c0, c1)</span>
+<span class="sd">        res = tmp[:, 1:4] * 2 - 1</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="n">mask_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">(</span><span class="n">mask_list</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">merged</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">mask_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">merged</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">mask_list</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>    
+        <span class="k">return</span> <span class="n">flow_list</span><span class="p">,</span> <span class="n">mask_list</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">merged</span></div>
+
+    
+<div class="viewcode-block" id="IFNet.state_dict_converter">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.IFNet.state_dict_converter">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">state_dict_converter</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">IFNetStateDictConverter</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="IFNetStateDictConverter">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.IFNetStateDictConverter">[docs]</a>
+<span class="k">class</span> <span class="nc">IFNetStateDictConverter</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="IFNetStateDictConverter.from_diffusers">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.IFNetStateDictConverter.from_diffusers">[docs]</a>
+    <span class="k">def</span> <span class="nf">from_diffusers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_dict</span><span class="p">):</span>
+        <span class="n">state_dict_</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;module.&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">):</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">state_dict</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">return</span> <span class="n">state_dict_</span></div>
+
+    
+<div class="viewcode-block" id="IFNetStateDictConverter.from_civitai">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.IFNetStateDictConverter.from_civitai">[docs]</a>
+    <span class="k">def</span> <span class="nf">from_civitai</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">from_diffusers</span><span class="p">(</span><span class="n">state_dict</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="RIFEInterpolater">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.RIFEInterpolater">[docs]</a>
+<span class="k">class</span> <span class="nc">RIFEInterpolater</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
+        <span class="c1"># IFNet only does not support float16</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">torch_dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span>
+
+<div class="viewcode-block" id="RIFEInterpolater.from_model_manager">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.RIFEInterpolater.from_model_manager">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_model_manager</span><span class="p">(</span><span class="n">model_manager</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RIFEInterpolater</span><span class="p">(</span><span class="n">model_manager</span><span class="o">.</span><span class="n">RIFE</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">model_manager</span><span class="o">.</span><span class="n">device</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RIFEInterpolater.process_image">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.RIFEInterpolater.process_image">[docs]</a>
+    <span class="k">def</span> <span class="nf">process_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
+        <span class="n">width</span><span class="p">,</span> <span class="n">height</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">size</span>
+        <span class="k">if</span> <span class="n">width</span> <span class="o">%</span> <span class="mi">32</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">height</span> <span class="o">%</span> <span class="mi">32</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">width</span> <span class="o">=</span> <span class="p">(</span><span class="n">width</span> <span class="o">+</span> <span class="mi">31</span><span class="p">)</span> <span class="o">//</span> <span class="mi">32</span>
+            <span class="n">height</span> <span class="o">=</span> <span class="p">(</span><span class="n">height</span> <span class="o">+</span> <span class="mi">31</span><span class="p">)</span> <span class="o">//</span> <span class="mi">32</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">resize</span><span class="p">((</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">))</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)[:,</span> <span class="p">:,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]]</span> <span class="o">/</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">image</span></div>
+
+    
+<div class="viewcode-block" id="RIFEInterpolater.process_images">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.RIFEInterpolater.process_images">[docs]</a>
+    <span class="k">def</span> <span class="nf">process_images</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">):</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">process_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">images</span></div>
+
+    
+<div class="viewcode-block" id="RIFEInterpolater.decode_images">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.RIFEInterpolater.decode_images">[docs]</a>
+    <span class="k">def</span> <span class="nf">decode_images</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">):</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="p">(</span><span class="n">images</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">images</span></div>
+
+    
+<div class="viewcode-block" id="RIFEInterpolater.add_interpolated_images">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.RIFEInterpolater.add_interpolated_images">[docs]</a>
+    <span class="k">def</span> <span class="nf">add_interpolated_images</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">interpolated_images</span><span class="p">):</span>
+        <span class="n">output_images</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">image</span><span class="p">,</span> <span class="n">interpolated_image</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">interpolated_images</span><span class="p">):</span>
+            <span class="n">output_images</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+            <span class="n">output_images</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">interpolated_image</span><span class="p">)</span>
+        <span class="n">output_images</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">images</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">output_images</span></div>
+
+    
+
+<div class="viewcode-block" id="RIFEInterpolater.interpolate_">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.RIFEInterpolater.interpolate_">[docs]</a>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">interpolate_</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="n">input_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_images</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+        <span class="n">input_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">input_tensor</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">input_tensor</span><span class="p">[</span><span class="mi">1</span><span class="p">:]),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">input_tensor</span> <span class="o">=</span> <span class="n">input_tensor</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">torch_dtype</span><span class="p">)</span>
+        <span class="n">flow</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">merged</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">input_tensor</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="o">/</span><span class="n">scale</span><span class="p">,</span> <span class="mi">2</span><span class="o">/</span><span class="n">scale</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="n">scale</span><span class="p">])</span>
+        <span class="n">output_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_images</span><span class="p">(</span><span class="n">merged</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">output_images</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="n">images</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+            <span class="n">output_images</span> <span class="o">=</span> <span class="p">[</span><span class="n">image</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">images</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">output_images</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">output_images</span></div>
+
+    
+
+<div class="viewcode-block" id="RIFEInterpolater.interpolate">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.RIFEInterpolater.interpolate">[docs]</a>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">interpolate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">num_iter</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">progress_bar</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span><span class="n">x</span><span class="p">):</span>
+        <span class="c1"># Preprocess</span>
+        <span class="n">processed_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_images</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="nb">iter</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_iter</span><span class="p">):</span>
+            <span class="c1"># Input</span>
+            <span class="n">input_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">processed_images</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">processed_images</span><span class="p">[</span><span class="mi">1</span><span class="p">:]),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="c1"># Interpolate</span>
+            <span class="n">output_tensor</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">batch_id</span> <span class="ow">in</span> <span class="n">progress_bar</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">input_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">batch_size</span><span class="p">)):</span>
+                <span class="n">batch_id_</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">batch_id</span> <span class="o">+</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">input_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">batch_input_tensor</span> <span class="o">=</span> <span class="n">input_tensor</span><span class="p">[</span><span class="n">batch_id</span><span class="p">:</span> <span class="n">batch_id_</span><span class="p">]</span>
+                <span class="n">batch_input_tensor</span> <span class="o">=</span> <span class="n">batch_input_tensor</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">torch_dtype</span><span class="p">)</span>
+                <span class="n">flow</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">merged</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">batch_input_tensor</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="o">/</span><span class="n">scale</span><span class="p">,</span> <span class="mi">2</span><span class="o">/</span><span class="n">scale</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="n">scale</span><span class="p">])</span>
+                <span class="n">output_tensor</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">merged</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">())</span>
+            
+            <span class="c1"># Output</span>
+            <span class="n">output_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">output_tensor</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">processed_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_interpolated_images</span><span class="p">(</span><span class="n">processed_images</span><span class="p">,</span> <span class="n">output_tensor</span><span class="p">)</span>
+            <span class="n">processed_images</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">processed_images</span><span class="p">)</span>
+
+        <span class="c1"># To images</span>
+        <span class="n">output_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_images</span><span class="p">(</span><span class="n">processed_images</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">output_images</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="n">images</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+            <span class="n">output_images</span> <span class="o">=</span> <span class="p">[</span><span class="n">image</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">images</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">output_images</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">output_images</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="RIFESmoother">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.RIFESmoother">[docs]</a>
+<span class="k">class</span> <span class="nc">RIFESmoother</span><span class="p">(</span><span class="n">RIFEInterpolater</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">RIFESmoother</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RIFESmoother.from_model_manager">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.RIFESmoother.from_model_manager">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_model_manager</span><span class="p">(</span><span class="n">model_manager</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RIFESmoother</span><span class="p">(</span><span class="n">model_manager</span><span class="o">.</span><span class="n">RIFE</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">model_manager</span><span class="o">.</span><span class="n">device</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="RIFESmoother.process_tensors">
+<a class="viewcode-back" href="../../../diffsynth.extensions.RIFE.html#diffsynth.extensions.RIFE.RIFESmoother.process_tensors">[docs]</a>
+    <span class="k">def</span> <span class="nf">process_tensors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_tensor</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">output_tensor</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">batch_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">input_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">batch_size</span><span class="p">):</span>
+            <span class="n">batch_id_</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">batch_id</span> <span class="o">+</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">input_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">batch_input_tensor</span> <span class="o">=</span> <span class="n">input_tensor</span><span class="p">[</span><span class="n">batch_id</span><span class="p">:</span> <span class="n">batch_id_</span><span class="p">]</span>
+            <span class="n">batch_input_tensor</span> <span class="o">=</span> <span class="n">batch_input_tensor</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">torch_dtype</span><span class="p">)</span>
+            <span class="n">flow</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">merged</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">batch_input_tensor</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="o">/</span><span class="n">scale</span><span class="p">,</span> <span class="mi">2</span><span class="o">/</span><span class="n">scale</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="n">scale</span><span class="p">])</span>
+            <span class="n">output_tensor</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">merged</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">())</span>
+        <span class="n">output_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">output_tensor</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">output_tensor</span></div>
+
+
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rendered_frames</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">num_iter</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># Preprocess</span>
+        <span class="n">processed_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_images</span><span class="p">(</span><span class="n">rendered_frames</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="nb">iter</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_iter</span><span class="p">):</span>
+            <span class="c1"># Input</span>
+            <span class="n">input_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">processed_images</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">processed_images</span><span class="p">[</span><span class="mi">2</span><span class="p">:]),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="c1"># Interpolate</span>
+            <span class="n">output_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_tensors</span><span class="p">(</span><span class="n">input_tensor</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+            
+            <span class="c1"># Blend</span>
+            <span class="n">input_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">processed_images</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">output_tensor</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">output_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_tensors</span><span class="p">(</span><span class="n">input_tensor</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+
+            <span class="c1"># Add to frames</span>
+            <span class="n">processed_images</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_tensor</span>
+
+        <span class="c1"># To images</span>
+        <span class="n">output_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_images</span><span class="p">(</span><span class="n">processed_images</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">output_images</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="n">rendered_frames</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+            <span class="n">output_images</span> <span class="o">=</span> <span class="p">[</span><span class="n">image</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">rendered_frames</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">output_images</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">output_images</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ModelScope.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

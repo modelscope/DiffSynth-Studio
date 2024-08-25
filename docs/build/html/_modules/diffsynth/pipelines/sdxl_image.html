@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>diffsynth.pipelines.sdxl_image &mdash; DiffSynth-Studio 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            DiffSynth-Studio
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">DiffSynth-Studio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">diffsynth.pipelines.sdxl_image</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for diffsynth.pipelines.sdxl_image</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">..models</span> <span class="kn">import</span> <span class="n">SDXLTextEncoder</span><span class="p">,</span> <span class="n">SDXLTextEncoder2</span><span class="p">,</span> <span class="n">SDXLUNet</span><span class="p">,</span> <span class="n">SDXLVAEDecoder</span><span class="p">,</span> <span class="n">SDXLVAEEncoder</span><span class="p">,</span> <span class="n">SDXLIpAdapter</span><span class="p">,</span> <span class="n">IpAdapterXLCLIPImageEmbedder</span>
+<span class="kn">from</span> <span class="nn">..models.kolors_text_encoder</span> <span class="kn">import</span> <span class="n">ChatGLMModel</span>
+<span class="kn">from</span> <span class="nn">..models.model_manager</span> <span class="kn">import</span> <span class="n">ModelManager</span>
+<span class="kn">from</span> <span class="nn">..controlnets</span> <span class="kn">import</span> <span class="n">MultiControlNetManager</span><span class="p">,</span> <span class="n">ControlNetUnit</span><span class="p">,</span> <span class="n">ControlNetConfigUnit</span><span class="p">,</span> <span class="n">Annotator</span>
+<span class="kn">from</span> <span class="nn">..prompters</span> <span class="kn">import</span> <span class="n">SDXLPrompter</span><span class="p">,</span> <span class="n">KolorsPrompter</span>
+<span class="kn">from</span> <span class="nn">..schedulers</span> <span class="kn">import</span> <span class="n">EnhancedDDIMScheduler</span>
+<span class="kn">from</span> <span class="nn">.base</span> <span class="kn">import</span> <span class="n">BasePipeline</span>
+<span class="kn">from</span> <span class="nn">.dancer</span> <span class="kn">import</span> <span class="n">lets_dance_xl</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+
+
+
+<div class="viewcode-block" id="SDXLImagePipeline">
+<a class="viewcode-back" href="../../../diffsynth.pipelines.html#diffsynth.pipelines.sdxl_image.SDXLImagePipeline">[docs]</a>
+<span class="k">class</span> <span class="nc">SDXLImagePipeline</span><span class="p">(</span><span class="n">BasePipeline</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="n">torch_dtype</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span> <span class="o">=</span> <span class="n">EnhancedDDIMScheduler</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prompter</span> <span class="o">=</span> <span class="n">SDXLPrompter</span><span class="p">()</span>
+        <span class="c1"># models</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text_encoder</span><span class="p">:</span> <span class="n">SDXLTextEncoder</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text_encoder_2</span><span class="p">:</span> <span class="n">SDXLTextEncoder2</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text_encoder_kolors</span><span class="p">:</span> <span class="n">ChatGLMModel</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unet</span><span class="p">:</span> <span class="n">SDXLUNet</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vae_decoder</span><span class="p">:</span> <span class="n">SDXLVAEDecoder</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vae_encoder</span><span class="p">:</span> <span class="n">SDXLVAEEncoder</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># self.controlnet: MultiControlNetManager = None (TODO)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ipadapter_image_encoder</span><span class="p">:</span> <span class="n">IpAdapterXLCLIPImageEmbedder</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ipadapter</span><span class="p">:</span> <span class="n">SDXLIpAdapter</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="SDXLImagePipeline.denoising_model">
+<a class="viewcode-back" href="../../../diffsynth.pipelines.html#diffsynth.pipelines.sdxl_image.SDXLImagePipeline.denoising_model">[docs]</a>
+    <span class="k">def</span> <span class="nf">denoising_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">unet</span></div>
+
+
+
+<div class="viewcode-block" id="SDXLImagePipeline.fetch_models">
+<a class="viewcode-back" href="../../../diffsynth.pipelines.html#diffsynth.pipelines.sdxl_image.SDXLImagePipeline.fetch_models">[docs]</a>
+    <span class="k">def</span> <span class="nf">fetch_models</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_manager</span><span class="p">:</span> <span class="n">ModelManager</span><span class="p">,</span> <span class="n">controlnet_config_units</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ControlNetConfigUnit</span><span class="p">]</span><span class="o">=</span><span class="p">[],</span> <span class="n">prompt_refiner_classes</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="c1"># Main models</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text_encoder</span> <span class="o">=</span> <span class="n">model_manager</span><span class="o">.</span><span class="n">fetch_model</span><span class="p">(</span><span class="s2">&quot;sdxl_text_encoder&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text_encoder_2</span> <span class="o">=</span> <span class="n">model_manager</span><span class="o">.</span><span class="n">fetch_model</span><span class="p">(</span><span class="s2">&quot;sdxl_text_encoder_2&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text_encoder_kolors</span> <span class="o">=</span> <span class="n">model_manager</span><span class="o">.</span><span class="n">fetch_model</span><span class="p">(</span><span class="s2">&quot;kolors_text_encoder&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unet</span> <span class="o">=</span> <span class="n">model_manager</span><span class="o">.</span><span class="n">fetch_model</span><span class="p">(</span><span class="s2">&quot;sdxl_unet&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vae_decoder</span> <span class="o">=</span> <span class="n">model_manager</span><span class="o">.</span><span class="n">fetch_model</span><span class="p">(</span><span class="s2">&quot;sdxl_vae_decoder&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vae_encoder</span> <span class="o">=</span> <span class="n">model_manager</span><span class="o">.</span><span class="n">fetch_model</span><span class="p">(</span><span class="s2">&quot;sdxl_vae_encoder&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ControlNets (TODO)</span>
+
+        <span class="c1"># IP-Adapters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ipadapter</span> <span class="o">=</span> <span class="n">model_manager</span><span class="o">.</span><span class="n">fetch_model</span><span class="p">(</span><span class="s2">&quot;sdxl_ipadapter&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ipadapter_image_encoder</span> <span class="o">=</span> <span class="n">model_manager</span><span class="o">.</span><span class="n">fetch_model</span><span class="p">(</span><span class="s2">&quot;sdxl_ipadapter_clip_image_encoder&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Kolors</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">text_encoder_kolors</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Switch to Kolors. The prompter and scheduler will be replaced.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prompter</span> <span class="o">=</span> <span class="n">KolorsPrompter</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prompter</span><span class="o">.</span><span class="n">fetch_models</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">text_encoder_kolors</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span> <span class="o">=</span> <span class="n">EnhancedDDIMScheduler</span><span class="p">(</span><span class="n">beta_end</span><span class="o">=</span><span class="mf">0.014</span><span class="p">,</span> <span class="n">num_train_timesteps</span><span class="o">=</span><span class="mi">1100</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prompter</span><span class="o">.</span><span class="n">fetch_models</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">text_encoder</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">text_encoder_2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prompter</span><span class="o">.</span><span class="n">load_prompt_refiners</span><span class="p">(</span><span class="n">model_manager</span><span class="p">,</span> <span class="n">prompt_refiner_classes</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="SDXLImagePipeline.from_model_manager">
+<a class="viewcode-back" href="../../../diffsynth.pipelines.html#diffsynth.pipelines.sdxl_image.SDXLImagePipeline.from_model_manager">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_model_manager</span><span class="p">(</span><span class="n">model_manager</span><span class="p">:</span> <span class="n">ModelManager</span><span class="p">,</span> <span class="n">controlnet_config_units</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ControlNetConfigUnit</span><span class="p">]</span><span class="o">=</span><span class="p">[],</span> <span class="n">prompt_refiner_classes</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="n">pipe</span> <span class="o">=</span> <span class="n">SDXLImagePipeline</span><span class="p">(</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">model_manager</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+            <span class="n">torch_dtype</span><span class="o">=</span><span class="n">model_manager</span><span class="o">.</span><span class="n">torch_dtype</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">pipe</span><span class="o">.</span><span class="n">fetch_models</span><span class="p">(</span><span class="n">model_manager</span><span class="p">,</span> <span class="n">controlnet_config_units</span><span class="p">,</span> <span class="n">prompt_refiner_classes</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">pipe</span></div>
+
+    
+
+<div class="viewcode-block" id="SDXLImagePipeline.encode_image">
+<a class="viewcode-back" href="../../../diffsynth.pipelines.html#diffsynth.pipelines.sdxl_image.SDXLImagePipeline.encode_image">[docs]</a>
+    <span class="k">def</span> <span class="nf">encode_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">tiled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">tile_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">tile_stride</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+        <span class="n">latents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vae_encoder</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">tiled</span><span class="o">=</span><span class="n">tiled</span><span class="p">,</span> <span class="n">tile_size</span><span class="o">=</span><span class="n">tile_size</span><span class="p">,</span> <span class="n">tile_stride</span><span class="o">=</span><span class="n">tile_stride</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">latents</span></div>
+
+    
+
+<div class="viewcode-block" id="SDXLImagePipeline.decode_image">
+<a class="viewcode-back" href="../../../diffsynth.pipelines.html#diffsynth.pipelines.sdxl_image.SDXLImagePipeline.decode_image">[docs]</a>
+    <span class="k">def</span> <span class="nf">decode_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">latent</span><span class="p">,</span> <span class="n">tiled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">tile_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">tile_stride</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vae_decoder</span><span class="p">(</span><span class="n">latent</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">),</span> <span class="n">tiled</span><span class="o">=</span><span class="n">tiled</span><span class="p">,</span> <span class="n">tile_size</span><span class="o">=</span><span class="n">tile_size</span><span class="p">,</span> <span class="n">tile_stride</span><span class="o">=</span><span class="n">tile_stride</span><span class="p">)</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vae_output_to_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">image</span></div>
+
+    
+
+<div class="viewcode-block" id="SDXLImagePipeline.encode_prompt">
+<a class="viewcode-back" href="../../../diffsynth.pipelines.html#diffsynth.pipelines.sdxl_image.SDXLImagePipeline.encode_prompt">[docs]</a>
+    <span class="k">def</span> <span class="nf">encode_prompt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prompt</span><span class="p">,</span> <span class="n">clip_skip</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">clip_skip_2</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">positive</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">add_prompt_emb</span><span class="p">,</span> <span class="n">prompt_emb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prompter</span><span class="o">.</span><span class="n">encode_prompt</span><span class="p">(</span>
+            <span class="n">prompt</span><span class="p">,</span>
+            <span class="n">clip_skip</span><span class="o">=</span><span class="n">clip_skip</span><span class="p">,</span> <span class="n">clip_skip_2</span><span class="o">=</span><span class="n">clip_skip_2</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+            <span class="n">positive</span><span class="o">=</span><span class="n">positive</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;encoder_hidden_states&quot;</span><span class="p">:</span> <span class="n">prompt_emb</span><span class="p">,</span> <span class="s2">&quot;add_text_embeds&quot;</span><span class="p">:</span> <span class="n">add_prompt_emb</span><span class="p">}</span></div>
+
+    
+
+<div class="viewcode-block" id="SDXLImagePipeline.prepare_extra_input">
+<a class="viewcode-back" href="../../../diffsynth.pipelines.html#diffsynth.pipelines.sdxl_image.SDXLImagePipeline.prepare_extra_input">[docs]</a>
+    <span class="k">def</span> <span class="nf">prepare_extra_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">latents</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="n">latents</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="mi">8</span><span class="p">,</span> <span class="n">latents</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">*</span> <span class="mi">8</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;add_time_id&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)}</span></div>
+
+    
+
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">prompt</span><span class="p">,</span>
+        <span class="n">negative_prompt</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">cfg_scale</span><span class="o">=</span><span class="mf">7.5</span><span class="p">,</span>
+        <span class="n">clip_skip</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">clip_skip_2</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">input_image</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">ipadapter_images</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">ipadapter_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">ipadapter_use_instant_style</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">controlnet_image</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">denoising_strength</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+        <span class="n">width</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+        <span class="n">num_inference_steps</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">tiled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">tile_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+        <span class="n">tile_stride</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+        <span class="n">progress_bar_cmd</span><span class="o">=</span><span class="n">tqdm</span><span class="p">,</span>
+        <span class="n">progress_bar_st</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="c1"># Tiler parameters</span>
+        <span class="n">tiler_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;tiled&quot;</span><span class="p">:</span> <span class="n">tiled</span><span class="p">,</span> <span class="s2">&quot;tile_size&quot;</span><span class="p">:</span> <span class="n">tile_size</span><span class="p">,</span> <span class="s2">&quot;tile_stride&quot;</span><span class="p">:</span> <span class="n">tile_stride</span><span class="p">}</span>
+
+        <span class="c1"># Prepare scheduler</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">set_timesteps</span><span class="p">(</span><span class="n">num_inference_steps</span><span class="p">,</span> <span class="n">denoising_strength</span><span class="p">)</span>
+
+        <span class="c1"># Prepare latent tensors</span>
+        <span class="k">if</span> <span class="n">input_image</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess_image</span><span class="p">(</span><span class="n">input_image</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">torch_dtype</span><span class="p">)</span>
+            <span class="n">latents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="o">**</span><span class="n">tiler_kwargs</span><span class="p">)</span>
+            <span class="n">noise</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">height</span><span class="o">//</span><span class="mi">8</span><span class="p">,</span> <span class="n">width</span><span class="o">//</span><span class="mi">8</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">torch_dtype</span><span class="p">)</span>
+            <span class="n">latents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">add_noise</span><span class="p">(</span><span class="n">latents</span><span class="p">,</span> <span class="n">noise</span><span class="p">,</span> <span class="n">timestep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">timesteps</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">latents</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">height</span><span class="o">//</span><span class="mi">8</span><span class="p">,</span> <span class="n">width</span><span class="o">//</span><span class="mi">8</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">torch_dtype</span><span class="p">)</span>
+
+        <span class="c1"># Encode prompts</span>
+        <span class="n">prompt_emb_posi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode_prompt</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">clip_skip</span><span class="o">=</span><span class="n">clip_skip</span><span class="p">,</span> <span class="n">clip_skip_2</span><span class="o">=</span><span class="n">clip_skip_2</span><span class="p">,</span> <span class="n">positive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">prompt_emb_nega</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode_prompt</span><span class="p">(</span><span class="n">negative_prompt</span><span class="p">,</span> <span class="n">clip_skip</span><span class="o">=</span><span class="n">clip_skip</span><span class="p">,</span> <span class="n">clip_skip_2</span><span class="o">=</span><span class="n">clip_skip_2</span><span class="p">,</span> <span class="n">positive</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># IP-Adapter</span>
+        <span class="k">if</span> <span class="n">ipadapter_images</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ipadapter_use_instant_style</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ipadapter</span><span class="o">.</span><span class="n">set_less_adapter</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ipadapter</span><span class="o">.</span><span class="n">set_full_adapter</span><span class="p">()</span>
+            <span class="n">ipadapter_image_encoding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ipadapter_image_encoder</span><span class="p">(</span><span class="n">ipadapter_images</span><span class="p">)</span>
+            <span class="n">ipadapter_kwargs_list_posi</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ipadapter_kwargs_list&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ipadapter</span><span class="p">(</span><span class="n">ipadapter_image_encoding</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">ipadapter_scale</span><span class="p">)}</span>
+            <span class="n">ipadapter_kwargs_list_nega</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ipadapter_kwargs_list&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ipadapter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ipadapter_image_encoding</span><span class="p">))}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ipadapter_kwargs_list_posi</span><span class="p">,</span> <span class="n">ipadapter_kwargs_list_nega</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ipadapter_kwargs_list&quot;</span><span class="p">:</span> <span class="p">{}},</span> <span class="p">{</span><span class="s2">&quot;ipadapter_kwargs_list&quot;</span><span class="p">:</span> <span class="p">{}}</span>
+
+        <span class="c1"># Prepare ControlNets (TODO)</span>
+        <span class="n">controlnet_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;controlnet_frames&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+
+        <span class="c1"># Prepare extra input</span>
+        <span class="n">extra_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_extra_input</span><span class="p">(</span><span class="n">latents</span><span class="p">)</span>
+        
+        <span class="c1"># Denoise</span>
+        <span class="k">for</span> <span class="n">progress_id</span><span class="p">,</span> <span class="n">timestep</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">progress_bar_cmd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">timesteps</span><span class="p">)):</span>
+            <span class="n">timestep</span> <span class="o">=</span> <span class="n">timestep</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+            <span class="c1"># Classifier-free guidance</span>
+            <span class="n">noise_pred_posi</span> <span class="o">=</span> <span class="n">lets_dance_xl</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">unet</span><span class="p">,</span> <span class="n">motion_modules</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">controlnet</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">sample</span><span class="o">=</span><span class="n">latents</span><span class="p">,</span> <span class="n">timestep</span><span class="o">=</span><span class="n">timestep</span><span class="p">,</span> <span class="o">**</span><span class="n">extra_input</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">prompt_emb_posi</span><span class="p">,</span> <span class="o">**</span><span class="n">controlnet_kwargs</span><span class="p">,</span> <span class="o">**</span><span class="n">tiler_kwargs</span><span class="p">,</span> <span class="o">**</span><span class="n">ipadapter_kwargs_list_posi</span><span class="p">,</span>
+                <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">cfg_scale</span> <span class="o">!=</span> <span class="mf">1.0</span><span class="p">:</span>
+                <span class="n">noise_pred_nega</span> <span class="o">=</span> <span class="n">lets_dance_xl</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">unet</span><span class="p">,</span> <span class="n">motion_modules</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">controlnet</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">sample</span><span class="o">=</span><span class="n">latents</span><span class="p">,</span> <span class="n">timestep</span><span class="o">=</span><span class="n">timestep</span><span class="p">,</span> <span class="o">**</span><span class="n">extra_input</span><span class="p">,</span>
+                    <span class="o">**</span><span class="n">prompt_emb_nega</span><span class="p">,</span> <span class="o">**</span><span class="n">controlnet_kwargs</span><span class="p">,</span> <span class="o">**</span><span class="n">tiler_kwargs</span><span class="p">,</span> <span class="o">**</span><span class="n">ipadapter_kwargs_list_nega</span><span class="p">,</span>
+                    <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">noise_pred</span> <span class="o">=</span> <span class="n">noise_pred_nega</span> <span class="o">+</span> <span class="n">cfg_scale</span> <span class="o">*</span> <span class="p">(</span><span class="n">noise_pred_posi</span> <span class="o">-</span> <span class="n">noise_pred_nega</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">noise_pred</span> <span class="o">=</span> <span class="n">noise_pred_posi</span>
+
+            <span class="c1"># DDIM</span>
+            <span class="n">latents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">noise_pred</span><span class="p">,</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">latents</span><span class="p">)</span>
+
+            <span class="c1"># UI</span>
+            <span class="k">if</span> <span class="n">progress_bar_st</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">progress_bar_st</span><span class="o">.</span><span class="n">progress</span><span class="p">(</span><span class="n">progress_id</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">timesteps</span><span class="p">))</span>
+        
+        <span class="c1"># Decode image</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_image</span><span class="p">(</span><span class="n">latents</span><span class="p">,</span> <span class="n">tiled</span><span class="o">=</span><span class="n">tiled</span><span class="p">,</span> <span class="n">tile_size</span><span class="o">=</span><span class="n">tile_size</span><span class="p">,</span> <span class="n">tile_stride</span><span class="o">=</span><span class="n">tile_stride</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">image</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ModelScope.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

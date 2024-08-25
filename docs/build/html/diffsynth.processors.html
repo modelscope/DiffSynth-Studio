@@ -46,12 +46,55 @@
               <div class="local-toc"><ul>
 <li><a class="reference internal" href="#">diffsynth.processors package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#diffsynth-processors-fastblend-module">diffsynth.processors.FastBlend module</a></li>
-<li><a class="reference internal" href="#diffsynth-processors-pileditor-module">diffsynth.processors.PILEditor module</a></li>
-<li><a class="reference internal" href="#diffsynth-processors-rife-module">diffsynth.processors.RIFE module</a></li>
-<li><a class="reference internal" href="#diffsynth-processors-base-module">diffsynth.processors.base module</a></li>
-<li><a class="reference internal" href="#diffsynth-processors-sequencial-processor-module">diffsynth.processors.sequencial_processor module</a></li>
-<li><a class="reference internal" href="#module-contents">Module contents</a></li>
+<li><a class="reference internal" href="#module-diffsynth.processors.FastBlend">diffsynth.processors.FastBlend module</a><ul>
+<li><a class="reference internal" href="#diffsynth.processors.FastBlend.FastBlendSmoother"><code class="docutils literal notranslate"><span class="pre">FastBlendSmoother</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.processors.FastBlend.FastBlendSmoother.from_model_manager"><code class="docutils literal notranslate"><span class="pre">FastBlendSmoother.from_model_manager()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.processors.FastBlend.FastBlendSmoother.inference_accurate"><code class="docutils literal notranslate"><span class="pre">FastBlendSmoother.inference_accurate()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.processors.FastBlend.FastBlendSmoother.inference_balanced"><code class="docutils literal notranslate"><span class="pre">FastBlendSmoother.inference_balanced()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.processors.FastBlend.FastBlendSmoother.inference_fast"><code class="docutils literal notranslate"><span class="pre">FastBlendSmoother.inference_fast()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.processors.FastBlend.FastBlendSmoother.release_vram"><code class="docutils literal notranslate"><span class="pre">FastBlendSmoother.release_vram()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.processors.PILEditor">diffsynth.processors.PILEditor module</a><ul>
+<li><a class="reference internal" href="#diffsynth.processors.PILEditor.ContrastEditor"><code class="docutils literal notranslate"><span class="pre">ContrastEditor</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.processors.PILEditor.ContrastEditor.from_model_manager"><code class="docutils literal notranslate"><span class="pre">ContrastEditor.from_model_manager()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.processors.PILEditor.SharpnessEditor"><code class="docutils literal notranslate"><span class="pre">SharpnessEditor</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.processors.PILEditor.SharpnessEditor.from_model_manager"><code class="docutils literal notranslate"><span class="pre">SharpnessEditor.from_model_manager()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.processors.RIFE">diffsynth.processors.RIFE module</a><ul>
+<li><a class="reference internal" href="#diffsynth.processors.RIFE.RIFESmoother"><code class="docutils literal notranslate"><span class="pre">RIFESmoother</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.processors.RIFE.RIFESmoother.decode_images"><code class="docutils literal notranslate"><span class="pre">RIFESmoother.decode_images()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.processors.RIFE.RIFESmoother.from_model_manager"><code class="docutils literal notranslate"><span class="pre">RIFESmoother.from_model_manager()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.processors.RIFE.RIFESmoother.process_image"><code class="docutils literal notranslate"><span class="pre">RIFESmoother.process_image()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.processors.RIFE.RIFESmoother.process_images"><code class="docutils literal notranslate"><span class="pre">RIFESmoother.process_images()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.processors.RIFE.RIFESmoother.process_tensors"><code class="docutils literal notranslate"><span class="pre">RIFESmoother.process_tensors()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.processors.base">diffsynth.processors.base module</a><ul>
+<li><a class="reference internal" href="#diffsynth.processors.base.VideoProcessor"><code class="docutils literal notranslate"><span class="pre">VideoProcessor</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.processors.sequencial_processor">diffsynth.processors.sequencial_processor module</a><ul>
+<li><a class="reference internal" href="#diffsynth.processors.sequencial_processor.AutoVideoProcessor"><code class="docutils literal notranslate"><span class="pre">AutoVideoProcessor</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.processors.sequencial_processor.AutoVideoProcessor.from_model_manager"><code class="docutils literal notranslate"><span class="pre">AutoVideoProcessor.from_model_manager()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.processors.sequencial_processor.SequencialProcessor"><code class="docutils literal notranslate"><span class="pre">SequencialProcessor</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.processors.sequencial_processor.SequencialProcessor.from_model_manager"><code class="docutils literal notranslate"><span class="pre">SequencialProcessor.from_model_manager()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.processors">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -85,23 +128,135 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
 </section>
-<section id="diffsynth-processors-fastblend-module">
-<h2>diffsynth.processors.FastBlend module<a class="headerlink" href="#diffsynth-processors-fastblend-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.processors.FastBlend">
+<span id="diffsynth-processors-fastblend-module"></span><h2>diffsynth.processors.FastBlend module<a class="headerlink" href="#module-diffsynth.processors.FastBlend" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.processors.FastBlend.FastBlendSmoother">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.processors.FastBlend.</span></span><span class="sig-name descname"><span class="pre">FastBlendSmoother</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inference_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'fast'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minimum_patch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threads_per_block</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gpu_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">guide_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initialize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'identity'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracking_window_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/FastBlend.html#FastBlendSmoother"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.FastBlend.FastBlendSmoother" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#diffsynth.processors.base.VideoProcessor" title="diffsynth.processors.base.VideoProcessor"><code class="xref py py-class docutils literal notranslate"><span class="pre">VideoProcessor</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.FastBlend.FastBlendSmoother.from_model_manager">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_model_manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_manager</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/FastBlend.html#FastBlendSmoother.from_model_manager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.FastBlend.FastBlendSmoother.from_model_manager" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.FastBlend.FastBlendSmoother.inference_accurate">
+<span class="sig-name descname"><span class="pre">inference_accurate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_style</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/FastBlend.html#FastBlendSmoother.inference_accurate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.FastBlend.FastBlendSmoother.inference_accurate" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.FastBlend.FastBlendSmoother.inference_balanced">
+<span class="sig-name descname"><span class="pre">inference_balanced</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_style</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/FastBlend.html#FastBlendSmoother.inference_balanced"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.FastBlend.FastBlendSmoother.inference_balanced" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.FastBlend.FastBlendSmoother.inference_fast">
+<span class="sig-name descname"><span class="pre">inference_fast</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_style</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/FastBlend.html#FastBlendSmoother.inference_fast"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.FastBlend.FastBlendSmoother.inference_fast" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.FastBlend.FastBlendSmoother.release_vram">
+<span class="sig-name descname"><span class="pre">release_vram</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/FastBlend.html#FastBlendSmoother.release_vram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.FastBlend.FastBlendSmoother.release_vram" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="diffsynth-processors-pileditor-module">
-<h2>diffsynth.processors.PILEditor module<a class="headerlink" href="#diffsynth-processors-pileditor-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.processors.PILEditor">
+<span id="diffsynth-processors-pileditor-module"></span><h2>diffsynth.processors.PILEditor module<a class="headerlink" href="#module-diffsynth.processors.PILEditor" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.processors.PILEditor.ContrastEditor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.processors.PILEditor.</span></span><span class="sig-name descname"><span class="pre">ContrastEditor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/PILEditor.html#ContrastEditor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.PILEditor.ContrastEditor" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#diffsynth.processors.base.VideoProcessor" title="diffsynth.processors.base.VideoProcessor"><code class="xref py py-class docutils literal notranslate"><span class="pre">VideoProcessor</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.PILEditor.ContrastEditor.from_model_manager">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_model_manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_manager</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/PILEditor.html#ContrastEditor.from_model_manager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.PILEditor.ContrastEditor.from_model_manager" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.processors.PILEditor.SharpnessEditor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.processors.PILEditor.</span></span><span class="sig-name descname"><span class="pre">SharpnessEditor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/PILEditor.html#SharpnessEditor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.PILEditor.SharpnessEditor" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#diffsynth.processors.base.VideoProcessor" title="diffsynth.processors.base.VideoProcessor"><code class="xref py py-class docutils literal notranslate"><span class="pre">VideoProcessor</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.PILEditor.SharpnessEditor.from_model_manager">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_model_manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_manager</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/PILEditor.html#SharpnessEditor.from_model_manager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.PILEditor.SharpnessEditor.from_model_manager" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="diffsynth-processors-rife-module">
-<h2>diffsynth.processors.RIFE module<a class="headerlink" href="#diffsynth-processors-rife-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.processors.RIFE">
+<span id="diffsynth-processors-rife-module"></span><h2>diffsynth.processors.RIFE module<a class="headerlink" href="#module-diffsynth.processors.RIFE" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.processors.RIFE.RIFESmoother">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.processors.RIFE.</span></span><span class="sig-name descname"><span class="pre">RIFESmoother</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cuda'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/RIFE.html#RIFESmoother"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.RIFE.RIFESmoother" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#diffsynth.processors.base.VideoProcessor" title="diffsynth.processors.base.VideoProcessor"><code class="xref py py-class docutils literal notranslate"><span class="pre">VideoProcessor</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.RIFE.RIFESmoother.decode_images">
+<span class="sig-name descname"><span class="pre">decode_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/RIFE.html#RIFESmoother.decode_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.RIFE.RIFESmoother.decode_images" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.RIFE.RIFESmoother.from_model_manager">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_model_manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_manager</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/RIFE.html#RIFESmoother.from_model_manager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.RIFE.RIFESmoother.from_model_manager" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.RIFE.RIFESmoother.process_image">
+<span class="sig-name descname"><span class="pre">process_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/RIFE.html#RIFESmoother.process_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.RIFE.RIFESmoother.process_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.RIFE.RIFESmoother.process_images">
+<span class="sig-name descname"><span class="pre">process_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/RIFE.html#RIFESmoother.process_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.RIFE.RIFESmoother.process_images" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.RIFE.RIFESmoother.process_tensors">
+<span class="sig-name descname"><span class="pre">process_tensors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/RIFE.html#RIFESmoother.process_tensors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.RIFE.RIFESmoother.process_tensors" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="diffsynth-processors-base-module">
-<h2>diffsynth.processors.base module<a class="headerlink" href="#diffsynth-processors-base-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.processors.base">
+<span id="diffsynth-processors-base-module"></span><h2>diffsynth.processors.base module<a class="headerlink" href="#module-diffsynth.processors.base" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.processors.base.VideoProcessor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.processors.base.</span></span><span class="sig-name descname"><span class="pre">VideoProcessor</span></span><a class="reference internal" href="_modules/diffsynth/processors/base.html#VideoProcessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.base.VideoProcessor" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
 </section>
-<section id="diffsynth-processors-sequencial-processor-module">
-<h2>diffsynth.processors.sequencial_processor module<a class="headerlink" href="#diffsynth-processors-sequencial-processor-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.processors.sequencial_processor">
+<span id="diffsynth-processors-sequencial-processor-module"></span><h2>diffsynth.processors.sequencial_processor module<a class="headerlink" href="#module-diffsynth.processors.sequencial_processor" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.processors.sequencial_processor.AutoVideoProcessor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.processors.sequencial_processor.</span></span><span class="sig-name descname"><span class="pre">AutoVideoProcessor</span></span><a class="reference internal" href="_modules/diffsynth/processors/sequencial_processor.html#AutoVideoProcessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.sequencial_processor.AutoVideoProcessor" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#diffsynth.processors.base.VideoProcessor" title="diffsynth.processors.base.VideoProcessor"><code class="xref py py-class docutils literal notranslate"><span class="pre">VideoProcessor</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.sequencial_processor.AutoVideoProcessor.from_model_manager">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_model_manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_manager</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">processor_type</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/sequencial_processor.html#AutoVideoProcessor.from_model_manager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.sequencial_processor.AutoVideoProcessor.from_model_manager" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.processors.sequencial_processor.SequencialProcessor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.processors.sequencial_processor.</span></span><span class="sig-name descname"><span class="pre">SequencialProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">processors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/sequencial_processor.html#SequencialProcessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.sequencial_processor.SequencialProcessor" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#diffsynth.processors.base.VideoProcessor" title="diffsynth.processors.base.VideoProcessor"><code class="xref py py-class docutils literal notranslate"><span class="pre">VideoProcessor</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.processors.sequencial_processor.SequencialProcessor.from_model_manager">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_model_manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_manager</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">configs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/processors/sequencial_processor.html#SequencialProcessor.from_model_manager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.processors.sequencial_processor.SequencialProcessor.from_model_manager" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.processors">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diffsynth.processors" title="Link to this heading"></a></h2>
 </section>
 </section>
 

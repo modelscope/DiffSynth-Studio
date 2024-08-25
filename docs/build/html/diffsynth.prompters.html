@@ -46,14 +46,102 @@
               <div class="local-toc"><ul>
 <li><a class="reference internal" href="#">diffsynth.prompters package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#diffsynth-prompters-base-prompter-module">diffsynth.prompters.base_prompter module</a></li>
-<li><a class="reference internal" href="#diffsynth-prompters-hunyuan-dit-prompter-module">diffsynth.prompters.hunyuan_dit_prompter module</a></li>
-<li><a class="reference internal" href="#diffsynth-prompters-kolors-prompter-module">diffsynth.prompters.kolors_prompter module</a></li>
-<li><a class="reference internal" href="#diffsynth-prompters-prompt-refiners-module">diffsynth.prompters.prompt_refiners module</a></li>
-<li><a class="reference internal" href="#diffsynth-prompters-sd3-prompter-module">diffsynth.prompters.sd3_prompter module</a></li>
-<li><a class="reference internal" href="#diffsynth-prompters-sd-prompter-module">diffsynth.prompters.sd_prompter module</a></li>
-<li><a class="reference internal" href="#diffsynth-prompters-sdxl-prompter-module">diffsynth.prompters.sdxl_prompter module</a></li>
-<li><a class="reference internal" href="#module-contents">Module contents</a></li>
+<li><a class="reference internal" href="#module-diffsynth.prompters.base_prompter">diffsynth.prompters.base_prompter module</a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.base_prompter.BasePrompter"><code class="docutils literal notranslate"><span class="pre">BasePrompter</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.base_prompter.BasePrompter.load_prompt_refiners"><code class="docutils literal notranslate"><span class="pre">BasePrompter.load_prompt_refiners()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.base_prompter.BasePrompter.process_prompt"><code class="docutils literal notranslate"><span class="pre">BasePrompter.process_prompt()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.prompters.base_prompter.tokenize_long_prompt"><code class="docutils literal notranslate"><span class="pre">tokenize_long_prompt()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.prompters.hunyuan_dit_prompter">diffsynth.prompters.hunyuan_dit_prompter module</a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter"><code class="docutils literal notranslate"><span class="pre">HunyuanDiTPrompter</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter.encode_prompt"><code class="docutils literal notranslate"><span class="pre">HunyuanDiTPrompter.encode_prompt()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter.encode_prompt_using_signle_model"><code class="docutils literal notranslate"><span class="pre">HunyuanDiTPrompter.encode_prompt_using_signle_model()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter.fetch_models"><code class="docutils literal notranslate"><span class="pre">HunyuanDiTPrompter.fetch_models()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.prompters.kolors_prompter">diffsynth.prompters.kolors_prompter module</a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_chat_input"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.build_chat_input()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_inputs_with_special_tokens"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.build_inputs_with_special_tokens()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_single_message"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.build_single_message()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.convert_tokens_to_string"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.convert_tokens_to_string()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.eos_token"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.eos_token</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.eos_token_id"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.eos_token_id</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.get_command"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.get_command()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.get_prefix_tokens"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.get_prefix_tokens()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.get_vocab"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.get_vocab()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.model_input_names"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.model_input_names</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.pad_token"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.pad_token</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.pad_token_id"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.pad_token_id</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.save_vocabulary"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.save_vocabulary()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.unk_token"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.unk_token</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.vocab_files_names"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.vocab_files_names</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.vocab_size"><code class="docutils literal notranslate"><span class="pre">ChatGLMTokenizer.vocab_size</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.KolorsPrompter"><code class="docutils literal notranslate"><span class="pre">KolorsPrompter</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.KolorsPrompter.encode_prompt"><code class="docutils literal notranslate"><span class="pre">KolorsPrompter.encode_prompt()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.KolorsPrompter.encode_prompt_using_ChatGLM"><code class="docutils literal notranslate"><span class="pre">KolorsPrompter.encode_prompt_using_ChatGLM()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.KolorsPrompter.fetch_models"><code class="docutils literal notranslate"><span class="pre">KolorsPrompter.fetch_models()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.SPTokenizer"><code class="docutils literal notranslate"><span class="pre">SPTokenizer</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.SPTokenizer.convert_id_to_token"><code class="docutils literal notranslate"><span class="pre">SPTokenizer.convert_id_to_token()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.SPTokenizer.convert_token_to_id"><code class="docutils literal notranslate"><span class="pre">SPTokenizer.convert_token_to_id()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.SPTokenizer.decode"><code class="docutils literal notranslate"><span class="pre">SPTokenizer.decode()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.SPTokenizer.decode_tokens"><code class="docutils literal notranslate"><span class="pre">SPTokenizer.decode_tokens()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.SPTokenizer.encode"><code class="docutils literal notranslate"><span class="pre">SPTokenizer.encode()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.kolors_prompter.SPTokenizer.tokenize"><code class="docutils literal notranslate"><span class="pre">SPTokenizer.tokenize()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.prompters.prompt_refiners">diffsynth.prompters.prompt_refiners module</a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.prompt_refiners.BeautifulPrompt"><code class="docutils literal notranslate"><span class="pre">BeautifulPrompt</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.prompt_refiners.BeautifulPrompt.from_model_manager"><code class="docutils literal notranslate"><span class="pre">BeautifulPrompt.from_model_manager()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.prompters.prompt_refiners.Translator"><code class="docutils literal notranslate"><span class="pre">Translator</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.prompt_refiners.Translator.from_model_manager"><code class="docutils literal notranslate"><span class="pre">Translator.from_model_manager()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.prompters.sd3_prompter">diffsynth.prompters.sd3_prompter module</a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.sd3_prompter.SD3Prompter"><code class="docutils literal notranslate"><span class="pre">SD3Prompter</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.sd3_prompter.SD3Prompter.encode_prompt"><code class="docutils literal notranslate"><span class="pre">SD3Prompter.encode_prompt()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.sd3_prompter.SD3Prompter.encode_prompt_using_clip"><code class="docutils literal notranslate"><span class="pre">SD3Prompter.encode_prompt_using_clip()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.sd3_prompter.SD3Prompter.encode_prompt_using_t5"><code class="docutils literal notranslate"><span class="pre">SD3Prompter.encode_prompt_using_t5()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.sd3_prompter.SD3Prompter.fetch_models"><code class="docutils literal notranslate"><span class="pre">SD3Prompter.fetch_models()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.prompters.sd_prompter">diffsynth.prompters.sd_prompter module</a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.sd_prompter.SDPrompter"><code class="docutils literal notranslate"><span class="pre">SDPrompter</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.sd_prompter.SDPrompter.add_textual_inversions_to_model"><code class="docutils literal notranslate"><span class="pre">SDPrompter.add_textual_inversions_to_model()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.sd_prompter.SDPrompter.add_textual_inversions_to_tokenizer"><code class="docutils literal notranslate"><span class="pre">SDPrompter.add_textual_inversions_to_tokenizer()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.sd_prompter.SDPrompter.encode_prompt"><code class="docutils literal notranslate"><span class="pre">SDPrompter.encode_prompt()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.sd_prompter.SDPrompter.fetch_models"><code class="docutils literal notranslate"><span class="pre">SDPrompter.fetch_models()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.sd_prompter.SDPrompter.load_textual_inversions"><code class="docutils literal notranslate"><span class="pre">SDPrompter.load_textual_inversions()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.prompters.sdxl_prompter">diffsynth.prompters.sdxl_prompter module</a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.sdxl_prompter.SDXLPrompter"><code class="docutils literal notranslate"><span class="pre">SDXLPrompter</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.prompters.sdxl_prompter.SDXLPrompter.encode_prompt"><code class="docutils literal notranslate"><span class="pre">SDXLPrompter.encode_prompt()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.prompters.sdxl_prompter.SDXLPrompter.fetch_models"><code class="docutils literal notranslate"><span class="pre">SDXLPrompter.fetch_models()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.prompters">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -87,29 +175,397 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
 </section>
-<section id="diffsynth-prompters-base-prompter-module">
-<h2>diffsynth.prompters.base_prompter module<a class="headerlink" href="#diffsynth-prompters-base-prompter-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.prompters.base_prompter">
+<span id="diffsynth-prompters-base-prompter-module"></span><h2>diffsynth.prompters.base_prompter module<a class="headerlink" href="#module-diffsynth.prompters.base_prompter" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.prompters.base_prompter.BasePrompter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.prompters.base_prompter.</span></span><span class="sig-name descname"><span class="pre">BasePrompter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">refiners</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/base_prompter.html#BasePrompter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.base_prompter.BasePrompter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.base_prompter.BasePrompter.load_prompt_refiners">
+<span class="sig-name descname"><span class="pre">load_prompt_refiners</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_nameger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="diffsynth.models.html#diffsynth.models.model_manager.ModelManager" title="diffsynth.models.model_manager.ModelManager"><span class="pre">ModelManager</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">refiner_classes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/base_prompter.html#BasePrompter.load_prompt_refiners"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.base_prompter.BasePrompter.load_prompt_refiners" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.base_prompter.BasePrompter.process_prompt">
+<span class="sig-name descname"><span class="pre">process_prompt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/base_prompter.html#BasePrompter.process_prompt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.base_prompter.BasePrompter.process_prompt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="diffsynth.prompters.base_prompter.tokenize_long_prompt">
+<span class="sig-prename descclassname"><span class="pre">diffsynth.prompters.base_prompter.</span></span><span class="sig-name descname"><span class="pre">tokenize_long_prompt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokenizer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/base_prompter.html#tokenize_long_prompt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.base_prompter.tokenize_long_prompt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </section>
-<section id="diffsynth-prompters-hunyuan-dit-prompter-module">
-<h2>diffsynth.prompters.hunyuan_dit_prompter module<a class="headerlink" href="#diffsynth-prompters-hunyuan-dit-prompter-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.prompters.hunyuan_dit_prompter">
+<span id="diffsynth-prompters-hunyuan-dit-prompter-module"></span><h2>diffsynth.prompters.hunyuan_dit_prompter module<a class="headerlink" href="#module-diffsynth.prompters.hunyuan_dit_prompter" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.prompters.hunyuan_dit_prompter.</span></span><span class="sig-name descname"><span class="pre">HunyuanDiTPrompter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokenizer_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tokenizer_t5_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/hunyuan_dit_prompter.html#HunyuanDiTPrompter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#diffsynth.prompters.base_prompter.BasePrompter" title="diffsynth.prompters.base_prompter.BasePrompter"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePrompter</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter.encode_prompt">
+<span class="sig-name descname"><span class="pre">encode_prompt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_skip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_skip_2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cuda'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/hunyuan_dit_prompter.html#HunyuanDiTPrompter.encode_prompt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter.encode_prompt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter.encode_prompt_using_signle_model">
+<span class="sig-name descname"><span class="pre">encode_prompt_using_signle_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_encoder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tokenizer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_length</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_skip</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/hunyuan_dit_prompter.html#HunyuanDiTPrompter.encode_prompt_using_signle_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter.encode_prompt_using_signle_model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter.fetch_models">
+<span class="sig-name descname"><span class="pre">fetch_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text_encoder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="diffsynth.models.html#diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder" title="diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder"><span class="pre">HunyuanDiTCLIPTextEncoder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_encoder_t5</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="diffsynth.models.html#diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder" title="diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder"><span class="pre">HunyuanDiTT5TextEncoder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/hunyuan_dit_prompter.html#HunyuanDiTPrompter.fetch_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter.fetch_models" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="diffsynth-prompters-kolors-prompter-module">
-<h2>diffsynth.prompters.kolors_prompter module<a class="headerlink" href="#diffsynth-prompters-kolors-prompter-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.prompters.kolors_prompter">
+<span id="diffsynth-prompters-kolors-prompter-module"></span><h2>diffsynth.prompters.kolors_prompter module<a class="headerlink" href="#module-diffsynth.prompters.kolors_prompter" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.prompters.kolors_prompter.</span></span><span class="sig-name descname"><span class="pre">ChatGLMTokenizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vocab_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding_side</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'left'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean_up_tokenization_spaces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encode_special_tokens</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#ChatGLMTokenizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">PreTrainedTokenizer</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_chat_input">
+<span class="sig-name descname"><span class="pre">build_chat_input</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">history</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">role</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'user'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#ChatGLMTokenizer.build_chat_input"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_chat_input" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_inputs_with_special_tokens">
+<span class="sig-name descname"><span class="pre">build_inputs_with_special_tokens</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">token_ids_0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">token_ids_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#ChatGLMTokenizer.build_inputs_with_special_tokens"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_inputs_with_special_tokens" title="Link to this definition"></a></dt>
+<dd><p>Build model inputs from a sequence or a pair of sequence for sequence classification tasks by concatenating and
+adding special tokens. A BERT sequence has the following format:</p>
+<ul class="simple">
+<li><p>single sequence: <cite>[CLS] X [SEP]</cite></p></li>
+<li><p>pair of sequences: <cite>[CLS] A [SEP] B [SEP]</cite></p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>token_ids_0</strong> (<cite>List[int]</cite>) – List of IDs to which the special tokens will be added.</p></li>
+<li><p><strong>token_ids_1</strong> (<cite>List[int]</cite>, <em>optional</em>) – Optional second list of IDs for sequence pairs.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of [input IDs](../glossary#input-ids) with the appropriate special tokens.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><cite>List[int]</cite></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_single_message">
+<span class="sig-name descname"><span class="pre">build_single_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">role</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#ChatGLMTokenizer.build_single_message"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_single_message" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.convert_tokens_to_string">
+<span class="sig-name descname"><span class="pre">convert_tokens_to_string</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#ChatGLMTokenizer.convert_tokens_to_string"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.convert_tokens_to_string" title="Link to this definition"></a></dt>
+<dd><p>Converts a sequence of tokens in a single string. The most simple way to do it is <cite>“ “.join(tokens)</cite> but we
+often want to remove sub-word tokenization artifacts at the same time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>tokens</strong> (<cite>List[str]</cite>) – The token to join in a string.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The joined tokens.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><cite>str</cite></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.eos_token">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">eos_token</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.eos_token" title="Link to this definition"></a></dt>
+<dd><p>End of sentence token. Log an error if used while not having been set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><cite>str</cite></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.eos_token_id">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">eos_token_id</span></span><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.eos_token_id" title="Link to this definition"></a></dt>
+<dd><p>Id of the end of sentence token in the vocabulary. Returns <cite>None</cite> if the token has not been
+set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><cite>Optional[int]</cite></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.get_command">
+<span class="sig-name descname"><span class="pre">get_command</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">token</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#ChatGLMTokenizer.get_command"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.get_command" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.get_prefix_tokens">
+<span class="sig-name descname"><span class="pre">get_prefix_tokens</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#ChatGLMTokenizer.get_prefix_tokens"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.get_prefix_tokens" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.get_vocab">
+<span class="sig-name descname"><span class="pre">get_vocab</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#ChatGLMTokenizer.get_vocab"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.get_vocab" title="Link to this definition"></a></dt>
+<dd><p>Returns vocab as a dict</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.model_input_names">
+<span class="sig-name descname"><span class="pre">model_input_names</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['input_ids',</span> <span class="pre">'attention_mask',</span> <span class="pre">'position_ids']</span></em><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.model_input_names" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.pad_token">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pad_token</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.pad_token" title="Link to this definition"></a></dt>
+<dd><p>Padding token. Log an error if used while not having been set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><cite>str</cite></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.pad_token_id">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pad_token_id</span></span><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.pad_token_id" title="Link to this definition"></a></dt>
+<dd><p>Id of the padding token in the vocabulary. Returns <cite>None</cite> if the token has not been set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><cite>Optional[int]</cite></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.save_vocabulary">
+<span class="sig-name descname"><span class="pre">save_vocabulary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename_prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#ChatGLMTokenizer.save_vocabulary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.save_vocabulary" title="Link to this definition"></a></dt>
+<dd><p>Save the vocabulary and special tokens file to a directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>save_directory</strong> (<cite>str</cite>) – The directory in which to save the vocabulary.</p></li>
+<li><p><strong>filename_prefix</strong> (<cite>str</cite>, <em>optional</em>) – An optional prefix to add to the named of the saved files.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Paths to the files saved.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><cite>Tuple(str)</cite></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.unk_token">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unk_token</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.unk_token" title="Link to this definition"></a></dt>
+<dd><p>Unknown token. Log an error if used while not having been set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><cite>str</cite></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.vocab_files_names">
+<span class="sig-name descname"><span class="pre">vocab_files_names</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'vocab_file':</span> <span class="pre">'tokenizer.model'}</span></em><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.vocab_files_names" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.vocab_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">vocab_size</span></span><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.vocab_size" title="Link to this definition"></a></dt>
+<dd><p>Size of the base vocabulary (without the added tokens).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><cite>int</cite></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.KolorsPrompter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.prompters.kolors_prompter.</span></span><span class="sig-name descname"><span class="pre">KolorsPrompter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokenizer_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#KolorsPrompter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.KolorsPrompter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#diffsynth.prompters.base_prompter.BasePrompter" title="diffsynth.prompters.base_prompter.BasePrompter"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePrompter</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.KolorsPrompter.encode_prompt">
+<span class="sig-name descname"><span class="pre">encode_prompt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_skip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_skip_2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cuda'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#KolorsPrompter.encode_prompt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.KolorsPrompter.encode_prompt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.KolorsPrompter.encode_prompt_using_ChatGLM">
+<span class="sig-name descname"><span class="pre">encode_prompt_using_ChatGLM</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_encoder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tokenizer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_length</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_skip</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#KolorsPrompter.encode_prompt_using_ChatGLM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.KolorsPrompter.encode_prompt_using_ChatGLM" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.KolorsPrompter.fetch_models">
+<span class="sig-name descname"><span class="pre">fetch_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text_encoder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="diffsynth.models.html#diffsynth.models.kolors_text_encoder.ChatGLMModel" title="diffsynth.models.kolors_text_encoder.ChatGLMModel"><span class="pre">ChatGLMModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#KolorsPrompter.fetch_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.KolorsPrompter.fetch_models" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.SPTokenizer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.prompters.kolors_prompter.</span></span><span class="sig-name descname"><span class="pre">SPTokenizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#SPTokenizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.SPTokenizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.SPTokenizer.convert_id_to_token">
+<span class="sig-name descname"><span class="pre">convert_id_to_token</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#SPTokenizer.convert_id_to_token"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.SPTokenizer.convert_id_to_token" title="Link to this definition"></a></dt>
+<dd><p>Converts an index (integer) in a token (str) using the vocab.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.SPTokenizer.convert_token_to_id">
+<span class="sig-name descname"><span class="pre">convert_token_to_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">token</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#SPTokenizer.convert_token_to_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.SPTokenizer.convert_token_to_id" title="Link to this definition"></a></dt>
+<dd><p>Converts a token (str) in an id using the vocab.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.SPTokenizer.decode">
+<span class="sig-name descname"><span class="pre">decode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#SPTokenizer.decode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.SPTokenizer.decode" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.SPTokenizer.decode_tokens">
+<span class="sig-name descname"><span class="pre">decode_tokens</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#SPTokenizer.decode_tokens"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.SPTokenizer.decode_tokens" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.SPTokenizer.encode">
+<span class="sig-name descname"><span class="pre">encode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bos</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eos</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#SPTokenizer.encode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.SPTokenizer.encode" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.kolors_prompter.SPTokenizer.tokenize">
+<span class="sig-name descname"><span class="pre">tokenize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encode_special_tokens</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/kolors_prompter.html#SPTokenizer.tokenize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.kolors_prompter.SPTokenizer.tokenize" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="diffsynth-prompters-prompt-refiners-module">
-<h2>diffsynth.prompters.prompt_refiners module<a class="headerlink" href="#diffsynth-prompters-prompt-refiners-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.prompters.prompt_refiners">
+<span id="diffsynth-prompters-prompt-refiners-module"></span><h2>diffsynth.prompters.prompt_refiners module<a class="headerlink" href="#module-diffsynth.prompters.prompt_refiners" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.prompters.prompt_refiners.BeautifulPrompt">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.prompters.prompt_refiners.</span></span><span class="sig-name descname"><span class="pre">BeautifulPrompt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokenizer_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">template</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/prompt_refiners.html#BeautifulPrompt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.prompt_refiners.BeautifulPrompt" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.prompt_refiners.BeautifulPrompt.from_model_manager">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_model_manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_nameger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="diffsynth.models.html#diffsynth.models.model_manager.ModelManager" title="diffsynth.models.model_manager.ModelManager"><span class="pre">ModelManager</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/prompt_refiners.html#BeautifulPrompt.from_model_manager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.prompt_refiners.BeautifulPrompt.from_model_manager" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.prompters.prompt_refiners.Translator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.prompters.prompt_refiners.</span></span><span class="sig-name descname"><span class="pre">Translator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokenizer_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/prompt_refiners.html#Translator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.prompt_refiners.Translator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.prompt_refiners.Translator.from_model_manager">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_model_manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_nameger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="diffsynth.models.html#diffsynth.models.model_manager.ModelManager" title="diffsynth.models.model_manager.ModelManager"><span class="pre">ModelManager</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/prompt_refiners.html#Translator.from_model_manager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.prompt_refiners.Translator.from_model_manager" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="diffsynth-prompters-sd3-prompter-module">
-<h2>diffsynth.prompters.sd3_prompter module<a class="headerlink" href="#diffsynth-prompters-sd3-prompter-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.prompters.sd3_prompter">
+<span id="diffsynth-prompters-sd3-prompter-module"></span><h2>diffsynth.prompters.sd3_prompter module<a class="headerlink" href="#module-diffsynth.prompters.sd3_prompter" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.prompters.sd3_prompter.SD3Prompter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.prompters.sd3_prompter.</span></span><span class="sig-name descname"><span class="pre">SD3Prompter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokenizer_1_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tokenizer_2_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tokenizer_3_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sd3_prompter.html#SD3Prompter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sd3_prompter.SD3Prompter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#diffsynth.prompters.base_prompter.BasePrompter" title="diffsynth.prompters.base_prompter.BasePrompter"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePrompter</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.sd3_prompter.SD3Prompter.encode_prompt">
+<span class="sig-name descname"><span class="pre">encode_prompt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cuda'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sd3_prompter.html#SD3Prompter.encode_prompt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sd3_prompter.SD3Prompter.encode_prompt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.sd3_prompter.SD3Prompter.encode_prompt_using_clip">
+<span class="sig-name descname"><span class="pre">encode_prompt_using_clip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_encoder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tokenizer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_length</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sd3_prompter.html#SD3Prompter.encode_prompt_using_clip"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sd3_prompter.SD3Prompter.encode_prompt_using_clip" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.sd3_prompter.SD3Prompter.encode_prompt_using_t5">
+<span class="sig-name descname"><span class="pre">encode_prompt_using_t5</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_encoder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tokenizer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_length</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sd3_prompter.html#SD3Prompter.encode_prompt_using_t5"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sd3_prompter.SD3Prompter.encode_prompt_using_t5" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.sd3_prompter.SD3Prompter.fetch_models">
+<span class="sig-name descname"><span class="pre">fetch_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text_encoder_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="diffsynth.models.html#diffsynth.models.sd3_text_encoder.SD3TextEncoder1" title="diffsynth.models.sd3_text_encoder.SD3TextEncoder1"><span class="pre">SD3TextEncoder1</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_encoder_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="diffsynth.models.html#diffsynth.models.sd3_text_encoder.SD3TextEncoder2" title="diffsynth.models.sd3_text_encoder.SD3TextEncoder2"><span class="pre">SD3TextEncoder2</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_encoder_3</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="diffsynth.models.html#diffsynth.models.sd3_text_encoder.SD3TextEncoder3" title="diffsynth.models.sd3_text_encoder.SD3TextEncoder3"><span class="pre">SD3TextEncoder3</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sd3_prompter.html#SD3Prompter.fetch_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sd3_prompter.SD3Prompter.fetch_models" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="diffsynth-prompters-sd-prompter-module">
-<h2>diffsynth.prompters.sd_prompter module<a class="headerlink" href="#diffsynth-prompters-sd-prompter-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.prompters.sd_prompter">
+<span id="diffsynth-prompters-sd-prompter-module"></span><h2>diffsynth.prompters.sd_prompter module<a class="headerlink" href="#module-diffsynth.prompters.sd_prompter" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.prompters.sd_prompter.SDPrompter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.prompters.sd_prompter.</span></span><span class="sig-name descname"><span class="pre">SDPrompter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokenizer_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sd_prompter.html#SDPrompter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sd_prompter.SDPrompter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#diffsynth.prompters.base_prompter.BasePrompter" title="diffsynth.prompters.base_prompter.BasePrompter"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePrompter</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.sd_prompter.SDPrompter.add_textual_inversions_to_model">
+<span class="sig-name descname"><span class="pre">add_textual_inversions_to_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">textual_inversion_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_encoder</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sd_prompter.html#SDPrompter.add_textual_inversions_to_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sd_prompter.SDPrompter.add_textual_inversions_to_model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.sd_prompter.SDPrompter.add_textual_inversions_to_tokenizer">
+<span class="sig-name descname"><span class="pre">add_textual_inversions_to_tokenizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">textual_inversion_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tokenizer</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sd_prompter.html#SDPrompter.add_textual_inversions_to_tokenizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sd_prompter.SDPrompter.add_textual_inversions_to_tokenizer" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.sd_prompter.SDPrompter.encode_prompt">
+<span class="sig-name descname"><span class="pre">encode_prompt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_skip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cuda'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sd_prompter.html#SDPrompter.encode_prompt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sd_prompter.SDPrompter.encode_prompt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.sd_prompter.SDPrompter.fetch_models">
+<span class="sig-name descname"><span class="pre">fetch_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text_encoder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="diffsynth.models.html#diffsynth.models.sd_text_encoder.SDTextEncoder" title="diffsynth.models.sd_text_encoder.SDTextEncoder"><span class="pre">SDTextEncoder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sd_prompter.html#SDPrompter.fetch_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sd_prompter.SDPrompter.fetch_models" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.sd_prompter.SDPrompter.load_textual_inversions">
+<span class="sig-name descname"><span class="pre">load_textual_inversions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_paths</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sd_prompter.html#SDPrompter.load_textual_inversions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sd_prompter.SDPrompter.load_textual_inversions" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="diffsynth-prompters-sdxl-prompter-module">
-<h2>diffsynth.prompters.sdxl_prompter module<a class="headerlink" href="#diffsynth-prompters-sdxl-prompter-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.prompters.sdxl_prompter">
+<span id="diffsynth-prompters-sdxl-prompter-module"></span><h2>diffsynth.prompters.sdxl_prompter module<a class="headerlink" href="#module-diffsynth.prompters.sdxl_prompter" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.prompters.sdxl_prompter.SDXLPrompter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.prompters.sdxl_prompter.</span></span><span class="sig-name descname"><span class="pre">SDXLPrompter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokenizer_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tokenizer_2_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sdxl_prompter.html#SDXLPrompter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sdxl_prompter.SDXLPrompter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#diffsynth.prompters.base_prompter.BasePrompter" title="diffsynth.prompters.base_prompter.BasePrompter"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePrompter</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.sdxl_prompter.SDXLPrompter.encode_prompt">
+<span class="sig-name descname"><span class="pre">encode_prompt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_skip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_skip_2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cuda'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sdxl_prompter.html#SDXLPrompter.encode_prompt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sdxl_prompter.SDXLPrompter.encode_prompt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.prompters.sdxl_prompter.SDXLPrompter.fetch_models">
+<span class="sig-name descname"><span class="pre">fetch_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text_encoder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="diffsynth.models.html#diffsynth.models.sdxl_text_encoder.SDXLTextEncoder" title="diffsynth.models.sdxl_text_encoder.SDXLTextEncoder"><span class="pre">SDXLTextEncoder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_encoder_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="diffsynth.models.html#diffsynth.models.sdxl_text_encoder.SDXLTextEncoder2" title="diffsynth.models.sdxl_text_encoder.SDXLTextEncoder2"><span class="pre">SDXLTextEncoder2</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/prompters/sdxl_prompter.html#SDXLPrompter.fetch_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.prompters.sdxl_prompter.SDXLPrompter.fetch_models" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.prompters">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diffsynth.prompters" title="Link to this heading"></a></h2>
 </section>
 </section>
 

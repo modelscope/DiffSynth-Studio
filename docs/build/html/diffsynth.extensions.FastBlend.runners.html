@@ -46,11 +46,50 @@
               <div class="local-toc"><ul>
 <li><a class="reference internal" href="#">diffsynth.extensions.FastBlend.runners package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#diffsynth-extensions-fastblend-runners-accurate-module">diffsynth.extensions.FastBlend.runners.accurate module</a></li>
-<li><a class="reference internal" href="#diffsynth-extensions-fastblend-runners-balanced-module">diffsynth.extensions.FastBlend.runners.balanced module</a></li>
-<li><a class="reference internal" href="#diffsynth-extensions-fastblend-runners-fast-module">diffsynth.extensions.FastBlend.runners.fast module</a></li>
-<li><a class="reference internal" href="#diffsynth-extensions-fastblend-runners-interpolation-module">diffsynth.extensions.FastBlend.runners.interpolation module</a></li>
-<li><a class="reference internal" href="#module-contents">Module contents</a></li>
+<li><a class="reference internal" href="#module-diffsynth.extensions.FastBlend.runners.accurate">diffsynth.extensions.FastBlend.runners.accurate module</a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.accurate.AccurateModeRunner"><code class="docutils literal notranslate"><span class="pre">AccurateModeRunner</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.accurate.AccurateModeRunner.run"><code class="docutils literal notranslate"><span class="pre">AccurateModeRunner.run()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.extensions.FastBlend.runners.balanced">diffsynth.extensions.FastBlend.runners.balanced module</a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.balanced.BalancedModeRunner"><code class="docutils literal notranslate"><span class="pre">BalancedModeRunner</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.balanced.BalancedModeRunner.run"><code class="docutils literal notranslate"><span class="pre">BalancedModeRunner.run()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.extensions.FastBlend.runners.fast">diffsynth.extensions.FastBlend.runners.fast module</a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.fast.FastModeRunner"><code class="docutils literal notranslate"><span class="pre">FastModeRunner</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.fast.FastModeRunner.run"><code class="docutils literal notranslate"><span class="pre">FastModeRunner.run()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.fast.TableManager"><code class="docutils literal notranslate"><span class="pre">TableManager</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.fast.TableManager.build_remapping_table"><code class="docutils literal notranslate"><span class="pre">TableManager.build_remapping_table()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.fast.TableManager.process_window_sum"><code class="docutils literal notranslate"><span class="pre">TableManager.process_window_sum()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.fast.TableManager.remapping_table_to_blending_table"><code class="docutils literal notranslate"><span class="pre">TableManager.remapping_table_to_blending_table()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.fast.TableManager.task_list"><code class="docutils literal notranslate"><span class="pre">TableManager.task_list()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.fast.TableManager.tree_query"><code class="docutils literal notranslate"><span class="pre">TableManager.tree_query()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.extensions.FastBlend.runners.interpolation">diffsynth.extensions.FastBlend.runners.interpolation module</a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner"><code class="docutils literal notranslate"><span class="pre">InterpolationModeRunner</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.get_index_dict"><code class="docutils literal notranslate"><span class="pre">InterpolationModeRunner.get_index_dict()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.get_task_group"><code class="docutils literal notranslate"><span class="pre">InterpolationModeRunner.get_task_group()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.get_weight"><code class="docutils literal notranslate"><span class="pre">InterpolationModeRunner.get_weight()</span></code></a></li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.run"><code class="docutils literal notranslate"><span class="pre">InterpolationModeRunner.run()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeSingleFrameRunner"><code class="docutils literal notranslate"><span class="pre">InterpolationModeSingleFrameRunner</span></code></a><ul>
+<li><a class="reference internal" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeSingleFrameRunner.run"><code class="docutils literal notranslate"><span class="pre">InterpolationModeSingleFrameRunner.run()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-diffsynth.extensions.FastBlend.runners">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -84,20 +123,121 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
 </section>
-<section id="diffsynth-extensions-fastblend-runners-accurate-module">
-<h2>diffsynth.extensions.FastBlend.runners.accurate module<a class="headerlink" href="#diffsynth-extensions-fastblend-runners-accurate-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.extensions.FastBlend.runners.accurate">
+<span id="diffsynth-extensions-fastblend-runners-accurate-module"></span><h2>diffsynth.extensions.FastBlend.runners.accurate module<a class="headerlink" href="#module-diffsynth.extensions.FastBlend.runners.accurate" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.accurate.AccurateModeRunner">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.runners.accurate.</span></span><span class="sig-name descname"><span class="pre">AccurateModeRunner</span></span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/accurate.html#AccurateModeRunner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.accurate.AccurateModeRunner" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.accurate.AccurateModeRunner.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ebsynth_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Accurate</span> <span class="pre">Mode'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/accurate.html#AccurateModeRunner.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.accurate.AccurateModeRunner.run" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="diffsynth-extensions-fastblend-runners-balanced-module">
-<h2>diffsynth.extensions.FastBlend.runners.balanced module<a class="headerlink" href="#diffsynth-extensions-fastblend-runners-balanced-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.extensions.FastBlend.runners.balanced">
+<span id="diffsynth-extensions-fastblend-runners-balanced-module"></span><h2>diffsynth.extensions.FastBlend.runners.balanced module<a class="headerlink" href="#module-diffsynth.extensions.FastBlend.runners.balanced" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.balanced.BalancedModeRunner">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.runners.balanced.</span></span><span class="sig-name descname"><span class="pre">BalancedModeRunner</span></span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/balanced.html#BalancedModeRunner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.balanced.BalancedModeRunner" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.balanced.BalancedModeRunner.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ebsynth_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Balanced</span> <span class="pre">Mode'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/balanced.html#BalancedModeRunner.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.balanced.BalancedModeRunner.run" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="diffsynth-extensions-fastblend-runners-fast-module">
-<h2>diffsynth.extensions.FastBlend.runners.fast module<a class="headerlink" href="#diffsynth-extensions-fastblend-runners-fast-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.extensions.FastBlend.runners.fast">
+<span id="diffsynth-extensions-fastblend-runners-fast-module"></span><h2>diffsynth.extensions.FastBlend.runners.fast module<a class="headerlink" href="#module-diffsynth.extensions.FastBlend.runners.fast" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.fast.FastModeRunner">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.runners.fast.</span></span><span class="sig-name descname"><span class="pre">FastModeRunner</span></span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/fast.html#FastModeRunner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.fast.FastModeRunner" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.fast.FastModeRunner.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ebsynth_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/fast.html#FastModeRunner.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.fast.FastModeRunner.run" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.fast.TableManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.runners.fast.</span></span><span class="sig-name descname"><span class="pre">TableManager</span></span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/fast.html#TableManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.fast.TableManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.fast.TableManager.build_remapping_table">
+<span class="sig-name descname"><span class="pre">build_remapping_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch_match_engine</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/fast.html#TableManager.build_remapping_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.fast.TableManager.build_remapping_table" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.fast.TableManager.process_window_sum">
+<span class="sig-name descname"><span class="pre">process_window_sum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blending_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch_match_engine</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/fast.html#TableManager.process_window_sum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.fast.TableManager.process_window_sum" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.fast.TableManager.remapping_table_to_blending_table">
+<span class="sig-name descname"><span class="pre">remapping_table_to_blending_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/fast.html#TableManager.remapping_table_to_blending_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.fast.TableManager.remapping_table_to_blending_table" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.fast.TableManager.task_list">
+<span class="sig-name descname"><span class="pre">task_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/fast.html#TableManager.task_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.fast.TableManager.task_list" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.fast.TableManager.tree_query">
+<span class="sig-name descname"><span class="pre">tree_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">leftbound</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rightbound</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/fast.html#TableManager.tree_query"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.fast.TableManager.tree_query" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="diffsynth-extensions-fastblend-runners-interpolation-module">
-<h2>diffsynth.extensions.FastBlend.runners.interpolation module<a class="headerlink" href="#diffsynth-extensions-fastblend-runners-interpolation-module" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.extensions.FastBlend.runners.interpolation">
+<span id="diffsynth-extensions-fastblend-runners-interpolation-module"></span><h2>diffsynth.extensions.FastBlend.runners.interpolation module<a class="headerlink" href="#module-diffsynth.extensions.FastBlend.runners.interpolation" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.runners.interpolation.</span></span><span class="sig-name descname"><span class="pre">InterpolationModeRunner</span></span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/interpolation.html#InterpolationModeRunner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.get_index_dict">
+<span class="sig-name descname"><span class="pre">get_index_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index_style</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/interpolation.html#InterpolationModeRunner.get_index_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.get_index_dict" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.get_task_group">
+<span class="sig-name descname"><span class="pre">get_task_group</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/interpolation.html#InterpolationModeRunner.get_task_group"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.get_task_group" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.get_weight">
+<span class="sig-name descname"><span class="pre">get_weight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/interpolation.html#InterpolationModeRunner.get_weight"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.get_weight" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ebsynth_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/interpolation.html#InterpolationModeRunner.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner.run" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeSingleFrameRunner">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">diffsynth.extensions.FastBlend.runners.interpolation.</span></span><span class="sig-name descname"><span class="pre">InterpolationModeSingleFrameRunner</span></span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/interpolation.html#InterpolationModeSingleFrameRunner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeSingleFrameRunner" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeSingleFrameRunner.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frames_guide</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index_style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ebsynth_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/diffsynth/extensions/FastBlend/runners/interpolation.html#InterpolationModeSingleFrameRunner.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeSingleFrameRunner.run" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
-<section id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<section id="module-diffsynth.extensions.FastBlend.runners">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-diffsynth.extensions.FastBlend.runners" title="Link to this heading"></a></h2>
 </section>
 </section>
 

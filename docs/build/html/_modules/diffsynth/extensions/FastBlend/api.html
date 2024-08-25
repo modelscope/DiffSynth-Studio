@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>diffsynth.extensions.FastBlend.api &mdash; DiffSynth-Studio 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../../_static/documentation_options.js?v=01f34227"></script>
+        <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            DiffSynth-Studio
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">DiffSynth-Studio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../FastBlend.html">diffsynth.extensions.FastBlend</a></li>
+      <li class="breadcrumb-item active">diffsynth.extensions.FastBlend.api</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for diffsynth.extensions.FastBlend.api</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.runners</span> <span class="kn">import</span> <span class="n">AccurateModeRunner</span><span class="p">,</span> <span class="n">FastModeRunner</span><span class="p">,</span> <span class="n">BalancedModeRunner</span><span class="p">,</span> <span class="n">InterpolationModeRunner</span><span class="p">,</span> <span class="n">InterpolationModeSingleFrameRunner</span>
+<span class="kn">from</span> <span class="nn">.data</span> <span class="kn">import</span> <span class="n">VideoData</span><span class="p">,</span> <span class="n">get_video_fps</span><span class="p">,</span> <span class="n">save_video</span><span class="p">,</span> <span class="n">search_for_images</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">gradio</span> <span class="k">as</span> <span class="nn">gr</span>
+
+
+<div class="viewcode-block" id="check_input_for_blending">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.api.check_input_for_blending">[docs]</a>
+<span class="k">def</span> <span class="nf">check_input_for_blending</span><span class="p">(</span><span class="n">video_guide</span><span class="p">,</span> <span class="n">video_guide_folder</span><span class="p">,</span> <span class="n">video_style</span><span class="p">,</span> <span class="n">video_style_folder</span><span class="p">):</span>
+    <span class="n">frames_guide</span> <span class="o">=</span> <span class="n">VideoData</span><span class="p">(</span><span class="n">video_guide</span><span class="p">,</span> <span class="n">video_guide_folder</span><span class="p">)</span>
+    <span class="n">frames_style</span> <span class="o">=</span> <span class="n">VideoData</span><span class="p">(</span><span class="n">video_style</span><span class="p">,</span> <span class="n">video_style_folder</span><span class="p">)</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">frames_guide</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">frames_style</span><span class="p">):</span>
+        <span class="n">message</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;The number of frames mismatches. Only the first </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">frames_guide</span><span class="p">)</span><span class="si">}</span><span class="s2"> frames of style video will be used.</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">frames_style</span><span class="o">.</span><span class="n">set_length</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">frames_guide</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">frames_guide</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">frames_style</span><span class="p">):</span>
+        <span class="n">message</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;The number of frames mismatches. Only the first </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">frames_style</span><span class="p">)</span><span class="si">}</span><span class="s2"> frames of guide video will be used.</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">frames_guide</span><span class="o">.</span><span class="n">set_length</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">frames_style</span><span class="p">))</span>
+    <span class="n">height_guide</span><span class="p">,</span> <span class="n">width_guide</span> <span class="o">=</span> <span class="n">frames_guide</span><span class="o">.</span><span class="n">shape</span><span class="p">()</span>
+    <span class="n">height_style</span><span class="p">,</span> <span class="n">width_style</span> <span class="o">=</span> <span class="n">frames_style</span><span class="o">.</span><span class="n">shape</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">height_guide</span> <span class="o">!=</span> <span class="n">height_style</span> <span class="ow">or</span> <span class="n">width_guide</span> <span class="o">!=</span> <span class="n">width_style</span><span class="p">:</span>
+        <span class="n">message</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;The shape of frames mismatches. The frames in style video will be resized to (height: </span><span class="si">{</span><span class="n">height_guide</span><span class="si">}</span><span class="s2">, width: </span><span class="si">{</span><span class="n">width_guide</span><span class="si">}</span><span class="s2">)</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">frames_style</span><span class="o">.</span><span class="n">set_shape</span><span class="p">(</span><span class="n">height_guide</span><span class="p">,</span> <span class="n">width_guide</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">frames_guide</span><span class="p">,</span> <span class="n">frames_style</span><span class="p">,</span> <span class="n">message</span></div>
+
+
+
+<div class="viewcode-block" id="smooth_video">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.api.smooth_video">[docs]</a>
+<span class="k">def</span> <span class="nf">smooth_video</span><span class="p">(</span>
+    <span class="n">video_guide</span><span class="p">,</span>
+    <span class="n">video_guide_folder</span><span class="p">,</span>
+    <span class="n">video_style</span><span class="p">,</span>
+    <span class="n">video_style_folder</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">,</span>
+    <span class="n">window_size</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="p">,</span>
+    <span class="n">tracking_window_size</span><span class="p">,</span>
+    <span class="n">output_path</span><span class="p">,</span>
+    <span class="n">fps</span><span class="p">,</span>
+    <span class="n">minimum_patch_size</span><span class="p">,</span>
+    <span class="n">num_iter</span><span class="p">,</span>
+    <span class="n">guide_weight</span><span class="p">,</span>
+    <span class="n">initialize</span><span class="p">,</span>
+    <span class="n">progress</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="c1"># input</span>
+    <span class="n">frames_guide</span><span class="p">,</span> <span class="n">frames_style</span><span class="p">,</span> <span class="n">message</span> <span class="o">=</span> <span class="n">check_input_for_blending</span><span class="p">(</span><span class="n">video_guide</span><span class="p">,</span> <span class="n">video_guide_folder</span><span class="p">,</span> <span class="n">video_style</span><span class="p">,</span> <span class="n">video_style_folder</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">message</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="c1"># output</span>
+    <span class="k">if</span> <span class="n">output_path</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">video_style</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">output_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">video_style_folder</span><span class="p">,</span> <span class="s2">&quot;output&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">output_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">video_style</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;output&quot;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid output_path. Your video will be saved here:&quot;</span><span class="p">,</span> <span class="n">output_path</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">output_path</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Your video will be saved here:&quot;</span><span class="p">,</span> <span class="n">output_path</span><span class="p">)</span>
+    <span class="n">frames_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s2">&quot;frames&quot;</span><span class="p">)</span>
+    <span class="n">video_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s2">&quot;video.mp4&quot;</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">frames_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="c1"># process</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;Fast&quot;</span> <span class="ow">or</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;Balanced&quot;</span><span class="p">:</span>
+        <span class="n">tracking_window_size</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">ebsynth_config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;minimum_patch_size&quot;</span><span class="p">:</span> <span class="n">minimum_patch_size</span><span class="p">,</span>
+        <span class="s2">&quot;threads_per_block&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+        <span class="s2">&quot;num_iter&quot;</span><span class="p">:</span> <span class="n">num_iter</span><span class="p">,</span>
+        <span class="s2">&quot;gpu_id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;guide_weight&quot;</span><span class="p">:</span> <span class="n">guide_weight</span><span class="p">,</span>
+        <span class="s2">&quot;initialize&quot;</span><span class="p">:</span> <span class="n">initialize</span><span class="p">,</span>
+        <span class="s2">&quot;tracking_window_size&quot;</span><span class="p">:</span> <span class="n">tracking_window_size</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;Fast&quot;</span><span class="p">:</span>
+        <span class="n">FastModeRunner</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">frames_guide</span><span class="p">,</span> <span class="n">frames_style</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">window_size</span><span class="o">=</span><span class="n">window_size</span><span class="p">,</span> <span class="n">ebsynth_config</span><span class="o">=</span><span class="n">ebsynth_config</span><span class="p">,</span> <span class="n">save_path</span><span class="o">=</span><span class="n">frames_path</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;Balanced&quot;</span><span class="p">:</span>
+        <span class="n">BalancedModeRunner</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">frames_guide</span><span class="p">,</span> <span class="n">frames_style</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">window_size</span><span class="o">=</span><span class="n">window_size</span><span class="p">,</span> <span class="n">ebsynth_config</span><span class="o">=</span><span class="n">ebsynth_config</span><span class="p">,</span> <span class="n">save_path</span><span class="o">=</span><span class="n">frames_path</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;Accurate&quot;</span><span class="p">:</span>
+        <span class="n">AccurateModeRunner</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">frames_guide</span><span class="p">,</span> <span class="n">frames_style</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">window_size</span><span class="o">=</span><span class="n">window_size</span><span class="p">,</span> <span class="n">ebsynth_config</span><span class="o">=</span><span class="n">ebsynth_config</span><span class="p">,</span> <span class="n">save_path</span><span class="o">=</span><span class="n">frames_path</span><span class="p">)</span>
+    <span class="c1"># output</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">fps</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fps</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">fps</span> <span class="o">=</span> <span class="n">get_video_fps</span><span class="p">(</span><span class="n">video_style</span><span class="p">)</span> <span class="k">if</span> <span class="n">video_style</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">30</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fps:&quot;</span><span class="p">,</span> <span class="n">fps</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Saving video...&quot;</span><span class="p">)</span>
+    <span class="n">video_path</span> <span class="o">=</span> <span class="n">save_video</span><span class="p">(</span><span class="n">frames_path</span><span class="p">,</span> <span class="n">video_path</span><span class="p">,</span> <span class="n">num_frames</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">frames_style</span><span class="p">),</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Success!&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Your frames are here:&quot;</span><span class="p">,</span> <span class="n">frames_path</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Your video is here:&quot;</span><span class="p">,</span> <span class="n">video_path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">output_path</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">video_path</span></div>
+
+
+
+<div class="viewcode-block" id="KeyFrameMatcher">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.api.KeyFrameMatcher">[docs]</a>
+<span class="k">class</span> <span class="nc">KeyFrameMatcher</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="KeyFrameMatcher.extract_number_from_filename">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.extract_number_from_filename">[docs]</a>
+    <span class="k">def</span> <span class="nf">extract_number_from_filename</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">number</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">file_name</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">ord</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">&gt;=</span><span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">ord</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">&lt;=</span><span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;9&quot;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">number</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">number</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">number</span> <span class="o">=</span> <span class="n">number</span><span class="o">*</span><span class="mi">10</span> <span class="o">+</span> <span class="nb">ord</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">-</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">number</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">number</span><span class="p">)</span>
+                    <span class="n">number</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">if</span> <span class="n">number</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">number</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="KeyFrameMatcher.extract_number_from_filenames">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.extract_number_from_filenames">[docs]</a>
+    <span class="k">def</span> <span class="nf">extract_number_from_filenames</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_names</span><span class="p">):</span>
+        <span class="n">numbers</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">extract_number_from_filename</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">for</span> <span class="n">file_name</span> <span class="ow">in</span> <span class="n">file_names</span><span class="p">]</span>
+        <span class="n">min_length</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">numbers</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">min_length</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">number</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">number</span> <span class="ow">in</span> <span class="n">numbers</span><span class="p">))</span><span class="o">==</span><span class="nb">len</span><span class="p">(</span><span class="n">file_names</span><span class="p">):</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">number</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">number</span> <span class="ow">in</span> <span class="n">numbers</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">file_names</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="KeyFrameMatcher.match_using_filename">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.match_using_filename">[docs]</a>
+    <span class="k">def</span> <span class="nf">match_using_filename</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_names_a</span><span class="p">,</span> <span class="n">file_names_b</span><span class="p">):</span>
+        <span class="n">file_names_b_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">file_names_b</span><span class="p">)</span>
+        <span class="n">matched_file_name</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">file_name</span> <span class="ow">in</span> <span class="n">file_names_a</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">file_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">file_names_b_set</span><span class="p">:</span>
+                <span class="n">matched_file_name</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">matched_file_name</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">matched_file_name</span></div>
+
+
+<div class="viewcode-block" id="KeyFrameMatcher.match_using_numbers">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.match_using_numbers">[docs]</a>
+    <span class="k">def</span> <span class="nf">match_using_numbers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_names_a</span><span class="p">,</span> <span class="n">file_names_b</span><span class="p">):</span>
+        <span class="n">numbers_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_number_from_filenames</span><span class="p">(</span><span class="n">file_names_a</span><span class="p">)</span>
+        <span class="n">numbers_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_number_from_filenames</span><span class="p">(</span><span class="n">file_names_b</span><span class="p">)</span>
+        <span class="n">numbers_b_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">number</span><span class="p">:</span> <span class="n">file_name</span> <span class="k">for</span> <span class="n">number</span><span class="p">,</span> <span class="n">file_name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">numbers_b</span><span class="p">,</span> <span class="n">file_names_b</span><span class="p">)}</span>
+        <span class="n">matched_file_name</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">number</span> <span class="ow">in</span> <span class="n">numbers_a</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">number</span> <span class="ow">in</span> <span class="n">numbers_b_dict</span><span class="p">:</span>
+                <span class="n">matched_file_name</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">numbers_b_dict</span><span class="p">[</span><span class="n">number</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">matched_file_name</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">matched_file_name</span></div>
+
+
+<div class="viewcode-block" id="KeyFrameMatcher.match_filenames">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.api.KeyFrameMatcher.match_filenames">[docs]</a>
+    <span class="k">def</span> <span class="nf">match_filenames</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_names_a</span><span class="p">,</span> <span class="n">file_names_b</span><span class="p">):</span>
+        <span class="n">matched_file_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">match_using_filename</span><span class="p">(</span><span class="n">file_names_a</span><span class="p">,</span> <span class="n">file_names_b</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">sum</span><span class="p">([</span><span class="n">i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">matched_file_name</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">matched_file_name</span>
+        <span class="n">matched_file_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">match_using_numbers</span><span class="p">(</span><span class="n">file_names_a</span><span class="p">,</span> <span class="n">file_names_b</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">matched_file_name</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="detect_frames">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.api.detect_frames">[docs]</a>
+<span class="k">def</span> <span class="nf">detect_frames</span><span class="p">(</span><span class="n">frames_path</span><span class="p">,</span> <span class="n">keyframes_path</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">frames_path</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">keyframes_path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Please input the directory of guide video and rendered frames&quot;</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">frames_path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Please input the directory of guide video&quot;</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">keyframes_path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Please input the directory of rendered frames&quot;</span>
+    <span class="n">frames</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">i</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">search_for_images</span><span class="p">(</span><span class="n">frames_path</span><span class="p">)]</span>
+    <span class="n">keyframes</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">i</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">search_for_images</span><span class="p">(</span><span class="n">keyframes_path</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">frames</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;No images detected in </span><span class="si">{</span><span class="n">frames_path</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">keyframes</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;No images detected in </span><span class="si">{</span><span class="n">keyframes_path</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">matched_keyframes</span> <span class="o">=</span> <span class="n">KeyFrameMatcher</span><span class="p">()</span><span class="o">.</span><span class="n">match_filenames</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">keyframes</span><span class="p">)</span>
+    <span class="n">max_filename_length</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">frames</span><span class="p">])</span>
+    <span class="k">if</span> <span class="nb">sum</span><span class="p">([</span><span class="n">i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">matched_keyframes</span><span class="p">])</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">frame</span><span class="p">,</span> <span class="n">matched_keyframe</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">matched_keyframes</span><span class="p">):</span>
+            <span class="n">message</span> <span class="o">+=</span> <span class="n">frame</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="p">(</span><span class="n">max_filename_length</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">message</span> <span class="o">+=</span> <span class="s2">&quot;--&gt; No matched keyframes</span><span class="se">\n</span><span class="s2">&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">frame</span><span class="p">,</span> <span class="n">matched_keyframe</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">matched_keyframes</span><span class="p">):</span>
+            <span class="n">message</span> <span class="o">+=</span> <span class="n">frame</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="p">(</span><span class="n">max_filename_length</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">matched_keyframe</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">message</span> <span class="o">+=</span> <span class="s2">&quot;--&gt; [to be rendered]</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">message</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;--&gt; </span><span class="si">{</span><span class="n">matched_keyframe</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+    <span class="k">return</span> <span class="n">message</span></div>
+
+
+
+<div class="viewcode-block" id="check_input_for_interpolating">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.api.check_input_for_interpolating">[docs]</a>
+<span class="k">def</span> <span class="nf">check_input_for_interpolating</span><span class="p">(</span><span class="n">frames_path</span><span class="p">,</span> <span class="n">keyframes_path</span><span class="p">):</span>
+    <span class="c1"># search for images</span>
+    <span class="n">frames</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">i</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">search_for_images</span><span class="p">(</span><span class="n">frames_path</span><span class="p">)]</span>
+    <span class="n">keyframes</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">i</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">search_for_images</span><span class="p">(</span><span class="n">keyframes_path</span><span class="p">)]</span>
+    <span class="c1"># match frames</span>
+    <span class="n">matched_keyframes</span> <span class="o">=</span> <span class="n">KeyFrameMatcher</span><span class="p">()</span><span class="o">.</span><span class="n">match_filenames</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">keyframes</span><span class="p">)</span>
+    <span class="n">file_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">file_name</span> <span class="k">for</span> <span class="n">file_name</span> <span class="ow">in</span> <span class="n">matched_keyframes</span> <span class="k">if</span> <span class="n">file_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">index_style</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">file_name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">matched_keyframes</span><span class="p">)</span> <span class="k">if</span> <span class="n">file_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">frames_guide</span> <span class="o">=</span> <span class="n">VideoData</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">frames_path</span><span class="p">)</span>
+    <span class="n">frames_style</span> <span class="o">=</span> <span class="n">VideoData</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">keyframes_path</span><span class="p">,</span> <span class="n">file_list</span><span class="o">=</span><span class="n">file_list</span><span class="p">)</span>
+    <span class="c1"># match shape</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">height_guide</span><span class="p">,</span> <span class="n">width_guide</span> <span class="o">=</span> <span class="n">frames_guide</span><span class="o">.</span><span class="n">shape</span><span class="p">()</span>
+    <span class="n">height_style</span><span class="p">,</span> <span class="n">width_style</span> <span class="o">=</span> <span class="n">frames_style</span><span class="o">.</span><span class="n">shape</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">height_guide</span> <span class="o">!=</span> <span class="n">height_style</span> <span class="ow">or</span> <span class="n">width_guide</span> <span class="o">!=</span> <span class="n">width_style</span><span class="p">:</span>
+        <span class="n">message</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;The shape of frames mismatches. The rendered keyframes will be resized to (height: </span><span class="si">{</span><span class="n">height_guide</span><span class="si">}</span><span class="s2">, width: </span><span class="si">{</span><span class="n">width_guide</span><span class="si">}</span><span class="s2">)</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">frames_style</span><span class="o">.</span><span class="n">set_shape</span><span class="p">(</span><span class="n">height_guide</span><span class="p">,</span> <span class="n">width_guide</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">frames_guide</span><span class="p">,</span> <span class="n">frames_style</span><span class="p">,</span> <span class="n">index_style</span><span class="p">,</span> <span class="n">message</span></div>
+
+
+
+<div class="viewcode-block" id="interpolate_video">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.api.interpolate_video">[docs]</a>
+<span class="k">def</span> <span class="nf">interpolate_video</span><span class="p">(</span>
+    <span class="n">frames_path</span><span class="p">,</span>
+    <span class="n">keyframes_path</span><span class="p">,</span>
+    <span class="n">output_path</span><span class="p">,</span>
+    <span class="n">fps</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="p">,</span>
+    <span class="n">tracking_window_size</span><span class="p">,</span>
+    <span class="n">minimum_patch_size</span><span class="p">,</span>
+    <span class="n">num_iter</span><span class="p">,</span>
+    <span class="n">guide_weight</span><span class="p">,</span>
+    <span class="n">initialize</span><span class="p">,</span>
+    <span class="n">progress</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="c1"># input</span>
+    <span class="n">frames_guide</span><span class="p">,</span> <span class="n">frames_style</span><span class="p">,</span> <span class="n">index_style</span><span class="p">,</span> <span class="n">message</span> <span class="o">=</span> <span class="n">check_input_for_interpolating</span><span class="p">(</span><span class="n">frames_path</span><span class="p">,</span> <span class="n">keyframes_path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">message</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="c1"># output</span>
+    <span class="k">if</span> <span class="n">output_path</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+        <span class="n">output_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">keyframes_path</span><span class="p">,</span> <span class="s2">&quot;output&quot;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid output_path. Your video will be saved here:&quot;</span><span class="p">,</span> <span class="n">output_path</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">output_path</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Your video will be saved here:&quot;</span><span class="p">,</span> <span class="n">output_path</span><span class="p">)</span>
+    <span class="n">output_frames_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s2">&quot;frames&quot;</span><span class="p">)</span>
+    <span class="n">output_video_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s2">&quot;video.mp4&quot;</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output_frames_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="c1"># process</span>
+    <span class="n">ebsynth_config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;minimum_patch_size&quot;</span><span class="p">:</span> <span class="n">minimum_patch_size</span><span class="p">,</span>
+        <span class="s2">&quot;threads_per_block&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+        <span class="s2">&quot;num_iter&quot;</span><span class="p">:</span> <span class="n">num_iter</span><span class="p">,</span>
+        <span class="s2">&quot;gpu_id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;guide_weight&quot;</span><span class="p">:</span> <span class="n">guide_weight</span><span class="p">,</span>
+        <span class="s2">&quot;initialize&quot;</span><span class="p">:</span> <span class="n">initialize</span><span class="p">,</span>
+        <span class="s2">&quot;tracking_window_size&quot;</span><span class="p">:</span> <span class="n">tracking_window_size</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">index_style</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">InterpolationModeSingleFrameRunner</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">frames_guide</span><span class="p">,</span> <span class="n">frames_style</span><span class="p">,</span> <span class="n">index_style</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">ebsynth_config</span><span class="o">=</span><span class="n">ebsynth_config</span><span class="p">,</span> <span class="n">save_path</span><span class="o">=</span><span class="n">output_frames_path</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">InterpolationModeRunner</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">frames_guide</span><span class="p">,</span> <span class="n">frames_style</span><span class="p">,</span> <span class="n">index_style</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">ebsynth_config</span><span class="o">=</span><span class="n">ebsynth_config</span><span class="p">,</span> <span class="n">save_path</span><span class="o">=</span><span class="n">output_frames_path</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">fps</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fps</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">fps</span> <span class="o">=</span> <span class="mi">30</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fps:&quot;</span><span class="p">,</span> <span class="n">fps</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Saving video...&quot;</span><span class="p">)</span>
+    <span class="n">video_path</span> <span class="o">=</span> <span class="n">save_video</span><span class="p">(</span><span class="n">output_frames_path</span><span class="p">,</span> <span class="n">output_video_path</span><span class="p">,</span> <span class="n">num_frames</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">frames_guide</span><span class="p">),</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Success!&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Your frames are here:&quot;</span><span class="p">,</span> <span class="n">output_frames_path</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Your video is here:&quot;</span><span class="p">,</span> <span class="n">video_path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">output_path</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">video_path</span></div>
+
+
+
+<div class="viewcode-block" id="on_ui_tabs">
+<a class="viewcode-back" href="../../../../diffsynth.extensions.FastBlend.html#diffsynth.extensions.FastBlend.api.on_ui_tabs">[docs]</a>
+<span class="k">def</span> <span class="nf">on_ui_tabs</span><span class="p">():</span>
+    <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Blocks</span><span class="p">(</span><span class="n">analytics_enabled</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">ui_component</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Tab</span><span class="p">(</span><span class="s2">&quot;Blend&quot;</span><span class="p">):</span>
+            <span class="n">gr</span><span class="o">.</span><span class="n">Markdown</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2"># Blend</span>
+
+<span class="s2">Given a guide video and a style video, this algorithm will make the style video fluent according to the motion features of the guide video. Click [here](https://github.com/Artiprocher/sd-webui-fastblend/assets/35051019/208d902d-6aba-48d7-b7d5-cd120ebd306d) to see the example. Note that this extension doesn&#39;t support long videos. Please use short videos (e.g., several seconds). The algorithm is mainly designed for 512*512 resolution. Please use a larger `Minimum patch size` for higher resolution.</span>
+<span class="s2">            &quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Row</span><span class="p">():</span>
+                <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Column</span><span class="p">():</span>
+                    <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Tab</span><span class="p">(</span><span class="s2">&quot;Guide video&quot;</span><span class="p">):</span>
+                        <span class="n">video_guide</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Video</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Guide video&quot;</span><span class="p">)</span>
+                    <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Tab</span><span class="p">(</span><span class="s2">&quot;Guide video (images format)&quot;</span><span class="p">):</span>
+                        <span class="n">video_guide_folder</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Textbox</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Guide video (images format)&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Column</span><span class="p">():</span>
+                    <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Tab</span><span class="p">(</span><span class="s2">&quot;Style video&quot;</span><span class="p">):</span>
+                        <span class="n">video_style</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Video</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Style video&quot;</span><span class="p">)</span>
+                    <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Tab</span><span class="p">(</span><span class="s2">&quot;Style video (images format)&quot;</span><span class="p">):</span>
+                        <span class="n">video_style_folder</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Textbox</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Style video (images format)&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Column</span><span class="p">():</span>
+                    <span class="n">output_path</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Textbox</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Output directory&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">placeholder</span><span class="o">=</span><span class="s2">&quot;Leave empty to use the directory of style video&quot;</span><span class="p">)</span>
+                    <span class="n">fps</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Textbox</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Fps&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">placeholder</span><span class="o">=</span><span class="s2">&quot;Leave empty to use the default fps&quot;</span><span class="p">)</span>
+                    <span class="n">video_output</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Video</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Output video&quot;</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">show_share_button</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">btn</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="s2">&quot;Blend&quot;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Row</span><span class="p">():</span>
+                <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Column</span><span class="p">():</span>
+                    <span class="n">gr</span><span class="o">.</span><span class="n">Markdown</span><span class="p">(</span><span class="s2">&quot;# Settings&quot;</span><span class="p">)</span>
+                    <span class="n">mode</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Radio</span><span class="p">([</span><span class="s2">&quot;Fast&quot;</span><span class="p">,</span> <span class="s2">&quot;Balanced&quot;</span><span class="p">,</span> <span class="s2">&quot;Accurate&quot;</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Inference mode&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;Fast&quot;</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">window_size</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Slider</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Sliding window size&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">minimum</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">batch_size</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Slider</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Batch size&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">minimum</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">tracking_window_size</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Slider</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Tracking window size (only for accurate mode)&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">gr</span><span class="o">.</span><span class="n">Markdown</span><span class="p">(</span><span class="s2">&quot;## Advanced Settings&quot;</span><span class="p">)</span>
+                    <span class="n">minimum_patch_size</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Slider</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Minimum patch size (odd number)&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">minimum</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="mi">99</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">num_iter</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Slider</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Number of iterations&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">minimum</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">guide_weight</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Slider</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Guide weight&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">minimum</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">initialize</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Radio</span><span class="p">([</span><span class="s2">&quot;identity&quot;</span><span class="p">,</span> <span class="s2">&quot;random&quot;</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;NNF initialization&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;identity&quot;</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Column</span><span class="p">():</span>
+                    <span class="n">gr</span><span class="o">.</span><span class="n">Markdown</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2"># Reference</span>
+
+<span class="s2">* Output directory: the directory to save the video.</span>
+<span class="s2">* Inference mode</span>
+
+<span class="s2">|Mode|Time|Memory|Quality|Frame by frame output|Description|</span>
+<span class="s2">|-|-|-|-|-|-|</span>
+<span class="s2">|Fast|■|■■■|■■|No|Blend the frames using a tree-like data structure, which requires much RAM but is fast.|</span>
+<span class="s2">|Balanced|■■|■|■■|Yes|Blend the frames naively.|</span>
+<span class="s2">|Accurate|■■■|■|■■■|Yes|Blend the frames and align them together for higher video quality. When [batch size] &gt;= [sliding window size] * 2 + 1, the performance is the best.|</span>
+
+<span class="s2">* Sliding window size: our algorithm will blend the frames in a sliding windows. If the size is n, each frame will be blended with the last n frames and the next n frames. A large sliding window can make the video fluent but sometimes smoggy.</span>
+<span class="s2">* Batch size: a larger batch size makes the program faster but requires more VRAM.</span>
+<span class="s2">* Tracking window size (only for accurate mode): The size of window in which our algorithm tracks moving objects. Empirically, 1 is enough.</span>
+<span class="s2">* Advanced settings</span>
+<span class="s2">    * Minimum patch size (odd number): the minimum patch size used for patch matching. (Default: 5)</span>
+<span class="s2">    * Number of iterations: the number of iterations of patch matching. (Default: 5)</span>
+<span class="s2">    * Guide weight: a parameter that determines how much motion feature applied to the style video. (Default: 10)</span>
+<span class="s2">    * NNF initialization: how to initialize the NNF (Nearest Neighbor Field). (Default: identity)</span>
+<span class="s2">                    &quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="n">btn</span><span class="o">.</span><span class="n">click</span><span class="p">(</span>
+                <span class="n">smooth_video</span><span class="p">,</span>
+                <span class="n">inputs</span><span class="o">=</span><span class="p">[</span>
+                    <span class="n">video_guide</span><span class="p">,</span>
+                    <span class="n">video_guide_folder</span><span class="p">,</span>
+                    <span class="n">video_style</span><span class="p">,</span>
+                    <span class="n">video_style_folder</span><span class="p">,</span>
+                    <span class="n">mode</span><span class="p">,</span>
+                    <span class="n">window_size</span><span class="p">,</span>
+                    <span class="n">batch_size</span><span class="p">,</span>
+                    <span class="n">tracking_window_size</span><span class="p">,</span>
+                    <span class="n">output_path</span><span class="p">,</span>
+                    <span class="n">fps</span><span class="p">,</span>
+                    <span class="n">minimum_patch_size</span><span class="p">,</span>
+                    <span class="n">num_iter</span><span class="p">,</span>
+                    <span class="n">guide_weight</span><span class="p">,</span>
+                    <span class="n">initialize</span>
+                <span class="p">],</span>
+                <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">output_path</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">video_output</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Tab</span><span class="p">(</span><span class="s2">&quot;Interpolate&quot;</span><span class="p">):</span>
+            <span class="n">gr</span><span class="o">.</span><span class="n">Markdown</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2"># Interpolate</span>
+
+<span class="s2">Given a guide video and some rendered keyframes, this algorithm will render the remaining frames. Click [here](https://github.com/Artiprocher/sd-webui-fastblend/assets/35051019/3490c5b4-8f67-478f-86de-f9adc2ace16a) to see the example. The algorithm is experimental and is only tested for 512*512 resolution.</span>
+<span class="s2">            &quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Row</span><span class="p">():</span>
+                <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Column</span><span class="p">():</span>
+                    <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Row</span><span class="p">():</span>
+                        <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Column</span><span class="p">():</span>
+                            <span class="n">video_guide_folder_</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Textbox</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Guide video (images format)&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                        <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Column</span><span class="p">():</span>
+                            <span class="n">rendered_keyframes_</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Textbox</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Rendered keyframes (images format)&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Row</span><span class="p">():</span>
+                        <span class="n">detected_frames</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Textbox</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Detected frames&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;Please input the directory of guide video and rendered frames&quot;</span><span class="p">,</span> <span class="n">lines</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">max_lines</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                    <span class="n">video_guide_folder_</span><span class="o">.</span><span class="n">change</span><span class="p">(</span><span class="n">detect_frames</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">video_guide_folder_</span><span class="p">,</span> <span class="n">rendered_keyframes_</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="n">detected_frames</span><span class="p">)</span>
+                    <span class="n">rendered_keyframes_</span><span class="o">.</span><span class="n">change</span><span class="p">(</span><span class="n">detect_frames</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">video_guide_folder_</span><span class="p">,</span> <span class="n">rendered_keyframes_</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="n">detected_frames</span><span class="p">)</span>
+                <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Column</span><span class="p">():</span>
+                    <span class="n">output_path_</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Textbox</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Output directory&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">placeholder</span><span class="o">=</span><span class="s2">&quot;Leave empty to use the directory of rendered keyframes&quot;</span><span class="p">)</span>
+                    <span class="n">fps_</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Textbox</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Fps&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">placeholder</span><span class="o">=</span><span class="s2">&quot;Leave empty to use the default fps&quot;</span><span class="p">)</span>
+                    <span class="n">video_output_</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Video</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Output video&quot;</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">show_share_button</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">btn_</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="s2">&quot;Interpolate&quot;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Row</span><span class="p">():</span>
+                <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Column</span><span class="p">():</span>
+                    <span class="n">gr</span><span class="o">.</span><span class="n">Markdown</span><span class="p">(</span><span class="s2">&quot;# Settings&quot;</span><span class="p">)</span>
+                    <span class="n">batch_size_</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Slider</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Batch size&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">minimum</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">tracking_window_size_</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Slider</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Tracking window size&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">minimum</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">gr</span><span class="o">.</span><span class="n">Markdown</span><span class="p">(</span><span class="s2">&quot;## Advanced Settings&quot;</span><span class="p">)</span>
+                    <span class="n">minimum_patch_size_</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Slider</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Minimum patch size (odd number, larger is better)&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">minimum</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="mi">99</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">num_iter_</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Slider</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Number of iterations&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">minimum</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">guide_weight_</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Slider</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;Guide weight&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">minimum</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">maximum</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">initialize_</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">Radio</span><span class="p">([</span><span class="s2">&quot;identity&quot;</span><span class="p">,</span> <span class="s2">&quot;random&quot;</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;NNF initialization&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;identity&quot;</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="k">with</span> <span class="n">gr</span><span class="o">.</span><span class="n">Column</span><span class="p">():</span>
+                    <span class="n">gr</span><span class="o">.</span><span class="n">Markdown</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2"># Reference</span>
+
+<span class="s2">* Output directory: the directory to save the video.</span>
+<span class="s2">* Batch size: a larger batch size makes the program faster but requires more VRAM.</span>
+<span class="s2">* Tracking window size (only for accurate mode): The size of window in which our algorithm tracks moving objects. Empirically, 1 is enough.</span>
+<span class="s2">* Advanced settings</span>
+<span class="s2">    * Minimum patch size (odd number): the minimum patch size used for patch matching. **This parameter should be larger than that in blending. (Default: 15)**</span>
+<span class="s2">    * Number of iterations: the number of iterations of patch matching. (Default: 5)</span>
+<span class="s2">    * Guide weight: a parameter that determines how much motion feature applied to the style video. (Default: 10)</span>
+<span class="s2">    * NNF initialization: how to initialize the NNF (Nearest Neighbor Field). (Default: identity)</span>
+<span class="s2">                    &quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="n">btn_</span><span class="o">.</span><span class="n">click</span><span class="p">(</span>
+                <span class="n">interpolate_video</span><span class="p">,</span>
+                <span class="n">inputs</span><span class="o">=</span><span class="p">[</span>
+                    <span class="n">video_guide_folder_</span><span class="p">,</span>
+                    <span class="n">rendered_keyframes_</span><span class="p">,</span>
+                    <span class="n">output_path_</span><span class="p">,</span>
+                    <span class="n">fps_</span><span class="p">,</span>
+                    <span class="n">batch_size_</span><span class="p">,</span>
+                    <span class="n">tracking_window_size_</span><span class="p">,</span>
+                    <span class="n">minimum_patch_size_</span><span class="p">,</span>
+                    <span class="n">num_iter_</span><span class="p">,</span>
+                    <span class="n">guide_weight_</span><span class="p">,</span>
+                    <span class="n">initialize_</span><span class="p">,</span>
+                <span class="p">],</span>
+                <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">output_path_</span><span class="p">,</span> <span class="n">fps_</span><span class="p">,</span> <span class="n">video_output_</span><span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">[(</span><span class="n">ui_component</span><span class="p">,</span> <span class="s2">&quot;FastBlend&quot;</span><span class="p">,</span> <span class="s2">&quot;FastBlend_ui&quot;</span><span class="p">)]</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ModelScope.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
