@@ -15,3 +15,12 @@ documentation for details.
    :maxdepth: 2
    :caption: Contents:
 
+.. toctree::
+   :maxdepth: 1
+   :caption: API Docs
+
+   docs/source/diffsynth.configs.rst
+   docs/source/diffsynth.controlnets.rst
+   docs/source/diffsynth.data.rst
+   docs/source/diffsynth.extensions.ESRGAN.rst
+   docs/source/diffsynth.extensions.FastBlend.rst
