@@ -172,6 +172,10 @@ Before launching the WebUI, please download models to the folder `./models`. See
 * `Gradio` version
 
 ```
+pip install gradio
+```
+
+```
 python apps/gradio/DiffSynth_Studio.py
 ```
 
