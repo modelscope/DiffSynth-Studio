@@ -1,0 +1,280 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2024, ModelScope
+# This file is distributed under the same license as the DiffSynth-Studio
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: DiffSynth-Studio \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-08-30 22:34+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: ../../source/diffsynth.prompters.rst:2 6cd524748a9f4015b797aa960833a927
+msgid "diffsynth.prompters package"
+msgstr ""
+
+#: ../../source/diffsynth.prompters.rst:5 1c7c791a431d4d26b50c60dbeaee69cb
+msgid "Submodules"
+msgstr ""
+
+#: ../../source/diffsynth.prompters.rst:8 b4a4e3eddf9649d4a5ddf276181493fd
+msgid "diffsynth.prompters.base\\_prompter module"
+msgstr ""
+
+#: 7d7bd948e6774780be20047ad9f420c8 bd4012176bac4b5ea03419471c64e569
+#: diffsynth.prompters.base_prompter.BasePrompter:1
+#: diffsynth.prompters.kolors_prompter.SPTokenizer:1 of
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: ../../source/diffsynth.prompters.rst:16 6fe0662b7eb749d1a00696184b83b3a3
+msgid "diffsynth.prompters.hunyuan\\_dit\\_prompter module"
+msgstr ""
+
+#: 099abe99bb944a8faf8b6d0dfa4faee2 390b512d713540adace167577f868cf3
+#: 8b58207b54cf4293880684e945f720a0 8d734ed6c4bc4c42a3c14f7426ca3db1
+#: diffsynth.prompters.hunyuan_dit_prompter.HunyuanDiTPrompter:1
+#: diffsynth.prompters.kolors_prompter.KolorsPrompter:1
+#: diffsynth.prompters.sd3_prompter.SD3Prompter:1
+#: diffsynth.prompters.sd_prompter.SDPrompter:1
+#: diffsynth.prompters.sdxl_prompter.SDXLPrompter:1
+#: ef86fe1b675c430f81ce473af7f5a97d of
+msgid "Bases: :py:class:`~diffsynth.prompters.base_prompter.BasePrompter`"
+msgstr ""
+
+#: ../../source/diffsynth.prompters.rst:24 c9e0b780ac294729a7ab9614225561aa
+msgid "diffsynth.prompters.kolors\\_prompter module"
+msgstr ""
+
+#: 75d044a63cdc415e89e46f88f4630d97
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer:1 of
+msgid "Bases: :py:class:`~transformers.tokenization_utils.PreTrainedTokenizer`"
+msgstr ""
+
+#: 1722622d473649f9a159e69247b4d75b
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_inputs_with_special_tokens:1
+#: of
+msgid ""
+"Build model inputs from a sequence or a pair of sequence for sequence "
+"classification tasks by concatenating and adding special tokens. A BERT "
+"sequence has the following format:"
+msgstr ""
+
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_inputs_with_special_tokens:4
+#: e3a28d6a402e4a0daefdff56fd7d2f19 of
+msgid "single sequence: `[CLS] X [SEP]`"
+msgstr ""
+
+#: 723b517ecf5b4d4f9eea809aa2e1d3d4
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_inputs_with_special_tokens:5
+#: of
+msgid "pair of sequences: `[CLS] A [SEP] B [SEP]`"
+msgstr ""
+
+#: ../../source/diffsynth.prompters.rst 1629af2c675f450eb5167b26b2e15d1f
+#: 7e392f5908004167bf9f9d73d32988b6 c1f8e24f3939422485e3b27300eabc7c
+msgid "Parameters"
+msgstr ""
+
+#: 40b2e0657f76497999329151825ca6e7
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_inputs_with_special_tokens:7
+#: of
+msgid "List of IDs to which the special tokens will be added."
+msgstr ""
+
+#: 11384d6d3272421a86c92ef40542cec2
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_inputs_with_special_tokens:9
+#: of
+msgid "Optional second list of IDs for sequence pairs."
+msgstr ""
+
+#: ../../source/diffsynth.prompters.rst 09af22e2a47644499e19f354d3d28b6d
+#: d588ab9a36fe46a9b6d27dc4ff079aa8 e0f40b0b5df0404b9b0697f009cac7de
+msgid "Returns"
+msgstr ""
+
+#: 67fa4999f24847b2b46ed4134b7782b0
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_inputs_with_special_tokens:12
+#: of
+msgid ""
+"List of [input IDs](../glossary#input-ids) with the appropriate special "
+"tokens."
+msgstr ""
+
+#: ../../source/diffsynth.prompters.rst 28f618f8c9d6426a8bb566163bd7cdcd
+#: 4859201daa3c489dbf491e44b04f9a0a e5fb4bf97cd64907a9b277d37511b3ab
+msgid "Return type"
+msgstr ""
+
+#: 9d84b6ab48c64bba877b12b7475ff953
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.build_inputs_with_special_tokens:13
+#: of
+msgid "`List[int]`"
+msgstr ""
+
+#: cfd9dcf6f28d493a91fe66f2421911d4
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.convert_tokens_to_string:1
+#: of
+msgid ""
+"Converts a sequence of tokens in a single string. The most simple way to "
+"do it is `\" \".join(tokens)` but we often want to remove sub-word "
+"tokenization artifacts at the same time."
+msgstr ""
+
+#: 9d28378ec07440f7b62c4d53bf721c14
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.convert_tokens_to_string:4
+#: of
+msgid "The token to join in a string."
+msgstr ""
+
+#: 50777b3f1bb441578ca575209fd079e7
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.convert_tokens_to_string:7
+#: of
+msgid "The joined tokens."
+msgstr ""
+
+#: 354c06d105794d4299e6c51e4e60d770 7398875b324341fd92c7c99d3bb0cc5a
+#: 79c3efebd3bb469bb02cbb4f2ce511e0 9e883701465540bf8221fc345babfd3d
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.convert_tokens_to_string:8
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.eos_token:3
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.pad_token:3
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.unk_token:3 of
+msgid "`str`"
+msgstr ""
+
+#: dca2797522114cf98d021fc4bf42f1c3
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.eos_token:1 of
+msgid "End of sentence token. Log an error if used while not having been set."
+msgstr ""
+
+#: 0f4558fee96747f18b1bd5ee9a4f27d3 79a65a833c8f40138789cf1b44b8d1b9
+#: 81e372689aef436395a5ea5f4ce1f370 b10b92db678548a8aea2ffd70603bbba
+#: ce400f1ef24c4869b980c42c6fbf5fa2
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.eos_token
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.eos_token_id
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.pad_token
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.pad_token_id
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.unk_token
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.vocab_size
+#: fc1260bbc8544156a6d6359a93cd59ab of
+msgid "type"
+msgstr ""
+
+#: 347b5ad47ddf49f6a46279e4b8055c5c
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.eos_token_id:1 of
+msgid ""
+"Id of the end of sentence token in the vocabulary. Returns `None` if the "
+"token has not been set."
+msgstr ""
+
+#: 61f74cbaea354909b5dfb9a50e619e1b 7338389b69c5426c887b80293289d8b2
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.eos_token_id:4
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.pad_token_id:3 of
+msgid "`Optional[int]`"
+msgstr ""
+
+#: 59473554559b431cb25bd8eb2f3ecab6
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.get_vocab:1 of
+msgid "Returns vocab as a dict"
+msgstr ""
+
+#: 8a8dbd0cf4c4423881cb09a3b77fed33
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.pad_token:1 of
+msgid "Padding token. Log an error if used while not having been set."
+msgstr ""
+
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.pad_token_id:1
+#: fecf40cbaf1948d6abda6b75128eabfd of
+msgid ""
+"Id of the padding token in the vocabulary. Returns `None` if the token "
+"has not been set."
+msgstr ""
+
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.save_vocabulary:1
+#: e1f440c72c8744ae90b3e0431faeceae of
+msgid "Save the vocabulary and special tokens file to a directory."
+msgstr ""
+
+#: ac2ceeff5e414cdfb79489f3d23e3ed3
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.save_vocabulary:3 of
+msgid "The directory in which to save the vocabulary."
+msgstr ""
+
+#: 11e13e1ff2f641a2894d46b0cd2b823c
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.save_vocabulary:5 of
+msgid "An optional prefix to add to the named of the saved files."
+msgstr ""
+
+#: b20d5c2b90a04204aaa8b6a77a8178f3
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.save_vocabulary:8 of
+msgid "Paths to the files saved."
+msgstr ""
+
+#: cb455cf762cb44548d0ef0e09c263d28
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.save_vocabulary:9 of
+msgid "`Tuple(str)`"
+msgstr ""
+
+#: 41892f7529314d2a9b530f4253c667ee
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.unk_token:1 of
+msgid "Unknown token. Log an error if used while not having been set."
+msgstr ""
+
+#: 872d7e004cd94e47a665e20b7bd177d9
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.vocab_size:1 of
+msgid "Size of the base vocabulary (without the added tokens)."
+msgstr ""
+
+#: 6bca33bf9b0c46eaa7cff5884ff6f230
+#: diffsynth.prompters.kolors_prompter.ChatGLMTokenizer.vocab_size:3 of
+msgid "`int`"
+msgstr ""
+
+#: diffsynth.prompters.kolors_prompter.SPTokenizer.convert_id_to_token:1
+#: f7e35b4c67994772abb6438fb72b4af0 of
+msgid "Converts an index (integer) in a token (str) using the vocab."
+msgstr ""
+
+#: af75f5fc92b640898e1f93dedfd42041
+#: diffsynth.prompters.kolors_prompter.SPTokenizer.convert_token_to_id:1 of
+msgid "Converts a token (str) in an id using the vocab."
+msgstr ""
+
+#: ../../source/diffsynth.prompters.rst:32 78d59ed2d3d24639a6a8bdbb575c4ac5
+msgid "diffsynth.prompters.prompt\\_refiners module"
+msgstr ""
+
+#: c1c40042078c41e28f2471147fff130c
+#: diffsynth.prompters.prompt_refiners.BeautifulPrompt:1
+#: diffsynth.prompters.prompt_refiners.Translator:1
+#: ea559bd21d7944f8a2432fa2c79b8a9d of
+msgid "Bases: :py:class:`~torch.nn.modules.module.Module`"
+msgstr ""
+
+#: ../../source/diffsynth.prompters.rst:40 a3f35ffd27304adfba6ce9b6d9314aa3
+msgid "diffsynth.prompters.sd3\\_prompter module"
+msgstr ""
+
+#: ../../source/diffsynth.prompters.rst:48 25299184b3ce4dc4aa37528a89d902c3
+msgid "diffsynth.prompters.sd\\_prompter module"
+msgstr ""
+
+#: ../../source/diffsynth.prompters.rst:56 7d701edc5a484c6cbfac98d900308838
+msgid "diffsynth.prompters.sdxl\\_prompter module"
+msgstr ""
+
+#: ../../source/diffsynth.prompters.rst:64 2a12a0272913412b82d79f3b2d7274ef
+msgid "Module contents"
+msgstr ""
+

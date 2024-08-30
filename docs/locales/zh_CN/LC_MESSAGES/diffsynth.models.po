@@ -1,0 +1,1667 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2024, ModelScope
+# This file is distributed under the same license as the DiffSynth-Studio
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: DiffSynth-Studio \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-08-30 22:34+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: ../../source/diffsynth.models.rst:2 5b3e34eb48824c35bbbfae07123d8db8
+msgid "diffsynth.models package"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:5 68e56a6a1fce4173a61132fee3415e9a
+msgid "Submodules"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:8 c6977b3bf71d4f5ba7c9dcb9d7c9a060
+msgid "diffsynth.models.attention module"
+msgstr ""
+
+#: 01b5b7fcde7a41d09c43f4c02f273009 0525d3177a7845deb06d19c625032c3b
+#: 0de0c1ef9a8a46b291d48033d1d8fba9 0f37b4f044e34944af427559563e4a8f
+#: 12a56c1ee36d4ff58b42cae736bddb56 16d35d087d604ad1870834d9928fa78c
+#: 1859667604964cfebcc00265891082d3 25c013aa631f460fa829cbaf175eb03b
+#: 27af4264dfd24b56af419bfff2970da1 2a3c3dec646c48879a6a03a3c6c0413d
+#: 2ea9f9d158114729b8543a1fdb48ec4c 2ef87ce5ddf64434a5db64576e2e2925
+#: 3061ffdeb7a74f14bae30cb4723bc237 358bdb325c32447aa226c8977708779f
+#: 374a8a6c75a24ab8a0c79f3868daa1a9 39872f03046f4f7db471807cef133e54
+#: 3fb6563f58bf4d4eb1021d750ee58895 41d0030b793249bfbdd1c378e57381d5
+#: 4cbf5c77f4f74d9c96b26896d36be27c 5b940a9046e343f680cf6af1867f399b
+#: 6284f02d07cd4559b33c20feb4bdb201 63ec51f8f3964b7d82853eb0bfd18cea
+#: 676ad19e1b9e49f6b395d4d6959cd28c 6a6b14709cba4924bff5d4265d9c81a7
+#: 7b2583d48cc94c489e6658d8188f83a4 7b6ad3f713b14ad0987cd5ec9d38ff0a
+#: 7f077abefdb64ff58f662a84d94641f6 7f86a329bfca402dbc74d8183c3c6e21
+#: 83a442c9792d44edb516301d6f56f6ce 83f71aa5b38d4ccda2dc0b1c21d75211
+#: 8484a1982a0d43cdbf688f1bc6dcdc4f 84be73c89c4d46fa8b4bb1b75ca2f377
+#: 894e6eac0f224ea495582e19864793d2 89881ebd84384eada013419f7334db77
+#: 8a06d658881d4b67bf29ce95a7a5ba09 8d2f44e055fa4f53971b32a2e3fc3a12
+#: 8dba5c02be1844f2b84274b957d9de2c 91995018c93d4601ac2d24cb9f42ba13
+#: 91c085762dd344f0a965ed06f1f14134 9a6f235856784baeb198cf4715c57c36
+#: a0c734a89cbd4337b43b0dc06cad5f63 a53a3de68b5f4caa903bf9b73c91c1df
+#: a7c08ea6fccb41bf8b39a121cdd6f364 a8f07cee53af4d0da8e34ec71fe451c7
+#: aeb9d84a846a405aa9a4ffb89d9a818b aebb7c699d3b470494dc704cfe1ba0bd
+#: b4ebb42e4d1b4a93bf80bc4d521db99e b7b28ee352fd4aa38f84a613a03f597d
+#: b983e2f8bc0445bbb2ad938c3a207fa2 c150e427e1344b22969378b745d27384
+#: cb83ae10f4a94f3aaf10c947c7fbf2f6 d529d65627614469b776111c7aea081e
+#: d6e71559daa345f0b371849fe37caa9b d705f0f778284b95b5253215c8969fd1
+#: da0356700a52403592ab24a4fcf8d33e dcf66e8c26ce46c79a4d4d3a93cb0026
+#: df005398ebd543ec9ed4b3ee0824ccfa diffsynth.models.attention.Attention:1
+#: diffsynth.models.hunyuan_dit.AttentionPool:1
+#: diffsynth.models.hunyuan_dit.HunyuanDiT:1
+#: diffsynth.models.hunyuan_dit.HunyuanDiTBlock:1
+#: diffsynth.models.hunyuan_dit.HunyuanDiTFinalLayer:1
+#: diffsynth.models.hunyuan_dit.HunyuanDiTRotaryEmbedding:1
+#: diffsynth.models.hunyuan_dit.PatchEmbed:1
+#: diffsynth.models.hunyuan_dit.TimestepEmbedder:1
+#: diffsynth.models.kolors_text_encoder.CoreAttention:1
+#: diffsynth.models.kolors_text_encoder.Embedding:1
+#: diffsynth.models.kolors_text_encoder.GLMBlock:1
+#: diffsynth.models.kolors_text_encoder.GLMTransformer:1
+#: diffsynth.models.kolors_text_encoder.MLP:1
+#: diffsynth.models.kolors_text_encoder.PrefixEncoder:1
+#: diffsynth.models.kolors_text_encoder.RMSNorm:1
+#: diffsynth.models.kolors_text_encoder.RotaryEmbedding:1
+#: diffsynth.models.kolors_text_encoder.SelfAttention:1
+#: diffsynth.models.sd3_dit.AdaLayerNorm:1
+#: diffsynth.models.sd3_dit.JointAttention:1
+#: diffsynth.models.sd3_dit.JointTransformerBlock:1
+#: diffsynth.models.sd3_dit.JointTransformerFinalBlock:1
+#: diffsynth.models.sd3_dit.PatchEmbed:1 diffsynth.models.sd3_dit.SD3DiT:1
+#: diffsynth.models.sd3_dit.TimestepEmbeddings:1
+#: diffsynth.models.sd3_vae_decoder.SD3VAEDecoder:1
+#: diffsynth.models.sd3_vae_encoder.SD3VAEEncoder:1
+#: diffsynth.models.sd_controlnet.ControlNetConditioningLayer:1
+#: diffsynth.models.sd_controlnet.SDControlNet:1
+#: diffsynth.models.sd_ipadapter.SDIpAdapter:1
+#: diffsynth.models.sd_motion.SDMotionModel:1
+#: diffsynth.models.sd_motion.TemporalBlock:1
+#: diffsynth.models.sd_motion.TemporalTransformerBlock:1
+#: diffsynth.models.sd_text_encoder.CLIPEncoderLayer:1
+#: diffsynth.models.sd_text_encoder.SDTextEncoder:1
+#: diffsynth.models.sd_unet.AttentionBlock:1
+#: diffsynth.models.sd_unet.BasicTransformerBlock:1
+#: diffsynth.models.sd_unet.DownSampler:1 diffsynth.models.sd_unet.GEGLU:1
+#: diffsynth.models.sd_unet.PopBlock:1 diffsynth.models.sd_unet.PushBlock:1
+#: diffsynth.models.sd_unet.ResnetBlock:1 diffsynth.models.sd_unet.SDUNet:1
+#: diffsynth.models.sd_unet.Timesteps:1 diffsynth.models.sd_unet.UpSampler:1
+#: diffsynth.models.sd_vae_decoder.SDVAEDecoder:1
+#: diffsynth.models.sd_vae_decoder.VAEAttentionBlock:1
+#: diffsynth.models.sd_vae_encoder.SDVAEEncoder:1
+#: diffsynth.models.sdxl_ipadapter.IpAdapterImageProjModel:1
+#: diffsynth.models.sdxl_ipadapter.IpAdapterModule:1
+#: diffsynth.models.sdxl_ipadapter.SDXLIpAdapter:1
+#: diffsynth.models.sdxl_motion.SDXLMotionModel:1
+#: diffsynth.models.sdxl_text_encoder.SDXLTextEncoder:1
+#: diffsynth.models.sdxl_text_encoder.SDXLTextEncoder2:1
+#: diffsynth.models.sdxl_unet.SDXLUNet:1
+#: diffsynth.models.svd_image_encoder.CLIPVisionEmbeddings:1
+#: diffsynth.models.svd_image_encoder.SVDImageEncoder:1
+#: diffsynth.models.svd_unet.PopMixBlock:1
+#: diffsynth.models.svd_unet.PositionalID:1 diffsynth.models.svd_unet.SVDUNet:1
+#: diffsynth.models.svd_unet.TemporalAttentionBlock:1
+#: diffsynth.models.svd_unet.TemporalResnetBlock:1
+#: diffsynth.models.svd_unet.TemporalTimesteps:1
+#: diffsynth.models.svd_unet.TrainableTemporalTimesteps:1
+#: diffsynth.models.svd_vae_decoder.SVDVAEDecoder:1
+#: diffsynth.models.svd_vae_decoder.TemporalResnetBlock:1
+#: diffsynth.models.svd_vae_decoder.VAEAttentionBlock:1
+#: e47c1946636c49158bf223ffb9698ef5 e697864a57464147aed89da4f7f6878a
+#: e99ce4254bb549d1b302bbda21d3f279 ebef525e61134afe9d394c047f457421
+#: efdcca896d1d494db3ea0bf1058c06ee f02785063e6a43df87987db1de916f11
+#: f22b4957d71144208e363bd96d499a00 f54592c33a0946a0bf7800f176caeef0
+#: f8204d6bc70b4b4086a5c0df7e0a0741 of
+msgid "Bases: :py:class:`~torch.nn.modules.module.Module`"
+msgstr ""
+
+#: 015f327af2d341e19dcedfc2d3f75411 071be438b4894b7d8aaff4e87207642d
+#: 09144039675a4f7b9a0c58ce628e2946 0ce56f6bbabe4b08912c1dd77be28fae
+#: 155495a243324d75912917eb0830a350 16753b53372841a8b85589320218ef55
+#: 1aa59daf85804419a12121e6fd1e28e9 1bb1ac4d0ac0432bb301073fef12ff27
+#: 1c4198f9304e46058b62114c3a1cf157 1db071bfb4254a16983986dd79d09b43
+#: 21c68001bee64fb48c6c3f35d900da69 2297ab1744f74e7f825465546f100c2a
+#: 25137b2f0e224d8f89cbc7fefdebf256 2ee7ec4cc0a74e968a80f8ea6445254b
+#: 2fcfc7b73fb34adeaee24cd6cc174310 2fdffb5fe416440db3d308755e75195a
+#: 30eea9d9e0e14e70ae8e3440a08550df 3388e44693134cdba85b7a963f5017e5
+#: 36d27faa5761489a8f02c9b64641a260 3800c7e20e2e446fa64cb97636366dc2
+#: 3c4775de41c1453e927fac4799cb00d1 3dce44d9e880496eb214861563089012
+#: 42c92b205862408bb523d08930a452ab 4606f64cf22f445cbfe910479983db45
+#: 46cf91dcdfad4c26b9583e1307de67f9 47fd4f0983234a79923347f341e52518
+#: 49e149987d2e4bc788145c29eccd81b7 4f7325cc65014ebf933e8dd4107dfe86
+#: 50224005da29499cb1619502bb4ab94a 52f698ece2144c1fa9610b69fe10455c
+#: 55d1b7b3ce7042aca61a7ba0958a4c79 58145e615735405fb52c3e9437b0576d
+#: 5b4f6b2578cd4eacbe4c83a26be18553 5c2ebab605434f29b7319de0ad0ea212
+#: 61a6c954d5394ffa9230ad451a618b1e 624c9f925b9d435593a2fda2154a3db5
+#: 657d2058646e4e069f2085f1ca313c42 6825edb32dbe4202acda4634b5c92aeb
+#: 68c0db945e1d4f6ba89f7e88f1395d97 6cf7f71c13e04083910f1e9547ebc064
+#: 71fd4fa489684945b49f9bef9ecc138d 78049a719d4442d4a9b14a5481d9ad2f
+#: 7948353fab394902bd41990f512202cb 7a291a7c0319406c9c05871186f4fd52
+#: 7ba642219630448a9e9e76fe0145d20a 83574178df2e450695b1d9ceafdc9575
+#: 8b8bdadfcf2446c68c2beaec236f208f 90d9dc2bbcfe46198af1294d629db0a3
+#: 9aa1182c6a334c51b365616743d3d702 9f12e2b771d1414489abd27aed630e10
+#: a2f69540a4ab4613abe7d015f95762b8 a8fcef68635a4ab4b3958d7faf17e757
+#: a9fbaad42a4d4fd2aeb4efaf8f816477 aadeb7a003724d6fb15f4e6def411f7d
+#: b014996e20074716bb0e770911f622f2 b0bc8c4c6347403c9fdc9e3a19ba4f01
+#: b1ab171eeed74d8b96382e1a35b35fda bee01956caad4c50b661ff57e47e379c
+#: c41df7637876449785bff711a7064814 c6be3d6eb3c345eab2cd52a5e34fd1f2
+#: cbfa6b74539d405c88df8a80ec121af2 d2239f1ed603472faf4038a86641cf43
+#: d503e5f0ddc9409fafd187234e3d06c3 dda1571dcd8540418e6de08a65d3a278
+#: df13bf83bec5435fa33fc807401f10fd
+#: diffsynth.models.attention.Attention.forward:1
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder1.forward:1
+#: diffsynth.models.hunyuan_dit.AttentionPool.forward:1
+#: diffsynth.models.hunyuan_dit.FP32_Layernorm.forward:1
+#: diffsynth.models.hunyuan_dit.FP32_SiLU.forward:1
+#: diffsynth.models.hunyuan_dit.HunyuanDiT.forward:1
+#: diffsynth.models.hunyuan_dit.HunyuanDiTBlock.forward:1
+#: diffsynth.models.hunyuan_dit.HunyuanDiTFinalLayer.forward:1
+#: diffsynth.models.hunyuan_dit.HunyuanDiTRotaryEmbedding.forward:1
+#: diffsynth.models.hunyuan_dit.PatchEmbed.forward:1
+#: diffsynth.models.hunyuan_dit.TimestepEmbedder.forward:1
+#: diffsynth.models.kolors_text_encoder.ChatGLMForConditionalGeneration.forward:1
+#: diffsynth.models.kolors_text_encoder.ChatGLMForSequenceClassification.forward:1
+#: diffsynth.models.kolors_text_encoder.ChatGLMModel.forward:1
+#: diffsynth.models.kolors_text_encoder.CoreAttention.forward:1
+#: diffsynth.models.kolors_text_encoder.Embedding.forward:1
+#: diffsynth.models.kolors_text_encoder.GLMBlock.forward:1
+#: diffsynth.models.kolors_text_encoder.GLMTransformer.forward:1
+#: diffsynth.models.kolors_text_encoder.MLP.forward:1
+#: diffsynth.models.kolors_text_encoder.PrefixEncoder.forward:1
+#: diffsynth.models.kolors_text_encoder.RMSNorm.forward:1
+#: diffsynth.models.kolors_text_encoder.RotaryEmbedding.forward:1
+#: diffsynth.models.kolors_text_encoder.SelfAttention.forward:1
+#: diffsynth.models.sd3_dit.AdaLayerNorm.forward:1
+#: diffsynth.models.sd3_dit.JointAttention.forward:1
+#: diffsynth.models.sd3_dit.JointTransformerBlock.forward:1
+#: diffsynth.models.sd3_dit.JointTransformerFinalBlock.forward:1
+#: diffsynth.models.sd3_dit.PatchEmbed.forward:1
+#: diffsynth.models.sd3_dit.SD3DiT.forward:1
+#: diffsynth.models.sd3_dit.TimestepEmbeddings.forward:1
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder1.forward:1
+#: diffsynth.models.sd3_vae_decoder.SD3VAEDecoder.forward:1
+#: diffsynth.models.sd3_vae_encoder.SD3VAEEncoder.forward:1
+#: diffsynth.models.sd_controlnet.ControlNetConditioningLayer.forward:1
+#: diffsynth.models.sd_controlnet.SDControlNet.forward:1
+#: diffsynth.models.sd_ipadapter.IpAdapterCLIPImageEmbedder.forward:1
+#: diffsynth.models.sd_ipadapter.SDIpAdapter.forward:1
+#: diffsynth.models.sd_motion.SDMotionModel.forward:1
+#: diffsynth.models.sd_motion.TemporalBlock.forward:1
+#: diffsynth.models.sd_motion.TemporalTransformerBlock.forward:1
+#: diffsynth.models.sd_text_encoder.CLIPEncoderLayer.forward:1
+#: diffsynth.models.sd_text_encoder.SDTextEncoder.forward:1
+#: diffsynth.models.sd_unet.AttentionBlock.forward:1
+#: diffsynth.models.sd_unet.BasicTransformerBlock.forward:1
+#: diffsynth.models.sd_unet.DownSampler.forward:1
+#: diffsynth.models.sd_unet.GEGLU.forward:1
+#: diffsynth.models.sd_unet.PopBlock.forward:1
+#: diffsynth.models.sd_unet.PushBlock.forward:1
+#: diffsynth.models.sd_unet.ResnetBlock.forward:1
+#: diffsynth.models.sd_unet.SDUNet.forward:1
+#: diffsynth.models.sd_unet.Timesteps.forward:1
+#: diffsynth.models.sd_unet.UpSampler.forward:1
+#: diffsynth.models.sd_vae_decoder.SDVAEDecoder.forward:1
+#: diffsynth.models.sd_vae_decoder.VAEAttentionBlock.forward:1
+#: diffsynth.models.sd_vae_encoder.SDVAEEncoder.forward:1
+#: diffsynth.models.sdxl_ipadapter.IpAdapterImageProjModel.forward:1
+#: diffsynth.models.sdxl_ipadapter.IpAdapterModule.forward:1
+#: diffsynth.models.sdxl_ipadapter.IpAdapterXLCLIPImageEmbedder.forward:1
+#: diffsynth.models.sdxl_ipadapter.SDXLIpAdapter.forward:1
+#: diffsynth.models.sdxl_motion.SDXLMotionModel.forward:1
+#: diffsynth.models.sdxl_text_encoder.SDXLTextEncoder.forward:1
+#: diffsynth.models.sdxl_text_encoder.SDXLTextEncoder2.forward:1
+#: diffsynth.models.sdxl_unet.SDXLUNet.forward:1
+#: diffsynth.models.svd_image_encoder.CLIPVisionEmbeddings.forward:1
+#: diffsynth.models.svd_image_encoder.SVDImageEncoder.forward:1
+#: diffsynth.models.svd_unet.PopMixBlock.forward:1
+#: diffsynth.models.svd_unet.PositionalID.forward:1
+#: diffsynth.models.svd_unet.SVDUNet.forward:1
+#: diffsynth.models.svd_unet.TemporalAttentionBlock.forward:1
+#: diffsynth.models.svd_unet.TemporalResnetBlock.forward:1
+#: diffsynth.models.svd_unet.TemporalTimesteps.forward:1
+#: diffsynth.models.svd_unet.TrainableTemporalTimesteps.forward:1
+#: diffsynth.models.svd_vae_decoder.SVDVAEDecoder.forward:1
+#: diffsynth.models.svd_vae_decoder.TemporalResnetBlock.forward:1
+#: diffsynth.models.svd_vae_decoder.VAEAttentionBlock.forward:1
+#: e224842bbf75498686eeed8788a38e68 e2a2b5bacf8f42f0bf1a51ff9a3f6ef6
+#: eaaf90c0b1764bf485943e7cdfe7244b eb1b7bb7947c4b0c9fd235b4a1e00332
+#: ed84882fb6bf4ecaa1e1cb6162a6cfe7 f6a3518df3de4c93abdecccb079e34f7
+#: f71f764a9d614a1481e19647c939e6bd f83d313940b6430ab3c70070812460d3
+#: fab1dd88a484427ba0775cb944a8457e ffe2ee24fc2a4099b55c22da177e5cf8 of
+msgid "Define the computation performed at every call."
+msgstr ""
+
+#: 0578cf5150384f6ba3155787407d329f 14a4d61ff92d45ae812518a312e57e39
+#: 15d8e101df834aa38029a947253bb670 161c4d79b70741cba36533aac8d5de79
+#: 17327573060846d58e1b762544e096d2 1c4680d6f0764df782f157d63d272080
+#: 1c5d7ee6a0b448d283ed3d1c95a9ad0e 257b8d7760844eca9ad90bf29727dce7
+#: 26e31cd404ee4b3fb5546ec32085f420 285cb811ef7c4df7a7c7f147748b35e8
+#: 2eab84e8090b460d9a8452ff298ca6d1 2f34b1f515dc4f65ba9136d5fc250796
+#: 36d0988a5f81443b938a3417641cee70 36df0211b31140ea8cf797c213fc9aed
+#: 3bb5d02b7b474a679a46dcb7e1d95a72 3c64f2b1c9f941b6938e0637f7761ecc
+#: 3d9eb2b6d39a405fa8f4be122d904f1d 40b9e28bb9944a189dc83e27776abc84
+#: 40f2e7144364412f8493dc51190a47d7 483672b5f68d476d9237f7cd7e4c2384
+#: 48926cf53ef94e34802df3b7b069e4e2 534a0f1c80454c919f8d1dfa7935464f
+#: 5471884d9503437a8f45c824550a846b 55df7321513d47668e66bfe579091604
+#: 55f100c4545c4293b5c6aae7da19d7f0 5c2c649ad2514d759aa03d0b87096920
+#: 6749fae0414a4ee1bc6d49e21a84f090 6ecd704377854796b522bd1e14186c11
+#: 6f8e06a5d1564bbca1b1a3d798c5c392 734ecc4a3da94f29bffc4da7c046ac46
+#: 735211aae4304fd1b3ff557ab7ff4d29 74537e4f4a714b3c82a984b91f13387d
+#: 7755e884ccd94ff29905d0ffb4aa654d 84f795664e1041c4a6850085d275e63f
+#: 86ab4650f83c41319a30839a968a8a94 8904cf294624479ebf31d59861b5d1a0
+#: 890c3ba7518342babb2fef4218a4edbb 8a5989f0be76430da05942aa3ada13ad
+#: 8d7845ff696d4ef098f6a5fe46e2866f 96a7f6866c3344359e70ce30795b87dd
+#: 9961e09b94814072ba99d74612472021 9d3fb191fe7e4399b8def2d5c356e793
+#: 9ec4dd8153b54d47ac7edf8528304d01 a2a55708220d4b388a88736bcd0faa69
+#: a62e5df1a0064d3bb1d5abec6751f48a a7e45922c4ea48489c94d1dad72d1a4e
+#: a88ef56d564748168d14b3f306c17ac8 a99659ef493f467c8a3470e84b1aaddc
+#: af64d32c4142427eb93e87de7aefec28 b23d26ae2fa44157b3888dad3512d2f2
+#: b240bc45b6c64ea0a6b661c44fe1541d b65d80d56e774fbebc92993f1c06cb55
+#: b6ff1c069207478aa1747f6f50fe4132 b8e974fbb2ee4296b27e0d5161adc58a
+#: bd1213aa2152454491e8715c0c82b09d bedbdf0830e743e488af0da2a450b5f8
+#: bf08205f92a84f5a92ffc608d8f78306 bf66b593a42a425fbd8d088820aae65a
+#: c01385a6a1fd4d1b9b202bf99460cd30 c3c1c76d70fe46ca9f422fdd02832d95
+#: c837a456ed6d406ca761c16bdeb11dbf caa4ba984a7944b48c6bed5d07493d06
+#: cdc78396dd63483c8b8e792ada163331 ce992083f2b647f2a940658cc6d9a066
+#: d6bd199821af430085632e28f9a5e264
+#: diffsynth.models.attention.Attention.forward:3
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder1.forward:3
+#: diffsynth.models.hunyuan_dit.AttentionPool.forward:3
+#: diffsynth.models.hunyuan_dit.FP32_Layernorm.forward:3
+#: diffsynth.models.hunyuan_dit.FP32_SiLU.forward:3
+#: diffsynth.models.hunyuan_dit.HunyuanDiT.forward:3
+#: diffsynth.models.hunyuan_dit.HunyuanDiTBlock.forward:3
+#: diffsynth.models.hunyuan_dit.HunyuanDiTFinalLayer.forward:3
+#: diffsynth.models.hunyuan_dit.HunyuanDiTRotaryEmbedding.forward:3
+#: diffsynth.models.hunyuan_dit.PatchEmbed.forward:3
+#: diffsynth.models.hunyuan_dit.TimestepEmbedder.forward:3
+#: diffsynth.models.kolors_text_encoder.ChatGLMForConditionalGeneration.forward:3
+#: diffsynth.models.kolors_text_encoder.ChatGLMForSequenceClassification.forward:3
+#: diffsynth.models.kolors_text_encoder.ChatGLMModel.forward:3
+#: diffsynth.models.kolors_text_encoder.CoreAttention.forward:3
+#: diffsynth.models.kolors_text_encoder.Embedding.forward:3
+#: diffsynth.models.kolors_text_encoder.GLMBlock.forward:3
+#: diffsynth.models.kolors_text_encoder.GLMTransformer.forward:3
+#: diffsynth.models.kolors_text_encoder.MLP.forward:3
+#: diffsynth.models.kolors_text_encoder.PrefixEncoder.forward:3
+#: diffsynth.models.kolors_text_encoder.RMSNorm.forward:3
+#: diffsynth.models.kolors_text_encoder.RotaryEmbedding.forward:3
+#: diffsynth.models.kolors_text_encoder.SelfAttention.forward:3
+#: diffsynth.models.sd3_dit.AdaLayerNorm.forward:3
+#: diffsynth.models.sd3_dit.JointAttention.forward:3
+#: diffsynth.models.sd3_dit.JointTransformerBlock.forward:3
+#: diffsynth.models.sd3_dit.JointTransformerFinalBlock.forward:3
+#: diffsynth.models.sd3_dit.PatchEmbed.forward:3
+#: diffsynth.models.sd3_dit.SD3DiT.forward:3
+#: diffsynth.models.sd3_dit.TimestepEmbeddings.forward:3
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder1.forward:3
+#: diffsynth.models.sd3_vae_decoder.SD3VAEDecoder.forward:3
+#: diffsynth.models.sd3_vae_encoder.SD3VAEEncoder.forward:3
+#: diffsynth.models.sd_controlnet.ControlNetConditioningLayer.forward:3
+#: diffsynth.models.sd_controlnet.SDControlNet.forward:3
+#: diffsynth.models.sd_ipadapter.IpAdapterCLIPImageEmbedder.forward:3
+#: diffsynth.models.sd_ipadapter.SDIpAdapter.forward:3
+#: diffsynth.models.sd_motion.SDMotionModel.forward:3
+#: diffsynth.models.sd_motion.TemporalBlock.forward:3
+#: diffsynth.models.sd_motion.TemporalTransformerBlock.forward:3
+#: diffsynth.models.sd_text_encoder.CLIPEncoderLayer.forward:3
+#: diffsynth.models.sd_text_encoder.SDTextEncoder.forward:3
+#: diffsynth.models.sd_unet.AttentionBlock.forward:3
+#: diffsynth.models.sd_unet.BasicTransformerBlock.forward:3
+#: diffsynth.models.sd_unet.DownSampler.forward:3
+#: diffsynth.models.sd_unet.GEGLU.forward:3
+#: diffsynth.models.sd_unet.PopBlock.forward:3
+#: diffsynth.models.sd_unet.PushBlock.forward:3
+#: diffsynth.models.sd_unet.ResnetBlock.forward:3
+#: diffsynth.models.sd_unet.SDUNet.forward:3
+#: diffsynth.models.sd_unet.Timesteps.forward:3
+#: diffsynth.models.sd_unet.UpSampler.forward:3
+#: diffsynth.models.sd_vae_decoder.SDVAEDecoder.forward:3
+#: diffsynth.models.sd_vae_decoder.VAEAttentionBlock.forward:3
+#: diffsynth.models.sd_vae_encoder.SDVAEEncoder.forward:3
+#: diffsynth.models.sdxl_ipadapter.IpAdapterImageProjModel.forward:3
+#: diffsynth.models.sdxl_ipadapter.IpAdapterModule.forward:3
+#: diffsynth.models.sdxl_ipadapter.IpAdapterXLCLIPImageEmbedder.forward:3
+#: diffsynth.models.sdxl_ipadapter.SDXLIpAdapter.forward:3
+#: diffsynth.models.sdxl_motion.SDXLMotionModel.forward:3
+#: diffsynth.models.sdxl_text_encoder.SDXLTextEncoder.forward:3
+#: diffsynth.models.sdxl_text_encoder.SDXLTextEncoder2.forward:3
+#: diffsynth.models.sdxl_unet.SDXLUNet.forward:3
+#: diffsynth.models.svd_image_encoder.CLIPVisionEmbeddings.forward:3
+#: diffsynth.models.svd_image_encoder.SVDImageEncoder.forward:3
+#: diffsynth.models.svd_unet.PopMixBlock.forward:3
+#: diffsynth.models.svd_unet.PositionalID.forward:3
+#: diffsynth.models.svd_unet.SVDUNet.forward:3
+#: diffsynth.models.svd_unet.TemporalAttentionBlock.forward:3
+#: diffsynth.models.svd_unet.TemporalResnetBlock.forward:3
+#: diffsynth.models.svd_unet.TemporalTimesteps.forward:3
+#: diffsynth.models.svd_unet.TrainableTemporalTimesteps.forward:3
+#: diffsynth.models.svd_vae_decoder.SVDVAEDecoder.forward:3
+#: diffsynth.models.svd_vae_decoder.TemporalResnetBlock.forward:3
+#: diffsynth.models.svd_vae_decoder.VAEAttentionBlock.forward:3
+#: e58b28179b2748b28cb8c5cf05baf2ee e591fd60b0e449f7ad3cc928100b70f1
+#: e71c45113bc446b182c0dfb16abcfb9c e7304d1f954c4c69a60090005ffaeb0f
+#: edbabc9dc64043cc83ce3b8f1ab3150b ef2dd0115bbb4500aae4e63b3219f506
+#: f08569f0165c46509666f190c550937f f7ad5987981f4d09a6c65ef4f4e7d777
+#: ffbc906809be41a1b2d65f4d2711098a fffa10029c654a21b8656f36ceebbcae of
+msgid "Should be overridden by all subclasses."
+msgstr ""
+
+#: 06ce78e9186b40f49ae51866400046ff 09a031caec744ee59100c6a65ebcec31
+#: 0a7bde86b17d49b2bdeed1f71cbb975f 0c109c621e7d4be6b3cc59ff14d6b545
+#: 1301335251804cee850ea0e26336a0ad 13348ff43d8f407998a44b74be590f1b
+#: 15dbfae2f7ea4ff89225cda847d677ff 194792a7aa2a418090965773bbdbfbb6
+#: 19872ad6866f412fb1aa4d3bd9274e9a 1b8ba0c53d524833b3dfcca8ef7830e9
+#: 1d00f6c5e21d453c8e72e64ac59ba34a 24d73ceb1d104b4a8e8023c87a15961f
+#: 26559e09bfb54868b188f144cadd6483 2799ad9b1ac04149ab74f830c91c12f5
+#: 2846fb82ca9b40a8b843cbe6140194f9 2c30a47dd57343629f08779bf9e5b6a6
+#: 365158a86e48474aa04af922d164f1c8 36a9134f15c44956b043e448c1fdf0ae
+#: 3793dc6b47944433b3e3943e0711268b 37f9012105724275bddc1b38cab5a62a
+#: 3ab68709e8a748c89eafb2a03244b75f 3b2d041258a54b3ba55c2eac05b4454d
+#: 42d3da31ebf54781bfdcb64d8698286d 4988c2c5d78942c493bdcf6bf91a7e44
+#: 4afbb93d188f486babad8e3f9657f9cb 4ffd9760c621492f96f2dff3ec6f6aaa
+#: 55e35b0251814b74ade3133c5fea8eac 59c00b11bd434f648a4cd57b3303a6ae
+#: 5e7b944192494f02b2262cf990248fa3 691f78957fe94cbd84c39b8439a1fc6e
+#: 704321570cb74c98b99f32507faa4efc 71df8db55d55484dba9e65640ee491a2
+#: 72627e1046b545559810bf03017b9a1b 744b8a5a11fd40f4a89c47dcd2ecbb76
+#: 7ba3b30371264abfaf32f10cb19c189c 82e8acfb31a0476c88f437f8ad824cf3
+#: 84bd3ac096624333be5626952fff5e83 8fb831812bd94073947d33008a727823
+#: 947689a7deaf498cb8f8db815ea86156 94a18ca7182a41adb2bb02658d5bb181
+#: 94b6bdda05804fd7a00d9dbe78ec2cd1 95c36bb03c6d4e0a993d745d2f2c2b73
+#: 98556f745429418d83c5764aef61098e 98b69e925641483d96b1783cfc61f771
+#: 9c00a4727f1e49a58e60fce98ac298d0 9d3e83cb78f246199c114130a52514ee
+#: 9defeba614c244aaab50c6e5e43d6c2f a743db6ebdc843a8bb394fd869d4c1ea
+#: a7c140bedba3423a9ff1ae1e7d6a4205 a850041e23f440c8b2aeaa85f4f20dd5
+#: a86ed0c5e96b4008a2d6014625dbfcb0 b1eb2aad68ae4c1cb186352f04665d4b
+#: b39772582b1e426689134955fb483499 b42e840cc858462f938a555a0407cceb
+#: b72f6ad23e2b478c97d44f408da10c85 b740ffd9460944cf8f415291cdc0bacd
+#: b977d6da1d1e4b9e8cf042522faa0305 bf789bdae5e54abfbca68bd5305305ed
+#: c19cd4bc69dc41cdbfd464c37414a9d7 d54d4f505a61468b8741a562b7c889e7
+#: dc536e2f0abe49908acb96c562cbdf02 de08972bdcc14ff0819df5b53a3a7846
+#: diffsynth.models.attention.Attention.forward:6
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder1.forward:6
+#: diffsynth.models.hunyuan_dit.AttentionPool.forward:6
+#: diffsynth.models.hunyuan_dit.FP32_Layernorm.forward:6
+#: diffsynth.models.hunyuan_dit.FP32_SiLU.forward:6
+#: diffsynth.models.hunyuan_dit.HunyuanDiT.forward:6
+#: diffsynth.models.hunyuan_dit.HunyuanDiTBlock.forward:6
+#: diffsynth.models.hunyuan_dit.HunyuanDiTFinalLayer.forward:6
+#: diffsynth.models.hunyuan_dit.HunyuanDiTRotaryEmbedding.forward:6
+#: diffsynth.models.hunyuan_dit.PatchEmbed.forward:6
+#: diffsynth.models.hunyuan_dit.TimestepEmbedder.forward:6
+#: diffsynth.models.kolors_text_encoder.ChatGLMForConditionalGeneration.forward:6
+#: diffsynth.models.kolors_text_encoder.ChatGLMForSequenceClassification.forward:6
+#: diffsynth.models.kolors_text_encoder.ChatGLMModel.forward:6
+#: diffsynth.models.kolors_text_encoder.CoreAttention.forward:6
+#: diffsynth.models.kolors_text_encoder.Embedding.forward:6
+#: diffsynth.models.kolors_text_encoder.GLMBlock.forward:6
+#: diffsynth.models.kolors_text_encoder.GLMTransformer.forward:6
+#: diffsynth.models.kolors_text_encoder.MLP.forward:6
+#: diffsynth.models.kolors_text_encoder.PrefixEncoder.forward:6
+#: diffsynth.models.kolors_text_encoder.RMSNorm.forward:6
+#: diffsynth.models.kolors_text_encoder.RotaryEmbedding.forward:6
+#: diffsynth.models.kolors_text_encoder.SelfAttention.forward:6
+#: diffsynth.models.sd3_dit.AdaLayerNorm.forward:6
+#: diffsynth.models.sd3_dit.JointAttention.forward:6
+#: diffsynth.models.sd3_dit.JointTransformerBlock.forward:6
+#: diffsynth.models.sd3_dit.JointTransformerFinalBlock.forward:6
+#: diffsynth.models.sd3_dit.PatchEmbed.forward:6
+#: diffsynth.models.sd3_dit.SD3DiT.forward:6
+#: diffsynth.models.sd3_dit.TimestepEmbeddings.forward:6
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder1.forward:6
+#: diffsynth.models.sd3_vae_decoder.SD3VAEDecoder.forward:6
+#: diffsynth.models.sd3_vae_encoder.SD3VAEEncoder.forward:6
+#: diffsynth.models.sd_controlnet.ControlNetConditioningLayer.forward:6
+#: diffsynth.models.sd_controlnet.SDControlNet.forward:6
+#: diffsynth.models.sd_ipadapter.IpAdapterCLIPImageEmbedder.forward:6
+#: diffsynth.models.sd_ipadapter.SDIpAdapter.forward:6
+#: diffsynth.models.sd_motion.SDMotionModel.forward:6
+#: diffsynth.models.sd_motion.TemporalBlock.forward:6
+#: diffsynth.models.sd_motion.TemporalTransformerBlock.forward:6
+#: diffsynth.models.sd_text_encoder.CLIPEncoderLayer.forward:6
+#: diffsynth.models.sd_text_encoder.SDTextEncoder.forward:6
+#: diffsynth.models.sd_unet.AttentionBlock.forward:6
+#: diffsynth.models.sd_unet.BasicTransformerBlock.forward:6
+#: diffsynth.models.sd_unet.DownSampler.forward:6
+#: diffsynth.models.sd_unet.GEGLU.forward:6
+#: diffsynth.models.sd_unet.PopBlock.forward:6
+#: diffsynth.models.sd_unet.PushBlock.forward:6
+#: diffsynth.models.sd_unet.ResnetBlock.forward:6
+#: diffsynth.models.sd_unet.SDUNet.forward:6
+#: diffsynth.models.sd_unet.Timesteps.forward:6
+#: diffsynth.models.sd_unet.UpSampler.forward:6
+#: diffsynth.models.sd_vae_decoder.SDVAEDecoder.forward:6
+#: diffsynth.models.sd_vae_decoder.VAEAttentionBlock.forward:6
+#: diffsynth.models.sd_vae_encoder.SDVAEEncoder.forward:6
+#: diffsynth.models.sdxl_ipadapter.IpAdapterImageProjModel.forward:6
+#: diffsynth.models.sdxl_ipadapter.IpAdapterModule.forward:6
+#: diffsynth.models.sdxl_ipadapter.IpAdapterXLCLIPImageEmbedder.forward:6
+#: diffsynth.models.sdxl_ipadapter.SDXLIpAdapter.forward:6
+#: diffsynth.models.sdxl_motion.SDXLMotionModel.forward:6
+#: diffsynth.models.sdxl_text_encoder.SDXLTextEncoder.forward:6
+#: diffsynth.models.sdxl_text_encoder.SDXLTextEncoder2.forward:6
+#: diffsynth.models.sdxl_unet.SDXLUNet.forward:6
+#: diffsynth.models.svd_image_encoder.CLIPVisionEmbeddings.forward:6
+#: diffsynth.models.svd_image_encoder.SVDImageEncoder.forward:6
+#: diffsynth.models.svd_unet.PopMixBlock.forward:6
+#: diffsynth.models.svd_unet.PositionalID.forward:6
+#: diffsynth.models.svd_unet.SVDUNet.forward:6
+#: diffsynth.models.svd_unet.TemporalAttentionBlock.forward:6
+#: diffsynth.models.svd_unet.TemporalResnetBlock.forward:6
+#: diffsynth.models.svd_unet.TemporalTimesteps.forward:6
+#: diffsynth.models.svd_unet.TrainableTemporalTimesteps.forward:6
+#: diffsynth.models.svd_vae_decoder.SVDVAEDecoder.forward:6
+#: diffsynth.models.svd_vae_decoder.TemporalResnetBlock.forward:6
+#: diffsynth.models.svd_vae_decoder.VAEAttentionBlock.forward:6
+#: e02392339b804670a52bea7100ba3a25 e0992fae57bc4f48973bda4efbd3d34e
+#: e7b8950ee4624a499dd9c005796810e6 e800e484dcdc4684b2f48e7b451bab7d
+#: e8411cc4564d4c6c87eecaa28c316c63 ead4734b889d47bd8c929916f1acaf7e
+#: ecb11e8595f84d858deddc29cd0ca741 ede32650b99d4e06a048150ab5cd360e
+#: f0beddd081434680afaf1edf73a1ec94 f32ccd64324e47d98201220d832ea0d5
+#: f4d5d5e554f44287bb98f95a6180e7cb f9315e476a7e4b2c886509e44710651a
+#: fccdbb9e306046fb9ec326a3be81ebe8 of
+msgid ""
+"Although the recipe for forward pass needs to be defined within this "
+"function, one should call the :class:`Module` instance afterwards instead"
+" of this since the former takes care of running the registered hooks "
+"while the latter silently ignores them."
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:16 516ae8ebebc74af3bde06b50539884a4
+msgid "diffsynth.models.downloader module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:24 523cf0088648458f8b3a2e654130b633
+msgid "diffsynth.models.flux\\_text\\_encoder module"
+msgstr ""
+
+#: bd113e20e04647248ee66c06b756d19d
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder1:1
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder1:1
+#: f53bfcc6ef704cfd92689d5545bcdf35 of
+msgid "Bases: :py:class:`~diffsynth.models.sd_text_encoder.SDTextEncoder`"
+msgstr ""
+
+#: 035a03edc52942beb882cf240fce5564 0ed1ed9ec36e41e49c3ed3a19abb4589
+#: 1193d6665dd544b6ac8c6a9630315b13 1d5f5037d1544de7a68f13d5cda14941
+#: 308f8f0b85694ec0a40c3c1b03a91be5 357a7cd594ff450f92ab28101894f7fa
+#: 37f61f0e4420472ba5304ff300d0c1cc 39c0d35c59074de7bed8189330c75f43
+#: 3b76575aa9b740c59cd608a935f40074 3b98cc4290cb4d55aa22f962ae0bca86
+#: 48c4c280f9604f0385d557cef5fef61c 59b223f66ba841aab8d68c39f432f5de
+#: 6274690ab39e4669befbaab5a21083c5 76c4c99c87b34aea81fc65310d61385e
+#: 772657b0ec454ff88bae0b719a64adcc 82f0f537d3e74caa9e5bb88dad96264d
+#: 9042167f9c0446748e454b64713c4fb5 91bfc942057b4c7db7f6356d829a3c25
+#: 962e1b0c281a463facb422fc5c60a625 a4eafe3a494f4d428f87173d4138d513
+#: b9a383d2ed314b5dae6ac31eda3ea2de ba010a7d75424acfa6f791fc87576ecc
+#: bab94928cad049408542b014c0b735de c44c09cf26964362b615456573a70e8b
+#: c6a9475da7d04a1fabcf848d049ebbe9 d8a4c4a9988c406c96162c8a319bb987
+#: dbe2587000e843e395ad9edb56aedd9b dd99584ea660498da7001fd524363156
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder1StateDictConverter:1
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2StateDictConverter:1
+#: diffsynth.models.hunyuan_dit.HunyuanDiTStateDictConverter:1
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoderStateDictConverter:1
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoderStateDictConverter:1
+#: diffsynth.models.lora.GeneralLoRAFromPeft:1
+#: diffsynth.models.lora.LoRAFromCivitai:1
+#: diffsynth.models.model_manager.ModelDetectorFromHuggingfaceFolder:1
+#: diffsynth.models.model_manager.ModelDetectorFromPatchedSingleFile:1
+#: diffsynth.models.model_manager.ModelDetectorFromSingleFile:1
+#: diffsynth.models.model_manager.ModelDetectorTemplate:1
+#: diffsynth.models.model_manager.ModelManager:1
+#: diffsynth.models.sd3_dit.SD3DiTStateDictConverter:1
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder1StateDictConverter:1
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3StateDictConverter:1
+#: diffsynth.models.sd_controlnet.SDControlNetStateDictConverter:1
+#: diffsynth.models.sd_motion.SDMotionModelStateDictConverter:1
+#: diffsynth.models.sd_text_encoder.SDTextEncoderStateDictConverter:1
+#: diffsynth.models.sd_unet.SDUNetStateDictConverter:1
+#: diffsynth.models.sd_vae_decoder.SDVAEDecoderStateDictConverter:1
+#: diffsynth.models.sd_vae_encoder.SDVAEEncoderStateDictConverter:1
+#: diffsynth.models.sdxl_ipadapter.SDXLIpAdapterStateDictConverter:1
+#: diffsynth.models.sdxl_motion.SDMotionModelStateDictConverter:1
+#: diffsynth.models.sdxl_text_encoder.SDXLTextEncoder2StateDictConverter:1
+#: diffsynth.models.sdxl_text_encoder.SDXLTextEncoderStateDictConverter:1
+#: diffsynth.models.sdxl_unet.SDXLUNetStateDictConverter:1
+#: diffsynth.models.svd_image_encoder.SVDImageEncoderStateDictConverter:1
+#: diffsynth.models.svd_unet.SVDUNetStateDictConverter:1
+#: diffsynth.models.svd_vae_decoder.SVDVAEDecoderStateDictConverter:1
+#: diffsynth.models.tiler.TileWorker:1 e1461973c1484c4cbe8019fa9eeebf32
+#: e654ed1a85b34e41896c4b2767ddbd54 of
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: 61ac62cba0b547c2b000ac4be5b670e1 9ec3fbeeaf7b4b87ba21cc0ecf2023d5
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2:1
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder:1
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3:1
+#: ea4e0d5f04604f7884897b55c5c0fe2d of
+msgid "Bases: :py:class:`~transformers.models.t5.modeling_t5.T5EncoderModel`"
+msgstr ""
+
+#: 806e0b848ccd4181af8390f7aab1b10e 906ff6494c724951be354de5d2b24b7e
+#: bbbcf33a79a4418fbb0a21858ba7e4ed
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:1
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:1
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:1 of
+msgid ""
+"The [`T5EncoderModel`] forward method, overrides the `__call__` special "
+"method."
+msgstr ""
+
+#: 0d80694ee4a34887be46b0b1d4520850 3437f276591244e28cc4b99391711659
+#: 3c5c41e152b345619549b06548b806bd 4489bc90989e476bbc4b8e474ad1e6da
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:3
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:3
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:3
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:3 of
+msgid "<Tip>"
+msgstr ""
+
+#: 00ef09ba03af4cc4b51b9b29d7ac20ac 566bd48ebf884b778749469f259ddc19
+#: 6478134135104964851d9a45c01d6950 a02713d7fce8469b9df30776308d3f46
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:5
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:5
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:5
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:5 of
+msgid ""
+"Although the recipe for forward pass needs to be defined within this "
+"function, one should call the [`Module`] instance afterwards instead of "
+"this since the former takes care of running the pre and post processing "
+"steps while the latter silently ignores them."
+msgstr ""
+
+#: 5c85979ade314929970cc5736799a29f 9f5e285f064848eaa5729a8ac2515eab
+#: d13384749144460cb38b374ce57b0ada d753a99ddcab40dea3e1350922c08119
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:9
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:9
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:9
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:9 of
+msgid "</Tip>"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst 2290cb9ee7644b80a689462042d79556
+#: 3d6e29382f05426bbcec74b1466aa067 457c9febc2be420fa41fb15333489cf8
+#: 56c897d2eb2c4236bce171ec4ef5477d 6b5895ff98dd498a92c311f0b14d6e41
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward
+#: diffsynth.models.svd_unet.get_timestep_embedding
+#: ff66a729090c45938725a34d946f24f5 of
+msgid "Parameters"
+msgstr ""
+
+#: 06cdf517ebeb47168dcc6e2b0e99fddb b9750b972f804f8db5114d501bbbf412
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:11
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:11
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:11
+#: e8524d7b6e00471a98028b5a8eaf4f71 of
+msgid ""
+"Indices of input sequence tokens in the vocabulary. T5 is a model with "
+"relative position embeddings so you should be able to pad the inputs on "
+"both the right and the left.  Indices can be obtained using "
+"[`AutoTokenizer`]. See [`PreTrainedTokenizer.encode`] and "
+"[`PreTrainedTokenizer.__call__`] for detail.  To know more on how to "
+"prepare `input_ids` for pretraining take a look a [T5 "
+"Training](./t5#training)."
+msgstr ""
+
+#: 4da67d4ba47d45849579ee3d4412f392 5d584d89fd0b403eae443e3a298a4958
+#: 69d618f831f248ecaab009c347907f9e
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:11
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:11
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:11 of
+msgid ""
+"Indices of input sequence tokens in the vocabulary. T5 is a model with "
+"relative position embeddings so you should be able to pad the inputs on "
+"both the right and the left."
+msgstr ""
+
+#: 24cca88df27d4b49b152beb1eb301afe 360f248fb25c43e5804550c67623547d
+#: 9ac0dbe8f6624327b3d0e976356963b2
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:14
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:14
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:14 of
+msgid ""
+"Indices can be obtained using [`AutoTokenizer`]. See "
+"[`PreTrainedTokenizer.encode`] and [`PreTrainedTokenizer.__call__`] for "
+"detail."
+msgstr ""
+
+#: 1bae1f3cbc90437c9cc6e128d43361e8 39fbb40175b04994863dcb8766b647c7
+#: d22ad9cdee1143f58daf9733dd6c0211
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:17
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:17
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:17 of
+msgid ""
+"To know more on how to prepare `input_ids` for pretraining take a look a "
+"[T5 Training](./t5#training)."
+msgstr ""
+
+#: 2b983efae4bb4618b23e12cdc5f840f1 3acd306c177f4ecebd1b8a802c6bd279
+#: 55dcd8cfa21e4f2fb2beb292f05cbcbd 5e6838ca8a2241229c21b6343b1d235a
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:19
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:18
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:19
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:19 of
+msgid ""
+"Mask to avoid performing attention on padding token indices. Mask values "
+"selected in `[0, 1]`:  - 1 for tokens that are **not masked**, - 0 for "
+"tokens that are **masked**.  [What are attention masks?](../glossary"
+"#attention-mask)"
+msgstr ""
+
+#: 17512b93c2e646ecbc46538fd92c8973 27920fb9074b4bbc9b82b71b9976e16f
+#: 4911cc8388f44092ad55b08094ec1b65 bbeae99d26ef4002b7bc36b4491f42a8
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:19
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:18
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:19
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:19 of
+msgid ""
+"Mask to avoid performing attention on padding token indices. Mask values "
+"selected in `[0, 1]`:"
+msgstr ""
+
+#: 17833a383be94931af1624f113ae8d2b 8214f8f3fc514a009fecdb253412d448
+#: 84714068d60f47fd995d3ed303112cda c1e1eeaec57d4b8799993f0426ea517a
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:21
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:20
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:61
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:21
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:21
+#: f6da6148dc864dc7b2e99e60c298e55e of
+msgid "1 for tokens that are **not masked**,"
+msgstr ""
+
+#: 1ebcfdc63814444db1aaec6feed69ac7 3674b6f700f343a7977356d4d6d028ec
+#: 47ff05f86da146ceb19dee8b007a23b3 bc2de96d985a4fecb8592db0e2fc5450
+#: d805b21e1dbe41f6b265f6a3738890b2
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:22
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:21
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:62
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:22
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:22 of
+msgid "0 for tokens that are **masked**."
+msgstr ""
+
+#: 36b2a8f50c114ee9b696a9bdb221d6fc 8719da01e2084cdd88346254799882ae
+#: b448f847c0bb47f8a39bd1e6892abade
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:24
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:23
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:24
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:24
+#: ef22a129ea2047a28e31e6e9360aa88e of
+msgid "[What are attention masks?](../glossary#attention-mask)"
+msgstr ""
+
+#: 04ff21ca574d49e8bb2d65e113a7a665 6a98982ef6ff406a830f706c7fb99b4c
+#: 88bebbe29edb4e568a71959261780953 c14085f9bd824edfa9975c4736fa6de2
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:26
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:38
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:26
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:26 of
+msgid ""
+"Mask to nullify selected heads of the self-attention modules. Mask values"
+" selected in `[0, 1]`:  - 1 indicates the head is **not masked**, - 0 "
+"indicates the head is **masked**."
+msgstr ""
+
+#: 4e57d17b79e347bca1b4c08af5b04c29 c04aea8bb1644789bc131db12fc3af4a
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:26
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:38
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:26
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:26
+#: e9be73fe1fd04fe4aa88a9dbb9c1af78 f23e64d457474361b9afd737a2eecf71 of
+msgid ""
+"Mask to nullify selected heads of the self-attention modules. Mask values"
+" selected in `[0, 1]`:"
+msgstr ""
+
+#: 46f9d54e841142699892e978523388f6 637d084aa4f74856b92a93a57c038e6d
+#: b990590a3e7a430cb464d41996c32518
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:28
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:40
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:28
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:28
+#: fb48820cc9bf43b1a0ad451aa0308617 of
+msgid "1 indicates the head is **not masked**,"
+msgstr ""
+
+#: 888844466d2a4c86852e0de60297d751 c3757a87e7464de389d80f6ac6474b66
+#: da16500826c54c759bc207995af4b116
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:29
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:41
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:29
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:29
+#: eead28c2f0fa4e579c1369a2780ee250 of
+msgid "0 indicates the head is **masked**."
+msgstr ""
+
+#: 0c718fbce76b491ba5e1d6fbb2f1c54d 1647be33c06d401fbf0892d45cd19a0d
+#: 5b40f042eb1a46d2ab315fc05efe39c2 d75c0554b6014385a5e14fe64cff2597
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:31
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:43
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:31
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:31 of
+msgid ""
+"Optionally, instead of passing `input_ids` you can choose to directly "
+"pass an embedded representation. This is useful if you want more control "
+"over how to convert `input_ids` indices into associated vectors than the "
+"model's internal embedding lookup matrix."
+msgstr ""
+
+#: 0272510aaa51420eb1e153dc98ae40ae c0de4d1110a24d77aaf6d3f48117701f
+#: c88eb7dd29c74c09a333e5a9ccebf62f
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:35
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:47
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:35
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:35
+#: e6cfa706bc4c45eda09fba0ef97a69f9 of
+msgid ""
+"Whether or not to return the attentions tensors of all attention layers. "
+"See `attentions` under returned tensors for more detail."
+msgstr ""
+
+#: 003f887995f748309273544cd88a1683 616396e421ec4433b241e35126408142
+#: b3b49065ec254adda3eabc50d5b71218
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:38
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:50
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:38
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:38
+#: ed163833389c421d93b2bdf7289a451a of
+msgid ""
+"Whether or not to return the hidden states of all layers. See "
+"`hidden_states` under returned tensors for more detail."
+msgstr ""
+
+#: 43c59010795d400180833dab6e04ebb4 6436fb8ab6f1459fa63124a23351f8ba
+#: 7eacba3e6194465ca864751978f9f0d8
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:41
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:53
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:41
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:41
+#: ed5a3108be374ecab680976d7a52e963 of
+msgid ""
+"Whether or not to return a [`~utils.ModelOutput`] instead of a plain "
+"tuple."
+msgstr ""
+
+#: 7b80744d64484d18b700557ec8a0592c 911a5a5d15554aa7a252533115ec2f35
+#: c52f143e96204208b6ffc2c9221765c2
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:43
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:43
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:43 of
+msgid ""
+"[`transformers.modeling_outputs.BaseModelOutput`] or "
+"`tuple(torch.FloatTensor)`: A "
+"[`transformers.modeling_outputs.BaseModelOutput`] or a tuple of "
+"`torch.FloatTensor` (if `return_dict=False` is passed or when "
+"`config.return_dict=False`) comprising various elements depending on the "
+"configuration ([`T5Config`]) and inputs.  - **last_hidden_state** "
+"(`torch.FloatTensor` of shape `(batch_size, sequence_length, "
+"hidden_size)`) -- Sequence of hidden-states at the output of the last "
+"layer of the model. - **hidden_states** (`tuple(torch.FloatTensor)`, "
+"*optional*, returned when `output_hidden_states=True` is passed or when "
+"`config.output_hidden_states=True`) -- Tuple of `torch.FloatTensor` (one "
+"for the output of the embeddings, if the model has an embedding layer, +"
+"   one for the output of each layer) of shape `(batch_size, "
+"sequence_length, hidden_size)`.    Hidden-states of the model at the "
+"output of each layer plus the optional initial embedding outputs. - "
+"**attentions** (`tuple(torch.FloatTensor)`, *optional*, returned when "
+"`output_attentions=True` is passed or when "
+"`config.output_attentions=True`) -- Tuple of `torch.FloatTensor` (one for"
+" each layer) of shape `(batch_size, num_heads, sequence_length,   "
+"sequence_length)`.    Attentions weights after the attention softmax, "
+"used to compute the weighted average in the self-attention   heads."
+msgstr ""
+
+#: 0b2d8372ad504840af55cb8a073eab47 a73b081d2583442cac77f224b76b1c5d
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:43
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:43
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:43
+#: e4026bc0f0c245e189867c79f3408140 of
+msgid ""
+"[`transformers.modeling_outputs.BaseModelOutput`] or "
+"`tuple(torch.FloatTensor)`: A "
+"[`transformers.modeling_outputs.BaseModelOutput`] or a tuple of "
+"`torch.FloatTensor` (if `return_dict=False` is passed or when "
+"`config.return_dict=False`) comprising various elements depending on the "
+"configuration ([`T5Config`]) and inputs."
+msgstr ""
+
+#: 927f0811c90c403d9e4389ebbaddcd93 9ea9443e74df48bdaf48ffb9e15666d5
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:47
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:78
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:47
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:47
+#: eef5b5ab486c40328607bba1bdb2be1f ff2d78a356c74183bed94a397a05a7a4 of
+msgid ""
+"**last_hidden_state** (`torch.FloatTensor` of shape `(batch_size, "
+"sequence_length, hidden_size)`) -- Sequence of hidden-states at the "
+"output of the last layer of the model."
+msgstr ""
+
+#: 1f1cf318f63945e6bf420d51ef25bdc8 3cbd61ccc86d420ba86d05b5c7492a72
+#: 6cabdddbe7d4437689772cbe8fc44ce8
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:48
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:83
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:48
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:48
+#: f38ef32929094b239bc305f617531802 of
+msgid ""
+"**hidden_states** (`tuple(torch.FloatTensor)`, *optional*, returned when "
+"`output_hidden_states=True` is passed or when "
+"`config.output_hidden_states=True`) -- Tuple of `torch.FloatTensor` (one "
+"for the output of the embeddings, if the model has an embedding layer, + "
+"one for the output of each layer) of shape `(batch_size, sequence_length,"
+" hidden_size)`."
+msgstr ""
+
+#: 44869d666ce6450cb64a224d95302bb3 5e7d82b022714f15b7064356c4750a23
+#: 6dfbc20bf1b6418e95ce87e86464de49 af043ee47e104e2393f570f3b8b4ba2e
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:51
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:86
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:51
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:51 of
+msgid ""
+"Hidden-states of the model at the output of each layer plus the optional "
+"initial embedding outputs."
+msgstr ""
+
+#: 12d0113e10f5424594fdfeba57b6f9e6 8d9d6ffdb8d748c791e0555b300cf75c
+#: b17564c1d1f74b008f9d51d5e7e51953 d3753dc2e0ba4077ae268ffaa78c206b
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:52
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:87
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:52
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:52 of
+msgid ""
+"**attentions** (`tuple(torch.FloatTensor)`, *optional*, returned when "
+"`output_attentions=True` is passed or when "
+"`config.output_attentions=True`) -- Tuple of `torch.FloatTensor` (one for"
+" each layer) of shape `(batch_size, num_heads, sequence_length, "
+"sequence_length)`."
+msgstr ""
+
+#: 26a113ada63d4f8fba5ea2481609fa8d 2b456fcb039c4627b681c54015194a23
+#: 924ff7ff3dc74890999ea64dec7a035a 951c6e3b153d4879bc0592b36e8e754d
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:55
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:90
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:55
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:55 of
+msgid ""
+"Attentions weights after the attention softmax, used to compute the "
+"weighted average in the self-attention heads."
+msgstr ""
+
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:58
+#: fa2ad7452a3b474daf7dbf4390bf9749 of
+msgid ""
+"/mnt/nas2/qianyi_fl/Train_Lora/DiffSynth-Studio-"
+"main/diffsynth/models/flux_text_encoder.py:docstring of "
+"diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:58: "
+"(WARNING/2) Inline literal start-string without end-"
+"string./mnt/nas2/qianyi_fl/Train_Lora/DiffSynth-Studio-"
+"main/diffsynth/models/flux_text_encoder.py:docstring of "
+"diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:58: "
+"(WARNING/2) Inline interpreted text or phrase reference start-string "
+"without end-string."
+msgstr ""
+
+#: d7375eac5a6b46038785d951f5523740
+#: diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:72 of
+msgid ""
+"/mnt/nas2/qianyi_fl/Train_Lora/DiffSynth-Studio-"
+"main/diffsynth/models/flux_text_encoder.py:docstring of "
+"diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:72: "
+"(WARNING/2) Inline literal start-string without end-"
+"string./mnt/nas2/qianyi_fl/Train_Lora/DiffSynth-Studio-"
+"main/diffsynth/models/flux_text_encoder.py:docstring of "
+"diffsynth.models.flux_text_encoder.FLUXTextEncoder2.forward:72: "
+"(WARNING/2) Inline interpreted text or phrase reference start-string "
+"without end-string."
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:32 fd8a88be6d5344ccafc29229db046a4c
+msgid "diffsynth.models.hunyuan\\_dit module"
+msgstr ""
+
+#: 66fde17a68964f3fbf1b41f8e1d67d6c
+#: diffsynth.models.hunyuan_dit.FP32_Layernorm:1 of
+msgid "Bases: :py:class:`~torch.nn.modules.normalization.LayerNorm`"
+msgstr ""
+
+#: 9c097f572376403f974f5049dd8e0ccd diffsynth.models.hunyuan_dit.FP32_SiLU:1 of
+msgid "Bases: :py:class:`~torch.nn.modules.activation.SiLU`"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:40 0aa142aaab8f4a12a884e78d1e5487fb
+msgid "diffsynth.models.hunyuan\\_dit\\_text\\_encoder module"
+msgstr ""
+
+#: 467d2cbccb1d42bf82a7badeb73de2d1
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder:1 of
+msgid "Bases: :py:class:`~transformers.models.bert.modeling_bert.BertModel`"
+msgstr ""
+
+#: 24905705c2224dbbb2dfb8e7fb0117e7
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:1
+#: of
+msgid "The [`BertModel`] forward method, overrides the `__call__` special method."
+msgstr ""
+
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:11
+#: fc8de9a034514a659d6a339cef2e693c of
+msgid ""
+"Indices of input sequence tokens in the vocabulary.  Indices can be "
+"obtained using [`AutoTokenizer`]. See [`PreTrainedTokenizer.encode`] and "
+"[`PreTrainedTokenizer.__call__`] for details.  [What are input "
+"IDs?](../glossary#input-ids)"
+msgstr ""
+
+#: d31cbad0ac78469a9e3f69c97c0ded34
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:11
+#: of
+msgid "Indices of input sequence tokens in the vocabulary."
+msgstr ""
+
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:13
+#: fe567a8cbc29492b918caf2c20bbf7c2 of
+msgid ""
+"Indices can be obtained using [`AutoTokenizer`]. See "
+"[`PreTrainedTokenizer.encode`] and [`PreTrainedTokenizer.__call__`] for "
+"details."
+msgstr ""
+
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:16
+#: efa67ce461c24c05af6d48d47691d0bc of
+msgid "[What are input IDs?](../glossary#input-ids)"
+msgstr ""
+
+#: 256bc729e4bd4519b0c265c779fb1671
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:25
+#: of
+msgid ""
+"Segment token indices to indicate first and second portions of the "
+"inputs. Indices are selected in `[0, 1]`:  - 0 corresponds to a *sentence"
+" A* token, - 1 corresponds to a *sentence B* token.  [What are token type"
+" IDs?](../glossary#token-type-ids)"
+msgstr ""
+
+#: 837fd6209c9741a4ad9faa42bd4f095c
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:25
+#: of
+msgid ""
+"Segment token indices to indicate first and second portions of the "
+"inputs. Indices are selected in `[0, 1]`:"
+msgstr ""
+
+#: 0969c60284a1415d9d45c3e87bdd2567
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:28
+#: of
+msgid "0 corresponds to a *sentence A* token,"
+msgstr ""
+
+#: a892b2fbf8154c3cbf8930d829b31583
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:29
+#: of
+msgid "1 corresponds to a *sentence B* token."
+msgstr ""
+
+#: 4196561d2c2a44d4b8953e6d4ee5a243
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:31
+#: of
+msgid "[What are token type IDs?](../glossary#token-type-ids)"
+msgstr ""
+
+#: 0f9c135656fe4eb08208d22ab814b865
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:33
+#: of
+msgid ""
+"Indices of positions of each input sequence tokens in the position "
+"embeddings. Selected in the range `[0, config.max_position_embeddings - "
+"1]`.  [What are position IDs?](../glossary#position-ids)"
+msgstr ""
+
+#: 4d9dd102bf194e47b98b4b80b2bea1c8
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:33
+#: of
+msgid ""
+"Indices of positions of each input sequence tokens in the position "
+"embeddings. Selected in the range `[0, config.max_position_embeddings - "
+"1]`."
+msgstr ""
+
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:36
+#: f917e49276c640c6a49706f50f03a525 of
+msgid "[What are position IDs?](../glossary#position-ids)"
+msgstr ""
+
+#: 5a8ec8a7d1094dff960602c40df24c0a
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:55
+#: of
+msgid ""
+"Sequence of hidden-states at the output of the last layer of the encoder."
+" Used in the cross-attention if the model is configured as a decoder."
+msgstr ""
+
+#: 1f71173e04ac44468ad6b09815d1eb76
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:58
+#: of
+msgid ""
+"Mask to avoid performing attention on the padding token indices of the "
+"encoder input. This mask is used in the cross-attention if the model is "
+"configured as a decoder. Mask values selected in `[0, 1]`:  - 1 for "
+"tokens that are **not masked**, - 0 for tokens that are **masked**."
+msgstr ""
+
+#: dd4f57ee6f924fca8e78fc598a6eced9
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:58
+#: of
+msgid ""
+"Mask to avoid performing attention on the padding token indices of the "
+"encoder input. This mask is used in the cross-attention if the model is "
+"configured as a decoder. Mask values selected in `[0, 1]`:"
+msgstr ""
+
+#: b26424dbd6454f2cade8f20b625bd243
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:64
+#: of
+msgid ""
+"Contains precomputed key and value hidden states of the attention blocks."
+" Can be used to speed up decoding.  If `past_key_values` are used, the "
+"user can optionally input only the last `decoder_input_ids` (those that "
+"don't have their past key value states given to this model) of shape "
+"`(batch_size, 1)` instead of all `decoder_input_ids` of shape "
+"`(batch_size, sequence_length)`."
+msgstr ""
+
+#: 63e7c6ff58074431a6763a8db9055f07
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:64
+#: of
+msgid ""
+"Contains precomputed key and value hidden states of the attention blocks."
+" Can be used to speed up decoding."
+msgstr ""
+
+#: b2b343586ccb4c7d867bcdc528283a80
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:66
+#: of
+msgid ""
+"If `past_key_values` are used, the user can optionally input only the "
+"last `decoder_input_ids` (those that don't have their past key value "
+"states given to this model) of shape `(batch_size, 1)` instead of all "
+"`decoder_input_ids` of shape `(batch_size, sequence_length)`."
+msgstr ""
+
+#: d6987116f692414c805920c52c41de36
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:70
+#: of
+msgid ""
+"If set to `True`, `past_key_values` key value states are returned and can"
+" be used to speed up decoding (see `past_key_values`)."
+msgstr ""
+
+#: ../../source/diffsynth.models.rst 565deaf63e14438893b56ec848559238
+#: de5df6f94a764689afadcfc4b6b16305
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward
+#: f2fc459eb2314cc89b77f781228c717a of
+msgid "Returns"
+msgstr ""
+
+#: 053e1da9036947479f587896c2343323
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:74
+#: of
+msgid ""
+"A "
+"[`transformers.modeling_outputs.BaseModelOutputWithPoolingAndCrossAttentions`]"
+" or a tuple of `torch.FloatTensor` (if `return_dict=False` is passed or "
+"when `config.return_dict=False`) comprising various elements depending on"
+" the configuration ([`BertConfig`]) and inputs.  - **last_hidden_state** "
+"(`torch.FloatTensor` of shape `(batch_size, sequence_length, "
+"hidden_size)`) -- Sequence of hidden-states at the output of the last "
+"layer of the model. - **pooler_output** (`torch.FloatTensor` of shape "
+"`(batch_size, hidden_size)`) -- Last layer hidden-state of the first "
+"token of the sequence (classification token) after further processing   "
+"through the layers used for the auxiliary pretraining task. E.g. for "
+"BERT-family of models, this returns   the classification token after "
+"processing through a linear layer and a tanh activation function. The "
+"linear   layer weights are trained from the next sentence prediction "
+"(classification) objective during pretraining. - **hidden_states** "
+"(`tuple(torch.FloatTensor)`, *optional*, returned when "
+"`output_hidden_states=True` is passed or when "
+"`config.output_hidden_states=True`) -- Tuple of `torch.FloatTensor` (one "
+"for the output of the embeddings, if the model has an embedding layer, +"
+"   one for the output of each layer) of shape `(batch_size, "
+"sequence_length, hidden_size)`.    Hidden-states of the model at the "
+"output of each layer plus the optional initial embedding outputs. - "
+"**attentions** (`tuple(torch.FloatTensor)`, *optional*, returned when "
+"`output_attentions=True` is passed or when "
+"`config.output_attentions=True`) -- Tuple of `torch.FloatTensor` (one for"
+" each layer) of shape `(batch_size, num_heads, sequence_length,   "
+"sequence_length)`.    Attentions weights after the attention softmax, "
+"used to compute the weighted average in the self-attention   heads. - "
+"**cross_attentions** (`tuple(torch.FloatTensor)`, *optional*, returned "
+"when `output_attentions=True` and `config.add_cross_attention=True` is "
+"passed or when `config.output_attentions=True`) -- Tuple of "
+"`torch.FloatTensor` (one for each layer) of shape `(batch_size, "
+"num_heads, sequence_length,   sequence_length)`.    Attentions weights of"
+" the decoder's cross-attention layer, after the attention softmax, used "
+"to compute the   weighted average in the cross-attention heads. - "
+"**past_key_values** (`tuple(tuple(torch.FloatTensor))`, *optional*, "
+"returned when `use_cache=True` is passed or when `config.use_cache=True`)"
+" -- Tuple of `tuple(torch.FloatTensor)` of length `config.n_layers`, with"
+" each tuple having 2 tensors of shape   `(batch_size, num_heads, "
+"sequence_length, embed_size_per_head)`) and optionally if   "
+"`config.is_encoder_decoder=True` 2 additional tensors of shape "
+"`(batch_size, num_heads,   encoder_sequence_length, "
+"embed_size_per_head)`.    Contains pre-computed hidden-states (key and "
+"values in the self-attention blocks and optionally if   "
+"`config.is_encoder_decoder=True` in the cross-attention blocks) that can "
+"be used (see `past_key_values`   input) to speed up sequential decoding."
+msgstr ""
+
+#: b91b37d08f8b4e6db495c9e502e041c8
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:74
+#: of
+msgid ""
+"A "
+"[`transformers.modeling_outputs.BaseModelOutputWithPoolingAndCrossAttentions`]"
+" or a tuple of `torch.FloatTensor` (if `return_dict=False` is passed or "
+"when `config.return_dict=False`) comprising various elements depending on"
+" the configuration ([`BertConfig`]) and inputs."
+msgstr ""
+
+#: af30b857856246039d47c931f391566d
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:79
+#: of
+msgid ""
+"**pooler_output** (`torch.FloatTensor` of shape `(batch_size, "
+"hidden_size)`) -- Last layer hidden-state of the first token of the "
+"sequence (classification token) after further processing through the "
+"layers used for the auxiliary pretraining task. E.g. for BERT-family of "
+"models, this returns the classification token after processing through a "
+"linear layer and a tanh activation function. The linear layer weights are"
+" trained from the next sentence prediction (classification) objective "
+"during pretraining."
+msgstr ""
+
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:92
+#: e6c84b0650f84e359199c6b300ccfc03 of
+msgid ""
+"**cross_attentions** (`tuple(torch.FloatTensor)`, *optional*, returned "
+"when `output_attentions=True` and `config.add_cross_attention=True` is "
+"passed or when `config.output_attentions=True`) -- Tuple of "
+"`torch.FloatTensor` (one for each layer) of shape `(batch_size, "
+"num_heads, sequence_length, sequence_length)`."
+msgstr ""
+
+#: 823cb066068f402da2a20d04792b9744
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:95
+#: of
+msgid ""
+"Attentions weights of the decoder's cross-attention layer, after the "
+"attention softmax, used to compute the weighted average in the cross-"
+"attention heads."
+msgstr ""
+
+#: 2267998a20414c96b9f25ef5d025df68
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:97
+#: of
+msgid ""
+"**past_key_values** (`tuple(tuple(torch.FloatTensor))`, *optional*, "
+"returned when `use_cache=True` is passed or when `config.use_cache=True`)"
+" -- Tuple of `tuple(torch.FloatTensor)` of length `config.n_layers`, with"
+" each tuple having 2 tensors of shape `(batch_size, num_heads, "
+"sequence_length, embed_size_per_head)`) and optionally if "
+"`config.is_encoder_decoder=True` 2 additional tensors of shape "
+"`(batch_size, num_heads, encoder_sequence_length, embed_size_per_head)`."
+msgstr ""
+
+#: d0e714ac0ee84478899c905ce755dfcb
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:102
+#: of
+msgid ""
+"Contains pre-computed hidden-states (key and values in the self-attention"
+" blocks and optionally if `config.is_encoder_decoder=True` in the cross-"
+"attention blocks) that can be used (see `past_key_values` input) to speed"
+" up sequential decoding."
+msgstr ""
+
+#: ../../source/diffsynth.models.rst 068799438ca54c808128ab1845ff758e
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward
+#: ff40cb4633054f0b9503e02fcd9ec0e4 of
+msgid "Return type"
+msgstr ""
+
+#: d4fb48220d4c4b6b8c252692d4ef869e
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:105
+#: of
+msgid ""
+"[`transformers.modeling_outputs.BaseModelOutputWithPoolingAndCrossAttentions`]"
+" or `tuple(torch.FloatTensor)`"
+msgstr ""
+
+#: d5bc4eb73c574e238d05b60e03fa525b
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:107
+#: of
+msgid "Example:"
+msgstr ""
+
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTCLIPTextEncoder.forward:109
+#: e9afa6fa31f246cc94df5ac1b6ce2708 of
+msgid ""
+"```python >>> from transformers import AutoTokenizer, BertModel >>> "
+"import torch"
+msgstr ""
+
+#: 176c88c25ec346608e5e9e8cfbd48db1
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:58
+#: of
+msgid ""
+"/mnt/nas2/qianyi_fl/Train_Lora/DiffSynth-Studio-"
+"main/diffsynth/models/hunyuan_dit_text_encoder.py:docstring of "
+"diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:58:"
+" (WARNING/2) Inline literal start-string without end-"
+"string./mnt/nas2/qianyi_fl/Train_Lora/DiffSynth-Studio-"
+"main/diffsynth/models/hunyuan_dit_text_encoder.py:docstring of "
+"diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:58:"
+" (WARNING/2) Inline interpreted text or phrase reference start-string "
+"without end-string."
+msgstr ""
+
+#: 875f35e93e614700936c2afad7dae7c7
+#: diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:72
+#: of
+msgid ""
+"/mnt/nas2/qianyi_fl/Train_Lora/DiffSynth-Studio-"
+"main/diffsynth/models/hunyuan_dit_text_encoder.py:docstring of "
+"diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:72:"
+" (WARNING/2) Inline literal start-string without end-"
+"string./mnt/nas2/qianyi_fl/Train_Lora/DiffSynth-Studio-"
+"main/diffsynth/models/hunyuan_dit_text_encoder.py:docstring of "
+"diffsynth.models.hunyuan_dit_text_encoder.HunyuanDiTT5TextEncoder.forward:72:"
+" (WARNING/2) Inline interpreted text or phrase reference start-string "
+"without end-string."
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:48 11e55d351f1f4e96ace92741cb2e58ac
+msgid "diffsynth.models.kolors\\_text\\_encoder module"
+msgstr ""
+
+#: 2a66903ffd18492eac1413df20daecb7 diffsynth.models.kolors_text_encoder:1 of
+msgid ""
+"This model is copied from https://github.com/Kwai-"
+"Kolors/Kolors/tree/master/kolors/models. We didn't modify this model. The"
+" tensor operation is performed in the prompter."
+msgstr ""
+
+#: db72cac9fefb45af9f3579b20f9e20c2
+#: diffsynth.models.kolors_text_encoder.ChatGLMConfig:1 of
+msgid "Bases: :py:class:`~transformers.configuration_utils.PretrainedConfig`"
+msgstr ""
+
+#: 0a2201bd75b6477a9dd70886eedf6c67 22d1079ad63d48a89b1ef1c329dddbfd
+#: diffsynth.models.kolors_text_encoder.ChatGLMForConditionalGeneration:1
+#: diffsynth.models.kolors_text_encoder.ChatGLMForSequenceClassification:1
+#: diffsynth.models.kolors_text_encoder.ChatGLMModel:1
+#: eb8bd73238864951af518f6e9cc6a647 of
+msgid ""
+"Bases: "
+":py:class:`~diffsynth.models.kolors_text_encoder.ChatGLMPreTrainedModel`"
+msgstr ""
+
+#: diffsynth.models.kolors_text_encoder.ChatGLMModel.get_input_embeddings:1
+#: f05809a72e414531b816a48be80f14d6 of
+msgid "Returns the model's input embeddings."
+msgstr ""
+
+#: 08db3d6d009a4ca68783aaff779874dd
+#: diffsynth.models.kolors_text_encoder.ChatGLMModel.get_input_embeddings:3 of
+msgid "A torch module mapping vocabulary to hidden states."
+msgstr ""
+
+#: 5aaa73f4ec464ea7ba65cecdf94f79b9
+#: diffsynth.models.kolors_text_encoder.ChatGLMModel.get_input_embeddings:4 of
+msgid "`nn.Module`"
+msgstr ""
+
+#: 7e926c9fb7a34effaa92366df7f79a7a
+#: diffsynth.models.kolors_text_encoder.ChatGLMPreTrainedModel:1 of
+msgid "Bases: :py:class:`~transformers.modeling_utils.PreTrainedModel`"
+msgstr ""
+
+#: 3a520d57046f402b8910d306b550e044
+#: diffsynth.models.kolors_text_encoder.ChatGLMPreTrainedModel:1 of
+msgid ""
+"An abstract class to handle weights initialization and a simple interface"
+" for downloading and loading pretrained models."
+msgstr ""
+
+#: 52cd706fe8f24f03bed166928a9ffc48
+#: diffsynth.models.kolors_text_encoder.Embedding:1 of
+msgid "Language model embeddings."
+msgstr ""
+
+#: cafcb61a27bf4d00acac6db3c31f0d9c
+#: diffsynth.models.kolors_text_encoder.GLMBlock:1 of
+msgid "A single transformer layer."
+msgstr ""
+
+#: 04f5984a48ad4575b039b641d02eb017
+#: diffsynth.models.kolors_text_encoder.GLMBlock:3 of
+msgid ""
+"Transformer layer takes input with size [s, b, h] and returns an output "
+"of the same size."
+msgstr ""
+
+#: 7e1a8d2c659243c1aabf41a743f38907
+#: diffsynth.models.kolors_text_encoder.GLMTransformer:1 of
+msgid "Transformer class."
+msgstr ""
+
+#: a5ca971017cd4932aad827c03bd25494
+#: diffsynth.models.kolors_text_encoder.InvalidScoreLogitsProcessor:1 of
+msgid "Bases: :py:class:`~transformers.generation.logits_process.LogitsProcessor`"
+msgstr ""
+
+#: 4392a920ed82433492df57956d2a7940 diffsynth.models.kolors_text_encoder.MLP:1
+#: of
+msgid "MLP."
+msgstr ""
+
+#: bab4055982d84e01b58d7f309b88157e diffsynth.models.kolors_text_encoder.MLP:3
+#: of
+msgid ""
+"MLP will take the input with h hidden state, project it to 4*h hidden "
+"dimension, perform nonlinear transformation, and project the state back "
+"into h hidden dimension."
+msgstr ""
+
+#: 5ee9d654bd8042159788694ae713be09
+#: diffsynth.models.kolors_text_encoder.PrefixEncoder:1 of
+msgid ""
+"The torch.nn model to encode the prefix Input shape: (batch-size, prefix-"
+"length) Output shape: (batch-size, prefix-length, 2*layers*hidden)"
+msgstr ""
+
+#: d6e11cc65eab42c5bbc6614073dc0665
+#: diffsynth.models.kolors_text_encoder.RotaryEmbedding.forward_impl:1 of
+msgid "Enhanced Transformer with Rotary Position Embedding."
+msgstr ""
+
+#: 73f0edd630c0478985212e34f4d21c8a
+#: diffsynth.models.kolors_text_encoder.RotaryEmbedding.forward_impl:3 of
+msgid ""
+"Derived from: "
+"https://github.com/labmlai/annotated_deep_learning_paper_implementations/blob/master/labml_nn/"
+" transformers/rope/__init__.py. MIT License: "
+"https://github.com/labmlai/annotated_deep_learning_paper_implementations/blob/master/license."
+msgstr ""
+
+#: 03bb388291b742c9866f1b14fe1ab72f
+#: diffsynth.models.kolors_text_encoder.SelfAttention:1 of
+msgid "Parallel self-attention layer abstract class."
+msgstr ""
+
+#: c8efb0b96af04bf8820456a1588d78e3
+#: diffsynth.models.kolors_text_encoder.SelfAttention:3 of
+msgid ""
+"Self-attention layer takes input with size [s, b, h] and returns output "
+"of the same size."
+msgstr ""
+
+#: 9666f835a49d4ec0852609119073fbb1
+#: diffsynth.models.kolors_text_encoder.split_tensor_along_last_dim:1 of
+msgid "Split a tensor along its last dimension."
+msgstr ""
+
+#: decafabf8dae4b87bbe7fa9cf276e0a9
+#: diffsynth.models.kolors_text_encoder.split_tensor_along_last_dim:3 of
+msgid "input tensor."
+msgstr ""
+
+#: 2446898f7c254724bb78ab43e5a0981f
+#: diffsynth.models.kolors_text_encoder.split_tensor_along_last_dim:4 of
+msgid "number of partitions to split the tensor"
+msgstr ""
+
+#: 77bb4b6fdc3846f6b804a5b87dc885e4
+#: diffsynth.models.kolors_text_encoder.split_tensor_along_last_dim:5 of
+msgid "If True, make each chunk contiguous in memory."
+msgstr ""
+
+#: b557fd4b69c74118b7f3e5b777429379
+#: diffsynth.models.kolors_text_encoder.split_tensor_along_last_dim:8 of
+msgid "A list of Tensors"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:56 c25af115674d45c8bdd6127cb40cdeaf
+msgid "diffsynth.models.lora module"
+msgstr ""
+
+#: 978d67e09eeb447692e9cec22714508d d767f677dda84b0c82e515f8122a4db1
+#: diffsynth.models.lora.SDLoRAFromCivitai:1
+#: diffsynth.models.lora.SDXLLoRAFromCivitai:1 of
+msgid "Bases: :py:class:`~diffsynth.models.lora.LoRAFromCivitai`"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:64 3566b5b04d594ebc965ff419497f6d3a
+msgid "diffsynth.models.model\\_manager module"
+msgstr ""
+
+#: a4e9d0e7946844138cee33f1c429ed58
+#: diffsynth.models.model_manager.ModelDetectorFromSplitedSingleFile:1 of
+msgid ""
+"Bases: "
+":py:class:`~diffsynth.models.model_manager.ModelDetectorFromSingleFile`"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:72 583fd4d63f364954bb74bebdf2b07b0b
+msgid "diffsynth.models.sd3\\_dit module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:80 c90bb824926b44ac856f1ae27b57edad
+msgid "diffsynth.models.sd3\\_text\\_encoder module"
+msgstr ""
+
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder2:1
+#: f7fa42fe3f7f450c8b8d1786cf6e910e of
+msgid "Bases: :py:class:`~diffsynth.models.sdxl_text_encoder.SDXLTextEncoder2`"
+msgstr ""
+
+#: 1546f0d063bf4b2988865a3a49a2ae3e
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder2StateDictConverter:1 of
+msgid ""
+"Bases: "
+":py:class:`~diffsynth.models.sdxl_text_encoder.SDXLTextEncoder2StateDictConverter`"
+msgstr ""
+
+#: ac82f105315f44f3bd40a2c15823b291
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:58 of
+msgid ""
+"/mnt/nas2/qianyi_fl/Train_Lora/DiffSynth-Studio-"
+"main/diffsynth/models/sd3_text_encoder.py:docstring of "
+"diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:58: (WARNING/2)"
+" Inline literal start-string without end-"
+"string./mnt/nas2/qianyi_fl/Train_Lora/DiffSynth-Studio-"
+"main/diffsynth/models/sd3_text_encoder.py:docstring of "
+"diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:58: (WARNING/2)"
+" Inline interpreted text or phrase reference start-string without end-"
+"string."
+msgstr ""
+
+#: 38cab670fa06479ab0aba790c46a3a39
+#: diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:72 of
+msgid ""
+"/mnt/nas2/qianyi_fl/Train_Lora/DiffSynth-Studio-"
+"main/diffsynth/models/sd3_text_encoder.py:docstring of "
+"diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:72: (WARNING/2)"
+" Inline literal start-string without end-"
+"string./mnt/nas2/qianyi_fl/Train_Lora/DiffSynth-Studio-"
+"main/diffsynth/models/sd3_text_encoder.py:docstring of "
+"diffsynth.models.sd3_text_encoder.SD3TextEncoder3.forward:72: (WARNING/2)"
+" Inline interpreted text or phrase reference start-string without end-"
+"string."
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:88 e558b59fcf56486cab9015d5696cb34d
+msgid "diffsynth.models.sd3\\_vae\\_decoder module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:96 1651b5b4fe3c42cd8cae56bfebf17e92
+msgid "diffsynth.models.sd3\\_vae\\_encoder module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:104 17ac897959894a1f85a129bc86f32150
+msgid "diffsynth.models.sd\\_controlnet module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:112 1d987870a55f416eba5782fbea2053b8
+msgid "diffsynth.models.sd\\_ipadapter module"
+msgstr ""
+
+#: a55919efbc8e439b896033e574038454 d1be299b6bba431da9329755538dbcec
+#: diffsynth.models.sd_ipadapter.IpAdapterCLIPImageEmbedder:1
+#: diffsynth.models.sdxl_ipadapter.IpAdapterXLCLIPImageEmbedder:1 of
+msgid "Bases: :py:class:`~diffsynth.models.svd_image_encoder.SVDImageEncoder`"
+msgstr ""
+
+#: 328e02e524444d8dbad77799927f5474
+#: diffsynth.models.sd_ipadapter.SDIpAdapterStateDictConverter:1 of
+msgid ""
+"Bases: "
+":py:class:`~diffsynth.models.sdxl_ipadapter.SDXLIpAdapterStateDictConverter`"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:120 c0d5c75cf7d64051b503d3f01355b7c7
+msgid "diffsynth.models.sd\\_motion module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:128 52f81999bcb549fe97e475613f504fe2
+msgid "diffsynth.models.sd\\_text\\_encoder module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:136 5030b00eae7d4252859a792e57bd817c
+msgid "diffsynth.models.sd\\_unet module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:144 7021f4a2a81d4754b107ef446965e800
+msgid "diffsynth.models.sd\\_vae\\_decoder module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:152 90b26a8a2ed9484abeb5319cadff4875
+msgid "diffsynth.models.sd\\_vae\\_encoder module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:160 010e8c6af1b84dff883831fef66dd440
+msgid "diffsynth.models.sdxl\\_controlnet module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:168 1291d1238c20487a88619390491483a2
+msgid "diffsynth.models.sdxl\\_ipadapter module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:176 792ef8cd58424f53bc3a52da1efbfb13
+msgid "diffsynth.models.sdxl\\_motion module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:184 1adcc2c8704348b9bf1fe023b052fe6b
+msgid "diffsynth.models.sdxl\\_text\\_encoder module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:192 f759341679654d56ac2b9e23950f4a1a
+msgid "diffsynth.models.sdxl\\_unet module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:200 870cfb5561bc451fb3efb7e95199f418
+msgid "diffsynth.models.sdxl\\_vae\\_decoder module"
+msgstr ""
+
+#: 6f94ae2694eb4e4f8e5ecb15c5399265
+#: diffsynth.models.sdxl_vae_decoder.SDXLVAEDecoder:1 of
+msgid "Bases: :py:class:`~diffsynth.models.sd_vae_decoder.SDVAEDecoder`"
+msgstr ""
+
+#: 40c288352a7b4fe082e5b0f817f42790
+#: diffsynth.models.sdxl_vae_decoder.SDXLVAEDecoderStateDictConverter:1 of
+msgid ""
+"Bases: "
+":py:class:`~diffsynth.models.sd_vae_decoder.SDVAEDecoderStateDictConverter`"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:208 35379ffdfafe42febf31c4b169650187
+msgid "diffsynth.models.sdxl\\_vae\\_encoder module"
+msgstr ""
+
+#: d69215531cbf4d3d8a65fc6fb7805b10 db95701cc6d64e568d9be11c121a1404
+#: diffsynth.models.sdxl_vae_encoder.SDXLVAEEncoder:1
+#: diffsynth.models.svd_vae_encoder.SVDVAEEncoder:1 of
+msgid "Bases: :py:class:`~diffsynth.models.sd_vae_encoder.SDVAEEncoder`"
+msgstr ""
+
+#: 3558ceac68f94ef4852ab7a35b1758c8 6c5832353fe54b2386c86437771d5a5c
+#: diffsynth.models.sdxl_vae_encoder.SDXLVAEEncoderStateDictConverter:1
+#: diffsynth.models.svd_vae_encoder.SVDVAEEncoderStateDictConverter:1 of
+msgid ""
+"Bases: "
+":py:class:`~diffsynth.models.sd_vae_encoder.SDVAEEncoderStateDictConverter`"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:216 a06285a271764461aefa6324273eb119
+msgid "diffsynth.models.svd\\_image\\_encoder module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:224 c6c12eb8460542d7b7d4eaef7671761e
+msgid "diffsynth.models.svd\\_unet module"
+msgstr ""
+
+#: b80acbe9e50640aca5456e5c7cd9a028
+#: diffsynth.models.svd_unet.get_timestep_embedding:1 of
+msgid ""
+"This matches the implementation in Denoising Diffusion Probabilistic "
+"Models: Create sinusoidal timestep embeddings."
+msgstr ""
+
+#: 04ee88f2b8ca4a6892db1b56cc48bdd2
+#: diffsynth.models.svd_unet.get_timestep_embedding:3 of
+msgid "a 1-D Tensor of N indices, one per batch element. These may be fractional."
+msgstr ""
+
+#: 094db3ac3fa64614b3ce62be0ba6d8be
+#: diffsynth.models.svd_unet.get_timestep_embedding:5 of
+msgid ""
+"the dimension of the output. :param max_period: controls the minimum "
+"frequency of the"
+msgstr ""
+
+#: 17d3fa4efe304f6591a60708551909ac
+#: diffsynth.models.svd_unet.get_timestep_embedding:6 of
+msgid "embeddings. :return: an [N x dim] Tensor of positional embeddings."
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:232 e369127a3def4e6f8b72b9d536d6a67d
+msgid "diffsynth.models.svd\\_vae\\_decoder module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:240 4b470d67511d4168bd8a9508510fc7b6
+msgid "diffsynth.models.svd\\_vae\\_encoder module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:248 0bbb6349c81144c5a270af02aa03f011
+msgid "diffsynth.models.tiler module"
+msgstr ""
+
+#: ../../source/diffsynth.models.rst:256 02a23a557b4b479f9114c74616263235
+msgid "Module contents"
+msgstr ""
+

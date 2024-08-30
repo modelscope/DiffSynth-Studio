@@ -1,0 +1,69 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2024, ModelScope
+# This file is distributed under the same license as the DiffSynth-Studio
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: DiffSynth-Studio \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-08-30 22:34+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: ../../source/diffsynth.extensions.FastBlend.runners.rst:2
+#: f78877b8f2a94505b3e41955cc2baca7
+msgid "diffsynth.extensions.FastBlend.runners package"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.runners.rst:5
+#: 21da069f005b4aa085e6cdb3f4eac281
+msgid "Submodules"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.runners.rst:8
+#: 4e1b2766ca8d4a7bb76be602bbba561d
+msgid "diffsynth.extensions.FastBlend.runners.accurate module"
+msgstr ""
+
+#: 0901c9e9350041779426efe3aace3e8c 539e683b9a364ca1baaee3a936cf3f03
+#: diffsynth.extensions.FastBlend.runners.accurate.AccurateModeRunner:1
+#: diffsynth.extensions.FastBlend.runners.balanced.BalancedModeRunner:1
+#: diffsynth.extensions.FastBlend.runners.fast.FastModeRunner:1
+#: diffsynth.extensions.FastBlend.runners.fast.TableManager:1
+#: diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeRunner:1
+#: diffsynth.extensions.FastBlend.runners.interpolation.InterpolationModeSingleFrameRunner:1
+#: e8e8826591d744afa9076c1a98c20ba8 ec125a82b440463eb541bdaa289fc277
+#: fb4460089d5341cd9e557128df5be02d fc4f812af02d49069b16b826ed4f7879 of
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.runners.rst:16
+#: 253358d919804164a6b8ef6106a16cdc
+msgid "diffsynth.extensions.FastBlend.runners.balanced module"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.runners.rst:24
+#: c189d1d4a4ec4e48a49da403215268c0
+msgid "diffsynth.extensions.FastBlend.runners.fast module"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.runners.rst:32
+#: cbdd8a5b3be4402996d55d93d93c05ce
+msgid "diffsynth.extensions.FastBlend.runners.interpolation module"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.runners.rst:40
+#: 9345097c0fb444d1961a7352a40806c7
+msgid "Module contents"
+msgstr ""
+

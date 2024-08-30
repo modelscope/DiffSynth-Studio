@@ -1,0 +1,37 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2024, ModelScope
+# This file is distributed under the same license as the DiffSynth-Studio
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: DiffSynth-Studio \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-08-31 01:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: ../../source/GetStarted/a_simple_example.md:1
+#: b99f7064b3c643a694d4e38c0a444603
+msgid "Installation and Usage"
+msgstr "安装与使用"
+
+#: ../../source/GetStarted/a_simple_example.md:3
+#: dc37f349fe424229a3dfaacd75b89268
+msgid "Wheel Package Installation"
+msgstr "轮子"
+
+#: ../../source/GetStarted/a_simple_example.md:5
+#: 35c26641a9624e179428635bae65cf44
+msgid "You can use pip to install:"
+msgstr "pip"
+

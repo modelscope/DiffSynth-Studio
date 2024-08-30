@@ -1,0 +1,69 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2024, ModelScope
+# This file is distributed under the same license as the DiffSynth-Studio
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: DiffSynth-Studio \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-08-30 22:34+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: ../../source/diffsynth.extensions.RIFE.rst:2
+#: 69e15d6a28fe4e92bf045e24bd0362d8
+msgid "diffsynth.extensions.RIFE package"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.RIFE.rst:5
+#: 5cf45185c84943fabdbc078d7be00abf
+msgid "Module contents"
+msgstr ""
+
+#: 051ff9b2bf274480b22db6e62fdef6ff 6aa54a126f7940b89d89ee539aaf6758
+#: diffsynth.extensions.RIFE.IFBlock:1 diffsynth.extensions.RIFE.IFNet:1 of
+msgid "Bases: :py:class:`~torch.nn.modules.module.Module`"
+msgstr ""
+
+#: 48efe1df9457428eba32655e06d2899f 51ef4ded311043078b463c32510c1cfe
+#: diffsynth.extensions.RIFE.IFBlock.forward:1
+#: diffsynth.extensions.RIFE.IFNet.forward:1 of
+msgid "Define the computation performed at every call."
+msgstr ""
+
+#: 37b4d149e4d24a098b2dab7813555746 736a9ed8e8e84990b5673dba9189143a
+#: diffsynth.extensions.RIFE.IFBlock.forward:3
+#: diffsynth.extensions.RIFE.IFNet.forward:3 of
+msgid "Should be overridden by all subclasses."
+msgstr ""
+
+#: 57ac608be3e443d999c4c6d14b7407d2 dde5803e8c874cc8ab7254008716d3d3
+#: diffsynth.extensions.RIFE.IFBlock.forward:6
+#: diffsynth.extensions.RIFE.IFNet.forward:6 of
+msgid ""
+"Although the recipe for forward pass needs to be defined within this "
+"function, one should call the :class:`Module` instance afterwards instead"
+" of this since the former takes care of running the registered hooks "
+"while the latter silently ignores them."
+msgstr ""
+
+#: 2e8b2cd606e345718b3897804f2933c3 8e4c54c867e64636b5ce2e6d865c5225
+#: diffsynth.extensions.RIFE.IFNetStateDictConverter:1
+#: diffsynth.extensions.RIFE.RIFEInterpolater:1 of
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: cb4534896adf4b0d9bdec94f8aca27f0 diffsynth.extensions.RIFE.RIFESmoother:1 of
+msgid "Bases: :py:class:`~diffsynth.extensions.RIFE.RIFEInterpolater`"
+msgstr ""
+

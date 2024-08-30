@@ -1,0 +1,76 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2024, ModelScope
+# This file is distributed under the same license as the DiffSynth-Studio
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: DiffSynth-Studio \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-08-30 22:34+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: ../../source/diffsynth.extensions.FastBlend.rst:2
+#: d49bf201d4c445ed90bba46e1cf471cc
+msgid "diffsynth.extensions.FastBlend package"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.rst:5
+#: 815e8aa9c8804cf1ab92fe2e14628971
+msgid "Subpackages"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.rst:13
+#: 8d8ef8e70fce405683ce3d61710bdb47
+msgid "Submodules"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.rst:16
+#: 922303e83e4f456980c73258a0c431f9
+msgid "diffsynth.extensions.FastBlend.api module"
+msgstr ""
+
+#: 402dc20c33d340af80c8991f391355f6 5e0924879e914867939dededaba5452a
+#: 784b76579a054d08a0e53bbdc30650a7 7a27593dc583462bbd778345d9714654
+#: 81137e6f735d41338fcb1c36309f098e 87e53d3cb48d491a9922200aa5060cb5
+#: de695da0ed784a13b6d7a8932aa48b1f
+#: diffsynth.extensions.FastBlend.FastBlendSmoother:1
+#: diffsynth.extensions.FastBlend.api.KeyFrameMatcher:1
+#: diffsynth.extensions.FastBlend.data.LowMemoryImageFolder:1
+#: diffsynth.extensions.FastBlend.data.LowMemoryVideo:1
+#: diffsynth.extensions.FastBlend.data.VideoData:1
+#: diffsynth.extensions.FastBlend.patch_match.PatchMatcher:1
+#: diffsynth.extensions.FastBlend.patch_match.PyramidPatchMatcher:1 of
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.rst:24
+#: 1d96755e058944c7b6153a10d49c749d
+msgid "diffsynth.extensions.FastBlend.cupy\\_kernels module"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.rst:32
+#: 029460ddac4247e1a5a6840406cacb9a
+msgid "diffsynth.extensions.FastBlend.data module"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.rst:40
+#: d9d478f72f3e4506a0a8ec487650d163
+msgid "diffsynth.extensions.FastBlend.patch\\_match module"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.FastBlend.rst:48
+#: f25bede932e4412fa7c1858115795dff
+msgid "Module contents"
+msgstr ""
+

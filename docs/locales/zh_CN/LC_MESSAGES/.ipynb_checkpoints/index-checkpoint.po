@@ -1,0 +1,44 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2024, ModelScope
+# This file is distributed under the same license as the DiffSynth-Studio
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: DiffSynth-Studio \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-08-30 22:34+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: ../../source/.ipynb_checkpoints/index-checkpoint.rst:14
+msgid "Contents:"
+msgstr ""
+
+#: ../../source/.ipynb_checkpoints/index-checkpoint.rst:18
+msgid "API Docs"
+msgstr ""
+
+#: ../../source/.ipynb_checkpoints/index-checkpoint.rst:7
+#: d1dbec10f2684647b789cd8383ac69fe
+msgid "DiffSynth-Studio documentation"
+msgstr ""
+
+#: ../../source/.ipynb_checkpoints/index-checkpoint.rst:9
+#: efce0f8c93e6493ea5b5cc811492451b
+msgid ""
+"Add your content using ``reStructuredText`` syntax. See the "
+"`reStructuredText <https://www.sphinx-"
+"doc.org/en/master/usage/restructuredtext/index.html>`_ documentation for "
+"details."
+msgstr ""
+

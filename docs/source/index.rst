@@ -15,11 +15,13 @@ documentation for details.
    :maxdepth: 2
    :caption: Contents:
 
+   GetStarted/a_simple_example.md
+
+
 .. toctree::
    :maxdepth: 1
    :caption: API Docs
 
-   diffsynth.configs.rst
    diffsynth.configs.rst
    diffsynth.controlnets.rst
    diffsynth.data.rst

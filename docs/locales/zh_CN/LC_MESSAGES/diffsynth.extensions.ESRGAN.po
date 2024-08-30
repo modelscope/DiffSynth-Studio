@@ -1,0 +1,65 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2024, ModelScope
+# This file is distributed under the same license as the DiffSynth-Studio
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: DiffSynth-Studio \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-08-30 22:34+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: ../../source/diffsynth.extensions.ESRGAN.rst:2
+#: 42ee4496cf9f41f696fc1345081c7f0c
+msgid "diffsynth.extensions.ESRGAN package"
+msgstr ""
+
+#: ../../source/diffsynth.extensions.ESRGAN.rst:5
+#: ac48da8c63bf49be95a2a1199e19b804
+msgid "Module contents"
+msgstr ""
+
+#: 958326ef666841309cbc35eacacee83d 9bd14ea8732641838478f918c16791ed
+#: a5b09b7c3aa34267a769cb21ef6c1a7a c4b10817b66f4e11bd51ce52d019cd75
+#: diffsynth.extensions.ESRGAN.ESRGAN:1 diffsynth.extensions.ESRGAN.RRDB:1
+#: diffsynth.extensions.ESRGAN.RRDBNet:1
+#: diffsynth.extensions.ESRGAN.ResidualDenseBlock:1 of
+msgid "Bases: :py:class:`~torch.nn.modules.module.Module`"
+msgstr ""
+
+#: 14eb0ca2974d404e815b9ff5adab0829 47e3a356afa648298609c4ad3c46c009
+#: dff5d3765b3740de82758582e51e00ab diffsynth.extensions.ESRGAN.RRDB.forward:1
+#: diffsynth.extensions.ESRGAN.RRDBNet.forward:1
+#: diffsynth.extensions.ESRGAN.ResidualDenseBlock.forward:1 of
+msgid "Define the computation performed at every call."
+msgstr ""
+
+#: 4029e7e0fb144fa590e2bd0ed551b046 67aac90cb24d4e129a0c171a0d5d4658
+#: bbc198a26e0047738c721c83962cb236 diffsynth.extensions.ESRGAN.RRDB.forward:3
+#: diffsynth.extensions.ESRGAN.RRDBNet.forward:3
+#: diffsynth.extensions.ESRGAN.ResidualDenseBlock.forward:3 of
+msgid "Should be overridden by all subclasses."
+msgstr ""
+
+#: 359ab872037f4231830a479ad967bbf2 a18430b79b6a432cb41c185d4978d916
+#: b88799209adc4f9f8fe83cf104367e56 diffsynth.extensions.ESRGAN.RRDB.forward:6
+#: diffsynth.extensions.ESRGAN.RRDBNet.forward:6
+#: diffsynth.extensions.ESRGAN.ResidualDenseBlock.forward:6 of
+msgid ""
+"Although the recipe for forward pass needs to be defined within this "
+"function, one should call the :class:`Module` instance afterwards instead"
+" of this since the former takes care of running the registered hooks "
+"while the latter silently ignores them."
+msgstr ""
+

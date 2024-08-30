@@ -1,0 +1,107 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2024, ModelScope
+# This file is distributed under the same license as the DiffSynth-Studio
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: DiffSynth-Studio \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-08-30 22:34+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#: ../../source/diffsynth.pipelines.rst:2 31686549cb344137bfaaf84863c9d6f6
+msgid "diffsynth.pipelines package"
+msgstr ""
+
+#: ../../source/diffsynth.pipelines.rst:5 649c0a04f5d0457db618706aa58a58af
+msgid "Submodules"
+msgstr ""
+
+#: ../../source/diffsynth.pipelines.rst:8 ffa3031cb89247ca9042742800e64e1d
+msgid "diffsynth.pipelines.base module"
+msgstr ""
+
+#: 233bfa3e431a4a8db3afa6be0d43dd33 diffsynth.pipelines.base.BasePipeline:1 of
+msgid "Bases: :py:class:`~torch.nn.modules.module.Module`"
+msgstr ""
+
+#: ../../source/diffsynth.pipelines.rst:16 1a9c6189943a4ad5be5e79d09fe86077
+msgid "diffsynth.pipelines.dancer module"
+msgstr ""
+
+#: ../../source/diffsynth.pipelines.rst:24 6e77cc25e5874098aa2ae36235a4b479
+msgid "diffsynth.pipelines.hunyuan\\_image module"
+msgstr ""
+
+#: 3614ee0bfba146189c11bdb80c9f332c 86dbc3eb28984eb49684a8eeba4b2346
+#: 9a88cec6be1945ccb7ee72527cd5dfcf dc450732056b4c4293ca624f97106b00
+#: diffsynth.pipelines.hunyuan_image.HunyuanDiTImagePipeline:1
+#: diffsynth.pipelines.sd3_image.SD3ImagePipeline:1
+#: diffsynth.pipelines.sd_image.SDImagePipeline:1
+#: diffsynth.pipelines.sdxl_image.SDXLImagePipeline:1
+#: diffsynth.pipelines.svd_video.SVDVideoPipeline:1
+#: f601ee6d37e946b086a7bfbf3066add9 of
+msgid "Bases: :py:class:`~diffsynth.pipelines.base.BasePipeline`"
+msgstr ""
+
+#: 9690ec8691d84a01a6ebd10ecaa5e952
+#: diffsynth.pipelines.hunyuan_image.ImageSizeManager:1
+#: diffsynth.pipelines.pipeline_runner.SDVideoPipelineRunner:1
+#: diffsynth.pipelines.svd_video.SVDCLIPImageProcessor:1
+#: fd1bc01727d44441b25d54142b4bbf15 fef0b33ad9e74d8d81f0a54429fa9f10 of
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: ../../source/diffsynth.pipelines.rst:32 cd4d9d74c4304d5c9317b00e4555a8ce
+msgid "diffsynth.pipelines.pipeline\\_runner module"
+msgstr ""
+
+#: ../../source/diffsynth.pipelines.rst:40 96fd52e11a4b4d229f4510a9fe5a1296
+msgid "diffsynth.pipelines.sd3\\_image module"
+msgstr ""
+
+#: ../../source/diffsynth.pipelines.rst:48 1ecc7ba3b96544338520df1760683545
+msgid "diffsynth.pipelines.sd\\_image module"
+msgstr ""
+
+#: ../../source/diffsynth.pipelines.rst:56 a763bd85aaf24cf48867a22e6df302c1
+msgid "diffsynth.pipelines.sd\\_video module"
+msgstr ""
+
+#: 7a5aa55dee244ee5940c17492d4bd8d1
+#: diffsynth.pipelines.sd_video.SDVideoPipeline:1 of
+msgid "Bases: :py:class:`~diffsynth.pipelines.sd_image.SDImagePipeline`"
+msgstr ""
+
+#: ../../source/diffsynth.pipelines.rst:64 37f406d214b54d2ebba1352566b52630
+msgid "diffsynth.pipelines.sdxl\\_image module"
+msgstr ""
+
+#: ../../source/diffsynth.pipelines.rst:72 b4709ffff272496b85a11afde5c93c73
+msgid "diffsynth.pipelines.sdxl\\_video module"
+msgstr ""
+
+#: a335487b9876485c93cfe71f19ba97e3
+#: diffsynth.pipelines.sdxl_video.SDXLVideoPipeline:1 of
+msgid "Bases: :py:class:`~diffsynth.pipelines.sdxl_image.SDXLImagePipeline`"
+msgstr ""
+
+#: ../../source/diffsynth.pipelines.rst:80 54d2441c8fdf4c63897ad59b0c7b88a9
+msgid "diffsynth.pipelines.svd\\_video module"
+msgstr ""
+
+#: ../../source/diffsynth.pipelines.rst:88 1d148f33a7394bb0b2d4d4eb25327d45
+msgid "Module contents"
+msgstr ""
+
