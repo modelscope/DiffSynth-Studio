@@ -15,6 +15,7 @@ DiffSynth Studio is a Diffusion engine. We have restructured architectures inclu
 
 Until now, DiffSynth Studio has supported the following models:
 
+* [CogVideo](https://huggingface.co/THUDM/CogVideoX-5b)
 * [FLUX](https://huggingface.co/black-forest-labs/FLUX.1-dev)
 * [ExVideo](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
 * [Kolors](https://huggingface.co/Kwai-Kolors/Kolors)
@@ -119,6 +120,12 @@ download_from_huggingface("Kwai-Kolors/Kolors", "vae/diffusion_pytorch_model.fp1
 ```
 
 ### Video Synthesis
+
+#### Text-t0-video using CogVideoX-5B
+
+CogVideoX-5B is released by ZhiPu. We provide an improved pipeline, supporting text-to-video, video editing, self-upscaling and video interpolation. [examples/video_synthesis](./examples/video_synthesis/)
+
+https://github.com/user-attachments/assets/ede02a7a-247b-4af9-a817-91cde683fd9a
 
 #### Long Video Synthesis
 

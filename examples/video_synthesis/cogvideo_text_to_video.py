@@ -1,7 +1,5 @@
-from diffsynth import ModelManager, save_video, VideoData, load_state_dict, hash_state_dict_keys, download_models
-from diffsynth.pipelines.cog_video import CogVideoPipeline
+from diffsynth import ModelManager, save_video, VideoData, download_models, CogVideoPipeline
 from diffsynth.extensions.RIFE import RIFEInterpolater
-from diffsynth.extensions.ESRGAN import ESRGAN
 import torch, os
 os.environ["TOKENIZERS_PARALLELISM"] = "True"
 
@@ -55,7 +53,7 @@ def interpolate_video(model_manager):
 
 
 
-download_models(["CogVideoX-5B", "ESRGAN_x4", "RIFE"])
+download_models(["CogVideoX-5B", "RIFE"])
 
 model_manager = ModelManager(torch_dtype=torch.bfloat16)
 model_manager.load_models([
@@ -63,31 +61,9 @@ model_manager.load_models([
     "models/CogVideo/CogVideoX-5b/transformer",
     "models/CogVideo/CogVideoX-5b/vae/diffusion_pytorch_model.safetensors",
     "models/RIFE/flownet.pkl",
-    "models/ESRGAN/RealESRGAN_x4.pth",
 ])
 
+generate_a_dog(model_manager)
+add_a_blue_collar(model_manager)
+self_upscale(model_manager)
 interpolate_video(model_manager)
-
-
-
-
-
-
-
-
-
-
-# prompt = "a dog is running."
-# negative_prompt = "black, yellow"
-
-# torch.manual_seed(0)
-# input_video = VideoData("video_dog.mp4", height=480*2, width=720*2)
-# video = pipe(
-#     prompt=prompt,
-#     negative_prompt=negative_prompt,
-#     input_video=input_video, denoising_strength=0.5,
-#     height=480*2, width=720*2,
-#     cfg_scale=7.0,
-#     num_inference_steps=5
-# )
-# save_video(video, "output__.mp4", fps=8, quality=5)
