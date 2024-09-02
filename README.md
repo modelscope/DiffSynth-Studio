@@ -121,7 +121,7 @@ download_from_huggingface("Kwai-Kolors/Kolors", "vae/diffusion_pytorch_model.fp1
 
 ### Video Synthesis
 
-#### Text-t0-video using CogVideoX-5B
+#### Text-to-video using CogVideoX-5B
 
 CogVideoX-5B is released by ZhiPu. We provide an improved pipeline, supporting text-to-video, video editing, self-upscaling and video interpolation. [examples/video_synthesis](./examples/video_synthesis/)
 
