@@ -32,10 +32,15 @@ from ..models.sdxl_ipadapter import SDXLIpAdapter, IpAdapterXLCLIPImageEmbedder
 from ..models.hunyuan_dit_text_encoder import HunyuanDiTCLIPTextEncoder, HunyuanDiTT5TextEncoder
 from ..models.hunyuan_dit import HunyuanDiT
 
-
 from ..models.flux_dit import FluxDiT
 from ..models.flux_text_encoder import FluxTextEncoder1, FluxTextEncoder2
 from ..models.flux_vae import FluxVAEEncoder, FluxVAEDecoder
+
+from ..models.cog_vae import CogVAEEncoder, CogVAEDecoder
+from ..models.cog_dit import CogDiT
+
+from ..extensions.RIFE import IFNet
+from ..extensions.ESRGAN import RRDBNet
 
 
 
@@ -70,7 +75,10 @@ model_loader_configs = [
     (None, "94eefa3dac9cec93cb1ebaf1747d7b78", ["flux_text_encoder_1"], [FluxTextEncoder1], "diffusers"),
     (None, "1aafa3cc91716fb6b300cc1cd51b85a3", ["flux_vae_encoder", "flux_vae_decoder"], [FluxVAEEncoder, FluxVAEDecoder], "diffusers"),
     (None, "21ea55f476dfc4fd135587abb59dfe5d", ["flux_vae_encoder", "flux_vae_decoder"], [FluxVAEEncoder, FluxVAEDecoder], "civitai"),
-    (None, "a29710fea6dddb0314663ee823598e50", ["flux_dit"], [FluxDiT], "civitai")
+    (None, "a29710fea6dddb0314663ee823598e50", ["flux_dit"], [FluxDiT], "civitai"),
+    (None, "280189ee084bca10f70907bf6ce1649d", ["cog_vae_encoder", "cog_vae_decoder"], [CogVAEEncoder, CogVAEDecoder], "diffusers"),
+    (None, "9b9313d104ac4df27991352fec013fd4", ["rife"], [IFNet], "civitai"),
+    (None, "6b7116078c4170bfbeaedc8fe71f6649", ["esrgan"], [RRDBNet], "civitai"),
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -79,6 +87,7 @@ huggingface_model_loader_configs = [
     ("MarianMTModel", "transformers.models.marian.modeling_marian", "translator", None),
     ("BloomForCausalLM", "transformers.models.bloom.modeling_bloom", "beautiful_prompt", None),
     ("T5EncoderModel", "diffsynth.models.flux_text_encoder", "flux_text_encoder_2", "FluxTextEncoder2"),
+    ("CogVideoXTransformer3DModel", "diffsynth.models.cog_dit", "cog_dit", "CogDiT"),
 ]
 patch_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -264,7 +273,27 @@ preset_models_on_modelscope = {
         ("AI-ModelScope/FLUX.1-dev", "text_encoder_2/model.safetensors.index.json", "models/FLUX/FLUX.1-dev/text_encoder_2"),
         ("AI-ModelScope/FLUX.1-dev", "ae.safetensors", "models/FLUX/FLUX.1-dev"),
         ("AI-ModelScope/FLUX.1-dev", "flux1-dev.safetensors", "models/FLUX/FLUX.1-dev"),
-    ]
+    ],
+    # ESRGAN
+    "ESRGAN_x4": [
+        ("AI-ModelScope/Real-ESRGAN", "RealESRGAN_x4.pth", "models/ESRGAN"),
+    ],
+    # RIFE
+    "RIFE": [
+        ("AI-ModelScope/RIFE", "flownet.pkl", "models/RIFE"),
+    ],
+    # CogVideo
+    "CogVideoX-5B": [
+        ("ZhipuAI/CogVideoX-5b", "text_encoder/config.json", "models/CogVideo/CogVideoX-5b/text_encoder"),
+        ("ZhipuAI/CogVideoX-5b", "text_encoder/model.safetensors.index.json", "models/CogVideo/CogVideoX-5b/text_encoder"),
+        ("ZhipuAI/CogVideoX-5b", "text_encoder/model-00001-of-00002.safetensors", "models/CogVideo/CogVideoX-5b/text_encoder"),
+        ("ZhipuAI/CogVideoX-5b", "text_encoder/model-00002-of-00002.safetensors", "models/CogVideo/CogVideoX-5b/text_encoder"),
+        ("ZhipuAI/CogVideoX-5b", "transformer/config.json", "models/CogVideo/CogVideoX-5b/transformer"),
+        ("ZhipuAI/CogVideoX-5b", "transformer/diffusion_pytorch_model.safetensors.index.json", "models/CogVideo/CogVideoX-5b/transformer"),
+        ("ZhipuAI/CogVideoX-5b", "transformer/diffusion_pytorch_model-00001-of-00002.safetensors", "models/CogVideo/CogVideoX-5b/transformer"),
+        ("ZhipuAI/CogVideoX-5b", "transformer/diffusion_pytorch_model-00002-of-00002.safetensors", "models/CogVideo/CogVideoX-5b/transformer"),
+        ("ZhipuAI/CogVideoX-5b", "vae/diffusion_pytorch_model.safetensors", "models/CogVideo/CogVideoX-5b/vae"),
+    ],
 }
 Preset_model_id: TypeAlias = Literal[
     "HunyuanDiT",
@@ -296,4 +325,7 @@ Preset_model_id: TypeAlias = Literal[
     "ControlNet_union_sdxl_promax",
     "FLUX.1-dev",
     "SDXL_lora_zyd232_ChineseInkStyle_SDXL_v1_0",
+    "ESRGAN_x4",
+    "RIFE",
+    "CogVideoX-5B",
 ]
