@@ -32,10 +32,16 @@ Until now, DiffSynth Studio has supported the following models:
 
 ## News
 
-- **August 22, 2024** We have implemented an interesting painter that supports all text-to-image models. Now you can create stunning images using the painter, with assistance from AI!
+- **August 22, 2024.** CogVideoX-5B is supported in this project. See [here](/examples/video_synthesis/). We provide several interesting features for this text-to-video model, including
+  - Text to video
+  - Video editing
+  - Self-upscaling
+  - Video interpolation
+
+- **August 22, 2024.** We have implemented an interesting painter that supports all text-to-image models. Now you can create stunning images using the painter, with assistance from AI!
   - Use it in our [WebUI](#usage-in-webui).
 
-- **August 21, 2024** FLUX is supported in DiffSynth-Studio.
+- **August 21, 2024.** FLUX is supported in DiffSynth-Studio.
   - Enable CFG and highres-fix to improve visual quality. See [here](/examples/image_synthesis/README.md)
   - LoRA, ControlNet, and additional models will be available soon.
 
