@@ -7,4 +7,5 @@ imageio[ffmpeg]
 safetensors
 einops
 sentencepiece
+protobuf
 modelscope

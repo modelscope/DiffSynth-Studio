@@ -5,51 +5,48 @@ os.environ["TOKENIZERS_PARALLELISM"] = "True"
 
 
 
-def generate_a_dog(model_manager):
+def text_to_video(model_manager, prompt, seed, output_path):
     pipe = CogVideoPipeline.from_model_manager(model_manager)
-    prompt = "a dog is running."
-    torch.manual_seed(1)
+    torch.manual_seed(seed)
     video = pipe(
         prompt=prompt,
         height=480, width=720,
         cfg_scale=7.0, num_inference_steps=200
     )
-    save_video(video, "video_1.mp4", fps=8, quality=5)
+    save_video(video, output_path, fps=8, quality=5)
 
 
-def add_a_blue_collar(model_manager):
+def edit_video(model_manager, prompt, seed, input_path, output_path):
     pipe = CogVideoPipeline.from_model_manager(model_manager)
-    prompt = "a dog with blue collar."
-    input_video = VideoData(video_file="video_1.mp4")
-    torch.manual_seed(2)
+    input_video = VideoData(video_file=input_path)
+    torch.manual_seed(seed)
     video = pipe(
         prompt=prompt,
         height=480, width=720,
         cfg_scale=7.0, num_inference_steps=200,
         input_video=input_video, denoising_strength=0.7
     )
-    save_video(video, "video_2.mp4", fps=8, quality=5)
+    save_video(video, output_path, fps=8, quality=5)
 
 
-def self_upscale(model_manager):
+def self_upscale(model_manager, prompt, seed, input_path, output_path):
     pipe = CogVideoPipeline.from_model_manager(model_manager)
-    prompt = "a dog with blue collar."
-    input_video = VideoData(video_file="video_2.mp4", height=480*2, width=720*2).raw_data()
-    torch.manual_seed(3)
+    input_video = VideoData(video_file=input_path, height=480*2, width=720*2).raw_data()
+    torch.manual_seed(seed)
     video = pipe(
         prompt=prompt,
         height=480*2, width=720*2,
         cfg_scale=7.0, num_inference_steps=30,
         input_video=input_video, denoising_strength=0.4, tiled=True
     )
-    save_video(video, "video_3.mp4", fps=8, quality=7)
+    save_video(video, output_path, fps=8, quality=7)
 
 
-def interpolate_video(model_manager):
+def interpolate_video(model_manager, input_path, output_path):
     rife = RIFEInterpolater.from_model_manager(model_manager)
-    video = VideoData(video_file="video_3.mp4").raw_data()
+    video = VideoData(video_file=input_path).raw_data()
     video = rife.interpolate(video, num_iter=2)
-    save_video(video, "video_4.mp4", fps=32, quality=5)
+    save_video(video, output_path, fps=32, quality=5)
 
 
 
@@ -63,7 +60,14 @@ model_manager.load_models([
     "models/RIFE/flownet.pkl",
 ])
 
-generate_a_dog(model_manager)
-add_a_blue_collar(model_manager)
-self_upscale(model_manager)
-interpolate_video(model_manager)
+# Example 1
+text_to_video(model_manager, "an astronaut riding a horse on Mars.", 0, "1_video_1.mp4")
+edit_video(model_manager, "a white robot riding a horse on Mars.", 1, "1_video_1.mp4", "1_video_2.mp4")
+self_upscale(model_manager, "a white robot riding a horse on Mars.", 2, "1_video_2.mp4", "1_video_3.mp4")
+interpolate_video(model_manager, "1_video_3.mp4", "1_video_4.mp4")
+
+# Example 2
+text_to_video(model_manager, "a dog is running.", 1, "2_video_1.mp4")
+edit_video(model_manager, "a dog with blue collar.", 2, "2_video_1.mp4", "2_video_2.mp4")
+self_upscale(model_manager, "a dog with blue collar.", 3, "2_video_2.mp4", "2_video_3.mp4")
+interpolate_video(model_manager, "2_video_3.mp4", "2_video_4.mp4")
