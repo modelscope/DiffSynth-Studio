@@ -15,6 +15,7 @@ DiffSynth Studio is a Diffusion engine. We have restructured architectures inclu
 
 Until now, DiffSynth Studio has supported the following models:
 
+* [CogVideo](https://huggingface.co/THUDM/CogVideoX-5b)
 * [FLUX](https://huggingface.co/black-forest-labs/FLUX.1-dev)
 * [ExVideo](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
 * [Kolors](https://huggingface.co/Kwai-Kolors/Kolors)
@@ -31,10 +32,16 @@ Until now, DiffSynth Studio has supported the following models:
 
 ## News
 
-- **August 22, 2024** We have implemented an interesting painter that supports all text-to-image models. Now you can create stunning images using the painter, with assistance from AI!
+- **August 22, 2024.** CogVideoX-5B is supported in this project. See [here](/examples/video_synthesis/). We provide several interesting features for this text-to-video model, including
+  - Text to video
+  - Video editing
+  - Self-upscaling
+  - Video interpolation
+
+- **August 22, 2024.** We have implemented an interesting painter that supports all text-to-image models. Now you can create stunning images using the painter, with assistance from AI!
   - Use it in our [WebUI](#usage-in-webui).
 
-- **August 21, 2024** FLUX is supported in DiffSynth-Studio.
+- **August 21, 2024.** FLUX is supported in DiffSynth-Studio.
   - Enable CFG and highres-fix to improve visual quality. See [here](/examples/image_synthesis/README.md)
   - LoRA, ControlNet, and additional models will be available soon.
 
@@ -119,6 +126,14 @@ download_from_huggingface("Kwai-Kolors/Kolors", "vae/diffusion_pytorch_model.fp1
 ```
 
 ### Video Synthesis
+
+#### Text-to-video using CogVideoX-5B
+
+CogVideoX-5B is released by ZhiPu. We provide an improved pipeline, supporting text-to-video, video editing, self-upscaling and video interpolation. [`examples/video_synthesis`](./examples/video_synthesis/)
+
+The video on the left is generated using the original text-to-video pipeline, while the video on the right is the result after editing and frame interpolation.
+
+https://github.com/user-attachments/assets/26b044c1-4a60-44a4-842f-627ff289d006
 
 #### Long Video Synthesis
 

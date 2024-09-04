@@ -4,6 +4,7 @@ from .sdxl_unet import SDXLUNet
 from .sd_text_encoder import SDTextEncoder
 from .sdxl_text_encoder import SDXLTextEncoder, SDXLTextEncoder2
 from .sd3_dit import SD3DiT
+from .flux_dit import FluxDiT
 from .hunyuan_dit import HunyuanDiT
 
 
@@ -17,6 +18,13 @@ class LoRAFromCivitai:
 
 
     def convert_state_dict(self, state_dict, lora_prefix="lora_unet_", alpha=1.0):
+        for key in state_dict:
+            if ".lora_up" in key:
+                return self.convert_state_dict_up_down(state_dict, lora_prefix, alpha)
+        return self.convert_state_dict_AB(state_dict, lora_prefix, alpha)
+
+
+    def convert_state_dict_up_down(self, state_dict, lora_prefix="lora_unet_", alpha=1.0):
         renamed_lora_prefix = self.renamed_lora_prefix.get(lora_prefix, "")
         state_dict_ = {}
         for key in state_dict:
@@ -35,6 +43,29 @@ class LoRAFromCivitai:
             target_name = key.split(".")[0].replace(lora_prefix, renamed_lora_prefix).replace("_", ".") + ".weight"
             for special_key in self.special_keys:
                 target_name = target_name.replace(special_key, self.special_keys[special_key])
+            state_dict_[target_name] = lora_weight.cpu()
+        return state_dict_
+    
+
+    def convert_state_dict_AB(self, state_dict, lora_prefix="", alpha=1.0, device="cuda", torch_dtype=torch.float16):
+        state_dict_ = {}
+        for key in state_dict:
+            if ".lora_B." not in key:
+                continue
+            if not key.startswith(lora_prefix):
+                continue
+            weight_up = state_dict[key].to(device=device, dtype=torch_dtype)
+            weight_down = state_dict[key.replace(".lora_B.", ".lora_A.")].to(device=device, dtype=torch_dtype)
+            if len(weight_up.shape) == 4:
+                weight_up = weight_up.squeeze(3).squeeze(2)
+                weight_down = weight_down.squeeze(3).squeeze(2)
+                lora_weight = alpha * torch.mm(weight_up, weight_down).unsqueeze(2).unsqueeze(3)
+            else:
+                lora_weight = alpha * torch.mm(weight_up, weight_down)
+            keys = key.split(".")
+            keys.pop(keys.index("lora_B"))
+            target_name = ".".join(keys)
+            target_name = target_name[len(lora_prefix):]
             state_dict_[target_name] = lora_weight.cpu()
         return state_dict_
     
@@ -134,6 +165,23 @@ class SDXLLoRAFromCivitai(LoRAFromCivitai):
         }
         
 
+class FluxLoRAFromCivitai(LoRAFromCivitai):
+    def __init__(self):
+        super().__init__()
+        self.supported_model_classes = [FluxDiT, FluxDiT]
+        self.lora_prefix = ["lora_unet_", "transformer."]
+        self.renamed_lora_prefix = {}
+        self.special_keys = {
+            "single.blocks": "single_blocks",
+            "double.blocks": "double_blocks",
+            "img.attn": "img_attn",
+            "img.mlp": "img_mlp",
+            "img.mod": "img_mod",
+            "txt.attn": "txt_attn",
+            "txt.mlp": "txt_mlp",
+            "txt.mod": "txt_mod",
+        }
+
 
 class GeneralLoRAFromPeft:
     def __init__(self):
@@ -193,3 +241,7 @@ class GeneralLoRAFromPeft:
             except:
                 pass
         return None
+    
+
+def get_lora_loaders():
+    return [SDLoRAFromCivitai(), SDXLLoRAFromCivitai(), GeneralLoRAFromPeft(), FluxLoRAFromCivitai()]

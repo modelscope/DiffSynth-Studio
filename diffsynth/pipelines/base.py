@@ -51,3 +51,12 @@ class BasePipeline(torch.nn.Module):
         noise_pred = self.merge_latents(noise_pred_global, noise_pred_locals, masks, mask_scales)
         return noise_pred
     
+
+    def extend_prompt(self, prompt, local_prompts, masks, mask_scales):
+        extended_prompt_dict = self.prompter.extend_prompt(prompt)
+        prompt = extended_prompt_dict.get("prompt", prompt)
+        local_prompts += extended_prompt_dict.get("prompts", [])
+        masks += extended_prompt_dict.get("masks", [])
+        mask_scales += [5.0] * len(extended_prompt_dict.get("masks", []))
+        return prompt, local_prompts, masks, mask_scales
+    

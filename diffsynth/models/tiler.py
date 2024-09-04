@@ -104,3 +104,77 @@ class TileWorker:
         # Done!
         model_output = model_output.to(device=inference_device, dtype=inference_dtype)
         return model_output
+    
+
+
+class TileWorker2Dto3D:
+    """
+    Process 3D tensors, but only enable TileWorker on 2D.
+    """
+    def __init__(self):
+        pass
+
+
+    def build_mask(self, T, H, W, dtype, device, is_bound, border_width):
+        t = repeat(torch.arange(T), "T -> T H W", T=T, H=H, W=W)
+        h = repeat(torch.arange(H), "H -> T H W", T=T, H=H, W=W)
+        w = repeat(torch.arange(W), "W -> T H W", T=T, H=H, W=W)
+        border_width = (H + W) // 4 if border_width is None else border_width
+        pad = torch.ones_like(h) * border_width
+        mask = torch.stack([
+            pad if is_bound[0] else t + 1,
+            pad if is_bound[1] else T - t,
+            pad if is_bound[2] else h + 1,
+            pad if is_bound[3] else H - h,
+            pad if is_bound[4] else w + 1,
+            pad if is_bound[5] else W - w
+        ]).min(dim=0).values
+        mask = mask.clip(1, border_width)
+        mask = (mask / border_width).to(dtype=dtype, device=device)
+        mask = rearrange(mask, "T H W -> 1 1 T H W")
+        return mask
+
+
+    def tiled_forward(
+        self,
+        forward_fn,
+        model_input,
+        tile_size, tile_stride,
+        tile_device="cpu", tile_dtype=torch.float32,
+        computation_device="cuda", computation_dtype=torch.float32,
+        border_width=None, scales=[1, 1, 1, 1],
+        progress_bar=lambda x:x
+    ):
+        B, C, T, H, W = model_input.shape
+        scale_C, scale_T, scale_H, scale_W = scales
+        tile_size_H, tile_size_W = tile_size
+        tile_stride_H, tile_stride_W = tile_stride
+
+        value = torch.zeros((B, int(C*scale_C), int(T*scale_T), int(H*scale_H), int(W*scale_W)), dtype=tile_dtype, device=tile_device)
+        weight = torch.zeros((1, 1, int(T*scale_T), int(H*scale_H), int(W*scale_W)), dtype=tile_dtype, device=tile_device)
+
+        # Split tasks
+        tasks = []
+        for h in range(0, H, tile_stride_H):
+            for w in range(0, W, tile_stride_W):
+                if (h-tile_stride_H >= 0 and h-tile_stride_H+tile_size_H >= H) or (w-tile_stride_W >= 0 and w-tile_stride_W+tile_size_W >= W):
+                    continue
+                h_, w_ = h + tile_size_H, w + tile_size_W
+                if h_ > H: h, h_ = max(H - tile_size_H, 0), H
+                if w_ > W: w, w_ = max(W - tile_size_W, 0), W
+                tasks.append((h, h_, w, w_))
+
+        # Run
+        for hl, hr, wl, wr in progress_bar(tasks):
+            mask = self.build_mask(
+                int(T*scale_T), int((hr-hl)*scale_H), int((wr-wl)*scale_W),
+                tile_dtype, tile_device,
+                is_bound=(True, True, hl==0, hr>=H, wl==0, wr>=W),
+                border_width=border_width
+            )
+            grid_input = model_input[:, :, :, hl:hr, wl:wr].to(dtype=computation_dtype, device=computation_device)
+            grid_output = forward_fn(grid_input).to(dtype=tile_dtype, device=tile_device)
+            value[:, :, :, int(hl*scale_H):int(hr*scale_H), int(wl*scale_W):int(wr*scale_W)] += grid_output * mask
+            weight[:, :, :, int(hl*scale_H):int(hr*scale_H), int(wl*scale_W):int(wr*scale_W)] += mask
+        value = value / weight
+        return value

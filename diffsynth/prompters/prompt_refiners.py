@@ -1,8 +1,7 @@
 from transformers import AutoTokenizer
 from ..models.model_manager import ModelManager
 import torch
-
-
+from .omost import OmostPromter
 
 class BeautifulPrompt(torch.nn.Module):
     def __init__(self, tokenizer_path=None, model=None, template=""):
@@ -117,8 +116,8 @@ class Translator(torch.nn.Module):
 
 
     @staticmethod
-    def from_model_manager(model_nameger: ModelManager):
-        model, model_path = model_nameger.fetch_model("translator", require_model_path=True)
+    def from_model_manager(model_manager: ModelManager):
+        model, model_path = model_manager.fetch_model("translator", require_model_path=True)
         translator = Translator(tokenizer_path=model_path, model=model)
         return translator
     
