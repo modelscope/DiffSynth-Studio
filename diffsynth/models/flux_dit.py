@@ -464,9 +464,9 @@ class FluxDiTStateDictConverter:
                         name_ = ".".join(names[:2] + [rename_dict_single[middle]] + [suffix[1:]])
                         state_dict_[name_] = param
                     else:
-                        print(name)
+                        pass
                 else:
-                    print(name)
+                    pass
         for name in list(state_dict_.keys()):
             if ".proj_in_besides_attn." in name:
                 name_ = name.replace(".proj_in_besides_attn.", ".linear.")
@@ -570,6 +570,6 @@ class FluxDiTStateDictConverter:
                     rename = f"single_blocks.{names[1]}." + suffix_rename_dict[".".join(names[2:])]
                     state_dict_[rename] = param
             else:
-                print(name)
+                pass
         return state_dict_
                 

@@ -10,7 +10,7 @@ from .sd_text_encoder import SDTextEncoder
 from .sd_unet import SDUNet
 from .sd_vae_encoder import SDVAEEncoder
 from .sd_vae_decoder import SDVAEDecoder
-from .lora import SDLoRAFromCivitai, SDXLLoRAFromCivitai, GeneralLoRAFromPeft
+from .lora import get_lora_loaders
 
 from .sdxl_text_encoder import SDXLTextEncoder, SDXLTextEncoder2
 from .sdxl_unet import SDXLUNet
@@ -403,7 +403,7 @@ class ModelManager:
         if len(state_dict) == 0:
             state_dict = load_state_dict(file_path)
         for model_name, model, model_path in zip(self.model_name, self.model, self.model_path):
-            for lora in [SDLoRAFromCivitai(), SDXLLoRAFromCivitai(), GeneralLoRAFromPeft()]:
+            for lora in get_lora_loaders():
                 match_results = lora.match(model, state_dict)
                 if match_results is not None:
                     print(f"    Adding LoRA to {model_name} ({model_path}).")
