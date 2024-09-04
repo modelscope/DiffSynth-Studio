@@ -6,3 +6,4 @@ from .hunyuan_dit_prompter import HunyuanDiTPrompter
 from .kolors_prompter import KolorsPrompter
 from .flux_prompter import FluxPrompter
 from .omost import OmostPromter
+from .cog_prompter import CogPrompter

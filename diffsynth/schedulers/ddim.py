@@ -3,7 +3,7 @@ import torch, math
 
 class EnhancedDDIMScheduler():
 
-    def __init__(self, num_train_timesteps=1000, beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", prediction_type="epsilon"):
+    def __init__(self, num_train_timesteps=1000, beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", prediction_type="epsilon", rescale_zero_terminal_snr=False):
         self.num_train_timesteps = num_train_timesteps
         if beta_schedule == "scaled_linear":
             betas = torch.square(torch.linspace(math.sqrt(beta_start), math.sqrt(beta_end), num_train_timesteps, dtype=torch.float32))
@@ -11,9 +11,31 @@ class EnhancedDDIMScheduler():
             betas = torch.linspace(beta_start, beta_end, num_train_timesteps, dtype=torch.float32)
         else:
             raise NotImplementedError(f"{beta_schedule} is not implemented")
-        self.alphas_cumprod = torch.cumprod(1.0 - betas, dim=0).tolist()
+        self.alphas_cumprod = torch.cumprod(1.0 - betas, dim=0)
+        if rescale_zero_terminal_snr:
+            self.alphas_cumprod = self.rescale_zero_terminal_snr(self.alphas_cumprod)
+        self.alphas_cumprod = self.alphas_cumprod.tolist()
         self.set_timesteps(10)
         self.prediction_type = prediction_type
+
+
+    def rescale_zero_terminal_snr(self, alphas_cumprod):
+        alphas_bar_sqrt = alphas_cumprod.sqrt()
+
+        # Store old values.
+        alphas_bar_sqrt_0 = alphas_bar_sqrt[0].clone()
+        alphas_bar_sqrt_T = alphas_bar_sqrt[-1].clone()
+
+        # Shift so the last timestep is zero.
+        alphas_bar_sqrt -= alphas_bar_sqrt_T
+
+        # Scale so the first timestep is back to the old value.
+        alphas_bar_sqrt *= alphas_bar_sqrt_0 / (alphas_bar_sqrt_0 - alphas_bar_sqrt_T)
+
+        # Convert alphas_bar_sqrt to betas
+        alphas_bar = alphas_bar_sqrt.square()  # Revert sqrt
+
+        return alphas_bar
 
 
     def set_timesteps(self, num_inference_steps, denoising_strength=1.0):
