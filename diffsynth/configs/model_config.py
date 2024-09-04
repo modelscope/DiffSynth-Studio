@@ -78,8 +78,7 @@ huggingface_model_loader_configs = [
     ("ChatGLMModel", "diffsynth.models.kolors_text_encoder", "kolors_text_encoder", None),
     ("MarianMTModel", "transformers.models.marian.modeling_marian", "translator", None),
     ("BloomForCausalLM", "transformers.models.bloom.modeling_bloom", "beautiful_prompt", None),
-    # ("AutoModelForCausalLM", "transformers","omost_prompt",None),
-    ("LlamaForCausalLM", "transformers.models.llama.modeling_llama","omost_prompt",None),
+    ("LlamaForCausalLM", "transformers.models.llama.modeling_llama", "omost_prompt", None),
     ("T5EncoderModel", "diffsynth.models.flux_text_encoder", "flux_text_encoder_2", "FluxTextEncoder2"),
 ]
 patch_model_loader_configs = [
@@ -222,15 +221,14 @@ preset_models_on_modelscope = {
     ],
     # Omost prompt
     "OmostPrompt":[
-        ("Omost/omost-llama-3-8b-4bits","model-00001-of-00002.safetensors", "models/OmostPrompt/omost-llama-3-8b-4bits"),
-        ("Omost/omost-llama-3-8b-4bits","model-00002-of-00002.safetensors", "models/OmostPrompt/omost-llama-3-8b-4bits"),
-        ("Omost/omost-llama-3-8b-4bits","tokenizer.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
-        ("Omost/omost-llama-3-8b-4bits","tokenizer_config.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),  
-        ("Omost/omost-llama-3-8b-4bits","config.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
-        ("Omost/omost-llama-3-8b-4bits","configuration.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
-        ("Omost/omost-llama-3-8b-4bits","generation_config.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
-        ("Omost/omost-llama-3-8b-4bits","model.safetensors.index.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
-        ("Omost/omost-llama-3-8b-4bits","special_tokens_map.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
+        ("Omost/omost-llama-3-8b-4bits", "model-00001-of-00002.safetensors", "models/OmostPrompt/omost-llama-3-8b-4bits"),
+        ("Omost/omost-llama-3-8b-4bits", "model-00002-of-00002.safetensors", "models/OmostPrompt/omost-llama-3-8b-4bits"),
+        ("Omost/omost-llama-3-8b-4bits", "tokenizer.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
+        ("Omost/omost-llama-3-8b-4bits", "tokenizer_config.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),  
+        ("Omost/omost-llama-3-8b-4bits", "config.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
+        ("Omost/omost-llama-3-8b-4bits", "generation_config.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
+        ("Omost/omost-llama-3-8b-4bits", "model.safetensors.index.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
+        ("Omost/omost-llama-3-8b-4bits", "special_tokens_map.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
     ],
     
     # Translator
@@ -311,5 +309,5 @@ Preset_model_id: TypeAlias = Literal[
     "ControlNet_union_sdxl_promax",
     "FLUX.1-dev",
     "SDXL_lora_zyd232_ChineseInkStyle_SDXL_v1_0",
-    "OmostPrompt"
+    "OmostPrompt",
 ]

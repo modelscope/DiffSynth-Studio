@@ -1,6 +1,4 @@
-
-# from .prompt_refiners import BeautifulPrompt
-from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
+from transformers import AutoTokenizer, TextIteratorStreamer
 import difflib
 import torch
 import numpy as np
@@ -225,10 +223,6 @@ class Canvas:
                 prefixes=component['prefixes'],
                 suffixes=component['suffixes']
             ))
-        
-        import pickle
-        with open("tmp.pkl","wb+") as f:
-            pickle.dump(bag_of_conditions,f)
             
         return dict(
             initial_latent=initial_latent,
@@ -261,10 +255,6 @@ class OmostPromter(torch.nn.Module):
         
     @staticmethod
     def from_model_manager(model_manager: ModelManager):
-        # model, model_path = model_manager.fetch_model("omost", require_model_path=True)
-        # omost = OmostPromter(tokenizer_path=model_path, model=model)
-        # return omost
-        print(model_manager)
         model, model_path = model_manager.fetch_model("omost_prompt", require_model_path=True)
         tokenizer = AutoTokenizer.from_pretrained(model_path)
         omost = OmostPromter(

@@ -1,8 +1,7 @@
-
 import torch
-from diffsynth import download_models,FluxImagePipeline
-from diffsynth.models.model_manager import ModelManager
-from diffsynth.prompters.omost import OmostPromter
+from diffsynth import download_models, ModelManager, OmostPromter, FluxImagePipeline
+
+
 download_models(["OmostPrompt"])
 download_models(["FLUX.1-dev"])
 
@@ -15,10 +14,11 @@ model_manager.load_models([
     "models/FLUX/FLUX.1-dev/flux1-dev.safetensors"
 ])
 
-pipe = FluxImagePipeline.from_model_manager(model_manager,prompt_extender_classes=[OmostPromter])
+pipe = FluxImagePipeline.from_model_manager(model_manager, prompt_extender_classes=[OmostPromter])
 
-negative_prompt = "dark, worst quality, low quality, monochrome, zombie, interlocked fingers, Aissist, dim, fuzzy, depth of Field, nsfw,"
-image = pipe("generate an image of a witch who is releasing ice and fire magic",
-             num_inference_steps=30, embedded_guidance=3.5,
-             negative_prompt=negative_prompt)
+torch.manual_seed(0)
+image = pipe(
+    prompt="an image of a witch who is releasing ice and fire magic",
+    num_inference_steps=30, embedded_guidance=3.5
+)
 image.save("image_omost.jpg")
