@@ -119,7 +119,10 @@ def load_model_from_huggingface_folder(file_path, model_names, model_classes, to
         model = model_class.from_pretrained(file_path, torch_dtype=torch_dtype).eval()
         if torch_dtype == torch.float16 and hasattr(model, "half"):
             model = model.half()
-        model = model.to(device=device)
+        try:
+            model = model.to(device=device)
+        except:
+            pass
         loaded_model_names.append(model_name)
         loaded_models.append(model)
     return loaded_model_names, loaded_models
