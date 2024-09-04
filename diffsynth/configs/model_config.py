@@ -78,6 +78,7 @@ huggingface_model_loader_configs = [
     ("ChatGLMModel", "diffsynth.models.kolors_text_encoder", "kolors_text_encoder", None),
     ("MarianMTModel", "transformers.models.marian.modeling_marian", "translator", None),
     ("BloomForCausalLM", "transformers.models.bloom.modeling_bloom", "beautiful_prompt", None),
+    ("Qwen2ForCausalLM", "transformers.models.qwen2.modeling_qwen2", "qwen_prompt", None),
     ("T5EncoderModel", "diffsynth.models.flux_text_encoder", "flux_text_encoder_2", "FluxTextEncoder2"),
 ]
 patch_model_loader_configs = [
@@ -307,4 +308,5 @@ Preset_model_id: TypeAlias = Literal[
     "ControlNet_union_sdxl_promax",
     "FLUX.1-dev",
     "SDXL_lora_zyd232_ChineseInkStyle_SDXL_v1_0",
+    "QwenPrompt",
 ]
