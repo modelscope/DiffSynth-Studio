@@ -1,6 +1,6 @@
-# Download Models
+# 下载模型
 
-Download the pre-set models. Model IDs can be found in [config file](/diffsynth/configs/model_config.py).
+下载预设模型，模型ID可参考 [config file](/diffsynth/configs/model_config.py).
 
 ```python
 from diffsynth import download_models
@@ -8,7 +8,7 @@ from diffsynth import download_models
 download_models(["FLUX.1-dev", "Kolors"])
 ```
 
-To download non-pre-set models, you can choose models from either the [ModelScope](https://modelscope.cn/models) or [HuggingFace](https://huggingface.co/models) sources.
+下载非预设模型，可以选择 [ModelScope](https://modelscope.cn/models) 和 [HuggingFace](https://huggingface.co/models) 两个下载源中的模型。
 
 ```python
 from diffsynth.models.downloader import download_from_huggingface, download_from_modelscope

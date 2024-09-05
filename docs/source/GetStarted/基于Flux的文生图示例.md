@@ -9,7 +9,6 @@
 
 首先，确保已下载并配置了必要的模型：
 
-
 ```python
 import torch
 from diffsynth import ModelManager, FluxImagePipeline, download_models
