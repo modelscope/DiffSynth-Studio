@@ -74,9 +74,9 @@ class FluxImagePipeline(BasePipeline):
     def __call__(
         self,
         prompt,
-        local_prompts=[],
-        masks=[],
-        mask_scales=[],
+        local_prompts= None,
+        masks= None,        
+        mask_scales= None,
         negative_prompt="",
         cfg_scale=1.0,
         embedded_guidance=0.0,
