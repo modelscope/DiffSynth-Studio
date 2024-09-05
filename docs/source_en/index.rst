@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-DiffSynth-Studio 文档
+DiffSynth-Studio documentation
 ==============================
 
 Add your content using ``reStructuredText`` syntax. See the
@@ -15,7 +15,7 @@ documentation for details.
    :maxdepth: 2
    :caption: Contents:
 
-   GetStarted/基于Flux的文生图示例.md
+   GetStarted/A_simple_example.md
 
 
 .. toctree::

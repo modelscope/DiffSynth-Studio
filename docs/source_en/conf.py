@@ -6,6 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../../diffsynth'))
@@ -42,7 +43,7 @@ source_suffix = ['.rst', '.md']
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 # multi-language docs
-language = 'zh_CN'
+language = 'en'
 locale_dirs = ['../locales/']   # path is example but recommended.
 gettext_compact = False  # optional.
 gettext_uuid = True  # optional.
