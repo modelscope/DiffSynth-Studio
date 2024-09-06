@@ -8,10 +8,10 @@ We have implemented a training framework for text-to-image Diffusion models, ena
 
 Image Examples of fine-tuned LoRA. The prompt is "一只小狗蹦蹦跳跳，周围是姹紫嫣红的鲜花，远处是山脉" (for Chinese models) or "a dog is jumping, flowers around the dog, the background is mountains and clouds" (for English models).
 
-||Kolors|Stable Diffusion 3|Hunyuan-DiT|
-|-|-|-|-|
-|Without LoRA|![image_without_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/9d79ed7a-e8cf-4d98-800a-f182809db318)|![image_without_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/ddb834a5-6366-412b-93dc-6d957230d66e)|![image_without_lora](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/1aa21de5-a992-4b66-b14f-caa44e08876e)|
-|With LoRA|![image_with_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/02f62323-6ee5-4788-97a1-549732dbe4f0)|![image_with_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/8e7b2888-d874-4da4-a75b-11b6b214b9bf)|![image_with_lora](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/83a0a41a-691f-4610-8e7b-d8e17c50a282)|
+||FLUX.1-dev|Kolors|Stable Diffusion 3|Hunyuan-DiT|
+|-|-|-|-|-|
+|Without LoRA|![image_without_lora](https://github.com/user-attachments/assets/df62cef6-d54f-4e3d-a602-5dd290079d49)|![image_without_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/9d79ed7a-e8cf-4d98-800a-f182809db318)|![image_without_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/ddb834a5-6366-412b-93dc-6d957230d66e)|![image_without_lora](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/1aa21de5-a992-4b66-b14f-caa44e08876e)|
+|With LoRA|![image_with_lora](https://github.com/user-attachments/assets/4fd39890-0291-4d19-8a88-d70d0ae18533)|![image_with_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/02f62323-6ee5-4788-97a1-549732dbe4f0)|![image_with_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/8e7b2888-d874-4da4-a75b-11b6b214b9bf)|![image_with_lora](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/83a0a41a-691f-4610-8e7b-d8e17c50a282)|
 
 ## Install additional packages
 
@@ -97,6 +97,78 @@ General options:
                         Model ID on ModelScope (https://www.modelscope.cn/). The model will be uploaded to ModelScope automatically if you provide a Model ID.
   --modelscope_access_token MODELSCOPE_ACCESS_TOKEN
                         Access key on ModelScope (https://www.modelscope.cn/). Required if you want to upload the model to ModelScope.
+```
+
+### FLUX
+
+The following files will be used for constructing FLUX. You can download them from [huggingface](https://huggingface.co/black-forest-labs/FLUX.1-dev) or [modelscope](https://www.modelscope.cn/models/ai-modelscope/flux.1-dev). You can use the following code to download these files:
+
+```python
+from diffsynth import download_models
+
+download_models(["FLUX.1-dev"])
+```
+
+```
+models/FLUX/
+└── FLUX.1-dev
+    ├── ae.safetensors
+    ├── flux1-dev.safetensors
+    ├── text_encoder
+    │   └── model.safetensors
+    └── text_encoder_2
+        ├── config.json
+        ├── model-00001-of-00002.safetensors
+        ├── model-00002-of-00002.safetensors
+        └── model.safetensors.index.json
+```
+
+Launch the training task using the following command:
+
+```
+CUDA_VISIBLE_DEVICES="0" python examples/train/flux/train_flux_lora.py \
+  --pretrained_text_encoder_path models/FLUX/FLUX.1-dev/text_encoder/model.safetensors \
+  --pretrained_text_encoder_2_path models/FLUX/FLUX.1-dev/text_encoder_2 \
+  --pretrained_dit_path models/FLUX/FLUX.1-dev/flux1-dev.safetensors \
+  --pretrained_vae_path models/FLUX/FLUX.1-dev/ae.safetensors \
+  --dataset_path data/dog \
+  --output_path ./models \
+  --max_epochs 1 \
+  --steps_per_epoch 500 \
+  --height 1024 \
+  --width 1024 \
+  --center_crop \
+  --precision "bf16" \
+  --learning_rate 1e-4 \
+  --lora_rank 4 \
+  --lora_alpha 4 \
+  --use_gradient_checkpointing
+```
+
+For more information about the parameters, please use `python examples/train/flux/train_flux_lora.py -h` to see the details.
+
+After training, use `model_manager.load_lora` to load the LoRA for inference.
+
+```python
+from diffsynth import ModelManager, FluxImagePipeline
+import torch
+
+model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
+                             file_path_list=[
+                                 "models/FLUX/FLUX.1-dev/text_encoder/model.safetensors",
+                                 "models/FLUX/FLUX.1-dev/text_encoder_2",
+                                 "models/FLUX/FLUX.1-dev/ae.safetensors",
+                                 "models/FLUX/FLUX.1-dev/flux1-dev.safetensors"
+                             ])
+model_manager.load_lora("models/lightning_logs/version_0/checkpoints/epoch=0-step=500.ckpt", lora_alpha=1.0)
+pipe = SDXLImagePipeline.from_model_manager(model_manager)
+
+torch.manual_seed(0)
+image = pipe(
+    prompt=prompt,
+    num_inference_steps=30, embedded_guidance=3.5
+)
+image.save("image_with_lora.jpg")
 ```
 
 ### Kolors

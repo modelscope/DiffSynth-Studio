@@ -185,10 +185,19 @@ class FluxLoRAFromCivitai(LoRAFromCivitai):
 
 class GeneralLoRAFromPeft:
     def __init__(self):
-        self.supported_model_classes = [SDUNet, SDXLUNet, SD3DiT, HunyuanDiT]
+        self.supported_model_classes = [SDUNet, SDXLUNet, SD3DiT, HunyuanDiT, FluxDiT]
 
 
-    def convert_state_dict(self, state_dict, alpha=1.0, device="cuda", torch_dtype=torch.float16):
+    def fetch_device_dtype_from_state_dict(self, state_dict):
+        device, torch_dtype = None, None
+        for name, param in state_dict.items():
+            device, torch_dtype = param.device, param.dtype
+            break
+        return device, torch_dtype
+
+
+    def convert_state_dict(self, state_dict, alpha=1.0, target_state_dict={}):
+        device, torch_dtype = self.fetch_device_dtype_from_state_dict(target_state_dict)
         state_dict_ = {}
         for key in state_dict:
             if ".lora_B." not in key:
@@ -202,25 +211,26 @@ class GeneralLoRAFromPeft:
             else:
                 lora_weight = alpha * torch.mm(weight_up, weight_down)
             keys = key.split(".")
-            keys.pop(keys.index("lora_B") + 1)
+            if len(keys) > keys.index("lora_B") + 2:
+                keys.pop(keys.index("lora_B") + 1)
             keys.pop(keys.index("lora_B"))
             target_name = ".".join(keys)
+            if target_name not in target_state_dict:
+                return {}
             state_dict_[target_name] = lora_weight.cpu()
         return state_dict_
     
 
     def load(self, model, state_dict_lora, lora_prefix="", alpha=1.0, model_resource=""):
         state_dict_model = model.state_dict()
-        for name, param in state_dict_model.items():
-            torch_dtype = param.dtype
-            device = param.device
-            break
-        state_dict_lora = self.convert_state_dict(state_dict_lora, alpha=alpha, device=device, torch_dtype=torch_dtype)
+        state_dict_lora = self.convert_state_dict(state_dict_lora, alpha=alpha, target_state_dict=state_dict_model)
         if len(state_dict_lora) > 0:
             print(f"    {len(state_dict_lora)} tensors are updated.")
             for name in state_dict_lora:
                 state_dict_model[name] += state_dict_lora[name].to(
-                    dtype=state_dict_model[name].dtype, device=state_dict_model[name].device)
+                    dtype=state_dict_model[name].dtype,
+                    device=state_dict_model[name].device
+                )
             model.load_state_dict(state_dict_model)
     
 
@@ -230,13 +240,8 @@ class GeneralLoRAFromPeft:
                 continue
             state_dict_model = model.state_dict()
             try:
-                state_dict_lora_ = self.convert_state_dict(state_dict_lora, alpha=1.0)
-                if len(state_dict_lora_) == 0:
-                    continue
-                for name in state_dict_lora_:
-                    if name not in state_dict_model:
-                        break
-                else:
+                state_dict_lora_ = self.convert_state_dict(state_dict_lora, alpha=1.0, target_state_dict=state_dict_model)
+                if len(state_dict_lora_) > 0:
                     return "", ""
             except:
                 pass
