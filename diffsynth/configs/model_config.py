@@ -86,6 +86,7 @@ huggingface_model_loader_configs = [
     ("ChatGLMModel", "diffsynth.models.kolors_text_encoder", "kolors_text_encoder", None),
     ("MarianMTModel", "transformers.models.marian.modeling_marian", "translator", None),
     ("BloomForCausalLM", "transformers.models.bloom.modeling_bloom", "beautiful_prompt", None),
+    ("Qwen2ForCausalLM", "transformers.models.qwen2.modeling_qwen2", "qwen_prompt", None),
     ("LlamaForCausalLM", "transformers.models.llama.modeling_llama", "omost_prompt", None),
     ("T5EncoderModel", "diffsynth.models.flux_text_encoder", "flux_text_encoder_2", "FluxTextEncoder2"),
     ("CogVideoXTransformer3DModel", "diffsynth.models.cog_dit", "cog_dit", "CogDiT"),
@@ -219,6 +220,17 @@ preset_models_on_modelscope = {
     "RIFE": [
         ("Damo_XR_Lab/cv_rife_video-frame-interpolation", "flownet.pkl", "models/RIFE"),
     ],
+    # Qwen Prompt
+    "QwenPrompt": [
+        ("qwen/Qwen2-1.5B-Instruct", "config.json", "models/QwenPrompt/qwen2-1.5b-instruct"),
+        ("qwen/Qwen2-1.5B-Instruct", "generation_config.json", "models/QwenPrompt/qwen2-1.5b-instruct"),
+        ("qwen/Qwen2-1.5B-Instruct", "model.safetensors", "models/QwenPrompt/qwen2-1.5b-instruct"),
+        ("qwen/Qwen2-1.5B-Instruct", "special_tokens_map.json", "models/QwenPrompt/qwen2-1.5b-instruct"),
+        ("qwen/Qwen2-1.5B-Instruct", "tokenizer.json", "models/QwenPrompt/qwen2-1.5b-instruct"),
+        ("qwen/Qwen2-1.5B-Instruct", "tokenizer_config.json", "models/QwenPrompt/qwen2-1.5b-instruct"),
+        ("qwen/Qwen2-1.5B-Instruct", "merges.txt", "models/QwenPrompt/qwen2-1.5b-instruct"),
+        ("qwen/Qwen2-1.5B-Instruct", "vocab.json", "models/QwenPrompt/qwen2-1.5b-instruct"),
+    ],
     # Beautiful Prompt
     "BeautifulPrompt": [
         ("AI-ModelScope/pai-bloom-1b1-text2prompt-sd", "config.json", "models/BeautifulPrompt/pai-bloom-1b1-text2prompt-sd"),
@@ -338,6 +350,7 @@ Preset_model_id: TypeAlias = Literal[
     "ControlNet_union_sdxl_promax",
     "FLUX.1-dev",
     "SDXL_lora_zyd232_ChineseInkStyle_SDXL_v1_0",
+    "QwenPrompt",
     "OmostPrompt",
     "ESRGAN_x4",
     "RIFE",
