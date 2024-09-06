@@ -129,7 +129,7 @@ class Canvas:
         self.suffixes = []
         return
 
-    def set_global_description(self, description: str, detailed_descriptions: list[str], tags: str,
+    def set_global_description(self, description: str, detailed_descriptions: list, tags: str,
                                HTML_web_color_name: str):
         assert isinstance(description, str), 'Global description is not valid!'
         assert isinstance(detailed_descriptions, list) and all(isinstance(item, str) for item in detailed_descriptions), \
