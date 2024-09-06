@@ -151,7 +151,7 @@ class Canvas:
         return
 
     def add_local_description(self, location: str, offset: str, area: str, distance_to_viewer: float, description: str,
-                              detailed_descriptions: list[str], tags: str, atmosphere: str, style: str,
+                              detailed_descriptions: list, tags: str, atmosphere: str, style: str,
                               quality_meta: str, HTML_web_color_name: str):
         assert isinstance(description, str), 'Local description is wrong!'
         assert isinstance(distance_to_viewer, (int, float)) and distance_to_viewer > 0, \
@@ -264,7 +264,7 @@ class OmostPromter(torch.nn.Module):
         return omost
     
     
-    def __call__(self,prompt_dict:dict):
+    def __call__(self,prompt_dict: dict):
         raw_prompt=prompt_dict["prompt"]
         conversation = [{"role": "system", "content": self.template}]
         conversation.append({"role": "user", "content": raw_prompt})
