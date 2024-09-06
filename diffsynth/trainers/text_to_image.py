@@ -152,7 +152,7 @@ def add_general_parsers(parser):
         "--precision",
         type=str,
         default="16-mixed",
-        choices=["32", "16", "16-mixed"],
+        choices=["32", "16", "16-mixed", "bf16"],
         help="Training precision",
     )
     parser.add_argument(
