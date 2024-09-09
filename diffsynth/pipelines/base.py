@@ -66,14 +66,19 @@ class BasePipeline(torch.nn.Module):
         self.cpu_offload = True
 
     def load_models_to_device(self, loadmodel_names=[]):
+        # only load models to device if cpu_offload is enabled
+        if not self.cpu_offload:
+            return
+        # offload the unneeded models to cpu
         for model_name in self.model_names:
+            if model_name not in loadmodel_names:
+                model = getattr(self, model_name)
+                if model is not None:
+                    model.cpu()
+        # load the needed models to device
+        for model_name in loadmodel_names:
             model = getattr(self, model_name)
-            # cannot find model
-            if model is None:
-                continue
-            # found the model
-            if model_name in loadmodel_names:
+            if model is not None:
                 model.to(self.device)
-            else:
-                model.cpu()
+        # fresh the cuda cache
         torch.cuda.empty_cache()
