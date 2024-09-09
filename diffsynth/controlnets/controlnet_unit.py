@@ -23,6 +23,14 @@ class MultiControlNetManager:
         self.models = [unit.model for unit in controlnet_units]
         self.scales = [unit.scale for unit in controlnet_units]
 
+    def cpu(self):
+        for model in self.models:
+            model.cpu()
+
+    def to(self, device):
+        for model in self.models:
+            model.to(device)
+    
     def process_image(self, image, processor_id=None):
         if processor_id is None:
             processed_image = [processor(image) for processor in self.processors]

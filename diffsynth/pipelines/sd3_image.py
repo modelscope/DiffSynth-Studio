@@ -20,6 +20,7 @@ class SD3ImagePipeline(BasePipeline):
         self.dit: SD3DiT = None
         self.vae_decoder: SD3VAEDecoder = None
         self.vae_encoder: SD3VAEEncoder = None
+        self.model_names = ['text_encoder_1', 'text_encoder_2', 'text_encoder_3', 'dit', 'vae_decoder', 'vae_encoder']
 
 
     def denoising_model(self):
@@ -38,9 +39,9 @@ class SD3ImagePipeline(BasePipeline):
 
 
     @staticmethod
-    def from_model_manager(model_manager: ModelManager, prompt_refiner_classes=[]):
+    def from_model_manager(model_manager: ModelManager, prompt_refiner_classes=[], device=None):
         pipe = SD3ImagePipeline(
-            device=model_manager.device,
+            device=model_manager.device if device is None else device,
             torch_dtype=model_manager.torch_dtype,
         )
         pipe.fetch_models(model_manager, prompt_refiner_classes)
@@ -97,6 +98,7 @@ class SD3ImagePipeline(BasePipeline):
 
         # Prepare latent tensors
         if input_image is not None:
+            self.load_models_to_device(['vae_encoder'])
             image = self.preprocess_image(input_image).to(device=self.device, dtype=self.torch_dtype)
             latents = self.encode_image(image, **tiler_kwargs)
             noise = torch.randn((1, 16, height//8, width//8), device=self.device, dtype=self.torch_dtype)
@@ -105,11 +107,13 @@ class SD3ImagePipeline(BasePipeline):
             latents = torch.randn((1, 16, height//8, width//8), device=self.device, dtype=self.torch_dtype)
 
         # Encode prompts
+        self.load_models_to_device(['text_encoder_1', 'text_encoder_2', 'text_encoder_3'])
         prompt_emb_posi = self.encode_prompt(prompt, positive=True)
         prompt_emb_nega = self.encode_prompt(negative_prompt, positive=False)
         prompt_emb_locals = [self.encode_prompt(prompt_local) for prompt_local in local_prompts]
 
         # Denoise
+        self.load_models_to_device(['dit'])
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.unsqueeze(0).to(self.device)
 
@@ -131,6 +135,9 @@ class SD3ImagePipeline(BasePipeline):
                 progress_bar_st.progress(progress_id / len(self.scheduler.timesteps))
         
         # Decode image
+        self.load_models_to_device(['vae_decoder'])
         image = self.decode_image(latents, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
 
+        # offload all models
+        self.load_models_to_device([])
         return image

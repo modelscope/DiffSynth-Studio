@@ -135,6 +135,7 @@ class HunyuanDiTImagePipeline(BasePipeline):
         self.dit: HunyuanDiT = None
         self.vae_decoder: SDXLVAEDecoder = None
         self.vae_encoder: SDXLVAEEncoder = None
+        self.model_names = ['text_encoder', 'text_encoder_t5', 'dit', 'vae_decoder', 'vae_encoder']
 
 
     def denoising_model(self):
@@ -153,9 +154,9 @@ class HunyuanDiTImagePipeline(BasePipeline):
 
 
     @staticmethod
-    def from_model_manager(model_manager: ModelManager, prompt_refiner_classes=[]):
+    def from_model_manager(model_manager: ModelManager, prompt_refiner_classes=[], device=None):
         pipe = HunyuanDiTImagePipeline(
-            device=model_manager.device,
+            device=model_manager.device if device is None else device,
             torch_dtype=model_manager.torch_dtype,
         )
         pipe.fetch_models(model_manager, prompt_refiner_classes)
@@ -234,6 +235,7 @@ class HunyuanDiTImagePipeline(BasePipeline):
         # Prepare latent tensors
         noise = torch.randn((1, 4, height//8, width//8), device=self.device, dtype=self.torch_dtype)
         if input_image is not None:
+            self.load_models_to_device(['vae_encoder'])
             image = self.preprocess_image(input_image).to(device=self.device, dtype=torch.float32)
             latents = self.vae_encoder(image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(self.torch_dtype)
             latents = self.scheduler.add_noise(latents, noise, timestep=self.scheduler.timesteps[0])
@@ -241,6 +243,7 @@ class HunyuanDiTImagePipeline(BasePipeline):
             latents = noise.clone()
 
         # Encode prompts
+        self.load_models_to_device(['text_encoder', 'text_encoder_t5'])
         prompt_emb_posi = self.encode_prompt(prompt, clip_skip=clip_skip, clip_skip_2=clip_skip_2, positive=True)
         if cfg_scale != 1.0:
             prompt_emb_nega = self.encode_prompt(negative_prompt, clip_skip=clip_skip, clip_skip_2=clip_skip_2, positive=True)
@@ -250,6 +253,7 @@ class HunyuanDiTImagePipeline(BasePipeline):
         extra_input = self.prepare_extra_input(latents, tiled, tile_size)
 
         # Denoise
+        self.load_models_to_device(['dit'])
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = torch.tensor([timestep]).to(dtype=self.torch_dtype, device=self.device)
 
@@ -273,6 +277,9 @@ class HunyuanDiTImagePipeline(BasePipeline):
                 progress_bar_st.progress(progress_id / len(self.scheduler.timesteps))
         
         # Decode image
+        self.load_models_to_device(['vae_decoder'])
         image = self.decode_image(latents.to(torch.float32), tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
 
+        # Offload all models
+        self.load_models_to_device([])
         return image
