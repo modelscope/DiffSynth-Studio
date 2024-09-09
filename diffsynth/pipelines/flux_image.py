@@ -19,6 +19,7 @@ class FluxImagePipeline(BasePipeline):
         self.dit: FluxDiT = None
         self.vae_decoder: FluxVAEDecoder = None
         self.vae_encoder: FluxVAEEncoder = None
+        self.model_names = ['text_encoder_1', 'text_encoder_2', 'dit', 'vae_decoder', 'vae_encoder']
 
 
     def denoising_model(self):
@@ -37,9 +38,9 @@ class FluxImagePipeline(BasePipeline):
 
 
     @staticmethod
-    def from_model_manager(model_manager: ModelManager, prompt_refiner_classes=[],prompt_extender_classes=[]):
+    def from_model_manager(model_manager: ModelManager, prompt_refiner_classes=[], prompt_extender_classes=[], device=None):
         pipe = FluxImagePipeline(
-            device=model_manager.device,
+            device=model_manager.device if device is None else device,
             torch_dtype=model_manager.torch_dtype,
         )
         pipe.fetch_models(model_manager, prompt_refiner_classes,prompt_extender_classes)
@@ -99,6 +100,7 @@ class FluxImagePipeline(BasePipeline):
 
         # Prepare latent tensors
         if input_image is not None:
+            self.load_models_to_device(['vae_encoder'])
             image = self.preprocess_image(input_image).to(device=self.device, dtype=self.torch_dtype)
             latents = self.encode_image(image, **tiler_kwargs)
             noise = torch.randn((1, 16, height//8, width//8), device=self.device, dtype=self.torch_dtype)
@@ -107,6 +109,7 @@ class FluxImagePipeline(BasePipeline):
             latents = torch.randn((1, 16, height//8, width//8), device=self.device, dtype=self.torch_dtype)
 
         # Extend prompt
+        self.load_models_to_device(['text_encoder_1', 'text_encoder_2'])
         prompt, local_prompts, masks, mask_scales = self.extend_prompt(prompt, local_prompts, masks, mask_scales)
 
         # Encode prompts
@@ -119,6 +122,7 @@ class FluxImagePipeline(BasePipeline):
         extra_input = self.prepare_extra_input(latents, guidance=embedded_guidance)
 
         # Denoise
+        self.load_models_to_device(['dit'])
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.unsqueeze(0).to(self.device)
 
@@ -143,6 +147,9 @@ class FluxImagePipeline(BasePipeline):
                 progress_bar_st.progress(progress_id / len(self.scheduler.timesteps))
         
         # Decode image
+        self.load_models_to_device(['vae_decoder'])
         image = self.decode_image(latents, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
 
+        # Offload all models
+        self.load_models_to_device([])
         return image

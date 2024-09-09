@@ -10,6 +10,8 @@ class BasePipeline(torch.nn.Module):
         super().__init__()
         self.device = device
         self.torch_dtype = torch_dtype
+        self.cpu_offload = False
+        self.model_names = []
 
 
     def preprocess_image(self, image):
@@ -60,3 +62,23 @@ class BasePipeline(torch.nn.Module):
         mask_scales += [5.0] * len(extended_prompt_dict.get("masks", []))
         return prompt, local_prompts, masks, mask_scales
     
+    def enable_cpu_offload(self):
+        self.cpu_offload = True
+
+    def load_models_to_device(self, loadmodel_names=[]):
+        # only load models to device if cpu_offload is enabled
+        if not self.cpu_offload:
+            return
+        # offload the unneeded models to cpu
+        for model_name in self.model_names:
+            if model_name not in loadmodel_names:
+                model = getattr(self, model_name)
+                if model is not None:
+                    model.cpu()
+        # load the needed models to device
+        for model_name in loadmodel_names:
+            model = getattr(self, model_name)
+            if model is not None:
+                model.to(self.device)
+        # fresh the cuda cache
+        torch.cuda.empty_cache()
