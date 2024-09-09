@@ -55,11 +55,14 @@ class BasePipeline(torch.nn.Module):
     
 
     def extend_prompt(self, prompt, local_prompts, masks, mask_scales):
+        local_prompts = local_prompts or []
+        masks = masks or []
+        mask_scales = mask_scales or []
         extended_prompt_dict = self.prompter.extend_prompt(prompt)
         prompt = extended_prompt_dict.get("prompt", prompt)
         local_prompts += extended_prompt_dict.get("prompts", [])
         masks += extended_prompt_dict.get("masks", [])
-        mask_scales += [5.0] * len(extended_prompt_dict.get("masks", []))
+        mask_scales += [100.0] * len(extended_prompt_dict.get("masks", []))
         return prompt, local_prompts, masks, mask_scales
     
     def enable_cpu_offload(self):

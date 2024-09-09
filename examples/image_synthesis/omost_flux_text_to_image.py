@@ -14,11 +14,22 @@ model_manager.load_models([
     "models/FLUX/FLUX.1-dev/flux1-dev.safetensors"
 ])
 
-pipe = FluxImagePipeline.from_model_manager(model_manager, prompt_extender_classes=[OmostPromter])
+pipe_omost = FluxImagePipeline.from_model_manager(model_manager, prompt_extender_classes=[OmostPromter])
+pipe = FluxImagePipeline.from_model_manager(model_manager)
 
-torch.manual_seed(0)
-image = pipe(
-    prompt="an image of a witch who is releasing ice and fire magic",
+prompt = "A witch uses ice magic to fight against wild beasts"
+seed = 7
+
+torch.manual_seed(seed)
+image = pipe_omost(
+    prompt=prompt,
     num_inference_steps=30, embedded_guidance=3.5
 )
-image.save("image_omost.jpg")
+image.save(f"image_omost.jpg")
+
+torch.manual_seed(seed)
+image2= pipe(
+    prompt=prompt,
+    num_inference_steps=30, embedded_guidance=3.5
+)
+image2.save(f"image.jpg")

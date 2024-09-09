@@ -37,9 +37,9 @@ def tokenize_long_prompt(tokenizer, prompt, max_length=None):
 
 
 class BasePrompter:
-    def __init__(self, refiners=[], extenders=[]):
-        self.refiners = refiners
-        self.extenders = extenders
+    def __init__(self):
+        self.refiners = []
+        self.extenders = []
 
 
     def load_prompt_refiners(self, model_manager: ModelManager, refiner_classes=[]):
