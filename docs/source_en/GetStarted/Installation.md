@@ -1,16 +1,24 @@
 # Installation
 
+## From Source
 
-Install from source code:
+1. Clone the source repository:
 
-```
-git clone https://github.com/modelscope/DiffSynth-Studio.git
-cd DiffSynth-Studio
-pip install -e .
-```
+    ```bash
+    git clone https://github.com/modelscope/DiffSynth-Studio.git
+    ```
 
-Or install from pypi:
+2. Navigate to the project directory and install:
 
-```
+    ```bash
+    cd DiffSynth-Studio
+    pip install -e .
+    ```
+
+## From PyPI
+
+Install directly via PyPI:
+
+```bash
 pip install diffsynth
 ```

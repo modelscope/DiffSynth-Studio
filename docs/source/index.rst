@@ -15,7 +15,17 @@ documentation for details.
    :maxdepth: 2
    :caption: Contents:
 
-   GetStarted/基于Flux的文生图示例.md
+   GetStarted/A_simple_example.md
+   GetStarted/Download_models.md
+   GetStarted/ModelManager.md
+   GetStarted/Models.md
+   GetStarted/Pipelines.md
+   GetStarted/PromptProcessing.md
+   GetStarted/Schedulers.md
+   GetStarted/Fine-tuning.md
+   GetStarted/Extensions.md
+   GetStarted/WebUI.md
+
 
 
 .. toctree::

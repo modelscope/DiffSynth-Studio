@@ -12,10 +12,19 @@ documentation for details.
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    GetStarted/A_simple_example.md
+   GetStarted/Download_models.md
+   GetStarted/ModelManager.md
+   GetStarted/Models.md
+   GetStarted/Pipelines.md
+   GetStarted/PromptProcessing.md
+   GetStarted/Schedulers.md
+   GetStarted/Fine-tuning.md
+   GetStarted/Extensions.md
+   GetStarted/WebUI.md
 
 
 .. toctree::
