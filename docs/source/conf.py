@@ -28,7 +28,8 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.imgmath',
     'sphinx.ext.viewcode',
-    'recommonmark'
+    'recommonmark',
+    'sphinx_markdown_tables'
 ]
 
 templates_path = ['_templates']

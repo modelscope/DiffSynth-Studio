@@ -1,3 +1,4 @@
 recommonmark
 sphinx_rtd_theme
 myst-parser
+sphinx-markdown-tables
