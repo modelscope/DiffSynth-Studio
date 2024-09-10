@@ -1,7 +1,3 @@
-# Prompt Processing
-
-
-
 # 提示词（Prompt）处理
 
 DiffSynth 内置了提示词处理功能，分为：
