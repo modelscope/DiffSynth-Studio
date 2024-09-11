@@ -6,28 +6,30 @@
 DiffSynth-Studio 文档
 ==============================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
-
+欢迎来到 DiffSynth-Studio，我们旨在构建 Diffusion 模型的开源互联生态，在这里，你可以体验到 AIGC（AI Generated Content）技术魔法般的魅力！
 
 .. toctree::
    :maxdepth: 1
-   :caption: Contents:
+   :caption: 快速开始
 
-   GetStarted/A_simple_example.md
-   GetStarted/Download_models.md
-   GetStarted/ModelManager.md
-   GetStarted/Models.md
-   GetStarted/Pipelines.md
-   GetStarted/PromptProcessing.md
-   GetStarted/Schedulers.md
-   GetStarted/Fine-tuning.md
-   GetStarted/Extensions.md
-   GetStarted/WebUI.md
-
-
+   tutorial/ASimpleExample.md
+   tutorial/Installation.md
+   tutorial/DownloadModels.md
+   tutorial/Models.md
+   tutorial/Pipelines.md
+   tutorial/PromptProcessing.md
+   tutorial/Extensions.md
+   tutorial/Schedulers.md
 
 .. toctree::
    :maxdepth: 1
-   :caption: API Docs
+   :caption: 微调
+
+   finetune/overview.md
+   finetune/train_flux_lora.md
+   finetune/train_kolors_lora.md
+   finetune/train_sd3_lora.md
+   finetune/train_hunyuan_dit_lora.md
+   finetune/train_sdxl_lora.md
+   finetune/train_sd_lora.md
+   
