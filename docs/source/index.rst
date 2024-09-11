@@ -23,6 +23,13 @@ DiffSynth-Studio 文档
 
 .. toctree::
    :maxdepth: 1
+   :caption: 开启创作之旅
+
+   creating/BasicImageSynthesis.md
+   creating/AdaptersForImageSynthesis.md
+
+.. toctree::
+   :maxdepth: 1
    :caption: 微调
 
    finetune/overview.md
