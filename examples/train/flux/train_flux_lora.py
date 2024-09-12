@@ -1,5 +1,6 @@
 from diffsynth import ModelManager, FluxImagePipeline
 from diffsynth.trainers.text_to_image import LightningModelForT2ILoRA, add_general_parsers, launch_training_task
+from diffsynth.models.lora import FluxLoRAConverter
 import torch, os, argparse
 os.environ["TOKENIZERS_PARALLELISM"] = "True"
 
@@ -9,9 +10,10 @@ class LightningModel(LightningModelForT2ILoRA):
         self,
         torch_dtype=torch.float16, pretrained_weights=[],
         learning_rate=1e-4, use_gradient_checkpointing=True,
-        lora_rank=4, lora_alpha=4, lora_target_modules="to_q,to_k,to_v,to_out"
+        lora_rank=4, lora_alpha=4, lora_target_modules="to_q,to_k,to_v,to_out",
+        state_dict_converter=None,
     ):
-        super().__init__(learning_rate=learning_rate, use_gradient_checkpointing=use_gradient_checkpointing)
+        super().__init__(learning_rate=learning_rate, use_gradient_checkpointing=use_gradient_checkpointing, state_dict_converter=state_dict_converter)
         # Load models
         model_manager = ModelManager(torch_dtype=torch_dtype, device=self.device)
         model_manager.load_models(pretrained_weights)
@@ -58,6 +60,12 @@ def parse_args():
         default="a_to_qkv,b_to_qkv,ff_a.0,ff_a.2,ff_b.0,ff_b.2,a_to_out,b_to_out,proj_out,norm.linear,norm1_a.linear,norm1_b.linear,to_qkv_mlp",
         help="Layers with LoRA modules.",
     )
+    parser.add_argument(
+        "--align_to_opensource_format",
+        default=False,
+        action="store_true",
+        help="Whether to export lora files aligned with other opensource format.",
+    )
     parser = add_general_parsers(parser)
     args = parser.parse_args()
     return args
@@ -72,6 +80,7 @@ if __name__ == '__main__':
         use_gradient_checkpointing=args.use_gradient_checkpointing,
         lora_rank=args.lora_rank,
         lora_alpha=args.lora_alpha,
-        lora_target_modules=args.lora_target_modules
+        lora_target_modules=args.lora_target_modules,
+        state_dict_converter=FluxLoRAConverter().align_to_opensource_format if args.align_to_opensource_format else None,
     )
     launch_training_task(model, args)

@@ -142,8 +142,11 @@ CUDA_VISIBLE_DEVICES="0" python examples/train/flux/train_flux_lora.py \
   --learning_rate 1e-4 \
   --lora_rank 4 \
   --lora_alpha 4 \
-  --use_gradient_checkpointing
+  --use_gradient_checkpointing \
+  --align_to_opensource_format
 ```
+
+**`--align_to_opensource_format` means that this script will export the LoRA weights in the opensource format. This format can be loaded in both DiffSynth-Studio and other codebases.**
 
 For more information about the parameters, please use `python examples/train/flux/train_flux_lora.py -h` to see the details.
 
@@ -165,7 +168,7 @@ pipe = SDXLImagePipeline.from_model_manager(model_manager)
 
 torch.manual_seed(0)
 image = pipe(
-    prompt=prompt,
+    prompt="a dog is jumping, flowers around the dog, the background is mountains and clouds",
     num_inference_steps=30, embedded_guidance=3.5
 )
 image.save("image_with_lora.jpg")

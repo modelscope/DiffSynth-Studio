@@ -11,11 +11,13 @@ class LightningModelForT2ILoRA(pl.LightningModule):
         self,
         learning_rate=1e-4,
         use_gradient_checkpointing=True,
+        state_dict_converter=None,
     ):
         super().__init__()
         # Set parameters
         self.learning_rate = learning_rate
         self.use_gradient_checkpointing = use_gradient_checkpointing
+        self.state_dict_converter = state_dict_converter
 
 
     def load_models(self):
@@ -83,9 +85,13 @@ class LightningModelForT2ILoRA(pl.LightningModule):
         trainable_param_names = list(filter(lambda named_param: named_param[1].requires_grad, self.pipe.denoising_model().named_parameters()))
         trainable_param_names = set([named_param[0] for named_param in trainable_param_names])
         state_dict = self.pipe.denoising_model().state_dict()
+        lora_state_dict = {}
         for name, param in state_dict.items():
             if name in trainable_param_names:
-                checkpoint[name] = param
+                lora_state_dict[name] = param
+        if self.state_dict_converter is not None:
+            lora_state_dict = self.state_dict_converter(lora_state_dict)
+        checkpoint.update(lora_state_dict)
 
 
 

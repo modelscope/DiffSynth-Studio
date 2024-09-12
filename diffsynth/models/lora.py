@@ -248,5 +248,52 @@ class GeneralLoRAFromPeft:
         return None
     
 
+class FluxLoRAConverter:
+    def __init__(self):
+        pass
+
+    def align_to_opensource_format(self, state_dict, alpha=1.0):
+        prefix_rename_dict = {
+            "single_blocks": "lora_unet_single_blocks",
+            "blocks": "lora_unet_double_blocks",
+        }
+        middle_rename_dict = {
+            "norm.linear": "modulation_lin",
+            "to_qkv_mlp": "linear1",
+            "proj_out": "linear2",
+
+            "norm1_a.linear": "img_mod_lin",
+            "norm1_b.linear": "txt_mod_lin",
+            "attn.a_to_qkv": "img_attn_qkv",
+            "attn.b_to_qkv": "txt_attn_qkv",
+            "attn.a_to_out": "img_attn_proj",
+            "attn.b_to_out": "txt_attn_proj",
+            "ff_a.0": "img_mlp_0",
+            "ff_a.2": "img_mlp_2",
+            "ff_b.0": "txt_mlp_0",
+            "ff_b.2": "txt_mlp_2",
+        }
+        suffix_rename_dict = {
+            "lora_B.weight": "lora_up.weight",
+            "lora_A.weight": "lora_down.weight",
+        }
+        state_dict_ = {}
+        for name, param in state_dict.items():
+            names = name.split(".")
+            if names[-2] != "lora_A" and names[-2] != "lora_B":
+                names.pop(-2)
+            prefix = names[0]
+            middle = ".".join(names[2:-2])
+            suffix = ".".join(names[-2:])
+            block_id = names[1]
+            if middle not in middle_rename_dict:
+                continue
+            rename = prefix_rename_dict[prefix] + "_" + block_id + "_" + middle_rename_dict[middle] + "." + suffix_rename_dict[suffix]
+            state_dict_[rename] = param
+            if rename.endswith("lora_up.weight"):
+                state_dict_[rename.replace("lora_up.weight", "alpha")] = torch.tensor((alpha,))[0]
+        return state_dict_
+    
+
 def get_lora_loaders():
     return [SDLoRAFromCivitai(), SDXLLoRAFromCivitai(), GeneralLoRAFromPeft(), FluxLoRAFromCivitai()]
