@@ -49,8 +49,6 @@ class FluxPrompter(BasePrompter):
             truncation=True,
         ).input_ids.to(device)
         prompt_emb = text_encoder(input_ids)
-        prompt_emb = prompt_emb.reshape((1, prompt_emb.shape[0]*prompt_emb.shape[1], -1))
-
         return prompt_emb
     
 

@@ -9,6 +9,7 @@ from .dancer import lets_dance_xl
 from typing import List
 import torch
 from tqdm import tqdm
+from einops import repeat
 
 
 
@@ -103,7 +104,8 @@ class SDXLImagePipeline(BasePipeline):
 
     def prepare_extra_input(self, latents=None):
         height, width = latents.shape[2] * 8, latents.shape[3] * 8
-        return {"add_time_id": torch.tensor([height, width, 0, 0, height, width], device=self.device)}
+        add_time_id = torch.tensor([height, width, 0, 0, height, width], device=self.device).repeat(latents.shape[0])
+        return {"add_time_id": add_time_id}
     
 
     @torch.no_grad()
