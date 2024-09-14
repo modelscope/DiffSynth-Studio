@@ -252,7 +252,8 @@ class FluxLoRAConverter:
     def __init__(self):
         pass
 
-    def align_to_opensource_format(self, state_dict, alpha=1.0):
+    @staticmethod
+    def align_to_opensource_format(state_dict, alpha=1.0):
         prefix_rename_dict = {
             "single_blocks": "lora_unet_single_blocks",
             "blocks": "lora_unet_double_blocks",

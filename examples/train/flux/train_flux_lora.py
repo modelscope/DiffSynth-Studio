@@ -81,6 +81,6 @@ if __name__ == '__main__':
         lora_rank=args.lora_rank,
         lora_alpha=args.lora_alpha,
         lora_target_modules=args.lora_target_modules,
-        state_dict_converter=FluxLoRAConverter().align_to_opensource_format if args.align_to_opensource_format else None,
+        state_dict_converter=FluxLoRAConverter.align_to_opensource_format if args.align_to_opensource_format else None,
     )
     launch_training_task(model, args)
