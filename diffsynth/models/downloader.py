@@ -23,12 +23,18 @@ def download_from_modelscope(model_id, origin_file_path, local_dir):
 
 def download_from_huggingface(model_id, origin_file_path, local_dir):
     os.makedirs(local_dir, exist_ok=True)
-    if os.path.basename(origin_file_path) in os.listdir(local_dir):
-        print(f"    {os.path.basename(origin_file_path)} has been already in {local_dir}.")
-        return
+    file_name = os.path.basename(origin_file_path)
+    if file_name in os.listdir(local_dir):
+        return f"{file_name} has already been downloaded to {local_dir}."
     else:
-        print(f"    Start downloading {os.path.join(local_dir, os.path.basename(origin_file_path))}")
-    hf_hub_download(model_id, origin_file_path, local_dir=local_dir)
+        print(f"Start downloading {os.path.join(local_dir, file_name)}")
+        hf_hub_download(model_id, origin_file_path, local_dir=local_dir)
+        
+        downloaded_file_path = os.path.join(local_dir, origin_file_path)
+        target_file_path = os.path.join(local_dir, file_name)
+        if downloaded_file_path != target_file_path:
+            shutil.move(downloaded_file_path, target_file_path)
+            shutil.rmtree(os.path.join(local_dir, origin_file_path.split("/")[0]))
 
 
 Preset_model_website: TypeAlias = Literal[
