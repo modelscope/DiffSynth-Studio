@@ -156,7 +156,7 @@ After training, use `model_manager.load_lora` to load the LoRA for inference.
 from diffsynth import ModelManager, FluxImagePipeline
 import torch
 
-model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
+model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cuda",
                              file_path_list=[
                                  "models/FLUX/FLUX.1-dev/text_encoder/model.safetensors",
                                  "models/FLUX/FLUX.1-dev/text_encoder_2",
@@ -164,7 +164,7 @@ model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
                                  "models/FLUX/FLUX.1-dev/flux1-dev.safetensors"
                              ])
 model_manager.load_lora("models/lightning_logs/version_0/checkpoints/epoch=0-step=500.ckpt", lora_alpha=1.0)
-pipe = SDXLImagePipeline.from_model_manager(model_manager)
+pipe = FluxImagePipeline.from_model_manager(model_manager)
 
 torch.manual_seed(0)
 image = pipe(
