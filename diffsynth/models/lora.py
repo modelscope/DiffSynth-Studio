@@ -77,6 +77,8 @@ class LoRAFromCivitai:
             state_dict_lora = model.__class__.state_dict_converter().from_diffusers(state_dict_lora)
         elif model_resource == "civitai":
             state_dict_lora = model.__class__.state_dict_converter().from_civitai(state_dict_lora)
+        if isinstance(state_dict_lora, tuple):
+            state_dict_lora = state_dict_lora[0]
         if len(state_dict_lora) > 0:
             print(f"    {len(state_dict_lora)} tensors are updated.")
             for name in state_dict_lora:
@@ -96,6 +98,8 @@ class LoRAFromCivitai:
                     converter_fn = model.__class__.state_dict_converter().from_diffusers if model_resource == "diffusers" \
                         else model.__class__.state_dict_converter().from_civitai
                     state_dict_lora_ = converter_fn(state_dict_lora_)
+                    if isinstance(state_dict_lora_, tuple):
+                        state_dict_lora_ = state_dict_lora_[0]
                     if len(state_dict_lora_) == 0:
                         continue
                     for name in state_dict_lora_:
