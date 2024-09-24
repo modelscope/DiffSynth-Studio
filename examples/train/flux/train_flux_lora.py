@@ -19,8 +19,8 @@ class LightningModel(LightningModelForT2ILoRA):
         if quantize is None:
             model_manager.load_models(pretrained_weights)
         else:
-            model_manager.load_models(pretrained_weights[:2]+pretrained_weights[3:])
-            model_manager.load_model(pretrained_weights[2],torch_dtype=quantize)
+            model_manager.load_models(pretrained_weights[1:])
+            model_manager.load_model(pretrained_weights[0], torch_dtype=quantize)
             
         self.pipe = FluxImagePipeline.from_model_manager(model_manager)
         
@@ -79,7 +79,7 @@ def parse_args():
         "--quantize",
         type=str,
         default=None,
-        choices=["None","float8_e4m3fn"],
+        choices=["float8_e4m3fn"],
         help="Whether to use quantization when training the model, and in which format.",
     )
     parser = add_general_parsers(parser)
@@ -91,13 +91,13 @@ if __name__ == '__main__':
     args = parse_args()
     model = LightningModel(
         torch_dtype={"32": torch.float32, "bf16": torch.bfloat16}.get(args.precision, torch.float16),
-        pretrained_weights=[args.pretrained_text_encoder_path, args.pretrained_text_encoder_2_path, args.pretrained_dit_path, args.pretrained_vae_path],
+        pretrained_weights=[args.pretrained_dit_path, args.pretrained_text_encoder_path, args.pretrained_text_encoder_2_path, args.pretrained_vae_path],
         learning_rate=args.learning_rate,
         use_gradient_checkpointing=args.use_gradient_checkpointing,
         lora_rank=args.lora_rank,
         lora_alpha=args.lora_alpha,
         lora_target_modules=args.lora_target_modules,
         state_dict_converter=FluxLoRAConverter.align_to_opensource_format if args.align_to_opensource_format else None,
-        quantize={"None": None, "float8_e4m3fn": torch.float8_e4m3fn}.get(args.quantize, None),
+        quantize={"float8_e4m3fn": torch.float8_e4m3fn}.get(args.quantize, None),
     )
     launch_training_task(model, args)
