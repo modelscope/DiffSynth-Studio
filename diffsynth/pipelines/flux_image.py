@@ -58,9 +58,9 @@ class FluxImagePipeline(BasePipeline):
         return image
     
 
-    def encode_prompt(self, prompt, positive=True):
+    def encode_prompt(self, prompt, positive=True, t5_sequence_length=256):
         prompt_emb, pooled_prompt_emb, text_ids = self.prompter.encode_prompt(
-            prompt, device=self.device, positive=positive
+            prompt, device=self.device, positive=positive, t5_sequence_length=t5_sequence_length
         )
         return {"prompt_emb": prompt_emb, "pooled_prompt_emb": pooled_prompt_emb, "text_ids": text_ids}
     
@@ -86,6 +86,7 @@ class FluxImagePipeline(BasePipeline):
         height=1024,
         width=1024,
         num_inference_steps=30,
+        t5_sequence_length=256,
         tiled=False,
         tile_size=128,
         tile_stride=64,
@@ -113,10 +114,10 @@ class FluxImagePipeline(BasePipeline):
         prompt, local_prompts, masks, mask_scales = self.extend_prompt(prompt, local_prompts, masks, mask_scales)
 
         # Encode prompts
-        prompt_emb_posi = self.encode_prompt(prompt, positive=True)
+        prompt_emb_posi = self.encode_prompt(prompt, t5_sequence_length=t5_sequence_length)
         if cfg_scale != 1.0:
-            prompt_emb_nega = self.encode_prompt(negative_prompt, positive=False)
-        prompt_emb_locals = [self.encode_prompt(prompt_local) for prompt_local in local_prompts]
+            prompt_emb_nega = self.encode_prompt(negative_prompt, positive=False, t5_sequence_length=t5_sequence_length)
+        prompt_emb_locals = [self.encode_prompt(prompt_local, t5_sequence_length=t5_sequence_length) for prompt_local in local_prompts]
 
         # Extra input
         extra_input = self.prepare_extra_input(latents, guidance=embedded_guidance)
