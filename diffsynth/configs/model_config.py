@@ -280,6 +280,9 @@ preset_models_on_modelscope = {
     "ExVideo-SVD-128f-v1": [
         ("ECNU-CILab/ExVideo-SVD-128f-v1", "model.fp16.safetensors", "models/stable_video_diffusion"),
     ],
+    "ExVideo-CogVideoX-LoRA-129f-v1": [
+        ("ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1", "ExVideo-CogVideoX-LoRA-129f-v1.safetensors", "models/lora"),
+    ],
     # Stable Diffusion
     "StableDiffusion_v15": [
         ("AI-ModelScope/stable-diffusion-v1-5", "v1-5-pruned-emaonly.safetensors", "models/stable_diffusion"),
@@ -380,7 +383,6 @@ preset_models_on_modelscope = {
         ("Omost/omost-llama-3-8b-4bits", "model.safetensors.index.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
         ("Omost/omost-llama-3-8b-4bits", "special_tokens_map.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
     ],
-    
     # Translator
     "opus-mt-zh-en": [
         ("moxying/opus-mt-zh-en", "config.json", "models/translator/opus-mt-zh-en"),
@@ -453,6 +455,7 @@ Preset_model_id: TypeAlias = Literal[
     "HunyuanDiT",
     "stable-video-diffusion-img2vid-xt",
     "ExVideo-SVD-128f-v1",
+    "ExVideo-CogVideoX-LoRA-129f-v1",
     "StableDiffusion_v15",
     "DreamShaper_8",
     "AingDiffusion_v12",

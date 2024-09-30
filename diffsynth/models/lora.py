@@ -6,6 +6,7 @@ from .sdxl_text_encoder import SDXLTextEncoder, SDXLTextEncoder2
 from .sd3_dit import SD3DiT
 from .flux_dit import FluxDiT
 from .hunyuan_dit import HunyuanDiT
+from .cog_dit import CogDiT
 
 
 
@@ -189,7 +190,7 @@ class FluxLoRAFromCivitai(LoRAFromCivitai):
 
 class GeneralLoRAFromPeft:
     def __init__(self):
-        self.supported_model_classes = [SDUNet, SDXLUNet, SD3DiT, HunyuanDiT, FluxDiT]
+        self.supported_model_classes = [SDUNet, SDXLUNet, SD3DiT, HunyuanDiT, FluxDiT, CogDiT]
 
 
     def fetch_device_dtype_from_state_dict(self, state_dict):
@@ -301,4 +302,4 @@ class FluxLoRAConverter:
     
 
 def get_lora_loaders():
-    return [SDLoRAFromCivitai(), SDXLLoRAFromCivitai(), GeneralLoRAFromPeft(), FluxLoRAFromCivitai()]
+    return [SDLoRAFromCivitai(), SDXLLoRAFromCivitai(), FluxLoRAFromCivitai(), GeneralLoRAFromPeft()]
