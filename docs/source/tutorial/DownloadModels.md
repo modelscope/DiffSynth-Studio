@@ -1,6 +1,6 @@
 # 下载模型
 
-我们在 DiffSynth-Studio 中预置了一些主流 Diffusion 模型的下载链接，你可以轻松地下载并使用这些模型。
+我们在 DiffSynth-Studio 中预置了一些主流 Diffusion 模型的下载链接，你可以下载并使用这些模型。
 
 ## 下载预置模型
 
@@ -21,10 +21,14 @@ download_models(["FLUX.1-dev"])
 你可以选择 [ModelScope](https://modelscope.cn/models) 和 [HuggingFace](https://huggingface.co/models) 两个下载源中的模型。当然，你也可以通过浏览器等工具选择手动下载自己所需的模型。
 
 ```python
-from diffsynth.models.downloader import download_from_huggingface, download_from_modelscope
+from diffsynth import download_customized_models
 
-# From Modelscope (recommended)
-download_from_modelscope("Kwai-Kolors/Kolors", "vae/diffusion_pytorch_model.fp16.bin", "models/kolors/Kolors/vae")
-# From Huggingface
-download_from_huggingface("Kwai-Kolors/Kolors", "vae/diffusion_pytorch_model.fp16.safetensors", "models/kolors/Kolors/vae")
+download_customized_models(
+    model_id="Kwai-Kolors/Kolors",
+    origin_file_path="vae/diffusion_pytorch_model.fp16.bin",
+    local_dir="models/kolors/Kolors/vae",
+    downloading_priority=["ModelScope", "HuggingFace"]
+)
 ```
+
+在这段代码中，我们将会按照下载的优先级，优先从 `ModelScope` 下载，在 ID 为 `Kwai-Kolors/Kolors` 的[模型库](https://modelscope.cn/models/Kwai-Kolors/Kolors)中，把文件 `vae/diffusion_pytorch_model.fp16.bin` 下载到本地的路径 `models/kolors/Kolors/vae` 中。

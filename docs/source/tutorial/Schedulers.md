@@ -1,6 +1,6 @@
 # 调度器
 
-调度器（Scheduler）控制模型的整个去噪（或采样）过程。在加载 Pipeline 时，DiffSynth 会自动选择最适合当前 Pipeline 的调度器，无需额外配置。
+调度器（Scheduler）控制模型的整个去噪（或采样）过程。在加载 Pipeline 时，DiffSynth 会自动选择最适合当前 Pipeline 的调度器，``无需额外配置``。
 
 我们支持的调度器包括：
 

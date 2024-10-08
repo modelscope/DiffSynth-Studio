@@ -2,7 +2,7 @@
 
 目前为止，DiffSynth Studio 支持的模型如下所示：
 
-* [CogVideo](https://huggingface.co/THUDM/CogVideoX-5b)
+* [CogVideoX](https://huggingface.co/THUDM/CogVideoX-5b)
 * [FLUX](https://huggingface.co/black-forest-labs/FLUX.1-dev)
 * [ExVideo](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
 * [Kolors](https://huggingface.co/Kwai-Kolors/Kolors)
