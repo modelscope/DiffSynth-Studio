@@ -65,7 +65,7 @@ class FluxImagePipeline(BasePipeline):
         return {"prompt_emb": prompt_emb, "pooled_prompt_emb": pooled_prompt_emb, "text_ids": text_ids}
     
 
-    def prepare_extra_input(self, latents=None, guidance=0.0):
+    def prepare_extra_input(self, latents=None, guidance=1.0):
         latent_image_ids = self.dit.prepare_image_ids(latents)
         guidance = torch.Tensor([guidance] * latents.shape[0]).to(device=latents.device, dtype=latents.dtype)
         return {"image_ids": latent_image_ids, "guidance": guidance}
@@ -80,13 +80,13 @@ class FluxImagePipeline(BasePipeline):
         mask_scales= None,
         negative_prompt="",
         cfg_scale=1.0,
-        embedded_guidance=0.0,
+        embedded_guidance=1.0,
         input_image=None,
         denoising_strength=1.0,
         height=1024,
         width=1024,
         num_inference_steps=30,
-        t5_sequence_length=256,
+        t5_sequence_length=512,
         tiled=False,
         tile_size=128,
         tile_stride=64,

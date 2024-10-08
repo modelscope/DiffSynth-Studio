@@ -4,7 +4,7 @@ from torch import Tensor
 from typing_extensions import Literal, TypeAlias
 from typing import List
 
-from .downloader import download_models, Preset_model_id, Preset_model_website
+from .downloader import download_models, download_customized_models, Preset_model_id, Preset_model_website
 
 from .sd_text_encoder import SDTextEncoder
 from .sd_unet import SDUNet
