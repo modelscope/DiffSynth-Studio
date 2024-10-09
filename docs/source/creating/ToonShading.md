@@ -89,4 +89,4 @@ save_video(output_video, "output_video.mp4", fps=30)
 
 ## 效果展示
 
-<video src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/b54c05c5-d747-4709-be5e-b39af82404dd" controls="controls"></video>
+<video width="512" height="1024" src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/b54c05c5-d747-4709-be5e-b39af82404dd" controls="controls"></video>
