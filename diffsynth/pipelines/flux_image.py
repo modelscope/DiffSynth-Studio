@@ -58,7 +58,7 @@ class FluxImagePipeline(BasePipeline):
         return image
     
 
-    def encode_prompt(self, prompt, positive=True, t5_sequence_length=256):
+    def encode_prompt(self, prompt, positive=True, t5_sequence_length=512):
         prompt_emb, pooled_prompt_emb, text_ids = self.prompter.encode_prompt(
             prompt, device=self.device, positive=positive, t5_sequence_length=t5_sequence_length
         )
@@ -80,7 +80,7 @@ class FluxImagePipeline(BasePipeline):
         mask_scales= None,
         negative_prompt="",
         cfg_scale=1.0,
-        embedded_guidance=1.0,
+        embedded_guidance=3.5,
         input_image=None,
         denoising_strength=1.0,
         height=1024,
@@ -90,6 +90,7 @@ class FluxImagePipeline(BasePipeline):
         tiled=False,
         tile_size=128,
         tile_stride=64,
+        seed=None,
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
     ):
@@ -104,10 +105,10 @@ class FluxImagePipeline(BasePipeline):
             self.load_models_to_device(['vae_encoder'])
             image = self.preprocess_image(input_image).to(device=self.device, dtype=self.torch_dtype)
             latents = self.encode_image(image, **tiler_kwargs)
-            noise = torch.randn((1, 16, height//8, width//8), device=self.device, dtype=self.torch_dtype)
+            noise = self.generate_noise((1, 16, height//8, width//8), seed=seed, device=self.device, dtype=self.torch_dtype)
             latents = self.scheduler.add_noise(latents, noise, timestep=self.scheduler.timesteps[0])
         else:
-            latents = torch.randn((1, 16, height//8, width//8), device=self.device, dtype=self.torch_dtype)
+            latents = self.generate_noise((1, 16, height//8, width//8), seed=seed, device=self.device, dtype=self.torch_dtype)
 
         # Extend prompt
         self.load_models_to_device(['text_encoder_1', 'text_encoder_2'])

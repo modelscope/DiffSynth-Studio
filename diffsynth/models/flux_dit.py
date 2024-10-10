@@ -364,6 +364,7 @@ class FluxDiT(torch.nn.Module):
         
         conditioning = self.time_embedder(timestep, hidden_states.dtype) + self.pooled_text_embedder(pooled_prompt_emb)
         if self.guidance_embedder is not None:
+            guidance = guidance * 1000
             conditioning = conditioning + self.guidance_embedder(guidance, hidden_states.dtype)
         prompt_emb = self.context_embedder(prompt_emb)
         image_rotary_emb = self.pos_embedder(torch.cat((text_ids, image_ids), dim=1))
