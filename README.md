@@ -139,10 +139,11 @@ https://github.com/user-attachments/assets/26b044c1-4a60-44a4-842f-627ff289d006
 
 #### Long Video Synthesis
 
-We trained an extended video synthesis model, which can generate 128 frames. [`examples/ExVideo`](./examples/ExVideo/)
+We trained extended video synthesis models, which can generate 128 frames. [`examples/ExVideo`](./examples/ExVideo/)
 
 https://github.com/modelscope/DiffSynth-Studio/assets/35051019/d97f6aa9-8064-4b5b-9d49-ed6001bb9acc
 
+https://github.com/user-attachments/assets/321ee04b-8c17-479e-8a95-8cbcf21f8d7e
 
 #### Toon Shading
 
@@ -166,7 +167,7 @@ LoRA fine-tuning is supported in [`examples/train`](./examples/train/).
 
 |FLUX|Stable Diffusion 3|
 |-|-|
-|![image_1024_cfg](https://github.com/user-attachments/assets/6af5b106-0673-4e58-9213-cd9157eef4c0)|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098)|
+|![image_1024_cfg](https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f)|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098)|
 
 |Kolors|Hunyuan-DiT|
 |-|-|

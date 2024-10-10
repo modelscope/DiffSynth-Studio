@@ -57,7 +57,7 @@ class FluxPrompter(BasePrompter):
         prompt,
         positive=True,
         device="cuda",
-        t5_sequence_length=256,
+        t5_sequence_length=512,
     ):
         prompt = self.process_prompt(prompt, positive=positive)
         
