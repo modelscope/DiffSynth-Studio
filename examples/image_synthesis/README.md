@@ -10,7 +10,7 @@ The original version of FLUX doesn't support classifier-free guidance; however, 
 
 |1024*1024 (original)|1024*1024 (classifier-free guidance)|2048*2048 (highres-fix)|
 |-|-|-|
-|![image_1024](https://github.com/user-attachments/assets/ce01327f-068f-45f5-aba9-0fa45eb26199)|![image_1024_cfg](https://github.com/user-attachments/assets/6af5b106-0673-4e58-9213-cd9157eef4c0)|![image_2048_highres](https://github.com/user-attachments/assets/a4bb776f-d9f0-4450-968c-c5d090a3ab4c)|
+|![image_1024](https://github.com/user-attachments/assets/9cbd1f6f-4ac4-4f8b-bf46-218d812a15a0)|![image_1024_cfg](https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f)|![image_2048_highres](https://github.com/user-attachments/assets/2e92b2f8-c177-454f-84f6-f6f5d3aaeeff)|
 
 ### Example: Stable Diffusion
 
