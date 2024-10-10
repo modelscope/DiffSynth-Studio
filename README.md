@@ -137,10 +137,11 @@ https://github.com/user-attachments/assets/26b044c1-4a60-44a4-842f-627ff289d006
 
 #### Long Video Synthesis
 
-We trained an extended video synthesis model, which can generate 128 frames. [`examples/ExVideo`](./examples/ExVideo/)
+We trained extended video synthesis models, which can generate 128 frames. [`examples/ExVideo`](./examples/ExVideo/)
 
 https://github.com/modelscope/DiffSynth-Studio/assets/35051019/d97f6aa9-8064-4b5b-9d49-ed6001bb9acc
 
+https://github.com/user-attachments/assets/321ee04b-8c17-479e-8a95-8cbcf21f8d7e
 
 #### Toon Shading
 
