@@ -4,10 +4,18 @@ ExVideo is a post-tuning technique aimed at enhancing the capability of video ge
 
 * [Project Page](https://ecnu-cilab.github.io/ExVideoProjectPage/)
 * [Technical report](https://arxiv.org/abs/2406.14130)
-* [Demo](https://huggingface.co/spaces/modelscope/ExVideo-SVD-128f-v1)
-* Extended models
+* **[New]** Extended models (ExVideo-CogVideoX)
+    * [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1)
+    * [ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1)
+* Extended models (ExVideo-SVD)
     * [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
     * [ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-SVD-128f-v1)
+
+## Example: Text-to-video via extended CogVideoX-5B
+
+Generate a video using CogVideoX-5B and our extension module. See [ExVideo_cogvideox_test.py](./ExVideo_cogvideox_test.py).
+
+https://github.com/user-attachments/assets/321ee04b-8c17-479e-8a95-8cbcf21f8d7e
 
 ## Example: Text-to-video via extended Stable Video Diffusion
 
