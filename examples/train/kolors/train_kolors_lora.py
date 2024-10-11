@@ -72,6 +72,7 @@ if __name__ == '__main__':
         use_gradient_checkpointing=args.use_gradient_checkpointing,
         lora_rank=args.lora_rank,
         lora_alpha=args.lora_alpha,
+        init_lora_weights=args.init_lora_weights,
         lora_target_modules=args.lora_target_modules
     )
     launch_training_task(model, args)
