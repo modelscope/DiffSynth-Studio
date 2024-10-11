@@ -10,7 +10,7 @@ class LightningModel(LightningModelForT2ILoRA):
         self,
         torch_dtype=torch.float16, pretrained_weights=[],
         learning_rate=1e-4, use_gradient_checkpointing=True,
-        lora_rank=4, lora_alpha=4, lora_target_modules="to_q,to_k,to_v,to_out", init_lora_weights="gaussian",
+        lora_rank=4, lora_alpha=4, lora_target_modules="to_q,to_k,to_v,to_out", init_lora_weights="kaiming",
         state_dict_converter=None, quantize = None
     ):
         super().__init__(learning_rate=learning_rate, use_gradient_checkpointing=use_gradient_checkpointing, state_dict_converter=state_dict_converter)
