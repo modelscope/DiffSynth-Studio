@@ -12,11 +12,21 @@ class FlowMatchScheduler():
         self.set_timesteps(num_inference_steps)
 
 
-    def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0):
+    def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0, training=False):
         sigma_start = self.sigma_min + (self.sigma_max - self.sigma_min) * denoising_strength
         self.sigmas = torch.linspace(sigma_start, self.sigma_min, num_inference_steps)
         self.sigmas = self.shift * self.sigmas / (1 + (self.shift - 1) * self.sigmas)
-        self.timesteps = self.sigmas * self.num_train_timesteps
+        if training:
+            self.timesteps = torch.linspace(1000, 0, num_inference_steps)
+            
+            # prepare timestep weights
+            x = torch.arange(num_inference_steps, dtype=torch.float32)
+            y = torch.exp(-2 * ((x - num_inference_steps / 2) / num_inference_steps) ** 2)
+            y_shifted = y - y.min()
+            bsmntw_weighing = y_shifted * (num_inference_steps / y_shifted.sum())
+            self.linear_timesteps_weights = bsmntw_weighing
+        else:
+            self.timesteps = self.sigmas * self.num_train_timesteps
 
 
     def step(self, model_output, timestep, sample, to_final=False):
@@ -49,3 +59,9 @@ class FlowMatchScheduler():
     def training_target(self, sample, noise, timestep):
         target = noise - sample
         return target
+    
+
+    def training_weight(self, timestep):
+        timestep_id = torch.argmin((self.timesteps - timestep.to(self.timesteps.device)).abs())
+        weights = self.linear_timesteps_weights[timestep_id]
+        return weights

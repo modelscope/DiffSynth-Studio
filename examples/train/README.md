@@ -123,7 +123,7 @@ models/FLUX/
         └── model.safetensors.index.json
 ```
 
-Launch the training task using the following command:
+Launch the training task using the following command (39G VRAM required):
 
 ```
 CUDA_VISIBLE_DEVICES="0" python examples/train/flux/train_flux_lora.py \
@@ -134,17 +134,19 @@ CUDA_VISIBLE_DEVICES="0" python examples/train/flux/train_flux_lora.py \
   --dataset_path data/dog \
   --output_path ./models \
   --max_epochs 1 \
-  --steps_per_epoch 500 \
+  --steps_per_epoch 100 \
   --height 1024 \
   --width 1024 \
   --center_crop \
   --precision "bf16" \
   --learning_rate 1e-4 \
-  --lora_rank 4 \
-  --lora_alpha 4 \
+  --lora_rank 16 \
+  --lora_alpha 16 \
   --use_gradient_checkpointing \
   --align_to_opensource_format
 ```
+
+By adding parameter `--quantize "float8_e4m3fn"`, you can save approximate 10G VRAM.
 
 **`--align_to_opensource_format` means that this script will export the LoRA weights in the opensource format. This format can be loaded in both DiffSynth-Studio and other codebases.**
 
