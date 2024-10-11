@@ -12,7 +12,7 @@ class FlowMatchScheduler():
         self.set_timesteps(num_inference_steps)
 
 
-    def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0):
+    def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0, training=False):
         sigma_start = self.sigma_min + (self.sigma_max - self.sigma_min) * denoising_strength
         self.sigmas = torch.linspace(sigma_start, self.sigma_min, num_inference_steps)
         self.sigmas = self.shift * self.sigmas / (1 + (self.shift - 1) * self.sigmas)
@@ -49,3 +49,7 @@ class FlowMatchScheduler():
     def training_target(self, sample, noise, timestep):
         target = noise - sample
         return target
+    
+
+    def training_weight(self, timestep):
+        return 1.0

@@ -38,7 +38,7 @@ class EnhancedDDIMScheduler():
         return alphas_bar
 
 
-    def set_timesteps(self, num_inference_steps, denoising_strength=1.0):
+    def set_timesteps(self, num_inference_steps, denoising_strength=1.0, **kwargs):
         # The timesteps are aligned to 999...0, which is different from other implementations,
         # but I think this implementation is more reasonable in theory.
         max_timestep = max(round(self.num_train_timesteps * denoising_strength) - 1, 0)
@@ -99,3 +99,7 @@ class EnhancedDDIMScheduler():
             sqrt_one_minus_alpha_prod = math.sqrt(1 - self.alphas_cumprod[int(timestep.flatten().tolist()[0])])
             target = sqrt_alpha_prod * noise - sqrt_one_minus_alpha_prod * sample
             return target
+        
+    
+    def training_weight(self, timestep):
+        return 1.0
