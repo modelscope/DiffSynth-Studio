@@ -16,7 +16,7 @@ Image Examples of fine-tuned LoRA. The prompt is "一只小狗蹦蹦跳跳，周
 ## Install additional packages
 
 ```
-pip install peft lightning
+pip install peft lightning pandas
 ```
 
 ## Prepare your dataset
