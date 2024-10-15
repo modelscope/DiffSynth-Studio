@@ -1,4 +1,4 @@
-# ControlNet、LoRA、IP-Adapter
+# ControlNet、LoRA、IP-Adapter——精准控制技术
 
 在文生图模型的基础上，还可以使用各种 Adapter 架构的模型对生成过程进行控制。
 

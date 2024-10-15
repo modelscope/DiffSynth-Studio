@@ -1,4 +1,4 @@
-# 当图像模型遇见 AnimateDiff
+# 当图像模型遇见 AnimateDiff——模型组合技术
 
 我们已经领略到了 Stable Diffusion 模型及其生态模型的强大图像生成能力，现在我们引入一个新的模块：AnimateDiff，这样一来就可以把图像模型的能力迁移到视频中。在本篇文章中，我们为您展示基于 DiffSynth-Studio 搭建的动漫风格视频渲染方案：Diffutoon。
 

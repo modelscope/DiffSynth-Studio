@@ -28,6 +28,7 @@ DiffSynth-Studio 文档
    creating/BasicImageSynthesis.md
    creating/AdaptersForImageSynthesis.md
    creating/ToonShading.md
+   creating/PromptRefine.md
 
 .. toctree::
    :maxdepth: 1
