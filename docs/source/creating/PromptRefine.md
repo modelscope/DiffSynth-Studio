@@ -25,6 +25,8 @@ image = pipe(
 image.save("image_1.jpg")
 ```
 
+![image_1](https://github.com/user-attachments/assets/c8070a6b-3d2f-4faf-a806-c403b91f1a94)
+
 ## 润色
 
 详细的提示词可以生成细节更丰富的图像，我们可以使用提示词润色模型 BeautifulPrompt（可在 [HuggingFace](https://huggingface.co/alibaba-pai/pai-bloom-1b1-text2prompt-sd) 或 [ModelScope](https://modelscope.cn/models/AI-ModelScope/pai-bloom-1b1-text2prompt-sd) 下载）对简单的提示词进行润色，这个模型能够让整体画面风格更加华丽。
@@ -50,6 +52,8 @@ image = pipe(
 image.save("image_2.jpg")
 ```
 
+![image_2](https://github.com/user-attachments/assets/94f64a7d-b14a-41e2-a013-c9a74635a84d)
+
 我们还内置了一个通义千问模型，这个模型可以一步到位地完成提示词的翻译和润色工作。
 
 ```python
@@ -70,3 +74,5 @@ image = pipe(
 )
 image.save("image_3.jpg")
 ```
+
+![image_3](https://github.com/user-attachments/assets/fc1a201d-aef1-4e6a-81d6-2e2249ffa230)
