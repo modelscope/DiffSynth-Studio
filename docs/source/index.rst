@@ -32,6 +32,23 @@ DiffSynth-Studio 文档
 
 .. toctree::
    :maxdepth: 1
+   :caption: 模型列表
+
+   model/StableDiffusion.md
+   model/StableDiffusionXL.md
+   model/ControlNet.md
+   model/AnimateDiff.md
+   model/IPAdapter.md
+   model/HunyuanDiT.md
+   model/Kolors.md
+   model/StableDiffusion3.md
+   model/StableVideoDiffusion.md
+   model/ExVideo.md
+   model/FLUX.md
+   model/CogVideo.md
+
+.. toctree::
+   :maxdepth: 1
    :caption: 微调
 
    finetune/overview.md
