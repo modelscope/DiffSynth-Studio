@@ -1,11 +1,10 @@
-# 翻译、润色——提示词的魔法
+# Translation and Polishing — The Magic of Prompt Words
 
-在生成图像时，我们需要编写提示词，用来描述图像的内容。提示词会直接影响生成的效果，但提示词的编写也是一门学问，好的提示词可以生成具有高度美感的图像，我们提供了一系列模型来帮助用户处理提示词。
+When generating images, we need to write prompt words to describe the content of the image. Prompt words directly affect the outcome of the generation, but crafting them is also an art. Good prompt words can produce images with a high degree of aesthetic appeal. We offer a range of models to help users handle prompt words effectively.
 
-## 翻译
+## Translation
 
-目前大多数文生图模型都是只支持英文提示词的，对于非英文母语的用户，使用起来有些困难，我们可以使用开源的翻译模型把提示词翻译成英文。在下面这个例子中，我们以“一个女孩”为提示词，使用模型 opus-mt-zh-en（可在 [HuggingFace](https://huggingface.co/Helsinki-NLP/opus-mt-zh-en) 或 [ModelScope](https://modelscope.cn/models/moxying/opus-mt-zh-en) 下载）进行翻译。
-
+Most text-to-image models currently only support English prompt words, which can be challenging for users who are not native English speakers. To address this, we can use open-source translation models to translate the prompt words into English. In the following example, we take "一个女孩" (a girl) as the prompt word and use the model opus-mt-zh-en for translation(which can be downloaded from [HuggingFace](https://huggingface.co/Helsinki-NLP/opus-mt-zh-en) or [ModelScope](https://modelscope.cn/models/moxying/opus-mt-zh-en)).
 ```python
 from diffsynth import ModelManager, SDXLImagePipeline, Translator
 import torch
@@ -27,11 +26,11 @@ image.save("image_1.jpg")
 
 ![image_1](https://github.com/user-attachments/assets/c8070a6b-3d2f-4faf-a806-c403b91f1a94)
 
-## 润色
+## Polishing
 
-详细的提示词可以生成细节更丰富的图像，我们可以使用提示词润色模型 BeautifulPrompt（可在 [HuggingFace](https://huggingface.co/alibaba-pai/pai-bloom-1b1-text2prompt-sd) 或 [ModelScope](https://modelscope.cn/models/AI-ModelScope/pai-bloom-1b1-text2prompt-sd) 下载）对简单的提示词进行润色，这个模型能够让整体画面风格更加华丽。
+Detailed prompt words can generate images with richer details. We can use a prompt polishing model like BeautifulPrompt(which can be downloaded from [HuggingFace](https://huggingface.co/Helsinki-NLP/opus-mt-zh-en) or [ModelScope](https://modelscope.cn/models/moxying/opus-mt-zh-en)) to embellish simple prompt words. This model can make the overall picture style more gorgeous.
 
-这个模块可以和翻译模块同时启用，但请注意顺序，先翻译，后润色。
+This module can be activated simultaneously with the translation module, but please pay attention to the order: translate first, then polish.
 
 ```python
 from diffsynth import ModelManager, SDXLImagePipeline, Translator, BeautifulPrompt
@@ -54,7 +53,7 @@ image.save("image_2.jpg")
 
 ![image_2](https://github.com/user-attachments/assets/94f64a7d-b14a-41e2-a013-c9a74635a84d)
 
-我们还内置了一个通义千问模型，这个模型可以一步到位地完成提示词的翻译和润色工作。
+We have also integrated a Tongyi Qwen model that can seamlessly complete the translation and polishing of prompt words in one step.
 
 ```python
 from diffsynth import ModelManager, SDXLImagePipeline, QwenPrompt

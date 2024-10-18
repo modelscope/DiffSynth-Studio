@@ -1,7 +1,6 @@
-# 训练 Hunyuan-DiT LoRA
+# Training Hunyuan-DiT LoRA
 
-构建 Hunyuan DiT 需要四个文件。你可以从 [HuggingFace](https://huggingface.co/Tencent-Hunyuan/HunyuanDiT) 或 [ModelScope](https://www.modelscope.cn/models/modelscope/HunyuanDiT/summary) 下载这些文件。你可以使用以下代码下载这些文件：
-
+Building the Hunyuan DiT model requires four files. You can download these files from [HuggingFace](https://huggingface.co/Tencent-Hunyuan/HunyuanDiT) or [ModelScope](https://www.modelscope.cn/models/modelscope/HunyuanDiT/summary). You can use the following code to download these files:
 
 ```python
 from diffsynth import download_models
@@ -23,7 +22,7 @@ models/HunyuanDiT/
         └── diffusion_pytorch_model.bin
 ```
 
-使用以下命令启动训练任务：
+Use the following command to start the training task:
 
 ```
 CUDA_VISIBLE_DEVICES="0" python examples/train/hunyuan_dit/train_hunyuan_dit_lora.py \
@@ -42,9 +41,9 @@ CUDA_VISIBLE_DEVICES="0" python examples/train/hunyuan_dit/train_hunyuan_dit_lor
   --use_gradient_checkpointing
 ```
 
-有关参数的更多信息，请使用 `python examples/train/hunyuan_dit/train_hunyuan_dit_lora.py -h` 查看详细信息。
+For more information about the parameters, please use `python examples/train/hunyuan_dit/train_hunyuan_dit_lora.py -h` to view detailed information.
 
-训练完成后，使用 `model_manager.load_lora` 加载 LoRA 以进行推理。
+After the training is complete, use `model_manager.load_lora` to load the LoRA for inference.
 
 
 ```python
@@ -63,7 +62,8 @@ pipe = HunyuanDiTImagePipeline.from_model_manager(model_manager)
 
 torch.manual_seed(0)
 image = pipe(
-    prompt="一只小狗蹦蹦跳跳，周围是姹紫嫣红的鲜花，远处是山脉", 
+    prompt="A little puppy hops and jumps playfully, surrounded by a profusion of colorful flowers, with a mountain range visible in the distance.
+", 
     negative_prompt="",
     cfg_scale=7.5,
     num_inference_steps=100, width=1024, height=1024,

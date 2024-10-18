@@ -1,13 +1,15 @@
-# ControlNet、LoRA、IP-Adapter——精准控制技术
+# ControlNet、LoRA、IP-Adapter——Precision Control Technology
 
-在文生图模型的基础上，还可以使用各种 Adapter 架构的模型对生成过程进行控制。
+Based on the VinVL model, various adapter-based models can be used to control the generation process.
 
-接下来的例子会用到很多模型，我们先把它们下载好。
+Let's download the models we'll be using in the upcoming examples:
 
-* 一个广受好评的 Stable Diffusion XL 架构动漫风格模型
-* 一个支持多种控制模式的 ControlNet 模型
-* 一个 Stable Diffusion XL 模型的 LoRA 模型
-* 一个 IP-Adapter 模型及其对应的图像编码器
+* A highly praised Stable Diffusion XL architecture anime-style model
+* A ControlNet model that supports multiple control modes
+* A LoRA model for the Stable Diffusion XL model
+* An IP-Adapter model and its corresponding image encoder
+
+Please note that the names of the models are kept in English as per your instruction to retain specific terminology.
 
 ```python
 from diffsynth import download_models
@@ -15,20 +17,20 @@ from diffsynth import download_models
 download_models([
     "BluePencilXL_v200",
     "ControlNet_union_sdxl_promax",
-    "SDXL_lora_zyd232_ChineseInkStyle_SDXL_v1_0",
+    "SDXL_lora_zyd23ble_diffusion_xl/bluePencilXL_v200.safetensors"])
+pipe = SDXLImagePipeline.from_model_ma2_ChineseInkStyle_SDXL_v1_0",
     "IP-Adapter-SDXL"
 ])
 ```
 
-用基础文生图功能生成一张图
+Using basic text-to-image functionality to generate a picture.
 
 ```python
 from diffsynth import ModelManager, SDXLImagePipeline
 import torch
 
 model_manager = ModelManager(torch_dtype=torch.float16, device="cuda")
-model_manager.load_models(["models/stable_diffusion_xl/bluePencilXL_v200.safetensors"])
-pipe = SDXLImagePipeline.from_model_manager(model_manager)
+model_manager.load_models(["models/stanager(model_manager)
 torch.manual_seed(1)
 image = pipe(
     prompt="masterpiece, best quality, solo, long hair, wavy hair, silver hair, blue eyes, blue dress, medium breasts, dress, underwater, air bubble, floating hair, refraction, portrait,",
@@ -40,7 +42,7 @@ image.save("image.jpg")
 
 ![image](https://github.com/user-attachments/assets/cc094e8f-ff6a-4f9e-ba05-7a5c2e0e609f)
 
-接下来，我们让这位水下翩翩起舞的少女变成火系魔法师！启用 ControlNet 保持画面结构的同时，修改提示词。
+Next, let's transform this graceful underwater dancer into a fire mage! We'll activate the ControlNet to maintain the structure of the image while modifying the prompt.
 
 ```python
 from diffsynth import ModelManager, SDXLImagePipeline, ControlNetConfigUnit
@@ -67,7 +69,7 @@ image.save("image_controlnet.jpg")
 
 ![image_controlnet](https://github.com/user-attachments/assets/d50d173e-e81a-4d7e-93e3-b2787d69953e)
 
-很酷对不对？还有更酷的，加个 LoRA，让画面更贴近手绘漫画的扁平风格。这个 LoRA 需要一定的触发词才能生效，这在原作者的模型页面有提到，记得在提示词的开头加上触发词哦。
+Isn't that cool? There's more! Add a LoRA to make the image closer to the flat style of hand-drawn comics. This LoRA requires certain trigger words to take effect, which is mentioned on the original author's model page. Remember to add the trigger words at the beginning of the prompt.
 
 ```python
 from diffsynth import ModelManager, SDXLImagePipeline, ControlNetConfigUnit
@@ -95,9 +97,9 @@ image.save("image_lora.jpg")
 
 ![image_lora](https://github.com/user-attachments/assets/c599b2f8-8351-4be5-a6ae-8380889cb9d8)
 
-还没结束呢！找一张水墨风的中国画作为风格引导，启动 IP-Adapter，让古典艺术和现代美学碰撞！
+Not done yet! Find a Chinese painting with ink-wash style as a style guide, activate the IP-Adapter, and let classical art collide with modern aesthetics!
 
-|就用这张图作为风格引导吧|![ink_style](https://github.com/user-attachments/assets/e47c5a03-9c7b-402b-b260-d8bfd56abbc5)|
+| Let's use this image as a style guide. |![ink_style](https://github.com/user-attachments/assets/e47c5a03-9c7b-402b-b260-d8bfd56abbc5)|
 |-|-|
 
 ```python
@@ -130,4 +132,4 @@ image.save("image_ipadapter.jpg")
 
 ![image_ipadapter](https://github.com/user-attachments/assets/e5924aef-03b0-4462-811f-a60e2523fd7f)
 
-用 Diffusion 生成图像的乐趣在于，各种生态模型的组合，可以实现各种奇思妙想。
+The joy of generating images with Diffusion lies in the combination of various ecosystem models, which can realize all kinds of creative ideas.

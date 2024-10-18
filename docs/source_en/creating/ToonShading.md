@@ -1,15 +1,15 @@
-# 当图像模型遇见 AnimateDiff——模型组合技术
+# When Image Models Meet AnimateDiff—Model Combination Technology
 
-我们已经领略到了 Stable Diffusion 模型及其生态模型的强大图像生成能力，现在我们引入一个新的模块：AnimateDiff，这样一来就可以把图像模型的能力迁移到视频中。在本篇文章中，我们为您展示基于 DiffSynth-Studio 搭建的动漫风格视频渲染方案：Diffutoon。
+We have already witnessed the powerful image generation capabilities of the Stable Diffusion model and its ecosystem models. Now, we introduce a new module: AnimateDiff, which allows us to transfer the capabilities of image models to videos. In this article, we showcase an anime-style video rendering solution built on DiffSynth-Studio: Diffutoon.
 
-## 下载模型
+## Download Models
 
-接下来的例子会用到很多模型，我们先把它们下载好。
+The following examples will use many models, so let's download them first.
 
-* 一个动漫风格的 Stable Diffusion 架构模型
-* 两个 ControlNet 模型
-* 一个 Textual Inversion 模型
-* 一个 AnimateDiff 模型
+* An anime-style Stable Diffusion architecture model
+* Two ControlNet models
+* A Textual Inversion model
+* An AnimateDiff model
 
 ```python
 from diffsynth import download_models
@@ -23,15 +23,15 @@ download_models([
 ])
 ```
 
-## 下载视频
+## Download Video
 
-你可以随意选择任何你喜欢的视频，我们使用[这个视频](https://www.bilibili.com/video/BV1iG411a7sQ)作为演示，你可以通过以下命令下载这个视频文件，但请注意，在没有获得视频原作者的商用版权时，请不要将其用作商业用途。
+You can choose any video you like. We use [this video](https://www.bilibili.com/video/BV1iG411a7sQ) as a demonstration. You can download this video file with the following command, but please note, do not use it for commercial purposes without obtaining the commercial copyright from the original video creator.
 
 ```
 modelscope download --dataset Artiprocher/examples_in_diffsynth data/examples/diffutoon/input_video.mp4 --local_dir ./
 ```
 
-## 生成动漫
+## Generate Anime
 
 ```python
 from diffsynth import ModelManager, SDVideoPipeline, ControlNetConfigUnit, VideoData, save_video
@@ -87,9 +87,9 @@ output_video = pipe(
 save_video(output_video, "output_video.mp4", fps=30)
 ```
 
-## 效果展示
+## Effect Display
 
 <video width="512" height="256" controls>
   <source src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/b54c05c5-d747-4709-be5e-b39af82404dd" type="video/mp4">
-您的浏览器不支持Video标签。
+Your browser does not support the Video tag.
 </video>
