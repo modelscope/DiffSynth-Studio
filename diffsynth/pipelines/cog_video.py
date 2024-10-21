@@ -73,6 +73,7 @@ class CogVideoPipeline(BasePipeline):
         tiled=False,
         tile_size=(60, 90),
         tile_stride=(30, 45),
+        seed=None,
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
     ):
@@ -83,7 +84,8 @@ class CogVideoPipeline(BasePipeline):
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength)
 
         # Prepare latent tensors
-        noise = torch.randn((1, 16, num_frames // 4 + 1, height//8, width//8), device="cpu", dtype=self.torch_dtype)
+        noise = self.generate_noise((1, 16, num_frames // 4 + 1, height//8, width//8), seed=seed, device="cpu", dtype=self.torch_dtype)
+        
         if denoising_strength == 1.0:
             latents = noise.clone()
         else:

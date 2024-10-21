@@ -226,6 +226,7 @@ class HunyuanDiTImagePipeline(BasePipeline):
         tiled=False,
         tile_size=64,
         tile_stride=32,
+        seed=None,
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
     ):
@@ -233,7 +234,7 @@ class HunyuanDiTImagePipeline(BasePipeline):
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength)
 
         # Prepare latent tensors
-        noise = torch.randn((1, 4, height//8, width//8), device=self.device, dtype=self.torch_dtype)
+        noise = self.generate_noise((1, 4, height//8, width//8), seed=seed, device=self.device, dtype=self.torch_dtype)
         if input_image is not None:
             self.load_models_to_device(['vae_encoder'])
             image = self.preprocess_image(input_image).to(device=self.device, dtype=torch.float32)

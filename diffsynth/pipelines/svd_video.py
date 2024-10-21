@@ -51,7 +51,7 @@ class SVDVideoPipeline(BasePipeline):
 
     def encode_image_with_vae(self, image, noise_aug_strength):
         image = self.preprocess_image(image).to(device=self.device, dtype=self.torch_dtype)
-        noise = torch.randn(image.shape, device="cpu", dtype=self.torch_dtype).to(self.device)
+        noise = self.generate_noise(image.shape, seed=seed, device=self.device, dtype=self.torch_dtype)
         image = image + noise_aug_strength * noise
         image_emb = self.vae_encoder(image) / self.vae_encoder.scaling_factor
         return image_emb
@@ -126,6 +126,7 @@ class SVDVideoPipeline(BasePipeline):
         num_inference_steps=20,
         post_normalize=True,
         contrast_enhance_scale=1.2,
+        seed=None,
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
     ):
@@ -133,7 +134,7 @@ class SVDVideoPipeline(BasePipeline):
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength)
 
         # Prepare latent tensors
-        noise = torch.randn((num_frames, 4, height//8, width//8), device="cpu", dtype=self.torch_dtype).to(self.device)
+        noise = self.generate_noise((num_frames, 4, height//8, width//8), seed=seed, device=self.device, dtype=self.torch_dtype)
         if denoising_strength == 1.0:
             latents = noise.clone()
         else:
