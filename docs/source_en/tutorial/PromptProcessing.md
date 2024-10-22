@@ -28,7 +28,7 @@ pipe = SDXLImagePipeline.from_model_manager(model_manager, prompt_refiner_classe
 
 ### Prompt Extenders
 
-When loading the model pipeline, you can specify the desired prompt extender using the prompt_extender_classes parameter. For example code, refer to [omost_flux_text_to_image.py](examples/image_synthesis/omost_flux_text_to_image.py).
+When loading the model pipeline, you can specify the desired prompt extender using the `prompt_extender_classes` parameter. For example code, refer to [omost_flux_text_to_image.py](examples/image_synthesis/omost_flux_text_to_image.py).
 
 ```python
 pipe = FluxImagePipeline.from_model_manager(model_manager, prompt_extender_classes=[OmostPromter])

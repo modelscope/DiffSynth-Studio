@@ -1,6 +1,6 @@
 # 模型
 
-目前为止，DiffSynth Studio 支持的模型如下所示：
+So far, the models supported by DiffSynth Studio are as follows:
 
 * [CogVideoX](https://huggingface.co/THUDM/CogVideoX-5b)
 * [FLUX](https://huggingface.co/black-forest-labs/FLUX.1-dev)

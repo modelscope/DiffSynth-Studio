@@ -1,6 +1,6 @@
 # ControlNet、LoRA、IP-Adapter——Precision Control Technology
 
-Based on the VinVL model, various adapter-based models can be used to control the generation process.
+Based on the text-to-images model, various adapter-based models can be used to control the generation process.
 
 Let's download the models we'll be using in the upcoming examples:
 

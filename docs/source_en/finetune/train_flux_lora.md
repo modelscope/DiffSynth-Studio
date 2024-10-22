@@ -1,4 +1,4 @@
-#Training FLUX LoRA
+# Training FLUX LoRA
 
 The following files will be used to build the FLUX model. You can download them from [huggingface](https://huggingface.co/black-forest-labs/FLUX.1-dev)或[modelscope](https://www.modelscope.cn/models/ai-modelscope/flux.1-dev), or you can use the following code to download these files:
 ```python

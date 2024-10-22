@@ -1,16 +1,12 @@
-Certainly, here is the continuation of the translation:
-
----
-
 # Training Framework
 
 We have implemented a training framework for text-to-image diffusion models, allowing users to effortlessly train LoRA models with our framework. Our provided scripts come with the following features:
 
 * **Comprehensive Functionality**: Our training framework supports multi-GPU and multi-node configurations, is optimized for acceleration with DeepSpeed, and includes gradient checkpointing to accommodate models with higher memory requirements.
 * **Succinct Code**: We have avoided large, complex code blocks. The general module is implemented in `diffsynth/trainers/text_to_image.py`, while model-specific training scripts contain only the minimal code necessary for the model architecture, facilitating ease of use for academic researchers.
-* **Modular Design**: Built on the versatile PyTorch Lightning framework, our training framework is decoupled in functionality, enabling developers to easily incorporate additional training techniques by modifying our scripts to suit their specific needs.
+* **Modular Design**: Built on the versatile PyTorch-Lightning framework, our training framework is decoupled in functionality, enabling developers to easily incorporate additional training techniques by modifying our scripts to suit their specific needs.
 
-Examples of images fine-tuned with LoRA. Prompts are "A little dog jumping around with colorful flowers around and mountains in the background" (for Chinese models) or "a dog is jumping, flowers around the dog, the background is mountains and clouds" (for English models).
+Examples of images fine-tuned with LoRA. Prompts are "一只小狗蹦蹦跳跳，周围是姹紫嫣红的鲜花，远处是山脉" (for Chinese models) or "a dog is jumping, flowers around the dog, the background is mountains and clouds" (for English models).
 
 ||FLUX.1-dev|Kolors|Stable Diffusion 3|Hunyuan-DiT|
 |-|-|-|-|-|
@@ -53,11 +49,11 @@ Please note that if the model is a Chinese model (e.g., Hunyuan-DiT and Kolors),
 
 ```
 file_name,text
-00.jpg,a dog
-01.jpg,a dog
-02.jpg,a dog
-03.jpg,a dog
-04.jpg,a dog
+00.jpg,一只小狗
+01.jpg,一只小狗
+02.jpg,一只小狗
+03.jpg,一只小狗
+04.jpg,一只小狗
 ```
 
 ## Train LoRA Model

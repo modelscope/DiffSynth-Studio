@@ -1,5 +1,7 @@
 # Installation
 
+Currently, DiffSynth-Studio supports installation via cloning from GitHub or using pip. We recommend users to clone from GitHub to experience the latest features.
+
 ## From Source
 
 1. Clone the source repository:

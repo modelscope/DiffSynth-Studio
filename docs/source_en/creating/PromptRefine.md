@@ -4,7 +4,7 @@ When generating images, we need to write prompt words to describe the content of
 
 ## Translation
 
-Most text-to-image models currently only support English prompt words, which can be challenging for users who are not native English speakers. To address this, we can use open-source translation models to translate the prompt words into English. In the following example, we take "一个女孩" (a girl) as the prompt word and use the model opus-mt-zh-en for translation(which can be downloaded from [HuggingFace](https://huggingface.co/Helsinki-NLP/opus-mt-zh-en) or [ModelScope](https://modelscope.cn/models/moxying/opus-mt-zh-en)).
+Most text-to-image models currently only support English prompt words, which can be challenging for users who are not native English speakers. To address this, we can use open-source translation models to translate the prompt words into English. In the following example, we take "一个女孩" (a girl) as the prompt word and use the model opus-mt-zh-en (which can be downloaded from [HuggingFace](https://huggingface.co/Helsinki-NLP/opus-mt-zh-en) or [ModelScope](https://modelscope.cn/models/moxying/opus-mt-zh-en)) for translation.
 ```python
 from diffsynth import ModelManager, SDXLImagePipeline, Translator
 import torch

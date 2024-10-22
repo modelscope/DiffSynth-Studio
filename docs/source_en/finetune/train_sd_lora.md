@@ -14,7 +14,7 @@ models/stable_diffusion
 └── v1-5-pruned-emaonly.safetensors
 ```
 
-To initiate the training process, please use the following command:
+Start the training task with the following command:
 
 ```
 CUDA_VISIBLE_DEVICES="0" python examples/train/stable_diffusion/train_sd_lora.py \
