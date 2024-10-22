@@ -1,6 +1,7 @@
 import torch, os
 from safetensors import safe_open
 from contextlib import contextmanager
+import hashlib
 
 @contextmanager
 def init_weights_on_device(device = torch.device("meta"), include_buffers :bool = False):
@@ -142,3 +143,40 @@ def search_for_files(folder, extensions):
                 files.append(folder)
                 break
     return files
+
+
+def convert_state_dict_keys_to_single_str(state_dict, with_shape=True):
+    keys = []
+    for key, value in state_dict.items():
+        if isinstance(key, str):
+            if isinstance(value, torch.Tensor):
+                if with_shape:
+                    shape = "_".join(map(str, list(value.shape)))
+                    keys.append(key + ":" + shape)
+                keys.append(key)
+            elif isinstance(value, dict):
+                keys.append(key + "|" + convert_state_dict_keys_to_single_str(value, with_shape=with_shape))
+    keys.sort()
+    keys_str = ",".join(keys)
+    return keys_str
+
+
+def split_state_dict_with_prefix(state_dict):
+    keys = sorted([key for key in state_dict if isinstance(key, str)])
+    prefix_dict = {}
+    for key in  keys:
+        prefix = key if "." not in key else key.split(".")[0]
+        if prefix not in prefix_dict:
+            prefix_dict[prefix] = []
+        prefix_dict[prefix].append(key)
+    state_dicts = []
+    for prefix, keys in prefix_dict.items():
+        sub_state_dict = {key: state_dict[key] for key in keys}
+        state_dicts.append(sub_state_dict)
+    return state_dicts
+
+
+def hash_state_dict_keys(state_dict, with_shape=True):
+    keys_str = convert_state_dict_keys_to_single_str(state_dict, with_shape=with_shape)
+    keys_str = keys_str.encode(encoding="UTF-8")
+    return hashlib.md5(keys_str).hexdigest()

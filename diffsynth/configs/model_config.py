@@ -35,6 +35,7 @@ from ..models.hunyuan_dit import HunyuanDiT
 from ..models.flux_dit import FluxDiT
 from ..models.flux_text_encoder import FluxTextEncoder1, FluxTextEncoder2
 from ..models.flux_vae import FluxVAEEncoder, FluxVAEDecoder
+from ..models.flux_controlnet import FluxControlNet
 
 from ..models.cog_vae import CogVAEEncoder, CogVAEDecoder
 from ..models.cog_dit import CogDiT
@@ -80,6 +81,10 @@ model_loader_configs = [
     (None, "280189ee084bca10f70907bf6ce1649d", ["cog_vae_encoder", "cog_vae_decoder"], [CogVAEEncoder, CogVAEDecoder], "diffusers"),
     (None, "9b9313d104ac4df27991352fec013fd4", ["rife"], [IFNet], "civitai"),
     (None, "6b7116078c4170bfbeaedc8fe71f6649", ["esrgan"], [RRDBNet], "civitai"),
+    (None, "78d18b9101345ff695f312e7e62538c0", ["flux_controlnet"], [FluxControlNet], "diffusers"),
+    (None, "b001c89139b5f053c715fe772362dd2a", ["flux_controlnet"], [FluxControlNet], "diffusers"),
+    (None, "52357cb26250681367488a8954c271e8", ["flux_controlnet"], [FluxControlNet], "diffusers"),
+    (None, "0cfd1740758423a2a854d67c136d1e8c", ["flux_controlnet"], [FluxControlNet], "diffusers"),
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.

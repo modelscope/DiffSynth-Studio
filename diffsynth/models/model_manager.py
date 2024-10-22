@@ -1,7 +1,4 @@
-import os, torch, hashlib, json, importlib
-from safetensors import safe_open
-from torch import Tensor
-from typing_extensions import Literal, TypeAlias
+import os, torch, json, importlib
 from typing import List
 
 from .downloader import download_models, download_customized_models, Preset_model_id, Preset_model_website
@@ -50,45 +47,7 @@ from ..extensions.RIFE import IFNet
 from ..extensions.ESRGAN import RRDBNet
 
 from ..configs.model_config import model_loader_configs, huggingface_model_loader_configs, patch_model_loader_configs
-from .utils import load_state_dict, init_weights_on_device
-
-
-
-def convert_state_dict_keys_to_single_str(state_dict, with_shape=True):
-    keys = []
-    for key, value in state_dict.items():
-        if isinstance(key, str):
-            if isinstance(value, Tensor):
-                if with_shape:
-                    shape = "_".join(map(str, list(value.shape)))
-                    keys.append(key + ":" + shape)
-                keys.append(key)
-            elif isinstance(value, dict):
-                keys.append(key + "|" + convert_state_dict_keys_to_single_str(value, with_shape=with_shape))
-    keys.sort()
-    keys_str = ",".join(keys)
-    return keys_str
-
-
-def split_state_dict_with_prefix(state_dict):
-    keys = sorted([key for key in state_dict if isinstance(key, str)])
-    prefix_dict = {}
-    for key in  keys:
-        prefix = key if "." not in key else key.split(".")[0]
-        if prefix not in prefix_dict:
-            prefix_dict[prefix] = []
-        prefix_dict[prefix].append(key)
-    state_dicts = []
-    for prefix, keys in prefix_dict.items():
-        sub_state_dict = {key: state_dict[key] for key in keys}
-        state_dicts.append(sub_state_dict)
-    return state_dicts
-
-
-def hash_state_dict_keys(state_dict, with_shape=True):
-    keys_str = convert_state_dict_keys_to_single_str(state_dict, with_shape=with_shape)
-    keys_str = keys_str.encode(encoding="UTF-8")
-    return hashlib.md5(keys_str).hexdigest()
+from .utils import load_state_dict, init_weights_on_device, hash_state_dict_keys, split_state_dict_with_prefix
 
 
 def load_model_from_single_file(state_dict, model_names, model_classes, model_resource, torch_dtype, device):
