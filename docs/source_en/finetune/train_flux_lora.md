@@ -1,7 +1,6 @@
-# 训练 FLUX LoRA
+# Training FLUX LoRA
 
-以下文件将会被用于构建 FLUX 模型。 你可以从[huggingface](https://huggingface.co/black-forest-labs/FLUX.1-dev)或[modelscope](https://www.modelscope.cn/models/ai-modelscope/flux.1-dev)下载，也可以使用以下代码下载这些文件:
-
+The following files will be used to build the FLUX model. You can download them from [huggingface](https://huggingface.co/black-forest-labs/FLUX.1-dev)或[modelscope](https://www.modelscope.cn/models/ai-modelscope/flux.1-dev), or you can use the following code to download these files:
 ```python
 from diffsynth import download_models
 
@@ -22,7 +21,7 @@ models/FLUX/
         └── model.safetensors.index.json
 ```
 
-使用以下命令启动训练任务：
+Start the training task with the following command:
 
 ```
 CUDA_VISIBLE_DEVICES="0" python examples/train/flux/train_flux_lora.py \
@@ -44,9 +43,9 @@ CUDA_VISIBLE_DEVICES="0" python examples/train/flux/train_flux_lora.py \
   --use_gradient_checkpointing
 ```
 
-有关参数的更多信息，请使用 `python examples/train/flux/train_flux_lora.py -h` 查看详细信息。
+For more information on the parameters, please use `python examples/train/flux/train_flux_lora.py -h` to view detailed information.
 
-训练完成后，使用 `model_manager.load_lora` 加载 LoRA 以进行推理。
+After the training is complete, use `model_manager.load_lora` to load the LoRA for inference.
 
 ```python
 from diffsynth import ModelManager, FluxImagePipeline

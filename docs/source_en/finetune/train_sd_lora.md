@@ -1,6 +1,6 @@
-# 训练 Stable Diffusion LoRA
+# Training Stable Diffusion LoRA
 
-训练脚本只需要一个文件。我们支持 [CivitAI](https://civitai.com/) 中的主流检查点。默认情况下，我们使用基础的 Stable Diffusion v1.5。你可以从 [HuggingFace](https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors) 或 [ModelScope](https://www.modelscope.cn/models/AI-ModelScope/stable-diffusion-v1-5/resolve/master/v1-5-pruned-emaonly.safetensors) 下载。你可以使用以下代码下载这个文件：
+The training script only requires one file. We support mainstream checkpoints on [CivitAI](https://civitai.com/). By default, we use the basic Stable Diffusion v1.5. You can download it from [HuggingFace](https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors) or [ModelScope](https://www.modelscope.cn/models/AI-ModelScope/stable-diffusion-v1-5/resolve/master/v1-5-pruned-emaonly.safetensors). You can use the following code to download this file:
 
 ```python
 from diffsynth import download_models
@@ -14,7 +14,7 @@ models/stable_diffusion
 └── v1-5-pruned-emaonly.safetensors
 ```
 
-使用以下命令启动训练任务：
+Start the training task with the following command:
 
 ```
 CUDA_VISIBLE_DEVICES="0" python examples/train/stable_diffusion/train_sd_lora.py \
@@ -33,10 +33,9 @@ CUDA_VISIBLE_DEVICES="0" python examples/train/stable_diffusion/train_sd_lora.py
   --use_gradient_checkpointing
 ```
 
-有关参数的更多信息，请使用 `python examples/train/stable_diffusion/train_sd_lora.py -h` 查看详细信息。
+For more information about the parameters, please use `python examples/train/stable_diffusion/train_sd_lora.py -h` to view detailed information.
 
-训练完成后，使用 `model_manager.load_lora` 加载 LoRA 以进行推理。
-
+After training is complete, use `model_manager.load_lora` to load LoRA for inference.
 
 
 ```python

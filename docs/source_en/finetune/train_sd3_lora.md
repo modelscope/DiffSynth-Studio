@@ -1,8 +1,6 @@
-# 训练 Stable Diffusion 3 LoRA
+# Training Stable Diffusion 3 LoRA
 
-训练脚本只需要一个文件。你可以使用 [`sd3_medium_incl_clips.safetensors`](https://huggingface.co/stabilityai/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips.safetensors)（没有 T5 Encoder）或 [`sd3_medium_incl_clips_t5xxlfp16.safetensors`](https://huggingface.co/stabilityai/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips_t5xxlfp16.safetensors)（有 T5 Encoder）。请使用以下代码下载这些文件：
-
-
+The training script only requires one file. You can use [`sd3_medium_incl_clips.safetensors`](https://huggingface.co/stabilityai/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips.safetensors)（without T5 Encoder）或 [`sd3_medium_incl_clips_t5xxlfp16.safetensors`](https://huggingface.co/stabilityai/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips_t5xxlfp16.safetensors)（with T5 Encoder）. Please use the following code to download these files:
 ```python
 from diffsynth import download_models
 
@@ -16,7 +14,7 @@ models/stable_diffusion_3/
 └── sd3_medium_incl_clips_t5xxlfp16.safetensors
 ```
 
-使用下面的命令启动训练任务：
+Use the following command to start the training task:
 
 ```
 CUDA_VISIBLE_DEVICES="0" python examples/train/stable_diffusion_3/train_sd3_lora.py \
@@ -35,9 +33,9 @@ CUDA_VISIBLE_DEVICES="0" python examples/train/stable_diffusion_3/train_sd3_lora
   --use_gradient_checkpointing
 ```
 
-有关参数的更多信息，请使用 `python examples/train/stable_diffusion_3/train_sd3_lora.py -h` 查看详细信息。
+For more information on the parameters, please use `python examples/train/stable_diffusion_3/train_sd3_lora.py -h` to view detailed information.
 
-训练完成后，使用 `model_manager.load_lora` 加载 LoRA 以进行推理。
+After training is completed, use `model_manager.load_lora` to load LoRA for inference.
 
 ```python
 from diffsynth import ModelManager, SD3ImagePipeline

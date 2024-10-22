@@ -1,7 +1,5 @@
-# 训练 Kolors LoRA
-
-以下文件将用于构建 Kolors。你可以从 [HuggingFace](https://huggingface.co/Kwai-Kolors/Kolors) 或 [ModelScope](https://modelscope.cn/models/Kwai-Kolors/Kolors) 下载 Kolors。由于精度溢出问题，我们需要下载额外的 VAE 模型（从 [HuggingFace](https://huggingface.co/madebyollin/sdxl-vae-fp16-fix) 或 [ModelScope](https://modelscope.cn/models/AI-ModelScope/sdxl-vae-fp16-fix)）。你可以使用以下代码下载这些文件：
-
+# Training Kolors LoRA
+The following files will be used to build Kolors. You can download Kolors from [HuggingFace](https://huggingface.co/Kwai-Kolors/Kolors) or [ModelScope](https://modelscope.cn/models/Kwai-Kolors/Kolors). Due to precision overflow issues, we need to download an additional VAE model （from [HuggingFace](https://huggingface.co/madebyollin/sdxl-vae-fp16-fix) or [ModelScope](https://modelscope.cn/models/AI-ModelScope/sdxl-vae-fp16-fix). You can use the following code to download these files:
 
 ```python
 from diffsynth import download_models
@@ -31,7 +29,7 @@ models
     └── diffusion_pytorch_model.safetensors
 ```
 
-使用下面的命令启动训练任务：
+Use the following command to start the training task:
 
 ```
 CUDA_VISIBLE_DEVICES="0" python examples/train/kolors/train_kolors_lora.py \
@@ -52,9 +50,10 @@ CUDA_VISIBLE_DEVICES="0" python examples/train/kolors/train_kolors_lora.py \
   --use_gradient_checkpointing
 ```
 
-有关参数的更多信息，请使用 `python examples/train/kolors/train_kolors_lora.py -h` 查看详细信息。
+For more information on the parameters, please use `python examples/train/kolors/train_kolors_lora.py -h` to view detailed information.
 
-训练完成后，使用 `model_manager.load_lora` 加载 LoRA 以进行推理。
+After the training is complete, use `model_manager.load_lora` to load the LoRA for inference.
+
 
 
 

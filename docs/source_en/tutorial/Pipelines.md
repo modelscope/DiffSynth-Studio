@@ -1,8 +1,8 @@
-# 流水线
+# Pipelines
 
-DiffSynth-Studio 中包括多个流水线，分为图像生成和视频生成两类。
+DiffSynth-Studio includes multiple pipelines, categorized into two types: image generation and video generation.
 
-## 图像生成流水线
+## Image Pipelines
 
 | Pipeline                   | Models                                                     |
 |----------------------------|----------------------------------------------------------------|
@@ -12,7 +12,7 @@ DiffSynth-Studio 中包括多个流水线，分为图像生成和视频生成两
 | HunyuanDiTImagePipeline     | text_encoder: HunyuanDiTCLIPTextEncoder<br>text_encoder_t5: HunyuanDiTT5TextEncoder<br>dit: HunyuanDiT<br>vae_decoder: SDVAEDecoder<br>vae_encoder: SDVAEEncoder |
 | FluxImagePipeline     | text_encoder_1: FluxTextEncoder1<br>text_encoder_2: FluxTextEncoder2<br>dit: FluxDiT<br>vae_decoder: FluxVAEDecoder<br>vae_encoder: FluxVAEEncoder |
 
-## 视频生成流水线
+## Video Pipelines
 
 | Pipeline                   | Models                                                     |
 |----------------------------|----------------------------------------------------------------|

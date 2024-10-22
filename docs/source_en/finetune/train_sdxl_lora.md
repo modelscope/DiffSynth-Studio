@@ -1,7 +1,7 @@
-# 训练 Stable Diffusion XL LoRA
+# Training Stable Diffusion XL LoRA
 
-训练脚本只需要一个文件。我们支持 [CivitAI](https://civitai.com/) 中的主流检查点。默认情况下，我们使用基础的 Stable Diffusion XL。你可以从 [HuggingFace](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors) 或 [ModelScope](https://www.modelscope.cn/models/AI-ModelScope/stable-diffusion-xl-base-1.0/resolve/master/sd_xl_base_1.0.safetensors) 下载。也可以使用以下代码下载这个文件：
 
+The training script only requires one file. We support mainstream checkpoints on [CivitAI](https://civitai.com/). By default, we use the basic Stable Diffusion XL. You can download it from [HuggingFace](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors) 或 [ModelScope](https://www.modelscope.cn/models/AI-ModelScope/stable-diffusion-xl-base-1.0/resolve/master/sd_xl_base_1.0.safetensors). You can also use the following code to download this file:
 ```python
 from diffsynth import download_models
 
@@ -14,8 +14,7 @@ models/stable_diffusion_xl
 └── sd_xl_base_1.0.safetensors
 ```
 
-我们观察到 Stable Diffusion XL 在 float16 精度下会出现数值精度溢出，因此我们建议用户使用 float32 精度训练，使用以下命令启动训练任务：
-
+We have observed that Stable Diffusion XL may experience numerical precision overflows when using float16 precision, so we recommend that users train with float32 precision. To start the training task, use the following command:
 ```
 CUDA_VISIBLE_DEVICES="0" python examples/train/stable_diffusion_xl/train_sdxl_lora.py \
   --pretrained_path models/stable_diffusion_xl/sd_xl_base_1.0.safetensors \
@@ -33,9 +32,10 @@ CUDA_VISIBLE_DEVICES="0" python examples/train/stable_diffusion_xl/train_sdxl_lo
   --use_gradient_checkpointing
 ```
 
-有关参数的更多信息，请使用 `python examples/train/stable_diffusion_xl/train_sdxl_lora.py -h` 查看详细信息。
+For more information about the parameters, please use `python examples/train/stable_diffusion_xl/train_sdxl_lora.py -h` to view detailed information.
 
-训练完成后，使用 `model_manager.load_lora` 加载 LoRA 以进行推理。
+After training is complete, use `model_manager.load_lora` to load LoRA for inference.
+
 
 ```python
 from diffsynth import ModelManager, SDXLImagePipeline
