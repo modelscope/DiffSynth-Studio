@@ -120,6 +120,7 @@ class SDXLVideoPipeline(SDXLImagePipeline):
         tiled=False,
         tile_size=64,
         tile_stride=32,
+        seed=None,
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
     ):
@@ -131,9 +132,9 @@ class SDXLVideoPipeline(SDXLImagePipeline):
 
         # Prepare latent tensors
         if self.motion_modules is None:
-            noise = torch.randn((1, 4, height//8, width//8), device="cpu", dtype=self.torch_dtype).repeat(num_frames, 1, 1, 1)
+            noise = self.generate_noise((1, 4, height//8, width//8), seed=seed, device="cpu", dtype=self.torch_dtype).repeat(num_frames, 1, 1, 1)
         else:
-            noise = torch.randn((num_frames, 4, height//8, width//8), device="cpu", dtype=self.torch_dtype)
+            noise = self.generate_noise((num_frames, 4, height//8, width//8), seed=seed, device="cpu", dtype=self.torch_dtype)
         if input_frames is None or denoising_strength == 1.0:
             latents = noise
         else:
