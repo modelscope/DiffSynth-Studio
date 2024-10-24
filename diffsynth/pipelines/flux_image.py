@@ -8,6 +8,7 @@ import torch
 from tqdm import tqdm
 import numpy as np
 from PIL import Image
+from ..models.tiler import FastTileWorker
 
 
 
@@ -142,6 +143,7 @@ class FluxImagePipeline(BasePipeline):
         input_image=None,
         controlnet_image=None,
         controlnet_inpaint_mask=None,
+        enable_controlnet_on_negative=False,
         denoising_strength=1.0,
         height=1024,
         width=1024,
@@ -186,8 +188,13 @@ class FluxImagePipeline(BasePipeline):
         # Prepare ControlNets
         if controlnet_image is not None:
             controlnet_kwargs = {"controlnet_frames": self.prepare_controlnet_input(controlnet_image, controlnet_inpaint_mask, tiler_kwargs)}
+            if len(masks) > 0 and controlnet_inpaint_mask is not None:
+                print("The controlnet_inpaint_mask will be overridden by masks.")
+                local_controlnet_kwargs = [{"controlnet_frames": self.prepare_controlnet_input(controlnet_image, mask, tiler_kwargs)} for mask in masks]
+            else:
+                local_controlnet_kwargs = None
         else:
-            controlnet_kwargs = {"controlnet_frames": None}
+            controlnet_kwargs, local_controlnet_kwargs = {"controlnet_frames": None}, [{}] * len(masks)
 
         # Denoise
         self.load_models_to_device(['dit', 'controlnet'])
@@ -195,17 +202,21 @@ class FluxImagePipeline(BasePipeline):
             timestep = timestep.unsqueeze(0).to(self.device)
 
             # Classifier-free guidance
-            inference_callback = lambda prompt_emb_posi: lets_dance_flux(
+            inference_callback = lambda prompt_emb_posi, controlnet_kwargs: lets_dance_flux(
                 dit=self.dit, controlnet=self.controlnet,
                 hidden_states=latents, timestep=timestep,
                 **prompt_emb_posi, **tiler_kwargs, **extra_input, **controlnet_kwargs
             )
-            noise_pred_posi = self.control_noise_via_local_prompts(prompt_emb_posi, prompt_emb_locals, masks, mask_scales, inference_callback)
+            noise_pred_posi = self.control_noise_via_local_prompts(
+                prompt_emb_posi, prompt_emb_locals, masks, mask_scales, inference_callback,
+                special_kwargs=controlnet_kwargs, special_local_kwargs_list=local_controlnet_kwargs
+            )
             if cfg_scale != 1.0:
+                negative_controlnet_kwargs = controlnet_kwargs if enable_controlnet_on_negative else {}
                 noise_pred_nega = lets_dance_flux(
                     dit=self.dit, controlnet=self.controlnet,
                     hidden_states=latents, timestep=timestep,
-                    **prompt_emb_nega, **tiler_kwargs, **extra_input, **controlnet_kwargs
+                    **prompt_emb_nega, **tiler_kwargs, **extra_input, **negative_controlnet_kwargs,
                 )
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
             else:
@@ -244,6 +255,32 @@ def lets_dance_flux(
     tile_stride=64,
     **kwargs
 ):
+    if tiled:
+        def flux_forward_fn(hl, hr, wl, wr):
+            return lets_dance_flux(
+                dit=dit,
+                controlnet=controlnet,
+                hidden_states=hidden_states[:, :, hl: hr, wl: wr],
+                timestep=timestep,
+                prompt_emb=prompt_emb,
+                pooled_prompt_emb=pooled_prompt_emb,
+                guidance=guidance,
+                text_ids=text_ids,
+                image_ids=None,
+                controlnet_frames=[f[:, :, hl: hr, wl: wr] for f in controlnet_frames],
+                tiled=False,
+                **kwargs
+            )
+        return FastTileWorker().tiled_forward(
+            flux_forward_fn,
+            hidden_states,
+            tile_size=tile_size,
+            tile_stride=tile_stride,
+            tile_device=hidden_states.device,
+            tile_dtype=hidden_states.dtype
+        )
+
+
     # ControlNet
     if controlnet is not None and controlnet_frames is not None:
         controlnet_extra_kwargs = {

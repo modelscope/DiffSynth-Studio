@@ -204,7 +204,6 @@ preset_models_on_huggingface = {
         ("lllyasviel/omost-llama-3-8b-4bits", "model.safetensors.index.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
         ("lllyasviel/omost-llama-3-8b-4bits", "special_tokens_map.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
     ],
-    
     # Translator
     "opus-mt-zh-en": [
         ("Helsinki-NLP/opus-mt-zh-en", "config.json", "models/translator/opus-mt-zh-en"),
@@ -345,6 +344,24 @@ preset_models_on_modelscope = {
     "ControlNet_union_sdxl_promax": [
         ("AI-ModelScope/controlnet-union-sdxl-1.0", "diffusion_pytorch_model_promax.safetensors", "models/ControlNet/controlnet_union"),
         ("sd_lora/Annotators", "dpt_hybrid-midas-501f0c75.pt", "models/Annotators")
+    ],
+    "Annotators:Depth": [
+        ("lllyasviel/Annotators", "dpt_hybrid-midas-501f0c75.pt", "models/Annotators"),
+    ],
+    "Annotators:Softedge": [
+        ("lllyasviel/Annotators", "ControlNetHED.pth", "models/Annotators"),
+    ],
+    "Annotators:Lineart": [
+        ("lllyasviel/Annotators", "sk_model.pth", "models/Annotators"),
+        ("lllyasviel/Annotators", "sk_model2.pth", "models/Annotators"),
+    ],
+    "Annotators:Normal": [
+        ("lllyasviel/Annotators", "scannet.pt", "models/Annotators"),
+    ],
+    "Annotators:Openpose": [
+        ("lllyasviel/Annotators", "body_pose_model.pth", "models/Annotators"),
+        ("lllyasviel/Annotators", "facenet.pth", "models/Annotators"),
+        ("lllyasviel/Annotators", "hand_pose_model.pth", "models/Annotators"),
     ],
     # AnimateDiff
     "AnimateDiff_v2": [
@@ -487,6 +504,30 @@ preset_models_on_modelscope = {
             "models/FLUX/FLUX.1-schnell/flux1-schnell.safetensors"
         ],
     },
+    "InstantX/FLUX.1-dev-Controlnet-Union-alpha": [
+        ("InstantX/FLUX.1-dev-Controlnet-Union-alpha", "diffusion_pytorch_model.safetensors", "models/ControlNet/InstantX/FLUX.1-dev-Controlnet-Union-alpha"),
+    ],
+    "jasperai/Flux.1-dev-Controlnet-Depth": [
+        ("jasperai/Flux.1-dev-Controlnet-Depth", "diffusion_pytorch_model.safetensors", "models/ControlNet/jasperai/Flux.1-dev-Controlnet-Depth"),
+    ],
+    "jasperai/Flux.1-dev-Controlnet-Surface-Normals": [
+        ("jasperai/Flux.1-dev-Controlnet-Surface-Normals", "diffusion_pytorch_model.safetensors", "models/ControlNet/jasperai/Flux.1-dev-Controlnet-Surface-Normals"),
+    ],
+    "jasperai/Flux.1-dev-Controlnet-Upscaler": [
+        ("jasperai/Flux.1-dev-Controlnet-Upscaler", "diffusion_pytorch_model.safetensors", "models/ControlNet/jasperai/Flux.1-dev-Controlnet-Upscaler"),
+    ],
+    "alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Alpha": [
+        ("alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Alpha", "diffusion_pytorch_model.safetensors", "models/ControlNet/alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Alpha"),
+    ],
+    "alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta": [
+        ("alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta", "diffusion_pytorch_model.safetensors", "models/ControlNet/alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta"),
+    ],
+    "Shakker-Labs/FLUX.1-dev-ControlNet-Depth": [
+        ("Shakker-Labs/FLUX.1-dev-ControlNet-Depth", "diffusion_pytorch_model.safetensors", "models/ControlNet/Shakker-Labs/FLUX.1-dev-ControlNet-Depth"),
+    ],
+    "Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro": [
+        ("Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro", "diffusion_pytorch_model.safetensors", "models/ControlNet/Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro"),
+    ],
     # ESRGAN
     "ESRGAN_x4": [
         ("AI-ModelScope/Real-ESRGAN", "RealESRGAN_x4.pth", "models/ESRGAN"),
@@ -546,10 +587,23 @@ Preset_model_id: TypeAlias = Literal[
     "ControlNet_union_sdxl_promax",
     "FLUX.1-dev",
     "FLUX.1-schnell",
+    "InstantX/FLUX.1-dev-Controlnet-Union-alpha",
+    "jasperai/Flux.1-dev-Controlnet-Depth",
+    "jasperai/Flux.1-dev-Controlnet-Surface-Normals",
+    "jasperai/Flux.1-dev-Controlnet-Upscaler",
+    "alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Alpha",
+    "alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta",
+    "Shakker-Labs/FLUX.1-dev-ControlNet-Depth",
+    "Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro",
     "SDXL_lora_zyd232_ChineseInkStyle_SDXL_v1_0",
     "QwenPrompt",
     "OmostPrompt",
     "ESRGAN_x4",
     "RIFE",
     "CogVideoX-5B",
+    "Annotators:Depth",
+    "Annotators:Softedge",
+    "Annotators:Lineart",
+    "Annotators:Normal",
+    "Annotators:Openpose",
 ]

@@ -107,6 +107,60 @@ class TileWorker:
     
 
 
+class FastTileWorker:
+    def __init__(self):
+        pass
+
+
+    def build_mask(self, data, is_bound):
+        _, _, H, W = data.shape
+        h = repeat(torch.arange(H), "H -> H W", H=H, W=W)
+        w = repeat(torch.arange(W), "W -> H W", H=H, W=W)
+        border_width = (H + W) // 4
+        pad = torch.ones_like(h) * border_width
+        mask = torch.stack([
+            pad if is_bound[0] else h + 1,
+            pad if is_bound[1] else H - h,
+            pad if is_bound[2] else w + 1,
+            pad if is_bound[3] else W - w
+        ]).min(dim=0).values
+        mask = mask.clip(1, border_width)
+        mask = (mask / border_width).to(dtype=data.dtype, device=data.device)
+        mask = rearrange(mask, "H W -> 1 H W")
+        return mask
+
+
+    def tiled_forward(self, forward_fn, model_input, tile_size, tile_stride, tile_device="cpu", tile_dtype=torch.float32, border_width=None):
+        # Prepare
+        B, C, H, W = model_input.shape
+        border_width = int(tile_stride*0.5) if border_width is None else border_width
+        weight = torch.zeros((1, 1, H, W), dtype=tile_dtype, device=tile_device)
+        values = torch.zeros((B, C, H, W), dtype=tile_dtype, device=tile_device)
+
+        # Split tasks
+        tasks = []
+        for h in range(0, H, tile_stride):
+            for w in range(0, W, tile_stride):
+                if (h-tile_stride >= 0 and h-tile_stride+tile_size >= H) or (w-tile_stride >= 0 and w-tile_stride+tile_size >= W):
+                    continue
+                h_, w_ = h + tile_size, w + tile_size
+                if h_ > H: h, h_ = H - tile_size, H
+                if w_ > W: w, w_ = W - tile_size, W
+                tasks.append((h, h_, w, w_))
+        
+        # Run
+        for hl, hr, wl, wr in tasks:
+            # Forward
+            hidden_states_batch = forward_fn(hl, hr, wl, wr).to(dtype=tile_dtype, device=tile_device)
+
+            mask = self.build_mask(hidden_states_batch, is_bound=(hl==0, hr>=H, wl==0, wr>=W))
+            values[:, :, hl:hr, wl:wr] += hidden_states_batch * mask
+            weight[:, :, hl:hr, wl:wr] += mask
+        values /= weight
+        return values
+
+
+
 class TileWorker2Dto3D:
     """
     Process 3D tensors, but only enable TileWorker on 2D.
