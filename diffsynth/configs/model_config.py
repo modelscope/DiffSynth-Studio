@@ -346,22 +346,22 @@ preset_models_on_modelscope = {
         ("sd_lora/Annotators", "dpt_hybrid-midas-501f0c75.pt", "models/Annotators")
     ],
     "Annotators:Depth": [
-        ("lllyasviel/Annotators", "dpt_hybrid-midas-501f0c75.pt", "models/Annotators"),
+        ("sd_lora/Annotators", "dpt_hybrid-midas-501f0c75.pt", "models/Annotators"),
     ],
     "Annotators:Softedge": [
-        ("lllyasviel/Annotators", "ControlNetHED.pth", "models/Annotators"),
+        ("sd_lora/Annotators", "ControlNetHED.pth", "models/Annotators"),
     ],
     "Annotators:Lineart": [
-        ("lllyasviel/Annotators", "sk_model.pth", "models/Annotators"),
-        ("lllyasviel/Annotators", "sk_model2.pth", "models/Annotators"),
+        ("sd_lora/Annotators", "sk_model.pth", "models/Annotators"),
+        ("sd_lora/Annotators", "sk_model2.pth", "models/Annotators"),
     ],
     "Annotators:Normal": [
-        ("lllyasviel/Annotators", "scannet.pt", "models/Annotators"),
+        ("sd_lora/Annotators", "scannet.pt", "models/Annotators"),
     ],
     "Annotators:Openpose": [
-        ("lllyasviel/Annotators", "body_pose_model.pth", "models/Annotators"),
-        ("lllyasviel/Annotators", "facenet.pth", "models/Annotators"),
-        ("lllyasviel/Annotators", "hand_pose_model.pth", "models/Annotators"),
+        ("sd_lora/Annotators", "body_pose_model.pth", "models/Annotators"),
+        ("sd_lora/Annotators", "facenet.pth", "models/Annotators"),
+        ("sd_lora/Annotators", "hand_pose_model.pth", "models/Annotators"),
     ],
     # AnimateDiff
     "AnimateDiff_v2": [
