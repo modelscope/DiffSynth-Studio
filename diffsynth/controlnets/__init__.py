@@ -1,2 +1,2 @@
-from .controlnet_unit import ControlNetConfigUnit, ControlNetUnit, MultiControlNetManager
+from .controlnet_unit import ControlNetConfigUnit, ControlNetUnit, MultiControlNetManager, FluxMultiControlNetManager
 from .processors import Annotator

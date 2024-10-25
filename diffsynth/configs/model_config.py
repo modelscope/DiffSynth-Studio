@@ -35,6 +35,7 @@ from ..models.hunyuan_dit import HunyuanDiT
 from ..models.flux_dit import FluxDiT
 from ..models.flux_text_encoder import FluxTextEncoder1, FluxTextEncoder2
 from ..models.flux_vae import FluxVAEEncoder, FluxVAEDecoder
+from ..models.flux_controlnet import FluxControlNet
 
 from ..models.cog_vae import CogVAEEncoder, CogVAEDecoder
 from ..models.cog_dit import CogDiT
@@ -80,6 +81,10 @@ model_loader_configs = [
     (None, "280189ee084bca10f70907bf6ce1649d", ["cog_vae_encoder", "cog_vae_decoder"], [CogVAEEncoder, CogVAEDecoder], "diffusers"),
     (None, "9b9313d104ac4df27991352fec013fd4", ["rife"], [IFNet], "civitai"),
     (None, "6b7116078c4170bfbeaedc8fe71f6649", ["esrgan"], [RRDBNet], "civitai"),
+    (None, "78d18b9101345ff695f312e7e62538c0", ["flux_controlnet"], [FluxControlNet], "diffusers"),
+    (None, "b001c89139b5f053c715fe772362dd2a", ["flux_controlnet"], [FluxControlNet], "diffusers"),
+    (None, "52357cb26250681367488a8954c271e8", ["flux_controlnet"], [FluxControlNet], "diffusers"),
+    (None, "0cfd1740758423a2a854d67c136d1e8c", ["flux_controlnet"], [FluxControlNet], "diffusers"),
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -199,7 +204,6 @@ preset_models_on_huggingface = {
         ("lllyasviel/omost-llama-3-8b-4bits", "model.safetensors.index.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
         ("lllyasviel/omost-llama-3-8b-4bits", "special_tokens_map.json", "models/OmostPrompt/omost-llama-3-8b-4bits"),
     ],
-    
     # Translator
     "opus-mt-zh-en": [
         ("Helsinki-NLP/opus-mt-zh-en", "config.json", "models/translator/opus-mt-zh-en"),
@@ -340,6 +344,24 @@ preset_models_on_modelscope = {
     "ControlNet_union_sdxl_promax": [
         ("AI-ModelScope/controlnet-union-sdxl-1.0", "diffusion_pytorch_model_promax.safetensors", "models/ControlNet/controlnet_union"),
         ("sd_lora/Annotators", "dpt_hybrid-midas-501f0c75.pt", "models/Annotators")
+    ],
+    "Annotators:Depth": [
+        ("sd_lora/Annotators", "dpt_hybrid-midas-501f0c75.pt", "models/Annotators"),
+    ],
+    "Annotators:Softedge": [
+        ("sd_lora/Annotators", "ControlNetHED.pth", "models/Annotators"),
+    ],
+    "Annotators:Lineart": [
+        ("sd_lora/Annotators", "sk_model.pth", "models/Annotators"),
+        ("sd_lora/Annotators", "sk_model2.pth", "models/Annotators"),
+    ],
+    "Annotators:Normal": [
+        ("sd_lora/Annotators", "scannet.pt", "models/Annotators"),
+    ],
+    "Annotators:Openpose": [
+        ("sd_lora/Annotators", "body_pose_model.pth", "models/Annotators"),
+        ("sd_lora/Annotators", "facenet.pth", "models/Annotators"),
+        ("sd_lora/Annotators", "hand_pose_model.pth", "models/Annotators"),
     ],
     # AnimateDiff
     "AnimateDiff_v2": [
@@ -482,6 +504,30 @@ preset_models_on_modelscope = {
             "models/FLUX/FLUX.1-schnell/flux1-schnell.safetensors"
         ],
     },
+    "InstantX/FLUX.1-dev-Controlnet-Union-alpha": [
+        ("InstantX/FLUX.1-dev-Controlnet-Union-alpha", "diffusion_pytorch_model.safetensors", "models/ControlNet/InstantX/FLUX.1-dev-Controlnet-Union-alpha"),
+    ],
+    "jasperai/Flux.1-dev-Controlnet-Depth": [
+        ("jasperai/Flux.1-dev-Controlnet-Depth", "diffusion_pytorch_model.safetensors", "models/ControlNet/jasperai/Flux.1-dev-Controlnet-Depth"),
+    ],
+    "jasperai/Flux.1-dev-Controlnet-Surface-Normals": [
+        ("jasperai/Flux.1-dev-Controlnet-Surface-Normals", "diffusion_pytorch_model.safetensors", "models/ControlNet/jasperai/Flux.1-dev-Controlnet-Surface-Normals"),
+    ],
+    "jasperai/Flux.1-dev-Controlnet-Upscaler": [
+        ("jasperai/Flux.1-dev-Controlnet-Upscaler", "diffusion_pytorch_model.safetensors", "models/ControlNet/jasperai/Flux.1-dev-Controlnet-Upscaler"),
+    ],
+    "alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Alpha": [
+        ("alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Alpha", "diffusion_pytorch_model.safetensors", "models/ControlNet/alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Alpha"),
+    ],
+    "alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta": [
+        ("alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta", "diffusion_pytorch_model.safetensors", "models/ControlNet/alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta"),
+    ],
+    "Shakker-Labs/FLUX.1-dev-ControlNet-Depth": [
+        ("Shakker-Labs/FLUX.1-dev-ControlNet-Depth", "diffusion_pytorch_model.safetensors", "models/ControlNet/Shakker-Labs/FLUX.1-dev-ControlNet-Depth"),
+    ],
+    "Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro": [
+        ("Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro", "diffusion_pytorch_model.safetensors", "models/ControlNet/Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro"),
+    ],
     # ESRGAN
     "ESRGAN_x4": [
         ("AI-ModelScope/Real-ESRGAN", "RealESRGAN_x4.pth", "models/ESRGAN"),
@@ -541,10 +587,23 @@ Preset_model_id: TypeAlias = Literal[
     "ControlNet_union_sdxl_promax",
     "FLUX.1-dev",
     "FLUX.1-schnell",
+    "InstantX/FLUX.1-dev-Controlnet-Union-alpha",
+    "jasperai/Flux.1-dev-Controlnet-Depth",
+    "jasperai/Flux.1-dev-Controlnet-Surface-Normals",
+    "jasperai/Flux.1-dev-Controlnet-Upscaler",
+    "alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Alpha",
+    "alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta",
+    "Shakker-Labs/FLUX.1-dev-ControlNet-Depth",
+    "Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro",
     "SDXL_lora_zyd232_ChineseInkStyle_SDXL_v1_0",
     "QwenPrompt",
     "OmostPrompt",
     "ESRGAN_x4",
     "RIFE",
     "CogVideoX-5B",
+    "Annotators:Depth",
+    "Annotators:Softedge",
+    "Annotators:Lineart",
+    "Annotators:Normal",
+    "Annotators:Openpose",
 ]

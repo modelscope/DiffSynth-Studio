@@ -47,9 +47,15 @@ class BasePipeline(torch.nn.Module):
         return value
 
 
-    def control_noise_via_local_prompts(self, prompt_emb_global, prompt_emb_locals, masks, mask_scales, inference_callback):
-        noise_pred_global = inference_callback(prompt_emb_global)
-        noise_pred_locals = [inference_callback(prompt_emb_local) for prompt_emb_local in prompt_emb_locals]
+    def control_noise_via_local_prompts(self, prompt_emb_global, prompt_emb_locals, masks, mask_scales, inference_callback, special_kwargs=None, special_local_kwargs_list=None):
+        if special_kwargs is None:
+            noise_pred_global = inference_callback(prompt_emb_global)
+        else:
+            noise_pred_global = inference_callback(prompt_emb_global, special_kwargs)
+        if special_local_kwargs_list is None:
+            noise_pred_locals = [inference_callback(prompt_emb_local) for prompt_emb_local in prompt_emb_locals]
+        else:
+            noise_pred_locals = [inference_callback(prompt_emb_local, special_kwargs) for prompt_emb_local, special_kwargs in zip(prompt_emb_locals, special_local_kwargs_list)]
         noise_pred = self.merge_latents(noise_pred_global, noise_pred_locals, masks, mask_scales)
         return noise_pred
     

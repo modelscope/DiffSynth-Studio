@@ -4,10 +4,11 @@ from .processors import Processor_id
 
 
 class ControlNetConfigUnit:
-    def __init__(self, processor_id: Processor_id, model_path, scale=1.0):
+    def __init__(self, processor_id: Processor_id, model_path, scale=1.0, skip_processor=False):
         self.processor_id = processor_id
         self.model_path = model_path
         self.scale = scale
+        self.skip_processor = skip_processor
 
 
 class ControlNetUnit:
@@ -60,3 +61,29 @@ class MultiControlNetManager:
             else:
                 res_stack = [i + j for i, j in zip(res_stack, res_stack_)]
         return res_stack
+
+
+class FluxMultiControlNetManager(MultiControlNetManager):
+    def __init__(self, controlnet_units=[]):
+        super().__init__(controlnet_units=controlnet_units)
+
+    def process_image(self, image, processor_id=None):
+        if processor_id is None:
+            processed_image = [processor(image) for processor in self.processors]
+        else:
+            processed_image = [self.processors[processor_id](image)]
+        return processed_image
+
+    def __call__(self, conditionings, **kwargs):
+        res_stack, single_res_stack = None, None
+        for processor, conditioning, model, scale in zip(self.processors, conditionings, self.models, self.scales):
+            res_stack_, single_res_stack_ = model(controlnet_conditioning=conditioning, processor_id=processor.processor_id, **kwargs)
+            res_stack_ = [res * scale for res in res_stack_]
+            single_res_stack_ = [res * scale for res in single_res_stack_]
+            if res_stack is None:
+                res_stack = res_stack_
+                single_res_stack = single_res_stack_
+            else:
+                res_stack = [i + j for i, j in zip(res_stack, res_stack_)]
+                single_res_stack = [i + j for i, j in zip(single_res_stack, single_res_stack_)]
+        return res_stack, single_res_stack
