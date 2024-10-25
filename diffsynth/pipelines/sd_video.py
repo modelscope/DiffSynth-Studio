@@ -185,7 +185,7 @@ class SDVideoPipeline(SDImagePipeline):
         if self.motion_modules is None:
             noise = self.generate_noise((1, 4, height//8, width//8), seed=seed, device="cpu", dtype=self.torch_dtype).repeat(num_frames, 1, 1, 1)
         else:
-            noise = self.generate_noise((1, 4, height//8, width//8), seed=seed, device="cpu", dtype=self.torch_dtype)
+            noise = self.generate_noise((num_frames, 4, height//8, width//8), seed=seed, device="cpu", dtype=self.torch_dtype)
         if input_frames is None or denoising_strength == 1.0:
             latents = noise
         else:
