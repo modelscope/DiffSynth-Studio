@@ -49,7 +49,7 @@ class SVDVideoPipeline(BasePipeline):
         return image_emb
     
 
-    def encode_image_with_vae(self, image, noise_aug_strength, seed):
+    def encode_image_with_vae(self, image, noise_aug_strength, seed=None):
         image = self.preprocess_image(image).to(device=self.device, dtype=self.torch_dtype)
         noise = self.generate_noise(image.shape, seed=seed, device=self.device, dtype=self.torch_dtype)
         image = image + noise_aug_strength * noise
