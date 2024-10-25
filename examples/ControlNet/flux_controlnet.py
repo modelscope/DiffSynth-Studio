@@ -20,7 +20,7 @@ def example_1():
         height=768, width=768,
         seed=0
     )
-    image_1.save("image_1.png")
+    image_1.save("image_1.jpg")
 
     image_2 = pipe(
         prompt="a photo of a cat, highly detailed",
@@ -29,7 +29,7 @@ def example_1():
         height=2048, width=2048, tiled=True,
         seed=1
     )
-    image_2.save("image_2.png")
+    image_2.save("image_2.jpg")
 
 
 
@@ -48,7 +48,7 @@ def example_2():
         height=768, width=768,
         seed=2
     )
-    image_1.save("image_3.png")
+    image_1.save("image_3.jpg")
 
     image_2 = pipe(
         prompt="a beautiful Chinese girl, delicate skin texture",
@@ -57,7 +57,7 @@ def example_2():
         height=2048, width=2048, tiled=True,
         seed=3
     )
-    image_2.save("image_4.png")
+    image_2.save("image_4.jpg")
 
 
 def example_3():
@@ -80,7 +80,7 @@ def example_3():
         height=1024, width=1024,
         seed=4
     )
-    image_1.save("image_5.png")
+    image_1.save("image_5.jpg")
 
     image_2 = pipe(
         prompt="sunshine, a cat is running",
@@ -88,7 +88,7 @@ def example_3():
         height=1024, width=1024,
         seed=5
     )
-    image_2.save("image_6.png")
+    image_2.save("image_6.jpg")
 
 
 def example_4():
@@ -111,7 +111,7 @@ def example_4():
         height=1024, width=1024,
         seed=6
     )
-    image_1.save("image_7.png")
+    image_1.save("image_7.jpg")
 
     image_2 = pipe(
         prompt="a beautiful Asian girl, full body, red dress, winter",
@@ -119,7 +119,7 @@ def example_4():
         height=1024, width=1024,
         seed=7
     )
-    image_2.save("image_8.png")
+    image_2.save("image_8.jpg")
 
 
 
@@ -138,12 +138,12 @@ def example_5():
         height=1024, width=1024,
         seed=8
     )
-    image_1.save("image_9.png")
+    image_1.save("image_9.jpg")
 
     mask = np.zeros((1024, 1024, 3), dtype=np.uint8)
     mask[100:350, 350: -300] = 255
     mask = Image.fromarray(mask)
-    mask.save("mask_9.png")
+    mask.save("mask_9.jpg")
 
     image_2 = pipe(
         prompt="a cat sitting on a chair, wearing sunglasses",
@@ -151,7 +151,7 @@ def example_5():
         height=1024, width=1024,
         seed=9
     )
-    image_2.save("image_10.png")
+    image_2.save("image_10.jpg")
 
 
 
@@ -179,12 +179,12 @@ def example_6():
         height=1024, width=1024,
         seed=10
     )
-    image_1.save("image_11.png")
+    image_1.save("image_11.jpg")
 
     mask = np.zeros((1024, 1024, 3), dtype=np.uint8)
     mask[-400:, 10:-40] = 255
     mask = Image.fromarray(mask)
-    mask.save("mask_11.png")
+    mask.save("mask_11.jpg")
 
     image_2 = pipe(
         prompt="a beautiful Asian woman looking at the sky, wearing a yellow t-shirt.",
@@ -192,7 +192,7 @@ def example_6():
         height=1024, width=1024,
         seed=11
     )
-    image_2.save("image_12.png")
+    image_2.save("image_12.jpg")
 
 
 def example_7():
@@ -220,22 +220,22 @@ def example_7():
         height=1024, width=1024,
         seed=100
     )
-    image_1.save("image_13.png")
+    image_1.save("image_13.jpg")
 
     mask_global = np.zeros((1024, 1024, 3), dtype=np.uint8)
     mask_global = Image.fromarray(mask_global)
-    mask_global.save("mask_13_global.png")
+    mask_global.save("mask_13_global.jpg")
 
     mask_1 = np.zeros((1024, 1024, 3), dtype=np.uint8)
     mask_1[300:-100, 30: 450] = 255
     mask_1 = Image.fromarray(mask_1)
-    mask_1.save("mask_13_1.png")
+    mask_1.save("mask_13_1.jpg")
 
     mask_2 = np.zeros((1024, 1024, 3), dtype=np.uint8)
     mask_2[500:-100, -400:] = 255
     mask_2[-200:-100, -500:-400] = 255
     mask_2 = Image.fromarray(mask_2)
-    mask_2.save("mask_13_2.png")
+    mask_2.save("mask_13_2.jpg")
 
     image_2 = pipe(
         prompt="a beautiful Asian woman and a cat on a bed. The woman wears a dress.",
@@ -244,7 +244,7 @@ def example_7():
         height=1024, width=1024,
         seed=101
     )
-    image_2.save("image_14.png")
+    image_2.save("image_14.jpg")
 
     model_manager.load_lora("models/lora/FLUX-dev-lora-AntiBlur.safetensors", lora_alpha=2)
     image_3 = pipe(
@@ -255,7 +255,7 @@ def example_7():
         cfg_scale=2.0, num_inference_steps=50,
         seed=102
     )
-    image_3.save("image_15.png")
+    image_3.save("image_15.jpg")
 
     pipe = FluxImagePipeline.from_model_manager(model_manager, controlnet_config_units=[
         ControlNetConfigUnit(
@@ -271,7 +271,7 @@ def example_7():
         height=2048, width=2048, tiled=True,
         seed=103
     )
-    image_4.save("image_16.png")
+    image_4.save("image_16.jpg")
 
     image_5 = pipe(
         prompt="a beautiful Asian woman wearing a red camisole and an orange cat on a bed. highly detailed, delicate skin texture, clear background.",
@@ -280,7 +280,7 @@ def example_7():
         height=4096, width=4096, tiled=True,
         seed=104
     )
-    image_5.save("image_17.png")
+    image_5.save("image_17.jpg")
 
 
 
