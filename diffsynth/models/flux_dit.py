@@ -475,6 +475,9 @@ class FluxDiT(torch.nn.Module):
                     # del module
                     setattr(model, name, new_layer)
                 elif isinstance(module, RMSNorm):
+                    if hasattr(module,"quantized"):
+                        continue
+                    module.quantized= True
                     new_layer = quantized_layer.RMSNorm(module)
                     setattr(model, name, new_layer)
                 else:

@@ -187,6 +187,7 @@ class FluxImagePipeline(BasePipeline):
 
         # Prepare ControlNets
         if controlnet_image is not None:
+            self.load_models_to_device(['vae_encoder'])
             controlnet_kwargs = {"controlnet_frames": self.prepare_controlnet_input(controlnet_image, controlnet_inpaint_mask, tiler_kwargs)}
             if len(masks) > 0 and controlnet_inpaint_mask is not None:
                 print("The controlnet_inpaint_mask will be overridden by masks.")
