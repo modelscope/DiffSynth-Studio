@@ -258,6 +258,7 @@ def lets_dance_flux(
 ):
     if tiled:
         def flux_forward_fn(hl, hr, wl, wr):
+            tiled_controlnet_frames = [f[:, :, hl: hr, wl: wr] for f in controlnet_frames] if controlnet_frames is not None else None
             return lets_dance_flux(
                 dit=dit,
                 controlnet=controlnet,
@@ -268,7 +269,7 @@ def lets_dance_flux(
                 guidance=guidance,
                 text_ids=text_ids,
                 image_ids=None,
-                controlnet_frames=[f[:, :, hl: hr, wl: wr] for f in controlnet_frames],
+                controlnet_frames=tiled_controlnet_frames,
                 tiled=False,
                 **kwargs
             )
