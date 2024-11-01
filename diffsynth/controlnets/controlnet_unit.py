@@ -31,6 +31,8 @@ class MultiControlNetManager:
     def to(self, device):
         for model in self.models:
             model.to(device)
+        for processor in self.processors:
+            processor.to(device)
     
     def process_image(self, image, processor_id=None):
         if processor_id is None:

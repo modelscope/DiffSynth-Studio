@@ -187,6 +187,7 @@ class FluxImagePipeline(BasePipeline):
 
         # Prepare ControlNets
         if controlnet_image is not None:
+            self.load_models_to_device(['vae_encoder'])
             controlnet_kwargs = {"controlnet_frames": self.prepare_controlnet_input(controlnet_image, controlnet_inpaint_mask, tiler_kwargs)}
             if len(masks) > 0 and controlnet_inpaint_mask is not None:
                 print("The controlnet_inpaint_mask will be overridden by masks.")
@@ -257,6 +258,7 @@ def lets_dance_flux(
 ):
     if tiled:
         def flux_forward_fn(hl, hr, wl, wr):
+            tiled_controlnet_frames = [f[:, :, hl: hr, wl: wr] for f in controlnet_frames] if controlnet_frames is not None else None
             return lets_dance_flux(
                 dit=dit,
                 controlnet=controlnet,
@@ -267,7 +269,7 @@ def lets_dance_flux(
                 guidance=guidance,
                 text_ids=text_ids,
                 image_ids=None,
-                controlnet_frames=[f[:, :, hl: hr, wl: wr] for f in controlnet_frames],
+                controlnet_frames=tiled_controlnet_frames,
                 tiled=False,
                 **kwargs
             )

@@ -37,6 +37,11 @@ class Annotator:
 
         self.processor_id = processor_id
         self.detect_resolution = detect_resolution
+    
+    def to(self,device):
+        if hasattr(self.processor,"model") and hasattr(self.processor.model,"to"):
+
+            self.processor.model.to(device)
 
     def __call__(self, image, mask=None):
         width, height = image.size

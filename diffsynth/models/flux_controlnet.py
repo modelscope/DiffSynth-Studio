@@ -1,7 +1,7 @@
 import torch
 from einops import rearrange, repeat
-from .flux_dit import RoPEEmbedding, TimestepEmbeddings, FluxJointTransformerBlock, FluxSingleTransformerBlock
-from .utils import hash_state_dict_keys
+from .flux_dit import RoPEEmbedding, TimestepEmbeddings, FluxJointTransformerBlock, FluxSingleTransformerBlock, RMSNorm
+from .utils import hash_state_dict_keys, init_weights_on_device
 
 
 
@@ -105,6 +105,107 @@ class FluxControlNet(torch.nn.Module):
     @staticmethod
     def state_dict_converter():
         return FluxControlNetStateDictConverter()
+    
+    def quantize(self):
+        def cast_to(weight, dtype=None, device=None, copy=False):
+            if device is None or weight.device == device:
+                if not copy:
+                    if dtype is None or weight.dtype == dtype:
+                        return weight
+                return weight.to(dtype=dtype, copy=copy)
+
+            r = torch.empty_like(weight, dtype=dtype, device=device)
+            r.copy_(weight)
+            return r
+
+        def cast_weight(s, input=None, dtype=None, device=None):
+            if input is not None:
+                if dtype is None:
+                    dtype = input.dtype
+                if device is None:
+                    device = input.device
+            weight = cast_to(s.weight, dtype, device)
+            return weight
+
+        def cast_bias_weight(s, input=None, dtype=None, device=None, bias_dtype=None):
+            if input is not None:
+                if dtype is None:
+                    dtype = input.dtype
+                if bias_dtype is None:
+                    bias_dtype = dtype
+                if device is None:
+                    device = input.device
+            bias = None
+            weight = cast_to(s.weight, dtype, device)
+            bias = cast_to(s.bias, bias_dtype, device)
+            return weight, bias
+
+        class quantized_layer:
+            class QLinear(torch.nn.Linear):
+                def __init__(self, *args, **kwargs):
+                    super().__init__(*args, **kwargs)
+                    
+                def forward(self,input,**kwargs):
+                    weight,bias= cast_bias_weight(self,input)
+                    return torch.nn.functional.linear(input,weight,bias)
+            
+            class QRMSNorm(torch.nn.Module):
+                def __init__(self, module):
+                    super().__init__()
+                    self.module = module
+                    
+                def forward(self,hidden_states,**kwargs):
+                    weight= cast_weight(self.module,hidden_states)
+                    input_dtype = hidden_states.dtype
+                    variance = hidden_states.to(torch.float32).square().mean(-1, keepdim=True)
+                    hidden_states = hidden_states * torch.rsqrt(variance + self.module.eps)
+                    hidden_states = hidden_states.to(input_dtype) * weight
+                    return hidden_states
+            
+            class QEmbedding(torch.nn.Embedding):
+                def __init__(self, *args, **kwargs):
+                    super().__init__(*args, **kwargs)
+                    
+                def forward(self,input,**kwargs):
+                    weight= cast_weight(self,input)
+                    return torch.nn.functional.embedding(
+                        input, weight, self.padding_idx, self.max_norm,
+                        self.norm_type, self.scale_grad_by_freq, self.sparse)
+            
+        def replace_layer(model):
+            for name, module in model.named_children():
+                if isinstance(module,quantized_layer.QRMSNorm):
+                    continue
+                if isinstance(module, torch.nn.Linear):
+                    with init_weights_on_device():
+                        new_layer = quantized_layer.QLinear(module.in_features,module.out_features)
+                    new_layer.weight = module.weight
+                    if module.bias is not None:
+                        new_layer.bias = module.bias
+                    setattr(model, name, new_layer)
+                elif isinstance(module, RMSNorm):
+                    if hasattr(module,"quantized"):
+                        continue
+                    module.quantized= True
+                    new_layer = quantized_layer.QRMSNorm(module)
+                    setattr(model, name, new_layer)
+                elif isinstance(module,torch.nn.Embedding):
+                    rows, cols = module.weight.shape
+                    new_layer = quantized_layer.QEmbedding(
+                        num_embeddings=rows,
+                        embedding_dim=cols,
+                        _weight=module.weight,
+                        # _freeze=module.freeze,
+                        padding_idx=module.padding_idx,
+                        max_norm=module.max_norm,
+                        norm_type=module.norm_type,
+                        scale_grad_by_freq=module.scale_grad_by_freq,
+                        sparse=module.sparse)
+                    setattr(model, name, new_layer)
+                else:
+                    replace_layer(module)
+
+        replace_layer(self)
     
 
 
