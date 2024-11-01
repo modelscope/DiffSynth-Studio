@@ -27,6 +27,7 @@ DiffSynth-Studio 文档
 
    creating/BasicImageSynthesis.md
    creating/AdaptersForImageSynthesis.md
+   creating/MultiControlnet.md
    creating/ToonShading.md
    creating/PromptRefine.md
 
