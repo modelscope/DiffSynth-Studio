@@ -17,7 +17,6 @@ DiffSynth-Studio 文档
    tutorial/DownloadModels.md
    tutorial/Models.md
    tutorial/Pipelines.md
-   tutorial/PromptProcessing.md
    tutorial/Extensions.md
    tutorial/Schedulers.md
 

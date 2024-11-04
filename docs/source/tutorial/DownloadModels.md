@@ -4,7 +4,7 @@
 
 ## 下载预置模型
 
-你可以直接使用 `download_models` 函数下载预置的模型文件，其中模型 ID 可参考 [config file](/diffsynth/configs/model_config.py)。
+你可以直接使用 `download_models` 函数下载预置的模型文件，其中模型 ID 可参考 [config file](https://github.com/modelscope/DiffSynth-Studio/blob/main/diffsynth/configs/model_config.py)。
 
 ```python
 from diffsynth import download_models

@@ -19,7 +19,7 @@
 
 ## 使用 PyPI 下载
 
-直接通过 PyPI 安装（功能更新存在延后）：
+直接通过 PyPI 安装（功能更新存在延后，不建议使用这种方式）：
 
 ```bash
 pip install diffsynth
