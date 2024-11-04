@@ -8,14 +8,16 @@
 
 |FLUX|Stable Diffusion 3|Kolors|Hunyuan-DiT|Stable Diffusion|Stable Diffusion XL|
 |-|-|-|-|-|-|
-|![image_1024_cfg](https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f)|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098)|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf)|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5)|![1024](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5)|![1024](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90)|![image_1024_cfg](https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f)|![image_2048_highres](https://github.com/user-attachments/assets/2e92b2f8-c177-454f-84f6-f6f5d3aaeeff)|
+|![image_1024_cfg](https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f)|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098)|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf)|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5)|![1024](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5)|![1024](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90)|
 
-还有提示词分区控制技术。
+我们设计了统一的框架，实现了通用的增强模块，例如提示词分区控制技术。
 
+<div align="center">
 <video width="512" height="256" controls>
   <source src="https://github.com/user-attachments/assets/59613157-de51-4109-99b3-97cbffd88076" type="video/mp4">
 您的浏览器不支持Video标签。
 </video>
+</div>
 
 以及一站式的训练脚本。
 
@@ -34,10 +36,12 @@
 
 你甚至可以继续叠加 AnimateDiff 构建视频转绘方案。
 
+<div align="center">
 <video width="512" height="256" controls>
   <source src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/b54c05c5-d747-4709-be5e-b39af82404dd" type="video/mp4">
 您的浏览器不支持Video标签。
 </video>
+</div>
 
 ## 创新
 
