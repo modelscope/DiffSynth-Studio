@@ -7,7 +7,7 @@
 目前的开源 Diffusion 模型结构五花八门，以文生图模型为例，有 Stable Diffusion、Kolors、FLUX 等。
 
 |FLUX|Stable Diffusion 3|Kolors|Hunyuan-DiT|Stable Diffusion|Stable Diffusion XL|
-|-|-|
+|-|-|-|-|-|-|
 |![image_1024_cfg](https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f)|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098)|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf)|![image_1024](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5)|![1024](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5)|![1024](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90)|![image_1024_cfg](https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f)|![image_2048_highres](https://github.com/user-attachments/assets/2e92b2f8-c177-454f-84f6-f6f5d3aaeeff)|
 
 还有提示词分区控制技术。
