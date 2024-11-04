@@ -6,7 +6,13 @@
 DiffSynth-Studio 文档
 ==============================
 
-欢迎来到 DiffSynth-Studio，我们旨在构建 Diffusion 模型的开源互联生态，在这里，你可以体验到 AIGC（AI Generated Content）技术魔法般的魅力！
+欢迎来到 Diffusion 的魔法世界，这里是 DiffSynth-Studio，一个开源的 Diffusion 引擎，我们希望通过这样一个开源项目，构建统一、互联、创新的 Diffusion 模型生态！
+
+.. toctree::
+   :maxdepth: 1
+   :caption: 简介
+
+   introduction/introduction.md
 
 .. toctree::
    :maxdepth: 1
