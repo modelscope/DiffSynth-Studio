@@ -28,13 +28,9 @@
 
 与语言模型不同，Diffusion 模型存在生态模型，包括 LoRA、ControlNet、IP-Adapter 等，这些模型由不同的开发者开发、训练、开源，我们为这些模型提供了一站式的推理支持。例如基于 Stable Diffusion XL，你可以随意使用这些相关的生态模型组装出丰富的功能。
 
-|底模生成|使用 ControlNet 保持画面结构重新生成|
-|-|-|
-|![image](https://github.com/user-attachments/assets/cc094e8f-ff6a-4f9e-ba05-7a5c2e0e609f)|![image_controlnet](https://github.com/user-attachments/assets/d50d173e-e81a-4d7e-93e3-b2787d69953e)|
-
-|继续叠加 LoRA 使画面更扁平|叠加 IP-Adapter 转换为水墨风格|
-|-|-|
-|![image_lora](https://github.com/user-attachments/assets/c599b2f8-8351-4be5-a6ae-8380889cb9d8)|![image_ipadapter](https://github.com/user-attachments/assets/e5924aef-03b0-4462-811f-a60e2523fd7f)|
+|底模生成|使用 ControlNet 保持画面结构重新生成|继续叠加 LoRA 使画面更扁平|叠加 IP-Adapter 转换为水墨风格|
+|-|-|-|-|
+|![image](https://github.com/user-attachments/assets/cc094e8f-ff6a-4f9e-ba05-7a5c2e0e609f)|![image_controlnet](https://github.com/user-attachments/assets/d50d173e-e81a-4d7e-93e3-b2787d69953e)|![image_lora](https://github.com/user-attachments/assets/c599b2f8-8351-4be5-a6ae-8380889cb9d8)|![image_ipadapter](https://github.com/user-attachments/assets/e5924aef-03b0-4462-811f-a60e2523fd7f)|
 
 你甚至可以继续叠加 AnimateDiff 构建视频转绘方案。
 
@@ -48,26 +44,26 @@
 DiffSynth-Studio 集成了多个开源模型，这是属于开源社区的奇迹。我们致力于用强工程基础驱动算法上的创新，目前我们公开了多项创新性生成技术。
 
 * ExVideo: 视频生成模型的扩展训练技术
-    * 项目页面: https://ecnu-cilab.github.io/ExVideoProjectPage/
-    * 技术报告: https://arxiv.org/abs/2406.14130
+    * 项目页面: [https://ecnu-cilab.github.io/ExVideoProjectPage/](https://ecnu-cilab.github.io/ExVideoProjectPage/)
+    * 技术报告: [https://arxiv.org/abs/2406.14130](https://arxiv.org/abs/2406.14130)
     * 模型 (ExVideo-CogVideoX)
-        * HuggingFace: https://huggingface.co/ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1
-        * ModelScope: https://modelscope.cn/models/ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1
+        * HuggingFace: [https://huggingface.co/ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1](https://huggingface.co/ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1)
+        * ModelScope: [https://modelscope.cn/models/ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1](https://modelscope.cn/models/ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1)
     * 模型 (ExVideo-SVD)
-        * HuggingFace: https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1
-        * ModelScope: https://modelscope.cn/models/ECNU-CILab/ExVideo-SVD-128f-v1
+        * HuggingFace: [https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
+        * ModelScope: [https://modelscope.cn/models/ECNU-CILab/ExVideo-SVD-128f-v1](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
 * Diffutoon: 动漫风格视频渲染方案
-    * 项目页面: https://ecnu-cilab.github.io/DiffutoonProjectPage/
-    * 技术报告: https://arxiv.org/abs/2401.16224
-    * 样例代码: https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/Diffutoon
+    * 项目页面: [https://ecnu-cilab.github.io/DiffutoonProjectPage/](https://ecnu-cilab.github.io/DiffutoonProjectPage/)
+    * 技术报告: [https://arxiv.org/abs/2401.16224](https://arxiv.org/abs/2401.16224)
+    * 样例代码: [https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/Diffutoon](https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/Diffutoon)
 * FastBlend: 视频去闪烁算法
-    * 独立仓库: https://github.com/Artiprocher/sd-webui-fastblend
+    * 独立仓库: [https://github.com/Artiprocher/sd-webui-fastblend](https://github.com/Artiprocher/sd-webui-fastblend)
     * 视频演示
-        * https://www.bilibili.com/video/BV1d94y1W7PE
-        * https://www.bilibili.com/video/BV1Lw411m71p
-        * https://www.bilibili.com/video/BV1RB4y1Z7LF
-    * 技术报告: https://arxiv.org/abs/2311.09265
+        * [https://www.bilibili.com/video/BV1d94y1W7PE](https://www.bilibili.com/video/BV1d94y1W7PE)
+        * [https://www.bilibili.com/video/BV1Lw411m71p](https://www.bilibili.com/video/BV1Lw411m71p)
+        * [https://www.bilibili.com/video/BV1RB4y1Z7LF](https://www.bilibili.com/video/BV1RB4y1Z7LF)
+    * 技术报告: [https://arxiv.org/abs/2311.09265](https://arxiv.org/abs/2311.09265)
 * DiffSynth: DiffSynth-Studio 的前身
-    * 项目页面: https://ecnu-cilab.github.io/DiffSynth.github.io/
-    * 早期代码: https://github.com/alibaba/EasyNLP/tree/master/diffusion/DiffSynth
-    * 技术报告: https://arxiv.org/abs/2308.03463
+    * 项目页面: [https://ecnu-cilab.github.io/DiffSynth.github.io/](https://ecnu-cilab.github.io/DiffSynth.github.io/)
+    * 早期代码: [https://github.com/alibaba/EasyNLP/tree/master/diffusion/DiffSynth](https://github.com/alibaba/EasyNLP/tree/master/diffusion/DiffSynth)
+    * 技术报告: [https://arxiv.org/abs/2308.03463](https://arxiv.org/abs/2308.03463)
