@@ -6,9 +6,28 @@
 
 目前的开源 Diffusion 模型结构五花八门，以文生图模型为例，有 Stable Diffusion、Kolors、FLUX 等。
 
-| FLUX | Stable Diffusion 3 | Kolors | Hunyuan-DiT | Stable Diffusion | Stable Diffusion XL |
+|    FLUX    | Stable Diffusion 3 | Kolors | Hunyuan-DiT | Stable Diffusion | Stable Diffusion XL |
 |-|-|-|-|-|-|
 | <img src="https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f" width="80"/> | <img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098" width="80"/> | <img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf" width="80"/> | <img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5" width="80"/> | <img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5" width="80"/> | <img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90" width="80"/> |
+
+<table>
+  <tr>
+    <th>FLUX</th>
+    <th>Stable Diffusion 3</th>
+    <th>Kolors</th>
+    <th>Hunyuan-DiT</th>
+    <th>Stable Diffusion</th>
+    <th>Stable Diffusion XL</th>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f" width="100"/></td>
+    <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098" width="100"/></td>
+    <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf" width="100"/></td>
+    <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5" width="100"/></td>
+    <td><img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5" width="100"/></td>
+    <td><img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90" width="100"/></td>
+  </tr>
+</table>
 
 
 我们设计了统一的框架，实现了通用的增强模块，例如提示词分区控制技术。
