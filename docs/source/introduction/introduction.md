@@ -11,7 +11,6 @@
 | <img src="https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f" width="80"/> | <img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098" width="80"/> | <img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf" width="80"/> | <img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5" width="80"/> | <img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5" width="80"/> | <img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90" width="80"/> |
 
 
-
 我们设计了统一的框架，实现了通用的增强模块，例如提示词分区控制技术。
 
 <div align="center">
@@ -22,12 +21,6 @@
 </div>
 
 以及一站式的训练脚本。
-
-||FLUX.1-dev|Kolors|Stable Diffusion 3|Hunyuan-DiT|
-|-|-|-|-|-|
-|Without LoRA|![image_without_lora](https://github.com/user-attachments/assets/df62cef6-d54f-4e3d-a602-5dd290079d49)|![image_without_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/9d79ed7a-e8cf-4d98-800a-f182809db318)|![image_without_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/ddb834a5-6366-412b-93dc-6d957230d66e)|![image_without_lora](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/1aa21de5-a992-4b66-b14f-caa44e08876e)|
-|With LoRA|![image_with_lora](https://github.com/user-attachments/assets/4fd39890-0291-4d19-8a88-d70d0ae18533)|![image_with_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/02f62323-6ee5-4788-97a1-549732dbe4f0)|![image_with_lora](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/8e7b2888-d874-4da4-a75b-11b6b214b9bf)|![image_with_lora](https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/83a0a41a-691f-4610-8e7b-d8e17c50a282)|
-
 
 ||FLUX.1-dev|Kolors|Stable Diffusion 3|Hunyuan-DiT|
 |-|-|-|-|-|
