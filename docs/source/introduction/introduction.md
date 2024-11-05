@@ -6,58 +6,13 @@
 
 目前的开源 Diffusion 模型结构五花八门，以文生图模型为例，有 Stable Diffusion、Kolors、FLUX 等。
 
-|    FLUX    | Stable Diffusion 3 | Kolors | Hunyuan-DiT | Stable Diffusion | Stable Diffusion XL |
+|<div style="width:200px">FLUX</div>| Stable Diffusion 3 | Kolors | Hunyuan-DiT | Stable Diffusion | Stable Diffusion XL |
 |-|-|-|-|-|-|
 | <img src="https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f" width="80" height="80"/> | <img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098" width="80" height="80"/> | <img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf" width="80" height="80"/> | <img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5" width="80" height="80"/> | <img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5" width="80" height="80"/> | <img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90" width="80" height="80"/> |
 
-| FLUX | Stable Diffusion 3 | Kolors | Hunyuan-DiT | Stable Diffusion | Stable Diffusion XL |
+| &emsp FLUX &emsp| Stable Diffusion 3 | Kolors | Hunyuan-DiT | Stable Diffusion | Stable Diffusion XL |
 |-|-|-|-|-|-|
 | <img src="https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f" width="80"/> | <img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098" width="80"/> | <img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf" width="80"/> | <img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5" width="80"/> | <img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5" width="80"/> | <img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90" width="80"/> |
-
-
-
-<table>
-  <tr>
-    <th>FLUX</th>
-    <th>Stable Diffusion 3</th>
-    <th>Kolors</th>
-    <th>Hunyuan-DiT</th>
-    <th>Stable Diffusion</th>
-    <th>Stable Diffusion XL</th>
-  </tr>
-  <tr>
-    <td><img src="https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f" width="100"/></td>
-    <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098" width="100"/></td>
-    <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf" width="100"/></td>
-    <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5" width="100"/></td>
-    <td><img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5" width="100"/></td>
-    <td><img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90" width="100"/></td>
-  </tr>
-</table>
-
-
-<table>
- <thead>
-   <tr>
-     <th style="width:15%">FLUX</th>
-     <th style="width:15%">Stable Diffusion 3</th>
-     <th style="width:15%">Kolors</th>
-     <th style="width:15%">Hunyuan-DiT</th>
-     <th style="width:15%">Stable Diffusion</th>
-     <th style="width:15%">Stable Diffusion XL</th>
-   </tr>
- </thead>
- <tbody>
-   <tr>
-     <td><img src="https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f" alt="image_1024_cfg" /></td>
-     <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098" alt="image_1024" /></td>
-     <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf" alt="image_1024" /></td>
-     <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5" alt="image_1024" /></td>
-     <td><img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5" alt="1024" /></td>
-     <td><img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90" alt="1024" /></td>
-   </tr>
- </tbody>
-</table>
 
 
 
