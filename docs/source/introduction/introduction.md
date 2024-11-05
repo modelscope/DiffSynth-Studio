@@ -29,6 +29,97 @@
   </tr>
 </table>
 
+   <table>
+     <thead>
+       <tr>
+         <th style="width:15%">FLUX</th>
+         <th style="width:15%">Stable Diffusion 3</th>
+         <th style="width:15%">Kolors</th>
+         <th style="width:15%">Hunyuan-DiT</th>
+         <th style="width:15%">Stable Diffusion</th>
+         <th style="width:25%">Stable Diffusion XL</th>
+       </tr>
+     </thead>
+     <tbody>
+       <tr>
+         <td><img src="https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f" alt="image_1024_cfg" /></td>
+         <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098" alt="image_1024" /></td>
+         <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf" alt="image_1024" /></td>
+         <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5" alt="image_1024" /></td>
+         <td><img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5" alt="1024" /></td>
+         <td><img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90" alt="1024" /></td>
+       </tr>
+     </tbody>
+   </table>
+
+
+<style>
+  table {
+    width: 100%;
+    table-layout: fixed; /* 表格布局设置为固定，以便可以设置列宽 */
+  }
+
+  th, td {
+    width: 16.6%; /* 每列的宽度，大约为 100/6 */
+    text-align: center;
+  }
+
+  /* 具体设置每一列的宽度（如果每列需要不同的宽度，可以分别设置） */
+  th:nth-child(1),
+  td:nth-child(1) {
+    width: 15%;
+  }
+  
+  th:nth-child(2),
+  td:nth-child(2) {
+    width: 15%;
+  }
+  
+  th:nth-child(3),
+  td:nth-child(3) {
+    width: 15%;
+  }
+  
+  th:nth-child(4),
+  td:nth-child(4) {
+    width: 15%;
+  }
+  
+  th:nth-child(5),
+  td:nth-child(5) {
+    width: 20%;
+  }
+  
+  th:nth-child(6),
+  td:nth-child(6) {
+    width: 20%;
+  }
+</style>
+
+<table>
+  <thead>
+    <tr>
+      <th>FLUX</th>
+      <th>Stable Diffusion 3</th>
+      <th>Kolors</th>
+      <th>Hunyuan-DiT</th>
+      <th>Stable Diffusion</th>
+      <th>Stable Diffusion XL</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><img src="https://github.com/user-attachments/assets/984561e9-553d-4952-9443-79ce144f379f" alt="image_1024_cfg"></td>
+      <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4df346db-6f91-420a-b4c1-26e205376098" alt="image_1024"></td>
+      <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/53ef6f41-da11-4701-8665-9f64392607bf" alt="image_1024"></td>
+      <td><img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/60b022c8-df3f-4541-95ab-bf39f2fa8bb5" alt="image_1024"></td>
+      <td><img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/6fc84611-8da6-4a1f-8fee-9a34eba3b4a5" alt="1024"></td>
+      <td><img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/67687748-e738-438c-aee5-96096f09ac90" alt="1024"></td>
+    </tr>
+  </tbody>
+</table>
+
+
 
 我们设计了统一的框架，实现了通用的增强模块，例如提示词分区控制技术。
 
