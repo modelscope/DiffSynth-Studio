@@ -47,6 +47,14 @@ image_2.save("image_6.jpg")
 |<img src="https://github.com/user-attachments/assets/19d2abc4-36ae-4163-a8da-df5732d1a737" width="200"/> | <img src="https://github.com/user-attachments/assets/28378271-3782-484c-bd51-3d3311dd85c6" width="200"/> |
 |-|-|
 
+
+<div align="center">
+    <img src="https://github.com/user-attachments/assets/19d2abc4-36ae-4163-a8da-df5732d1a737" alt="图片1" width="200" style="margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/28378271-3782-484c-bd51-3d3311dd85c6" alt="图片2" width="200" style="margin-right: 10px;">
+</div>
+
+
+
 ControlNet 对于结构的控制力度是可以调节的，例如在下面这里例子中，我们把小姐姐从夏天移动到冬天时，适当调低 ControlNet 的控制力度，模型就会根据画面内容作出调整，为小姐姐换上温暖的衣服。
 
 ```python
@@ -86,6 +94,11 @@ image_2.save("image_8.jpg")
 
 |<img src="https://github.com/user-attachments/assets/a7b8555b-bfd9-4e92-aa77-16bca81b07e3" width="200"/> | <img src="https://github.com/user-attachments/assets/a1bab36b-6cce-4f29-8233-4cb824b524a8" width="200"/> |
 |-|-|
+
+<div align="center">
+    <img src="https://github.com/user-attachments/assets/a7b8555b-bfd9-4e92-aa77-16bca81b07e3" alt="图片1" width="200" style="margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/a1bab36b-6cce-4f29-8233-4cb824b524a8" alt="图片2" width="200" style="margin-right: 10px;">
+</div>
 
 ## Upscaler/Tile/Blur: 高清图像生成
 
@@ -128,6 +141,11 @@ image_2.save("image_2.jpg")
 |<img src="https://github.com/user-attachments/assets/9038158a-118c-4ad7-ab01-22865f6a06fc" width="200"/> | <img src="https://github.com/user-attachments/assets/88583a33-cd74-4cb9-8fd4-c6e14c0ada0c" width="200"/> |
 |-|-|
 
+<div align="center">
+    <img src="https://github.com/user-attachments/assets/9038158a-118c-4ad7-ab01-22865f6a06fc" alt="图片1" width="200" style="margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/88583a33-cd74-4cb9-8fd4-c6e14c0ada0c" alt="图片2" width="200" style="margin-right: 10px;">
+</div>
+
 ```python
 model_manager = ModelManager(torch_dtype=torch.bfloat16, model_id_list=["FLUX.1-dev", "jasperai/Flux.1-dev-Controlnet-Upscaler"])
 pipe = FluxImagePipeline.from_model_manager(model_manager, controlnet_config_units=[
@@ -155,6 +173,12 @@ image_2.save("image_4.jpg")
 
 |<img src="https://github.com/user-attachments/assets/13061ecf-bb57-448a-82c6-7e4655c9cd85" width="200"/> | <img src="https://github.com/user-attachments/assets/0b7ae80f-de58-4d1d-a49c-ad17e7631bdc" width="200"/> |
 |-|-|
+
+<div align="center">
+    <img src="https://github.com/user-attachments/assets/13061ecf-bb57-448a-82c6-7e4655c9cd85" alt="图片1" width="200" style="margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/0b7ae80f-de58-4d1d-a49c-ad17e7631bdc" alt="图片2" width="200" style="margin-right: 10px;">
+</div>
+
 
 ## Inpaint: 局部重绘
 
@@ -197,6 +221,12 @@ image_2.save("image_10.jpg")
 
 |<img src="https://github.com/user-attachments/assets/babddad0-2d67-4624-b77a-c953250ebdab" width="120"/> | <img src="https://github.com/user-attachments/assets/d5bc2878-1817-457a-bdfa-200f955233d3" width="120"/> |<img src="https://github.com/user-attachments/assets/e3197f2c-190b-4522-83ab-a2e0451b39f6" width="120"/> |
 |-|-|-|
+
+<div align="center">
+    <img src="https://github.com/user-attachments/assets/babddad0-2d67-4624-b77a-c953250ebdab" alt="图片1" width="200" style="margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/d5bc2878-1817-457a-bdfa-200f955233d3" alt="图片2" width="200" style="margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/e3197f2c-190b-4522-83ab-a2e0451b39f6" alt="图片2" width="200">
+</div>
 
 但是我们注意到，猫猫的头部动作发生了变化，如果我们想要保留原来的结构特征，可以使用 canny、depth、normal 模型，DiffSynth-Studio 为不同结构的 ControlNet 提供了无缝的兼容支持。配合一个 normal ControlNet，我们可以保证局部重绘时画面结构不变。
 
@@ -247,6 +277,11 @@ image_2.save("image_12.jpg")
 |<img src="https://github.com/user-attachments/assets/c028e6fc-5125-4cba-b35a-b6211c2e6600" width="120"/> | <img src="https://github.com/user-attachments/assets/1928ee9a-7594-4c6e-9c71-5bd0b043d8f4" width="120"/> |<img src="https://github.com/user-attachments/assets/97b3b9e1-f821-405e-971b-9e1c31a209aa" width="120"/> |
 |-|-|-|
 
+<div align="center">
+    <img src="https://github.com/user-attachments/assets/c028e6fc-5125-4cba-b35a-b6211c2e6600" alt="图片1" width="200" style="margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/1928ee9a-7594-4c6e-9c71-5bd0b043d8f4" alt="图片2" width="200" style="margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/97b3b9e1-f821-405e-971b-9e1c31a209aa" alt="图片2" width="200">
+</div>
 
 ## MultiControlNet+MultiDiffusion: 精细的高阶控制
 
