@@ -212,9 +212,9 @@ image_2.save("image_10.jpg")
 
 
 <div align="center">
-    <img src="https://github.com/user-attachments/assets/babddad0-2d67-4624-b77a-c953250ebdab" alt="图片1" width="300" style="margin-right: 20px;">
-    <img src="https://github.com/user-attachments/assets/d5bc2878-1817-457a-bdfa-200f955233d3" alt="图片2" width="300" style="margin-right: 20px;">
-    <img src="https://github.com/user-attachments/assets/e3197f2c-190b-4522-83ab-a2e0451b39f6" alt="图片2" width="300">
+    <img src="https://github.com/user-attachments/assets/babddad0-2d67-4624-b77a-c953250ebdab" alt="图片1" width="200" style="margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/d5bc2878-1817-457a-bdfa-200f955233d3" alt="图片2" width="200" style="margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/e3197f2c-190b-4522-83ab-a2e0451b39f6" alt="图片2" width="200">
 </div>
 <br>
 
@@ -265,9 +265,9 @@ image_2.save("image_12.jpg")
 ```
 
 <div align="center">
-    <img src="https://github.com/user-attachments/assets/c028e6fc-5125-4cba-b35a-b6211c2e6600" alt="图片1" width="300" style="margin-right: 20px;">
-    <img src="https://github.com/user-attachments/assets/1928ee9a-7594-4c6e-9c71-5bd0b043d8f4" alt="图片2" width="300" style="margin-right: 20px;">
-    <img src="https://github.com/user-attachments/assets/97b3b9e1-f821-405e-971b-9e1c31a209aa" alt="图片2" width="300">
+    <img src="https://github.com/user-attachments/assets/c028e6fc-5125-4cba-b35a-b6211c2e6600" alt="图片1" width="200" style="margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/1928ee9a-7594-4c6e-9c71-5bd0b043d8f4" alt="图片2" width="200" style="margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/97b3b9e1-f821-405e-971b-9e1c31a209aa" alt="图片2" width="200">
 </div>
 <br>
 
