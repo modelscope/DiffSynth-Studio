@@ -166,8 +166,8 @@ image_2.save("image_4.jpg")
 ```
 
 <div align="center">
-    <img src="https://github.com/user-attachments/assets/13061ecf-bb57-448a-82c6-7e4655c9cd85" alt="图片1" width="200" style="margin-right: 10px;">
-    <img src="https://github.com/user-attachments/assets/0b7ae80f-de58-4d1d-a49c-ad17e7631bdc" alt="图片2" width="200"">
+    <img src="https://github.com/user-attachments/assets/13061ecf-bb57-448a-82c6-7e4655c9cd85" alt="图片1" width="300" style="margin-right: 20px;">
+    <img src="https://github.com/user-attachments/assets/0b7ae80f-de58-4d1d-a49c-ad17e7631bdc" alt="图片2" width="300"">
 </div>
 <br>
 
