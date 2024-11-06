@@ -96,4 +96,6 @@ file_name,text
                         训练轮数。
   --modelscope_model_id MODELSCOPE_MODEL_ID
                         ModelScope 上的模型 ID (https://www.modelscope.cn/)。如果提供模型 ID，模型将自动上传到 ModelScope。
+  --modelscope_access_token MODELSCOPE_ACCESS_TOKEN
+                        在 ModelScope (https://www.modelscope.cn/) 上获取访问密钥。您需要此密钥将模型上传到 ModelScope。
 ```
