@@ -8,10 +8,10 @@
 
 LoRA 微调的图像示例。提示词为 "一只小狗蹦蹦跳跳，周围是姹紫嫣红的鲜花，远处是山脉"（针对中文模型）或 "a dog is jumping, flowers around the dog, the background is mountains and clouds"（针对英文模型）。
 
-||FLUX.1-dev|Kolors|Stable Diffusion 3|Hunyuan-DiT|
-|-|-|-|-|-|
-|Without LoRA|<img src="https://github.com/user-attachments/assets/df62cef6-d54f-4e3d-a602-5dd290079d49" width="100"  alt="image_without_lora">|<img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/9d79ed7a-e8cf-4d98-800a-f182809db318" width="100"  alt="image_without_lora">|<img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/ddb834a5-6366-412b-93dc-6d957230d66e" width="100"  alt="image_without_lora">|<img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/1aa21de5-a992-4b66-b14f-caa44e08876e" width="100"  alt="image_without_lora">|
-|With LoRA|<img src="https://github.com/user-attachments/assets/4fd39890-0291-4d19-8a88-d70d0ae18533" width="100"  alt="image_with_lora">|<img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/02f62323-6ee5-4788-97a1-549732dbe4f0" width="100"  alt="image_with_lora">|<img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/8e7b2888-d874-4da4-a75b-11b6b214b9bf" width="100"  alt="image_with_lora">|<img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/83a0a41a-691f-4610-8e7b-d8e17c50a282" width="100"  alt="image_with_lora">|
+||<div style="width:150px">FLUX.1-dev</div>|<div style="width:150px">Kolors</div>|<div style="width:150px">Stable Diffusion 3</div>|<div style="width:150px">Hunyuan-DiT</div>|
+|-|:-:|:-:|:-:|:-:|
+|Without LoRA|<img src="https://github.com/user-attachments/assets/df62cef6-d54f-4e3d-a602-5dd290079d49" width="150"  alt="image_without_lora">|<img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/9d79ed7a-e8cf-4d98-800a-f182809db318" width="150"  alt="image_without_lora">|<img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/ddb834a5-6366-412b-93dc-6d957230d66e" width="150"  alt="image_without_lora">|<img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/1aa21de5-a992-4b66-b14f-caa44e08876e" width="150"  alt="image_without_lora">|
+|With LoRA|<img src="https://github.com/user-attachments/assets/4fd39890-0291-4d19-8a88-d70d0ae18533" width="150"  alt="image_with_lora">|<img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/02f62323-6ee5-4788-97a1-549732dbe4f0" width="150"  alt="image_with_lora">|<img src="https://github.com/modelscope/DiffSynth-Studio/assets/35051019/8e7b2888-d874-4da4-a75b-11b6b214b9bf" width="150"  alt="image_with_lora">|<img src="https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/83a0a41a-691f-4610-8e7b-d8e17c50a282" width="150"  alt="image_with_lora">|
 
 
 ## 安装额外包
