@@ -27,11 +27,11 @@ import torch
 
 download_models(["Kolors"])
 model_manager = ModelManager(torch_dtype=torch.float16, device="cuda",
-                             file_path_list=[
-                                 "models/kolors/Kolors/text_encoder",
-                                 "models/kolors/Kolors/unet/diffusion_pytorch_model.safetensors",
-                                 "models/kolors/Kolors/vae/diffusion_pytorch_model.safetensors"
-                             ])
+    file_path_list=[
+        "models/kolors/Kolors/text_encoder",
+        "models/kolors/Kolors/unet/diffusion_pytorch_model.safetensors",
+        "models/kolors/Kolors/vae/diffusion_pytorch_model.safetensors"
+])
 pipe = SDXLImagePipeline.from_model_manager(model_manager)
 
 prompt = '一张瓢虫的照片，微距，变焦，高质量，电影，拿着一个牌子，写着"Kolors"'
