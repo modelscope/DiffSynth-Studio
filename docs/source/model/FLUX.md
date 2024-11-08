@@ -17,7 +17,7 @@ FLUX.1 模型均基于多模态和并行扩散变压器块的混合架构，并�
 
 FLUX.1 定义了图像合成领域的最新技术，FLUX.1 [pro] 和 [dev] 在以下各个方面超越了 Midjourney v6.0、DALL·E 3 (HD) 和 SD3-Ultra 等流行模型：视觉质量、提示跟随、尺寸/方面可变性、版式和输出多样性。 FLUX.1 [schnell] 是迄今为止最先进的几步模型，其性能不仅优于同类竞争对手，而且还优于 Midjourney v6.0 和 DALL·E 3 (HD) 等强大的非蒸馏模型。FLUX.1 经过专门微调，以保留预训练的整个输出多样性。与当前最先进的技术相比，它们提供了极大改进的可能性，如下所示：
 
-![image](https://github.com/user-attachments/assets/cff34a82-6f5d-4b6d-9c30-d7959d3ef2fc)
+![image](https://github.com/user-attachments/assets/fed4b32a-193f-40b0-8fac-a5b2270b7995)
 
 Flux 的生成效果：
 
