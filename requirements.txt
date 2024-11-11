@@ -1,4 +1,5 @@
 torch>=2.0.0
+torchvision
 cupy-cuda12x
 transformers==4.44.1
 controlnet-aux==0.0.7
