@@ -67,7 +67,8 @@ class SD3Prompter(BasePrompter):
         self,
         prompt,
         positive=True,
-        device="cuda"
+        device="cuda",
+        t5_sequence_length=77,
     ):
         prompt = self.process_prompt(prompt, positive=positive)
         
@@ -77,9 +78,9 @@ class SD3Prompter(BasePrompter):
 
         # T5
         if self.text_encoder_3 is None:
-            prompt_emb_3 = torch.zeros((prompt_emb_1.shape[0], 256, 4096), dtype=prompt_emb_1.dtype, device=device)
+            prompt_emb_3 = torch.zeros((prompt_emb_1.shape[0], t5_sequence_length, 4096), dtype=prompt_emb_1.dtype, device=device)
         else:
-            prompt_emb_3 = self.encode_prompt_using_t5(prompt, self.text_encoder_3, self.tokenizer_3, 256, device)
+            prompt_emb_3 = self.encode_prompt_using_t5(prompt, self.text_encoder_3, self.tokenizer_3, t5_sequence_length, device)
             prompt_emb_3 = prompt_emb_3.to(prompt_emb_1.dtype) # float32 -> float16
 
         # Merge

@@ -1,5 +1,5 @@
 import torch
-from .sd3_dit import TimestepEmbeddings, AdaLayerNorm
+from .sd3_dit import TimestepEmbeddings, AdaLayerNorm, RMSNorm
 from einops import rearrange
 from .tiler import TileWorker
 from .utils import init_weights_on_device
@@ -34,21 +34,6 @@ class RoPEEmbedding(torch.nn.Module):
         n_axes = ids.shape[-1]
         emb = torch.cat([self.rope(ids[..., i], self.axes_dim[i], self.theta) for i in range(n_axes)], dim=-3)
         return emb.unsqueeze(1)
-    
-
-
-class RMSNorm(torch.nn.Module):
-    def __init__(self, dim, eps):
-        super().__init__()
-        self.weight = torch.nn.Parameter(torch.ones((dim,)))
-        self.eps = eps
-
-    def forward(self, hidden_states):
-        input_dtype = hidden_states.dtype
-        variance = hidden_states.to(torch.float32).square().mean(-1, keepdim=True)
-        hidden_states = hidden_states * torch.rsqrt(variance + self.eps)
-        hidden_states = hidden_states.to(input_dtype) * self.weight
-        return hidden_states
     
 
 
