@@ -22,7 +22,9 @@ class LightningModel(LightningModelForT2ILoRA):
             model_manager.load_models(pretrained_weights[1:])
             model_manager.load_model(pretrained_weights[0], torch_dtype=quantize)
         if preset_lora_path is not None:
-            model_manager.load_lora(preset_lora_path)
+            preset_lora_path = preset_lora_path.split(",")
+            for path in preset_lora_path:
+                model_manager.load_lora(path)
             
         self.pipe = FluxImagePipeline.from_model_manager(model_manager)
         
