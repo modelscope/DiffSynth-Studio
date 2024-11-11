@@ -7,8 +7,37 @@ from PIL import Image
 from torchvision import transforms
 from transformers import AutoTokenizer
 from huggingface_hub import snapshot_download
+import numpy as np
 
-from OmniGen.utils import crop_arr
+
+
+def crop_arr(pil_image, max_image_size):
+    while min(*pil_image.size) >= 2 * max_image_size:
+        pil_image = pil_image.resize(
+            tuple(x // 2 for x in pil_image.size), resample=Image.BOX
+        )
+
+    if max(*pil_image.size) > max_image_size:
+        scale = max_image_size / max(*pil_image.size)
+        pil_image = pil_image.resize(
+            tuple(round(x * scale) for x in pil_image.size), resample=Image.BICUBIC
+        )
+    
+    if min(*pil_image.size) < 16:
+        scale = 16 / min(*pil_image.size)
+        pil_image = pil_image.resize(
+            tuple(round(x * scale) for x in pil_image.size), resample=Image.BICUBIC
+        )
+    
+    arr = np.array(pil_image)
+    crop_y1 = (arr.shape[0] % 16) // 2
+    crop_y2 = arr.shape[0] % 16 - crop_y1
+
+    crop_x1 = (arr.shape[1] % 16) // 2
+    crop_x2 = arr.shape[1] % 16 - crop_x1
+
+    arr = arr[crop_y1:arr.shape[0]-crop_y2, crop_x1:arr.shape[1]-crop_x2]    
+    return Image.fromarray(arr)
 
 
 
