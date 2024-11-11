@@ -40,6 +40,8 @@ from ..models.flux_controlnet import FluxControlNet
 from ..models.cog_vae import CogVAEEncoder, CogVAEDecoder
 from ..models.cog_dit import CogDiT
 
+from ..models.omnigen import OmniGenTransformer
+
 from ..extensions.RIFE import IFNet
 from ..extensions.ESRGAN import RRDBNet
 
@@ -81,6 +83,7 @@ model_loader_configs = [
     (None, "280189ee084bca10f70907bf6ce1649d", ["cog_vae_encoder", "cog_vae_decoder"], [CogVAEEncoder, CogVAEDecoder], "diffusers"),
     (None, "9b9313d104ac4df27991352fec013fd4", ["rife"], [IFNet], "civitai"),
     (None, "6b7116078c4170bfbeaedc8fe71f6649", ["esrgan"], [RRDBNet], "civitai"),
+    (None, "61cbcbc7ac11f169c5949223efa960d1", ["omnigen_transformer"], [OmniGenTransformer], "diffusers")
     (None, "78d18b9101345ff695f312e7e62538c0", ["flux_controlnet"], [FluxControlNet], "diffusers"),
     (None, "b001c89139b5f053c715fe772362dd2a", ["flux_controlnet"], [FluxControlNet], "diffusers"),
     (None, "52357cb26250681367488a8954c271e8", ["flux_controlnet"], [FluxControlNet], "diffusers"),
@@ -536,6 +539,15 @@ preset_models_on_modelscope = {
     "RIFE": [
         ("AI-ModelScope/RIFE", "flownet.pkl", "models/RIFE"),
     ],
+    # Omnigen
+    "OmniGen-v1": [
+        ("BAAI/OmniGen-v1", "vae/diffusion_pytorch_model.safetensors", "models/OmniGen/OmniGen-v1"),
+        ("BAAI/OmniGen-v1", "model.safetensors", "models/OmniGen/OmniGen-v1"),
+        ("BAAI/OmniGen-v1", "config.json", "models/OmniGen/OmniGen-v1"),
+        ("BAAI/OmniGen-v1", "special_tokens_map.json", "models/OmniGen/OmniGen-v1"),
+        ("BAAI/OmniGen-v1", "tokenizer_config.json", "models/OmniGen/OmniGen-v1"),
+        ("BAAI/OmniGen-v1", "tokenizer.json", "models/OmniGen/OmniGen-v1"),
+    ],
     # CogVideo
     "CogVideoX-5B": {
         "file_list": [
@@ -600,6 +612,7 @@ Preset_model_id: TypeAlias = Literal[
     "OmostPrompt",
     "ESRGAN_x4",
     "RIFE",
+    "OmniGen-v1",
     "CogVideoX-5B",
     "Annotators:Depth",
     "Annotators:Softedge",
