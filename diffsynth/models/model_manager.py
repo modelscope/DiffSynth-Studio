@@ -37,7 +37,7 @@ from .hunyuan_dit_text_encoder import HunyuanDiTCLIPTextEncoder, HunyuanDiTT5Tex
 from .hunyuan_dit import HunyuanDiT
 
 from .flux_dit import FluxDiT
-from .flux_text_encoder import FluxTextEncoder1, FluxTextEncoder2
+from .flux_text_encoder import FluxTextEncoder2
 from .flux_vae import FluxVAEEncoder, FluxVAEDecoder
 
 from .cog_vae import CogVAEEncoder, CogVAEDecoder

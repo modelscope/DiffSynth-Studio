@@ -36,7 +36,7 @@ class BasePipeline(torch.nn.Module):
         return video
 
     
-    def merge_latents(self, value, latents, masks, scales, blur_kernel_size=33, blur_sigma=10.0):
+    def merge_latents(self, value, latents, masks, scales, blur_kernel_size=3, blur_sigma=1.0):
         blur = GaussianBlur(kernel_size=blur_kernel_size, sigma=blur_sigma)
         height, width = value.shape[-2:]
         weight = torch.ones_like(value)
