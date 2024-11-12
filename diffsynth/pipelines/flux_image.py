@@ -15,7 +15,7 @@ from ..models.tiler import FastTileWorker
 class FluxImagePipeline(BasePipeline):
 
     def __init__(self, device="cuda", torch_dtype=torch.float16):
-        super().__init__(device=device, torch_dtype=torch_dtype)
+        super().__init__(device=device, torch_dtype=torch_dtype, height_division_factor=16, width_division_factor=16)
         self.scheduler = FlowMatchScheduler()
         self.prompter = FluxPrompter()
         # models
