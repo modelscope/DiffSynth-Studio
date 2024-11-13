@@ -124,6 +124,8 @@ class SDXLVideoPipeline(SDXLImagePipeline):
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
     ):
+        height, width = self.check_resize_height_width(height, width)
+        
         # Tiler parameters, batch size ...
         tiler_kwargs = {"tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride}
 
