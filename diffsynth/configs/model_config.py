@@ -33,12 +33,14 @@ from ..models.hunyuan_dit_text_encoder import HunyuanDiTCLIPTextEncoder, Hunyuan
 from ..models.hunyuan_dit import HunyuanDiT
 
 from ..models.flux_dit import FluxDiT
-from ..models.flux_text_encoder import FluxTextEncoder1, FluxTextEncoder2
+from ..models.flux_text_encoder import FluxTextEncoder2
 from ..models.flux_vae import FluxVAEEncoder, FluxVAEDecoder
 from ..models.flux_controlnet import FluxControlNet
 
 from ..models.cog_vae import CogVAEEncoder, CogVAEDecoder
 from ..models.cog_dit import CogDiT
+
+from ..models.omnigen import OmniGenTransformer
 
 from ..extensions.RIFE import IFNet
 from ..extensions.ESRGAN import RRDBNet
@@ -73,7 +75,7 @@ model_loader_configs = [
     (None, "c96a285a6888465f87de22a984d049fb", ["sd_motion_modules"], [SDMotionModel], "civitai"),
     (None, "72907b92caed19bdb2adb89aa4063fe2", ["sdxl_motion_modules"], [SDXLMotionModel], "civitai"),
     (None, "31d2d9614fba60511fc9bf2604aa01f7", ["sdxl_controlnet"], [SDXLControlNetUnion], "diffusers"),
-    (None, "94eefa3dac9cec93cb1ebaf1747d7b78", ["flux_text_encoder_1"], [FluxTextEncoder1], "diffusers"),
+    (None, "94eefa3dac9cec93cb1ebaf1747d7b78", ["sd3_text_encoder_1"], [SD3TextEncoder1], "diffusers"),
     (None, "1aafa3cc91716fb6b300cc1cd51b85a3", ["flux_vae_encoder", "flux_vae_decoder"], [FluxVAEEncoder, FluxVAEDecoder], "diffusers"),
     (None, "21ea55f476dfc4fd135587abb59dfe5d", ["flux_vae_encoder", "flux_vae_decoder"], [FluxVAEEncoder, FluxVAEDecoder], "civitai"),
     (None, "a29710fea6dddb0314663ee823598e50", ["flux_dit"], [FluxDiT], "civitai"),
@@ -81,10 +83,14 @@ model_loader_configs = [
     (None, "280189ee084bca10f70907bf6ce1649d", ["cog_vae_encoder", "cog_vae_decoder"], [CogVAEEncoder, CogVAEDecoder], "diffusers"),
     (None, "9b9313d104ac4df27991352fec013fd4", ["rife"], [IFNet], "civitai"),
     (None, "6b7116078c4170bfbeaedc8fe71f6649", ["esrgan"], [RRDBNet], "civitai"),
+    (None, "61cbcbc7ac11f169c5949223efa960d1", ["omnigen_transformer"], [OmniGenTransformer], "diffusers"),
     (None, "78d18b9101345ff695f312e7e62538c0", ["flux_controlnet"], [FluxControlNet], "diffusers"),
     (None, "b001c89139b5f053c715fe772362dd2a", ["flux_controlnet"], [FluxControlNet], "diffusers"),
     (None, "52357cb26250681367488a8954c271e8", ["flux_controlnet"], [FluxControlNet], "diffusers"),
     (None, "0cfd1740758423a2a854d67c136d1e8c", ["flux_controlnet"], [FluxControlNet], "diffusers"),
+    (None, "51aed3d27d482fceb5e0739b03060e8f", ["sd3_dit", "sd3_vae_encoder", "sd3_vae_decoder"], [SD3DiT, SD3VAEEncoder, SD3VAEDecoder], "civitai"),
+    (None, "98cc34ccc5b54ae0e56bdea8688dcd5a", ["sd3_text_encoder_2"], [SD3TextEncoder2], "civitai"),
+    # (None, "51aed3d27d482fceb5e0739b03060e8f", ["sd3_dit", "sd3_vae_encoder", "sd3_vae_decoder"], [SD3DiT, SD3VAEEncoder, SD3VAEDecoder], "civitai")
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -266,6 +272,13 @@ preset_models_on_huggingface = {
         ("THUDM/CogVideoX-5b", "transformer/diffusion_pytorch_model-00001-of-00002.safetensors", "models/CogVideo/CogVideoX-5b/transformer"),
         ("THUDM/CogVideoX-5b", "transformer/diffusion_pytorch_model-00002-of-00002.safetensors", "models/CogVideo/CogVideoX-5b/transformer"),
         ("THUDM/CogVideoX-5b", "vae/diffusion_pytorch_model.safetensors", "models/CogVideo/CogVideoX-5b/vae"),
+    ],
+    # Stable Diffusion 3.5
+    "StableDiffusion3.5-large": [
+        ("stabilityai/stable-diffusion-3.5-large", "sd3.5_large.safetensors", "models/stable_diffusion_3"),
+        ("stabilityai/stable-diffusion-3.5-large", "text_encoders/clip_l.safetensors", "models/stable_diffusion_3/text_encoders"),
+        ("stabilityai/stable-diffusion-3.5-large", "text_encoders/clip_g.safetensors", "models/stable_diffusion_3/text_encoders"),
+        ("stabilityai/stable-diffusion-3.5-large", "text_encoders/t5xxl_fp16.safetensors", "models/stable_diffusion_3/text_encoders"),
     ],
 }
 preset_models_on_modelscope = {
@@ -536,6 +549,21 @@ preset_models_on_modelscope = {
     "RIFE": [
         ("AI-ModelScope/RIFE", "flownet.pkl", "models/RIFE"),
     ],
+    # Omnigen
+    "OmniGen-v1": {
+        "file_list": [
+            ("BAAI/OmniGen-v1", "vae/diffusion_pytorch_model.safetensors", "models/OmniGen/OmniGen-v1/vae"),
+            ("BAAI/OmniGen-v1", "model.safetensors", "models/OmniGen/OmniGen-v1"),
+            ("BAAI/OmniGen-v1", "config.json", "models/OmniGen/OmniGen-v1"),
+            ("BAAI/OmniGen-v1", "special_tokens_map.json", "models/OmniGen/OmniGen-v1"),
+            ("BAAI/OmniGen-v1", "tokenizer_config.json", "models/OmniGen/OmniGen-v1"),
+            ("BAAI/OmniGen-v1", "tokenizer.json", "models/OmniGen/OmniGen-v1"),
+        ],
+        "load_path": [
+            "models/OmniGen/OmniGen-v1/vae/diffusion_pytorch_model.safetensors",
+            "models/OmniGen/OmniGen-v1/model.safetensors",
+        ]
+    },
     # CogVideo
     "CogVideoX-5B": {
         "file_list": [
@@ -555,6 +583,13 @@ preset_models_on_modelscope = {
             "models/CogVideo/CogVideoX-5b/vae/diffusion_pytorch_model.safetensors",
         ],
     },
+    # Stable Diffusion 3.5
+    "StableDiffusion3.5-large": [
+        ("AI-ModelScope/stable-diffusion-3.5-large", "sd3.5_large.safetensors", "models/stable_diffusion_3"),
+        ("AI-ModelScope/stable-diffusion-3.5-large", "text_encoders/clip_l.safetensors", "models/stable_diffusion_3/text_encoders"),
+        ("AI-ModelScope/stable-diffusion-3.5-large", "text_encoders/clip_g.safetensors", "models/stable_diffusion_3/text_encoders"),
+        ("AI-ModelScope/stable-diffusion-3.5-large", "text_encoders/t5xxl_fp16.safetensors", "models/stable_diffusion_3/text_encoders"),
+    ],
 }
 Preset_model_id: TypeAlias = Literal[
     "HunyuanDiT",
@@ -600,10 +635,12 @@ Preset_model_id: TypeAlias = Literal[
     "OmostPrompt",
     "ESRGAN_x4",
     "RIFE",
+    "OmniGen-v1",
     "CogVideoX-5B",
     "Annotators:Depth",
     "Annotators:Softedge",
     "Annotators:Lineart",
     "Annotators:Normal",
     "Annotators:Openpose",
+    "StableDiffusion3.5-large",
 ]

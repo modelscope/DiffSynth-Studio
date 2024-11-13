@@ -4,17 +4,20 @@ import torch
 
 class FlowMatchScheduler():
 
-    def __init__(self, num_inference_steps=100, num_train_timesteps=1000, shift=3.0, sigma_max=1.0, sigma_min=0.003/1.002):
+    def __init__(self, num_inference_steps=100, num_train_timesteps=1000, shift=3.0, sigma_max=1.0, sigma_min=0.003/1.002, inverse_timesteps=False):
         self.num_train_timesteps = num_train_timesteps
         self.shift = shift
         self.sigma_max = sigma_max
         self.sigma_min = sigma_min
+        self.inverse_timesteps = inverse_timesteps
         self.set_timesteps(num_inference_steps)
 
 
     def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0, training=False):
         sigma_start = self.sigma_min + (self.sigma_max - self.sigma_min) * denoising_strength
         self.sigmas = torch.linspace(sigma_start, self.sigma_min, num_inference_steps)
+        if self.inverse_timesteps:
+            self.sigmas = torch.flip(self.sigmas, dims=[0])
         self.sigmas = self.shift * self.sigmas / (1 + (self.shift - 1) * self.sigmas)
         self.timesteps = self.sigmas * self.num_train_timesteps
         if training:
@@ -31,7 +34,7 @@ class FlowMatchScheduler():
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
         if to_final or timestep_id + 1 >= len(self.timesteps):
-            sigma_ = 0
+            sigma_ = 1 if self.inverse_timesteps else 0
         else:
             sigma_ = self.sigmas[timestep_id + 1]
         prev_sample = sample + model_output * (sigma_ - sigma)

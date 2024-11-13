@@ -1,4 +1,4 @@
-from ..models import ModelManager, FluxDiT, FluxTextEncoder1, FluxTextEncoder2, FluxVAEDecoder, FluxVAEEncoder
+from ..models import ModelManager, FluxDiT, SD3TextEncoder1, FluxTextEncoder2, FluxVAEDecoder, FluxVAEEncoder
 from ..controlnets import FluxMultiControlNetManager, ControlNetUnit, ControlNetConfigUnit, Annotator
 from ..prompters import FluxPrompter
 from ..schedulers import FlowMatchScheduler
@@ -15,11 +15,11 @@ from ..models.tiler import FastTileWorker
 class FluxImagePipeline(BasePipeline):
 
     def __init__(self, device="cuda", torch_dtype=torch.float16):
-        super().__init__(device=device, torch_dtype=torch_dtype)
+        super().__init__(device=device, torch_dtype=torch_dtype, height_division_factor=16, width_division_factor=16)
         self.scheduler = FlowMatchScheduler()
         self.prompter = FluxPrompter()
         # models
-        self.text_encoder_1: FluxTextEncoder1 = None
+        self.text_encoder_1: SD3TextEncoder1 = None
         self.text_encoder_2: FluxTextEncoder2 = None
         self.dit: FluxDiT = None
         self.vae_decoder: FluxVAEDecoder = None
@@ -33,7 +33,7 @@ class FluxImagePipeline(BasePipeline):
 
 
     def fetch_models(self, model_manager: ModelManager, controlnet_config_units: List[ControlNetConfigUnit]=[], prompt_refiner_classes=[], prompt_extender_classes=[]):
-        self.text_encoder_1 = model_manager.fetch_model("flux_text_encoder_1")
+        self.text_encoder_1 = model_manager.fetch_model("sd3_text_encoder_1")
         self.text_encoder_2 = model_manager.fetch_model("flux_text_encoder_2")
         self.dit = model_manager.fetch_model("flux_dit")
         self.vae_decoder = model_manager.fetch_model("flux_vae_decoder")

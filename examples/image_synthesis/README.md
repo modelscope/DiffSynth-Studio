@@ -2,6 +2,14 @@
 
 Image synthesis is the base feature of DiffSynth Studio. We can generate images with very high resolution.
 
+### OmniGen
+
+OmniGen is a text-image-to-image model, you can synthesize an image according to several given reference images.
+
+|Reference image 1|Reference image 2|Synthesized image|
+|-|-|-|
+|![image_man](https://github.com/user-attachments/assets/35d00493-625b-45d1-ad2b-b558ea09fe36)|![image_woman](https://github.com/user-attachments/assets/abebf69b-3563-4b3b-91c2-c48ff74a29ea)|![image_merged](https://github.com/user-attachments/assets/2979d5a9-f355-4bec-a91d-1e824d9fc8f6)|
+
 ### Example: FLUX
 
 Example script: [`flux_text_to_image.py`](./flux_text_to_image.py) and [`flux_text_to_image_low_vram.py`](./flux_text_to_image_low_vram.py)(low VRAM).

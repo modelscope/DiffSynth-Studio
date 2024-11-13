@@ -1,17 +1,30 @@
 import torch
 import numpy as np
 from PIL import Image
+from torchvision.transforms import GaussianBlur
 
 
 
 class BasePipeline(torch.nn.Module):
 
-    def __init__(self, device="cuda", torch_dtype=torch.float16):
+    def __init__(self, device="cuda", torch_dtype=torch.float16, height_division_factor=64, width_division_factor=64):
         super().__init__()
         self.device = device
         self.torch_dtype = torch_dtype
+        self.height_division_factor = height_division_factor
+        self.width_division_factor = width_division_factor
         self.cpu_offload = False
         self.model_names = []
+
+
+    def check_resize_height_width(self, height, width):
+        if height % self.height_division_factor != 0:
+            height = (height + self.height_division_factor - 1) // self.height_division_factor * self.height_division_factor
+            print(f"The height cannot be evenly divided by {self.height_division_factor}. We round it up to {height}.")
+        if width % self.width_division_factor != 0:
+            width = (width + self.width_division_factor - 1) // self.width_division_factor * self.width_division_factor
+            print(f"The width cannot be evenly divided by {self.width_division_factor}. We round it up to {width}.")
+        return height, width
 
 
     def preprocess_image(self, image):
@@ -35,15 +48,18 @@ class BasePipeline(torch.nn.Module):
         return video
 
     
-    def merge_latents(self, value, latents, masks, scales):
-        height, width = value.shape[-2:]
-        weight = torch.ones_like(value)
-        for latent, mask, scale in zip(latents, masks, scales):
-            mask = self.preprocess_image(mask.resize((width, height))).mean(dim=1, keepdim=True) > 0
-            mask = mask.repeat(1, latent.shape[1], 1, 1)
-            value[mask] += latent[mask] * scale
-            weight[mask] += scale
-        value /= weight
+    def merge_latents(self, value, latents, masks, scales, blur_kernel_size=33, blur_sigma=10.0):
+        if len(latents) > 0:
+            blur = GaussianBlur(kernel_size=blur_kernel_size, sigma=blur_sigma)
+            height, width = value.shape[-2:]
+            weight = torch.ones_like(value)
+            for latent, mask, scale in zip(latents, masks, scales):
+                mask = self.preprocess_image(mask.resize((width, height))).mean(dim=1, keepdim=True) > 0
+                mask = mask.repeat(1, latent.shape[1], 1, 1).to(dtype=latent.dtype, device=latent.device)
+                mask = blur(mask)
+                value += latent * mask * scale
+                weight += mask * scale
+            value /= weight
         return value
 
 

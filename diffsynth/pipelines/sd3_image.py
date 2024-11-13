@@ -10,7 +10,7 @@ from tqdm import tqdm
 class SD3ImagePipeline(BasePipeline):
 
     def __init__(self, device="cuda", torch_dtype=torch.float16):
-        super().__init__(device=device, torch_dtype=torch_dtype)
+        super().__init__(device=device, torch_dtype=torch_dtype, height_division_factor=16, width_division_factor=16)
         self.scheduler = FlowMatchScheduler()
         self.prompter = SD3Prompter()
         # models
@@ -59,9 +59,9 @@ class SD3ImagePipeline(BasePipeline):
         return image
     
 
-    def encode_prompt(self, prompt, positive=True):
+    def encode_prompt(self, prompt, positive=True, t5_sequence_length=77):
         prompt_emb, pooled_prompt_emb = self.prompter.encode_prompt(
-            prompt, device=self.device, positive=positive
+            prompt, device=self.device, positive=positive, t5_sequence_length=t5_sequence_length
         )
         return {"prompt_emb": prompt_emb, "pooled_prompt_emb": pooled_prompt_emb}
     
@@ -84,6 +84,7 @@ class SD3ImagePipeline(BasePipeline):
         height=1024,
         width=1024,
         num_inference_steps=20,
+        t5_sequence_length=77,
         tiled=False,
         tile_size=128,
         tile_stride=64,
@@ -109,9 +110,9 @@ class SD3ImagePipeline(BasePipeline):
 
         # Encode prompts
         self.load_models_to_device(['text_encoder_1', 'text_encoder_2', 'text_encoder_3'])
-        prompt_emb_posi = self.encode_prompt(prompt, positive=True)
-        prompt_emb_nega = self.encode_prompt(negative_prompt, positive=False)
-        prompt_emb_locals = [self.encode_prompt(prompt_local) for prompt_local in local_prompts]
+        prompt_emb_posi = self.encode_prompt(prompt, positive=True, t5_sequence_length=t5_sequence_length)
+        prompt_emb_nega = self.encode_prompt(negative_prompt, positive=False, t5_sequence_length=t5_sequence_length)
+        prompt_emb_locals = [self.encode_prompt(prompt_local, t5_sequence_length=t5_sequence_length) for prompt_local in local_prompts]
 
         # Denoise
         self.load_models_to_device(['dit'])

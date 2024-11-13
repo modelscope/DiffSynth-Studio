@@ -322,6 +322,11 @@ class SD3TextEncoder1StateDictConverter:
                 if name == "text_encoders.clip_l.transformer.text_model.embeddings.position_embedding.weight":
                     param = param.reshape((1, param.shape[0], param.shape[1]))
                 state_dict_[rename_dict[name]] = param
+            elif ("text_encoders.clip_l.transformer." + name) in rename_dict:
+                param = state_dict[name]
+                if name == "text_model.embeddings.position_embedding.weight":
+                    param = param.reshape((1, param.shape[0], param.shape[1]))
+                state_dict_[rename_dict["text_encoders.clip_l.transformer." + name]] = param
         return state_dict_
     
 
@@ -860,6 +865,11 @@ class SD3TextEncoder2StateDictConverter(SDXLTextEncoder2StateDictConverter):
                 if name == "text_encoders.clip_g.transformer.text_model.embeddings.position_embedding.weight":
                     param = param.reshape((1, param.shape[0], param.shape[1]))
                 state_dict_[rename_dict[name]] = param
+            elif ("text_encoders.clip_g.transformer." + name) in rename_dict:
+                param = state_dict[name]
+                if name == "text_model.embeddings.position_embedding.weight":
+                    param = param.reshape((1, param.shape[0], param.shape[1]))
+                state_dict_[rename_dict["text_encoders.clip_g.transformer." + name]] = param
         return state_dict_
 
 

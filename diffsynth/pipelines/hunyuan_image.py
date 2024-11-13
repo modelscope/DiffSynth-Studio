@@ -125,7 +125,7 @@ class ImageSizeManager:
 class HunyuanDiTImagePipeline(BasePipeline):
 
     def __init__(self, device="cuda", torch_dtype=torch.float16):
-        super().__init__(device=device, torch_dtype=torch_dtype)
+        super().__init__(device=device, torch_dtype=torch_dtype, height_division_factor=16, width_division_factor=16)
         self.scheduler = EnhancedDDIMScheduler(prediction_type="v_prediction", beta_start=0.00085, beta_end=0.03)
         self.prompter = HunyuanDiTPrompter()
         self.image_size_manager = ImageSizeManager()
