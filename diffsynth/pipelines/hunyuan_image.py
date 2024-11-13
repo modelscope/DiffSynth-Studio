@@ -230,6 +230,8 @@ class HunyuanDiTImagePipeline(BasePipeline):
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
     ):
+        height, width = self.check_resize_height_width(height, width)
+        
         # Prepare scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength)
 
