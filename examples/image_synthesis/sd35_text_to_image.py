@@ -2,7 +2,7 @@ from diffsynth import ModelManager, SD3ImagePipeline
 import torch
 
 
-model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cuda", model_id_list=["StableDiffusion3.5-large"])
+model_manager = ModelManager(torch_dtype=torch.float16, device="cuda", model_id_list=["StableDiffusion3.5-large"])
 pipe = SD3ImagePipeline.from_model_manager(model_manager)
 
 prompt = "a full body photo of a beautiful Asian girl. CG, masterpiece, best quality, solo, long hair, wavy hair, silver hair, blue eyes, blue dress, medium breasts, dress, underwater, air bubble, floating hair, refraction, portrait. The girl's flowing silver hair shimmers with every color of the rainbow and cascades down, merging with the floating flora around her."

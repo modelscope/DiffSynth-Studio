@@ -13,7 +13,7 @@ from einops import rearrange
 class CogVideoPipeline(BasePipeline):
 
     def __init__(self, device="cuda", torch_dtype=torch.float16):
-        super().__init__(device=device, torch_dtype=torch_dtype)
+        super().__init__(device=device, torch_dtype=torch_dtype, height_division_factor=16, width_division_factor=16)
         self.scheduler = EnhancedDDIMScheduler(rescale_zero_terminal_snr=True, prediction_type="v_prediction")
         self.prompter = CogPrompter()
         # models
