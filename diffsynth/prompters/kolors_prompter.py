@@ -245,6 +245,7 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
             padding_strategy: PaddingStrategy = PaddingStrategy.DO_NOT_PAD,
             pad_to_multiple_of: Optional[int] = None,
             return_attention_mask: Optional[bool] = None,
+            padding_side: Optional[str] = None,
     ) -> dict:
         """
         Pad encoded inputs (on left/right and up to predefined length or max length in the batch)
