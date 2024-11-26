@@ -4,6 +4,12 @@ from einops import rearrange
 from .tiler import TileWorker
 from .utils import init_weights_on_device
 
+def interact_with_ipadapter(hidden_states, q, ip_k, ip_v, scale=1.0):
+    batch_size, num_tokens = hidden_states.shape[0:2]
+    ip_hidden_states = torch.nn.functional.scaled_dot_product_attention(q, ip_k, ip_v)
+    ip_hidden_states = ip_hidden_states.transpose(1, 2).reshape(batch_size, num_tokens, -1)
+    hidden_states = hidden_states + scale * ip_hidden_states
+    return hidden_states
 
 
 class RoPEEmbedding(torch.nn.Module):
@@ -64,8 +70,7 @@ class FluxJointAttention(torch.nn.Module):
         xk_out = freqs_cis[..., 0] * xk_[..., 0] + freqs_cis[..., 1] * xk_[..., 1]
         return xq_out.reshape(*xq.shape).type_as(xq), xk_out.reshape(*xk.shape).type_as(xk)
 
-
-    def forward(self, hidden_states_a, hidden_states_b, image_rotary_emb):
+    def forward(self, hidden_states_a, hidden_states_b, image_rotary_emb, ipadapter_kwargs_list=None):
         batch_size = hidden_states_a.shape[0]
 
         # Part A
@@ -90,6 +95,8 @@ class FluxJointAttention(torch.nn.Module):
         hidden_states = hidden_states.transpose(1, 2).reshape(batch_size, -1, self.num_heads * self.head_dim)
         hidden_states = hidden_states.to(q.dtype)
         hidden_states_b, hidden_states_a = hidden_states[:, :hidden_states_b.shape[1]], hidden_states[:, hidden_states_b.shape[1]:]
+        if ipadapter_kwargs_list is not None:
+            hidden_states_a = interact_with_ipadapter(hidden_states_a, q_a, **ipadapter_kwargs_list)
         hidden_states_a = self.a_to_out(hidden_states_a)
         if self.only_out_a:
             return hidden_states_a
@@ -122,12 +129,12 @@ class FluxJointTransformerBlock(torch.nn.Module):
         )
 
 
-    def forward(self, hidden_states_a, hidden_states_b, temb, image_rotary_emb):
+    def forward(self, hidden_states_a, hidden_states_b, temb, image_rotary_emb, ipadapter_kwargs_list=None):
         norm_hidden_states_a, gate_msa_a, shift_mlp_a, scale_mlp_a, gate_mlp_a = self.norm1_a(hidden_states_a, emb=temb)
         norm_hidden_states_b, gate_msa_b, shift_mlp_b, scale_mlp_b, gate_mlp_b = self.norm1_b(hidden_states_b, emb=temb)
 
         # Attention
-        attn_output_a, attn_output_b = self.attn(norm_hidden_states_a, norm_hidden_states_b, image_rotary_emb)
+        attn_output_a, attn_output_b = self.attn(norm_hidden_states_a, norm_hidden_states_b, image_rotary_emb, ipadapter_kwargs_list)
 
         # Part A
         hidden_states_a = hidden_states_a + gate_msa_a * attn_output_a
@@ -219,7 +226,7 @@ class FluxSingleTransformerBlock(torch.nn.Module):
         return xq_out.reshape(*xq.shape).type_as(xq), xk_out.reshape(*xk.shape).type_as(xk)
 
     
-    def process_attention(self, hidden_states, image_rotary_emb):
+    def process_attention(self, hidden_states, image_rotary_emb, ipadapter_kwargs_list=None):
         batch_size = hidden_states.shape[0]
 
         qkv = hidden_states.view(batch_size, -1, 3 * self.num_heads, self.head_dim).transpose(1, 2)
@@ -231,16 +238,18 @@ class FluxSingleTransformerBlock(torch.nn.Module):
         hidden_states = torch.nn.functional.scaled_dot_product_attention(q, k, v)
         hidden_states = hidden_states.transpose(1, 2).reshape(batch_size, -1, self.num_heads * self.head_dim)
         hidden_states = hidden_states.to(q.dtype)
+        if ipadapter_kwargs_list is not None:
+            hidden_states = interact_with_ipadapter(hidden_states, q, **ipadapter_kwargs_list)
         return hidden_states
 
 
-    def forward(self, hidden_states_a, hidden_states_b, temb, image_rotary_emb):
+    def forward(self, hidden_states_a, hidden_states_b, temb, image_rotary_emb, ipadapter_kwargs_list=None):
         residual = hidden_states_a
         norm_hidden_states, gate = self.norm(hidden_states_a, emb=temb)
         hidden_states_a = self.to_qkv_mlp(norm_hidden_states)
         attn_output, mlp_hidden_states = hidden_states_a[:, :, :self.dim * 3], hidden_states_a[:, :, self.dim * 3:]
 
-        attn_output = self.process_attention(attn_output, image_rotary_emb)
+        attn_output = self.process_attention(attn_output, image_rotary_emb, ipadapter_kwargs_list)
         mlp_hidden_states = torch.nn.functional.gelu(mlp_hidden_states, approximate="tanh")
 
         hidden_states_a = torch.cat([attn_output, mlp_hidden_states], dim=2)

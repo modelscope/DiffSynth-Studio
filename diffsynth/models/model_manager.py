@@ -39,6 +39,7 @@ from .hunyuan_dit import HunyuanDiT
 from .flux_dit import FluxDiT
 from .flux_text_encoder import FluxTextEncoder2
 from .flux_vae import FluxVAEEncoder, FluxVAEDecoder
+from .flux_ipadapter import FluxIpAdapter
 
 from .cog_vae import CogVAEEncoder, CogVAEDecoder
 from .cog_dit import CogDiT
