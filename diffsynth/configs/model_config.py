@@ -36,6 +36,7 @@ from ..models.flux_dit import FluxDiT
 from ..models.flux_text_encoder import FluxTextEncoder2
 from ..models.flux_vae import FluxVAEEncoder, FluxVAEDecoder
 from ..models.flux_controlnet import FluxControlNet
+from ..models.flux_ipadapter import FluxIpAdapter
 
 from ..models.cog_vae import CogVAEEncoder, CogVAEDecoder
 from ..models.cog_dit import CogDiT
@@ -88,6 +89,7 @@ model_loader_configs = [
     (None, "b001c89139b5f053c715fe772362dd2a", ["flux_controlnet"], [FluxControlNet], "diffusers"),
     (None, "52357cb26250681367488a8954c271e8", ["flux_controlnet"], [FluxControlNet], "diffusers"),
     (None, "0cfd1740758423a2a854d67c136d1e8c", ["flux_controlnet"], [FluxControlNet], "diffusers"),
+    (None, "4daaa66cc656a8fe369908693dad0a35", ["flux_ipadapter"], [FluxIpAdapter], "diffusers"),
     (None, "51aed3d27d482fceb5e0739b03060e8f", ["sd3_dit", "sd3_vae_encoder", "sd3_vae_decoder"], [SD3DiT, SD3VAEEncoder, SD3VAEDecoder], "civitai"),
     (None, "98cc34ccc5b54ae0e56bdea8688dcd5a", ["sd3_text_encoder_2"], [SD3TextEncoder2], "civitai"),
     (None, "77ff18050dbc23f50382e45d51a779fe", ["sd3_dit", "sd3_vae_encoder", "sd3_vae_decoder"], [SD3DiT, SD3VAEEncoder, SD3VAEDecoder], "civitai"),
@@ -102,6 +104,7 @@ huggingface_model_loader_configs = [
     ("LlamaForCausalLM", "transformers.models.llama.modeling_llama", "omost_prompt", None),
     ("T5EncoderModel", "diffsynth.models.flux_text_encoder", "flux_text_encoder_2", "FluxTextEncoder2"),
     ("CogVideoXTransformer3DModel", "diffsynth.models.cog_dit", "cog_dit", "CogDiT"),
+    ("SiglipModel", "transformers.models.siglip.modeling_siglip", "siglip_vision_model", "SiglipVisionModel")
 ]
 patch_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -257,6 +260,17 @@ preset_models_on_huggingface = {
         ("black-forest-labs/FLUX.1-dev", "ae.safetensors", "models/FLUX/FLUX.1-dev"),
         ("black-forest-labs/FLUX.1-dev", "flux1-dev.safetensors", "models/FLUX/FLUX.1-dev"),
     ],
+    "InstantX/FLUX.1-dev-IP-Adapter": {
+        "file_list": [
+            ("InstantX/FLUX.1-dev-IP-Adapter", "ip-adapter.bin", "models/IpAdapter/InstantX/FLUX.1-dev-IP-Adapter"),
+            ("google/siglip-so400m-patch14-384", "model.safetensors", "models/IpAdapter/InstantX/FLUX.1-dev-IP-Adapter/image_encoder"),
+            ("google/siglip-so400m-patch14-384", "config.json", "models/IpAdapter/InstantX/FLUX.1-dev-IP-Adapter/image_encoder"),
+        ],
+        "load_path": [
+            "models/IpAdapter/InstantX/FLUX.1-dev-IP-Adapter/ip-adapter.bin",
+            "models/IpAdapter/InstantX/FLUX.1-dev-IP-Adapter/image_encoder",
+        ],
+    },
     # RIFE
     "RIFE": [
         ("AlexWortega/RIFE", "flownet.pkl", "models/RIFE"),
@@ -541,6 +555,17 @@ preset_models_on_modelscope = {
     "Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro": [
         ("Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro", "diffusion_pytorch_model.safetensors", "models/ControlNet/Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro"),
     ],
+    "InstantX/FLUX.1-dev-IP-Adapter": {
+        "file_list": [
+            ("InstantX/FLUX.1-dev-IP-Adapter", "ip-adapter.bin", "models/IpAdapter/InstantX/FLUX.1-dev-IP-Adapter"),
+            ("AI-ModelScope/siglip-so400m-patch14-384", "model.safetensors", "models/IpAdapter/InstantX/FLUX.1-dev-IP-Adapter/image_encoder"),
+            ("AI-ModelScope/siglip-so400m-patch14-384", "config.json", "models/IpAdapter/InstantX/FLUX.1-dev-IP-Adapter/image_encoder"),
+        ],
+        "load_path": [
+            "models/IpAdapter/InstantX/FLUX.1-dev-IP-Adapter/ip-adapter.bin",
+            "models/IpAdapter/InstantX/FLUX.1-dev-IP-Adapter/image_encoder",
+        ],
+    },
     # ESRGAN
     "ESRGAN_x4": [
         ("AI-ModelScope/Real-ESRGAN", "RealESRGAN_x4.pth", "models/ESRGAN"),
@@ -642,6 +667,7 @@ Preset_model_id: TypeAlias = Literal[
     "alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta",
     "Shakker-Labs/FLUX.1-dev-ControlNet-Depth",
     "Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro",
+    "InstantX/FLUX.1-dev-IP-Adapter",
     "SDXL_lora_zyd232_ChineseInkStyle_SDXL_v1_0",
     "QwenPrompt",
     "OmostPrompt",
