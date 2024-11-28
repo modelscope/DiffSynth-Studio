@@ -4,7 +4,7 @@ import torch
 # Download models (automatically)
 # `models/IpAdapter/InstantX/FLUX.1-dev-IP-Adapter/ip-adapter.bin`: [link](https://huggingface.co/InstantX/FLUX.1-dev-IP-Adapter/blob/main/ip-adapter.bin)
 # `models/IpAdapter/InstantX/FLUX.1-dev-IP-Adapter/image_encoder`: [link](https://huggingface.co/google/siglip-so400m-patch14-384)
-download_models(["InstantX/FLUX.1-dev-IP-Adapter"])
+download_models(["InstantX/FLUX.1-dev-IP-Adapter", "FLUX.1-dev"])
 
 # Load models
 model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cuda")
