@@ -3,6 +3,7 @@ from peft import LoraConfig, inject_adapter_in_model
 import torch, os
 from ..data.simple_text_image import TextImageDataset
 from modelscope.hub.api import HubApi
+from ..models.utils import load_state_dict
 
 
 
@@ -33,7 +34,7 @@ class LightningModelForT2ILoRA(pl.LightningModule):
         self.pipe.denoising_model().train()
 
     
-    def add_lora_to_model(self, model, lora_rank=4, lora_alpha=4, lora_target_modules="to_q,to_k,to_v,to_out", init_lora_weights="gaussian"):
+    def add_lora_to_model(self, model, lora_rank=4, lora_alpha=4, lora_target_modules="to_q,to_k,to_v,to_out", init_lora_weights="gaussian", pretrained_lora_path=None):
         # Add LoRA to UNet
         self.lora_alpha = lora_alpha
         if init_lora_weights == "kaiming":
@@ -50,6 +51,15 @@ class LightningModelForT2ILoRA(pl.LightningModule):
             # Upcast LoRA parameters into fp32
             if param.requires_grad:
                 param.data = param.to(torch.float32)
+
+        # Lora pretrained lora weights
+        if pretrained_lora_path is not None:
+            state_dict = load_state_dict(pretrained_lora_path)
+            missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
+            all_keys = [i for i, _ in model.named_parameters()]
+            num_updated_keys = len(all_keys) - len(missing_keys)
+            num_unexpected_keys = len(unexpected_keys)
+            print(f"{num_updated_keys} parameters are loaded from {pretrained_lora_path}. {num_unexpected_keys} parameters are unexpected.")
 
 
     def training_step(self, batch, batch_idx):
@@ -228,6 +238,12 @@ def add_general_parsers(parser):
         type=str,
         default=None,
         help="Access key on ModelScope (https://www.modelscope.cn/). Required if you want to upload the model to ModelScope.",
+    )
+    parser.add_argument(
+        "--pretrained_lora_path",
+        type=str,
+        default=None,
+        help="Pretrained LoRA path. Required if the training is resumed.",
     )
     return parser
 
