@@ -40,7 +40,8 @@ class LightningModel(LightningModelForT2ILoRA):
             lora_alpha=lora_alpha,
             lora_target_modules=lora_target_modules,
             init_lora_weights=init_lora_weights,
-            pretrained_lora_path=pretrained_lora_path
+            pretrained_lora_path=pretrained_lora_path,
+            state_dict_converter=FluxLoRAConverter.align_to_diffsynth_format
         )
 
 
