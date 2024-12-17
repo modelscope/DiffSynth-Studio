@@ -94,6 +94,7 @@ model_loader_configs = [
     (None, "51aed3d27d482fceb5e0739b03060e8f", ["sd3_dit", "sd3_vae_encoder", "sd3_vae_decoder"], [SD3DiT, SD3VAEEncoder, SD3VAEDecoder], "civitai"),
     (None, "98cc34ccc5b54ae0e56bdea8688dcd5a", ["sd3_text_encoder_2"], [SD3TextEncoder2], "civitai"),
     (None, "77ff18050dbc23f50382e45d51a779fe", ["sd3_dit", "sd3_vae_encoder", "sd3_vae_decoder"], [SD3DiT, SD3VAEEncoder, SD3VAEDecoder], "civitai"),
+    (None, "5da81baee73198a7c19e6d2fe8b5148e", ["sd3_text_encoder_1"], [SD3TextEncoder1], "diffusers"),
     (None, "b9588f02e78f5ccafc9d7c0294e46308", ["hunyuan_video_dit"], [HunyuanVideoDiT], "civitai"),
 ]
 huggingface_model_loader_configs = [
@@ -103,10 +104,11 @@ huggingface_model_loader_configs = [
     ("MarianMTModel", "transformers.models.marian.modeling_marian", "translator", None),
     ("BloomForCausalLM", "transformers.models.bloom.modeling_bloom", "beautiful_prompt", None),
     ("Qwen2ForCausalLM", "transformers.models.qwen2.modeling_qwen2", "qwen_prompt", None),
-    ("LlamaForCausalLM", "transformers.models.llama.modeling_llama", "omost_prompt", None),
+    # ("LlamaForCausalLM", "transformers.models.llama.modeling_llama", "omost_prompt", None),
     ("T5EncoderModel", "diffsynth.models.flux_text_encoder", "flux_text_encoder_2", "FluxTextEncoder2"),
     ("CogVideoXTransformer3DModel", "diffsynth.models.cog_dit", "cog_dit", "CogDiT"),
-    ("SiglipModel", "transformers.models.siglip.modeling_siglip", "siglip_vision_model", "SiglipVisionModel")
+    ("SiglipModel", "transformers.models.siglip.modeling_siglip", "siglip_vision_model", "SiglipVisionModel"),
+    ("LlamaForCausalLM", "transformers.models.llama.modeling_llama", "hunyuan_video_text_encoder_2", "LlamaModel")
 ]
 patch_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -629,6 +631,22 @@ preset_models_on_modelscope = {
         ("AI-ModelScope/stable-diffusion-3.5-large", "text_encoders/clip_g.safetensors", "models/stable_diffusion_3/text_encoders"),
         ("AI-ModelScope/stable-diffusion-3.5-large", "text_encoders/t5xxl_fp16.safetensors", "models/stable_diffusion_3/text_encoders"),
     ],
+    "HunyuanVideo":{
+        "file_list": [
+            ("AI-ModelScope/clip-vit-large-patch14", "model.safetensors", "models/HunyuanVideo/text_encoder"),
+            ("DiffSynth-Studio/HunyuanVideo_MLLM_text_encoder", "model-00001-of-00004.safetensors", "models/HunyuanVideo/text_encoder_2"),
+            ("DiffSynth-Studio/HunyuanVideo_MLLM_text_encoder", "model-00002-of-00004.safetensors", "models/HunyuanVideo/text_encoder_2"),
+            ("DiffSynth-Studio/HunyuanVideo_MLLM_text_encoder", "model-00003-of-00004.safetensors", "models/HunyuanVideo/text_encoder_2"),
+            ("DiffSynth-Studio/HunyuanVideo_MLLM_text_encoder", "model-00004-of-00004.safetensors", "models/HunyuanVideo/text_encoder_2"),
+            ("DiffSynth-Studio/HunyuanVideo_MLLM_text_encoder", "config.json", "models/HunyuanVideo/text_encoder_2"),
+            ("DiffSynth-Studio/HunyuanVideo_MLLM_text_encoder", "model.safetensors.index.json", "models/HunyuanVideo/text_encoder_2"),
+            
+        ],
+        "load_path": [
+            "models/HunyuanVideo/text_encoder/model.safetensors",
+            "models/HunyuanVideo/text_encoder_2",
+        ],
+    },
 }
 Preset_model_id: TypeAlias = Literal[
     "HunyuanDiT",
@@ -684,4 +702,5 @@ Preset_model_id: TypeAlias = Literal[
     "Annotators:Openpose",
     "StableDiffusion3.5-large",
     "StableDiffusion3.5-medium",
+    "HunyuanVideo",
 ]

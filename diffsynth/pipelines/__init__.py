@@ -9,4 +9,5 @@ from .flux_image import FluxImagePipeline
 from .cog_video import CogVideoPipeline
 from .omnigen_image import OmnigenImagePipeline
 from .pipeline_runner import SDVideoPipelineRunner
+from .hunyuan_video import HunyuanVideoPipeline
 KolorsImagePipeline = SDXLImagePipeline
