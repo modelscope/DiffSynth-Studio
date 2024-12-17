@@ -44,6 +44,7 @@ def get_timestep_embedding(
     downscale_freq_shift: float = 1,
     scale: float = 1,
     max_period: int = 10000,
+    computation_device = None,
 ):
     """
     This matches the implementation in Denoising Diffusion Probabilistic Models: Create sinusoidal timestep embeddings.
@@ -57,11 +58,11 @@ def get_timestep_embedding(
 
     half_dim = embedding_dim // 2
     exponent = -math.log(max_period) * torch.arange(
-        start=0, end=half_dim, dtype=torch.float32, device=timesteps.device
+        start=0, end=half_dim, dtype=torch.float32, device=timesteps.device if computation_device is None else computation_device
     )
     exponent = exponent / (half_dim - downscale_freq_shift)
 
-    emb = torch.exp(exponent)
+    emb = torch.exp(exponent).to(timesteps.device)
     emb = timesteps[:, None].float() * emb[None, :]
 
     # scale embeddings
@@ -81,11 +82,12 @@ def get_timestep_embedding(
 
 
 class TemporalTimesteps(torch.nn.Module):
-    def __init__(self, num_channels: int, flip_sin_to_cos: bool, downscale_freq_shift: float):
+    def __init__(self, num_channels: int, flip_sin_to_cos: bool, downscale_freq_shift: float, computation_device = None):
         super().__init__()
         self.num_channels = num_channels
         self.flip_sin_to_cos = flip_sin_to_cos
         self.downscale_freq_shift = downscale_freq_shift
+        self.computation_device = computation_device
 
     def forward(self, timesteps):
         t_emb = get_timestep_embedding(
@@ -93,6 +95,7 @@ class TemporalTimesteps(torch.nn.Module):
             self.num_channels,
             flip_sin_to_cos=self.flip_sin_to_cos,
             downscale_freq_shift=self.downscale_freq_shift,
+            computation_device=self.computation_device,
         )
         return t_emb
     
