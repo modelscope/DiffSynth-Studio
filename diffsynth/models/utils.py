@@ -80,7 +80,7 @@ def load_state_dict_from_safetensors(file_path, torch_dtype=None):
 
 
 def load_state_dict_from_bin(file_path, torch_dtype=None):
-    state_dict = torch.load(file_path, map_location="cpu")
+    state_dict = torch.load(file_path, map_location="cpu", weights_only=True)
     if torch_dtype is not None:
         for i in state_dict:
             if isinstance(state_dict[i], torch.Tensor):
