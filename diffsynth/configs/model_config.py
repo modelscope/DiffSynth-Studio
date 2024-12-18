@@ -43,6 +43,8 @@ from ..models.cog_dit import CogDiT
 
 from ..models.omnigen import OmniGenTransformer
 
+from ..models.hunyuan_video_vae_decoder import HunyuanVideoVAEDecoder
+
 from ..extensions.RIFE import IFNet
 from ..extensions.ESRGAN import RRDBNet
 
@@ -94,6 +96,7 @@ model_loader_configs = [
     (None, "98cc34ccc5b54ae0e56bdea8688dcd5a", ["sd3_text_encoder_2"], [SD3TextEncoder2], "civitai"),
     (None, "77ff18050dbc23f50382e45d51a779fe", ["sd3_dit", "sd3_vae_encoder", "sd3_vae_decoder"], [SD3DiT, SD3VAEEncoder, SD3VAEDecoder], "civitai"),
     (None, "5da81baee73198a7c19e6d2fe8b5148e", ["sd3_text_encoder_1"], [SD3TextEncoder1], "diffusers"),
+    (None, "aeb82dce778a03dcb4d726cb03f3c43f", ["hunyuan_video_vae_decoder"], [HunyuanVideoVAEDecoder], "diffusers"),
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -638,11 +641,12 @@ preset_models_on_modelscope = {
             ("DiffSynth-Studio/HunyuanVideo_MLLM_text_encoder", "model-00004-of-00004.safetensors", "models/HunyuanVideo/text_encoder_2"),
             ("DiffSynth-Studio/HunyuanVideo_MLLM_text_encoder", "config.json", "models/HunyuanVideo/text_encoder_2"),
             ("DiffSynth-Studio/HunyuanVideo_MLLM_text_encoder", "model.safetensors.index.json", "models/HunyuanVideo/text_encoder_2"),
-            
+            ("AI-ModelScope/HunyuanVideo", "hunyuan-video-t2v-720p/vae/pytorch_model.pt", "models/HunyuanVideo/vae")
         ],
         "load_path": [
             "models/HunyuanVideo/text_encoder/model.safetensors",
             "models/HunyuanVideo/text_encoder_2",
+            "models/HunyuanVideo/vae/pytorch_model.pt"
         ],
     },
 }
