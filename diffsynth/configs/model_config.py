@@ -48,6 +48,7 @@ from ..models.hunyuan_video_vae_decoder import HunyuanVideoVAEDecoder
 from ..extensions.RIFE import IFNet
 from ..extensions.ESRGAN import RRDBNet
 
+from ..models.hunyuan_video_dit import HunyuanVideoDiT
 
 
 model_loader_configs = [
@@ -97,6 +98,7 @@ model_loader_configs = [
     (None, "77ff18050dbc23f50382e45d51a779fe", ["sd3_dit", "sd3_vae_encoder", "sd3_vae_decoder"], [SD3DiT, SD3VAEEncoder, SD3VAEDecoder], "civitai"),
     (None, "5da81baee73198a7c19e6d2fe8b5148e", ["sd3_text_encoder_1"], [SD3TextEncoder1], "diffusers"),
     (None, "aeb82dce778a03dcb4d726cb03f3c43f", ["hunyuan_video_vae_decoder"], [HunyuanVideoVAEDecoder], "diffusers"),
+    (None, "b9588f02e78f5ccafc9d7c0294e46308", ["hunyuan_video_dit"], [HunyuanVideoDiT], "civitai"),
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
