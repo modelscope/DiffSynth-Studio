@@ -7,8 +7,8 @@ import torch
 from transformers import LlamaModel
 from einops import rearrange
 import numpy as np
-from tqdm import tqdm
 from PIL import Image
+
 
 
 class HunyuanVideoPipeline(BasePipeline):
@@ -22,6 +22,13 @@ class HunyuanVideoPipeline(BasePipeline):
         self.dit: HunyuanVideoDiT = None
         self.vae_decoder: HunyuanVideoVAEDecoder = None
         self.model_names = ['text_encoder_1', 'text_encoder_2', 'dit', 'vae_decoder']
+        self.vram_management = False
+
+
+    def enable_vram_management(self):
+        self.vram_management = True
+        self.enable_cpu_offload()
+        self.dit.enable_auto_offload(dtype=self.torch_dtype, device=self.device)
 
 
     def fetch_models(self, model_manager: ModelManager):
@@ -38,10 +45,8 @@ class HunyuanVideoPipeline(BasePipeline):
         if torch_dtype is None: torch_dtype = model_manager.torch_dtype
         pipe = HunyuanVideoPipeline(device=device, torch_dtype=torch_dtype)
         pipe.fetch_models(model_manager)
-        # VRAM management is automatically enabled.
         if enable_vram_management:
-            pipe.enable_cpu_offload()
-            pipe.dit.enable_auto_offload(dtype=torch_dtype, device=device)
+            pipe.enable_vram_management()
         return pipe
 
 
@@ -77,26 +82,34 @@ class HunyuanVideoPipeline(BasePipeline):
         embedded_guidance=6.0,
         cfg_scale=1.0,
         num_inference_steps=30,
+        tile_size=(17, 30, 30),
+        tile_stride=(12, 20, 20),
         progress_bar_cmd=lambda x: x,
         progress_bar_st=None,
     ):
+        # Initialize noise
         latents = self.generate_noise((1, 16, (num_frames - 1) // 4 + 1, height//8, width//8), seed=seed, device=self.device, dtype=self.torch_dtype)
         
+        # Encode prompts
         self.load_models_to_device(["text_encoder_1", "text_encoder_2"])
         prompt_emb_posi = self.encode_prompt(prompt, positive=True)
         if cfg_scale != 1.0:
             prompt_emb_nega = self.encode_prompt(negative_prompt, positive=False)
 
+        # Extra input
         extra_input = self.prepare_extra_input(latents, guidance=embedded_guidance)
 
+        # Scheduler
         self.scheduler.set_timesteps(num_inference_steps)
 
-        self.load_models_to_device([])
+        # Denoise
+        self.load_models_to_device([] if self.vram_management else ["dit"])
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.unsqueeze(0).to(self.device)
-            with torch.autocast(device_type=self.device, dtype=self.torch_dtype):
-                print(f"Step {progress_id + 1} / {len(self.scheduler.timesteps)}")
+            print(f"Step {progress_id + 1} / {len(self.scheduler.timesteps)}")
 
+            # Inference
+            with torch.autocast(device_type=self.device, dtype=self.torch_dtype):
                 noise_pred_posi = self.dit(latents, timestep, **prompt_emb_posi, **extra_input)
                 if cfg_scale != 1.0:
                     noise_pred_nega = self.dit(latents, timestep, **prompt_emb_nega, **extra_input)
@@ -104,12 +117,16 @@ class HunyuanVideoPipeline(BasePipeline):
                 else:
                     noise_pred = noise_pred_posi
 
+            # Scheduler
             latents = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], latents)
         
         # Tiler parameters
-        tiler_kwargs = dict(use_temporal_tiling=False, use_spatial_tiling=False, sample_ssize=256, sample_tsize=64)
-        # decode
+        tiler_kwargs = {"tile_size": tile_size, "tile_stride": tile_stride}
+
+        # Decode
         self.load_models_to_device(['vae_decoder'])
         frames = self.vae_decoder.decode_video(latents, **tiler_kwargs)
+        self.load_models_to_device([])
         frames = self.tensor2video(frames[0])
+
         return frames

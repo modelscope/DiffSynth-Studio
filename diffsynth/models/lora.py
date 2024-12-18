@@ -7,6 +7,7 @@ from .sd3_dit import SD3DiT
 from .flux_dit import FluxDiT
 from .hunyuan_dit import HunyuanDiT
 from .cog_dit import CogDiT
+from .hunyuan_video_dit import HunyuanVideoDiT
 
 
 
@@ -259,6 +260,14 @@ class GeneralLoRAFromPeft:
         return None
     
 
+class HunyuanVideoLoRAFromCivitai(LoRAFromCivitai):
+    def __init__(self):
+        super().__init__()
+        self.supported_model_classes = [HunyuanVideoDiT]
+        self.lora_prefix = ["diffusion_model."]
+        self.special_keys = {}
+    
+
 class FluxLoRAConverter:
     def __init__(self):
         pass
@@ -355,4 +364,4 @@ class FluxLoRAConverter:
     
 
 def get_lora_loaders():
-    return [SDLoRAFromCivitai(), SDXLLoRAFromCivitai(), FluxLoRAFromCivitai(), GeneralLoRAFromPeft()]
+    return [SDLoRAFromCivitai(), SDXLLoRAFromCivitai(), FluxLoRAFromCivitai(), HunyuanVideoLoRAFromCivitai(), GeneralLoRAFromPeft()]

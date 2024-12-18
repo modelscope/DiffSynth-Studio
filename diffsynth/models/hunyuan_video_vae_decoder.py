@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 import numpy as np
+from tqdm import tqdm
+from einops import repeat
 
 
 class CausalConv3d(nn.Module):
@@ -393,16 +395,99 @@ class HunyuanVideoVAEDecoder(nn.Module):
             gradient_checkpointing=gradient_checkpointing,
         )
         self.post_quant_conv = nn.Conv3d(in_channels, in_channels, kernel_size=1)
+        self.scaling_factor = 0.476986
 
-    def decode_video(self, latents, use_temporal_tiling=False, use_spatial_tiling=False, sample_ssize=256, sample_tsize=64):
-        if use_temporal_tiling:
-            raise NotImplementedError
-        if use_spatial_tiling:
-            raise NotImplementedError
-        # no tiling
+
+    def forward(self, latents):
+        latents = latents / self.scaling_factor
         latents = self.post_quant_conv(latents)
         dec = self.decoder(latents)
         return dec
+    
+
+    def build_1d_mask(self, length, left_bound, right_bound, border_width):
+        x = torch.ones((length,))
+        if not left_bound:
+            x[:border_width] = (torch.arange(border_width) + 1) / border_width
+        if not right_bound:
+            x[-border_width:] = torch.flip((torch.arange(border_width) + 1) / border_width, dims=(0,))
+        return x
+    
+
+    def build_mask(self, data, is_bound, border_width):
+        _, _, T, H, W = data.shape
+        t = self.build_1d_mask(T, is_bound[0], is_bound[1], border_width[0])
+        h = self.build_1d_mask(H, is_bound[2], is_bound[3], border_width[1])
+        w = self.build_1d_mask(W, is_bound[4], is_bound[5], border_width[2])
+
+        t = repeat(t, "T -> T H W", T=T, H=H, W=W)
+        h = repeat(h, "H -> T H W", T=T, H=H, W=W)
+        w = repeat(w, "W -> T H W", T=T, H=H, W=W)
+
+        mask = torch.stack([t, h, w]).min(dim=0).values
+        mask = rearrange(mask, "T H W -> 1 1 T H W")
+        return mask
+    
+
+    def tile_forward(self, hidden_states, tile_size, tile_stride):
+        B, C, T, H, W = hidden_states.shape
+        size_t, size_h, size_w = tile_size
+        stride_t, stride_h, stride_w = tile_stride
+
+        # Split tasks
+        tasks = []
+        for t in range(0, T, stride_t):
+            if (t-stride_t >= 0 and t-stride_t+size_t >= T): continue
+            for h in range(0, H, stride_h):
+                if (h-stride_h >= 0 and h-stride_h+size_h >= H): continue
+                for w in range(0, W, stride_w):
+                    if (w-stride_w >= 0 and w-stride_w+size_w >= W): continue
+                    t_, h_, w_ = t + size_t, h + size_h, w + size_w
+                    tasks.append((t, t_, h, h_, w, w_))
+
+        # Run
+        torch_dtype = self.post_quant_conv.weight.dtype
+        data_device = hidden_states.device
+        computation_device = self.post_quant_conv.weight.device
+
+        weight = torch.zeros((1, 1, (T - 1) * 4 + 1, H * 8, W * 8), dtype=torch_dtype, device=data_device)
+        values = torch.zeros((B, 3, (T - 1) * 4 + 1, H * 8, W * 8), dtype=torch_dtype, device=data_device)
+
+        for t, t_, h, h_, w, w_ in tqdm(tasks):
+            hidden_states_batch = hidden_states[:, :, t:t_, h:h_, w:w_].to(computation_device)
+            hidden_states_batch = self.forward(hidden_states_batch).to(data_device)
+            if t > 0:
+                hidden_states_batch = hidden_states_batch[:, :, 1:]
+
+            mask = self.build_mask(
+                hidden_states_batch,
+                is_bound=(t==0, t_>=T, h==0, h_>=H, w==0, w_>=W),
+                border_width=((size_t - stride_t) * 4, (size_h - stride_h) * 8, (size_w - stride_w) * 8)
+            ).to(dtype=torch_dtype, device=data_device)
+
+            target_t = 0 if t==0 else t * 4 + 1
+            target_h = h * 8
+            target_w = w * 8
+            values[
+                :,
+                :,
+                target_t: target_t + hidden_states_batch.shape[2],
+                target_h: target_h + hidden_states_batch.shape[3],
+                target_w: target_w + hidden_states_batch.shape[4],
+            ] += hidden_states_batch * mask
+            weight[
+                :,
+                :,
+                target_t: target_t + hidden_states_batch.shape[2],
+                target_h: target_h + hidden_states_batch.shape[3],
+                target_w: target_w + hidden_states_batch.shape[4],
+            ] += mask
+        return values / weight
+
+
+    def decode_video(self, latents, tile_size=(17, 32, 32), tile_stride=(12, 24, 24)):
+        latents = latents.to(self.post_quant_conv.weight.dtype)
+        return self.tile_forward(latents, tile_size=tile_size, tile_stride=tile_stride)
 
     @staticmethod
     def state_dict_converter():
