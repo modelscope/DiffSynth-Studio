@@ -10,7 +10,7 @@ pipe = FluxImagePipeline.from_model_manager(model_manager)
 image = pipe(prompt=prompt, seed=0)
 image.save("image.jpg")
 
-# Download ArtAug LoRA
+# Download and load ArtAug LoRA
 lora_path = download_customized_models(
     model_id="DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1",
     origin_file_path="merged_lora.safetensors",
