@@ -36,6 +36,7 @@ from .sdxl_ipadapter import SDXLIpAdapter, IpAdapterXLCLIPImageEmbedder
 from .hunyuan_dit_text_encoder import HunyuanDiTCLIPTextEncoder, HunyuanDiTT5TextEncoder
 from .hunyuan_dit import HunyuanDiT
 from .hunyuan_video_vae_decoder import HunyuanVideoVAEDecoder
+from .hunyuan_video_vae_encoder import HunyuanVideoVAEEncoder
 
 from .flux_dit import FluxDiT
 from .flux_text_encoder import FluxTextEncoder2
