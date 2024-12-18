@@ -1,4 +1,4 @@
-from ..models import ModelManager, SD3TextEncoder1, HunyuanVideoVAEDecoder
+from ..models import ModelManager, SD3TextEncoder1, HunyuanVideoVAEDecoder, HunyuanVideoVAEEncoder
 from ..models.hunyuan_video_dit import HunyuanVideoDiT
 from ..schedulers.flow_match import FlowMatchScheduler
 from .base import BasePipeline
@@ -21,7 +21,8 @@ class HunyuanVideoPipeline(BasePipeline):
         self.text_encoder_2: LlamaModel = None
         self.dit: HunyuanVideoDiT = None
         self.vae_decoder: HunyuanVideoVAEDecoder = None
-        self.model_names = ['text_encoder_1', 'text_encoder_2', 'dit', 'vae_decoder']
+        self.vae_encoder: HunyuanVideoVAEEncoder = None
+        self.model_names = ['text_encoder_1', 'text_encoder_2', 'dit', 'vae_decoder', 'vae_encoder']
         self.vram_management = False
 
 
@@ -70,6 +71,10 @@ class HunyuanVideoPipeline(BasePipeline):
         frames = [Image.fromarray(frame) for frame in frames]
         return frames
 
+    def encode_video(self, frames):
+        # frames : (B, C, T, H, W)
+        latents = self.vae_encoder(frames)
+        return latents
       
     @torch.no_grad()
     def __call__(
