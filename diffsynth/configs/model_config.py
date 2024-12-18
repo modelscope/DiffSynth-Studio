@@ -44,6 +44,7 @@ from ..models.cog_dit import CogDiT
 from ..models.omnigen import OmniGenTransformer
 
 from ..models.hunyuan_video_vae_decoder import HunyuanVideoVAEDecoder
+from ..models.hunyuan_video_vae_encoder import HunyuanVideoVAEEncoder
 
 from ..extensions.RIFE import IFNet
 from ..extensions.ESRGAN import RRDBNet
@@ -97,7 +98,7 @@ model_loader_configs = [
     (None, "98cc34ccc5b54ae0e56bdea8688dcd5a", ["sd3_text_encoder_2"], [SD3TextEncoder2], "civitai"),
     (None, "77ff18050dbc23f50382e45d51a779fe", ["sd3_dit", "sd3_vae_encoder", "sd3_vae_decoder"], [SD3DiT, SD3VAEEncoder, SD3VAEDecoder], "civitai"),
     (None, "5da81baee73198a7c19e6d2fe8b5148e", ["sd3_text_encoder_1"], [SD3TextEncoder1], "diffusers"),
-    (None, "aeb82dce778a03dcb4d726cb03f3c43f", ["hunyuan_video_vae_decoder"], [HunyuanVideoVAEDecoder], "diffusers"),
+    (None, "aeb82dce778a03dcb4d726cb03f3c43f", ["hunyuan_video_vae_decoder", "hunyuan_video_vae_encoder"], [HunyuanVideoVAEDecoder, HunyuanVideoVAEEncoder], "diffusers"),
     (None, "b9588f02e78f5ccafc9d7c0294e46308", ["hunyuan_video_dit"], [HunyuanVideoDiT], "civitai"),
 ]
 huggingface_model_loader_configs = [

@@ -36,6 +36,7 @@ class HunyuanVideoPipeline(BasePipeline):
         self.text_encoder_2 = model_manager.fetch_model("hunyuan_video_text_encoder_2")
         self.dit = model_manager.fetch_model("hunyuan_video_dit")
         self.vae_decoder = model_manager.fetch_model("hunyuan_video_vae_decoder")
+        self.vae_encoder = model_manager.fetch_model("hunyuan_video_vae_encoder")
         self.prompter.fetch_models(self.text_encoder_1, self.text_encoder_2)
 
 
