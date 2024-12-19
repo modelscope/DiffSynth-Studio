@@ -11,7 +11,7 @@ model_manager.load_models(
     [
         "models/HunyuanVideo/transformers/mp_rank_00_model_states.pt"
     ],
-    torch_dtype=torch.bfloat16,
+    torch_dtype=torch.bfloat16, # you can use torch_dtype=torch.float8_e4m3fn to enable quantization.
     device="cpu"
 )
 
