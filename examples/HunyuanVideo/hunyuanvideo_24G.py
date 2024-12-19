@@ -39,4 +39,4 @@ pipe = HunyuanVideoPipeline.from_model_manager(
 # Enjoy!
 prompt = "CG, masterpiece, best quality, solo, long hair, wavy hair, silver hair, blue eyes, blue dress, medium breasts, dress, underwater, air bubble, floating hair, refraction, portrait. The girl's flowing silver hair shimmers with every color of the rainbow and cascades down, merging with the floating flora around her."
 video = pipe(prompt, seed=0)
-save_video(video, "video.mp4", fps=30, quality=5)
+save_video(video, "video_girl.mp4", fps=30, quality=6)
