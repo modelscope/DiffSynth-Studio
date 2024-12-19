@@ -52,9 +52,9 @@ class PatchEmbed(torch.nn.Module):
 
 
 class TimestepEmbeddings(torch.nn.Module):
-    def __init__(self, dim_in, dim_out):
+    def __init__(self, dim_in, dim_out, computation_device=None):
         super().__init__()
-        self.time_proj = TemporalTimesteps(num_channels=dim_in, flip_sin_to_cos=True, downscale_freq_shift=0)
+        self.time_proj = TemporalTimesteps(num_channels=dim_in, flip_sin_to_cos=True, downscale_freq_shift=0, computation_device=computation_device)
         self.timestep_embedder = torch.nn.Sequential(
             torch.nn.Linear(dim_in, dim_out), torch.nn.SiLU(), torch.nn.Linear(dim_out, dim_out)
         )
