@@ -17,6 +17,7 @@ DiffSynth Studio is a Diffusion engine. We have restructured architectures inclu
 
 Until now, DiffSynth Studio has supported the following models:
 
+* [HunyuanVideo](https://github.com/Tencent/HunyuanVideo)
 * [CogVideoX](https://huggingface.co/THUDM/CogVideoX-5b)
 * [FLUX](https://huggingface.co/black-forest-labs/FLUX.1-dev)
 * [ExVideo](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
@@ -33,6 +34,9 @@ Until now, DiffSynth Studio has supported the following models:
 * [Stable Diffusion](https://huggingface.co/runwayml/stable-diffusion-v1-5)
 
 ## News
+
+
+- **December 19, 2024** We implement advanced VRAM management for HunyuanVideo, making it possible to generate videos at a resolution of 129x720x1280 using 24GB of VRAM, or at 129x512x384 resolution with just 6GB of VRAM. Please refer to [./examples/HunyuanVideo/](./examples/HunyuanVideo/) for more details.
 
 - **December 18, 2024** We propose ArtAug, an approach designed to improve text-to-image synthesis models through synthesis-understanding interactions. We have trained an ArtAug enhancement module for FLUX.1-dev in the format of LoRA. This model integrates the aesthetic understanding of Qwen2-VL-72B into FLUX.1-dev, leading to an improvement in the quality of generated images.
   - Paper: https://arxiv.org/abs/2412.12888

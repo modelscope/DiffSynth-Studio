@@ -1,6 +1,6 @@
 # HunyuanVideo
 
-[HunyuanVideo](https://www.modelscope.cn/models/AI-ModelScope/HunyuanVideo) is a video generation model trained by Tencent. We provide advanced VRAM management for this model, including three stages:
+[HunyuanVideo](https://github.com/Tencent/HunyuanVideo) is a video generation model trained by Tencent. We provide advanced VRAM management for this model, including three stages:
 
 |VRAM required|Example script|Frames|Resolution|Note|
 |-|-|-|-|-|
