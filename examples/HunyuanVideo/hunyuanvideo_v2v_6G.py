@@ -1,5 +1,5 @@
 import torch
-torch.cuda.set_per_process_memory_fraction(6/80, 0)
+torch.cuda.set_per_process_memory_fraction(1.0, 0)
 from diffsynth import ModelManager, HunyuanVideoPipeline, download_models, save_video, FlowMatchScheduler
 
 
