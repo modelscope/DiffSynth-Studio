@@ -263,8 +263,8 @@ class GeneralLoRAFromPeft:
 class HunyuanVideoLoRAFromCivitai(LoRAFromCivitai):
     def __init__(self):
         super().__init__()
-        self.supported_model_classes = [HunyuanVideoDiT]
-        self.lora_prefix = ["diffusion_model."]
+        self.supported_model_classes = [HunyuanVideoDiT, HunyuanVideoDiT]
+        self.lora_prefix = ["diffusion_model.", "transformer."]
         self.special_keys = {}
     
 
