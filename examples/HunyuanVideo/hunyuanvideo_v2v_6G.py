@@ -1,6 +1,6 @@
 import torch
 torch.cuda.set_per_process_memory_fraction(1.0, 0)
-from diffsynth import ModelManager, HunyuanVideoPipeline, download_models, save_video, FlowMatchScheduler
+from diffsynth import ModelManager, HunyuanVideoPipeline, download_models, save_video, FlowMatchScheduler, download_customized_models
 
 
 download_models(["HunyuanVideo"])
@@ -28,6 +28,11 @@ model_manager.load_models(
 
 # We support LoRA inference. You can use the following code to load your LoRA model.
 # Example LoRA: https://civitai.com/models/1032126/walking-animation-hunyuan-video
+download_customized_models(
+    model_id="AI-ModelScope/walking_animation_hunyuan_video",
+    origin_file_path="kxsr_walking_anim_v1-5.safetensors",
+    local_dir="models/lora"
+)[0]
 model_manager.load_lora("models/lora/kxsr_walking_anim_v1-5.safetensors", lora_alpha=1.0)
 
 # The computation device is "cuda".
