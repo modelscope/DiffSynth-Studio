@@ -96,6 +96,7 @@ class HunyuanVideoPipeline(BasePipeline):
         num_inference_steps=30,
         tile_size=(17, 30, 30),
         tile_stride=(12, 20, 20),
+        step_processor=None,
         progress_bar_cmd=lambda x: x,
         progress_bar_st=None,
     ):
@@ -139,6 +140,20 @@ class HunyuanVideoPipeline(BasePipeline):
                     noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
                 else:
                     noise_pred = noise_pred_posi
+
+            # (Experimental feature, may be removed in the future)
+            if step_processor is not None:
+                self.load_models_to_device(['vae_decoder'])
+                rendered_frames = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], latents, to_final=True)
+                rendered_frames = self.vae_decoder.decode_video(rendered_frames, **tiler_kwargs)
+                rendered_frames = self.tensor2video(rendered_frames[0])
+                rendered_frames = step_processor(rendered_frames, original_frames=input_video)
+                self.load_models_to_device(['vae_encoder'])
+                rendered_frames = self.preprocess_images(rendered_frames)
+                rendered_frames = torch.stack(rendered_frames, dim=2)
+                target_latents = self.encode_video(rendered_frames).to(dtype=self.torch_dtype, device=self.device)
+                noise_pred = self.scheduler.return_to_timestep(self.scheduler.timesteps[progress_id], latents, target_latents)
+                self.load_models_to_device([] if self.vram_management else ["dit"])
 
             # Scheduler
             latents = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], latents)
