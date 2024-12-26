@@ -46,7 +46,6 @@ class FlowMatchScheduler():
     
 
     def return_to_timestep(self, timestep, sample, sample_stablized):
-        # This scheduler doesn't support this function.
         if isinstance(timestep, torch.Tensor):
             timestep = timestep.cpu()
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
