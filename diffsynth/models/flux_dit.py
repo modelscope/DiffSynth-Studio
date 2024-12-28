@@ -648,6 +648,8 @@ class FluxDiTStateDictConverter:
         }
         state_dict_ = {}
         for name, param in state_dict.items():
+            if name.startswith("model.diffusion_model."):
+                name = name[len("model.diffusion_model."):]
             names = name.split(".")
             if name in rename_dict:
                 rename = rename_dict[name]
