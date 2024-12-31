@@ -34,7 +34,11 @@ Until now, DiffSynth Studio has supported the following models:
 * [Stable Diffusion](https://huggingface.co/runwayml/stable-diffusion-v1-5)
 
 ## News
-
+- **December 31, 2024** We propose EliGen, a novel framework for precise entity-level controlled text-to-image generation, complemented by an inpainting fusion pipeline to extend its capabilities to image inpainting tasks. EliGen seamlessly integrates with existing community models, such as IP-Adapter, enhancing its versatility. For more details, see [./examples/EntityControl](./examples/EntityControl/README.md).
+  * Paper: Comming soon
+  * Github: https://github.com/modelscope/DiffSynth-Studio
+  * Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen)
+  * Training dataset: Coming soon
 
 - **December 19, 2024** We implement advanced VRAM management for HunyuanVideo, making it possible to generate videos at a resolution of 129x720x1280 using 24GB of VRAM, or at 129x512x384 resolution with just 6GB of VRAM. Please refer to [./examples/HunyuanVideo/](./examples/HunyuanVideo/) for more details.
 

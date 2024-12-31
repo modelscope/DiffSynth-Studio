@@ -37,6 +37,16 @@ See [./entity_control.py](./entity_control.py) for usage.
 ## Examples
 ### Entity-Level Controlled Image Generation
 
+1. The effect of generating images with continuously changing entity positions.
+<div style="text-align:center;">
+  <video width="768" height="768" controls>
+    <source src="https://github.com/user-attachments/assets/4fc76df1-b26a-46e8-a950-865cdf02a38d" type="video/mp4">
+    your browser does not support the video tag
+  </video>
+</div>
+
+2. The image generation effect of complex Entity combinations, demonstrating the strong generalization of EliGen.
+
 |![image_1_base](https://github.com/user-attachments/assets/b8564b28-19b5-424f-bf3c-6476f2923ff9)|![image_1_base](https://github.com/user-attachments/assets/20793715-42d3-46f7-8d62-0cb4cacef38d)|
 |-|-|
 |![image_1_base](https://github.com/user-attachments/assets/70ef12fe-d300-4b52-9d11-eabc9b5464a8)|![image_1_enhance](https://github.com/user-attachments/assets/7645ce0e-4aa7-4b1e-b7a7-bccfd9796461)|
