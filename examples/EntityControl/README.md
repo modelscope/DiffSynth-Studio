@@ -38,10 +38,8 @@ See [./entity_control.py](./entity_control.py) for usage.
 ### Entity-Level Controlled Image Generation
 
 1. The effect of generating images with continuously changing entity positions.
-<video width="768" height="768" controls>
-   <source src="https://github.com/user-attachments/assets/4fc76df1-b26a-46e8-a950-865cdf02a38d" type="video/mp4">
-   your browser does not support the video tag
-</video>
+
+https://github.com/user-attachments/assets/4fc76df1-b26a-46e8-a950-865cdf02a38d
 
 2. The image generation effect of complex Entity combinations, demonstrating the strong generalization of EliGen.
 
