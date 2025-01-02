@@ -337,6 +337,7 @@ class FluxDiT(torch.nn.Module):
         )
         return hidden_states
 
+
     def construct_mask(self, entity_masks, prompt_seq_len, image_seq_len):
         N = len(entity_masks)
         batch_size = entity_masks[0].shape[0]
@@ -371,11 +372,41 @@ class FluxDiT(torch.nn.Module):
         attention_mask[attention_mask == 1] = 0
         return attention_mask
 
+
+    def process_entity_masks(self, hidden_states, prompt_emb, entity_prompt_emb, entity_masks, text_ids, image_ids):
+        repeat_dim = hidden_states.shape[1]
+        max_masks = 0
+        attention_mask = None
+        prompt_embs = [prompt_emb]
+        if entity_masks is not None:
+            # entity_masks
+            batch_size, max_masks = entity_masks.shape[0], entity_masks.shape[1]
+            entity_masks = entity_masks.repeat(1, 1, repeat_dim, 1, 1)
+            entity_masks = [entity_masks[:, i, None].squeeze(1) for i in range(max_masks)]
+            # global mask
+            global_mask = torch.ones_like(entity_masks[0]).to(device=hidden_states.device, dtype=hidden_states.dtype)
+            entity_masks = entity_masks + [global_mask] # append global to last
+            # attention mask
+            attention_mask = self.construct_mask(entity_masks, prompt_emb.shape[1], hidden_states.shape[1])
+            attention_mask = attention_mask.to(device=hidden_states.device, dtype=hidden_states.dtype)
+            attention_mask = attention_mask.unsqueeze(1)
+            # embds: n_masks * b * seq * d
+            local_embs = [entity_prompt_emb[:, i, None].squeeze(1) for i in range(max_masks)]
+            prompt_embs = local_embs + prompt_embs # append global to last
+        prompt_embs = [self.context_embedder(prompt_emb) for prompt_emb in prompt_embs]
+        prompt_emb = torch.cat(prompt_embs, dim=1)
+
+        # positional embedding
+        text_ids = torch.cat([text_ids] * (max_masks + 1), dim=1)
+        image_rotary_emb = self.pos_embedder(torch.cat((text_ids, image_ids), dim=1))
+        return prompt_emb, image_rotary_emb, attention_mask
+
+
     def forward(
         self,
         hidden_states,
         timestep, prompt_emb, pooled_prompt_emb, guidance, text_ids, image_ids=None,
-        tiled=False, tile_size=128, tile_stride=64, entity_prompts=None, entity_masks=None,
+        tiled=False, tile_size=128, tile_stride=64, entity_prompt_emb=None, entity_masks=None,
         use_gradient_checkpointing=False,
         **kwargs
     ):
@@ -395,35 +426,16 @@ class FluxDiT(torch.nn.Module):
             guidance = guidance * 1000
             conditioning = conditioning + self.guidance_embedder(guidance, hidden_states.dtype)
 
-        repeat_dim = hidden_states.shape[1]
         height, width = hidden_states.shape[-2:]
         hidden_states = self.patchify(hidden_states)
         hidden_states = self.x_embedder(hidden_states)
 
-        max_masks = 0
-        attention_mask = None
-        prompt_embs = [prompt_emb]
-        if entity_masks is not None:
-            # entity_masks
-            batch_size, max_masks = entity_masks.shape[0], entity_masks.shape[1]
-            entity_masks = entity_masks.repeat(1, 1, repeat_dim, 1, 1)
-            entity_masks = [entity_masks[:, i, None].squeeze(1) for i in range(max_masks)]
-            # global mask
-            global_mask = torch.ones_like(entity_masks[0]).to(device=hidden_states.device, dtype=hidden_states.dtype)
-            entity_masks = entity_masks + [global_mask] # append global to last
-            # attention mask
-            attention_mask = self.construct_mask(entity_masks, prompt_emb.shape[1], hidden_states.shape[1])
-            attention_mask = attention_mask.to(device=hidden_states.device, dtype=hidden_states.dtype)
-            attention_mask = attention_mask.unsqueeze(1)
-            # embds: n_masks * b * seq * d
-            local_embs = [entity_prompts[:, i, None].squeeze(1) for i in range(max_masks)]
-            prompt_embs = local_embs + prompt_embs # append global to last
-        prompt_embs = [self.context_embedder(prompt_emb) for prompt_emb in prompt_embs]
-        prompt_emb = torch.cat(prompt_embs, dim=1)
-
-        # positional embedding
-        text_ids = torch.cat([text_ids] * (max_masks + 1), dim=1)
-        image_rotary_emb = self.pos_embedder(torch.cat((text_ids, image_ids), dim=1))
+        if entity_prompt_emb is not None and entity_masks is not None:
+            prompt_emb, image_rotary_emb, attention_mask = self.process_entity_masks(hidden_states, prompt_emb, entity_prompt_emb, entity_masks, text_ids, image_ids)
+        else:
+            prompt_emb = self.context_embedder(prompt_emb)
+            image_rotary_emb = self.pos_embedder(torch.cat((text_ids, image_ids), dim=1))
+            attention_mask = None
 
         def create_custom_forward(module):
             def custom_forward(*inputs):
