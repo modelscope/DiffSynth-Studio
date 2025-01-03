@@ -366,17 +366,21 @@ class ModelManager:
 
 
     def load_lora(self, file_path="", state_dict={}, lora_alpha=1.0):
-        print(f"Loading LoRA models from file: {file_path}")
-        if len(state_dict) == 0:
-            state_dict = load_state_dict(file_path)
-        for model_name, model, model_path in zip(self.model_name, self.model, self.model_path):
-            for lora in get_lora_loaders():
-                match_results = lora.match(model, state_dict)
-                if match_results is not None:
-                    print(f"    Adding LoRA to {model_name} ({model_path}).")
-                    lora_prefix, model_resource = match_results
-                    lora.load(model, state_dict, lora_prefix, alpha=lora_alpha, model_resource=model_resource)
-                    break
+        if isinstance(file_path, list):
+            for file_path_ in file_path:
+                self.load_lora(file_path_, state_dict=state_dict, lora_alpha=lora_alpha)
+        else:
+            print(f"Loading LoRA models from file: {file_path}")
+            if len(state_dict) == 0:
+                state_dict = load_state_dict(file_path)
+            for model_name, model, model_path in zip(self.model_name, self.model, self.model_path):
+                for lora in get_lora_loaders():
+                    match_results = lora.match(model, state_dict)
+                    if match_results is not None:
+                        print(f"    Adding LoRA to {model_name} ({model_path}).")
+                        lora_prefix, model_resource = match_results
+                        lora.load(model, state_dict, lora_prefix, alpha=lora_alpha, model_resource=model_resource)
+                        break
 
 
     def load_model(self, file_path, model_names=None, device=None, torch_dtype=None):
