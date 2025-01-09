@@ -34,9 +34,9 @@ Until now, DiffSynth Studio has supported the following models:
 * [Stable Diffusion](https://huggingface.co/runwayml/stable-diffusion-v1-5)
 
 ## News
-- **December 31, 2024** We propose EliGen, a novel framework for precise entity-level controlled text-to-image generation, complemented by an inpainting fusion pipeline to extend its capabilities to image inpainting tasks. EliGen seamlessly integrates with existing community models, such as IP-Adapter, enhancing its versatility. For more details, see [./examples/EntityControl](./examples/EntityControl/README.md).
-  * Paper: Comming soon
-  * Github: https://github.com/modelscope/DiffSynth-Studio
+- **December 31, 2024** We propose EliGen, a novel framework for precise entity-level controlled text-to-image generation, complemented by an inpainting fusion pipeline to extend its capabilities to image inpainting tasks. EliGen seamlessly integrates with existing community models, such as IP-Adapter and In-Context LoRA, enhancing its versatility. For more details, see [./examples/EntityControl](./examples/EntityControl/).
+  * Paper: [EliGen: Entity-Level Controlled Image Generation with Regional Attention](https://arxiv.org/abs/2501.01097)
+  * Github: [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio)
   * Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen)
   * Training dataset: Coming soon
 

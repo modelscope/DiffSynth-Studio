@@ -18,13 +18,13 @@ model_manager.load_lora(
 pipe = FluxImagePipeline.from_model_manager(model_manager)
 
 # download and load mask images
-dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern="data/examples/eligen/ipadapter*")
-masks = [Image.open(f"./data/examples/eligen/ipadapter_mask_{i}.png") for i in range(1, 4)]
+dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern="data/examples/eligen/ipadapter/*")
+masks = [Image.open(f"./data/examples/eligen/ipadapter/ipadapter_mask_{i}.png") for i in range(1, 4)]
 
 entity_prompts = ['A girl', 'hat', 'sunset']
 global_prompt = "A girl wearing a hat, looking at the sunset"
 negative_prompt = "worst quality, low quality, monochrome, zombie, interlocked fingers, Aissist, cleavage, nsfw"
-reference_img = Image.open("./data/examples/eligen/ipadapter_image.png")
+reference_img = Image.open("./data/examples/eligen/ipadapter/ipadapter_image.png")
 
 # generate image
 image = pipe(

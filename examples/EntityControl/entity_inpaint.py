@@ -17,9 +17,9 @@ model_manager.load_lora(
 pipe = FluxImagePipeline.from_model_manager(model_manager)
 
 # download and load mask images
-dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern="data/examples/eligen/inpaint*")
-masks = [Image.open(f"./data/examples/eligen/inpaint_mask_{i}.png") for i in range(1, 3)]
-input_image = Image.open("./data/examples/eligen/inpaint_image.jpg")
+dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern="data/examples/eligen/inpaint/*")
+masks = [Image.open(f"./data/examples/eligen/inpaint/inpaint_mask_{i}.png") for i in range(1, 3)]
+input_image = Image.open("./data/examples/eligen/inpaint/inpaint_image.jpg")
 
 entity_prompts = ["A person wear red shirt", "Airplane"]
 global_prompt = "A person walking on the path in front of a house; An airplane in the sky"

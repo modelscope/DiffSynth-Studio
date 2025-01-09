@@ -62,14 +62,14 @@ def generate(pipe: FluxImagePipeline, logo_image, target_image, mask, height, wi
 
 pipe = build_pipeline()
 
-dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern="data/examples/eligen/logo_transfer*")
-logo_image = Image.open("data/examples/eligen/logo_transfer_logo.png")
-target_image = Image.open("data/examples/eligen/logo_transfer_target_image.png")
+dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern="data/examples/eligen/logo_transfer/*")
+logo_image = Image.open("data/examples/eligen/logo_transfer/logo_transfer_logo.png")
+target_image = Image.open("data/examples/eligen/logo_transfer/logo_transfer_target_image.png")
 
 prompt="The two-panel image showcases the joyful identity, with the left panel showing a rabbit graphic; [LEFT] while the right panel translates the design onto a shopping tote with the rabbit logo in black, held by a person in a market setting, emphasizing the brand's approachable and eco-friendly vibe."
 logo_prompt="a rabbit logo"
 
-mask = Image.open("data/examples/eligen/logo_transfer_mask_1.png")
+mask = Image.open("data/examples/eligen/logo_transfer/logo_transfer_mask_1.png")
 generate(
     pipe, logo_image, target_image, mask, 
     height=1024, width=736,
@@ -78,7 +78,7 @@ generate(
     mask_save_path="entity_transfer_with_mask_1.png"
 )
 
-mask = Image.open("data/examples/eligen/logo_transfer_mask_2.png")
+mask = Image.open("data/examples/eligen/logo_transfer/logo_transfer_mask_2.png")
 generate(
     pipe, logo_image, target_image, mask, 
     height=1024, width=736,
