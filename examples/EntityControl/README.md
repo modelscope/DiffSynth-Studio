@@ -45,16 +45,23 @@ https://github.com/user-attachments/assets/4fc76df1-b26a-46e8-a950-865cdf02a38d
 
 2. The image generation effect of complex Entity combinations, demonstrating the strong generalization of EliGen. See [./entity_control.py](./entity_control.py) `example_1-6` for generation prompts.
 
-|![image_1_base](https://github.com/user-attachments/assets/4b9fb79f-cb3c-45a5-8d22-14e52865387c)|![image_1_base](https://github.com/user-attachments/assets/2e60e51b-f8d5-4b25-ae21-f64531e20b1b)|
+|Entity Conditions|Generated Image|
 |-|-|
-|![image_1_base](https://github.com/user-attachments/assets/5bdfebc2-8c1e-4619-87f3-579883a3671e)|![image_1_enhance](https://github.com/user-attachments/assets/d38be37d-68ed-4123-9cb2-429069dbd870)|
-|![image_2_base](https://github.com/user-attachments/assets/e4b37440-fde0-4d7c-9658-98995d335097)|![image_2_enhance](https://github.com/user-attachments/assets/aa4ccae9-1074-4200-b890-5687f3409a70)|
+|![eligen_example_1_mask_0](https://github.com/user-attachments/assets/68cbedc0-32aa-4a8e-99d2-306dbb4620de)|![eligen_example_1_0](https://github.com/user-attachments/assets/c678c4b1-aa19-41df-b612-adc01b8b2009)|
+|![eligen_example_2_mask_0](https://github.com/user-attachments/assets/1c6d9445-5022-4d91-ad2e-dc05321883d1)|![eligen_example_2_0](https://github.com/user-attachments/assets/86739945-cb07-4a49-b3b3-3bb65c90d14f)|
+|![eligen_example_3_mask_27](https://github.com/user-attachments/assets/5ca4440d-d1db-45dd-b03c-0affefbd9ac3)|![eligen_example_3_27](https://github.com/user-attachments/assets/9160c22a-89ac-4d52-be1d-17ba2d8a67eb)|
+|![eligen_example_4_mask_21](https://github.com/user-attachments/assets/26dfde2b-cc9a-4cb3-806a-7f7436d971a7)|![eligen_example_4_21](https://github.com/user-attachments/assets/1fff7346-6a8c-4eb6-986f-4ea848c6b363)|
+|![eligen_example_5_mask_0](https://github.com/user-attachments/assets/8ca94e5f-f896-451d-a700-bcdc23689adb)|![eligen_example_5_0](https://github.com/user-attachments/assets/881a9395-6cc2-43e9-89b4-30b8f5437e6d)|
+|![eligen_example_6_mask_8](https://github.com/user-attachments/assets/26c95abf-f2b1-44db-92c1-75d02c714c74)|![eligen_example_6_8](https://github.com/user-attachments/assets/8883abde-3fad-4a8b-ade0-ca5b977a290f)|
 
-3. Demonstration of the robustness of EliGen. The following examples are generated using the same prompt but different seeds. Refer to [./entity_control.py](./entity_control.py) `example_7` for the prompts.
+1. Demonstration of the robustness of EliGen. The following examples are generated using the same prompt but different seeds. Refer to [./entity_control.py](./entity_control.py) `example_7` for the prompts.
 
-|![image_1_base](https://github.com/user-attachments/assets/fb39ca42-074b-4d7c-85c8-55e4dec9a851)|![image_1_base](https://github.com/user-attachments/assets/34d7f17a-06b6-492a-8522-44aa1c75f233)|
+|Entity Conditions|Generated Image|
 |-|-|
-|![image_1_base](https://github.com/user-attachments/assets/cecfee76-7e44-496b-8d02-ffa29f5142a3)|![image_1_enhance](https://github.com/user-attachments/assets/a51d3bba-52e6-483f-9c75-f7e87120b30c)|
+|![eligen_example_7_mask_5](https://github.com/user-attachments/assets/85630237-9d8b-41ea-9bd5-506652c61776)|![eligen_example_7_5](https://github.com/user-attachments/assets/d34b54d2-c59c-4c39-8ab4-c22f155283f1)|
+|![eligen_example_7_mask_5](https://github.com/user-attachments/assets/85630237-9d8b-41ea-9bd5-506652c61776)|![eligen_example_7_6](https://github.com/user-attachments/assets/4050a3bf-a089-4f4f-81e0-e3b391cf7ceb)|
+![eligen_example_7_mask_5](https://github.com/user-attachments/assets/85630237-9d8b-41ea-9bd5-506652c61776)|![eligen_example_7_7](https://github.com/user-attachments/assets/682feb5e-a27a-4ae4-a800-018b4e0e504c)|
+|![eligen_example_7_mask_5](https://github.com/user-attachments/assets/85630237-9d8b-41ea-9bd5-506652c61776)|![eligen_example_7_8](https://github.com/user-attachments/assets/50266950-24b3-426a-ae74-c3ebadb853d9)|
 
 ### Image Inpainting
 Demonstration of the inpainting mode of EliGen, see [./entity_inpaint.py](./entity_inpaint.py) for generation prompts.
