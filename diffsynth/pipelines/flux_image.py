@@ -223,8 +223,8 @@ class FluxImagePipeline(BasePipeline):
         if eligen_entity_masks is not None:
             entity_prompt_emb_posi, entity_masks_posi, fg_mask, bg_mask = self.prepare_entity_inputs(eligen_entity_prompts, eligen_entity_masks, width, height, t5_sequence_length, enable_eligen_inpaint)
             if enable_eligen_on_negative and cfg_scale != 1.0:
-                entity_prompt_emb_nega = prompt_emb_nega['prompt_emb'].unsqueeze(1).repeat(1, eligen_entity_masks.shape[1], 1, 1)
-                entity_masks_nega = eligen_entity_masks
+                entity_prompt_emb_nega = prompt_emb_nega['prompt_emb'].unsqueeze(1).repeat(1, entity_masks_posi.shape[1], 1, 1)
+                entity_masks_nega = entity_masks_posi
             else:
                 entity_prompt_emb_nega, entity_masks_nega = None, None
         else:

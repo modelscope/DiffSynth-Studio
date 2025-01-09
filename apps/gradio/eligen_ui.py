@@ -9,6 +9,7 @@ import json
 
 def save_mask_prompts(masks, mask_prompts, global_prompt, seed=0, random_dir='0000000'):
     save_dir = os.path.join('workdirs/tmp_mask', random_dir)
+    print(f'save to {save_dir}')
     os.makedirs(save_dir, exist_ok=True)
     for i, mask in enumerate(masks):
         save_path = os.path.join(save_dir, f'{i}.png')
@@ -205,8 +206,8 @@ with gr.Blocks() as app:
                         local_prompt = gr.Textbox(label="Local prompt", key=f"local_prompt_{painter_layer_id}")
                         mask_scale = gr.Slider(minimum=0.0, maximum=5.0, value=1.0, step=0.1, interactive=True, label="Mask scale", key=f"mask_scale_{painter_layer_id}")
                         canvas = gr.ImageEditor(canvas_size=(512, 1), sources=None, layers=False, interactive=True, image_mode="RGBA",
-                                                brush=gr.Brush(default_size=30, default_color="#000000", colors=["#000000"]),
-                                                label="Painter", key=f"canvas_{painter_layer_id}")
+                                                brush=gr.Brush(default_size=50, default_color="#000000", colors=["#000000"]),
+                                                label="Painter", key=f"canvas_{painter_layer_id}", width=width, height=height)
                         @gr.on(inputs=[height, width, canvas], outputs=canvas, triggers=[height.change, width.change, canvas.clear, enable_local_prompt.change], show_progress="hidden")
                         def resize_canvas(height, width, canvas):
                             h, w = canvas["background"].shape[:2]
