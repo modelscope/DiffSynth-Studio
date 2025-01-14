@@ -80,4 +80,4 @@ Demonstration of the entity transfer results with EliGen and In-Context LoRA, se
 
 |Entity to Transfer|Transfer Target Image|Transfer Example 1|Transfer Example 2|
 |-|-|-|-|
-|![image_1_base](https://github.com/user-attachments/assets/bb3d4a46-8d82-4d3c-bce8-8c01a9973b8d)|![image_1_enhance](https://github.com/user-attachments/assets/44c0f422-525e-42ca-991b-f407f8faafc3)|![image_1_enhance](https://github.com/user-attachments/assets/a042ff5b-2748-4d91-8321-cec8f9eb73e4)|![image_1_enhance](https://github.com/user-attachments/assets/98f2d1b1-16e1-4c8f-b521-5cd68b567293)|
+|![image_1_base](https://github.com/user-attachments/assets/0d40ef22-0a09-420d-bd5a-bfb93120b60d)|![image_1_enhance](https://github.com/user-attachments/assets/f6c58ef2-54c1-4d86-8429-dad2eb0e0685)|![image_1_enhance](https://github.com/user-attachments/assets/05eed2e3-097d-40af-8aae-1e0c75051f32)|![image_1_enhance](https://github.com/user-attachments/assets/54314d16-244b-411e-8a91-96c500efa5f5)|
