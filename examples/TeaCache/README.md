@@ -4,13 +4,31 @@ TeaCache ([Timestep Embedding Aware Cache](https://github.com/ali-vilab/TeaCache
 
 ## Examples
 
-We provide examples on FLUX.1-dev. See [./flux_teacache.py](./flux_teacache.py).
+### FLUX
+
+Script: [./flux_teacache.py](./flux_teacache.py)
+
+Model: FLUX.1-dev
 
 Steps: 50
 
 GPU: A100
 
-|TeaCache is disabled|tea_cache_l1_thresh=0.2|tea_cache_l1_thresh=0.4|tea_cache_l1_thresh=0.6|tea_cache_l1_thresh=0.8|
-|-|-|-|-|-|
-|23s|13s|9s|6s|5s|
-|![image_None](https://github.com/user-attachments/assets/2bf5187a-9693-44d3-9ebb-6c33cd15443f)|![image_0 2](https://github.com/user-attachments/assets/5532ba94-c7e2-446e-a9ba-1c68c0f63350)|![image_0 4](https://github.com/user-attachments/assets/4c57c50d-87cd-493b-8603-1da57ec3b70d)|![image_0 6](https://github.com/user-attachments/assets/1d95a3a9-71f9-4b1a-ad5f-a5ea8d52eca7)|![image_0 8](https://github.com/user-attachments/assets/d8cfdd74-8b45-4048-b1b7-ce480aa23fa1)
+|TeaCache is disabled|tea_cache_l1_thresh=0.2|tea_cache_l1_thresh=0.8|
+|-|-|-|
+|23s|13s|5s|
+|![image_None](https://github.com/user-attachments/assets/2bf5187a-9693-44d3-9ebb-6c33cd15443f)|![image_0 2](https://github.com/user-attachments/assets/5532ba94-c7e2-446e-a9ba-1c68c0f63350)|![image_0 8](https://github.com/user-attachments/assets/d8cfdd74-8b45-4048-b1b7-ce480aa23fa1)
+
+### Hunyuan Video
+
+Script: [./hunyuanvideo_teacache.py](./hunyuanvideo_teacache.py)
+
+Model: Hunyuan Video
+
+Steps: 30
+
+GPU: A100
+
+The following video was generated using TeaCache. It is nearly identical to [the video without TeaCache enabled](https://github.com/user-attachments/assets/48dd24bb-0cc6-40d2-88c3-10feed3267e9), but with double the speed.
+
+https://github.com/user-attachments/assets/cd9801c5-88ce-4efc-b055-2c7737166f34
