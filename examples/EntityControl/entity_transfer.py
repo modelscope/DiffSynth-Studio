@@ -1,11 +1,8 @@
 from diffsynth import ModelManager, FluxImagePipeline, download_customized_models
-from diffsynth.data.video import crop_and_resize
 from modelscope import dataset_snapshot_download
 from examples.EntityControl.utils import visualize_masks
 from PIL import Image
-import numpy as np
 import torch
-
 
 
 def build_pipeline():
@@ -30,16 +27,13 @@ def build_pipeline():
     return pipe
 
 
-def generate(pipe: FluxImagePipeline, logo_image, target_image, mask, height, width, prompt, logo_prompt, image_save_path, mask_save_path):
-    mask = Image.fromarray(np.concatenate([
-        np.ones((height, width, 3), dtype=np.uint8) * 0,
-        np.array(crop_and_resize(mask, height, width)),
-    ], axis=1))
+def generate(pipe: FluxImagePipeline, source_image, target_image, mask, height, width, prompt, entity_prompt, image_save_path, mask_save_path, seed=0):
+    input_mask = Image.new('RGB', (width * 2, height))
+    input_mask.paste(mask.resize((width, height), resample=Image.NEAREST).convert('RGB'), (width, 0))
 
-    input_image = Image.fromarray(np.concatenate([
-        np.array(crop_and_resize(logo_image, height, width)),
-        np.array(crop_and_resize(target_image, height, width)),
-    ], axis=1))
+    input_image = Image.new('RGB', (width * 2, height))
+    input_image.paste(source_image.resize((width, height)).convert('RGB'), (0, 0))
+    input_image.paste(target_image.resize((width, height)).convert('RGB'), (width, 0))
 
     image = pipe(
         prompt=prompt,
@@ -48,41 +42,43 @@ def generate(pipe: FluxImagePipeline, logo_image, target_image, mask, height, wi
         negative_prompt="",
         num_inference_steps=50,
         embedded_guidance=3.5,
-        seed=0,
+        seed=seed,
         height=height,
         width=width * 2,
-        eligen_entity_prompts=[logo_prompt],
-        eligen_entity_masks=[mask],
+        eligen_entity_prompts=[entity_prompt],
+        eligen_entity_masks=[input_mask],
         enable_eligen_on_negative=False,
         enable_eligen_inpaint=True,
     )
-    image.save(image_save_path)
-    visualize_masks(image, [mask], [logo_prompt], mask_save_path)
+    target_image = image.crop((width, 0, 2 * width, height))
+    target_image.save(image_save_path)
+    visualize_masks(target_image, [mask], [entity_prompt], mask_save_path)
+    return target_image
 
 
 pipe = build_pipeline()
 
 dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern="data/examples/eligen/logo_transfer/*")
-logo_image = Image.open("data/examples/eligen/logo_transfer/logo_transfer_logo.png")
-target_image = Image.open("data/examples/eligen/logo_transfer/logo_transfer_target_image.png")
 
 prompt="The two-panel image showcases the joyful identity, with the left panel showing a rabbit graphic; [LEFT] while the right panel translates the design onto a shopping tote with the rabbit logo in black, held by a person in a market setting, emphasizing the brand's approachable and eco-friendly vibe."
 logo_prompt="a rabbit logo"
 
-mask = Image.open("data/examples/eligen/logo_transfer/logo_transfer_mask_1.png")
+logo_image = Image.open("data/examples/eligen/logo_transfer/source_image.png")
+target_image = Image.open("data/examples/eligen/logo_transfer/target_image.png")
+mask = Image.open("data/examples/eligen/logo_transfer/mask_1.png")
 generate(
     pipe, logo_image, target_image, mask, 
-    height=1024, width=736,
-    prompt=prompt, logo_prompt=logo_prompt,
+    height=1024, width=1024,
+    prompt=prompt, entity_prompt=logo_prompt,
     image_save_path="entity_transfer_1.png",
     mask_save_path="entity_transfer_with_mask_1.png"
 )
 
-mask = Image.open("data/examples/eligen/logo_transfer/logo_transfer_mask_2.png")
+mask = Image.open("data/examples/eligen/logo_transfer/mask_2.png")
 generate(
     pipe, logo_image, target_image, mask, 
-    height=1024, width=736,
-    prompt=prompt, logo_prompt=logo_prompt,
+    height=1024, width=1024,
+    prompt=prompt, entity_prompt=logo_prompt,
     image_save_path="entity_transfer_2.png",
     mask_save_path="entity_transfer_with_mask_2.png"
 )
