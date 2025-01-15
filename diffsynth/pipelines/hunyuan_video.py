@@ -89,6 +89,7 @@ class HunyuanVideoPipeline(BasePipeline):
         input_video=None,
         denoising_strength=1.0,
         seed=None,
+        rand_device=None,
         height=720,
         width=1280,
         num_frames=129,
@@ -109,7 +110,8 @@ class HunyuanVideoPipeline(BasePipeline):
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength)
 
         # Initialize noise
-        noise = self.generate_noise((1, 16, (num_frames - 1) // 4 + 1, height//8, width//8), seed=seed, device=self.device, dtype=self.torch_dtype)
+        rand_device = self.device if rand_device is None else rand_device
+        noise = self.generate_noise((1, 16, (num_frames - 1) // 4 + 1, height//8, width//8), seed=seed, device=rand_device, dtype=self.torch_dtype).to(self.device)
         if input_video is not None:
             self.load_models_to_device(['vae_encoder'])
             input_video = self.preprocess_images(input_video)
