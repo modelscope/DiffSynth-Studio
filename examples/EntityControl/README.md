@@ -7,11 +7,12 @@ We propose EliGen, a novel approach that leverages fine-grained entity-level inf
 * Paper: [EliGen: Entity-Level Controlled Image Generation with Regional Attention](https://arxiv.org/abs/2501.01097)
 * Github: [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio)
 * Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen)
+* Online Demo: [ModelScope EliGen Studio](https://www.modelscope.cn/studios/DiffSynth-Studio/EliGen)
 * Training dataset: Coming soon
 
 ## Methodology
 
-![regional-attention](https://github.com/user-attachments/assets/9a147201-15ab-421f-a6c5-701075754478)
+![regional-attention](https://github.com/user-attachments/assets/bef5ae2b-cc03-404e-b9c8-0c037ac66190)
 
 We introduce a regional attention mechanism within the DiT framework to effectively process the conditions of each entity. This mechanism enables the local prompt associated with each entity to semantically influence specific regions through regional attention. To further enhance the layout control capabilities of EliGen, we meticulously contribute an entity-annotated dataset and fine-tune the model using the LoRA framework. 
 
@@ -32,7 +33,7 @@ We introduce a regional attention mechanism within the DiT framework to effectiv
 4. **Entity Transfer**
    We have provided an example of how to integrate EliGen with In-Cotext LoRA, which achieves interesting entity transfer results. See [./entity_transfer.py](./entity_transfer.py) for usage.
 5. **Play with EliGen using UI**
-   Download the checkpoint of EliGen from [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen) to `models/lora/entity_control` and run the following command to try interactive UI: 
+   Run the following command to try interactive UI: 
    ```bash
    python apps/gradio/entity_level_control.py
    ```
@@ -41,7 +42,7 @@ We introduce a regional attention mechanism within the DiT framework to effectiv
 
 1. The effect of generating images with continuously changing entity positions.
 
-https://github.com/user-attachments/assets/4fc76df1-b26a-46e8-a950-865cdf02a38d
+https://github.com/user-attachments/assets/54a048c8-b663-4262-8c40-43c87c266d4b
 
 2. The image generation effect of complex Entity combinations, demonstrating the strong generalization of EliGen. See [./entity_control.py](./entity_control.py) `example_1-6` for generation prompts.
 
@@ -67,17 +68,17 @@ https://github.com/user-attachments/assets/4fc76df1-b26a-46e8-a950-865cdf02a38d
 Demonstration of the inpainting mode of EliGen, see [./entity_inpaint.py](./entity_inpaint.py) for generation prompts.
 |Inpainting Input|Inpainting Output|
 |-|-|
-|![image_2_base](https://github.com/user-attachments/assets/5ef499f3-3d8a-49cc-8ceb-86af7f5cb9f8)|![image_2_enhance](https://github.com/user-attachments/assets/88fc3bde-0984-4b3c-8ca9-d63de660855b)|
-|![image_1_base](https://github.com/user-attachments/assets/5f74c710-bf30-4db1-ae40-a1e1995ccef6)|![image_1_enhance](https://github.com/user-attachments/assets/1cd71177-e956-46d3-86ce-06f774c96efd)|
+|![inpaint_i1](https://github.com/user-attachments/assets/5ef499f3-3d8a-49cc-8ceb-86af7f5cb9f8)|![inpaint_o1](https://github.com/user-attachments/assets/88fc3bde-0984-4b3c-8ca9-d63de660855b)|
+|![inpaint_i2](https://github.com/user-attachments/assets/5f74c710-bf30-4db1-ae40-a1e1995ccef6)|![inpaint_o2](https://github.com/user-attachments/assets/7c3b4857-b774-47ea-b163-34d49e7c976d)|
 ### Styled Entity Control
 Demonstration of the styled entity control results with EliGen and IP-Adapter, see [./entity_control_ipadapter.py](./entity_control_ipadapter.py) for generation prompts.
 |Style Reference|Entity Control Variance 1|Entity Control Variance 2|Entity Control Variance 3|
 |-|-|-|-|
-|![image_1_base](https://github.com/user-attachments/assets/5e2dd3ab-37d3-4f58-8e02-ee2f9b238604)|![image_1_enhance](https://github.com/user-attachments/assets/0f6711a2-572a-41b3-938a-95deff6d732d)|![image_1_enhance](https://github.com/user-attachments/assets/ce2e66e5-1fdf-44e8-bca7-555d805a50b1)|![image_1_enhance](https://github.com/user-attachments/assets/ad2da233-2f7c-4065-ab57-b2d84dc2c0e2)|
+|![image_1_base](https://github.com/user-attachments/assets/5e2dd3ab-37d3-4f58-8e02-ee2f9b238604)|![result1](https://github.com/user-attachments/assets/0f6711a2-572a-41b3-938a-95deff6d732d)|![result2](https://github.com/user-attachments/assets/ce2e66e5-1fdf-44e8-bca7-555d805a50b1)|![result3](https://github.com/user-attachments/assets/ad2da233-2f7c-4065-ab57-b2d84dc2c0e2)|
 
 ### Entity Transfer
 Demonstration of the entity transfer results with EliGen and In-Context LoRA, see [./entity_transfer.py](./entity_transfer.py) for generation prompts.
 
 |Entity to Transfer|Transfer Target Image|Transfer Example 1|Transfer Example 2|
 |-|-|-|-|
-|![image_1_base](https://github.com/user-attachments/assets/0d40ef22-0a09-420d-bd5a-bfb93120b60d)|![image_1_enhance](https://github.com/user-attachments/assets/f6c58ef2-54c1-4d86-8429-dad2eb0e0685)|![image_1_enhance](https://github.com/user-attachments/assets/05eed2e3-097d-40af-8aae-1e0c75051f32)|![image_1_enhance](https://github.com/user-attachments/assets/54314d16-244b-411e-8a91-96c500efa5f5)|
+|![source](https://github.com/user-attachments/assets/0d40ef22-0a09-420d-bd5a-bfb93120b60d)|![targe](https://github.com/user-attachments/assets/f6c58ef2-54c1-4d86-8429-dad2eb0e0685)|![result1](https://github.com/user-attachments/assets/05eed2e3-097d-40af-8aae-1e0c75051f32)|![result2](https://github.com/user-attachments/assets/54314d16-244b-411e-8a91-96c500efa5f5)|
