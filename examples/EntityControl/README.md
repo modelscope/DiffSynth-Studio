@@ -8,7 +8,8 @@ We propose EliGen, a novel approach that leverages fine-grained entity-level inf
 * Github: [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio)
 * Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen)
 * Online Demo: [ModelScope EliGen Studio](https://www.modelscope.cn/studios/DiffSynth-Studio/EliGen)
-* Training dataset: Coming soon
+* Training Dataset: [EliGen Train Set](https://www.modelscope.cn/datasets/DiffSynth-Studio/EliGenTrainSet)
+
 
 ## Methodology
 
