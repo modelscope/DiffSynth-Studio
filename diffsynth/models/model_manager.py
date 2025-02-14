@@ -80,7 +80,10 @@ def load_model_from_single_file(state_dict, model_names, model_classes, model_re
 def load_model_from_huggingface_folder(file_path, model_names, model_classes, torch_dtype, device):
     loaded_model_names, loaded_models = [], []
     for model_name, model_class in zip(model_names, model_classes):
-        model = model_class.from_pretrained(file_path, torch_dtype=torch_dtype).eval()
+        if torch_dtype in [torch.float32, torch.float16, torch.bfloat16]:
+            model = model_class.from_pretrained(file_path, torch_dtype=torch_dtype).eval()
+        else:
+            model = model_class.from_pretrained(file_path).eval().to(dtype=torch_dtype)
         if torch_dtype == torch.float16 and hasattr(model, "half"):
             model = model.half()
         try:
