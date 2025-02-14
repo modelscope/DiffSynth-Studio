@@ -14,17 +14,12 @@ The file directory is shown below.
 
 ```
 DiffSynth-Studio/
-└── diffsynth/
-    └── extensions/
-        └── QualityMetric/
-            ├── __init__.py
-            ├── hps.py
-            ├── reward_pretrained/
-            │   ├── HPS_v2/
-            │   │   ├── HPS_v2_compressed.safetensors
-            │   │   ├── HPS_v2.1_compressed.safetensors
-            │   └── ...
-            └── ...
+└── models/
+    └── QualityMetric/
+        ├── HPS_v2/
+        │   ├── HPS_v2_compressed.safetensors
+        │   ├── HPS_v2.1_compressed.safetensors
+        └── ...
 ```
 
 ### Step 2: Test image quality metric
