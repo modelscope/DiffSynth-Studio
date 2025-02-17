@@ -8,6 +8,10 @@ StepVideo is a state-of-the-art (SoTA) text-to-video pre-trained model with 30 b
 
 ## Examples
 
-See [`./stepvideo_text_to_video.py`](./stepvideo_text_to_video.py).
+For original BF16 version, please see [`./stepvideo_text_to_video.py`](./stepvideo_text_to_video.py). 80G VRAM required.
 
 https://github.com/user-attachments/assets/5954fdaa-a3cf-45a3-bd35-886e3cc4581b
+
+For FP8 quantized version, please see [`./stepvideo_text_to_video_quantized.py`](./stepvideo_text_to_video_quantized.py). 40G VRAM required.
+
+https://github.com/user-attachments/assets/f3697f4e-bc08-47d2-b00a-32d7dfa272ad

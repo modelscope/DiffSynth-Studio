@@ -17,6 +17,7 @@ DiffSynth Studio is a Diffusion engine. We have restructured architectures inclu
 
 Until now, DiffSynth Studio has supported the following models:
 
+* [StepVideo](https://github.com/stepfun-ai/Step-Video-T2V)
 * [HunyuanVideo](https://github.com/Tencent/HunyuanVideo)
 * [CogVideoX](https://huggingface.co/THUDM/CogVideoX-5b)
 * [FLUX](https://huggingface.co/black-forest-labs/FLUX.1-dev)
@@ -34,6 +35,9 @@ Until now, DiffSynth Studio has supported the following models:
 * [Stable Diffusion](https://huggingface.co/runwayml/stable-diffusion-v1-5)
 
 ## News
+
+- **February 17, 2024** We support [StepVideo](https://modelscope.cn/models/stepfun-ai/stepvideo-t2v/summary)! State-of-the-art video synthesis model! See [./examples/stepvideo](./examples/stepvideo/).
+
 - **December 31, 2024** We propose EliGen, a novel framework for precise entity-level controlled text-to-image generation, complemented by an inpainting fusion pipeline to extend its capabilities to image inpainting tasks. EliGen seamlessly integrates with existing community models, such as IP-Adapter and In-Context LoRA, enhancing its versatility. For more details, see [./examples/EntityControl](./examples/EntityControl/).
   - Paper: [EliGen: Entity-Level Controlled Image Generation with Regional Attention](https://arxiv.org/abs/2501.01097)
   - Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen)
