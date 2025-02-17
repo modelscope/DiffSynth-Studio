@@ -19,7 +19,6 @@ model_manager.load_models(
 model_manager.load_models(
     [
         "models/stepfun-ai/stepvideo-t2v/step_llm",
-        "models/stepfun-ai/stepvideo-t2v/vae/vae_v2.safetensors",
         [
             "models/stepfun-ai/stepvideo-t2v/transformer/diffusion_pytorch_model-00001-of-00006.safetensors",
             "models/stepfun-ai/stepvideo-t2v/transformer/diffusion_pytorch_model-00002-of-00006.safetensors",
@@ -29,6 +28,10 @@ model_manager.load_models(
             "models/stepfun-ai/stepvideo-t2v/transformer/diffusion_pytorch_model-00006-of-00006.safetensors",
         ]
     ],
+    torch_dtype=torch.float8_e4m3fn, device="cpu"
+)
+model_manager.load_models(
+    ["models/stepfun-ai/stepvideo-t2v/vae/vae_v2.safetensors"],
     torch_dtype=torch.bfloat16, device="cpu"
 )
 pipe = StepVideoPipeline.from_model_manager(model_manager, torch_dtype=torch.bfloat16, device="cuda")
