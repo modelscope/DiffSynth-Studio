@@ -4,13 +4,13 @@ from transformers import AutoTokenizer
 
 from torch import nn, einsum
 
-from trainer.models.base_model import BaseModelConfig
+from .base_model import BaseModelConfig
 
 from transformers import CLIPConfig
 from typing import Any, Optional, Tuple, Union
 import torch
 
-from trainer.models.cross_modeling import Cross_model
+from .cross_modeling import Cross_model
 
 import gc
 
@@ -91,7 +91,7 @@ class XCLIPModel(HFCLIPModel):
 
 @dataclass
 class ClipModelConfig(BaseModelConfig):
-    _target_: str = "trainer.models.clip_model.CLIPModel"
+    _target_: str = "diffsynth.extensions.QualityMetric.trainer.models.clip_model.CLIPModel"
     pretrained_model_name_or_path: str ="checkpoints/clip-vit-base-patch32"
 
 

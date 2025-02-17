@@ -6,15 +6,15 @@ import os
 from .config import MODEL_PATHS
 
 class PickScore:
-    def __init__(self, device: Union[str, torch.device]):
+    def __init__(self, device: Union[str, torch.device], path: str = MODEL_PATHS):
         """Initialize the Selector with a processor and model.
 
         Args:
             device (Union[str, torch.device]): The device to load the model on.
         """
         self.device = device if isinstance(device, torch.device) else torch.device(device)
-        processor_name_or_path = MODEL_PATHS.get("clip")
-        model_pretrained_name_or_path = MODEL_PATHS.get("pickscore")
+        processor_name_or_path = path.get("clip")
+        model_pretrained_name_or_path = path.get("pickscore")
         self.processor = AutoProcessor.from_pretrained(processor_name_or_path)
         self.model = AutoModel.from_pretrained(model_pretrained_name_or_path).eval().to(self.device)
 

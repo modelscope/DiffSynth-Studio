@@ -2,11 +2,11 @@ import os
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_dir, '../../../'))
-quality_metric_path = os.path.join(project_root, 'models', 'QualityMetric')
+model_path = os.path.join(project_root, 'models', 'QualityMetric')
 
 
 def get_model_path(model_name):
-    return os.path.join(quality_metric_path, model_name)
+    return os.path.join(model_path, model_name)
 
 
 MODEL_PATHS = {
@@ -18,6 +18,6 @@ MODEL_PATHS = {
     "med_config": get_model_path("ImageReward/med_config.json"),
     "clip": get_model_path("CLIP-ViT-H-14-laion2B-s32B-b79K"),
     "clip-large": get_model_path("clip-vit-large-patch14"),
-    "mps": get_model_path("MPS_overall_checkpoint/MPS_overall_checkpoint_diffsynth.pth"),
+    "mps": get_model_path("MPS_overall_checkpoint/MPS_overall_checkpoint_diffsynth.safetensors"),
     "pickscore": get_model_path("PickScore_v1")
 }

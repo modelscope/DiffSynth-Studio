@@ -19,7 +19,10 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 @lru_cache()
 def default_bpe():
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "bpe_simple_vocab_16e6.txt.gz")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(current_dir, '../../../../'))
+    quality_metric_path = os.path.join(project_root, 'models', 'QualityMetric')
+    return os.path.join(quality_metric_path, "bpe_simple_vocab_16e6.txt.gz")
 
 
 @lru_cache()
