@@ -10,4 +10,5 @@ from .cog_video import CogVideoPipeline
 from .omnigen_image import OmnigenImagePipeline
 from .pipeline_runner import SDVideoPipelineRunner
 from .hunyuan_video import HunyuanVideoPipeline
+from .step_video import StepVideoPipeline
 KolorsImagePipeline = SDXLImagePipeline
