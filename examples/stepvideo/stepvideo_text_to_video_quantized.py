@@ -37,7 +37,7 @@ model_manager.load_models(
 pipe = StepVideoPipeline.from_model_manager(model_manager, torch_dtype=torch.bfloat16, device="cuda")
 
 # Enable VRAM management
-# This model requires 80G VRAM.
+# This model requires 40G VRAM.
 # In order to reduce VRAM required, please set `num_persistent_param_in_dit` to a small number.
 pipe.enable_vram_management(num_persistent_param_in_dit=None)
 
@@ -47,4 +47,7 @@ video = pipe(
     negative_prompt="画面暗、低分辨率、不良手、文本、缺少手指、多余的手指、裁剪、低质量、颗粒状、签名、水印、用户名、模糊。",
     num_inference_steps=30, cfg_scale=9, num_frames=51, seed=1
 )
-save_video(video, "video.mp4", fps=25, quality=5)
+save_video(
+    video, "video.mp4", fps=25, quality=5,
+    ffmpeg_params=["-vf", "atadenoise=0a=0.1:0b=0.1:1a=0.1:1b=0.1"]
+)
