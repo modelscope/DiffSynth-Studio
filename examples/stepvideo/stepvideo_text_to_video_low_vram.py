@@ -19,7 +19,6 @@ model_manager.load_models(
 model_manager.load_models(
     [
         "models/stepfun-ai/stepvideo-t2v/step_llm",
-        "models/stepfun-ai/stepvideo-t2v/vae/vae_v2.safetensors",
         [
             "models/stepfun-ai/stepvideo-t2v/transformer/diffusion_pytorch_model-00001-of-00006.safetensors",
             "models/stepfun-ai/stepvideo-t2v/transformer/diffusion_pytorch_model-00002-of-00006.safetensors",
@@ -29,20 +28,25 @@ model_manager.load_models(
             "models/stepfun-ai/stepvideo-t2v/transformer/diffusion_pytorch_model-00006-of-00006.safetensors",
         ]
     ],
+    torch_dtype=torch.bfloat16, device="cpu" # You can set torch_dtype=torch.bfloat16 to reduce RAM (not VRAM) usage.
+)
+model_manager.load_models(
+    ["models/stepfun-ai/stepvideo-t2v/vae/vae_v2.safetensors"],
     torch_dtype=torch.bfloat16, device="cpu"
 )
 pipe = StepVideoPipeline.from_model_manager(model_manager, torch_dtype=torch.bfloat16, device="cuda")
 
 # Enable VRAM management
-# This model requires 80G VRAM.
-# In order to reduce VRAM required, please set `num_persistent_param_in_dit` to a small number.
-pipe.enable_vram_management(num_persistent_param_in_dit=None)
+# This model requires 24G VRAM.
+# In order to speed up, please set `num_persistent_param_in_dit` to a large number or None (unlimited).
+pipe.enable_vram_management(num_persistent_param_in_dit=0)
 
 # Run!
 video = pipe(
     prompt="一名宇航员在月球上发现一块石碑，上面印有“stepfun”字样，闪闪发光。超高清、HDR 视频、环境光、杜比全景声、画面稳定、流畅动作、逼真的细节、专业级构图、超现实主义、自然、生动、超细节、清晰。",
     negative_prompt="画面暗、低分辨率、不良手、文本、缺少手指、多余的手指、裁剪、低质量、颗粒状、签名、水印、用户名、模糊。",
-    num_inference_steps=30, cfg_scale=9, num_frames=51, seed=1
+    num_inference_steps=30, cfg_scale=9, num_frames=51, seed=1,
+    tiled=True, tile_size=(34, 34), tile_stride=(16, 16)
 )
 save_video(
     video, "video.mp4", fps=25, quality=5,
