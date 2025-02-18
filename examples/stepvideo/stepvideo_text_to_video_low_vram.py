@@ -28,7 +28,7 @@ model_manager.load_models(
             "models/stepfun-ai/stepvideo-t2v/transformer/diffusion_pytorch_model-00006-of-00006.safetensors",
         ]
     ],
-    torch_dtype=torch.float8_e4m3fn, device="cpu"
+    torch_dtype=torch.bfloat16, device="cpu" # You can set torch_dtype=torch.bfloat16 to reduce RAM (not VRAM) usage.
 )
 model_manager.load_models(
     ["models/stepfun-ai/stepvideo-t2v/vae/vae_v2.safetensors"],
