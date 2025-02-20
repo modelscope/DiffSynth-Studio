@@ -54,6 +54,7 @@ from ..models.hunyuan_video_dit import HunyuanVideoDiT
 from ..models.stepvideo_vae import StepVideoVAE
 from ..models.stepvideo_dit import StepVideoModel
 
+from ..models.wanx_vae import WanXVideoVAE
 
 model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -108,6 +109,7 @@ model_loader_configs = [
     (None, "84ef4bd4757f60e906b54aa6a7815dc6", ["hunyuan_video_dit"], [HunyuanVideoDiT], "civitai"),
     (None, "68beaf8429b7c11aa8ca05b1bd0058bd", ["stepvideo_vae"], [StepVideoVAE], "civitai"),
     (None, "5c0216a2132b082c10cb7a0e0377e681", ["stepvideo_dit"], [StepVideoModel], "civitai"),
+    (None, "1378ea763357eea97acdef78e65d6d96", ["wanxvideo_vae"], [WanXVideoVAE], "civitai")
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
