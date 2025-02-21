@@ -73,7 +73,6 @@ try:
     )
 except Exception as exception:
     kernels = None
-    logger.warning("Failed to load cpm_kernels:" + str(exception))
 
 
 class W8A16Linear(torch.autograd.Function):
