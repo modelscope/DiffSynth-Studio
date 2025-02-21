@@ -1,16 +1,12 @@
-import torch, json, os, imageio, argparse
+import torch, os, imageio, argparse
 from torchvision.transforms import v2
-import numpy as np
-from einops import rearrange, repeat
+from einops import rearrange
 import lightning as pl
 import pandas as pd
-from diffsynth import ModelManager, SVDImageEncoder, SVDUNet, SVDVAEEncoder, ContinuousODEScheduler, load_state_dict
-from diffsynth.pipelines.svd_video import SVDCLIPImageProcessor
-from diffsynth.models.svd_unet import TemporalAttentionBlock
-
-
-from diffsynth import WanxVideoPipeline
+from diffsynth import WanxVideoPipeline, ModelManager
 from peft import LoraConfig, inject_adapter_in_model
+import torchvision
+from PIL import Image
 
 
 
@@ -27,10 +23,22 @@ class TextVideoDataset(torch.utils.data.Dataset):
         self.width = width
             
         self.frame_process = v2.Compose([
-            v2.Resize(size=max(height, width), antialias=True),
+            v2.Resize(size=(height, width), antialias=True),
             v2.CenterCrop(size=(height, width)),
-            v2.Normalize(mean=[127.5, 127.5, 127.5], std=[127.5, 127.5, 127.5]),
+            v2.ToTensor(),
+            v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
         ])
+        
+        
+    def crop_and_resize(self, image):
+        width, height = image.size
+        scale = max(self.width / width, self.height / height)
+        image = torchvision.transforms.functional.resize(
+            image,
+            (round(height*scale), round(width*scale)),
+            interpolation=torchvision.transforms.InterpolationMode.BILINEAR
+        )
+        return image
 
 
     def load_frames_using_imageio(self, file_path, max_num_frames, start_frame_id, interval, num_frames, frame_process):
@@ -42,13 +50,13 @@ class TextVideoDataset(torch.utils.data.Dataset):
         frames = []
         for frame_id in range(num_frames):
             frame = reader.get_data(start_frame_id + frame_id * interval)
-            frame = torch.tensor(frame, dtype=torch.float32)
-            frame = rearrange(frame, "H W C -> 1 C H W")
+            frame = Image.fromarray(frame)
+            frame = self.crop_and_resize(frame)
             frame = frame_process(frame)
             frames.append(frame)
         reader.close()
 
-        frames = torch.concat(frames, dim=0)
+        frames = torch.stack(frames, dim=0)
         frames = rearrange(frames, "T C H W -> C T H W")
 
         return frames
