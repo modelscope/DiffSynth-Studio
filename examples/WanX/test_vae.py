@@ -37,11 +37,10 @@ vae = model_manager.fetch_model('wanxvideo_vae')
 
 latents = [torch.load('sample.pt')]
 videos = vae.decode(latents, device=latents[0].device, tiled=True)
-# back_encode = vae.encode(videos)
+back_encode = vae.encode(videos, device=latents[0].device, tiled=True)
 
+videos_back_encode = vae.decode(back_encode, device=latents[0].device, tiled=False)
 torch.cuda.memory._dump_snapshot("my_snapshot.pickle")
 
-save_video(videos[0][None], save_file='example3.mp4', fps=16, nrow=8)
-print(latents)
-print(videos)
-# print(back_encode)
+save_video(videos[0][None], save_file='example.mp4', fps=16, nrow=1)
+save_video(videos_back_encode[0][None], save_file='example_backencode.mp4', fps=16, nrow=1)
