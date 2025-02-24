@@ -7,6 +7,15 @@ from tqdm import tqdm
 
 CACHE_T = 2
 
+
+def check_is_instance(model, module_class):
+    if isinstance(model, module_class):
+        return True
+    if hasattr(model, "module") and isinstance(model.module, module_class):
+        return True
+    return False
+
+
 def block_causal_mask(x, block_size):
     # params
     b, n, s, _, device = *x.size(), x.device
@@ -205,7 +214,7 @@ class ResidualBlock(nn.Module):
     def forward(self, x, feat_cache=None, feat_idx=[0]):
         h = self.shortcut(x)
         for layer in self.residual:
-            if isinstance(layer, CausalConv3d) and feat_cache is not None:
+            if check_is_instance(layer, CausalConv3d) and feat_cache is not None:
                 idx = feat_idx[0]
                 cache_x = x[:, :, -CACHE_T:, :, :].clone()
                 if cache_x.shape[2] < 2 and feat_cache[idx] is not None:
@@ -342,14 +351,14 @@ class Encoder3d(nn.Module):
 
         ## middle
         for layer in self.middle:
-            if isinstance(layer, ResidualBlock) and feat_cache is not None:
+            if check_is_instance(layer, ResidualBlock) and feat_cache is not None:
                 x = layer(x, feat_cache, feat_idx)
             else:
                 x = layer(x)
 
         ## head
         for layer in self.head:
-            if isinstance(layer, CausalConv3d) and feat_cache is not None:
+            if check_is_instance(layer, CausalConv3d) and feat_cache is not None:
                 idx = feat_idx[0]
                 cache_x = x[:, :, -CACHE_T:, :, :].clone()
                 if cache_x.shape[2] < 2 and feat_cache[idx] is not None:
@@ -440,7 +449,7 @@ class Decoder3d(nn.Module):
 
         ## middle
         for layer in self.middle:
-            if isinstance(layer, ResidualBlock) and feat_cache is not None:
+            if check_is_instance(layer, ResidualBlock) and feat_cache is not None:
                 x = layer(x, feat_cache, feat_idx)
             else:
                 x = layer(x)
@@ -454,7 +463,7 @@ class Decoder3d(nn.Module):
 
         ## head
         for layer in self.head:
-            if isinstance(layer, CausalConv3d) and feat_cache is not None:
+            if check_is_instance(layer, CausalConv3d) and feat_cache is not None:
                 idx = feat_idx[0]
                 cache_x = x[:, :, -CACHE_T:, :, :].clone()
                 if cache_x.shape[2] < 2 and feat_cache[idx] is not None:
@@ -475,7 +484,7 @@ class Decoder3d(nn.Module):
 def count_conv3d(model):
     count = 0
     for m in model.modules():
-        if isinstance(m, CausalConv3d):
+        if check_is_instance(m, CausalConv3d):
             count += 1
     return count
 

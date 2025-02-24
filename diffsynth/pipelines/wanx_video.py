@@ -14,6 +14,7 @@ from tqdm import tqdm
 from ..vram_management import enable_vram_management, AutoWrappedModule, AutoWrappedLinear
 from ..models.wanx_video_text_encoder import T5RelativeEmbedding, T5LayerNorm
 from ..models.wanx_video_dit import WanXLayerNorm, WanXRMSNorm
+from ..models.wanx_video_vae import RMS_norm, CausalConv3d, Upsample
 
 
 
@@ -48,6 +49,7 @@ class WanxVideoPipeline(BasePipeline):
                 computation_device=self.device,
             ),
         )
+        dtype = next(iter(self.dit.parameters())).dtype
         enable_vram_management(
             self.dit,
             module_map = {
@@ -66,6 +68,27 @@ class WanxVideoPipeline(BasePipeline):
             ),
             max_num_param=num_persistent_param_in_dit,
             overflow_module_config = dict(
+                offload_dtype=dtype,
+                offload_device="cpu",
+                onload_dtype=dtype,
+                onload_device="cpu",
+                computation_dtype=self.torch_dtype,
+                computation_device=self.device,
+            ),
+        )
+        dtype = next(iter(self.vae.parameters())).dtype
+        enable_vram_management(
+            self.vae,
+            module_map = {
+                torch.nn.Linear: AutoWrappedLinear,
+                torch.nn.Conv2d: AutoWrappedModule,
+                RMS_norm: AutoWrappedModule,
+                CausalConv3d: AutoWrappedModule,
+                Upsample: AutoWrappedModule,
+                torch.nn.SiLU: AutoWrappedModule,
+                torch.nn.Dropout: AutoWrappedModule,
+            },
+            module_config = dict(
                 offload_dtype=dtype,
                 offload_device="cpu",
                 onload_dtype=dtype,
