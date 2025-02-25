@@ -122,7 +122,6 @@ import torch
 from diffsynth import ModelManager, WanVideoPipeline, save_video, VideoData
 
 
-# TODO: download models here.
 model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cpu")
 model_manager.load_models([
     "models/Wan-AI/Wan2___1-T2V-1___3B/diffusion_pytorch_model.safetensors",
