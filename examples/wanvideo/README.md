@@ -26,9 +26,9 @@ We present a detailed table here. The model is tested on a single A100.
 |-|-|-|-|-|
 |torch.bfloat16|None (unlimited)|18.5s/it|40G||
 |torch.bfloat16|7*10**9 (7B)|20.8s/it|24G||
-|torch.bfloat16|0|23.4s/it|8G||
+|torch.bfloat16|0|23.4s/it|10G||
 |torch.float8_e4m3fn|None (unlimited)|18.3s/it|24G|yes|
-|torch.float8_e4m3fn|0|24.0s/it|8G||
+|torch.float8_e4m3fn|0|24.0s/it|10G||
 
 https://github.com/user-attachments/assets/3908bc64-d451-485a-8b61-28f6d32dd92f
 
