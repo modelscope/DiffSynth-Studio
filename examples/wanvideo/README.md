@@ -77,8 +77,8 @@ CUDA_VISIBLE_DEVICES="0" python examples/wanvideo/train_wan_t2v.py \
   --task data_process \
   --dataset_path data/example_dataset \
   --output_path ./models \
-  --text_encoder_path "models/wan/wan2.1_t2v/cache/models_t5_umt5-xxl-enc-bf16.pth" \
-  --vae_path "models/wan/wan2.1_t2v/cache/vae.pth" \
+  --text_encoder_path "models/Wan-AI/Wan2___1-T2V-1___3B/models_t5_umt5-xxl-enc-bf16.pth" \
+  --vae_path "models/Wan-AI/Wan2___1-T2V-1___3B/Wan2.1_VAE.pth" \
   --tiled \
   --num_frames 81 \
   --height 480 \
@@ -104,7 +104,7 @@ CUDA_VISIBLE_DEVICES="0" python examples/wanvideo/train_wan_t2v.py \
   --task train \
   --dataset_path data/example_dataset \
   --output_path ./models \
-  --dit_path "models/wan/wan2.1_t2v/cache/wan_t2v_1.3b.pth" \
+  --dit_path "models/Wan-AI/Wan2___1-T2V-1___3B/diffusion_pytorch_model.safetensors" \
   --steps_per_epoch 500 \
   --max_epochs 10 \
   --learning_rate 1e-4 \

@@ -120,7 +120,7 @@ cd DiffSynth-Studio
 pip install -e .
 ```
 
-Or install from pypi:
+Or install from pypi (There is a delay in the update. If you want to experience the latest features, please do not use this installation method.):
 
 ```
 pip install diffsynth
