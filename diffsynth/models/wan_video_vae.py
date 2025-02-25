@@ -596,7 +596,7 @@ class VideoVAE_(nn.Module):
         self._enc_feat_map = [None] * self._enc_conv_num
 
 
-class WanXVideoVAE(nn.Module):
+class WanVideoVAE(nn.Module):
 
     def __init__(self, z_dim=16):
         super().__init__()
@@ -790,16 +790,18 @@ class WanXVideoVAE(nn.Module):
 
     @staticmethod
     def state_dict_converter():
-        return WanXVideoVAEStateDictConverter()
+        return WanVideoVAEStateDictConverter()
 
 
-class WanXVideoVAEStateDictConverter:
+class WanVideoVAEStateDictConverter:
 
     def __init__(self):
         pass
 
     def from_civitai(self, state_dict):
         state_dict_ = {}
-        for name in state_dict['model_state']:
-            state_dict_['model.' + name] = state_dict['model_state'][name]
+        if 'model_state' in state_dict:
+            state_dict = state_dict['model_state']
+        for name in state_dict:
+            state_dict_['model.' + name] = state_dict[name]
         return state_dict_

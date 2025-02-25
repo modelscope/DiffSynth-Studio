@@ -1,19 +1,22 @@
 import torch
-from diffsynth import ModelManager, WanxVideoPipeline, save_video, VideoData
+from diffsynth import ModelManager, WanVideoPipeline, save_video, VideoData
+from modelscope import snapshot_download
 
 
-# TODO: download models here.
+# Download models
+snapshot_download("Wan-AI/Wan2.1-T2V-1.3B", cache_dir="models")
+
+# Load models
 model_manager = ModelManager(device="cpu")
 model_manager.load_models(
     [
-        "/data/zhongjie/models/wanx/wanx2.1_t2v/cache/wanx_t2v_1.3b.pth",
-        "/data/zhongjie/models/wanx/wanx2.1_t2v/cache/models_t5_umt5-xxl-enc-bf16.pth",
-        "/data/zhongjie/models/wanx/wanx2.1_t2v/cache/vae.pth",
+        "models/Wan-AI/Wan2___1-T2V-1___3B/diffusion_pytorch_model.safetensors",
+        "models/Wan-AI/Wan2___1-T2V-1___3B/models_t5_umt5-xxl-enc-bf16.pth",
+        "models/Wan-AI/Wan2___1-T2V-1___3B/Wan2.1_VAE.pth",
     ],
     torch_dtype=torch.bfloat16, # You can set `torch_dtype=torch.float8_e4m3fn` to enable FP8 quantization.
 )
-
-pipe = WanxVideoPipeline.from_model_manager(model_manager, torch_dtype=torch.bfloat16, device="cuda")
+pipe = WanVideoPipeline.from_model_manager(model_manager, torch_dtype=torch.bfloat16, device="cuda")
 pipe.enable_vram_management(num_persistent_param_in_dit=None)
 
 # Text-to-video

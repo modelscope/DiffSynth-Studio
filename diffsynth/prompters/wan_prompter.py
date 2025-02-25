@@ -1,5 +1,5 @@
 from .base_prompter import BasePrompter
-from ..models.wanx_video_text_encoder import WanXTextEncoder
+from ..models.wan_video_text_encoder import WanTextEncoder
 from transformers import AutoTokenizer
 import os, torch
 import html
@@ -76,7 +76,7 @@ class HuggingfaceTokenizer:
         return text
 
 
-class WanXPrompter(BasePrompter):
+class WanPrompter(BasePrompter):
 
     def __init__(self, tokenizer_path=None, text_len=512):
         super().__init__()
@@ -88,7 +88,7 @@ class WanXPrompter(BasePrompter):
         if tokenizer_path is not None:
             self.tokenizer = HuggingfaceTokenizer(name=tokenizer_path, seq_len=self.text_len, clean='whitespace')
 
-    def fetch_models(self, text_encoder: WanXTextEncoder = None):
+    def fetch_models(self, text_encoder: WanTextEncoder = None):
         self.text_encoder = text_encoder
 
     def encode_prompt(self, prompt, positive=True, device="cuda"):

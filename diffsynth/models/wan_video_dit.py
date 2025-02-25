@@ -4,6 +4,7 @@ import torch
 import torch.amp as amp
 import torch.nn as nn
 from tqdm import tqdm
+from .utils import hash_state_dict_keys
 
 try:
     import flash_attn_interface
@@ -20,7 +21,7 @@ except ModuleNotFoundError:
 import warnings
 
 
-__all__ = ['WanXModel']
+__all__ = ['WanModel']
 
 
 def flash_attention(
@@ -261,7 +262,7 @@ def rope_apply(x, grid_sizes, freqs):
     return torch.stack(output).float()
 
 
-class WanXRMSNorm(nn.Module):
+class WanRMSNorm(nn.Module):
 
     def __init__(self, dim, eps=1e-5):
         super().__init__()
@@ -276,7 +277,7 @@ class WanXRMSNorm(nn.Module):
         return x * torch.rsqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
 
 
-class WanXLayerNorm(nn.LayerNorm):
+class WanLayerNorm(nn.LayerNorm):
 
     def __init__(self, dim, eps=1e-6, elementwise_affine=False):
         super().__init__(dim, elementwise_affine=elementwise_affine, eps=eps)
@@ -285,7 +286,7 @@ class WanXLayerNorm(nn.LayerNorm):
         return super().forward(x.float()).type_as(x)
 
 
-class WanXSelfAttention(nn.Module):
+class WanSelfAttention(nn.Module):
 
     def __init__(self,
                  dim,
@@ -307,8 +308,8 @@ class WanXSelfAttention(nn.Module):
         self.k = nn.Linear(dim, dim)
         self.v = nn.Linear(dim, dim)
         self.o = nn.Linear(dim, dim)
-        self.norm_q = WanXRMSNorm(dim, eps=eps) if qk_norm else nn.Identity()
-        self.norm_k = WanXRMSNorm(dim, eps=eps) if qk_norm else nn.Identity()
+        self.norm_q = WanRMSNorm(dim, eps=eps) if qk_norm else nn.Identity()
+        self.norm_k = WanRMSNorm(dim, eps=eps) if qk_norm else nn.Identity()
 
     def forward(self, x, seq_lens, grid_sizes, freqs):
         b, s, n, d = *x.shape[:2], self.num_heads, self.head_dim
@@ -335,7 +336,7 @@ class WanXSelfAttention(nn.Module):
         return x
 
 
-class WanXT2VCrossAttention(WanXSelfAttention):
+class WanT2VCrossAttention(WanSelfAttention):
 
     def forward(self, x, context, context_lens):
         """
@@ -359,7 +360,7 @@ class WanXT2VCrossAttention(WanXSelfAttention):
         return x
 
 
-class WanXI2VCrossAttention(WanXSelfAttention):
+class WanI2VCrossAttention(WanSelfAttention):
 
     def __init__(self,
                  dim,
@@ -372,7 +373,7 @@ class WanXI2VCrossAttention(WanXSelfAttention):
         self.k_img = nn.Linear(dim, dim)
         self.v_img = nn.Linear(dim, dim)
         # self.alpha = nn.Parameter(torch.zeros((1, )))
-        self.norm_k_img = WanXRMSNorm(
+        self.norm_k_img = WanRMSNorm(
             dim, eps=eps) if qk_norm else nn.Identity()
 
     def forward(self, x, context, context_lens):
@@ -404,12 +405,12 @@ class WanXI2VCrossAttention(WanXSelfAttention):
 
 
 WANX_CROSSATTENTION_CLASSES = {
-    't2v_cross_attn': WanXT2VCrossAttention,
-    'i2v_cross_attn': WanXI2VCrossAttention,
+    't2v_cross_attn': WanT2VCrossAttention,
+    'i2v_cross_attn': WanI2VCrossAttention,
 }
 
 
-class WanXAttentionBlock(nn.Module):
+class WanAttentionBlock(nn.Module):
 
     def __init__(self,
                  cross_attn_type,
@@ -430,15 +431,15 @@ class WanXAttentionBlock(nn.Module):
         self.eps = eps
 
         # layers
-        self.norm1 = WanXLayerNorm(dim, eps)
-        self.self_attn = WanXSelfAttention(dim, num_heads, window_size, qk_norm,
+        self.norm1 = WanLayerNorm(dim, eps)
+        self.self_attn = WanSelfAttention(dim, num_heads, window_size, qk_norm,
                                            eps)
-        self.norm3 = WanXLayerNorm(
+        self.norm3 = WanLayerNorm(
             dim, eps,
             elementwise_affine=True) if cross_attn_norm else nn.Identity()
         self.cross_attn = WANX_CROSSATTENTION_CLASSES[cross_attn_type](
             dim, num_heads, (-1, -1), qk_norm, eps)
-        self.norm2 = WanXLayerNorm(dim, eps)
+        self.norm2 = WanLayerNorm(dim, eps)
         self.ffn = nn.Sequential(
             nn.Linear(dim, ffn_dim), nn.GELU(approximate='tanh'),
             nn.Linear(ffn_dim, dim))
@@ -491,7 +492,7 @@ class Head(nn.Module):
 
         # layers
         out_dim = math.prod(patch_size) * out_dim
-        self.norm = WanXLayerNorm(dim, eps)
+        self.norm = WanLayerNorm(dim, eps)
         self.head = nn.Linear(dim, out_dim)
 
         # modulation
@@ -520,7 +521,7 @@ class MLPProj(torch.nn.Module):
         return clip_extra_context_tokens
 
 
-class WanXModel(nn.Module):
+class WanModel(nn.Module):
 
     def __init__(self,
                  model_type='t2v',
@@ -572,7 +573,7 @@ class WanXModel(nn.Module):
         # blocks
         cross_attn_type = 't2v_cross_attn' if model_type == 't2v' else 'i2v_cross_attn'
         self.blocks = nn.ModuleList([
-            WanXAttentionBlock(cross_attn_type, dim, ffn_dim, num_heads,
+            WanAttentionBlock(cross_attn_type, dim, ffn_dim, num_heads,
                                window_size, qk_norm, cross_attn_norm, eps)
             for _ in range(num_layers)
         ])
@@ -718,10 +719,10 @@ class WanXModel(nn.Module):
 
     @staticmethod
     def state_dict_converter():
-        return WanXModelStateDictConverter()
+        return WanModelStateDictConverter()
     
     
-class WanXModelStateDictConverter:
+class WanModelStateDictConverter:
     def __init__(self):
         pass
 
@@ -729,21 +730,60 @@ class WanXModelStateDictConverter:
         return state_dict
     
     def from_civitai(self, state_dict):
-        config = {
-            "model_type": "t2v",
-            "patch_size": (1, 2, 2),
-            "text_len": 512,
-            "in_dim": 16,
-            "dim": 1536,
-            "ffn_dim": 8960,
-            "freq_dim": 256,
-            "text_dim": 4096,
-            "out_dim": 16,
-            "num_heads": 12,
-            "num_layers": 30,
-            "window_size": (-1, -1),
-            "qk_norm": True,
-            "cross_attn_norm": True,
-            "eps": 1e-6,
-        }
+        if hash_state_dict_keys(state_dict) == "9269f8db9040a9d860eaca435be61814":
+            config = {
+                "model_type": "t2v",
+                "patch_size": (1, 2, 2),
+                "text_len": 512,
+                "in_dim": 16,
+                "dim": 1536,
+                "ffn_dim": 8960,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 16,
+                "num_heads": 12,
+                "num_layers": 30,
+                "window_size": (-1, -1),
+                "qk_norm": True,
+                "cross_attn_norm": True,
+                "eps": 1e-6,
+            }
+        elif hash_state_dict_keys(state_dict) == "aafcfd9672c3a2456dc46e1cb6e52c70":
+            config = {
+                "model_type": "t2v",
+                "patch_size": (1, 2, 2),
+                "text_len": 512,
+                "in_dim": 16,
+                "dim": 5120,
+                "ffn_dim": 13824,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 16,
+                "num_heads": 40,
+                "num_layers": 40,
+                "window_size": (-1, -1),
+                "qk_norm": True,
+                "cross_attn_norm": True,
+                "eps": 1e-6,
+            }
+        elif hash_state_dict_keys(state_dict) == "6bfcfb3b342cb286ce886889d519a77e":
+            config = {
+                "model_type": "i2v",
+                "patch_size": (1, 2, 2),
+                "text_len": 512,
+                "in_dim": 36,
+                "dim": 5120,
+                "ffn_dim": 13824,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 16,
+                "num_heads": 40,
+                "num_layers": 40,
+                "window_size": (-1, -1),
+                "qk_norm": True,
+                "cross_attn_norm": True,
+                "eps": 1e-6,
+            }
+        else:
+            config = {}
         return state_dict, config

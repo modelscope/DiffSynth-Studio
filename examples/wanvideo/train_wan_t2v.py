@@ -3,7 +3,7 @@ from torchvision.transforms import v2
 from einops import rearrange
 import lightning as pl
 import pandas as pd
-from diffsynth import WanxVideoPipeline, ModelManager
+from diffsynth import WanVideoPipeline, ModelManager
 from peft import LoraConfig, inject_adapter_in_model
 import torchvision
 from PIL import Image
@@ -93,7 +93,7 @@ class LightningModelForDataProcess(pl.LightningModule):
         super().__init__()
         model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cpu")
         model_manager.load_models([text_encoder_path, vae_path])
-        self.pipe = WanxVideoPipeline.from_model_manager(model_manager)
+        self.pipe = WanVideoPipeline.from_model_manager(model_manager)
 
         self.tiler_kwargs = {"tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride}
         
@@ -139,7 +139,7 @@ class LightningModelForTrain(pl.LightningModule):
         model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cpu")
         model_manager.load_models([dit_path])
         
-        self.pipe = WanxVideoPipeline.from_model_manager(model_manager)
+        self.pipe = WanVideoPipeline.from_model_manager(model_manager)
         self.pipe.scheduler.set_timesteps(1000, training=True)
         self.freeze_parameters()
         self.add_lora_to_model(

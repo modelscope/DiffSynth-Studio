@@ -206,7 +206,7 @@ def init_weights(m):
             m.embedding.weight, std=(2 * m.num_buckets * m.num_heads)**-0.5)
 
 
-class WanXTextEncoder(torch.nn.Module):
+class WanTextEncoder(torch.nn.Module):
 
     def __init__(self,
                  vocab=256384,
@@ -218,7 +218,7 @@ class WanXTextEncoder(torch.nn.Module):
                  num_buckets=32,
                  shared_pos=False,
                  dropout=0.1):
-        super(WanXTextEncoder, self).__init__()
+        super(WanTextEncoder, self).__init__()
         self.dim = dim
         self.dim_attn = dim_attn
         self.dim_ffn = dim_ffn
@@ -255,10 +255,10 @@ class WanXTextEncoder(torch.nn.Module):
     
     @staticmethod
     def state_dict_converter():
-        return WanXTextEncoderStateDictConverter()
+        return WanTextEncoderStateDictConverter()
     
     
-class WanXTextEncoderStateDictConverter:
+class WanTextEncoderStateDictConverter:
     def __init__(self):
         pass
 
