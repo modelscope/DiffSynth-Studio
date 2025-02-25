@@ -69,7 +69,9 @@ def load_model_from_single_file(state_dict, model_names, model_classes, model_re
             model_state_dict, extra_kwargs = state_dict_results, {}
         torch_dtype = torch.float32 if extra_kwargs.get("upcast_to_float32", False) else torch_dtype
         with init_weights_on_device():
-            model= model_class(**extra_kwargs)
+            model = model_class(**extra_kwargs)
+        if hasattr(model, "eval"):
+            model = model.eval()
         model.load_state_dict(model_state_dict, assign=True)
         model = model.to(dtype=torch_dtype, device=device)
         loaded_model_names.append(model_name)

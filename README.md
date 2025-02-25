@@ -36,7 +36,9 @@ Until now, DiffSynth Studio has supported the following models:
 
 ## News
 
-- **February 17, 2024** We support [StepVideo](https://modelscope.cn/models/stepfun-ai/stepvideo-t2v/summary)! State-of-the-art video synthesis model! See [./examples/stepvideo](./examples/stepvideo/).
+- **February 25, 2025** We support Wan-Video, a collection of video synthesis models open-sourced by Alibaba. See [./examples/wanvideo/](./examples/wanvideo/).
+
+- **February 17, 2025** We support [StepVideo](https://modelscope.cn/models/stepfun-ai/stepvideo-t2v/summary)! State-of-the-art video synthesis model! See [./examples/stepvideo](./examples/stepvideo/).
 
 - **December 31, 2024** We propose EliGen, a novel framework for precise entity-level controlled text-to-image generation, complemented by an inpainting fusion pipeline to extend its capabilities to image inpainting tasks. EliGen seamlessly integrates with existing community models, such as IP-Adapter and In-Context LoRA, enhancing its versatility. For more details, see [./examples/EntityControl](./examples/EntityControl/).
   - Paper: [EliGen: Entity-Level Controlled Image Generation with Regional Attention](https://arxiv.org/abs/2501.01097)
@@ -118,7 +120,7 @@ cd DiffSynth-Studio
 pip install -e .
 ```
 
-Or install from pypi:
+Or install from pypi (There is a delay in the update. If you want to experience the latest features, please do not use this installation method.):
 
 ```
 pip install diffsynth

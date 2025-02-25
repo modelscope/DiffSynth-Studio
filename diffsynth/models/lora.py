@@ -8,6 +8,7 @@ from .flux_dit import FluxDiT
 from .hunyuan_dit import HunyuanDiT
 from .cog_dit import CogDiT
 from .hunyuan_video_dit import HunyuanVideoDiT
+from .wan_video_dit import WanModel
 
 
 
@@ -197,7 +198,7 @@ class FluxLoRAFromCivitai(LoRAFromCivitai):
 
 class GeneralLoRAFromPeft:
     def __init__(self):
-        self.supported_model_classes = [SDUNet, SDXLUNet, SD3DiT, HunyuanDiT, FluxDiT, CogDiT]
+        self.supported_model_classes = [SDUNet, SDXLUNet, SD3DiT, HunyuanDiT, FluxDiT, CogDiT, WanModel]
 
 
     def fetch_device_dtype_from_state_dict(self, state_dict):
