@@ -12,17 +12,17 @@ model_manager = ModelManager(device="cpu")
 model_manager.load_models(
     [
         [
-            "models/Wan-AI/Wan2___1-I2V-14B-480P/diffusion_pytorch_model-00001-of-00007.safetensors",
-            "models/Wan-AI/Wan2___1-I2V-14B-480P/diffusion_pytorch_model-00002-of-00007.safetensors",
-            "models/Wan-AI/Wan2___1-I2V-14B-480P/diffusion_pytorch_model-00003-of-00007.safetensors",
-            "models/Wan-AI/Wan2___1-I2V-14B-480P/diffusion_pytorch_model-00004-of-00007.safetensors",
-            "models/Wan-AI/Wan2___1-I2V-14B-480P/diffusion_pytorch_model-00005-of-00007.safetensors",
-            "models/Wan-AI/Wan2___1-I2V-14B-480P/diffusion_pytorch_model-00006-of-00007.safetensors",
-            "models/Wan-AI/Wan2___1-I2V-14B-480P/diffusion_pytorch_model-00007-of-00007.safetensors",
+            "models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00001-of-00007.safetensors",
+            "models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00002-of-00007.safetensors",
+            "models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00003-of-00007.safetensors",
+            "models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00004-of-00007.safetensors",
+            "models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00005-of-00007.safetensors",
+            "models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00006-of-00007.safetensors",
+            "models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00007-of-00007.safetensors",
         ],
-        "models/Wan-AI/Wan2___1-I2V-14B-480P/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",
-        "models/Wan-AI/Wan2___1-I2V-14B-480P/models_t5_umt5-xxl-enc-bf16.pth",
-        "models/Wan-AI/Wan2___1-I2V-14B-480P/Wan2.1_VAE.pth",
+        "models/Wan-AI/Wan2.1-I2V-14B-480P/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",
+        "models/Wan-AI/Wan2.1-I2V-14B-480P/models_t5_umt5-xxl-enc-bf16.pth",
+        "models/Wan-AI/Wan2.1-I2V-14B-480P/Wan2.1_VAE.pth",
     ],
     torch_dtype=torch.float8_e4m3fn, # You can set `torch_dtype=torch.bfloat16` to disable FP8 quantization.
 )

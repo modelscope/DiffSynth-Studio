@@ -10,9 +10,9 @@ snapshot_download("Wan-AI/Wan2.1-T2V-1.3B", cache_dir="models")
 model_manager = ModelManager(device="cpu")
 model_manager.load_models(
     [
-        "models/Wan-AI/Wan2___1-T2V-1___3B/diffusion_pytorch_model.safetensors",
-        "models/Wan-AI/Wan2___1-T2V-1___3B/models_t5_umt5-xxl-enc-bf16.pth",
-        "models/Wan-AI/Wan2___1-T2V-1___3B/Wan2.1_VAE.pth",
+        "models/Wan-AI/Wan2.1-T2V-1.3B/diffusion_pytorch_model.safetensors",
+        "models/Wan-AI/Wan2.1-T2V-1.3B/models_t5_umt5-xxl-enc-bf16.pth",
+        "models/Wan-AI/Wan2.1-T2V-1.3B/Wan2.1_VAE.pth",
     ],
     torch_dtype=torch.bfloat16, # You can set `torch_dtype=torch.float8_e4m3fn` to enable FP8 quantization.
 )

@@ -77,8 +77,8 @@ CUDA_VISIBLE_DEVICES="0" python examples/wanvideo/train_wan_t2v.py \
   --task data_process \
   --dataset_path data/example_dataset \
   --output_path ./models \
-  --text_encoder_path "models/Wan-AI/Wan2___1-T2V-1___3B/models_t5_umt5-xxl-enc-bf16.pth" \
-  --vae_path "models/Wan-AI/Wan2___1-T2V-1___3B/Wan2.1_VAE.pth" \
+  --text_encoder_path "models/Wan-AI/Wan2.1-T2V-1.3B/models_t5_umt5-xxl-enc-bf16.pth" \
+  --vae_path "models/Wan-AI/Wan2.1-T2V-1.3B/Wan2.1_VAE.pth" \
   --tiled \
   --num_frames 81 \
   --height 480 \
@@ -104,7 +104,7 @@ CUDA_VISIBLE_DEVICES="0" python examples/wanvideo/train_wan_t2v.py \
   --task train \
   --dataset_path data/example_dataset \
   --output_path ./models \
-  --dit_path "models/Wan-AI/Wan2___1-T2V-1___3B/diffusion_pytorch_model.safetensors" \
+  --dit_path "models/Wan-AI/Wan2.1-T2V-1.3B/diffusion_pytorch_model.safetensors" \
   --steps_per_epoch 500 \
   --max_epochs 10 \
   --learning_rate 1e-4 \
@@ -124,9 +124,9 @@ from diffsynth import ModelManager, WanVideoPipeline, save_video, VideoData
 
 model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cpu")
 model_manager.load_models([
-    "models/Wan-AI/Wan2___1-T2V-1___3B/diffusion_pytorch_model.safetensors",
-    "models/Wan-AI/Wan2___1-T2V-1___3B/models_t5_umt5-xxl-enc-bf16.pth",
-    "models/Wan-AI/Wan2___1-T2V-1___3B/Wan2.1_VAE.pth",
+    "models/Wan-AI/Wan2.1-T2V-1.3B/diffusion_pytorch_model.safetensors",
+    "models/Wan-AI/Wan2.1-T2V-1.3B/models_t5_umt5-xxl-enc-bf16.pth",
+    "models/Wan-AI/Wan2.1-T2V-1.3B/Wan2.1_VAE.pth",
 ])
 model_manager.load_lora("models/lightning_logs/version_1/checkpoints/epoch=0-step=500.ckpt", lora_alpha=1.0)
 
