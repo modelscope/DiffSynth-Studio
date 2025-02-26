@@ -55,7 +55,7 @@ class TileWorker:
 
 
     def io_scale(self, model_output, tile_size):
-        # Determine the size modification happend in forward_fn
+        # Determine the size modification happened in forward_fn
         # We only consider the same scale on height and width.
         io_scale = model_output.shape[2] / tile_size
         return io_scale

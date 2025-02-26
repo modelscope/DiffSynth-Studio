@@ -398,7 +398,7 @@ class RoPE1D:
             * tokens: batch_size x ntokens x nheads x dim
             * positions: batch_size x ntokens (t position of each token)
         output:
-            * tokens after appplying RoPE2D (batch_size x ntokens x nheads x dim)
+            * tokens after applying RoPE2D (batch_size x ntokens x nheads x dim)
         """
         D = tokens.size(3)
         assert positions.ndim == 2  # Batch, Seq
@@ -428,7 +428,7 @@ class RoPE3D(RoPE1D):
             * tokens: batch_size x ntokens x nheads x dim
             * rope_positions: list of (f, h, w)
         output:
-            * tokens after appplying RoPE2D (batch_size x ntokens x nheads x dim)
+            * tokens after applying RoPE2D (batch_size x ntokens x nheads x dim)
         """
         assert sum(ch_split) == tokens.size(-1); 
 
