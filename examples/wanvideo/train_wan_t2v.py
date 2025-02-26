@@ -134,7 +134,7 @@ class TensorDataset(torch.utils.data.Dataset):
 
 
 class LightningModelForTrain(pl.LightningModule):
-    def __init__(self, dit_path, learning_rate=1e-5, lora_rank=4, lora_alpha=4, lora_target_modules="q,k,v,o,ffn.0,ffn.2", init_lora_weights="kaiming", use_gradient_checkpointing=True):
+    def __init__(self, dit_path, learning_rate=1e-5, lora_rank=4, lora_alpha=4, train_architecture="lora", lora_target_modules="q,k,v,o,ffn.0,ffn.2", init_lora_weights="kaiming", use_gradient_checkpointing=True):
         super().__init__()
         model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cpu")
         model_manager.load_models([dit_path])
@@ -142,13 +142,16 @@ class LightningModelForTrain(pl.LightningModule):
         self.pipe = WanVideoPipeline.from_model_manager(model_manager)
         self.pipe.scheduler.set_timesteps(1000, training=True)
         self.freeze_parameters()
-        self.add_lora_to_model(
-            self.pipe.denoising_model(),
-            lora_rank=lora_rank,
-            lora_alpha=lora_alpha,
-            lora_target_modules=lora_target_modules,
-            init_lora_weights=init_lora_weights,
-        )
+        if train_architecture == "lora":
+            self.add_lora_to_model(
+                self.pipe.denoising_model(),
+                lora_rank=lora_rank,
+                lora_alpha=lora_alpha,
+                lora_target_modules=lora_target_modules,
+                init_lora_weights=init_lora_weights,
+            )
+        else:
+            self.pipe.denoising_model().requires_grad_(True)
         
         self.learning_rate = learning_rate
         self.use_gradient_checkpointing = use_gradient_checkpointing
@@ -384,6 +387,13 @@ def parse_args():
         action="store_true",
         help="Whether to use gradient checkpointing.",
     )
+    parser.add_argument(
+        "--train_architecture",
+        type=str,
+        default="lora",
+        choices=["lora", "full"],
+        help="Model structure to train. LoRA training or full training.",
+    )
     args = parser.parse_args()
     return args
 
@@ -434,6 +444,7 @@ def train(args):
     model = LightningModelForTrain(
         dit_path=args.dit_path,
         learning_rate=args.learning_rate,
+        train_architecture=args.train_architecture,
         lora_rank=args.lora_rank,
         lora_alpha=args.lora_alpha,
         lora_target_modules=args.lora_target_modules,
