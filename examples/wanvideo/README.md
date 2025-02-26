@@ -134,6 +134,48 @@ CUDA_VISIBLE_DEVICES="0" python examples/wanvideo/train_wan_t2v.py \
   --use_gradient_checkpointing
 ```
 
+Step 4-1: I2V LoRA-training
+```shell
+# cache latents
+CUDA_VISIBLE_DEVICES="0" python train_wan_i2v.py \
+    --task data_process \
+    --dataset_path data/fps24_V6 \
+    --output_path ./output \
+    --text_encoder_path "./models/Wan-AI/Wan2.1-I2V-14B-720P/models_t5_umt5-xxl-enc-bf16.pth" \
+    --vae_path "./models/Wan-AI/Wan2.1-I2V-14B-720P/Wan2.1_VAE.pth" \
+    --image_encoder_path "./models/Wan-AI/Wan2.1-I2V-14B-720P/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth" \
+    --tiled \
+    --num_frames 121 \
+    --height 309 \
+    --width 186
+```
+
+```shell
+# run I2V training 
+CUDA_VISIBLE_DEVICES="0" python train_wan_i2v.py \
+    --task train \
+    --train_architecture lora \
+    --dataset_path data/kling_hips_fps24_V6  \
+    --output_path ./output \
+    --dit_path "[
+            \"./models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00001-of-00007.safetensors\",
+            \"./models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00002-of-00007.safetensors\",
+            \"./models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00003-of-00007.safetensors\",
+            \"./models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00004-of-00007.safetensors\",
+            \"./models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00005-of-00007.safetensors\",
+            \"./models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00006-of-00007.safetensors\",
+            \"./models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00007-of-00007.safetensors\"
+        ]"  \
+    --steps_per_epoch 500 \
+    --max_epochs 10 \
+    --learning_rate 1e-4 \
+    --lora_rank 4 \
+    --lora_alpha 4 \
+    --lora_target_modules "q,k,v,o,ffn.0,ffn.2" \
+    --accumulate_grad_batches 1 \
+    --use_gradient_checkpointing
+```
+ 
 Step 5: Test
 
 Test LoRA:
