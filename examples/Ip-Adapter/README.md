@@ -16,14 +16,14 @@ The IP-Adapter model based on Stable Diffusion XL is more powerful. You have the
 
 * Content controlling (original usage of IP-Adapter)
 
-|First, we generate a rabbit.|Next, enable IP-Adapter and let the rabbit jump.|For comparision, disable IP-Adapter to see the generated image.|
+|First, we generate a rabbit.|Next, enable IP-Adapter and let the rabbit jump.|For comparison, disable IP-Adapter to see the generated image.|
 |-|-|-|
 |![rabbit](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4b452634-ec57-414f-897a-f8c50c74a650)|![rabbit_to_jumping_rabbit](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/b93c5495-0b77-4d97-bcd3-3942858288f2)|![rabbit_to_jumping_rabbit_without_ipa](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/52f37195-65b3-4a38-8d9b-73df37311c15)|
 
 
 * Style controlling (InstantStyle)
 
-|First, we generate a rabbit.|Next, enable InstantStyle and convert the rabbit to a cat.|For comparision, disable IP-Adapter to see the generated image.|
+|First, we generate a rabbit.|Next, enable InstantStyle and convert the rabbit to a cat.|For comparison, disable IP-Adapter to see the generated image.|
 |-|-|-|
 |![rabbit](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/4b452634-ec57-414f-897a-f8c50c74a650)|![rabbit_to_cat](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/a006b281-f643-4ea9-b0da-712289c96059)|![rabbit_to_cat_without_ipa](https://github.com/modelscope/DiffSynth-Studio/assets/35051019/189bd11e-7a10-4c09-8554-0eebde9150fd)|
 

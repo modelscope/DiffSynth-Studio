@@ -45,7 +45,7 @@ file_name,text
 04.jpg,a dog
 ```
 
-Note that if the model is Chinese model (for example, Hunyuan-DiT and Kolors), we recommand to use Chinese texts in the dataset. For example
+Note that if the model is Chinese model (for example, Hunyuan-DiT and Kolors), we recommend to use Chinese texts in the dataset. For example
 
 ```
 file_name,text
@@ -526,7 +526,7 @@ models/stable_diffusion_xl
 └── sd_xl_base_1.0.safetensors
 ```
 
-We observed that Stable Diffusion XL is not float16-safe, thus we recommand users to use float32.
+We observed that Stable Diffusion XL is not float16-safe, thus we recommend users to use float32.
 
 ```
 CUDA_VISIBLE_DEVICES="0" python examples/train/stable_diffusion_xl/train_sdxl_lora.py \
