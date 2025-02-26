@@ -10,7 +10,7 @@
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
 # ==============================================================================
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union, List
 import torch, math
 from torch import nn
 from einops import rearrange, repeat
@@ -757,7 +757,7 @@ class StepVideoModel(torch.nn.Module):
         norm_elementwise_affine: bool = False,
         norm_eps: float = 1e-6,
         use_additional_conditions: Optional[bool] = False,
-        caption_channels: Optional[int]|list|tuple = [6144, 1024],
+        caption_channels: Optional[Union[int, List, Tuple]] = [6144, 1024],
         attention_type: Optional[str] = "torch",
     ):
         super().__init__()
