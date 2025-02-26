@@ -4,22 +4,20 @@ from modelscope import snapshot_download
 
 
 # Download models
-snapshot_download("Wan-AI/Wan2.1-T2V-14B", cache_dir="models")
+snapshot_download("Wan-AI/Wan2.1-T2V-14B", local_dir="models/Wan-AI/Wan2.1-T2V-14B")
 
 # Load models
 model_manager = ModelManager(device="cpu")
 model_manager.load_models(
     [
         [
-            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00001-of-00007.safetensors",
-            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00002-of-00007.safetensors",
-            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00003-of-00007.safetensors",
-            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00004-of-00007.safetensors",
-            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00005-of-00007.safetensors",
-            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00006-of-00007.safetensors",
-            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00007-of-00007.safetensors",
+            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00001-of-00006.safetensors",
+            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00002-of-00006.safetensors",
+            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00003-of-00006.safetensors",
+            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00004-of-00006.safetensors",
+            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00005-of-00006.safetensors",
+            "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00006-of-00006.safetensors",
         ],
-        "models/Wan-AI/Wan2.1-T2V-14B/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",
         "models/Wan-AI/Wan2.1-T2V-14B/models_t5_umt5-xxl-enc-bf16.pth",
         "models/Wan-AI/Wan2.1-T2V-14B/Wan2.1_VAE.pth",
     ],
