@@ -250,6 +250,36 @@ def add_general_parsers(parser):
         default=None,
         help="Pretrained LoRA path. Required if the training is resumed.",
     )
+    parser.add_argument(
+        "--use_swanlab",
+        default=False,
+        action="store_true",
+        help="Whether to use SwanLab logger.",
+    )
+    parser.add_argument(
+        "--swanlab_project",
+        type=str,
+        default="diffsynth_studio",
+        help="SwanLab project name.",
+    )
+    parser.add_argument(
+        "--swanlab_name",
+        type=str,
+        default="diffsynth_studio_train",
+        help="SwanLab experimentname.",
+    )
+    parser.add_argument(
+        "--swanlab_mode",
+        default=None,
+        help="SwanLab mode (cloud or local).",
+    )
+    parser.add_argument(
+        "--swanlab_logdir",
+        type=str,
+        default=None,
+        help="SwanLab local log directory.",
+    )
+    
     return parser
 
 
@@ -270,6 +300,20 @@ def launch_training_task(model, args):
         num_workers=args.dataloader_num_workers
     )
 
+    # set swanlab logger
+    swanlab_logger = None
+    if args.use_swanlab:
+        from swanlab.integration.pytorch_lightning import SwanLabLogger
+        swanlab_config = {"UPPERFRAMEWORK": "DiffSynth-Studio"}
+        swanlab_config.update(vars(args))
+        swanlab_logger = SwanLabLogger(
+            project=args.swanlab_project, 
+            name=args.swanlab_name,
+            config=swanlab_config,
+            mode=args.swanlab_mode,
+            logdir=args.swanlab_logdir,
+        )
+
     # train
     trainer = pl.Trainer(
         max_epochs=args.max_epochs,
@@ -279,7 +323,8 @@ def launch_training_task(model, args):
         strategy=args.training_strategy,
         default_root_dir=args.output_path,
         accumulate_grad_batches=args.accumulate_grad_batches,
-        callbacks=[pl.pytorch.callbacks.ModelCheckpoint(save_top_k=-1)]
+        callbacks=[pl.pytorch.callbacks.ModelCheckpoint(save_top_k=-1)],
+        logger=[swanlab_logger],
     )
     trainer.fit(model=model, train_dataloaders=train_loader)
 
