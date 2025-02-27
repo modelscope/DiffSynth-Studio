@@ -50,7 +50,9 @@ https://github.com/user-attachments/assets/c0bdd5ca-292f-45ed-b9bc-afe193156e75
 
 ## Train
 
-We support Wan-Video LoRA training and full training. Here is a tutorial.
+We support Wan-Video LoRA training and full training. Here is a tutorial. This is an experimental feature. Below is a video sample generated from the character Keqing LoRA:
+
+https://github.com/user-attachments/assets/9bd8e30b-97e8-44f9-bb6f-da004ba376a9
 
 Step 1: Install additional packages
 
@@ -67,7 +69,7 @@ data/example_dataset/
 ├── metadata.csv
 └── train
     ├── video_00001.mp4
-    └── video_00002.mp4
+    └── image_00002.jpg
 ```
 
 `metadata.csv`:
@@ -75,8 +77,10 @@ data/example_dataset/
 ```
 file_name,text
 video_00001.mp4,"video description"
-video_00001.mp4,"video description"
+image_00002.jpg,"video description"
 ```
+
+We support both images and videos. An image is treated as a single frame of video.
 
 Step 3: Data process
 
