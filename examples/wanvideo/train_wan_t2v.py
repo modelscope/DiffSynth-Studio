@@ -23,7 +23,6 @@ class TextVideoDataset(torch.utils.data.Dataset):
         self.width = width
             
         self.frame_process = v2.Compose([
-            v2.CenterCrop(size=(height, width)),
             v2.Resize(size=(height, width), antialias=True),
             v2.ToTensor(),
             v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
