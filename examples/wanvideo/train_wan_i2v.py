@@ -24,8 +24,8 @@ class I2VDataset(torch.utils.data.Dataset):
         self.width = width
             
         self.frame_process = v2.Compose([
-            v2.Resize(size=(height, width), antialias=True),
             v2.CenterCrop(size=(height, width)),
+            v2.Resize(size=(height, width), antialias=True),
             v2.ToTensor(),
             v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
         ])
@@ -80,7 +80,7 @@ class I2VDataset(torch.utils.data.Dataset):
 
 
     def __getitem__(self, data_id):
-        text = self.path[data_id]
+        text = self.text[data_id]
         path = self.path[data_id]
         video, first_frame_image = self.load_video(path)
         data = {"text": text, "video": video, "first_frame_image":np.array(first_frame_image), "path": path}
