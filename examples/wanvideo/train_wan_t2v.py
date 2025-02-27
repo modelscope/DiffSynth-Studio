@@ -432,23 +432,10 @@ def data_process(args):
         tile_size=(args.tile_size_height, args.tile_size_width),
         tile_stride=(args.tile_stride_height, args.tile_stride_width),
     )
-    swanlab_logger = None
-    if args.use_swanlab:
-        from swanlab.integration.pytorch_lightning import SwanLabLogger
-        swanlab_config = {"UPPERFRAMEWORK": "DiffSynth-Studio"}
-        swanlab_config.update(vars(args))
-        swanlab_logger = SwanLabLogger(
-            project=args.swanlab_project, 
-            name=args.swanlab_name,
-            config=swanlab_config,
-            mode=args.swanlab_mode,
-            logdir=args.swanlab_logdir,
-        )
     trainer = pl.Trainer(
         accelerator="gpu",
         devices="auto",
         default_root_dir=args.output_path,
-        logger=[swanlab_logger],
     )
     trainer.test(model, dataloader)
     
