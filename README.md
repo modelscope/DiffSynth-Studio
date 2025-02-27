@@ -17,6 +17,7 @@ DiffSynth Studio is a Diffusion engine. We have restructured architectures inclu
 
 Until now, DiffSynth Studio has supported the following models:
 
+* [Wan-Video](https://github.com/Wan-Video/Wan2.1)
 * [StepVideo](https://github.com/stepfun-ai/Step-Video-T2V)
 * [HunyuanVideo](https://github.com/Tencent/HunyuanVideo)
 * [CogVideoX](https://huggingface.co/THUDM/CogVideoX-5b)
@@ -36,7 +37,7 @@ Until now, DiffSynth Studio has supported the following models:
 
 ## News
 
-- **February 25, 2025** We support Wan-Video, a collection of video synthesis models open-sourced by Alibaba. See [./examples/wanvideo/](./examples/wanvideo/).
+- **February 25, 2025** We support Wan-Video, a collection of SOTA video synthesis models open-sourced by Alibaba. See [./examples/wanvideo/](./examples/wanvideo/).
 
 - **February 17, 2025** We support [StepVideo](https://modelscope.cn/models/stepfun-ai/stepvideo-t2v/summary)! State-of-the-art video synthesis model! See [./examples/stepvideo](./examples/stepvideo/).
 
