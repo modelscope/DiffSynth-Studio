@@ -67,8 +67,16 @@ data/example_dataset/
 ```
 file_name,text
 video_00001.mp4,"video description"
-video_00001.mp4,"video description"
+video_00002.mp4,"video description"
 ```
+or 
+```
+file_name,text
+video_00001.jpg,"image description"
+video_00002.png,"image description"
+```
+You can use tools/convert_data.py to convert traditional data format ("1.txt", "1.mp4", "2.txt", "2.mp4") to the above described format by setting "source_dir" and "output_dir" in this python file according to your need. The training data also support images now, but doesn't support mix training of images and videos.
+
 
 Step 3: Data process
 
@@ -116,6 +124,31 @@ CUDA_VISIBLE_DEVICES="0" python examples/wanvideo/train_wan_t2v.py \
   --lora_target_modules "q,k,v,o,ffn.0,ffn.2" \
   --accumulate_grad_batches 1 \
   --use_gradient_checkpointing
+```
+
+or (for 14B model, the difference is dit_path):
+```shell
+CUDA_VISIBLE_DEVICES="0" python train_wan_t2v.py \
+    --task train \
+    --train_architecture lora \
+    --dataset_path data/halle  \
+    --output_path ./output \
+    --dit_path "[
+            \"./models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00001-of-00006.safetensors\",
+            \"./models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00002-of-00006.safetensors\",
+            \"./models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00003-of-00006.safetensors\",
+            \"./models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00004-of-00006.safetensors\",
+            \"./models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00005-of-00006.safetensors\",
+            \"./models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00006-of-00006.safetensors\"
+        ]"  \
+    --steps_per_epoch 500 \
+    --max_epochs 10 \
+    --learning_rate 1e-4 \
+    --lora_rank 16 \
+    --lora_alpha 8 \
+    --lora_target_modules "q,k,v,o,ffn.0,ffn.2" \
+    --accumulate_grad_batches 1 \
+    --use_gradient_checkpointing
 ```
 
 Full training:

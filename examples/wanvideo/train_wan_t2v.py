@@ -7,7 +7,7 @@ from diffsynth import WanVideoPipeline, ModelManager
 from peft import LoraConfig, inject_adapter_in_model
 import torchvision
 from PIL import Image
-
+import json
 
 
 class TextVideoDataset(torch.utils.data.Dataset):
@@ -42,11 +42,28 @@ class TextVideoDataset(torch.utils.data.Dataset):
 
 
     def load_frames_using_imageio(self, file_path, max_num_frames, start_frame_id, interval, num_frames, frame_process):
+        # Check if the file is an image
+        if os.path.splitext(file_path)[-1].lower() in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']:
+            # If the file is an image, process it as a single frame
+            if num_frames > 1:
+                # If multiple frames are required but input is a single image, return None
+                return None
+            
+            # Load the image
+            frame = Image.open(file_path).convert("RGB")
+            frame = self.crop_and_resize(frame)
+            frame = frame_process(frame)
+            frame = torch.tensor(frame)
+            # Convert the single frame to format (C, T, H, W)
+            frame = rearrange(frame, "C H W -> C 1 H W")
+            return frame
+
+        # If the file is a video, proceed with the video processing logic
         reader = imageio.get_reader(file_path)
         if reader.count_frames() < max_num_frames or reader.count_frames() - 1 < start_frame_id + (num_frames - 1) * interval:
             reader.close()
             return None
-        
+
         frames = []
         for frame_id in range(num_frames):
             frame = reader.get_data(start_frame_id + frame_id * interval)
@@ -137,6 +154,8 @@ class LightningModelForTrain(pl.LightningModule):
     def __init__(self, dit_path, learning_rate=1e-5, lora_rank=4, lora_alpha=4, train_architecture="lora", lora_target_modules="q,k,v,o,ffn.0,ffn.2", init_lora_weights="kaiming", use_gradient_checkpointing=True):
         super().__init__()
         model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cpu")
+        # parse dit_path from list of string to Python list
+        dit_path = json.loads(dit_path)
         model_manager.load_models([dit_path])
         
         self.pipe = WanVideoPipeline.from_model_manager(model_manager)
