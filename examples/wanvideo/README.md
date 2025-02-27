@@ -2,6 +2,14 @@
 
 Wan-Video is a collection of video synthesis models open-sourced by Alibaba.
 
+Before using this model, please install DiffSynth-Studio from **source code**.
+
+```shell
+git clone https://github.com/modelscope/DiffSynth-Studio.git
+cd DiffSynth-Studio
+pip install -e .
+```
+
 ## Inference
 
 ### Wan-Video-1.3B-T2V
