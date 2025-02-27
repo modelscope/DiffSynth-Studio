@@ -76,7 +76,7 @@ class TextVideoDataset(torch.utils.data.Dataset):
 
 
     def __getitem__(self, data_id):
-        text = self.path[data_id]
+        text = self.text[data_id]
         path = self.path[data_id]
         video = self.load_video(path)
         data = {"text": text, "video": video, "path": path}
