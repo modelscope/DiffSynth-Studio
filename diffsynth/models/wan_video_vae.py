@@ -785,6 +785,7 @@ class WanVideoVAE(nn.Module):
                 video = self.single_decode(hidden_state, device)
             video = video.squeeze(0)
             videos.append(video)
+        videos = torch.stack(videos)
         return videos
 
 

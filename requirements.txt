@@ -10,3 +10,4 @@ einops
 sentencepiece
 protobuf
 modelscope
+ftfy

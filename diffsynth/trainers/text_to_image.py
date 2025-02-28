@@ -269,7 +269,6 @@ def launch_training_task(model, args):
         batch_size=args.batch_size,
         num_workers=args.dataloader_num_workers
     )
-
     # train
     trainer = pl.Trainer(
         max_epochs=args.max_epochs,

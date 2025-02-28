@@ -44,6 +44,8 @@ https://github.com/user-attachments/assets/3908bc64-d451-485a-8b61-28f6d32dd92f
 
 Wan-Video-14B-I2V adds the functionality of image-to-video based on Wan-Video-14B-T2V. The model size remains the same, therefore the speed and VRAM requirements are also consistent. See [`./wan_14b_image_to_video.py`](./wan_14b_image_to_video.py).
 
+**In the sample code, we use the same settings as the T2V 14B model, with FP8 quantization enabled by default. However, we found that this model is more sensitive to precision, so when the generated video content experiences issues such as artifacts, please switch to bfloat16 precision and use the `num_persistent_param_in_dit` parameter to control VRAM usage.**
+
 ![Image](https://github.com/user-attachments/assets/adf8047f-7943-4aaa-a555-2b32dc415f39)
 
 https://github.com/user-attachments/assets/c0bdd5ca-292f-45ed-b9bc-afe193156e75
