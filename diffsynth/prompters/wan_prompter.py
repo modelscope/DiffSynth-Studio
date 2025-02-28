@@ -2,19 +2,23 @@ from .base_prompter import BasePrompter
 from ..models.wan_video_text_encoder import WanTextEncoder
 from transformers import AutoTokenizer
 import os, torch
+import ftfy
 import html
 import string
 import regex as re
 
 
 def basic_clean(text):
+    text = ftfy.fix_text(text)
     text = html.unescape(html.unescape(text))
     return text.strip()
+
 
 def whitespace_clean(text):
     text = re.sub(r'\s+', ' ', text)
     text = text.strip()
     return text
+
 
 def canonicalize(text, keep_punctuation_exact_string=None):
     text = text.replace('_', ' ')
@@ -27,6 +31,7 @@ def canonicalize(text, keep_punctuation_exact_string=None):
     text = text.lower()
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
+
 
 class HuggingfaceTokenizer:
 
