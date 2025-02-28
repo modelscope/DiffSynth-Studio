@@ -294,7 +294,7 @@ def launch_training_task(model, args):
             mode=args.swanlab_mode,
             logdir=args.output_path,
         )
-        logger = [swanlab_config]
+        logger = [swanlab_logger]
     else:
         logger = []
 
