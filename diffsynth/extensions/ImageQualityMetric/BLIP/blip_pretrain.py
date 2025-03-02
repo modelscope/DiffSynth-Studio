@@ -20,6 +20,7 @@ class BLIP_Pretrain(nn.Module):
                  embed_dim = 256,     
                  queue_size = 57600,
                  momentum = 0.995,
+                 bert_model_path = ""
                  ):
         """
         Args:
@@ -31,7 +32,7 @@ class BLIP_Pretrain(nn.Module):
         
         self.visual_encoder, vision_width = create_vit(vit,image_size, vit_grad_ckpt, vit_ckpt_layer, 0)
         
-        self.tokenizer = init_tokenizer()   
+        self.tokenizer = init_tokenizer(bert_model_path)   
         encoder_config = BertConfig.from_json_file(med_config)
         encoder_config.encoder_width = vision_width
         self.text_encoder = BertModel(config=encoder_config, add_pooling_layer=False)

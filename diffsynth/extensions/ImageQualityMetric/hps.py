@@ -6,8 +6,9 @@ from safetensors.torch import load_file
 import os
 from .config import MODEL_PATHS
 
-class HPScore_v2:
+class HPScore_v2(torch.nn.Module):
     def __init__(self, device: torch.device, path: str = MODEL_PATHS, model_version: str = "v2"):
+        super().__init__()
         """Initialize the Selector with a model and tokenizer.
 
         Args:
@@ -53,7 +54,7 @@ class HPScore_v2:
             raise ValueError(f"Error loading model weights from {safetensors_path}: {e}")
 
         # Initialize tokenizer and model
-        self.tokenizer = get_tokenizer("ViT-H-14")
+        self.tokenizer = get_tokenizer("ViT-H-14", path["open_clip_bpe"])
         model = model.to(device)
         model.eval()
         self.model = model
@@ -80,37 +81,38 @@ class HPScore_v2:
 
         return hps_score[0].item()
 
-    def score(self, img_path: Union[str, List[str], Image.Image, List[Image.Image]], prompt: str) -> List[float]:
+    @torch.no_grad()
+    def score(self, images: Union[str, List[str], Image.Image, List[Image.Image]], prompt: str) -> List[float]:
         """Score the images based on the prompt.
 
         Args:
-            img_path (Union[str, List[str], Image.Image, List[Image.Image]]): Path(s) to the image(s) or PIL image(s).
+            images (Union[str, List[str], Image.Image, List[Image.Image]]): Path(s) to the image(s) or PIL image(s).
             prompt (str): The prompt text.
 
         Returns:
             List[float]: List of HPS scores for the images.
         """
         try:
-            if isinstance(img_path, (str, Image.Image)):
+            if isinstance(images, (str, Image.Image)):
                 # Single image
-                if isinstance(img_path, str):
-                    image = self.preprocess_val(Image.open(img_path)).unsqueeze(0).to(device=self.device, non_blocking=True)
+                if isinstance(images, str):
+                    image = self.preprocess_val(Image.open(images)).unsqueeze(0).to(device=self.device, non_blocking=True)
                 else:
-                    image = self.preprocess_val(img_path).unsqueeze(0).to(device=self.device, non_blocking=True)
+                    image = self.preprocess_val(images).unsqueeze(0).to(device=self.device, non_blocking=True)
                 return [self._calculate_score(image, prompt)]
-            elif isinstance(img_path, list):
+            elif isinstance(images, list):
                 # Multiple images
                 scores = []
-                for one_img_path in img_path:
-                    if isinstance(one_img_path, str):
-                        image = self.preprocess_val(Image.open(one_img_path)).unsqueeze(0).to(device=self.device, non_blocking=True)
-                    elif isinstance(one_img_path, Image.Image):
-                        image = self.preprocess_val(one_img_path).unsqueeze(0).to(device=self.device, non_blocking=True)
+                for one_images in images:
+                    if isinstance(one_images, str):
+                        image = self.preprocess_val(Image.open(one_images)).unsqueeze(0).to(device=self.device, non_blocking=True)
+                    elif isinstance(one_images, Image.Image):
+                        image = self.preprocess_val(one_images).unsqueeze(0).to(device=self.device, non_blocking=True)
                     else:
-                        raise TypeError("The type of parameter img_path is illegal.")
+                        raise TypeError("The type of parameter images is illegal.")
                     scores.append(self._calculate_score(image, prompt))
                 return scores
             else:
-                raise TypeError("The type of parameter img_path is illegal.")
+                raise TypeError("The type of parameter images is illegal.")
         except Exception as e:
             raise RuntimeError(f"Error in scoring images: {e}")

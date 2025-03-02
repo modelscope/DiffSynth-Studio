@@ -19,9 +19,8 @@ def default_bert():
     model_path = os.path.join(project_root, 'models', 'QualityMetric')
     return os.path.join(model_path, "bert-base-uncased")
 
-bert_model_path = default_bert()
 
-def init_tokenizer():
+def init_tokenizer(bert_model_path):
     tokenizer = BertTokenizer.from_pretrained(bert_model_path)
     tokenizer.add_special_tokens({'bos_token':'[DEC]'})
     tokenizer.add_special_tokens({'additional_special_tokens':['[ENC]']})       

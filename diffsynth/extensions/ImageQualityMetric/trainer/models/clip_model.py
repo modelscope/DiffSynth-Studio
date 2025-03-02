@@ -12,7 +12,7 @@ import torch
 
 from .cross_modeling import Cross_model
 
-import gc
+import json, os
 
 class XCLIPModel(HFCLIPModel):
     def __init__(self, config: CLIPConfig):
@@ -96,9 +96,15 @@ class ClipModelConfig(BaseModelConfig):
 
 
 class CLIPModel(nn.Module):
-    def __init__(self, ckpt):
+    def __init__(self, ckpt, config_file=False):
         super().__init__()
-        self.model = XCLIPModel.from_pretrained(ckpt)
+        if config_file is None:
+            self.model = XCLIPModel.from_pretrained(ckpt)
+        else:
+            with open(os.path.join(ckpt, "config.json"), "r", encoding="utf-8") as f:
+                config = json.load(f)
+            config = CLIPConfig(**config)
+            self.model = XCLIPModel._from_config(config)
         self.cross_model = Cross_model(dim=1024, layer_num=4, heads=16)
     
     def get_text_features(self, *args, **kwargs):

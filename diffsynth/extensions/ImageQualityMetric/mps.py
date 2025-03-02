@@ -24,8 +24,9 @@ import gc
 import json
 from .config import MODEL_PATHS
 
-class MPScore:
+class MPScore(torch.nn.Module):
     def __init__(self, device: Union[str, torch.device], path: str = MODEL_PATHS, condition: str = 'overall'):
+        super().__init__()
         """Initialize the MPSModel with a processor, tokenizer, and model.
 
         Args:
@@ -35,7 +36,7 @@ class MPScore:
         processor_name_or_path = path.get("clip")
         self.image_processor = CLIPImageProcessor.from_pretrained(processor_name_or_path)
         self.tokenizer = AutoTokenizer.from_pretrained(processor_name_or_path, trust_remote_code=True)
-        self.model = clip_model.CLIPModel(processor_name_or_path)
+        self.model = clip_model.CLIPModel(processor_name_or_path, config_file=True)
         state_dict = load_file(path.get("mps"))
         self.model.load_state_dict(state_dict, strict=False)
         self.model.to(device)
@@ -94,37 +95,35 @@ class MPScore:
 
         return image_score[0].cpu().numpy().item()
 
-    def score(self, img_path: Union[str, List[str], Image.Image, List[Image.Image]], prompt: str) -> List[float]:
+    @torch.no_grad()
+    def score(self, images: Union[str, List[str], Image.Image, List[Image.Image]], prompt: str) -> List[float]:
         """Score the images based on the prompt.
 
         Args:
-            img_path (Union[str, List[str], Image.Image, List[Image.Image]]): Path(s) to the image(s) or PIL image(s).
+            images (Union[str, List[str], Image.Image, List[Image.Image]]): Path(s) to the image(s) or PIL image(s).
             prompt (str): The prompt text.
 
         Returns:
             List[float]: List of reward scores for the images.
         """
-        try:
-            if isinstance(img_path, (str, Image.Image)):
-                # Single image
-                if isinstance(img_path, str):
-                    image = self.image_processor(Image.open(img_path), return_tensors="pt")["pixel_values"].to(self.device)
-                else:
-                    image = self.image_processor(img_path, return_tensors="pt")["pixel_values"].to(self.device)
-                return [self._calculate_score(image, prompt)]
-            elif isinstance(img_path, list):
-                # Multiple images
-                scores = []
-                for one_img_path in img_path:
-                    if isinstance(one_img_path, str):
-                        image = self.image_processor(Image.open(one_img_path), return_tensors="pt")["pixel_values"].to(self.device)
-                    elif isinstance(one_img_path, Image.Image):
-                        image = self.image_processor(one_img_path, return_tensors="pt")["pixel_values"].to(self.device)
-                    else:
-                        raise TypeError("The type of parameter img_path is illegal.")
-                    scores.append(self._calculate_score(image, prompt))
-                return scores
+        if isinstance(images, (str, Image.Image)):
+            # Single image
+            if isinstance(images, str):
+                image = self.image_processor(Image.open(images), return_tensors="pt")["pixel_values"].to(self.device)
             else:
-                raise TypeError("The type of parameter img_path is illegal.")
-        except Exception as e:
-            raise RuntimeError(f"Error in scoring images: {e}")
+                image = self.image_processor(images, return_tensors="pt")["pixel_values"].to(self.device)
+            return [self._calculate_score(image, prompt)]
+        elif isinstance(images, list):
+            # Multiple images
+            scores = []
+            for one_images in images:
+                if isinstance(one_images, str):
+                    image = self.image_processor(Image.open(one_images), return_tensors="pt")["pixel_values"].to(self.device)
+                elif isinstance(one_images, Image.Image):
+                    image = self.image_processor(one_images, return_tensors="pt")["pixel_values"].to(self.device)
+                else:
+                    raise TypeError("The type of parameter images is illegal.")
+                scores.append(self._calculate_score(image, prompt))
+            return scores
+        else:
+            raise TypeError("The type of parameter images is illegal.")

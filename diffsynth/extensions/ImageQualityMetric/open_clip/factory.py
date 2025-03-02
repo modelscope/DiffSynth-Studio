@@ -18,7 +18,7 @@ from .loss import ClipLoss, DistillClipLoss, CoCaLoss
 from .openai import load_openai_model
 from .pretrained import is_pretrained_cfg, get_pretrained_cfg, download_pretrained, list_pretrained_tags_by_model, download_pretrained_from_hf
 from .transform import image_transform, AugmentationCfg
-from .tokenizer import HFTokenizer, tokenize
+from .tokenizer import HFTokenizer, SimpleTokenizer
 
 
 HF_HUB_PREFIX = 'hf-hub:'
@@ -74,13 +74,13 @@ def get_model_config(model_name):
         return None
 
 
-def get_tokenizer(model_name):
+def get_tokenizer(model_name, open_clip_bpe_path=None):
     if model_name.startswith(HF_HUB_PREFIX):
         tokenizer = HFTokenizer(model_name[len(HF_HUB_PREFIX):])
     else:
         config = get_model_config(model_name)
         tokenizer = HFTokenizer(
-            config['text_cfg']['hf_tokenizer_name']) if 'hf_tokenizer_name' in config['text_cfg'] else tokenize
+            config['text_cfg']['hf_tokenizer_name']) if 'hf_tokenizer_name' in config['text_cfg'] else SimpleTokenizer(open_clip_bpe_path)
     return tokenizer
 
 

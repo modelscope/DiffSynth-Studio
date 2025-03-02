@@ -52,11 +52,11 @@ class MLP(torch.nn.Module):
         return self.layers(input)
 
 class ImageReward(torch.nn.Module):
-    def __init__(self, med_config, device='cpu'):
+    def __init__(self, med_config, device='cpu', bert_model_path=""):
         super().__init__()
         self.device = device
         
-        self.blip = BLIP_Pretrain(image_size=224, vit='large', med_config=med_config)
+        self.blip = BLIP_Pretrain(image_size=224, vit='large', med_config=med_config, bert_model_path=bert_model_path)
         self.preprocess = _transform(224)
         self.mlp = MLP(768)
         
@@ -88,7 +88,7 @@ class ImageReward(torch.nn.Module):
         rewards = (rewards - self.mean) / self.std
         return rewards
 
-    def score(self, prompt: str, images: Union[str, List[str], Image.Image, List[Image.Image]]) -> List[float]:
+    def score(self, images: Union[str, List[str], Image.Image, List[Image.Image]], prompt: str = "") -> List[float]:
         """Score the images based on the prompt.
 
         Args:
@@ -187,21 +187,18 @@ class ImageReward(torch.nn.Module):
         return indices.detach().cpu().numpy().tolist(), rewards.detach().cpu().numpy().tolist()
 
 
-class ImageRewardScore:
+class ImageRewardScore(torch.nn.Module):
     def __init__(self, device: Union[str, torch.device], path: str = MODEL_PATHS):
-        """Initialize the Selector with a processor and model.
-
-        Args:
-            device (Union[str, torch.device]): The device to load the model on.
-        """
+        super().__init__()
         self.device = device if isinstance(device, torch.device) else torch.device(device)
         model_path = path.get("imagereward")
         med_config = path.get("med_config")
         state_dict = load_file(model_path)
-        self.model = ImageReward(device=self.device, med_config=med_config).to(self.device)
+        self.model = ImageReward(device=self.device, med_config=med_config, bert_model_path=path.get("bert_model_path")).to(self.device)
         self.model.load_state_dict(state_dict, strict=False)
         self.model.eval()
 
+    @torch.no_grad()
     def score(self, images: Union[str, List[str], Image.Image, List[Image.Image]], prompt: str) -> List[float]:
         """Score the images based on the prompt.
 
@@ -212,4 +209,4 @@ class ImageRewardScore:
         Returns:
             List[float]: List of scores for the images.
         """
-        return self.model.score(prompt, images)
+        return self.model.score(images, prompt)

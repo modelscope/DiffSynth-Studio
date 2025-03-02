@@ -5,8 +5,9 @@ from typing import List, Union
 import os
 from .config import MODEL_PATHS
 
-class PickScore:
+class PickScore(torch.nn.Module):
     def __init__(self, device: Union[str, torch.device], path: str = MODEL_PATHS):
+        super().__init__()
         """Initialize the Selector with a processor and model.
 
         Args:
@@ -53,6 +54,7 @@ class PickScore:
 
         return score.cpu().item()
 
+    @torch.no_grad()
     def score(self, images: Union[str, List[str], Image.Image, List[Image.Image]], prompt: str, softmax: bool = False) -> List[float]:
         """Score the images based on the prompt.
 

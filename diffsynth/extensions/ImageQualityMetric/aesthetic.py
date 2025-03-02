@@ -49,13 +49,9 @@ class MLP(torch.nn.Module):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
 
-class AestheticScore:
+class AestheticScore(torch.nn.Module):
     def __init__(self, device: torch.device, path: str = MODEL_PATHS):
-        """Initialize the Selector with a model and processor.
-
-        Args:
-            device (torch.device): The device to load the model on.
-        """
+        super().__init__()
         self.device = device
         self.aes_model_path = path.get("aesthetic_predictor")
         # Load the MLP model
@@ -96,7 +92,8 @@ class AestheticScore:
 
         return score
 
-    def score(self, images: Union[str, List[str], Image.Image, List[Image.Image]]) -> List[float]:
+    @torch.no_grad()
+    def score(self, images: Union[str, List[str], Image.Image, List[Image.Image]], prompt: str = "") -> List[float]:
         """Score the images based on their aesthetic quality.
 
         Args:
