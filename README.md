@@ -113,6 +113,8 @@ Until now, DiffSynth Studio has supported the following models:
 
 ## Installation
 
+You need to have [cmake](https://cmake.org) installed and in your PATH to successfully install the [sentencepiece](https://github.com/google/sentencepiece) dependency.
+
 Install from source code (recommended):
 
 ```
