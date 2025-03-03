@@ -113,8 +113,6 @@ Until now, DiffSynth Studio has supported the following models:
 
 ## Installation
 
-You need to have [cmake](https://cmake.org) installed and in your PATH to successfully install the [sentencepiece](https://github.com/google/sentencepiece) dependency.
-
 Install from source code (recommended):
 
 ```
@@ -128,6 +126,13 @@ Or install from pypi (There is a delay in the update. If you want to experience 
 ```
 pip install diffsynth
 ```
+
+如果您在安装时遇到问题，可能是由我们依赖的包导致的，请根据出问题的包，查阅对应的文档
+
+* [torch](https://pytorch.org/get-started/locally/)
+* [sentencepiece](https://github.com/google/sentencepiece)
+* [cmake](https://cmake.org)
+* [cupy](https://docs.cupy.dev/en/stable/install.html)
 
 ## Usage (in Python code)
 
