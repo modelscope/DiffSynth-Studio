@@ -127,7 +127,7 @@ Or install from pypi (There is a delay in the update. If you want to experience 
 pip install diffsynth
 ```
 
-如果您在安装时遇到问题，可能是由我们依赖的包导致的，请根据出问题的包，查阅对应的文档
+If you encounter issues during installation, it may be caused by the packages we depend on. Please refer to the documentation of the package that caused the problem.
 
 * [torch](https://pytorch.org/get-started/locally/)
 * [sentencepiece](https://github.com/google/sentencepiece)
