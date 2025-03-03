@@ -132,8 +132,8 @@ CUDA_VISIBLE_DEVICES="0" python examples/wanvideo/train_wan_t2v.py \
   --steps_per_epoch 500 \
   --max_epochs 10 \
   --learning_rate 1e-4 \
-  --lora_rank 4 \
-  --lora_alpha 4 \
+  --lora_rank 16 \
+  --lora_alpha 16 \
   --lora_target_modules "q,k,v,o,ffn.0,ffn.2" \
   --accumulate_grad_batches 1 \
   --use_gradient_checkpointing
