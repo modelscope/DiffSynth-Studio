@@ -127,6 +127,13 @@ Or install from pypi (There is a delay in the update. If you want to experience 
 pip install diffsynth
 ```
 
+If you encounter issues during installation, it may be caused by the packages we depend on. Please refer to the documentation of the package that caused the problem.
+
+* [torch](https://pytorch.org/get-started/locally/)
+* [sentencepiece](https://github.com/google/sentencepiece)
+* [cmake](https://cmake.org)
+* [cupy](https://docs.cupy.dev/en/stable/install.html)
+
 ## Usage (in Python code)
 
 The Python examples are in [`examples`](./examples/). We provide an overview here.
