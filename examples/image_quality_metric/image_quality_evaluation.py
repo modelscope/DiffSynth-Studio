@@ -12,7 +12,7 @@ dataset_snapshot_download(
 
 # Parameters
 prompt = "an orange cat"
-image = Image.open("data\examples\ImageQualityMetric\image.jpg")
+image = Image.open("data/examples/ImageQualityMetric/image.jpg")
 device = "cuda"
 cache_dir = "./models"
 
