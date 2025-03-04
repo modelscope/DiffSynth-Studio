@@ -27,11 +27,20 @@ def example(pipe, seeds, example_id, global_prompt, entity_prompts):
 
 # download and load model
 model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cuda", model_id_list=["FLUX.1-dev"])
+# set download_from_modelscope = False if you want to download model from huggingface
+download_from_modelscope = True
+if download_from_modelscope:
+    model_id = "DiffSynth-Studio/Eligen"
+    downloading_priority = ["ModelScope"]
+else:
+    model_id = "modelscope/EliGen"
+    downloading_priority = ["HuggingFace"]
 model_manager.load_lora(
     download_customized_models(
-        model_id="DiffSynth-Studio/Eligen",
+        model_id=model_id,
         origin_file_path="model_bf16.safetensors",
-        local_dir="models/lora/entity_control"
+        local_dir="models/lora/entity_control",
+        downloading_priority=downloading_priority
     ),
     lora_alpha=1
 )
