@@ -628,19 +628,22 @@ class FluxDiTStateDictConverter:
                 else:
                     pass
         for name in list(state_dict_.keys()):
-            if ".proj_in_besides_attn." in name:
-                name_ = name.replace(".proj_in_besides_attn.", ".to_qkv_mlp.")
+            if "single_blocks." in name and ".a_to_q." in name:
+                mlp = state_dict_.get(name.replace(".a_to_q.", ".proj_in_besides_attn."), None)
+                if mlp is None:
+                    mlp = torch.zeros(4 * state_dict_[name].shape[0],
+                                      *state_dict_[name].shape[1:],
+                                      dtype=state_dict_[name].dtype)
+                else:
+                    state_dict_.pop(name.replace(".a_to_q.", ".proj_in_besides_attn."))
                 param = torch.concat([
-                    state_dict_[name.replace(".proj_in_besides_attn.", f".a_to_q.")],
-                    state_dict_[name.replace(".proj_in_besides_attn.", f".a_to_k.")],
-                    state_dict_[name.replace(".proj_in_besides_attn.", f".a_to_v.")],
-                    state_dict_[name],
+                    state_dict_.pop(name),
+                    state_dict_.pop(name.replace(".a_to_q.", ".a_to_k.")),
+                    state_dict_.pop(name.replace(".a_to_q.", ".a_to_v.")),
+                    mlp,
                 ], dim=0)
+                name_ = name.replace(".a_to_q.", ".to_qkv_mlp.")
                 state_dict_[name_] = param
-                state_dict_.pop(name.replace(".proj_in_besides_attn.", f".a_to_q."))
-                state_dict_.pop(name.replace(".proj_in_besides_attn.", f".a_to_k."))
-                state_dict_.pop(name.replace(".proj_in_besides_attn.", f".a_to_v."))
-                state_dict_.pop(name)
         for name in list(state_dict_.keys()):
             for component in ["a", "b"]:
                 if f".{component}_to_q." in name:
