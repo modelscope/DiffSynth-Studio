@@ -10,6 +10,10 @@ snapshot_download("Wan-AI/Wan2.1-I2V-14B-480P", local_dir="models/Wan-AI/Wan2.1-
 # Load models
 model_manager = ModelManager(device="cpu")
 model_manager.load_models(
+    ["models/Wan-AI/Wan2.1-I2V-14B-480P/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"],
+    torch_dtype=torch.float16, # Image Encoder is loaded with float16
+)
+model_manager.load_models(
     [
         [
             "models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00001-of-00007.safetensors",
@@ -20,7 +24,6 @@ model_manager.load_models(
             "models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00006-of-00007.safetensors",
             "models/Wan-AI/Wan2.1-I2V-14B-480P/diffusion_pytorch_model-00007-of-00007.safetensors",
         ],
-        "models/Wan-AI/Wan2.1-I2V-14B-480P/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",
         "models/Wan-AI/Wan2.1-I2V-14B-480P/models_t5_umt5-xxl-enc-bf16.pth",
         "models/Wan-AI/Wan2.1-I2V-14B-480P/Wan2.1_VAE.pth",
     ],
