@@ -70,7 +70,7 @@ class TextVideoDataset(torch.utils.data.Dataset):
     
     def is_image(self, file_path):
         file_ext_name = file_path.split(".")[-1]
-        if file_ext_name.lower() in ["jpg", "png", "webp"]:
+        if file_ext_name.lower() in ["jpg", "jpeg", "png", "webp"]:
             return True
         return False
     
