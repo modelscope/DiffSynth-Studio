@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 from ..vram_management import enable_vram_management, AutoWrappedModule, AutoWrappedLinear
 from ..models.wan_video_text_encoder import T5RelativeEmbedding, T5LayerNorm
-from ..models.wan_video_dit import WanLayerNorm, WanRMSNorm
+from ..models.wan_video_dit import RMSNorm
 from ..models.wan_video_vae import RMS_norm, CausalConv3d, Upsample
 
 
@@ -60,8 +60,8 @@ class WanVideoPipeline(BasePipeline):
                 torch.nn.Linear: AutoWrappedLinear,
                 torch.nn.Conv3d: AutoWrappedModule,
                 torch.nn.LayerNorm: AutoWrappedModule,
-                WanLayerNorm: AutoWrappedModule,
-                WanRMSNorm: AutoWrappedModule,
+                torch.nn.LayerNorm: AutoWrappedModule,
+                RMSNorm: AutoWrappedModule,
             },
             module_config = dict(
                 offload_dtype=dtype,
@@ -224,7 +224,8 @@ class WanVideoPipeline(BasePipeline):
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength, shift=sigma_shift)
 
         # Initialize noise
-        noise = self.generate_noise((1, 16, (num_frames - 1) // 4 + 1, height//8, width//8), seed=seed, device=rand_device, dtype=torch.float32).to(self.device)
+        noise = self.generate_noise((1, 16, (num_frames - 1) // 4 + 1, height//8, width//8), seed=seed, device=rand_device, dtype=torch.float32)
+        noise = noise.to(dtype=self.torch_dtype, device=self.device)
         if input_video is not None:
             self.load_models_to_device(['vae'])
             input_video = self.preprocess_images(input_video)
@@ -252,20 +253,19 @@ class WanVideoPipeline(BasePipeline):
 
         # Denoise
         self.load_models_to_device(["dit"])
-        with torch.amp.autocast(dtype=torch.bfloat16, device_type=torch.device(self.device).type):
-            for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
-                timestep = timestep.unsqueeze(0).to(dtype=torch.float32, device=self.device)
+        for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
+            timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
 
-                # Inference
-                noise_pred_posi = self.dit(latents, timestep=timestep, **prompt_emb_posi, **image_emb, **extra_input)
-                if cfg_scale != 1.0:
-                    noise_pred_nega = self.dit(latents, timestep=timestep, **prompt_emb_nega, **image_emb, **extra_input)
-                    noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
-                else:
-                    noise_pred = noise_pred_posi
+            # Inference
+            noise_pred_posi = self.dit(latents, timestep=timestep, **prompt_emb_posi, **image_emb, **extra_input)
+            if cfg_scale != 1.0:
+                noise_pred_nega = self.dit(latents, timestep=timestep, **prompt_emb_nega, **image_emb, **extra_input)
+                noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
+            else:
+                noise_pred = noise_pred_posi
 
-                # Scheduler
-                latents = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], latents)
+            # Scheduler
+            latents = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], latents)
 
         # Decode
         self.load_models_to_device(['vae'])
