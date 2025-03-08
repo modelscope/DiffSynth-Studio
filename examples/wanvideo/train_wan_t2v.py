@@ -501,7 +501,7 @@ def train(args):
             name="wan",
             config=swanlab_config,
             mode=args.swanlab_mode,
-            logdir=args.output_path,
+            logdir=os.path.join(args.output_path, "swanlog"),
         )
         logger = [swanlab_logger]
     else:
