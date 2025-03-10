@@ -291,17 +291,21 @@ class WanModel(torch.nn.Module):
                 clip_feature: Optional[torch.Tensor] = None,
                 y: Optional[torch.Tensor] = None,
                 use_gradient_checkpointing: bool = False,
+                use_gradient_checkpointing_offload: bool = False,
                 **kwargs,
                 ):
         t = self.time_embedding(
             sinusoidal_embedding_1d(self.freq_dim, timestep))
         t_mod = self.time_projection(t).unflatten(1, (6, self.dim))
         context = self.text_embedding(context)
+        
         if self.has_image_input:
             x = torch.cat([x, y], dim=1)  # (b, c_x + c_y, f, h, w)
             clip_embdding = self.img_emb(clip_feature)
             context = torch.cat([clip_embdding, context], dim=1)
+        
         x, (f, h, w) = self.patchify(x)
+        
         freqs = torch.cat([
             self.freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
             self.freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
@@ -315,11 +319,19 @@ class WanModel(torch.nn.Module):
 
         for block in self.blocks:
             if self.training and use_gradient_checkpointing:
-                x = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(block),
-                    x, context, t_mod, freqs,
-                    use_reentrant=False,
-                )
+                if use_gradient_checkpointing_offload:
+                    with torch.autograd.graph.save_on_cpu():
+                        x = torch.utils.checkpoint.checkpoint(
+                            create_custom_forward(block),
+                            x, context, t_mod, freqs,
+                            use_reentrant=False,
+                        )
+                else:
+                    x = torch.utils.checkpoint.checkpoint(
+                        create_custom_forward(block),
+                        x, context, t_mod, freqs,
+                        use_reentrant=False,
+                    )
             else:
                 x = block(x, context, t_mod, freqs)
 
