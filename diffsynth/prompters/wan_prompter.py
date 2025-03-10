@@ -104,5 +104,6 @@ class WanPrompter(BasePrompter):
         mask = mask.to(device)
         seq_lens = mask.gt(0).sum(dim=1).long()
         prompt_emb = self.text_encoder(ids, mask)
-        prompt_emb = [u[:v] for u, v in zip(prompt_emb, seq_lens)]
+        for i, v in enumerate(seq_lens):
+            prompt_emb[:, v:] = 0
         return prompt_emb

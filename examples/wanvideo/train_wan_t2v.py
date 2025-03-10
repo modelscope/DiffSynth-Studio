@@ -113,6 +113,7 @@ class LightningModelForDataProcess(pl.LightningModule):
         self.pipe.device = self.device
         if video is not None:
             prompt_emb = self.pipe.encode_prompt(text)
+            video = video.to(dtype=self.pipe.torch_dtype, device=self.pipe.device)
             latents = self.pipe.encode_video(video, **self.tiler_kwargs)[0]
             data = {"latents": latents, "prompt_emb": prompt_emb}
             torch.save(data, path + ".tensors.pth")
@@ -145,10 +146,21 @@ class TensorDataset(torch.utils.data.Dataset):
 
 
 class LightningModelForTrain(pl.LightningModule):
-    def __init__(self, dit_path, learning_rate=1e-5, lora_rank=4, lora_alpha=4, train_architecture="lora", lora_target_modules="q,k,v,o,ffn.0,ffn.2", init_lora_weights="kaiming", use_gradient_checkpointing=True, pretrained_lora_path=None):
+    def __init__(
+        self,
+        dit_path,
+        learning_rate=1e-5,
+        lora_rank=4, lora_alpha=4, train_architecture="lora", lora_target_modules="q,k,v,o,ffn.0,ffn.2", init_lora_weights="kaiming",
+        use_gradient_checkpointing=True, use_gradient_checkpointing_offload=False,
+        pretrained_lora_path=None
+    ):
         super().__init__()
         model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cpu")
-        model_manager.load_models([dit_path])
+        if os.path.isfile(dit_path):
+            model_manager.load_models([dit_path])
+        else:
+            dit_path = dit_path.split(",")
+            model_manager.load_models([dit_path])
         
         self.pipe = WanVideoPipeline.from_model_manager(model_manager)
         self.pipe.scheduler.set_timesteps(1000, training=True)
@@ -167,6 +179,7 @@ class LightningModelForTrain(pl.LightningModule):
         
         self.learning_rate = learning_rate
         self.use_gradient_checkpointing = use_gradient_checkpointing
+        self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
         
         
     def freeze_parameters(self):
@@ -210,24 +223,25 @@ class LightningModelForTrain(pl.LightningModule):
         # Data
         latents = batch["latents"].to(self.device)
         prompt_emb = batch["prompt_emb"]
-        prompt_emb["context"] = [prompt_emb["context"][0][0].to(self.device)]
+        prompt_emb["context"] = prompt_emb["context"][0].to(self.device)
         
         # Loss
+        self.pipe.device = self.device
         noise = torch.randn_like(latents)
         timestep_id = torch.randint(0, self.pipe.scheduler.num_train_timesteps, (1,))
-        timestep = self.pipe.scheduler.timesteps[timestep_id].to(self.device)
+        timestep = self.pipe.scheduler.timesteps[timestep_id].to(dtype=self.pipe.torch_dtype, device=self.pipe.device)
         extra_input = self.pipe.prepare_extra_input(latents)
         noisy_latents = self.pipe.scheduler.add_noise(latents, noise, timestep)
         training_target = self.pipe.scheduler.training_target(latents, noise, timestep)
 
         # Compute loss
-        with torch.amp.autocast(dtype=torch.bfloat16, device_type=torch.device(self.device).type):
-            noise_pred = self.pipe.denoising_model()(
-                noisy_latents, timestep=timestep, **prompt_emb, **extra_input,
-                use_gradient_checkpointing=self.use_gradient_checkpointing
-            )
-            loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
-            loss = loss * self.pipe.scheduler.training_weight(timestep)
+        noise_pred = self.pipe.denoising_model()(
+            noisy_latents, timestep=timestep, **prompt_emb, **extra_input,
+            use_gradient_checkpointing=self.use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=self.use_gradient_checkpointing_offload
+        )
+        loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
+        loss = loss * self.pipe.scheduler.training_weight(timestep)
 
         # Record log
         self.log("train_loss", loss, prog_bar=True)
@@ -411,6 +425,12 @@ def parse_args():
         help="Whether to use gradient checkpointing.",
     )
     parser.add_argument(
+        "--use_gradient_checkpointing_offload",
+        default=False,
+        action="store_true",
+        help="Whether to use gradient checkpointing offload.",
+    )
+    parser.add_argument(
         "--train_architecture",
         type=str,
         default="lora",
@@ -490,6 +510,7 @@ def train(args):
         lora_target_modules=args.lora_target_modules,
         init_lora_weights=args.init_lora_weights,
         use_gradient_checkpointing=args.use_gradient_checkpointing,
+        use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
         pretrained_lora_path=args.pretrained_lora_path,
     )
     if args.use_swanlab:
@@ -510,6 +531,7 @@ def train(args):
         max_epochs=args.max_epochs,
         accelerator="gpu",
         devices="auto",
+        precision="bf16",
         strategy=args.training_strategy,
         default_root_dir=args.output_path,
         accumulate_grad_batches=args.accumulate_grad_batches,

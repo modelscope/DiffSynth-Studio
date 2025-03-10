@@ -11,7 +11,7 @@ snapshot_download("Wan-AI/Wan2.1-I2V-14B-480P", local_dir="models/Wan-AI/Wan2.1-
 model_manager = ModelManager(device="cpu")
 model_manager.load_models(
     ["models/Wan-AI/Wan2.1-I2V-14B-480P/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"],
-    torch_dtype=torch.float16, # Image Encoder is loaded with float16
+    torch_dtype=torch.float32, # Image Encoder is loaded with float32
 )
 model_manager.load_models(
     [
