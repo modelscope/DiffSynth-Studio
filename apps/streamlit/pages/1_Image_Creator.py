@@ -74,11 +74,29 @@ def release_model():
         del st.session_state["loaded_model_path"]
         del st.session_state["model_manager"]
         del st.session_state["pipeline"]
-        torch.cuda.empty_cache()
+        # Clear GPU memory based on available hardware
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        # No equivalent memory management function for MPS yet
 
 
 def load_model(model_type, model_path):
-    model_manager = ModelManager()
+    # Determine the best available device
+    import platform
+    if torch.cuda.is_available():
+        device = "cuda"
+        torch_dtype = torch.bfloat16 if model_type == "FLUX" else None
+    elif hasattr(torch, 'mps') and torch.backends.mps.is_available() and platform.processor() == 'arm':
+        device = "mps"
+        # Use float32 on MPS for better compatibility
+        torch_dtype = torch.float32  # Force full precision on Apple Silicon
+    else:
+        device = "cpu"
+        torch_dtype = None
+    
+    st.info(f"Using device: {device.upper()}")
+    
+    model_manager = ModelManager(device=device, torch_dtype=torch_dtype)
     if model_type == "HunyuanDiT":
         model_manager.load_models([
             os.path.join(model_path, "clip_text_encoder/pytorch_model.bin"),
@@ -93,7 +111,6 @@ def load_model(model_type, model_path):
             os.path.join(model_path, "vae/diffusion_pytorch_model.safetensors"),
         ])
     elif model_type == "FLUX":
-        model_manager.torch_dtype = torch.bfloat16
         file_list = [
             os.path.join(model_path, "text_encoder/model.safetensors"),
             os.path.join(model_path, "text_encoder_2"),
