@@ -260,7 +260,7 @@ class SelfAttention(nn.Module):
         q, k, v = self.to_qkv(x).chunk(3, dim=-1)
 
         # compute attention
-        x = flash_attention(q, k, v, num_heads=self.num_heads)
+        x = flash_attention(q, k, v, num_heads=self.num_heads, compatibility_mode=True)
 
         # output
         x = self.proj(x)
@@ -371,7 +371,7 @@ class AttentionPool(nn.Module):
         k, v = self.to_kv(x).chunk(2, dim=-1)
 
         # compute attention
-        x = flash_attention(q, k, v, num_heads=self.num_heads)
+        x = flash_attention(q, k, v, num_heads=self.num_heads, compatibility_mode=True)
         x = x.reshape(b, 1, c)
 
         # output

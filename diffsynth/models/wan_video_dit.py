@@ -24,8 +24,14 @@ except ModuleNotFoundError:
     SAGE_ATTN_AVAILABLE = False
     
     
-def flash_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, num_heads: int):
-    if FLASH_ATTN_3_AVAILABLE:
+def flash_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, num_heads: int, compatibility_mode=False):
+    if compatibility_mode:
+        q = rearrange(q, "b s (n d) -> b n s d", n=num_heads)
+        k = rearrange(k, "b s (n d) -> b n s d", n=num_heads)
+        v = rearrange(v, "b s (n d) -> b n s d", n=num_heads)
+        x = F.scaled_dot_product_attention(q, k, v)
+        x = rearrange(x, "b n s d -> b s (n d)", n=num_heads)
+    elif FLASH_ATTN_3_AVAILABLE:
         q = rearrange(q, "b s (n d) -> b s n d", n=num_heads)
         k = rearrange(k, "b s (n d) -> b s n d", n=num_heads)
         v = rearrange(v, "b s (n d) -> b s n d", n=num_heads)
