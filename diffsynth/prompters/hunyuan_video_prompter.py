@@ -87,7 +87,6 @@ class HunyuanVideoPrompter(BasePrompter):
         self.tokenizer_2 = LlamaTokenizerFast.from_pretrained(tokenizer_2_path, padding_side='right')
         self.text_encoder_1: SD3TextEncoder1 = None
         self.text_encoder_2: HunyuanVideoLLMEncoder = None
-        self.i2v_mode = False
 
         self.prompt_template = PROMPT_TEMPLATE['dit-llm-encode']
         self.prompt_template_video = PROMPT_TEMPLATE['dit-llm-encode-video']
@@ -106,8 +105,6 @@ class HunyuanVideoPrompter(BasePrompter):
             # template
             self.prompt_template = PROMPT_TEMPLATE['dit-llm-encode-i2v']
             self.prompt_template_video = PROMPT_TEMPLATE['dit-llm-encode-video-i2v']
-            # mode setting
-            self.i2v_mode = True
 
     def apply_text_to_template(self, text, template):
         assert isinstance(template, str)
@@ -164,10 +161,8 @@ class HunyuanVideoPrompter(BasePrompter):
                                 crop_start,
                                 hidden_state_skip_layer=2,
                                 use_attention_mask=True,
-                                image_embed_interleave=2):
-        image_outputs = self.processor(images, return_tensors="pt")[
-                "pixel_values"
-        ].to(device)
+                                image_embed_interleave=4):
+        image_outputs = self.processor(images, return_tensors="pt")["pixel_values"].to(device)
         max_length += crop_start
         inputs = self.tokenizer_2(prompt,
                                   return_tensors="pt",
@@ -248,7 +243,8 @@ class HunyuanVideoPrompter(BasePrompter):
                       data_type='video',
                       use_template=True,
                       hidden_state_skip_layer=2,
-                      use_attention_mask=True):
+                      use_attention_mask=True,
+                      image_embed_interleave=4):
 
         prompt = self.process_prompt(prompt, positive=positive)
 
@@ -273,6 +269,7 @@ class HunyuanVideoPrompter(BasePrompter):
                                                                       hidden_state_skip_layer, use_attention_mask)
         else:
             prompt_emb, attention_mask = self.encode_prompt_using_mllm(prompt_formated, images, llm_sequence_length, device,
-                                                                       crop_start, hidden_state_skip_layer, use_attention_mask)
+                                                                       crop_start, hidden_state_skip_layer, use_attention_mask,
+                                                                       image_embed_interleave)
 
         return prompt_emb, pooled_prompt_emb, attention_mask
