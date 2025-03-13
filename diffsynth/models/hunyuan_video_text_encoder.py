@@ -1,24 +1,18 @@
-from transformers import LlamaModel, LlamaConfig, DynamicCache
+from transformers import LlamaModel, LlamaConfig, DynamicCache, LlavaForConditionalGeneration
 from copy import deepcopy
 import torch
 
 
 class HunyuanVideoLLMEncoder(LlamaModel):
+
     def __init__(self, config: LlamaConfig):
         super().__init__(config)
         self.auto_offload = False
 
-
     def enable_auto_offload(self, **kwargs):
         self.auto_offload = True
-        
 
-    def forward(
-        self,
-        input_ids,
-        attention_mask,
-        hidden_state_skip_layer=2
-    ):
+    def forward(self, input_ids, attention_mask, hidden_state_skip_layer=2):
         embed_tokens = deepcopy(self.embed_tokens).to(input_ids.device) if self.auto_offload else self.embed_tokens
         inputs_embeds = embed_tokens(input_ids)
 
@@ -53,3 +47,22 @@ class HunyuanVideoLLMEncoder(LlamaModel):
                 break
 
         return hidden_states
+
+
+class HunyuanVideoMLLMEncoder(LlavaForConditionalGeneration):
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.auto_offload = False
+
+    def enable_auto_offload(self, **kwargs):
+        self.auto_offload = True
+
+    # TODO: implement the low VRAM inference for MLLM.
+    def forward(self, input_ids, pixel_values, attention_mask, hidden_state_skip_layer=2):
+        outputs = super().forward(input_ids=input_ids,
+                                  attention_mask=attention_mask,
+                                  output_hidden_states=True,
+                                  pixel_values=pixel_values)
+        hidden_state = outputs.hidden_states[-(hidden_state_skip_layer + 1)]
+        return hidden_state

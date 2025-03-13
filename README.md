@@ -19,7 +19,7 @@ Until now, DiffSynth Studio has supported the following models:
 
 * [Wan-Video](https://github.com/Wan-Video/Wan2.1)
 * [StepVideo](https://github.com/stepfun-ai/Step-Video-T2V)
-* [HunyuanVideo](https://github.com/Tencent/HunyuanVideo)
+* [HunyuanVideo](https://github.com/Tencent/HunyuanVideo), [HunyuanVideo-I2V]()
 * [CogVideoX](https://huggingface.co/THUDM/CogVideoX-5b)
 * [FLUX](https://huggingface.co/black-forest-labs/FLUX.1-dev)
 * [ExVideo](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
@@ -36,6 +36,7 @@ Until now, DiffSynth Studio has supported the following models:
 * [Stable Diffusion](https://huggingface.co/runwayml/stable-diffusion-v1-5)
 
 ## News
+- **March 25, 2025** We support HunyuanVideo-I2V, the image-to-video generation version of HunyuanVideo open-sourced by Tencent. Please refer to [./examples/HunyuanVideo/](./examples/HunyuanVideo/) for more details.
 
 - **February 25, 2025** We support Wan-Video, a collection of SOTA video synthesis models open-sourced by Alibaba. See [./examples/wanvideo/](./examples/wanvideo/).
 

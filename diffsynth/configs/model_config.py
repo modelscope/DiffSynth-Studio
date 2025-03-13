@@ -135,6 +135,7 @@ huggingface_model_loader_configs = [
     ("CogVideoXTransformer3DModel", "diffsynth.models.cog_dit", "cog_dit", "CogDiT"),
     ("SiglipModel", "transformers.models.siglip.modeling_siglip", "siglip_vision_model", "SiglipVisionModel"),
     ("LlamaForCausalLM", "diffsynth.models.hunyuan_video_text_encoder", "hunyuan_video_text_encoder_2", "HunyuanVideoLLMEncoder"),
+    ("LlavaForConditionalGeneration", "diffsynth.models.hunyuan_video_text_encoder", "hunyuan_video_text_encoder_2", "HunyuanVideoMLLMEncoder"),
     ("Step1Model", "diffsynth.models.stepvideo_text_encoder", "stepvideo_text_encoder_2", "STEP1TextEncoder"),
 ]
 patch_model_loader_configs = [
@@ -677,6 +678,25 @@ preset_models_on_modelscope = {
             "models/HunyuanVideo/transformers/mp_rank_00_model_states.pt"
         ],
     },
+    "HunyuanVideoI2V":{
+        "file_list": [
+            ("AI-ModelScope/clip-vit-large-patch14", "model.safetensors", "models/HunyuanVideoI2V/text_encoder"),
+            ("AI-ModelScope/llava-llama-3-8b-v1_1-transformers", "model-00001-of-00004.safetensors", "models/HunyuanVideoI2V/text_encoder_2"),
+            ("AI-ModelScope/llava-llama-3-8b-v1_1-transformers", "model-00002-of-00004.safetensors", "models/HunyuanVideoI2V/text_encoder_2"),
+            ("AI-ModelScope/llava-llama-3-8b-v1_1-transformers", "model-00003-of-00004.safetensors", "models/HunyuanVideoI2V/text_encoder_2"),
+            ("AI-ModelScope/llava-llama-3-8b-v1_1-transformers", "model-00004-of-00004.safetensors", "models/HunyuanVideoI2V/text_encoder_2"),
+            ("AI-ModelScope/llava-llama-3-8b-v1_1-transformers", "config.json", "models/HunyuanVideoI2V/text_encoder_2"),
+            ("AI-ModelScope/llava-llama-3-8b-v1_1-transformers", "model.safetensors.index.json", "models/HunyuanVideoI2V/text_encoder_2"),
+            ("AI-ModelScope/HunyuanVideo-I2V", "hunyuan-video-i2v-720p/vae/pytorch_model.pt", "models/HunyuanVideoI2V/vae"),
+            ("AI-ModelScope/HunyuanVideo-I2V", "hunyuan-video-i2v-720p/transformers/mp_rank_00_model_states.pt", "models/HunyuanVideoI2V/transformers")
+        ],
+        "load_path": [
+            "models/HunyuanVideoI2V/text_encoder/model.safetensors",
+            "models/HunyuanVideoI2V/text_encoder_2",
+            "models/HunyuanVideoI2V/vae/pytorch_model.pt",
+            "models/HunyuanVideoI2V/transformers/mp_rank_00_model_states.pt"
+        ],
+    },
     "HunyuanVideo-fp8":{
         "file_list": [
             ("AI-ModelScope/clip-vit-large-patch14", "model.safetensors", "models/HunyuanVideo/text_encoder"),
@@ -753,4 +773,5 @@ Preset_model_id: TypeAlias = Literal[
     "StableDiffusion3.5-medium",
     "HunyuanVideo",
     "HunyuanVideo-fp8",
+    "HunyuanVideoI2V",
 ]
