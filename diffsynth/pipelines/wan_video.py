@@ -262,9 +262,6 @@ class WanVideoPipeline(BasePipeline):
             # If TeaCache is disabled, just call the model normally
             return self.dit(latents, timestep=timestep, **kwargs)
         
-        # Use timestep directly as modulated input for simplicity and robustness
-        modulated_inp = timestep.detach().clone()
-        
         # TeaCache optimization logic
         if is_cond:
             # For conditional pass
@@ -276,14 +273,30 @@ class WanVideoPipeline(BasePipeline):
             else:
                 # Calculate relative L1 distance between current and previous input
                 if self.teacache_previous_modulated_input is not None:
-                    # Calculate the relative L1 distance
-                    rel_l1 = ((modulated_inp - self.teacache_previous_modulated_input).abs().mean() / 
-                             (self.teacache_previous_modulated_input.abs().mean() + 1e-8)).cpu().item()
-                    
-                    # Apply polynomial scaling to the distance
-                    rescale_func = np.poly1d(self.teacache_coefficients)
-                    scaled_distance = rescale_func(rel_l1)
-                    self.teacache_accumulated_rel_l1_distance += scaled_distance
+                    try:
+                        # Calculate the relative L1 distance
+                        abs_diff = (timestep - self.teacache_previous_modulated_input).abs().mean()
+                        mean_prev = self.teacache_previous_modulated_input.abs().mean() + 1e-8
+                        rel_l1 = (abs_diff / mean_prev).cpu().item()
+                        
+                        # Apply polynomial scaling to the distance
+                        if self.teacache_coefficients is not None:
+                            rescale_func = np.poly1d(self.teacache_coefficients)
+                            scaled_distance = rescale_func(rel_l1)
+                            
+                            # For 14B model, ensure absolute value is used since the polynomial 
+                            # can produce negative values that would otherwise prevent reaching threshold
+                            if self.teacache_coefficients[0] < 0:  # 14B model has negative first coefficient
+                                scaled_distance = abs(scaled_distance)
+                                
+                            self.teacache_accumulated_rel_l1_distance += scaled_distance
+                        else:
+                            # If no coefficients, use raw distance
+                            self.teacache_accumulated_rel_l1_distance += rel_l1
+                    except Exception as e:
+                        print(f"Error in TeaCache calculation: {e}")
+                        should_calc = True
+                        self.teacache_accumulated_rel_l1_distance = 0
                 
                 # Decide whether to skip computation
                 if self.teacache_accumulated_rel_l1_distance < self.teacache_thresh:
@@ -293,7 +306,7 @@ class WanVideoPipeline(BasePipeline):
                     self.teacache_accumulated_rel_l1_distance = 0
             
             # Store current modulated input for next comparison
-            self.teacache_previous_modulated_input = modulated_inp.detach().clone()
+            self.teacache_previous_modulated_input = timestep.detach().clone()
             
             # Update counter - only increment on conditional pass
             self.teacache_cnt = (self.teacache_cnt + 1) % self.teacache_num_steps
