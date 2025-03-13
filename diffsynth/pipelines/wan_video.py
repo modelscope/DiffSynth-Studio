@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 from ..vram_management import enable_vram_management, AutoWrappedModule, AutoWrappedLinear
 from ..models.wan_video_text_encoder import T5RelativeEmbedding, T5LayerNorm
-from ..models.wan_video_dit import WanLayerNorm, WanRMSNorm
+from ..models.wan_video_dit import RMSNorm
 from ..models.wan_video_vae import RMS_norm, CausalConv3d, Upsample
 
 
@@ -30,6 +30,8 @@ class WanVideoPipeline(BasePipeline):
         self.dit: WanModel = None
         self.vae: WanVideoVAE = None
         self.model_names = ['text_encoder', 'dit', 'vae']
+        self.height_division_factor = 16
+        self.width_division_factor = 16
 
 
     def enable_vram_management(self, num_persistent_param_in_dit=None):
@@ -58,8 +60,7 @@ class WanVideoPipeline(BasePipeline):
                 torch.nn.Linear: AutoWrappedLinear,
                 torch.nn.Conv3d: AutoWrappedModule,
                 torch.nn.LayerNorm: AutoWrappedModule,
-                WanLayerNorm: AutoWrappedModule,
-                WanRMSNorm: AutoWrappedModule,
+                RMSNorm: AutoWrappedModule,
             },
             module_config = dict(
                 offload_dtype=dtype,
@@ -114,7 +115,7 @@ class WanVideoPipeline(BasePipeline):
                     offload_device="cpu",
                     onload_dtype=dtype,
                     onload_device="cpu",
-                    computation_dtype=self.torch_dtype,
+                    computation_dtype=dtype,
                     computation_device=self.device,
                 ),
             )
@@ -151,17 +152,21 @@ class WanVideoPipeline(BasePipeline):
     
     
     def encode_image(self, image, num_frames, height, width):
-        with torch.amp.autocast(dtype=torch.bfloat16, device_type=torch.device(self.device).type):
-            image = self.preprocess_image(image.resize((width, height))).to(self.device)
-            clip_context = self.image_encoder.encode_image([image])
-            msk = torch.ones(1, num_frames, height//8, width//8, device=self.device)
-            msk[:, 1:] = 0
-            msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
-            msk = msk.view(1, msk.shape[1] // 4, 4, height//8, width//8)
-            msk = msk.transpose(1, 2)[0]
-            y = self.vae.encode([torch.concat([image.transpose(0, 1), torch.zeros(3, num_frames-1, height, width).to(image.device)], dim=1)], device=self.device)[0]
-            y = torch.concat([msk, y])
-        return {"clip_fea": clip_context, "y": [y]}
+        image = self.preprocess_image(image.resize((width, height))).to(self.device)
+        clip_context = self.image_encoder.encode_image([image])
+        msk = torch.ones(1, num_frames, height//8, width//8, device=self.device)
+        msk[:, 1:] = 0
+        msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
+        msk = msk.view(1, msk.shape[1] // 4, 4, height//8, width//8)
+        msk = msk.transpose(1, 2)[0]
+        
+        vae_input = torch.concat([image.transpose(0, 1), torch.zeros(3, num_frames-1, height, width).to(image.device)], dim=1)
+        y = self.vae.encode([vae_input.to(dtype=self.torch_dtype, device=self.device)], device=self.device)[0]
+        y = torch.concat([msk, y])
+        y = y.unsqueeze(0)
+        clip_context = clip_context.to(dtype=self.torch_dtype, device=self.device)
+        y = y.to(dtype=self.torch_dtype, device=self.device)
+        return {"clip_feature": clip_context, "y": y}
 
 
     def tensor2video(self, frames):
@@ -172,18 +177,16 @@ class WanVideoPipeline(BasePipeline):
     
     
     def prepare_extra_input(self, latents=None):
-        return {"seq_len": latents.shape[2] * latents.shape[3] * latents.shape[4] // 4}
+        return {}
     
     
     def encode_video(self, input_video, tiled=True, tile_size=(34, 34), tile_stride=(18, 16)):
-        with torch.amp.autocast(dtype=torch.bfloat16, device_type=torch.device(self.device).type):
-            latents = self.vae.encode(input_video, device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+        latents = self.vae.encode(input_video, device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         return latents
     
     
     def decode_video(self, latents, tiled=True, tile_size=(34, 34), tile_stride=(18, 16)):
-        with torch.amp.autocast(dtype=torch.bfloat16, device_type=torch.device(self.device).type):
-            frames = self.vae.decode(latents, device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+        frames = self.vae.decode(latents, device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         return frames
 
 
@@ -202,25 +205,33 @@ class WanVideoPipeline(BasePipeline):
         num_frames=81,
         cfg_scale=5.0,
         num_inference_steps=50,
+        sigma_shift=5.0,
         tiled=True,
         tile_size=(30, 52),
         tile_stride=(15, 26),
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
     ):
+        # Parameter check
+        height, width = self.check_resize_height_width(height, width)
+        if num_frames % 4 != 1:
+            num_frames = (num_frames + 2) // 4 * 4 + 1
+            print(f"Only `num_frames % 4 != 1` is acceptable. We round it up to {num_frames}.")
+        
         # Tiler parameters
         tiler_kwargs = {"tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride}
 
         # Scheduler
-        self.scheduler.set_timesteps(num_inference_steps, denoising_strength)
+        self.scheduler.set_timesteps(num_inference_steps, denoising_strength, shift=sigma_shift)
 
         # Initialize noise
-        noise = self.generate_noise((1, 16, (num_frames - 1) // 4 + 1, height//8, width//8), seed=seed, device=rand_device, dtype=torch.float32).to(self.device)
+        noise = self.generate_noise((1, 16, (num_frames - 1) // 4 + 1, height//8, width//8), seed=seed, device=rand_device, dtype=torch.float32)
+        noise = noise.to(dtype=self.torch_dtype, device=self.device)
         if input_video is not None:
             self.load_models_to_device(['vae'])
             input_video = self.preprocess_images(input_video)
-            input_video = torch.stack(input_video, dim=2)
-            latents = self.encode_video(input_video, **tiler_kwargs).to(dtype=noise.dtype, device=noise.device)
+            input_video = torch.stack(input_video, dim=2).to(dtype=self.torch_dtype, device=self.device)
+            latents = self.encode_video(input_video, **tiler_kwargs).to(dtype=self.torch_dtype, device=self.device)
             latents = self.scheduler.add_noise(latents, noise, timestep=self.scheduler.timesteps[0])
         else:
             latents = noise
@@ -243,20 +254,19 @@ class WanVideoPipeline(BasePipeline):
 
         # Denoise
         self.load_models_to_device(["dit"])
-        with torch.amp.autocast(dtype=torch.bfloat16, device_type=torch.device(self.device).type):
-            for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
-                timestep = timestep.unsqueeze(0).to(dtype=torch.float32, device=self.device)
+        for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
+            timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
 
-                # Inference
-                noise_pred_posi = self.dit(latents, timestep=timestep, **prompt_emb_posi, **image_emb, **extra_input)
-                if cfg_scale != 1.0:
-                    noise_pred_nega = self.dit(latents, timestep=timestep, **prompt_emb_nega, **image_emb, **extra_input)
-                    noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
-                else:
-                    noise_pred = noise_pred_posi
+            # Inference
+            noise_pred_posi = self.dit(latents, timestep=timestep, **prompt_emb_posi, **image_emb, **extra_input)
+            if cfg_scale != 1.0:
+                noise_pred_nega = self.dit(latents, timestep=timestep, **prompt_emb_nega, **image_emb, **extra_input)
+                noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
+            else:
+                noise_pred = noise_pred_posi
 
-                # Scheduler
-                latents = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], latents)
+            # Scheduler
+            latents = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], latents)
 
         # Decode
         self.load_models_to_device(['vae'])

@@ -688,7 +688,7 @@ class WanVideoVAE(nn.Module):
                 target_w: target_w + hidden_states_batch.shape[4],
             ] += mask
         values = values / weight
-        values = values.float().clamp_(-1, 1)
+        values = values.clamp_(-1, 1)
         return values
 
 
@@ -740,20 +740,19 @@ class WanVideoVAE(nn.Module):
                 target_w: target_w + hidden_states_batch.shape[4],
             ] += mask
         values = values / weight
-        values = values.float()
         return values
 
 
     def single_encode(self, video, device):
         video = video.to(device)
         x = self.model.encode(video, self.scale)
-        return x.float()
+        return x
 
 
     def single_decode(self, hidden_state, device):
         hidden_state = hidden_state.to(device)
         video = self.model.decode(hidden_state, self.scale)
-        return video.float().clamp_(-1, 1)
+        return video.clamp_(-1, 1)
 
 
     def encode(self, videos, device, tiled=False, tile_size=(34, 34), tile_stride=(18, 16)):
@@ -785,6 +784,7 @@ class WanVideoVAE(nn.Module):
                 video = self.single_decode(hidden_state, device)
             video = video.squeeze(0)
             videos.append(video)
+        videos = torch.stack(videos)
         return videos
 
 

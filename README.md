@@ -43,7 +43,7 @@ Until now, DiffSynth Studio has supported the following models:
 
 - **December 31, 2024** We propose EliGen, a novel framework for precise entity-level controlled text-to-image generation, complemented by an inpainting fusion pipeline to extend its capabilities to image inpainting tasks. EliGen seamlessly integrates with existing community models, such as IP-Adapter and In-Context LoRA, enhancing its versatility. For more details, see [./examples/EntityControl](./examples/EntityControl/).
   - Paper: [EliGen: Entity-Level Controlled Image Generation with Regional Attention](https://arxiv.org/abs/2501.01097)
-  - Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen)
+  - Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen), [HuggingFace](https://huggingface.co/modelscope/EliGen)
   - Online Demo: [ModelScope EliGen Studio](https://www.modelscope.cn/studios/DiffSynth-Studio/EliGen)
   - Training Dataset: [EliGen Train Set](https://www.modelscope.cn/datasets/DiffSynth-Studio/EliGenTrainSet)
 
@@ -126,6 +126,13 @@ Or install from pypi (There is a delay in the update. If you want to experience 
 ```
 pip install diffsynth
 ```
+
+If you encounter issues during installation, it may be caused by the packages we depend on. Please refer to the documentation of the package that caused the problem.
+
+* [torch](https://pytorch.org/get-started/locally/)
+* [sentencepiece](https://github.com/google/sentencepiece)
+* [cmake](https://cmake.org)
+* [cupy](https://docs.cupy.dev/en/stable/install.html)
 
 ## Usage (in Python code)
 

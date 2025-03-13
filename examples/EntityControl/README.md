@@ -6,7 +6,7 @@ We propose EliGen, a novel approach that leverages fine-grained entity-level inf
 
 * Paper: [EliGen: Entity-Level Controlled Image Generation with Regional Attention](https://arxiv.org/abs/2501.01097)
 * Github: [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio)
-* Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen)
+* Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen), [HuggingFace](https://huggingface.co/modelscope/EliGen)
 * Online Demo: [ModelScope EliGen Studio](https://www.modelscope.cn/studios/DiffSynth-Studio/EliGen)
 * Training Dataset: [EliGen Train Set](https://www.modelscope.cn/datasets/DiffSynth-Studio/EliGenTrainSet)
 
@@ -76,6 +76,11 @@ Demonstration of the styled entity control results with EliGen and IP-Adapter, s
 |Style Reference|Entity Control Variance 1|Entity Control Variance 2|Entity Control Variance 3|
 |-|-|-|-|
 |![image_1_base](https://github.com/user-attachments/assets/5e2dd3ab-37d3-4f58-8e02-ee2f9b238604)|![result1](https://github.com/user-attachments/assets/0f6711a2-572a-41b3-938a-95deff6d732d)|![result2](https://github.com/user-attachments/assets/ce2e66e5-1fdf-44e8-bca7-555d805a50b1)|![result3](https://github.com/user-attachments/assets/ad2da233-2f7c-4065-ab57-b2d84dc2c0e2)|
+
+We also provide a demo of the styled entity control results with EliGen and specific styled lora, see [./styled_entity_control.py](./styled_entity_control.py) for details. Here is the visualization of EliGen with [Lego dreambooth lora](https://huggingface.co/merve/flux-lego-lora-dreambooth).
+|![image_1_base](https://github.com/user-attachments/assets/35fb60f5-48ef-4f22-95d8-f9e732a5f63f)|![result1](https://github.com/user-attachments/assets/441d700f-f0b1-40e0-8848-4db23520972c)|![result2](https://github.com/user-attachments/assets/c8fd4498-3c55-48ab-9abf-3a092a90c878)|![result3](https://github.com/user-attachments/assets/181ba2bb-62cf-41a8-9e3a-20ed8a7a672f)|
+|-|-|-|-|
+|![image_1_base](https://github.com/user-attachments/assets/70a3f578-8c7e-4b40-954d-8fc94d4f3ae9)|![result1](https://github.com/user-attachments/assets/65670717-6136-4594-84e5-2307fc20753d)|![result2](https://github.com/user-attachments/assets/5ec7a5bd-f2c9-4b2e-8a4e-d2655ec8036c)|![result3](https://github.com/user-attachments/assets/56f00192-9553-45a6-a971-511b9f5b1480)|
 
 ### Entity Transfer
 Demonstration of the entity transfer results with EliGen and In-Context LoRA, see [./entity_transfer.py](./entity_transfer.py) for generation prompts.
