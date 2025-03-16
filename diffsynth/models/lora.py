@@ -626,8 +626,10 @@ class GeneralLoRAFromPeft:
                     # Apply update directly to parameter
                     if param.dtype == torch.float8_e4m3fn:
                         param_float = param.to(torch.float32)
-                        param.data = (param_float + lora_weight).to(param.dtype)
-                        del param_float
+                        # Ensure both tensors are on the same device before addition
+                        lora_weight_device = lora_weight.to(device=param_float.device)
+                        param.data = (param_float + lora_weight_device).to(param.dtype)
+                        del param_float, lora_weight_device
                     else:
                         param.data += lora_weight.to(dtype=param.dtype, device=param.device)
                     
