@@ -37,7 +37,7 @@ class FlowMatchScheduler():
             self.linear_timesteps_weights = bsmntw_weighing
 
 
-    def step(self, model_output, timestep, sample, to_final=False):
+    def step(self, model_output, timestep, sample, to_final=False, **kwargs):
         if isinstance(timestep, torch.Tensor):
             timestep = timestep.cpu()
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
