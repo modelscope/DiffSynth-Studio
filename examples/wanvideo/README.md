@@ -49,6 +49,8 @@ We present a detailed table here. The model is tested on a single A100.
 
 https://github.com/user-attachments/assets/3908bc64-d451-485a-8b61-28f6d32dd92f
 
+Tensor parallel module of Wan-Video-14B-T2V is still under development. An example script is provided in [`./wan_14b_text_to_video_tensor_parallel.py`](./wan_14b_text_to_video_tensor_parallel.py).
+
 ### Wan-Video-14B-I2V
 
 Wan-Video-14B-I2V adds the functionality of image-to-video based on Wan-Video-14B-T2V. The model size remains the same, therefore the speed and VRAM requirements are also consistent. See [`./wan_14b_image_to_video.py`](./wan_14b_image_to_video.py).
