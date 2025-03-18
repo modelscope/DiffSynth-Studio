@@ -404,6 +404,12 @@ def parse_args():
         help="Number of frames.",
     )
     parser.add_argument(
+        "--target_fps",
+        type=int,
+        default=None,
+        help="Expected FPS for sampling frames.",
+    )
+    parser.add_argument(
         "--height",
         type=int,
         default=480,
