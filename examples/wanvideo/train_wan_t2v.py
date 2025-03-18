@@ -546,7 +546,8 @@ def data_process(args):
         num_frames=args.num_frames,
         height=args.height,
         width=args.width,
-        is_i2v=args.image_encoder_path is not None
+        is_i2v=args.image_encoder_path is not None,
+        target_fps=args.target_fps,
     )
     dataloader = torch.utils.data.DataLoader(
         dataset,
