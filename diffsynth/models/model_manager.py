@@ -1,4 +1,4 @@
-import os, torch, json, importlib
+import os, torch, json, importlib, gc
 from typing import List
 
 from .downloader import download_models, download_customized_models, Preset_model_id, Preset_model_website
@@ -107,6 +107,8 @@ def load_single_patch_model_from_single_file(state_dict, model_name, model_class
     model.load_state_dict(state_dict, strict=False)
     model.to(dtype=torch_dtype, device=device)
     return model
+
+
 
 
 def load_patch_model_from_single_file(state_dict, model_names, model_classes, extra_kwargs, model_manager, torch_dtype, device):
@@ -336,6 +338,19 @@ class ModelManager:
         ]
         self.load_models(downloaded_files + file_path_list)
 
+
+    def clear_models(self):
+            """Explicitly release loaded models."""
+            print("[ModelManager] Clearing loaded models.")
+            for model in self.model:
+                del model
+            self.model = []
+            self.model_path = []
+            self.model_name = []
+            gc.collect() # Force garbage collection after deleting models
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            print("[ModelManager] Models cleared.")
 
     def load_model_from_single_file(self, file_path="", state_dict={}, model_names=[], model_classes=[], model_resource=None):
         print(f"Loading models from file: {file_path}")
