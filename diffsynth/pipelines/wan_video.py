@@ -214,6 +214,7 @@ class WanVideoPipeline(BasePipeline):
         tea_cache_model_id="",
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
+        cancel_fn=None  # new cancel_fn parameter
     ):
         # Parameter check
         height, width = self.check_resize_height_width(height, width)
@@ -262,6 +263,11 @@ class WanVideoPipeline(BasePipeline):
         # Denoise
         self.load_models_to_device(["dit"])
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
+            # Check for cancellation on each timestep
+            if cancel_fn is not None and cancel_fn():
+                print("[CMD] Video generation cancelled by user mid-run.")
+                self.load_models_to_device([])
+                return []
             timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
 
             # Inference
