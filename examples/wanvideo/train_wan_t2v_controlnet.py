@@ -8,16 +8,16 @@ from peft import LoraConfig, inject_adapter_in_model
 import torchvision
 from PIL import Image
 import numpy as np
+from diffsynth.models.wan_video_controlnet import WanControlNetModel
+from diffsynth.pipelines.wan_video import model_fn_wan_video
 
 
 
 class TextVideoDataset(torch.utils.data.Dataset):
     def __init__(self, base_path, metadata_path, max_num_frames=81, frame_interval=1, num_frames=81, height=480, width=832, is_i2v=False, target_fps=None):
         metadata = pd.read_csv(metadata_path)
-        if os.path.exists(os.path.join(base_path, "train")):
-            self.path = [os.path.join(base_path, "train", file_name) for file_name in metadata["file_name"]]
-        else:
-            self.path = [os.path.join(base_path, file_name) for file_name in metadata["file_name"]]
+        self.path = [os.path.join(base_path, "train", file_name) for file_name in metadata["file_name"]]
+        self.controlnet_path = [os.path.join(base_path, file_name) for file_name in metadata["controlnet_file_name"]]
         self.text = metadata["text"].to_list()
         
         self.max_num_frames = max_num_frames
@@ -97,7 +97,6 @@ class TextVideoDataset(torch.utils.data.Dataset):
     def load_image(self, file_path):
         frame = Image.open(file_path).convert("RGB")
         frame = self.crop_and_resize(frame)
-        first_frame = frame
         frame = self.frame_process(frame)
         frame = rearrange(frame, "C H W -> C 1 H W")
         return frame
@@ -106,6 +105,7 @@ class TextVideoDataset(torch.utils.data.Dataset):
     def __getitem__(self, data_id):
         text = self.text[data_id]
         path = self.path[data_id]
+        controlnet_path = self.controlnet_path[data_id]
         try:
             if self.is_image(path):
                 if self.is_i2v:
@@ -113,11 +113,12 @@ class TextVideoDataset(torch.utils.data.Dataset):
                 video = self.load_image(path)
             else:
                 video = self.load_video(path)
+                controlnet_frames = self.load_video(controlnet_path)
             if self.is_i2v:
                 video, first_frame = video
                 data = {"text": text, "video": video, "path": path, "first_frame": first_frame}
             else:
-                data = {"text": text, "video": video, "path": path}
+                data = {"text": text, "video": video, "path": path, "controlnet_frames": controlnet_frames}
         except:
             data = None
         return data
@@ -146,6 +147,7 @@ class LightningModelForDataProcess(pl.LightningModule):
         if data is None or data["video"] is None:
             return
         text, video, path = data["text"], data["video"].unsqueeze(0), data["path"]
+        controlnet_frames = data["controlnet_frames"].unsqueeze(0)
         
         self.pipe.device = self.device
         if video is not None:
@@ -154,6 +156,10 @@ class LightningModelForDataProcess(pl.LightningModule):
             # video
             video = video.to(dtype=self.pipe.torch_dtype, device=self.pipe.device)
             latents = self.pipe.encode_video(video, **self.tiler_kwargs)[0]
+            # ControlNet video
+            controlnet_frames = controlnet_frames.to(dtype=self.pipe.torch_dtype, device=self.pipe.device)
+            controlnet_kwargs = self.pipe.prepare_controlnet(controlnet_frames, **self.tiler_kwargs)
+            controlnet_kwargs["controlnet_conditioning"] = controlnet_kwargs["controlnet_conditioning"][0]
             # image
             if "first_frame" in batch:
                 first_frame = Image.fromarray(batch["first_frame"][0].cpu().numpy())
@@ -161,7 +167,7 @@ class LightningModelForDataProcess(pl.LightningModule):
                 image_emb = self.pipe.encode_image(first_frame, num_frames, height, width)
             else:
                 image_emb = {}
-            data = {"latents": latents, "prompt_emb": prompt_emb, "image_emb": image_emb}
+            data = {"latents": latents, "prompt_emb": prompt_emb, "image_emb": image_emb, "controlnet_kwargs": controlnet_kwargs}
             if self.redirected_tensor_path is not None:
                 path = path.replace("/", "_").replace("\\", "_")
                 path = os.path.join(self.redirected_tensor_path, path)
@@ -232,17 +238,13 @@ class LightningModelForTrain(pl.LightningModule):
         self.pipe = WanVideoPipeline.from_model_manager(model_manager)
         self.pipe.scheduler.set_timesteps(1000, training=True)
         self.freeze_parameters()
-        if train_architecture == "lora":
-            self.add_lora_to_model(
-                self.pipe.denoising_model(),
-                lora_rank=lora_rank,
-                lora_alpha=lora_alpha,
-                lora_target_modules=lora_target_modules,
-                init_lora_weights=init_lora_weights,
-                pretrained_lora_path=pretrained_lora_path,
-            )
-        else:
-            self.pipe.denoising_model().requires_grad_(True)
+        
+        state_dict = load_state_dict(dit_path, torch_dtype=torch.bfloat16)
+        state_dict, config = WanControlNetModel.state_dict_converter().from_base_model(state_dict)
+        self.pipe.controlnet = WanControlNetModel(**config).to(torch.bfloat16)
+        self.pipe.controlnet.load_state_dict(state_dict)
+        self.pipe.controlnet.train()
+        self.pipe.controlnet.requires_grad_(True)
         
         self.learning_rate = learning_rate
         self.use_gradient_checkpointing = use_gradient_checkpointing
@@ -254,41 +256,13 @@ class LightningModelForTrain(pl.LightningModule):
         self.pipe.requires_grad_(False)
         self.pipe.eval()
         self.pipe.denoising_model().train()
-        
-        
-    def add_lora_to_model(self, model, lora_rank=4, lora_alpha=4, lora_target_modules="q,k,v,o,ffn.0,ffn.2", init_lora_weights="kaiming", pretrained_lora_path=None, state_dict_converter=None):
-        # Add LoRA to UNet
-        self.lora_alpha = lora_alpha
-        if init_lora_weights == "kaiming":
-            init_lora_weights = True
-            
-        lora_config = LoraConfig(
-            r=lora_rank,
-            lora_alpha=lora_alpha,
-            init_lora_weights=init_lora_weights,
-            target_modules=lora_target_modules.split(","),
-        )
-        model = inject_adapter_in_model(lora_config, model)
-        for param in model.parameters():
-            # Upcast LoRA parameters into fp32
-            if param.requires_grad:
-                param.data = param.to(torch.float32)
-                
-        # Lora pretrained lora weights
-        if pretrained_lora_path is not None:
-            state_dict = load_state_dict(pretrained_lora_path)
-            if state_dict_converter is not None:
-                state_dict = state_dict_converter(state_dict)
-            missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-            all_keys = [i for i, _ in model.named_parameters()]
-            num_updated_keys = len(all_keys) - len(missing_keys)
-            num_unexpected_keys = len(unexpected_keys)
-            print(f"{num_updated_keys} parameters are loaded from {pretrained_lora_path}. {num_unexpected_keys} parameters are unexpected.")
-    
+
 
     def training_step(self, batch, batch_idx):
         # Data
         latents = batch["latents"].to(self.device)
+        controlnet_kwargs = batch["controlnet_kwargs"]
+        controlnet_kwargs["controlnet_conditioning"] = controlnet_kwargs["controlnet_conditioning"].to(self.device)
         prompt_emb = batch["prompt_emb"]
         prompt_emb["context"] = prompt_emb["context"][0].to(self.device)
         image_emb = batch["image_emb"]
@@ -307,8 +281,9 @@ class LightningModelForTrain(pl.LightningModule):
         training_target = self.pipe.scheduler.training_target(latents, noise, timestep)
 
         # Compute loss
-        noise_pred = self.pipe.denoising_model()(
-            noisy_latents, timestep=timestep, **prompt_emb, **extra_input, **image_emb,
+        noise_pred = model_fn_wan_video(
+            dit=self.pipe.dit, controlnet=self.pipe.controlnet,
+            x=noisy_latents, timestep=timestep, **prompt_emb, **extra_input, **image_emb, **controlnet_kwargs,
             use_gradient_checkpointing=self.use_gradient_checkpointing,
             use_gradient_checkpointing_offload=self.use_gradient_checkpointing_offload
         )
@@ -321,16 +296,16 @@ class LightningModelForTrain(pl.LightningModule):
 
 
     def configure_optimizers(self):
-        trainable_modules = filter(lambda p: p.requires_grad, self.pipe.denoising_model().parameters())
+        trainable_modules = filter(lambda p: p.requires_grad, self.pipe.controlnet.parameters())
         optimizer = torch.optim.AdamW(trainable_modules, lr=self.learning_rate)
         return optimizer
     
 
     def on_save_checkpoint(self, checkpoint):
         checkpoint.clear()
-        trainable_param_names = list(filter(lambda named_param: named_param[1].requires_grad, self.pipe.denoising_model().named_parameters()))
+        trainable_param_names = list(filter(lambda named_param: named_param[1].requires_grad, self.pipe.controlnet.named_parameters()))
         trainable_param_names = set([named_param[0] for named_param in trainable_param_names])
-        state_dict = self.pipe.denoising_model().state_dict()
+        state_dict = self.pipe.controlnet.state_dict()
         lora_state_dict = {}
         for name, param in state_dict.items():
             if name in trainable_param_names:

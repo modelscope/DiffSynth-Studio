@@ -17,6 +17,7 @@ from ..vram_management import enable_vram_management, AutoWrappedModule, AutoWra
 from ..models.wan_video_text_encoder import T5RelativeEmbedding, T5LayerNorm
 from ..models.wan_video_dit import RMSNorm, sinusoidal_embedding_1d
 from ..models.wan_video_vae import RMS_norm, CausalConv3d, Upsample
+from ..models.wan_video_controlnet import WanControlNetModel
 
 
 
@@ -30,7 +31,8 @@ class WanVideoPipeline(BasePipeline):
         self.image_encoder: WanImageEncoder = None
         self.dit: WanModel = None
         self.vae: WanVideoVAE = None
-        self.model_names = ['text_encoder', 'dit', 'vae']
+        self.controlnet: WanControlNetModel = None
+        self.model_names = ['text_encoder', 'dit', 'vae', 'image_encoder', 'controlnet']
         self.height_division_factor = 16
         self.width_division_factor = 16
 
@@ -189,6 +191,11 @@ class WanVideoPipeline(BasePipeline):
     def decode_video(self, latents, tiled=True, tile_size=(34, 34), tile_stride=(18, 16)):
         frames = self.vae.decode(latents, device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         return frames
+    
+    
+    def prepare_controlnet(self, controlnet_frames, tiled=True, tile_size=(34, 34), tile_stride=(18, 16)):
+        controlnet_conditioning = self.encode_video(controlnet_frames, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=self.torch_dtype, device=self.device)
+        return {"controlnet_conditioning": controlnet_conditioning}
 
 
     @torch.no_grad()
@@ -212,6 +219,7 @@ class WanVideoPipeline(BasePipeline):
         tile_stride=(15, 26),
         tea_cache_l1_thresh=None,
         tea_cache_model_id="",
+        controlnet_frames=None,
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
     ):
@@ -252,6 +260,15 @@ class WanVideoPipeline(BasePipeline):
         else:
             image_emb = {}
             
+        # ControlNet
+        if self.controlnet is not None and controlnet_frames is not None:
+            self.load_models_to_device(['vae', 'controlnet'])
+            controlnet_frames = self.preprocess_images(controlnet_frames)
+            controlnet_frames = torch.stack(controlnet_frames, dim=2).to(dtype=self.torch_dtype, device=self.device)
+            controlnet_kwargs = self.prepare_controlnet(controlnet_frames)
+        else:
+            controlnet_kwargs = {}
+            
         # Extra input
         extra_input = self.prepare_extra_input(latents)
         
@@ -260,14 +277,24 @@ class WanVideoPipeline(BasePipeline):
         tea_cache_nega = {"tea_cache": TeaCache(num_inference_steps, rel_l1_thresh=tea_cache_l1_thresh, model_id=tea_cache_model_id) if tea_cache_l1_thresh is not None else None}
 
         # Denoise
-        self.load_models_to_device(["dit"])
+        self.load_models_to_device(["dit", "controlnet"])
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
 
             # Inference
-            noise_pred_posi = model_fn_wan_video(self.dit, latents, timestep=timestep, **prompt_emb_posi, **image_emb, **extra_input, **tea_cache_posi)
+            noise_pred_posi = model_fn_wan_video(
+                self.dit, controlnet=self.controlnet,
+                x=latents, timestep=timestep,
+                **prompt_emb_posi, **image_emb, **extra_input,
+                **tea_cache_posi, **controlnet_kwargs
+            )
             if cfg_scale != 1.0:
-                noise_pred_nega = model_fn_wan_video(self.dit, latents, timestep=timestep, **prompt_emb_nega, **image_emb, **extra_input, **tea_cache_nega)
+                noise_pred_nega = model_fn_wan_video(
+                    self.dit, controlnet=self.controlnet,
+                    x=latents, timestep=timestep,
+                    **prompt_emb_nega, **image_emb, **extra_input,
+                    **tea_cache_nega, **controlnet_kwargs
+                )
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
             else:
                 noise_pred = noise_pred_posi
@@ -340,14 +367,29 @@ class TeaCache:
 
 def model_fn_wan_video(
     dit: WanModel,
-    x: torch.Tensor,
-    timestep: torch.Tensor,
-    context: torch.Tensor,
+    controlnet: WanControlNetModel = None,
+    x: torch.Tensor = None,
+    timestep: torch.Tensor = None,
+    context: torch.Tensor = None,
     clip_feature: Optional[torch.Tensor] = None,
     y: Optional[torch.Tensor] = None,
     tea_cache: TeaCache = None,
+    controlnet_conditioning: Optional[torch.Tensor] = None,
+    use_gradient_checkpointing: bool = False,
+    use_gradient_checkpointing_offload: bool = False,
     **kwargs,
 ):
+    # ControlNet
+    if controlnet is not None and controlnet_conditioning is not None:
+        controlnet_res_stack = controlnet(
+            x, timestep=timestep, context=context, clip_feature=clip_feature, y=y,
+            controlnet_conditioning=controlnet_conditioning,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+        )
+    else:
+        controlnet_res_stack = None
+    
     t = dit.time_embedding(sinusoidal_embedding_1d(dit.freq_dim, timestep))
     t_mod = dit.time_projection(t).unflatten(1, (6, dit.dim))
     context = dit.text_embedding(context)
@@ -370,13 +412,35 @@ def model_fn_wan_video(
         tea_cache_update = tea_cache.check(dit, x, t_mod)
     else:
         tea_cache_update = False
+        
+    def create_custom_forward(module):
+        def custom_forward(*inputs):
+            return module(*inputs)
+        return custom_forward
     
     if tea_cache_update:
         x = tea_cache.update(x)
     else:
         # blocks
-        for block in dit.blocks:
-            x = block(x, context, t_mod, freqs)
+        for block_id, block in enumerate(dit.blocks):
+            if dit.training and use_gradient_checkpointing:
+                if use_gradient_checkpointing_offload:
+                    with torch.autograd.graph.save_on_cpu():
+                        x = torch.utils.checkpoint.checkpoint(
+                            create_custom_forward(block),
+                            x, context, t_mod, freqs,
+                            use_reentrant=False,
+                        )
+                else:
+                    x = torch.utils.checkpoint.checkpoint(
+                        create_custom_forward(block),
+                        x, context, t_mod, freqs,
+                        use_reentrant=False,
+                    )
+            else:
+                x = block(x, context, t_mod, freqs)
+            if controlnet_res_stack is not None:
+                x = x + controlnet_res_stack[block_id]
         if tea_cache is not None:
             tea_cache.store(x)
 
