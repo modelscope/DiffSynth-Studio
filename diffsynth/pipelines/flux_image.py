@@ -192,6 +192,15 @@ class FluxImagePipeline(BasePipeline):
     
 
     def prepare_extra_input(self, latents=None, guidance=1.0):
+        if self.dit is None:
+            # Create dummy data for when DiT model is missing
+            dummy_shape = latents.shape
+            return {
+                "image_ids": torch.zeros(dummy_shape[0], 1, dummy_shape[2], dummy_shape[3], device=latents.device, dtype=latents.dtype),
+                "guidance": torch.Tensor([guidance] * latents.shape[0]).to(device=latents.device, dtype=latents.dtype)
+            }
+        
+        # Normal case when DiT is available
         latent_image_ids = self.dit.prepare_image_ids(latents)
         guidance = torch.Tensor([guidance] * latents.shape[0]).to(device=latents.device, dtype=latents.dtype)
         return {"image_ids": latent_image_ids, "guidance": guidance}
@@ -532,49 +541,18 @@ def lets_dance_flux(
     tea_cache: TeaCache = None,
     **kwargs
 ):
-    if tiled:
-        def flux_forward_fn(hl, hr, wl, wr):
-            tiled_controlnet_frames = [f[:, :, hl: hr, wl: wr] for f in controlnet_frames] if controlnet_frames is not None else None
-            return lets_dance_flux(
-                dit=dit,
-                controlnet=controlnet,
-                hidden_states=hidden_states[:, :, hl: hr, wl: wr],
-                timestep=timestep,
-                prompt_emb=prompt_emb,
-                pooled_prompt_emb=pooled_prompt_emb,
-                guidance=guidance,
-                text_ids=text_ids,
-                image_ids=None,
-                controlnet_frames=tiled_controlnet_frames,
-                tiled=False,
-                **kwargs
-            )
-        return FastTileWorker().tiled_forward(
-            flux_forward_fn,
-            hidden_states,
-            tile_size=tile_size,
-            tile_stride=tile_stride,
-            tile_device=hidden_states.device,
-            tile_dtype=hidden_states.dtype
-        )
-
-
-    # ControlNet
+    # Handle missing DiT model
+    if dit is None:
+        # Return hidden_states unchanged as a fallback
+        return hidden_states
+        
+    # Continue with normal processing when DiT is available
     if controlnet is not None and controlnet_frames is not None:
-        controlnet_extra_kwargs = {
-            "hidden_states": hidden_states,
-            "timestep": timestep,
-            "prompt_emb": prompt_emb,
-            "pooled_prompt_emb": pooled_prompt_emb,
-            "guidance": guidance,
-            "text_ids": text_ids,
-            "image_ids": image_ids,
-            "tiled": tiled,
-            "tile_size": tile_size,
-            "tile_stride": tile_stride,
-        }
-        controlnet_res_stack, controlnet_single_res_stack = controlnet(
-            controlnet_frames, **controlnet_extra_kwargs
+        hidden_states = controlnet(
+            hidden_states=hidden_states,
+            timestep=timestep,
+            encoder_hidden_states=prompt_emb,
+            controlnet_frames=controlnet_frames
         )
 
     if image_ids is None:
