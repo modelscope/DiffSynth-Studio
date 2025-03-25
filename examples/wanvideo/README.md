@@ -49,6 +49,20 @@ We present a detailed table here. The model is tested on a single A100.
 
 https://github.com/user-attachments/assets/3908bc64-d451-485a-8b61-28f6d32dd92f
 
+### Parallel Inference
+
+1. Unified Sequence Parallel (USP)
+
+```bash
+pip install xfuser>=0.4.3
+```
+
+```bash
+torchrun --standalone --nproc_per_node=8 examples/wanvideo/wan_14b_text_to_video_usp.py
+```
+
+2. Tensor Parallel
+
 Tensor parallel module of Wan-Video-14B-T2V is still under development. An example script is provided in [`./wan_14b_text_to_video_tensor_parallel.py`](./wan_14b_text_to_video_tensor_parallel.py).
 
 ### Wan-Video-14B-I2V
