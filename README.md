@@ -13,9 +13,15 @@ Document: https://diffsynth-studio.readthedocs.io/zh-cn/latest/index.html
 
 ## Introduction
 
-DiffSynth Studio is a Diffusion engine. We have restructured architectures including Text Encoder, UNet, VAE, among others, maintaining compatibility with models from the open-source community while enhancing computational performance. We provide many interesting features. Enjoy the magic of Diffusion models!
+Welcome to the magic world of Diffusion models!
 
-Until now, DiffSynth Studio has supported the following models:
+DiffSynth consists of two open-source projects:
+* [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio): Focused on aggressive technological exploration. Targeted at academia. Provides more cutting-edge technical support and novel inference capabilities.
+* [DiffSynth-Engine](https://github.com/modelscope/DiffSynth-Engine): Focused on stable model deployment. Geared towards industry. Offers better engineering support, higher computational performance, and more stable functionality.
+
+DiffSynth-Studio is an open-source project aimed at exploring innovations in AIGC technology. We have integrated numerous open-source Diffusion models, including FLUX and Wan, among others. Through this open-source project, we hope to connect models within the open-source community and explore new technologies based on diffusion models.
+
+Until now, DiffSynth-Studio has supported the following models:
 
 * [Wan-Video](https://github.com/Wan-Video/Wan2.1)
 * [StepVideo](https://github.com/stepfun-ai/Step-Video-T2V)
@@ -36,7 +42,9 @@ Until now, DiffSynth Studio has supported the following models:
 * [Stable Diffusion](https://huggingface.co/runwayml/stable-diffusion-v1-5)
 
 ## News
-- **March 25, 2025** We support HunyuanVideo-I2V, the image-to-video generation version of HunyuanVideo open-sourced by Tencent. Please refer to [./examples/HunyuanVideo/](./examples/HunyuanVideo/) for more details.
+- **March 25, 2025** 🔥🔥🔥 Our new open-source project, [DiffSynth-Engine](https://github.com/modelscope/DiffSynth-Engine), is now open-sourced! Focused on stable model deployment. Geared towards industry. Offers better engineering support, higher computational performance, and more stable functionality.
+
+- **March 13, 2025** We support HunyuanVideo-I2V, the image-to-video generation version of HunyuanVideo open-sourced by Tencent. Please refer to [./examples/HunyuanVideo/](./examples/HunyuanVideo/) for more details.
 
 - **February 25, 2025** We support Wan-Video, a collection of SOTA video synthesis models open-sourced by Alibaba. See [./examples/wanvideo/](./examples/wanvideo/).
 
@@ -73,7 +81,7 @@ Until now, DiffSynth Studio has supported the following models:
   - Enable CFG and highres-fix to improve visual quality. See [here](/examples/image_synthesis/README.md)
   - LoRA, ControlNet, and additional models will be available soon.
 
-- **June 21, 2024.** 🔥🔥🔥 We propose ExVideo, a post-tuning technique aimed at enhancing the capability of video generation models. We have extended Stable Video Diffusion to achieve the generation of long videos up to 128 frames.
+- **June 21, 2024.** We propose ExVideo, a post-tuning technique aimed at enhancing the capability of video generation models. We have extended Stable Video Diffusion to achieve the generation of long videos up to 128 frames.
   - [Project Page](https://ecnu-cilab.github.io/ExVideoProjectPage/)
   - Source code is released in this repo. See [`examples/ExVideo`](./examples/ExVideo/).
   - Models are released on [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1) and [ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-SVD-128f-v1).
