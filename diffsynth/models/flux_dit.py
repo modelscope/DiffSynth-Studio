@@ -41,6 +41,30 @@ class RoPEEmbedding(torch.nn.Module):
         emb = torch.cat([self.rope(ids[..., i], self.axes_dim[i], self.theta) for i in range(n_axes)], dim=-3)
         return emb.unsqueeze(1)
 
+class AdaLayerNorm(torch.nn.Module):
+    def __init__(self, dim, single=False, dual=False):
+        super().__init__()
+        self.single = single
+        self.dual = dual
+        self.linear = torch.nn.Linear(dim, dim * [[6, 2][single], 9][dual])
+        self.norm = torch.nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
+
+    def forward(self, x, emb, **kwargs):
+        emb = self.linear(torch.nn.functional.silu(emb),**kwargs)
+        if self.single:
+            scale, shift = emb.unsqueeze(1).chunk(2, dim=2)
+            x = self.norm(x) * (1 + scale) + shift
+            return x
+        elif self.dual:
+            shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp, shift_msa2, scale_msa2, gate_msa2 = emb.unsqueeze(1).chunk(9, dim=2)
+            norm_x = self.norm(x)
+            x = norm_x * (1 + scale_msa) + shift_msa
+            norm_x2 = norm_x * (1 + scale_msa2) + shift_msa2
+            return x, gate_msa, shift_mlp, scale_mlp, gate_mlp, norm_x2, gate_msa2
+        else:
+            shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = emb.unsqueeze(1).chunk(6, dim=2)
+            x = self.norm(x) * (1 + scale_msa) + shift_msa
+            return x, gate_msa, shift_mlp, scale_mlp, gate_mlp
 
 
 class FluxJointAttention(torch.nn.Module):
@@ -70,17 +94,17 @@ class FluxJointAttention(torch.nn.Module):
         xk_out = freqs_cis[..., 0] * xk_[..., 0] + freqs_cis[..., 1] * xk_[..., 1]
         return xq_out.reshape(*xq.shape).type_as(xq), xk_out.reshape(*xk.shape).type_as(xk)
 
-    def forward(self, hidden_states_a, hidden_states_b, image_rotary_emb, attn_mask=None, ipadapter_kwargs_list=None):
+    def forward(self, hidden_states_a, hidden_states_b, image_rotary_emb, attn_mask=None, ipadapter_kwargs_list=None, **kwargs):
         batch_size = hidden_states_a.shape[0]
 
         # Part A
-        qkv_a = self.a_to_qkv(hidden_states_a)
+        qkv_a = self.a_to_qkv(hidden_states_a,**kwargs)
         qkv_a = qkv_a.view(batch_size, -1, 3 * self.num_heads, self.head_dim).transpose(1, 2)
         q_a, k_a, v_a = qkv_a.chunk(3, dim=1)
         q_a, k_a = self.norm_q_a(q_a), self.norm_k_a(k_a)
 
         # Part B
-        qkv_b = self.b_to_qkv(hidden_states_b)
+        qkv_b = self.b_to_qkv(hidden_states_b,**kwargs)
         qkv_b = qkv_b.view(batch_size, -1, 3 * self.num_heads, self.head_dim).transpose(1, 2)
         q_b, k_b, v_b = qkv_b.chunk(3, dim=1)
         q_b, k_b = self.norm_q_b(q_b), self.norm_k_b(k_b)
@@ -97,13 +121,25 @@ class FluxJointAttention(torch.nn.Module):
         hidden_states_b, hidden_states_a = hidden_states[:, :hidden_states_b.shape[1]], hidden_states[:, hidden_states_b.shape[1]:]
         if ipadapter_kwargs_list is not None:
             hidden_states_a = interact_with_ipadapter(hidden_states_a, q_a, **ipadapter_kwargs_list)
-        hidden_states_a = self.a_to_out(hidden_states_a)
+        hidden_states_a = self.a_to_out(hidden_states_a,**kwargs)
         if self.only_out_a:
             return hidden_states_a
         else:
-            hidden_states_b = self.b_to_out(hidden_states_b)
+            hidden_states_b = self.b_to_out(hidden_states_b,**kwargs)
             return hidden_states_a, hidden_states_b
 
+class AutoSequential(torch.nn.Sequential):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    def forward(self, input, **kwargs):
+        for module in self:
+            
+            if isinstance(module, torch.nn.Linear):
+                # print("##"*10)
+                input = module(input, **kwargs)
+            else:
+                input = module(input)
+        return input
 
 
 class FluxJointTransformerBlock(torch.nn.Module):
@@ -120,6 +156,11 @@ class FluxJointTransformerBlock(torch.nn.Module):
             torch.nn.GELU(approximate="tanh"),
             torch.nn.Linear(dim*4, dim)
         )
+        # self.ff_a = AutoSequential(
+        #     torch.nn.Linear(dim, dim*4),
+        #     torch.nn.GELU(approximate="tanh"),
+        #     torch.nn.Linear(dim*4, dim)
+        # )
 
         self.norm2_b = torch.nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
         self.ff_b = torch.nn.Sequential(
@@ -127,14 +168,18 @@ class FluxJointTransformerBlock(torch.nn.Module):
             torch.nn.GELU(approximate="tanh"),
             torch.nn.Linear(dim*4, dim)
         )
+        # self.ff_b = AutoSequential(
+        #     torch.nn.Linear(dim, dim*4),
+        #     torch.nn.GELU(approximate="tanh"),
+        #     torch.nn.Linear(dim*4, dim)
+        # )
 
-
-    def forward(self, hidden_states_a, hidden_states_b, temb, image_rotary_emb, attn_mask=None, ipadapter_kwargs_list=None):
-        norm_hidden_states_a, gate_msa_a, shift_mlp_a, scale_mlp_a, gate_mlp_a = self.norm1_a(hidden_states_a, emb=temb)
-        norm_hidden_states_b, gate_msa_b, shift_mlp_b, scale_mlp_b, gate_mlp_b = self.norm1_b(hidden_states_b, emb=temb)
+    def forward(self, hidden_states_a, hidden_states_b, temb, image_rotary_emb, attn_mask=None, ipadapter_kwargs_list=None, **kwargs):
+        norm_hidden_states_a, gate_msa_a, shift_mlp_a, scale_mlp_a, gate_mlp_a = self.norm1_a(hidden_states_a, emb=temb, **kwargs)
+        norm_hidden_states_b, gate_msa_b, shift_mlp_b, scale_mlp_b, gate_mlp_b = self.norm1_b(hidden_states_b, emb=temb, **kwargs)
 
         # Attention
-        attn_output_a, attn_output_b = self.attn(norm_hidden_states_a, norm_hidden_states_b, image_rotary_emb, attn_mask, ipadapter_kwargs_list)
+        attn_output_a, attn_output_b = self.attn(norm_hidden_states_a, norm_hidden_states_b, image_rotary_emb, attn_mask, ipadapter_kwargs_list, **kwargs)
 
         # Part A
         hidden_states_a = hidden_states_a + gate_msa_a * attn_output_a
@@ -147,7 +192,6 @@ class FluxJointTransformerBlock(torch.nn.Module):
         hidden_states_b = hidden_states_b + gate_mlp_b * self.ff_b(norm_hidden_states_b)
 
         return hidden_states_a, hidden_states_b
-
 
 
 class FluxSingleAttention(torch.nn.Module):
@@ -170,10 +214,10 @@ class FluxSingleAttention(torch.nn.Module):
         return xq_out.reshape(*xq.shape).type_as(xq), xk_out.reshape(*xk.shape).type_as(xk)
 
 
-    def forward(self, hidden_states, image_rotary_emb):
+    def forward(self, hidden_states, image_rotary_emb, **kwargs):
         batch_size = hidden_states.shape[0]
 
-        qkv_a = self.a_to_qkv(hidden_states)
+        qkv_a = self.a_to_qkv(hidden_states,**kwargs)
         qkv_a = qkv_a.view(batch_size, -1, 3 * self.num_heads, self.head_dim).transpose(1, 2)
         q_a, k_a, v = qkv_a.chunk(3, dim=1)
         q_a, k_a = self.norm_q_a(q_a), self.norm_k_a(k_a)
@@ -195,8 +239,8 @@ class AdaLayerNormSingle(torch.nn.Module):
         self.norm = torch.nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
 
 
-    def forward(self, x, emb):
-        emb = self.linear(self.silu(emb))
+    def forward(self, x, emb, **kwargs):
+        emb = self.linear(self.silu(emb),**kwargs)
         shift_msa, scale_msa, gate_msa = emb.chunk(3, dim=1)
         x = self.norm(x) * (1 + scale_msa[:, None]) + shift_msa[:, None]
         return x, gate_msa
@@ -226,7 +270,7 @@ class FluxSingleTransformerBlock(torch.nn.Module):
         return xq_out.reshape(*xq.shape).type_as(xq), xk_out.reshape(*xk.shape).type_as(xk)
 
 
-    def process_attention(self, hidden_states, image_rotary_emb, attn_mask=None, ipadapter_kwargs_list=None):
+    def process_attention(self, hidden_states, image_rotary_emb, attn_mask=None, ipadapter_kwargs_list=None, **kwargs):
         batch_size = hidden_states.shape[0]
 
         qkv = hidden_states.view(batch_size, -1, 3 * self.num_heads, self.head_dim).transpose(1, 2)
@@ -243,17 +287,17 @@ class FluxSingleTransformerBlock(torch.nn.Module):
         return hidden_states
 
 
-    def forward(self, hidden_states_a, hidden_states_b, temb, image_rotary_emb, attn_mask=None, ipadapter_kwargs_list=None):
+    def forward(self, hidden_states_a, hidden_states_b, temb, image_rotary_emb, attn_mask=None, ipadapter_kwargs_list=None, **kwargs):
         residual = hidden_states_a
-        norm_hidden_states, gate = self.norm(hidden_states_a, emb=temb)
-        hidden_states_a = self.to_qkv_mlp(norm_hidden_states)
+        norm_hidden_states, gate = self.norm(hidden_states_a, emb=temb, **kwargs)
+        hidden_states_a = self.to_qkv_mlp(norm_hidden_states, **kwargs)
         attn_output, mlp_hidden_states = hidden_states_a[:, :, :self.dim * 3], hidden_states_a[:, :, self.dim * 3:]
 
-        attn_output = self.process_attention(attn_output, image_rotary_emb, attn_mask, ipadapter_kwargs_list)
+        attn_output = self.process_attention(attn_output, image_rotary_emb, attn_mask, ipadapter_kwargs_list, **kwargs)
         mlp_hidden_states = torch.nn.functional.gelu(mlp_hidden_states, approximate="tanh")
 
         hidden_states_a = torch.cat([attn_output, mlp_hidden_states], dim=2)
-        hidden_states_a = gate.unsqueeze(1) * self.proj_out(hidden_states_a)
+        hidden_states_a = gate.unsqueeze(1) * self.proj_out(hidden_states_a, **kwargs)
         hidden_states_a = residual + hidden_states_a
 
         return hidden_states_a, hidden_states_b
@@ -267,12 +311,11 @@ class AdaLayerNormContinuous(torch.nn.Module):
         self.linear = torch.nn.Linear(dim, dim * 2, bias=True)
         self.norm = torch.nn.LayerNorm(dim, eps=1e-6, elementwise_affine=False)
 
-    def forward(self, x, conditioning):
-        emb = self.linear(self.silu(conditioning))
+    def forward(self, x, conditioning, **kwargs):
+        emb = self.linear(self.silu(conditioning),**kwargs)
         scale, shift = torch.chunk(emb, 2, dim=1)
         x = self.norm(x) * (1 + scale)[:, None] + shift[:, None]
         return x
-
 
 
 class FluxDiT(torch.nn.Module):
@@ -282,6 +325,8 @@ class FluxDiT(torch.nn.Module):
         self.time_embedder = TimestepEmbeddings(256, 3072)
         self.guidance_embedder = None if disable_guidance_embedder else TimestepEmbeddings(256, 3072)
         self.pooled_text_embedder = torch.nn.Sequential(torch.nn.Linear(768, 3072), torch.nn.SiLU(), torch.nn.Linear(3072, 3072))
+        
+        # self.pooled_text_embedder = AutoSequential(torch.nn.Linear(768, 3072), torch.nn.SiLU(), torch.nn.Linear(3072, 3072))
         self.context_embedder = torch.nn.Linear(4096, 3072)
         self.x_embedder = torch.nn.Linear(64, 3072)
 
@@ -428,12 +473,12 @@ class FluxDiT(torch.nn.Module):
 
         height, width = hidden_states.shape[-2:]
         hidden_states = self.patchify(hidden_states)
-        hidden_states = self.x_embedder(hidden_states)
+        hidden_states = self.x_embedder(hidden_states,**kwargs)
 
         if entity_prompt_emb is not None and entity_masks is not None:
             prompt_emb, image_rotary_emb, attention_mask = self.process_entity_masks(hidden_states, prompt_emb, entity_prompt_emb, entity_masks, text_ids, image_ids)
         else:
-            prompt_emb = self.context_embedder(prompt_emb)
+            prompt_emb = self.context_embedder(prompt_emb, **kwargs)
             image_rotary_emb = self.pos_embedder(torch.cat((text_ids, image_ids), dim=1))
             attention_mask = None
 
@@ -446,26 +491,26 @@ class FluxDiT(torch.nn.Module):
             if self.training and use_gradient_checkpointing:
                 hidden_states, prompt_emb = torch.utils.checkpoint.checkpoint(
                     create_custom_forward(block),
-                    hidden_states, prompt_emb, conditioning, image_rotary_emb, attention_mask,
+                    hidden_states, prompt_emb, conditioning, image_rotary_emb, attention_mask, **kwargs,
                     use_reentrant=False,
                 )
             else:
-                hidden_states, prompt_emb = block(hidden_states, prompt_emb, conditioning, image_rotary_emb, attention_mask)
+                hidden_states, prompt_emb = block(hidden_states, prompt_emb, conditioning, image_rotary_emb, attention_mask, **kwargs)
 
         hidden_states = torch.cat([prompt_emb, hidden_states], dim=1)
         for block in self.single_blocks:
             if self.training and use_gradient_checkpointing:
                 hidden_states, prompt_emb = torch.utils.checkpoint.checkpoint(
                     create_custom_forward(block),
-                    hidden_states, prompt_emb, conditioning, image_rotary_emb, attention_mask,
+                    hidden_states, prompt_emb, conditioning, image_rotary_emb, attention_mask, **kwargs,
                     use_reentrant=False,
                 )
             else:
-                hidden_states, prompt_emb = block(hidden_states, prompt_emb, conditioning, image_rotary_emb, attention_mask)
+                hidden_states, prompt_emb = block(hidden_states, prompt_emb, conditioning, image_rotary_emb, attention_mask, **kwargs)
         hidden_states = hidden_states[:, prompt_emb.shape[1]:]
 
-        hidden_states = self.final_norm_out(hidden_states, conditioning)
-        hidden_states = self.final_proj_out(hidden_states)
+        hidden_states = self.final_norm_out(hidden_states, conditioning, **kwargs)
+        hidden_states = self.final_proj_out(hidden_states, **kwargs)
         hidden_states = self.unpatchify(hidden_states, height, width)
 
         return hidden_states
@@ -606,6 +651,10 @@ class FluxDiTStateDictConverter:
         for name, param in state_dict.items():
             if name.endswith(".weight") or name.endswith(".bias"):
                 suffix = ".weight" if name.endswith(".weight") else ".bias"
+                if "lora_B" in name:
+                    suffix = ".lora_B" + suffix
+                if "lora_A" in name:
+                    suffix = ".lora_A" + suffix
                 prefix = name[:-len(suffix)]
                 if prefix in global_rename_dict:
                     state_dict_[global_rename_dict[prefix] + suffix] = param
@@ -630,29 +679,73 @@ class FluxDiTStateDictConverter:
         for name in list(state_dict_.keys()):
             if "single_blocks." in name and ".a_to_q." in name:
                 mlp = state_dict_.get(name.replace(".a_to_q.", ".proj_in_besides_attn."), None)
+                
                 if mlp is None:
-                    mlp = torch.zeros(4 * state_dict_[name].shape[0],
+                    dim = 4
+                    if 'lora_A' in name:
+                        dim = 1
+                    mlp = torch.zeros(dim * state_dict_[name].shape[0],
                                       *state_dict_[name].shape[1:],
                                       dtype=state_dict_[name].dtype)
                 else:
+                    # print('$$'*10)
+                    # mlp_name = name.replace(".a_to_q.", ".proj_in_besides_attn.")
+                    # print(f'mlp name: {mlp_name}')
+                    # print(f'mlp shape: {mlp.shape}')
                     state_dict_.pop(name.replace(".a_to_q.", ".proj_in_besides_attn."))
-                param = torch.concat([
-                    state_dict_.pop(name),
-                    state_dict_.pop(name.replace(".a_to_q.", ".a_to_k.")),
-                    state_dict_.pop(name.replace(".a_to_q.", ".a_to_v.")),
-                    mlp,
-                ], dim=0)
+                # print(f'mlp shape: {mlp.shape}')
+                if 'lora_A' in name:
+
+                    param = torch.concat([
+                        state_dict_.pop(name),
+                        state_dict_.pop(name.replace(".a_to_q.", ".a_to_k.")),
+                        state_dict_.pop(name.replace(".a_to_q.", ".a_to_v.")),
+                        mlp,
+                    ], dim=0)
+                elif 'lora_B' in name:
+                    # create zreo matrix
+                    d, r = state_dict_[name].shape
+                    # print('--'*10)
+                    # print(d, r)
+                    param = torch.zeros((3*d+mlp.shape[0], 3*r+mlp.shape[1]), dtype=state_dict_[name].dtype, device=state_dict_[name].device)
+                    param[:d, :r] = state_dict_.pop(name)
+                    param[d:2*d, r:2*r] = state_dict_.pop(name.replace(".a_to_q.", ".a_to_k."))
+                    param[2*d:3*d, 2*r:3*r] = state_dict_.pop(name.replace(".a_to_q.", ".a_to_v."))
+                    param[3*d:, 3*r:] = mlp
+                else:
+                    param = torch.concat([
+                        state_dict_.pop(name),
+                        state_dict_.pop(name.replace(".a_to_q.", ".a_to_k.")),
+                        state_dict_.pop(name.replace(".a_to_q.", ".a_to_v.")),
+                        mlp,
+                    ], dim=0)
                 name_ = name.replace(".a_to_q.", ".to_qkv_mlp.")
                 state_dict_[name_] = param
         for name in list(state_dict_.keys()):
             for component in ["a", "b"]:
                 if f".{component}_to_q." in name:
                     name_ = name.replace(f".{component}_to_q.", f".{component}_to_qkv.")
-                    param = torch.concat([
-                        state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_q.")],
-                        state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_k.")],
-                        state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_v.")],
-                    ], dim=0)
+                    concat_dim = 0
+                    if 'lora_A' in name:
+                        param = torch.concat([
+                            state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_q.")],
+                            state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_k.")],
+                            state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_v.")],
+                        ], dim=0)
+                    elif 'lora_B' in name:
+                        origin = state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_q.")]
+                        d, r = origin.shape
+                        # print(d, r)
+                        param = torch.zeros((3*d, 3*r), dtype=origin.dtype, device=origin.device)
+                        param[:d, :r] = state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_q.")]
+                        param[d:2*d, r:2*r] = state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_k.")]
+                        param[2*d:3*d, 2*r:3*r] = state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_v.")]
+                    else:
+                        param = torch.concat([
+                            state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_q.")],
+                            state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_k.")],
+                            state_dict_[name.replace(f".{component}_to_q.", f".{component}_to_v.")],
+                        ], dim=0)
                     state_dict_[name_] = param
                     state_dict_.pop(name.replace(f".{component}_to_q.", f".{component}_to_q."))
                     state_dict_.pop(name.replace(f".{component}_to_q.", f".{component}_to_k."))
@@ -718,22 +811,48 @@ class FluxDiTStateDictConverter:
             "norm.query_norm.scale": "norm_q_a.weight",
         }
         state_dict_ = {}
+
+
         for name, param in state_dict.items():
+            # match lora load
+            l_name = ''
+            if 'lora_A' in name :
+                l_name = 'lora_A'
+            if 'lora_B' in name :
+                l_name = 'lora_B'
+            if l_name != '':
+                name = name.replace(l_name+'.', '')
+            
+
             if name.startswith("model.diffusion_model."):
                 name = name[len("model.diffusion_model."):]
             names = name.split(".")
             if name in rename_dict:
                 rename = rename_dict[name]
                 if name.startswith("final_layer.adaLN_modulation.1."):
-                    param = torch.concat([param[3072:], param[:3072]], dim=0)
-                state_dict_[rename] = param
+                    if l_name == 'lora_A':
+                        param = torch.concat([param[:,3072:], param[:,:3072]], dim=1)
+                    else:
+                        param = torch.concat([param[3072:], param[:3072]], dim=0)
+                if l_name != '':
+                    state_dict_[rename.replace('weight',l_name+'.weight')] = param
+                else:
+                    state_dict_[rename] = param
+               
             elif names[0] == "double_blocks":
                 rename = f"blocks.{names[1]}." + suffix_rename_dict[".".join(names[2:])]
-                state_dict_[rename] = param
+                if l_name != '':
+                    state_dict_[rename.replace('weight',l_name+'.weight')] = param
+                else:
+                    state_dict_[rename] = param
+
             elif names[0] == "single_blocks":
                 if ".".join(names[2:]) in suffix_rename_dict:
                     rename = f"single_blocks.{names[1]}." + suffix_rename_dict[".".join(names[2:])]
-                    state_dict_[rename] = param
+                    if l_name != '':
+                        state_dict_[rename.replace('weight',l_name+'.weight')] = param
+                    else:
+                        state_dict_[rename] = param
             else:
                 pass
         if "guidance_embedder.timestep_embedder.0.weight" not in state_dict_:
