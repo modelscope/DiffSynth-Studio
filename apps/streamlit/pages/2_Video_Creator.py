@@ -3,6 +3,8 @@ st.set_page_config(layout="wide")
 from diffsynth import SDVideoPipelineRunner
 import os
 import numpy as np
+import torch
+import platform
 
 
 def load_model_list(folder):
@@ -20,11 +22,19 @@ def match_processor_id(model_name, supported_processor_id_list):
     return 0
 
 
+# Determine the appropriate device
+if torch.cuda.is_available():
+    device = "cuda"
+elif hasattr(torch, 'mps') and torch.backends.mps.is_available() and platform.processor() == 'arm':
+    device = "mps"
+else:
+    device = "cpu"
+
 config = {
     "models": {
         "model_list": [],
         "textual_inversion_folder": "models/textual_inversion",
-        "device": "cuda",
+        "device": device,
         "lora_alphas": [],
         "controlnet_units": []
     },
