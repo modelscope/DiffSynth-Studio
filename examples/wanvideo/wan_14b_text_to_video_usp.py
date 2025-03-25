@@ -54,4 +54,5 @@ video = pipe(
     num_inference_steps=50,
     seed=0, tiled=True
 )
-save_video(video, "video1.mp4", fps=25, quality=5)
+if dist.get_rank() == 0:
+    save_video(video, "video1.mp4", fps=25, quality=5)

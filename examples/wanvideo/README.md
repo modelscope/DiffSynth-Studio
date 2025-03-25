@@ -58,7 +58,7 @@ pip install xfuser>=0.4.3
 ```
 
 ```bash
-torchrun --standalone --nproc_per_node=8 ./wan_14b_text_to_video_usp.py
+torchrun --standalone --nproc_per_node=8 examples/wanvideo/wan_14b_text_to_video_usp.py
 ```
 
 2. Tensor Parallel
