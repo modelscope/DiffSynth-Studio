@@ -11,4 +11,3 @@ sentencepiece
 protobuf
 modelscope
 ftfy
-xfuser>=0.4.2

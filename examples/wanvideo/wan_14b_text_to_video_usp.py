@@ -1,6 +1,7 @@
 import torch
 from diffsynth import ModelManager, WanVideoPipeline, save_video, VideoData
 from modelscope import snapshot_download
+import torch.distributed as dist
 
 
 # Download models
@@ -23,7 +24,27 @@ model_manager.load_models(
     ],
     torch_dtype=torch.float8_e4m3fn, # You can set `torch_dtype=torch.bfloat16` to disable FP8 quantization.
 )
-pipe = WanVideoPipeline.from_model_manager(model_manager, torch_dtype=torch.bfloat16, device="cuda")
+
+dist.init_process_group(
+    backend="nccl",
+    init_method="env://",
+)
+from xfuser.core.distributed import (initialize_model_parallel,
+                                     init_distributed_environment)
+init_distributed_environment(
+    rank=dist.get_rank(), world_size=dist.get_world_size())
+
+initialize_model_parallel(
+    sequence_parallel_degree=dist.get_world_size(),
+    ring_degree=1,
+    ulysses_degree=dist.get_world_size(),
+)
+torch.cuda.set_device(dist.get_rank())
+
+pipe = WanVideoPipeline.from_model_manager(model_manager, 
+                                           torch_dtype=torch.bfloat16, 
+                                           device=f"cuda:{dist.get_rank()}", 
+                                           use_usp=True if dist.get_world_size() > 1 else False)
 pipe.enable_vram_management(num_persistent_param_in_dit=None) # You can set `num_persistent_param_in_dit` to a small number to reduce VRAM required.
 
 # Text-to-video
