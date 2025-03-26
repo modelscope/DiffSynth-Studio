@@ -12,3 +12,4 @@ diffsynth/processors/__pycache__/
 diffsynth/prompters/__pycache__/
 diffsynth/schedulers/__pycache__/
 diffsynth/vram_management/__pycache__/
+.vs
