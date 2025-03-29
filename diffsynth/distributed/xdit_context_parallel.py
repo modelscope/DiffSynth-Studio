@@ -124,4 +124,6 @@ def usp_attn_forward(self, x, freqs):
     )
     x = x.flatten(2)
 
+    del q, k, v
+    torch.cuda.empty_cache()
     return self.o(x)
