@@ -396,13 +396,13 @@ def model_fn_wan_video(
     else:
         tea_cache_update = False
     
+    # blocks
+    if use_unified_sequence_parallel:
+        if dist.is_initialized() and dist.get_world_size() > 1:
+            x = torch.chunk(x, get_sequence_parallel_world_size(), dim=1)[get_sequence_parallel_rank()]
     if tea_cache_update:
         x = tea_cache.update(x)
     else:
-        # blocks
-        if use_unified_sequence_parallel:
-            if dist.is_initialized() and dist.get_world_size() > 1:
-                x = torch.chunk(x, get_sequence_parallel_world_size(), dim=1)[get_sequence_parallel_rank()]
         for block in dit.blocks:
             x = block(x, context, t_mod, freqs)
         if tea_cache is not None:
