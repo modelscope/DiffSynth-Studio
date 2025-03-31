@@ -318,6 +318,8 @@ class FluxControlNetStateDictConverter:
             extra_kwargs = {"num_joint_blocks": 6, "num_single_blocks": 0, "additional_input_dim": 4}
         elif hash_value == "0cfd1740758423a2a854d67c136d1e8c":
             extra_kwargs = {"num_joint_blocks": 4, "num_single_blocks": 1}
+        elif hash_value == "7f9583eb8ba86642abb9a21a4b2c9e16":
+            extra_kwargs = {"num_joint_blocks": 4, "num_single_blocks": 10}
         else:
             extra_kwargs = {}
         return state_dict_, extra_kwargs
