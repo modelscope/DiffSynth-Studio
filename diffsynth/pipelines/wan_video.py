@@ -137,17 +137,20 @@ class WanVideoPipeline(BasePipeline):
 
 
     @staticmethod
-    def from_model_manager(model_manager: ModelManager, torch_dtype=None, device=None, use_usp=False):
+    def from_model_manager(model_manager: ModelManager, torch_dtype=None, device=None, use_usp=False, train=False):
         if device is None: device = model_manager.device
         if torch_dtype is None: torch_dtype = model_manager.torch_dtype
         pipe = WanVideoPipeline(device=device, torch_dtype=torch_dtype)
         pipe.fetch_models(model_manager)
         if use_usp:
             from xfuser.core.distributed import get_sequence_parallel_world_size
-            from ..distributed.xdit_context_parallel import usp_attn_forward, usp_dit_forward
-
-            for block in pipe.dit.blocks:
-                block.self_attn.forward = types.MethodType(usp_attn_forward, block.self_attn)
+            from ..distributed.xdit_context_parallel import usp_attn_forward, usp_dit_forward, usp_attn_forward_train
+            if train:
+                for block in pipe.dit.blocks:
+                    block.self_attn.forward = types.MethodType(usp_attn_forward_train, block.self_attn)
+            else:
+                for block in pipe.dit.blocks:
+                    block.self_attn.forward = types.MethodType(usp_attn_forward, block.self_attn)
             pipe.dit.forward = types.MethodType(usp_dit_forward, pipe.dit)
             pipe.sp_size = get_sequence_parallel_world_size()
             pipe.use_unified_sequence_parallel = True

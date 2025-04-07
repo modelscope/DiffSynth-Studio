@@ -8,7 +8,7 @@ from peft import LoraConfig, inject_adapter_in_model
 import torchvision
 from PIL import Image
 import numpy as np
-
+import torch.distributed as dist
 
 
 class TextVideoDataset(torch.utils.data.Dataset):
@@ -180,7 +180,7 @@ class LightningModelForTrain(pl.LightningModule):
         learning_rate=1e-5,
         lora_rank=4, lora_alpha=4, train_architecture="lora", lora_target_modules="q,k,v,o,ffn.0,ffn.2", init_lora_weights="kaiming",
         use_gradient_checkpointing=True, use_gradient_checkpointing_offload=False,
-        pretrained_lora_path=None
+        pretrained_lora_path=None, use_usp=False
     ):
         super().__init__()
         model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cpu")
@@ -190,7 +190,7 @@ class LightningModelForTrain(pl.LightningModule):
             dit_path = dit_path.split(",")
             model_manager.load_models([dit_path])
         
-        self.pipe = WanVideoPipeline.from_model_manager(model_manager)
+        self.pipe = WanVideoPipeline.from_model_manager(model_manager, use_usp=use_usp, train=True)
         self.pipe.scheduler.set_timesteps(1000, training=True)
         self.freeze_parameters()
         if train_architecture == "lora":
@@ -252,7 +252,7 @@ class LightningModelForTrain(pl.LightningModule):
         latents = batch["latents"].to(self.device)
         prompt_emb = batch["prompt_emb"]
         prompt_emb["context"] = prompt_emb["context"][0].to(self.device)
-        image_emb = batch["image_emb"]
+        image_emb = batch.get("image_emb", {})
         if "clip_feature" in image_emb:
             image_emb["clip_feature"] = image_emb["clip_feature"][0].to(self.device)
         if "y" in image_emb:
@@ -493,6 +493,22 @@ def parse_args():
         default=None,
         help="SwanLab mode (cloud or local).",
     )
+    parser.add_argument(
+        "--ulysses_size",
+        type=int,
+        default=1,
+        help="The size of the ulysses parallelism in DiT.")
+    parser.add_argument(
+        "--ring_size",
+        type=int,
+        default=1,
+        help="The size of the ring attention parallelism in DiT.")
+    parser.add_argument(
+        "--sp_size",
+        type=int,
+        default=1,
+        help="The size of the sequence parallel degree.",
+    )
     args = parser.parse_args()
     return args
 
@@ -528,7 +544,24 @@ def data_process(args):
         default_root_dir=args.output_path,
     )
     trainer.test(model, dataloader)
-    
+
+
+def init_distributed_for_train(sp_size: int, ring_dgr: int, uly_dgr: int):
+    dist.init_process_group(
+        backend="nccl",
+        init_method="env://",
+    )
+    from xfuser.core.distributed import (initialize_model_parallel,
+                                        init_distributed_environment)
+    init_distributed_environment(
+        rank=dist.get_rank(), world_size=dist.get_world_size())
+
+    initialize_model_parallel(
+        sequence_parallel_degree=sp_size,
+        ring_degree=ring_dgr,
+        ulysses_degree=uly_dgr,
+    )
+    torch.cuda.set_device(dist.get_rank()) 
     
 def train(args):
     dataset = TensorDataset(
@@ -542,6 +575,9 @@ def train(args):
         batch_size=1,
         num_workers=args.dataloader_num_workers
     )
+    if args.sp_size > 1:
+        assert args.training_strategy == "deepspeed_stage_3" or args.training_strategy == "auto"
+        init_distributed_for_train(args.sp_size, args.ring_size, args.ulysses_size)
     model = LightningModelForTrain(
         dit_path=args.dit_path,
         learning_rate=args.learning_rate,
@@ -553,6 +589,7 @@ def train(args):
         use_gradient_checkpointing=args.use_gradient_checkpointing,
         use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
         pretrained_lora_path=args.pretrained_lora_path,
+        use_usp=(args.sp_size > 1),
     )
     if args.use_swanlab:
         from swanlab.integration.pytorch_lightning import SwanLabLogger
