@@ -535,6 +535,20 @@ class WanModelStateDictConverter:
                 "num_layers": 30,
                 "eps": 1e-6
             }
+        elif hash_state_dict_keys(state_dict) == "efa44cddf936c70abd0ea28b6cbe946c":
+            config = {
+                "has_image_input": True,
+                "patch_size": [1, 2, 2],
+                "in_dim": 48,
+                "dim": 5120,
+                "ffn_dim": 13824,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 16,
+                "num_heads": 40,
+                "num_layers": 40,
+                "eps": 1e-6
+            }
         else:
             config = {}
         return state_dict, config
