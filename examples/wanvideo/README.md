@@ -27,6 +27,28 @@ pip install -e .
 |PAI Team|1.3B Control|[Link](https://modelscope.cn/models/PAI/Wan2.1-Fun-1.3B-Control)|[wan_fun_control.py](./wan_fun_control.py)|
 |PAI Team|14B Control|[Link](https://modelscope.cn/models/PAI/Wan2.1-Fun-14B-Control)|[wan_fun_control.py](./wan_fun_control.py)|
 
+Base model features
+
+||Text-to-video|Image-to-video|End frame|Control|
+|-|-|-|-|-|
+|1.3B text-to-video|✅||||
+|14B text-to-video|✅||||
+|14B image-to-video 480P||✅|||
+|14B image-to-video 720P||✅|||
+|1.3B InP||✅|✅||
+|14B InP||✅|✅||
+|1.3B Control||||✅|
+|14B Control||||✅|
+
+Adapter model compatibility
+
+||1.3B text-to-video|1.3B InP|
+|-|-|-|
+|1.3B aesthetics LoRA|✅||
+|1.3B Highres-fix LoRA|✅||
+|1.3B ExVideo LoRA|✅||
+|1.3B Speed Control adapter|✅|✅|
+
 ## VRAM Usage
 
 * Fine-grained offload: We recommend that users adjust the `num_persistent_param_in_dit` settings to find an optimal balance between speed and VRAM requirements. See [`./wan_14b_text_to_video.py`](./wan_14b_text_to_video.py).
