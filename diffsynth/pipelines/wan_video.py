@@ -18,6 +18,7 @@ from ..vram_management import enable_vram_management, AutoWrappedModule, AutoWra
 from ..models.wan_video_text_encoder import T5RelativeEmbedding, T5LayerNorm
 from ..models.wan_video_dit import RMSNorm, sinusoidal_embedding_1d
 from ..models.wan_video_vae import RMS_norm, CausalConv3d, Upsample
+from ..models.wan_video_motion_controller import WanMotionControllerModel
 
 
 
@@ -31,7 +32,8 @@ class WanVideoPipeline(BasePipeline):
         self.image_encoder: WanImageEncoder = None
         self.dit: WanModel = None
         self.vae: WanVideoVAE = None
-        self.model_names = ['text_encoder', 'dit', 'vae', 'image_encoder']
+        self.motion_controller: WanMotionControllerModel = None
+        self.model_names = ['text_encoder', 'dit', 'vae', 'image_encoder', 'motion_controller']
         self.height_division_factor = 16
         self.width_division_factor = 16
         self.use_unified_sequence_parallel = False
@@ -122,6 +124,22 @@ class WanVideoPipeline(BasePipeline):
                     computation_device=self.device,
                 ),
             )
+        if self.motion_controller is not None:
+            dtype = next(iter(self.motion_controller.parameters())).dtype
+            enable_vram_management(
+                self.motion_controller,
+                module_map = {
+                    torch.nn.Linear: AutoWrappedLinear,
+                },
+                module_config = dict(
+                    offload_dtype=dtype,
+                    offload_device="cpu",
+                    onload_dtype=dtype,
+                    onload_device="cpu",
+                    computation_dtype=dtype,
+                    computation_device=self.device,
+                ),
+            )
         self.enable_cpu_offload()
 
 
@@ -134,6 +152,7 @@ class WanVideoPipeline(BasePipeline):
         self.dit = model_manager.fetch_model("wan_video_dit")
         self.vae = model_manager.fetch_model("wan_video_vae")
         self.image_encoder = model_manager.fetch_model("wan_video_image_encoder")
+        self.motion_controller = model_manager.fetch_model("wan_video_motion_controller")
 
 
     @staticmethod
@@ -163,22 +182,47 @@ class WanVideoPipeline(BasePipeline):
         return {"context": prompt_emb}
     
     
-    def encode_image(self, image, num_frames, height, width):
+    def encode_image(self, image, end_image, num_frames, height, width):
         image = self.preprocess_image(image.resize((width, height))).to(self.device)
         clip_context = self.image_encoder.encode_image([image])
         msk = torch.ones(1, num_frames, height//8, width//8, device=self.device)
         msk[:, 1:] = 0
+        if end_image is not None:
+            end_image = self.preprocess_image(end_image.resize((width, height))).to(self.device)
+            vae_input = torch.concat([image.transpose(0,1), torch.zeros(3, num_frames-2, height, width).to(image.device), end_image.transpose(0,1)],dim=1)
+            msk[:, -1:] = 1
+        else:
+            vae_input = torch.concat([image.transpose(0, 1), torch.zeros(3, num_frames-1, height, width).to(image.device)], dim=1)
+
         msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
         msk = msk.view(1, msk.shape[1] // 4, 4, height//8, width//8)
         msk = msk.transpose(1, 2)[0]
         
-        vae_input = torch.concat([image.transpose(0, 1), torch.zeros(3, num_frames-1, height, width).to(image.device)], dim=1)
         y = self.vae.encode([vae_input.to(dtype=self.torch_dtype, device=self.device)], device=self.device)[0]
         y = torch.concat([msk, y])
         y = y.unsqueeze(0)
         clip_context = clip_context.to(dtype=self.torch_dtype, device=self.device)
         y = y.to(dtype=self.torch_dtype, device=self.device)
         return {"clip_feature": clip_context, "y": y}
+    
+    
+    def encode_control_video(self, control_video, tiled=True, tile_size=(34, 34), tile_stride=(18, 16)):
+        control_video = self.preprocess_images(control_video)
+        control_video = torch.stack(control_video, dim=2).to(dtype=self.torch_dtype, device=self.device)
+        latents = self.encode_video(control_video, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=self.torch_dtype, device=self.device)
+        return latents
+    
+    
+    def prepare_controlnet_kwargs(self, control_video, num_frames, height, width, clip_feature=None, y=None, tiled=True, tile_size=(34, 34), tile_stride=(18, 16)):
+        if control_video is not None:
+            control_latents = self.encode_control_video(control_video, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+            if clip_feature is None or y is None:
+                clip_feature = torch.zeros((1, 257, 1280), dtype=self.torch_dtype, device=self.device)
+                y = torch.zeros((1, 16, (num_frames - 1) // 4 + 1, height//8, width//8), dtype=self.torch_dtype, device=self.device)
+            else:
+                y = y[:, -16:]
+            y = torch.concat([control_latents, y], dim=1)
+        return {"clip_feature": clip_feature, "y": y}
 
 
     def tensor2video(self, frames):
@@ -204,6 +248,11 @@ class WanVideoPipeline(BasePipeline):
     
     def prepare_unified_sequence_parallel(self):
         return {"use_unified_sequence_parallel": self.use_unified_sequence_parallel}
+    
+    
+    def prepare_motion_bucket_id(self, motion_bucket_id):
+        motion_bucket_id = torch.Tensor((motion_bucket_id,)).to(dtype=self.torch_dtype, device=self.device)
+        return {"motion_bucket_id": motion_bucket_id}
 
 
     @torch.no_grad()
@@ -212,7 +261,9 @@ class WanVideoPipeline(BasePipeline):
         prompt,
         negative_prompt="",
         input_image=None,
+        end_image=None,
         input_video=None,
+        control_video=None,
         denoising_strength=1.0,
         seed=None,
         rand_device="cpu",
@@ -222,6 +273,7 @@ class WanVideoPipeline(BasePipeline):
         cfg_scale=5.0,
         num_inference_steps=50,
         sigma_shift=5.0,
+        motion_bucket_id=None,
         tiled=True,
         tile_size=(30, 52),
         tile_stride=(15, 26),
@@ -263,9 +315,20 @@ class WanVideoPipeline(BasePipeline):
         # Encode image
         if input_image is not None and self.image_encoder is not None:
             self.load_models_to_device(["image_encoder", "vae"])
-            image_emb = self.encode_image(input_image, num_frames, height, width)
+            image_emb = self.encode_image(input_image, end_image, num_frames, height, width)
         else:
             image_emb = {}
+            
+        # ControlNet
+        if control_video is not None:
+            self.load_models_to_device(["image_encoder", "vae"])
+            image_emb = self.prepare_controlnet_kwargs(control_video, num_frames, height, width, **image_emb, **tiler_kwargs)
+            
+        # Motion Controller
+        if self.motion_controller is not None and motion_bucket_id is not None:
+            motion_kwargs = self.prepare_motion_bucket_id(motion_bucket_id)
+        else:
+            motion_kwargs = {}
             
         # Extra input
         extra_input = self.prepare_extra_input(latents)
@@ -278,14 +341,24 @@ class WanVideoPipeline(BasePipeline):
         usp_kwargs = self.prepare_unified_sequence_parallel()
 
         # Denoise
-        self.load_models_to_device(["dit"])
+        self.load_models_to_device(["dit", "motion_controller"])
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
 
             # Inference
-            noise_pred_posi = model_fn_wan_video(self.dit, latents, timestep=timestep, **prompt_emb_posi, **image_emb, **extra_input, **tea_cache_posi, **usp_kwargs)
+            noise_pred_posi = model_fn_wan_video(
+                self.dit, motion_controller=self.motion_controller,
+                x=latents, timestep=timestep,
+                **prompt_emb_posi, **image_emb, **extra_input,
+                **tea_cache_posi, **usp_kwargs, **motion_kwargs
+            )
             if cfg_scale != 1.0:
-                noise_pred_nega = model_fn_wan_video(self.dit, latents, timestep=timestep, **prompt_emb_nega, **image_emb, **extra_input, **tea_cache_nega, **usp_kwargs)
+                noise_pred_nega = model_fn_wan_video(
+                    self.dit, motion_controller=self.motion_controller,
+                    x=latents, timestep=timestep,
+                    **prompt_emb_nega, **image_emb, **extra_input,
+                    **tea_cache_nega, **usp_kwargs, **motion_kwargs
+                )
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
             else:
                 noise_pred = noise_pred_posi
@@ -358,13 +431,15 @@ class TeaCache:
 
 def model_fn_wan_video(
     dit: WanModel,
-    x: torch.Tensor,
-    timestep: torch.Tensor,
-    context: torch.Tensor,
+    motion_controller: WanMotionControllerModel = None,
+    x: torch.Tensor = None,
+    timestep: torch.Tensor = None,
+    context: torch.Tensor = None,
     clip_feature: Optional[torch.Tensor] = None,
     y: Optional[torch.Tensor] = None,
     tea_cache: TeaCache = None,
     use_unified_sequence_parallel: bool = False,
+    motion_bucket_id: Optional[torch.Tensor] = None,
     **kwargs,
 ):
     if use_unified_sequence_parallel:
@@ -375,6 +450,8 @@ def model_fn_wan_video(
     
     t = dit.time_embedding(sinusoidal_embedding_1d(dit.freq_dim, timestep))
     t_mod = dit.time_projection(t).unflatten(1, (6, dit.dim))
+    if motion_bucket_id is not None and motion_controller is not None:
+        t_mod = t_mod + motion_controller(motion_bucket_id).unflatten(1, (6, dit.dim))
     context = dit.text_embedding(context)
     
     if dit.has_image_input:
