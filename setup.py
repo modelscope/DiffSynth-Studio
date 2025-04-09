@@ -14,7 +14,7 @@ else:
 
 setup(
     name="diffsynth",
-    version="1.1.5",
+    version="1.1.6",
     description="Enjoy the magic of Diffusion models!",
     author="Artiprocher",
     packages=find_packages(),
