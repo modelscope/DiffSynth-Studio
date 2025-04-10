@@ -5,6 +5,7 @@ from xfuser.core.distributed import (get_sequence_parallel_rank,
                                      get_sequence_parallel_world_size,
                                      get_sp_group)
 from xfuser.core.long_ctx_attention import xFuserLongContextAttention
+from yunchang import LongContextAttention
 
 def sinusoidal_embedding_1d(dim, position):
     sinusoid = torch.outer(position.type(torch.float64), torch.pow(
@@ -126,4 +127,25 @@ def usp_attn_forward(self, x, freqs):
 
     del q, k, v
     torch.cuda.empty_cache()
+    return self.o(x)
+
+def usp_attn_forward_train(self, x, freqs):
+    q = self.norm_q(self.q(x))
+    k = self.norm_k(self.k(x))
+    v = self.v(x)
+
+    q = rope_apply(q, freqs, self.num_heads)
+    k = rope_apply(k, freqs, self.num_heads)
+    q = rearrange(q, "b s (n d) -> b s n d", n=self.num_heads)
+    k = rearrange(k, "b s (n d) -> b s n d", n=self.num_heads)
+    v = rearrange(v, "b s (n d) -> b s n d", n=self.num_heads)
+
+    # use LongContextAttention for train. https://github.com/xdit-project/xDiT/issues/478
+    x = LongContextAttention()(
+        query=q,
+        key=k,
+        value=v,
+    )
+    x = x.flatten(2)
+
     return self.o(x)
