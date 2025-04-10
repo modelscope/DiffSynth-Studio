@@ -59,7 +59,7 @@ We present a detailed table here. The model (14B text-to-video) is tested on a s
 
 |`torch_dtype`|`num_persistent_param_in_dit`|Speed|Required VRAM|Default Setting|
 |-|-|-|-|-|
-|torch.bfloat16|None (unlimited)|18.5s/it|40G||
+|torch.bfloat16|None (unlimited)|18.5s/it|48G||
 |torch.bfloat16|7*10**9 (7B)|20.8s/it|24G||
 |torch.bfloat16|0|23.4s/it|10G||
 |torch.float8_e4m3fn|None (unlimited)|18.3s/it|24G|yes|
