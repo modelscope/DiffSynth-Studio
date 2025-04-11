@@ -212,6 +212,7 @@ if __name__ == '__main__':
             ),
         ],
         dataset_weight=(4, 2, 2, 1),
+        steps_per_epoch=args.steps_per_epoch,
     )
     train_loader = torch.utils.data.DataLoader(
         dataset,
