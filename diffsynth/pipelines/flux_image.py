@@ -1,10 +1,12 @@
 from ..models import ModelManager, FluxDiT, SD3TextEncoder1, FluxTextEncoder2, FluxVAEDecoder, FluxVAEEncoder, FluxIpAdapter
 from ..controlnets import FluxMultiControlNetManager, ControlNetUnit, ControlNetConfigUnit, Annotator
+from ..models.flux_reference_embedder import FluxReferenceEmbedder
 from ..prompters import FluxPrompter
 from ..schedulers import FlowMatchScheduler
 from .base import BasePipeline
 from typing import List
 import torch
+from einops import rearrange
 from tqdm import tqdm
 import numpy as np
 from PIL import Image
@@ -32,6 +34,7 @@ class FluxImagePipeline(BasePipeline):
         self.ipadapter: FluxIpAdapter = None
         self.ipadapter_image_encoder: SiglipVisionModel = None
         self.infinityou_processor: InfinitYou = None
+        self.reference_embedder: FluxReferenceEmbedder = None
         self.model_names = ['text_encoder_1', 'text_encoder_2', 'dit', 'vae_decoder', 'vae_encoder', 'controlnet', 'ipadapter', 'ipadapter_image_encoder']
 
 
@@ -360,6 +363,20 @@ class FluxImagePipeline(BasePipeline):
             return self.infinityou_processor.prepare_infinite_you(self.image_proj_model, id_image, controlnet_image, infinityou_guidance, height, width)
         else:
             return {}, controlnet_image
+        
+        
+    def prepare_reference_images(self, reference_images, tiled=False, tile_size=64, tile_stride=32):
+        if reference_images is not None:
+            hidden_states_ref = []
+            for reference_image in reference_images:
+                self.load_models_to_device(['vae_encoder'])
+                reference_image = self.preprocess_image(reference_image).to(device=self.device, dtype=self.torch_dtype)
+                latents = self.encode_image(reference_image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+                hidden_states_ref.append(latents)
+            hidden_states_ref = torch.concat(hidden_states_ref, dim=0)
+            return {"hidden_states_ref": hidden_states_ref}
+        else:
+            return {"hidden_states_ref": None}
 
 
     @torch.no_grad()
@@ -398,6 +415,8 @@ class FluxImagePipeline(BasePipeline):
         # InfiniteYou
         infinityou_id_image=None,
         infinityou_guidance=1.0,
+        # Reference images
+        reference_images=None,
         # TeaCache
         tea_cache_l1_thresh=None,
         # Tile
@@ -436,6 +455,9 @@ class FluxImagePipeline(BasePipeline):
 
         # ControlNets
         controlnet_kwargs_posi, controlnet_kwargs_nega, local_controlnet_kwargs = self.prepare_controlnet(controlnet_image, masks, controlnet_inpaint_mask, tiler_kwargs, enable_controlnet_on_negative)
+        
+        # Reference images
+        reference_kwargs = self.prepare_reference_images(reference_images, **tiler_kwargs)
 
         # TeaCache
         tea_cache_kwargs = {"tea_cache": TeaCache(num_inference_steps, rel_l1_thresh=tea_cache_l1_thresh) if tea_cache_l1_thresh is not None else None}
@@ -447,9 +469,9 @@ class FluxImagePipeline(BasePipeline):
 
             # Positive side
             inference_callback = lambda prompt_emb_posi, controlnet_kwargs: lets_dance_flux(
-                dit=self.dit, controlnet=self.controlnet,
+                dit=self.dit, controlnet=self.controlnet, reference_embedder=self.reference_embedder,
                 hidden_states=latents, timestep=timestep,
-                **prompt_emb_posi, **tiler_kwargs, **extra_input, **controlnet_kwargs, **ipadapter_kwargs_list_posi, **eligen_kwargs_posi, **tea_cache_kwargs, **infiniteyou_kwargs
+                **prompt_emb_posi, **tiler_kwargs, **extra_input, **controlnet_kwargs, **ipadapter_kwargs_list_posi, **eligen_kwargs_posi, **tea_cache_kwargs, **infiniteyou_kwargs, **reference_kwargs,
             )
             noise_pred_posi = self.control_noise_via_local_prompts(
                 prompt_emb_posi, prompt_emb_locals, masks, mask_scales, inference_callback,
@@ -464,9 +486,9 @@ class FluxImagePipeline(BasePipeline):
             if cfg_scale != 1.0:
                 # Negative side
                 noise_pred_nega = lets_dance_flux(
-                    dit=self.dit, controlnet=self.controlnet,
+                    dit=self.dit, controlnet=self.controlnet, reference_embedder=self.reference_embedder,
                     hidden_states=latents, timestep=timestep,
-                    **prompt_emb_nega, **tiler_kwargs, **extra_input, **controlnet_kwargs_nega, **ipadapter_kwargs_list_nega, **eligen_kwargs_nega, **infiniteyou_kwargs,
+                    **prompt_emb_nega, **tiler_kwargs, **extra_input, **controlnet_kwargs_nega, **ipadapter_kwargs_list_nega, **eligen_kwargs_nega, **infiniteyou_kwargs, **reference_kwargs,
                 )
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
             else:
@@ -586,6 +608,7 @@ class TeaCache:
 def lets_dance_flux(
     dit: FluxDiT,
     controlnet: FluxMultiControlNetManager = None,
+    reference_embedder: FluxReferenceEmbedder = None,
     hidden_states=None,
     timestep=None,
     prompt_emb=None,
@@ -594,6 +617,7 @@ def lets_dance_flux(
     text_ids=None,
     image_ids=None,
     controlnet_frames=None,
+    hidden_states_ref=None,
     tiled=False,
     tile_size=128,
     tile_stride=64,
@@ -603,6 +627,7 @@ def lets_dance_flux(
     id_emb=None,
     infinityou_guidance=None,
     tea_cache: TeaCache = None,
+    use_gradient_checkpointing=False,
     **kwargs
 ):
     if tiled:
@@ -671,26 +696,52 @@ def lets_dance_flux(
         prompt_emb = dit.context_embedder(prompt_emb)
         image_rotary_emb = dit.pos_embedder(torch.cat((text_ids, image_ids), dim=1))
         attention_mask = None
+        
+    # Reference images
+    if hidden_states_ref is not None:
+        # RoPE
+        image_ids_ref = dit.prepare_image_ids(hidden_states_ref)
+        idx = torch.arange(0, image_ids_ref.shape[0]).to(dtype=hidden_states.dtype, device=hidden_states.device) * 100
+        image_rotary_emb_ref = reference_embedder(image_ids_ref, idx, dtype=hidden_states.dtype)
+        image_rotary_emb = torch.cat((image_rotary_emb, image_rotary_emb_ref), dim=2)
+        # hidden_states
+        original_hidden_states_length = hidden_states.shape[1]
+        hidden_states_ref = dit.patchify(hidden_states_ref)
+        hidden_states_ref = dit.x_embedder(hidden_states_ref)
+        hidden_states_ref = rearrange(hidden_states_ref, "B L C -> 1 (B L) C")
+        hidden_states = torch.cat((hidden_states, hidden_states_ref), dim=1)
 
     # TeaCache
     if tea_cache is not None:
         tea_cache_update = tea_cache.check(dit, hidden_states, conditioning)
     else:
         tea_cache_update = False
+        
+    def create_custom_forward(module):
+        def custom_forward(*inputs):
+            return module(*inputs)
+        return custom_forward
 
     if tea_cache_update:
         hidden_states = tea_cache.update(hidden_states)
     else:
         # Joint Blocks
         for block_id, block in enumerate(dit.blocks):
-            hidden_states, prompt_emb = block(
-                hidden_states,
-                prompt_emb,
-                conditioning,
-                image_rotary_emb,
-                attention_mask,
-                ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id, None)
-            )
+            if use_gradient_checkpointing:
+                hidden_states, prompt_emb = torch.utils.checkpoint.checkpoint(
+                    create_custom_forward(block),
+                    hidden_states, prompt_emb, conditioning, image_rotary_emb, attention_mask, ipadapter_kwargs_list.get(block_id, None),
+                    use_reentrant=False,
+                )
+            else:
+                hidden_states, prompt_emb = block(
+                    hidden_states,
+                    prompt_emb,
+                    conditioning,
+                    image_rotary_emb,
+                    attention_mask,
+                    ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id, None)
+                )
             # ControlNet
             if controlnet is not None and controlnet_frames is not None:
                 hidden_states = hidden_states + controlnet_res_stack[block_id]
@@ -699,14 +750,21 @@ def lets_dance_flux(
         hidden_states = torch.cat([prompt_emb, hidden_states], dim=1)
         num_joint_blocks = len(dit.blocks)
         for block_id, block in enumerate(dit.single_blocks):
-            hidden_states, prompt_emb = block(
-                hidden_states,
-                prompt_emb,
-                conditioning,
-                image_rotary_emb,
-                attention_mask,
-                ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id + num_joint_blocks, None)
-            )
+            if use_gradient_checkpointing:
+                hidden_states, prompt_emb = torch.utils.checkpoint.checkpoint(
+                    create_custom_forward(block),
+                    hidden_states, prompt_emb, conditioning, image_rotary_emb, attention_mask, ipadapter_kwargs_list.get(block_id + num_joint_blocks, None),
+                    use_reentrant=False,
+                )
+            else:
+                hidden_states, prompt_emb = block(
+                    hidden_states,
+                    prompt_emb,
+                    conditioning,
+                    image_rotary_emb,
+                    attention_mask,
+                    ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id + num_joint_blocks, None)
+                )
             # ControlNet
             if controlnet is not None and controlnet_frames is not None:
                 hidden_states[:, prompt_emb.shape[1]:] = hidden_states[:, prompt_emb.shape[1]:] + controlnet_single_res_stack[block_id]
@@ -715,6 +773,8 @@ def lets_dance_flux(
         if tea_cache is not None:
             tea_cache.store(hidden_states)
 
+    if hidden_states_ref is not None:
+        hidden_states = hidden_states[:, :original_hidden_states_length]
     hidden_states = dit.final_norm_out(hidden_states, conditioning)
     hidden_states = dit.final_proj_out(hidden_states)
     hidden_states = dit.unpatchify(hidden_states, height, width)
