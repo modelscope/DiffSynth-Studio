@@ -20,10 +20,11 @@ class RoPEEmbedding(torch.nn.Module):
         self.axes_dim = axes_dim
 
 
-    def rope(self, pos: torch.Tensor, dim: int, theta: int) -> torch.Tensor:
+    def rope(self, pos: torch.Tensor, dim: int, theta: int, device="cpu") -> torch.Tensor:
         assert dim % 2 == 0, "The dimension must be even."
 
         scale = torch.arange(0, dim, 2, dtype=torch.float64, device=pos.device) / dim
+        scale = scale.to(device)
         omega = 1.0 / (theta**scale)
 
         batch_size, seq_length = pos.shape
@@ -36,9 +37,9 @@ class RoPEEmbedding(torch.nn.Module):
         return out.float()
 
 
-    def forward(self, ids):
+    def forward(self, ids, device="cpu"):
         n_axes = ids.shape[-1]
-        emb = torch.cat([self.rope(ids[..., i], self.axes_dim[i], self.theta) for i in range(n_axes)], dim=-3)
+        emb = torch.cat([self.rope(ids[..., i], self.axes_dim[i], self.theta, device) for i in range(n_axes)], dim=-3)
         return emb.unsqueeze(1)
 
 
