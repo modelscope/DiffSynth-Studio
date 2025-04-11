@@ -140,7 +140,7 @@ class LightningModelForDataProcess(pl.LightningModule):
             if "first_frame" in batch:
                 first_frame = Image.fromarray(batch["first_frame"][0].cpu().numpy())
                 _, _, num_frames, height, width = video.shape
-                image_emb = self.pipe.encode_image(first_frame, num_frames, height, width)
+                image_emb = self.pipe.encode_image(first_frame, None, num_frames, height, width)
             else:
                 image_emb = {}
             data = {"latents": latents, "prompt_emb": prompt_emb, "image_emb": image_emb}
