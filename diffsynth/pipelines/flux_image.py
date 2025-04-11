@@ -702,7 +702,7 @@ def lets_dance_flux(
         # RoPE
         image_ids_ref = dit.prepare_image_ids(hidden_states_ref)
         idx = torch.arange(0, image_ids_ref.shape[0]).to(dtype=hidden_states.dtype, device=hidden_states.device) * 100
-        image_rotary_emb_ref = reference_embedder(image_ids_ref, idx, dtype=hidden_states.dtype)
+        image_rotary_emb_ref = reference_embedder(image_ids_ref, idx, dtype=hidden_states.dtype, device=hidden_states.device)
         image_rotary_emb = torch.cat((image_rotary_emb, image_rotary_emb_ref), dim=2)
         # hidden_states
         original_hidden_states_length = hidden_states.shape[1]
