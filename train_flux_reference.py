@@ -41,15 +41,15 @@ class LightningModel(LightningModelForT2ILoRA):
         self.freeze_parameters()
         self.pipe.reference_embedder.requires_grad_(True)
         self.pipe.reference_embedder.train()
-        self.add_lora_to_model(
-            self.pipe.denoising_model(),
-            lora_rank=lora_rank,
-            lora_alpha=lora_alpha,
-            lora_target_modules=lora_target_modules,
-            init_lora_weights=init_lora_weights,
-            pretrained_lora_path=pretrained_lora_path,
-            state_dict_converter=FluxLoRAConverter.align_to_diffsynth_format
-        )
+        # self.add_lora_to_model(
+        #     self.pipe.denoising_model(),
+        #     lora_rank=lora_rank,
+        #     lora_alpha=lora_alpha,
+        #     lora_target_modules=lora_target_modules,
+        #     init_lora_weights=init_lora_weights,
+        #     pretrained_lora_path=pretrained_lora_path,
+        #     state_dict_converter=FluxLoRAConverter.align_to_diffsynth_format
+        # )
         
         
     def training_step(self, batch, batch_idx):

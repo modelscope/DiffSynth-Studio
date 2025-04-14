@@ -709,6 +709,7 @@ def lets_dance_flux(
         hidden_states_ref = dit.patchify(hidden_states_ref)
         hidden_states_ref = dit.x_embedder(hidden_states_ref)
         hidden_states_ref = rearrange(hidden_states_ref, "B L C -> 1 (B L) C")
+        hidden_states_ref = reference_embedder.proj(hidden_states_ref)
         hidden_states = torch.cat((hidden_states, hidden_states_ref), dim=1)
 
     # TeaCache
