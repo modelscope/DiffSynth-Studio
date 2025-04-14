@@ -32,6 +32,7 @@ class LightningModel(LightningModelForT2ILoRA):
             
         self.pipe = FluxImagePipeline.from_model_manager(model_manager)
         self.pipe.reference_embedder = FluxReferenceEmbedder()
+        self.pipe.reference_embedder.init()
         
         if quantize is not None:
             self.pipe.dit.quantize()
