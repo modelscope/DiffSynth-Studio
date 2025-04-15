@@ -26,28 +26,30 @@ pip install -e .
 |PAI Team|14B InP|[Link](https://modelscope.cn/models/PAI/Wan2.1-Fun-14B-InP)|[wan_fun_InP.py](./wan_fun_InP.py)|
 |PAI Team|1.3B Control|[Link](https://modelscope.cn/models/PAI/Wan2.1-Fun-1.3B-Control)|[wan_fun_control.py](./wan_fun_control.py)|
 |PAI Team|14B Control|[Link](https://modelscope.cn/models/PAI/Wan2.1-Fun-14B-Control)|[wan_fun_control.py](./wan_fun_control.py)|
+|IIC Team|1.3B VACE|[Link](https://modelscope.cn/models/iic/VACE-Wan2.1-1.3B-Preview)|[wan_1.3b_vace.py](./wan_1.3b_vace.py)|
 
 Base model features
 
-||Text-to-video|Image-to-video|End frame|Control|
-|-|-|-|-|-|
-|1.3B text-to-video|✅||||
-|14B text-to-video|✅||||
-|14B image-to-video 480P||✅|||
-|14B image-to-video 720P||✅|||
-|1.3B InP||✅|✅||
-|14B InP||✅|✅||
-|1.3B Control||||✅|
-|14B Control||||✅|
+||Text-to-video|Image-to-video|End frame|Control|Reference image|
+|-|-|-|-|-|-|
+|1.3B text-to-video|✅|||||
+|14B text-to-video|✅|||||
+|14B image-to-video 480P||✅||||
+|14B image-to-video 720P||✅||||
+|1.3B InP||✅|✅|||
+|14B InP||✅|✅|||
+|1.3B Control||||✅||
+|14B Control||||✅||
+|1.3B VACE||||✅|✅|
 
 Adapter model compatibility
 
-||1.3B text-to-video|1.3B InP|
-|-|-|-|
-|1.3B aesthetics LoRA|✅||
-|1.3B Highres-fix LoRA|✅||
-|1.3B ExVideo LoRA|✅||
-|1.3B Speed Control adapter|✅|✅|
+||1.3B text-to-video|1.3B InP|1.3B VACE|
+|-|-|-|-|
+|1.3B aesthetics LoRA|✅||✅|
+|1.3B Highres-fix LoRA|✅||✅|
+|1.3B ExVideo LoRA|✅||✅|
+|1.3B Speed Control adapter|✅|✅|✅|
 
 ## VRAM Usage
 
