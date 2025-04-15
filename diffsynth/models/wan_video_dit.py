@@ -451,6 +451,7 @@ class WanModelStateDictConverter:
         return state_dict_, config
     
     def from_civitai(self, state_dict):
+        state_dict = {name: param for name, param in state_dict.items() if not name.startswith("vace")}
         if hash_state_dict_keys(state_dict) == "9269f8db9040a9d860eaca435be61814":
             config = {
                 "has_image_input": False,
