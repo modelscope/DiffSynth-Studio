@@ -8,7 +8,7 @@ from PIL import Image
 snapshot_download("iic/VACE-Wan2.1-1.3B-Preview", local_dir="models/iic/VACE-Wan2.1-1.3B-Preview")
 
 # Load models
-model_manager = ModelManager(device="cuda")
+model_manager = ModelManager(device="cpu")
 model_manager.load_models(
     [
         "models/iic/VACE-Wan2.1-1.3B-Preview/diffusion_pytorch_model.safetensors",
