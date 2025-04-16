@@ -142,6 +142,24 @@ class WanVideoPipeline(BasePipeline):
                     computation_device=self.device,
                 ),
             )
+        if self.vace is not None:
+            enable_vram_management(
+                self.vace,
+                module_map = {
+                    torch.nn.Linear: AutoWrappedLinear,
+                    torch.nn.Conv3d: AutoWrappedModule,
+                    torch.nn.LayerNorm: AutoWrappedModule,
+                    RMSNorm: AutoWrappedModule,
+                },
+                module_config = dict(
+                    offload_dtype=dtype,
+                    offload_device="cpu",
+                    onload_dtype=dtype,
+                    onload_device=self.device,
+                    computation_dtype=self.torch_dtype,
+                    computation_device=self.device,
+                ),
+            )
         self.enable_cpu_offload()
 
 
