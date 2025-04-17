@@ -37,6 +37,7 @@ Base model features
 |14B text-to-video|✅|||||
 |14B image-to-video 480P||✅||||
 |14B image-to-video 720P||✅||||
+|14B first-last-frame-to-video 720P||✅|✅|||
 |1.3B InP||✅|✅|||
 |14B InP||✅|✅|||
 |1.3B Control||||✅||
