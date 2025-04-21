@@ -401,7 +401,8 @@ class FluxImagePipeline(BasePipeline):
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
         lora_state_dicts=[],
-        lora_alpahs=[]
+        lora_alpahs=[],
+        lora_patcher=None,
     ):
         height, width = self.check_resize_height_width(height, width)
 
@@ -443,6 +444,7 @@ class FluxImagePipeline(BasePipeline):
                 hidden_states=latents, timestep=timestep,
                 lora_state_dicts=lora_state_dicts,
                 lora_alpahs = lora_alpahs,
+                lora_patcher=lora_patcher,
                 **prompt_emb_posi, **tiler_kwargs, **extra_input, **controlnet_kwargs, **ipadapter_kwargs_list_posi, **eligen_kwargs_posi, **tea_cache_kwargs,
             )
             noise_pred_posi = self.control_noise_via_local_prompts(
@@ -462,6 +464,7 @@ class FluxImagePipeline(BasePipeline):
                     hidden_states=latents, timestep=timestep,
                     lora_state_dicts=lora_state_dicts,
                     lora_alpahs = lora_alpahs,
+                    lora_patcher=lora_patcher,
                     **prompt_emb_nega, **tiler_kwargs, **extra_input, **controlnet_kwargs_nega, **ipadapter_kwargs_list_nega, **eligen_kwargs_nega,
                 )
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
@@ -544,6 +547,7 @@ def lets_dance_flux(
     entity_masks=None,
     ipadapter_kwargs_list={},
     tea_cache: TeaCache = None,
+    use_gradient_checkpointing=False,
     **kwargs
 ):
 
@@ -610,6 +614,11 @@ def lets_dance_flux(
         prompt_emb = dit.context_embedder(prompt_emb)
         image_rotary_emb = dit.pos_embedder(torch.cat((text_ids, image_ids), dim=1))
         attention_mask = None
+        
+    def create_custom_forward(module):
+        def custom_forward(*inputs, **kwargs):
+            return module(*inputs, **kwargs)
+        return custom_forward
 
     # TeaCache
     if tea_cache is not None:
@@ -622,15 +631,22 @@ def lets_dance_flux(
     else:
         # Joint Blocks
         for block_id, block in enumerate(dit.blocks):
-            hidden_states, prompt_emb = block(
-                hidden_states,
-                prompt_emb,
-                conditioning,
-                image_rotary_emb,
-                attention_mask,
-                ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id, None),
-                **kwargs
-            )
+            if use_gradient_checkpointing:
+                hidden_states, prompt_emb = torch.utils.checkpoint.checkpoint(
+                    create_custom_forward(block),
+                    hidden_states, prompt_emb, conditioning, image_rotary_emb, attention_mask, ipadapter_kwargs_list.get(block_id, None), **kwargs,
+                    use_reentrant=False,
+                )
+            else:
+                hidden_states, prompt_emb = block(
+                    hidden_states,
+                    prompt_emb,
+                    conditioning,
+                    image_rotary_emb,
+                    attention_mask,
+                    ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id, None),
+                    **kwargs
+                )
             # ControlNet
             if controlnet is not None and controlnet_frames is not None:
                 hidden_states = hidden_states + controlnet_res_stack[block_id]
@@ -639,15 +655,22 @@ def lets_dance_flux(
         hidden_states = torch.cat([prompt_emb, hidden_states], dim=1)
         num_joint_blocks = len(dit.blocks)
         for block_id, block in enumerate(dit.single_blocks):
-            hidden_states, prompt_emb = block(
-                hidden_states,
-                prompt_emb,
-                conditioning,
-                image_rotary_emb,
-                attention_mask,
-                ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id + num_joint_blocks, None),
-                **kwargs
-            )
+            if use_gradient_checkpointing:
+                hidden_states, prompt_emb = torch.utils.checkpoint.checkpoint(
+                    create_custom_forward(block),
+                    hidden_states, prompt_emb, conditioning, image_rotary_emb, attention_mask, ipadapter_kwargs_list.get(block_id + num_joint_blocks, None), **kwargs,
+                    use_reentrant=False,
+                )
+            else:
+                hidden_states, prompt_emb = block(
+                    hidden_states,
+                    prompt_emb,
+                    conditioning,
+                    image_rotary_emb,
+                    attention_mask,
+                    ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id + num_joint_blocks, None),
+                    **kwargs
+                )
             # ControlNet
             if controlnet is not None and controlnet_frames is not None:
                 hidden_states[:, prompt_emb.shape[1]:] = hidden_states[:, prompt_emb.shape[1]:] + controlnet_single_res_stack[block_id]
