@@ -168,6 +168,12 @@ def parse_args():
         default=None,
         help="Preset LoRA path.",
     )
+    parser.add_argument(
+        "--num_nodes",
+        type=int,
+        default=1,
+        help="Num nodes.",
+    )
     parser = add_general_parsers(parser)
     args = parser.parse_args()
     return args
@@ -231,8 +237,9 @@ if __name__ == '__main__':
         max_epochs=args.max_epochs,
         accelerator="gpu",
         devices="auto",
+        num_nodes=args.num_nodes,
         precision=args.precision,
-        strategy=args.training_strategy,
+        strategy="ddp",
         default_root_dir=args.output_path,
         accumulate_grad_batches=args.accumulate_grad_batches,
         callbacks=[pl.pytorch.callbacks.ModelCheckpoint(save_top_k=-1)],
