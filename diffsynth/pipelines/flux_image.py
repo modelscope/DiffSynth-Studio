@@ -360,6 +360,27 @@ class FluxImagePipeline(BasePipeline):
             return self.infinityou_processor.prepare_infinite_you(self.image_proj_model, id_image, controlnet_image, infinityou_guidance, height, width)
         else:
             return {}, controlnet_image
+        
+        
+    def prepare_flex_kwargs(self, latents, flex_inpaint_image=None, flex_inpaint_mask=None, flex_control_image=None):
+        if self.dit.input_dim == 196:
+            if flex_inpaint_image is None:
+                flex_inpaint_image = torch.zeros_like(latents)
+            else:
+                pass # TODO
+            if flex_inpaint_mask is None:
+                flex_inpaint_mask = torch.ones_like(latents)[:, 0:1, :, :]
+            else:
+                pass # TODO
+            if flex_control_image is None:
+                flex_control_image = torch.zeros_like(latents)
+            else:
+                pass # TODO
+            flex_condition = torch.concat([flex_inpaint_image, flex_inpaint_mask, flex_control_image], dim=1)
+            flex_kwargs = {"flex_condition": flex_condition}
+        else:
+            flex_kwargs = {}
+        return flex_kwargs
 
 
     @torch.no_grad()
@@ -398,6 +419,10 @@ class FluxImagePipeline(BasePipeline):
         # InfiniteYou
         infinityou_id_image=None,
         infinityou_guidance=1.0,
+        # Flex
+        flex_inpaint_image=None,
+        flex_inpaint_mask=None,
+        flex_control_image=None,
         # TeaCache
         tea_cache_l1_thresh=None,
         # Tile
@@ -436,6 +461,9 @@ class FluxImagePipeline(BasePipeline):
 
         # ControlNets
         controlnet_kwargs_posi, controlnet_kwargs_nega, local_controlnet_kwargs = self.prepare_controlnet(controlnet_image, masks, controlnet_inpaint_mask, tiler_kwargs, enable_controlnet_on_negative)
+        
+        # Flex
+        flex_kwargs = self.prepare_flex_kwargs(latents, flex_inpaint_image, flex_inpaint_mask, flex_control_image)
 
         # TeaCache
         tea_cache_kwargs = {"tea_cache": TeaCache(num_inference_steps, rel_l1_thresh=tea_cache_l1_thresh) if tea_cache_l1_thresh is not None else None}
@@ -449,7 +477,7 @@ class FluxImagePipeline(BasePipeline):
             inference_callback = lambda prompt_emb_posi, controlnet_kwargs: lets_dance_flux(
                 dit=self.dit, controlnet=self.controlnet,
                 hidden_states=latents, timestep=timestep,
-                **prompt_emb_posi, **tiler_kwargs, **extra_input, **controlnet_kwargs, **ipadapter_kwargs_list_posi, **eligen_kwargs_posi, **tea_cache_kwargs, **infiniteyou_kwargs
+                **prompt_emb_posi, **tiler_kwargs, **extra_input, **controlnet_kwargs, **ipadapter_kwargs_list_posi, **eligen_kwargs_posi, **tea_cache_kwargs, **infiniteyou_kwargs, **flex_kwargs,
             )
             noise_pred_posi = self.control_noise_via_local_prompts(
                 prompt_emb_posi, prompt_emb_locals, masks, mask_scales, inference_callback,
@@ -466,7 +494,7 @@ class FluxImagePipeline(BasePipeline):
                 noise_pred_nega = lets_dance_flux(
                     dit=self.dit, controlnet=self.controlnet,
                     hidden_states=latents, timestep=timestep,
-                    **prompt_emb_nega, **tiler_kwargs, **extra_input, **controlnet_kwargs_nega, **ipadapter_kwargs_list_nega, **eligen_kwargs_nega, **infiniteyou_kwargs,
+                    **prompt_emb_nega, **tiler_kwargs, **extra_input, **controlnet_kwargs_nega, **ipadapter_kwargs_list_nega, **eligen_kwargs_nega, **infiniteyou_kwargs, **flex_kwargs,
                 )
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
             else:
@@ -602,6 +630,7 @@ def lets_dance_flux(
     ipadapter_kwargs_list={},
     id_emb=None,
     infinityou_guidance=None,
+    flex_condition=None,
     tea_cache: TeaCache = None,
     **kwargs
 ):
@@ -652,6 +681,9 @@ def lets_dance_flux(
         controlnet_res_stack, controlnet_single_res_stack = controlnet(
             controlnet_frames, **controlnet_extra_kwargs
         )
+        
+    if flex_condition is not None:
+        hidden_states = torch.concat([hidden_states, flex_condition], dim=1)
 
     if image_ids is None:
         image_ids = dit.prepare_image_ids(hidden_states)
