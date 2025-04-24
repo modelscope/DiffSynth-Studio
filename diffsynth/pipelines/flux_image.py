@@ -362,20 +362,24 @@ class FluxImagePipeline(BasePipeline):
             return {}, controlnet_image
         
         
-    def prepare_flex_kwargs(self, latents, flex_inpaint_image=None, flex_inpaint_mask=None, flex_control_image=None):
+    def prepare_flex_kwargs(self, latents, flex_inpaint_image=None, flex_inpaint_mask=None, flex_control_image=None, tiled=False, tile_size=64, tile_stride=32):
         if self.dit.input_dim == 196:
             if flex_inpaint_image is None:
                 flex_inpaint_image = torch.zeros_like(latents)
             else:
-                pass # TODO
+                flex_inpaint_image = self.preprocess_image(flex_inpaint_image).to(device=self.device, dtype=self.torch_dtype)
+                flex_inpaint_image = self.encode_image(flex_inpaint_image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
             if flex_inpaint_mask is None:
                 flex_inpaint_mask = torch.ones_like(latents)[:, 0:1, :, :]
             else:
-                pass # TODO
+                flex_inpaint_mask = flex_inpaint_mask.resize((latents.shape[3], latents.shape[2]))
+                flex_inpaint_mask = self.preprocess_image(flex_inpaint_mask).to(device=self.device, dtype=self.torch_dtype)
+                flex_inpaint_mask = (flex_inpaint_mask[:, 0:1, :, :] + 1) / 2
             if flex_control_image is None:
                 flex_control_image = torch.zeros_like(latents)
             else:
-                pass # TODO
+                flex_control_image = self.preprocess_image(flex_control_image).to(device=self.device, dtype=self.torch_dtype)
+                flex_control_image = self.encode_image(flex_control_image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
             flex_condition = torch.concat([flex_inpaint_image, flex_inpaint_mask, flex_control_image], dim=1)
             flex_kwargs = {"flex_condition": flex_condition}
         else:
@@ -463,7 +467,7 @@ class FluxImagePipeline(BasePipeline):
         controlnet_kwargs_posi, controlnet_kwargs_nega, local_controlnet_kwargs = self.prepare_controlnet(controlnet_image, masks, controlnet_inpaint_mask, tiler_kwargs, enable_controlnet_on_negative)
         
         # Flex
-        flex_kwargs = self.prepare_flex_kwargs(latents, flex_inpaint_image, flex_inpaint_mask, flex_control_image)
+        flex_kwargs = self.prepare_flex_kwargs(latents, flex_inpaint_image, flex_inpaint_mask, flex_control_image, **tiler_kwargs)
 
         # TeaCache
         tea_cache_kwargs = {"tea_cache": TeaCache(num_inference_steps, rel_l1_thresh=tea_cache_l1_thresh) if tea_cache_l1_thresh is not None else None}

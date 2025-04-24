@@ -1,5 +1,8 @@
 import torch
 from diffsynth import ModelManager, FluxImagePipeline, download_models
+from diffsynth.controlnets.processors import Annotator
+import numpy as np
+from PIL import Image
 
 
 download_models(["FLUX.1-dev"])
@@ -12,11 +15,30 @@ model_manager.load_models([
 ])
 pipe = FluxImagePipeline.from_model_manager(model_manager)
 
-prompt = "CG, masterpiece, best quality, solo, long hair, wavy hair, silver hair, blue eyes, blue dress, medium breasts, dress, underwater, air bubble, floating hair, refraction, portrait. The girl's flowing silver hair shimmers with every color of the rainbow and cascades down, merging with the floating flora around her."
-
-torch.manual_seed(9)
 image = pipe(
-    prompt=prompt,
-    num_inference_steps=50, embedded_guidance=3.5
+    prompt="portrait of a beautiful Asian girl, long hair, red t-shirt, sunshine, beach",
+    num_inference_steps=50, embedded_guidance=3.5,
+    seed=0
 )
-image.save("image_1024.jpg")
+image.save("image_1.jpg")
+
+mask = np.zeros((1024, 1024, 3), dtype=np.uint8)
+mask[0:300, 300:800] = 255
+mask = Image.fromarray(mask)
+mask.save("image_mask.jpg")
+
+inpaint_image = np.array(image)
+inpaint_image[0:300, 300:800] = 0
+inpaint_image = Image.fromarray(inpaint_image)
+inpaint_image.save("image_inpaint.jpg")
+
+control_image = Annotator("canny")(image)
+control_image.save("image_control.jpg")
+
+image = pipe(
+    prompt="portrait of a beautiful Asian girl, long hair, yellow t-shirt, sunshine, beach",
+    num_inference_steps=50, embedded_guidance=3.5,
+    flex_control_image=control_image,
+    seed=4
+)
+image.save("image_2.jpg")
