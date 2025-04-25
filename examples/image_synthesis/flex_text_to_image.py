@@ -23,22 +23,27 @@ image = pipe(
 image.save("image_1.jpg")
 
 mask = np.zeros((1024, 1024, 3), dtype=np.uint8)
-mask[0:300, 300:800] = 255
+mask[200:400, 400:700] = 255
 mask = Image.fromarray(mask)
 mask.save("image_mask.jpg")
 
-inpaint_image = np.array(image)
-inpaint_image[0:300, 300:800] = 0
-inpaint_image = Image.fromarray(inpaint_image)
-inpaint_image.save("image_inpaint.jpg")
+inpaint_image = image
+
+image = pipe(
+    prompt="portrait of a beautiful Asian girl with sunglasses, long hair, red t-shirt, sunshine, beach",
+    num_inference_steps=50, embedded_guidance=3.5,
+    flex_inpaint_image=inpaint_image, flex_inpaint_mask=mask,
+    seed=4
+)
+image.save("image_2.jpg")
 
 control_image = Annotator("canny")(image)
 control_image.save("image_control.jpg")
 
 image = pipe(
-    prompt="portrait of a beautiful Asian girl, long hair, yellow t-shirt, sunshine, beach",
+    prompt="portrait of a beautiful Asian girl with sunglasses, long hair, yellow t-shirt, sunshine, beach",
     num_inference_steps=50, embedded_guidance=3.5,
     flex_control_image=control_image,
     seed=4
 )
-image.save("image_2.jpg")
+image.save("image_3.jpg")
