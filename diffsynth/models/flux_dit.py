@@ -740,7 +740,7 @@ class FluxDiTStateDictConverter:
                 pass
         if "guidance_embedder.timestep_embedder.0.weight" not in state_dict_:
             return state_dict_, {"disable_guidance_embedder": True}
-        elif "double_blocks.8.img_attn.norm.key_norm.scale" not in state_dict_:
+        elif "blocks.8.attn.norm_k_a.weight" not in state_dict_:
             return state_dict_, {"input_dim": 196, "num_blocks": 8}
         else:
             return state_dict_
