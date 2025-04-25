@@ -360,6 +360,34 @@ class FluxImagePipeline(BasePipeline):
             return self.infinityou_processor.prepare_infinite_you(self.image_proj_model, id_image, controlnet_image, infinityou_guidance, height, width)
         else:
             return {}, controlnet_image
+        
+        
+    def prepare_flex_kwargs(self, latents, flex_inpaint_image=None, flex_inpaint_mask=None, flex_control_image=None, flex_control_strength=0.5, flex_control_stop=0.5, tiled=False, tile_size=64, tile_stride=32):
+        if self.dit.input_dim == 196:
+            if flex_inpaint_image is None:
+                flex_inpaint_image = torch.zeros_like(latents)
+            else:
+                flex_inpaint_image = self.preprocess_image(flex_inpaint_image).to(device=self.device, dtype=self.torch_dtype)
+                flex_inpaint_image = self.encode_image(flex_inpaint_image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+            if flex_inpaint_mask is None:
+                flex_inpaint_mask = torch.ones_like(latents)[:, 0:1, :, :]
+            else:
+                flex_inpaint_mask = flex_inpaint_mask.resize((latents.shape[3], latents.shape[2]))
+                flex_inpaint_mask = self.preprocess_image(flex_inpaint_mask).to(device=self.device, dtype=self.torch_dtype)
+                flex_inpaint_mask = (flex_inpaint_mask[:, 0:1, :, :] + 1) / 2
+            flex_inpaint_image = flex_inpaint_image * (1 - flex_inpaint_mask)
+            if flex_control_image is None:
+                flex_control_image = torch.zeros_like(latents)
+            else:
+                flex_control_image = self.preprocess_image(flex_control_image).to(device=self.device, dtype=self.torch_dtype)
+                flex_control_image = self.encode_image(flex_control_image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride) * flex_control_strength
+            flex_condition = torch.concat([flex_inpaint_image, flex_inpaint_mask, flex_control_image], dim=1)
+            flex_uncondition = torch.concat([flex_inpaint_image, flex_inpaint_mask, torch.zeros_like(flex_control_image)], dim=1)
+            flex_control_stop_timestep = self.scheduler.timesteps[int(flex_control_stop * (len(self.scheduler.timesteps) - 1))]
+            flex_kwargs = {"flex_condition": flex_condition, "flex_uncondition": flex_uncondition, "flex_control_stop_timestep": flex_control_stop_timestep}
+        else:
+            flex_kwargs = {}
+        return flex_kwargs
 
 
     @torch.no_grad()
@@ -398,6 +426,12 @@ class FluxImagePipeline(BasePipeline):
         # InfiniteYou
         infinityou_id_image=None,
         infinityou_guidance=1.0,
+        # Flex
+        flex_inpaint_image=None,
+        flex_inpaint_mask=None,
+        flex_control_image=None,
+        flex_control_strength=0.5,
+        flex_control_stop=0.5,
         # TeaCache
         tea_cache_l1_thresh=None,
         # Tile
@@ -436,6 +470,9 @@ class FluxImagePipeline(BasePipeline):
 
         # ControlNets
         controlnet_kwargs_posi, controlnet_kwargs_nega, local_controlnet_kwargs = self.prepare_controlnet(controlnet_image, masks, controlnet_inpaint_mask, tiler_kwargs, enable_controlnet_on_negative)
+        
+        # Flex
+        flex_kwargs = self.prepare_flex_kwargs(latents, flex_inpaint_image, flex_inpaint_mask, flex_control_image, **tiler_kwargs)
 
         # TeaCache
         tea_cache_kwargs = {"tea_cache": TeaCache(num_inference_steps, rel_l1_thresh=tea_cache_l1_thresh) if tea_cache_l1_thresh is not None else None}
@@ -449,7 +486,7 @@ class FluxImagePipeline(BasePipeline):
             inference_callback = lambda prompt_emb_posi, controlnet_kwargs: lets_dance_flux(
                 dit=self.dit, controlnet=self.controlnet,
                 hidden_states=latents, timestep=timestep,
-                **prompt_emb_posi, **tiler_kwargs, **extra_input, **controlnet_kwargs, **ipadapter_kwargs_list_posi, **eligen_kwargs_posi, **tea_cache_kwargs, **infiniteyou_kwargs
+                **prompt_emb_posi, **tiler_kwargs, **extra_input, **controlnet_kwargs, **ipadapter_kwargs_list_posi, **eligen_kwargs_posi, **tea_cache_kwargs, **infiniteyou_kwargs, **flex_kwargs,
             )
             noise_pred_posi = self.control_noise_via_local_prompts(
                 prompt_emb_posi, prompt_emb_locals, masks, mask_scales, inference_callback,
@@ -466,7 +503,7 @@ class FluxImagePipeline(BasePipeline):
                 noise_pred_nega = lets_dance_flux(
                     dit=self.dit, controlnet=self.controlnet,
                     hidden_states=latents, timestep=timestep,
-                    **prompt_emb_nega, **tiler_kwargs, **extra_input, **controlnet_kwargs_nega, **ipadapter_kwargs_list_nega, **eligen_kwargs_nega, **infiniteyou_kwargs,
+                    **prompt_emb_nega, **tiler_kwargs, **extra_input, **controlnet_kwargs_nega, **ipadapter_kwargs_list_nega, **eligen_kwargs_nega, **infiniteyou_kwargs, **flex_kwargs,
                 )
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
             else:
@@ -602,6 +639,9 @@ def lets_dance_flux(
     ipadapter_kwargs_list={},
     id_emb=None,
     infinityou_guidance=None,
+    flex_condition=None,
+    flex_uncondition=None,
+    flex_control_stop_timestep=None,
     tea_cache: TeaCache = None,
     **kwargs
 ):
@@ -652,6 +692,13 @@ def lets_dance_flux(
         controlnet_res_stack, controlnet_single_res_stack = controlnet(
             controlnet_frames, **controlnet_extra_kwargs
         )
+        
+    # Flex
+    if flex_condition is not None:
+        if timestep.tolist()[0] >= flex_control_stop_timestep:
+            hidden_states = torch.concat([hidden_states, flex_condition], dim=1)
+        else:
+            hidden_states = torch.concat([hidden_states, flex_uncondition], dim=1)
 
     if image_ids is None:
         image_ids = dit.prepare_image_ids(hidden_states)
