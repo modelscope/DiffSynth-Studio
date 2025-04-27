@@ -62,6 +62,8 @@ from ..models.wan_video_vae import WanVideoVAE
 from ..models.wan_video_motion_controller import WanMotionControllerModel
 from ..models.wan_video_vace import VaceWanModel
 
+from ..models.step1x_connector import Qwen2Connector
+
 
 model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -136,6 +138,7 @@ model_loader_configs = [
     (None, "1378ea763357eea97acdef78e65d6d96", ["wan_video_vae"], [WanVideoVAE], "civitai"),
     (None, "ccc42284ea13e1ad04693284c7a09be6", ["wan_video_vae"], [WanVideoVAE], "civitai"),
     (None, "dbd5ec76bbf977983f972c151d545389", ["wan_video_motion_controller"], [WanMotionControllerModel], "civitai"),
+    (None, "d30fb9e02b1dbf4e509142f05cf7dd50", ["flux_dit", "step1x_connector"], [FluxDiT, Qwen2Connector], "civitai"),
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -151,6 +154,7 @@ huggingface_model_loader_configs = [
     ("LlamaForCausalLM", "diffsynth.models.hunyuan_video_text_encoder", "hunyuan_video_text_encoder_2", "HunyuanVideoLLMEncoder"),
     ("LlavaForConditionalGeneration", "diffsynth.models.hunyuan_video_text_encoder", "hunyuan_video_text_encoder_2", "HunyuanVideoMLLMEncoder"),
     ("Step1Model", "diffsynth.models.stepvideo_text_encoder", "stepvideo_text_encoder_2", "STEP1TextEncoder"),
+    ("Qwen2_5_VLForConditionalGeneration", "diffsynth.models.qwenvl", "qwenvl", "Qwen25VL_7b_Embedder"),
 ]
 patch_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
