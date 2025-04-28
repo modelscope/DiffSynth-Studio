@@ -5,8 +5,8 @@ from PIL import Image
 import numpy as np
 
 
-# snapshot_download("Qwen/Qwen2.5-VL-7B-Instruct", cache_dir="./models")
-# snapshot_download("stepfun-ai/Step1X-Edit", cache_dir="./models")
+snapshot_download("Qwen/Qwen2.5-VL-7B-Instruct", cache_dir="./models")
+snapshot_download("stepfun-ai/Step1X-Edit", cache_dir="./models")
 
 model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cuda")
 model_manager.load_models([
