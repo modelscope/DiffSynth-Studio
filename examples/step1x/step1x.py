@@ -5,8 +5,8 @@ from PIL import Image
 import numpy as np
 
 
-snapshot_download("Qwen/Qwen2.5-VL-7B-Instruct", cache_dir="./models")
-snapshot_download("stepfun-ai/Step1X-Edit", cache_dir="./models")
+# snapshot_download("Qwen/Qwen2.5-VL-7B-Instruct", cache_dir="./models")
+# snapshot_download("stepfun-ai/Step1X-Edit", cache_dir="./models")
 
 model_manager = ModelManager(torch_dtype=torch.bfloat16, device="cuda")
 model_manager.load_models([
@@ -15,6 +15,7 @@ model_manager.load_models([
     "models/stepfun-ai/Step1X-Edit/vae.safetensors",
 ])
 pipe = FluxImagePipeline.from_model_manager(model_manager)
+pipe.enable_vram_management()
 
 image = Image.fromarray(np.zeros((1248, 832, 3), dtype=np.uint8) + 255)
 image = pipe(
