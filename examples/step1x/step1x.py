@@ -15,6 +15,7 @@ model_manager.load_models([
     "models/stepfun-ai/Step1X-Edit/vae.safetensors",
 ])
 pipe = FluxImagePipeline.from_model_manager(model_manager)
+pipe.enable_vram_management()
 
 image = Image.fromarray(np.zeros((1248, 832, 3), dtype=np.uint8) + 255)
 image = pipe(
