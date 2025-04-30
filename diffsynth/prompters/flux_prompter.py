@@ -59,6 +59,7 @@ class FluxPrompter(BasePrompter):
         positive=True,
         device="cuda",
         t5_sequence_length=512,
+        image_emb=None,
     ):
         prompt = self.process_prompt(prompt, positive=positive)
         
@@ -66,7 +67,10 @@ class FluxPrompter(BasePrompter):
         pooled_prompt_emb = self.encode_prompt_using_clip(prompt, self.text_encoder_1, self.tokenizer_1, 77, device)
         
         # T5
-        prompt_emb = self.encode_prompt_using_t5(prompt, self.text_encoder_2, self.tokenizer_2, t5_sequence_length, device)
+        if image_emb is not None:
+            prompt_emb = image_emb
+        else:
+            prompt_emb = self.encode_prompt_using_t5(prompt, self.text_encoder_2, self.tokenizer_2, t5_sequence_length, device)
 
         # text_ids
         text_ids = torch.zeros(prompt_emb.shape[0], prompt_emb.shape[1], 3).to(device=device, dtype=prompt_emb.dtype)
