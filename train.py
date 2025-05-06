@@ -254,7 +254,6 @@ class UnifiedModel(pl.LightningModule):
         self.pipe.vae_decoder.requires_grad_(False)
         self.pipe.vae_encoder.requires_grad_(False)
         self.pipe.text_encoder_1.requires_grad_(False)
-        self.qwenvl.requires_grad_(False)
         
         self.pipe.scheduler.set_timesteps(1000, training=True)
         
