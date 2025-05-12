@@ -35,6 +35,9 @@ class FlowMatchScheduler():
             y_shifted = y - y.min()
             bsmntw_weighing = y_shifted * (num_inference_steps / y_shifted.sum())
             self.linear_timesteps_weights = bsmntw_weighing
+            self.training = True
+        else:
+            self.training = False
 
 
     def step(self, model_output, timestep, sample, to_final=False, **kwargs):
