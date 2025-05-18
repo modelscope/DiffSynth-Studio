@@ -577,7 +577,12 @@ def model_fn_wan_video(
         for block_id, block in enumerate(dit.blocks):
             x = block(x, context, t_mod, freqs)
             if vace_context is not None and block_id in vace.vace_layers_mapping:
-                x = x + vace_hints[vace.vace_layers_mapping[block_id]] * vace_scale
+                current_vace_hint = vace_hints[vace.vace_layers_mapping[block_id]]
+                if use_unified_sequence_parallel and dist.is_initialized() and dist.get_world_size() > 1:
+                    sp_world_size = get_sequence_parallel_world_size()
+                    sp_rank = get_sequence_parallel_rank()
+                    current_vace_hint = torch.chunk(current_vace_hint, sp_world_size, dim=1)[sp_rank]
+                x = x + current_vace_hint * vace_scale
         if tea_cache is not None:
             tea_cache.store(x)
 
