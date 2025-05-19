@@ -148,7 +148,10 @@ class BasePipeline(torch.nn.Module):
     
     def freeze_except(self, model_names):
         for name, model in self.named_children():
-            if name not in model_names:
+            if name in model_names:
+                model.train()
+                model.requires_grad_(True)
+            else:
                 model.eval()
                 model.requires_grad_(False)
 
@@ -212,11 +215,6 @@ class WanVideoPipeline(BasePipeline):
             WanVideoUnit_CfgMerger(),
         ]
         self.model_fn = model_fn_wan_video
-        
-        
-    def train(self):
-        super().train()
-        self.scheduler.set_timesteps(1000, training=True)
         
         
     def training_loss(self, **inputs):

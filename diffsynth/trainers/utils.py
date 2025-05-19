@@ -1,4 +1,4 @@
-import imageio, os, torch, warnings, torchvision
+import imageio, os, torch, warnings, torchvision, argparse
 from peft import LoraConfig, inject_adapter_in_model
 from PIL import Image
 import pandas as pd
@@ -10,7 +10,7 @@ from accelerate import Accelerator
 class VideoDataset(torch.utils.data.Dataset):
     def __init__(
         self,
-        base_path, metadata_path,
+        base_path=None, metadata_path=None,
         frame_interval=1, num_frames=81,
         dynamic_resolution=True, max_pixels=1920*1080, height=None, width=None,
         height_division_factor=16, width_division_factor=16,
@@ -18,7 +18,16 @@ class VideoDataset(torch.utils.data.Dataset):
         image_file_extension=("jpg", "jpeg", "png", "webp"),
         video_file_extension=("mp4", "avi", "mov", "wmv", "mkv", "flv", "webm"),
         repeat=1,
+        args=None,
     ):
+        if args is not None:
+            base_path = args.dataset_base_path
+            metadata_path = args.dataset_metadata_path
+            height = args.height
+            width = args.width
+            data_file_keys = args.data_file_keys.split(",")
+            repeat = args.dataset_repeat
+
         metadata = pd.read_csv(metadata_path)
         self.data = [metadata.iloc[i].to_dict() for i in range(len(metadata))]
         
@@ -156,10 +165,28 @@ class DiffusionTrainingModule(torch.nn.Module):
         lora_config = LoraConfig(r=lora_rank, lora_alpha=lora_alpha, target_modules=target_modules)
         model = inject_adapter_in_model(lora_config, model)
         return model
+    
+    
+    def export_trainable_state_dict(self, state_dict, remove_prefix=None):
+        trainable_param_names = self.trainable_param_names()
+        state_dict = {name: param for name, param in state_dict.items() if name in trainable_param_names}
+        if remove_prefix is not None:
+            state_dict_ = {}
+            for name, param in state_dict.items():
+                if name.startswith(remove_prefix):
+                    name = name[len(remove_prefix):]
+                state_dict_[name] = param
+            state_dict = state_dict_
+        return state_dict
 
 
 
-def launch_training_task(model: DiffusionTrainingModule, dataset, learning_rate, num_epochs, output_path, remove_prefix=None):
+def launch_training_task(model: DiffusionTrainingModule, dataset, learning_rate=1e-4, num_epochs=1, output_path="./models", remove_prefix_in_ckpt=None, args=None):
+    if args is not None:
+        learning_rate = args.learning_rate
+        num_epochs = args.num_epochs
+        output_path = args.output_path
+        remove_prefix_in_ckpt = args.remove_prefix_in_ckpt
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0])
     optimizer = torch.optim.AdamW(model.trainable_modules(), lr=learning_rate)
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
@@ -178,13 +205,27 @@ def launch_training_task(model: DiffusionTrainingModule, dataset, learning_rate,
         accelerator.wait_for_everyone()
         if accelerator.is_main_process:
             state_dict = accelerator.get_state_dict(model)
-            trainable_param_names = model.trainable_param_names()
-            state_dict = {name: param for name, param in state_dict.items() if name in trainable_param_names}
-            if remove_prefix is not None:
-                state_dict_ = {}
-                for name, param in state_dict.items():
-                    if name.startswith(remove_prefix):
-                        name = name[len(remove_prefix):]
-                    state_dict_[name] = param
-            path = os.path.join(output_path, f"epoch-{epoch}")
-            accelerator.save(state_dict_, path, safe_serialization=True)
+            state_dict = model.export_trainable_state_dict(state_dict, remove_prefix=remove_prefix_in_ckpt)
+            path = os.path.join(output_path, f"epoch-{epoch}.safetensors")
+            accelerator.save(state_dict, path, safe_serialization=True)
+
+
+
+def wan_parser():
+    parser = argparse.ArgumentParser(description="Simple example of a training script.")
+    parser.add_argument("--dataset_base_path", type=str, default="", help="Base path of the Dataset.")
+    parser.add_argument("--dataset_metadata_path", type=str, default="", required=True, help="Metadata path of the Dataset.")
+    parser.add_argument("--height", type=int, default=None, help="Image or video height. Leave `height` and `width` None to enable dynamic resolution.")
+    parser.add_argument("--width", type=int, default=None, help="Image or video width. Leave `height` and `width` None to enable dynamic resolution.")
+    parser.add_argument("--data_file_keys", type=str, default="image,video", help="Data file keys in metadata. Separated by commas.")
+    parser.add_argument("--dataset_repeat", type=int, default=1, help="Number of times the dataset is repeated in each epoch.")
+    parser.add_argument("--model_paths", type=str, default="", help="Model paths to be loaded. JSON format.")
+    parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate.")
+    parser.add_argument("--num_epochs", type=int, default=1, help="Number of epochs.")
+    parser.add_argument("--output_path", type=str, default="./models", help="Save path.")
+    parser.add_argument("--remove_prefix_in_ckpt", type=str, default="pipe.dit.", help="Remove prefix in ckpt.")
+    parser.add_argument("--task", type=str, default="train_lora", choices=["train_lora", "train_full"], help="Task.")
+    parser.add_argument("--lora_target_modules", type=str, default="q,k,v,o,ffn.0,ffn.2", help="Layers with LoRA modules.")
+    parser.add_argument("--lora_rank", type=int, default=32, help="LoRA rank.")
+    return parser
+
