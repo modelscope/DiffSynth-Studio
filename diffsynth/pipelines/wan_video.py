@@ -581,7 +581,7 @@ def model_fn_wan_video(
         if tea_cache is not None:
             tea_cache.store(x)
 
-    x = dit.head(x, t)
+    x = dit.head(x, t.unsqueeze(1))
     if use_unified_sequence_parallel:
         if dist.is_initialized() and dist.get_world_size() > 1:
             x = get_sp_group().all_gather(x, dim=1)
