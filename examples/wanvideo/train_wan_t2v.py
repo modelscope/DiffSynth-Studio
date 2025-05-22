@@ -254,12 +254,12 @@ class LightningModelForTrain(pl.LightningModule):
         # Data
         latents = batch["latents"].to(self.device)
         prompt_emb = batch["prompt_emb"]
-        prompt_emb["context"] = prompt_emb["context"][0].to(self.device)
+        prompt_emb["context"] = prompt_emb["context"].squeeze(1).to(self.device)
         image_emb = batch["image_emb"]
         if "clip_feature" in image_emb:
-            image_emb["clip_feature"] = image_emb["clip_feature"][0].to(self.device)
+            image_emb["clip_feature"] = image_emb["clip_feature"].squeeze(1).to(self.device)
         if "y" in image_emb:
-            image_emb["y"] = image_emb["y"][0].to(self.device)
+            image_emb["y"] = image_emb["y"].squeeze(1).to(self.device)
 
         # Loss
         self.pipe.device = self.device
@@ -496,6 +496,12 @@ def parse_args():
         default=None,
         help="SwanLab mode (cloud or local).",
     )
+    parser.add_argument(
+        "--train_batch_size",
+        type=int,
+        default=1,
+        help="Training batch size.",
+    )
     args = parser.parse_args()
     return args
 
@@ -542,7 +548,7 @@ def train(args):
     dataloader = torch.utils.data.DataLoader(
         dataset,
         shuffle=True,
-        batch_size=1,
+        batch_size=args.train_batch_size,
         num_workers=args.dataloader_num_workers
     )
     model = LightningModelForTrain(
