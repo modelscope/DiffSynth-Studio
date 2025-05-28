@@ -365,7 +365,7 @@ class WanVideoPipeline(BasePipeline):
         height, width = self.check_resize_height_width(height, width)
         if num_frames % 4 != 1:
             num_frames = (num_frames + 2) // 4 * 4 + 1
-            print(f"Only `num_frames % 4 != 1` is acceptable. We round it up to {num_frames}.")
+            print(f"Only `num_frames % 4 == 1` is acceptable. We round it up to {num_frames}.")
         
         # Tiler parameters
         tiler_kwargs = {"tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride}
