@@ -25,6 +25,7 @@ class VideoDataset(torch.utils.data.Dataset):
             metadata_path = args.dataset_metadata_path
             height = args.height
             width = args.width
+            num_frames = args.num_frames
             data_file_keys = args.data_file_keys.split(",")
             repeat = args.dataset_repeat
 
@@ -205,9 +206,23 @@ def launch_training_task(model: DiffusionTrainingModule, dataset, learning_rate=
         accelerator.wait_for_everyone()
         if accelerator.is_main_process:
             state_dict = accelerator.get_state_dict(model)
-            state_dict = model.export_trainable_state_dict(state_dict, remove_prefix=remove_prefix_in_ckpt)
+            state_dict = accelerator.unwrap_model(model).export_trainable_state_dict(state_dict, remove_prefix=remove_prefix_in_ckpt)
+            os.makedirs(output_path, exist_ok=True)
             path = os.path.join(output_path, f"epoch-{epoch}.safetensors")
             accelerator.save(state_dict, path, safe_serialization=True)
+
+
+
+def launch_data_process_task(model: DiffusionTrainingModule, dataset, output_path="./models"):
+    dataloader = torch.utils.data.DataLoader(dataset, shuffle=False, collate_fn=lambda x: x[0])
+    accelerator = Accelerator()
+    model, dataloader = accelerator.prepare(model, dataloader)
+    os.makedirs(os.path.join(output_path, "data_cache"), exist_ok=True)
+    for data_id, data in enumerate(tqdm(dataloader)):
+        with torch.no_grad():
+            inputs = model.forward_preprocess(data)
+            inputs = {key: inputs[key] for key in model.model_input_keys if key in inputs}
+            torch.save(inputs, os.path.join(output_path, "data_cache", f"{data_id}.pth"))
 
 
 
@@ -217,15 +232,26 @@ def wan_parser():
     parser.add_argument("--dataset_metadata_path", type=str, default="", required=True, help="Metadata path of the Dataset.")
     parser.add_argument("--height", type=int, default=None, help="Image or video height. Leave `height` and `width` None to enable dynamic resolution.")
     parser.add_argument("--width", type=int, default=None, help="Image or video width. Leave `height` and `width` None to enable dynamic resolution.")
+    parser.add_argument("--num_frames", type=int, default=81, help="Number of frames in each video. The frames are sampled from the prefix.")
     parser.add_argument("--data_file_keys", type=str, default="image,video", help="Data file keys in metadata. Separated by commas.")
     parser.add_argument("--dataset_repeat", type=int, default=1, help="Number of times the dataset is repeated in each epoch.")
-    parser.add_argument("--model_paths", type=str, default="", help="Model paths to be loaded. JSON format.")
+    parser.add_argument("--model_paths", type=str, default=None, help="Model paths to be loaded. JSON format.")
+    parser.add_argument("--model_id_with_origin_paths", type=str, default=None, help="Model ID with origin path, e.g., Wan-AI/Wan2.1-T2V-1.3B:diffusion_pytorch_model*.safetensors. Separated by commas.")
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate.")
     parser.add_argument("--num_epochs", type=int, default=1, help="Number of epochs.")
     parser.add_argument("--output_path", type=str, default="./models", help="Save path.")
     parser.add_argument("--remove_prefix_in_ckpt", type=str, default="pipe.dit.", help="Remove prefix in ckpt.")
-    parser.add_argument("--task", type=str, default="train_lora", choices=["train_lora", "train_full"], help="Task.")
-    parser.add_argument("--lora_target_modules", type=str, default="q,k,v,o,ffn.0,ffn.2", help="Layers with LoRA modules.")
+    parser.add_argument("--trainable_models", type=str, default=None, help="Trainable models, e.g., dit, vae, text_encoder.")
+    parser.add_argument("--lora_base_model", type=str, default=None, help="Add LoRA on which model.")
+    parser.add_argument("--lora_target_modules", type=str, default="q,k,v,o,ffn.0,ffn.2", help="Add LoRA on which layer.")
     parser.add_argument("--lora_rank", type=int, default=32, help="LoRA rank.")
+    parser.add_argument("--input_contains_input_image", default=False, action="store_true", help="Model input contains 'input_image'.")
+    parser.add_argument("--input_contains_end_image", default=False, action="store_true", help="Model input contains 'end_image'.")
+    parser.add_argument("--input_contains_control_video", default=False, action="store_true", help="Model input contains 'control_video'.")
+    parser.add_argument("--input_contains_reference_image", default=False, action="store_true", help="Model input contains 'reference_image'.")
+    parser.add_argument("--input_contains_vace_video", default=False, action="store_true", help="Model input contains 'vace_video'.")
+    parser.add_argument("--input_contains_vace_reference_image", default=False, action="store_true", help="Model input contains 'vace_reference_image'.")
+    parser.add_argument("--input_contains_motion_bucket_id", default=False, action="store_true", help="Model input contains 'motion_bucket_id'.")
+    parser.add_argument("--use_gradient_checkpointing_offload", default=False, action="store_true", help="Offload gradient checkpointing to RAM.")
     return parser
 

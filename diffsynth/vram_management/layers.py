@@ -33,7 +33,7 @@ class AutoTorchModule(torch.nn.Module):
 
 
 class AutoWrappedModule(AutoTorchModule):
-    def __init__(self, module: torch.nn.Module, offload_dtype, offload_device, onload_dtype, onload_device, computation_dtype, computation_device, vram_limit):
+    def __init__(self, module: torch.nn.Module, offload_dtype, offload_device, onload_dtype, onload_device, computation_dtype, computation_device, vram_limit, **kwargs):
         super().__init__()
         self.module = module.to(dtype=offload_dtype, device=offload_device)
         self.offload_dtype = offload_dtype
@@ -60,7 +60,7 @@ class AutoWrappedModule(AutoTorchModule):
     
 
 class WanAutoCastLayerNorm(torch.nn.LayerNorm, AutoTorchModule):
-    def __init__(self, module: torch.nn.LayerNorm, offload_dtype, offload_device, onload_dtype, onload_device, computation_dtype, computation_device, vram_limit):
+    def __init__(self, module: torch.nn.LayerNorm, offload_dtype, offload_device, onload_dtype, onload_device, computation_dtype, computation_device, vram_limit, **kwargs):
         with init_weights_on_device(device=torch.device("meta")):
             super().__init__(module.normalized_shape, eps=module.eps, elementwise_affine=module.elementwise_affine, bias=module.bias is not None, dtype=offload_dtype, device=offload_device)
         self.weight = module.weight
@@ -92,7 +92,7 @@ class WanAutoCastLayerNorm(torch.nn.LayerNorm, AutoTorchModule):
     
 
 class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
-    def __init__(self, module: torch.nn.Linear, offload_dtype, offload_device, onload_dtype, onload_device, computation_dtype, computation_device, vram_limit):
+    def __init__(self, module: torch.nn.Linear, offload_dtype, offload_device, onload_dtype, onload_device, computation_dtype, computation_device, vram_limit, name="", **kwargs):
         with init_weights_on_device(device=torch.device("meta")):
             super().__init__(in_features=module.in_features, out_features=module.out_features, bias=module.bias is not None, dtype=offload_dtype, device=offload_device)
         self.weight = module.weight
@@ -105,6 +105,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         self.computation_device = computation_device
         self.vram_limit = vram_limit
         self.state = 0
+        self.name = name
 
     def forward(self, x, *args, **kwargs):
         if self.state == 2:
@@ -121,8 +122,9 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         return torch.nn.functional.linear(x, weight, bias)
 
 
-def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict, module_config: dict, max_num_param=None, overflow_module_config: dict = None, total_num_param=0, vram_limit=None):
+def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict, module_config: dict, max_num_param=None, overflow_module_config: dict = None, total_num_param=0, vram_limit=None, name_prefix=""):
     for name, module in model.named_children():
+        layer_name = name if name_prefix == "" else name_prefix + "." + name
         for source_module, target_module in module_map.items():
             if isinstance(module, source_module):
                 num_param = sum(p.numel() for p in module.parameters())
@@ -130,12 +132,12 @@ def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict,
                     module_config_ = overflow_module_config
                 else:
                     module_config_ = module_config
-                module_ = target_module(module, **module_config_, vram_limit=vram_limit)
+                module_ = target_module(module, **module_config_, vram_limit=vram_limit, name=layer_name)
                 setattr(model, name, module_)
                 total_num_param += num_param
                 break
         else:
-            total_num_param = enable_vram_management_recursively(module, module_map, module_config, max_num_param, overflow_module_config, total_num_param, vram_limit=vram_limit)
+            total_num_param = enable_vram_management_recursively(module, module_map, module_config, max_num_param, overflow_module_config, total_num_param, vram_limit=vram_limit, name_prefix=layer_name)
     return total_num_param
 
 
