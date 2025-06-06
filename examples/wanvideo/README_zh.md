@@ -24,7 +24,12 @@
 
 ## 模型推理
 
-### 加载模型
+以下部分将会帮助您理解我们的功能并编写推理代码。
+
+
+<details>
+
+<summary>加载模型</summary>
 
 模型通过 `from_pretrained` 加载：
 
@@ -74,7 +79,12 @@ ModelConfig(path=[
 * `skip_download`: 是否跳过下载，默认值为 `False`。当您的网络无法访问[魔搭社区](https://modelscope.cn/)时，请手动下载必要的文件，并将其设置为 `True`。
 * `redirect_common_files`: 是否重定向重复模型文件，默认值为 `True`。由于 Wan 系列模型包括多个基础模型，每个基础模型的 text encoder 等模块都是相同的，为避免重复下载，我们会对模型路径进行重定向。
 
-### 显存管理
+</details>
+
+
+<details>
+
+<summary>显存管理</summary>
 
 DiffSynth-Studio 为 Wan 模型提供了细粒度的显存管理，让模型能够在低显存设备上进行推理，可通过以下代码开启 offload 功能，在显存有限的设备上将部分模块 offload 到内存中。
 
@@ -129,7 +139,12 @@ FP8 量化能够大幅度减少显存占用，但不会加速，部分模型在 
 * `vram_buffer`: 显存缓冲区大小（GB），默认为 0.5GB。由于部分较大的神经网络层在 onload 阶段会不可控地占用更多显存，因此一个显存缓冲区是必要的，理论上的最优值为模型中最大的层所占的显存。
 * `num_persistent_param_in_dit`: DiT 模型中常驻显存的参数数量（个），默认为无限制。我们将会在未来删除这个参数，请不要依赖这个参数。
 
-### 输入参数
+</details>
+
+
+<details>
+
+<summary>输入参数</summary>
 
 Pipeline 在推理阶段能够接收以下输入参数：
 
@@ -164,9 +179,16 @@ Pipeline 在推理阶段能够接收以下输入参数：
 * `tea_cache_model_id`: TeaCache 的参数模板，可选 `"Wan2.1-T2V-1.3B"`、`Wan2.1-T2V-14B`、`Wan2.1-I2V-14B-480P`、`Wan2.1-I2V-14B-720P` 之一。
 * `progress_bar_cmd`: 进度条，默认为 `tqdm.tqdm`。可通过设置为 `lambda x:x` 来屏蔽进度条。
 
+</details>
+
+
 ## 模型训练
 
 Wan 系列模型训练通过统一的 [`./model_training/train.py`](./model_training/train.py) 脚本进行。
+
+<details>
+
+<summary>脚本参数</summary>
 
 脚本包含以下参数：
 
@@ -202,7 +224,12 @@ Wan 系列模型训练通过统一的 [`./model_training/train.py`](./model_trai
 * 显存管理
   * `--use_gradient_checkpointing_offload`: 是否将 gradient checkpointing 卸载到内存中。
 
-### Step 1: 准备数据集
+</details>
+
+
+<details>
+
+<summary>Step 1: 准备数据集</summary>
 
 数据集包含一系列文件，我们建议您这样组织数据集文件：
 
@@ -221,6 +248,12 @@ video1.mp4,"from sunset to night, a small town, light, house, river"
 video2.mp4,"a dog is running"
 ```
 
+我们构建了一个样例视频数据集，以方便您进行测试，通过以下命令可以下载这个数据集：
+
+```shell
+modelscope download --dataset DiffSynth-Studio/example_video_dataset README.md --local_dir ./data/example_video_dataset
+```
+
 数据集支持视频和图片混合训练，支持的视频文件格式包括 `"mp4", "avi", "mov", "wmv", "mkv", "flv", "webm"`，支持的图片格式包括 `"jpg", "jpeg", "png", "webp"`。
 
 视频的尺寸可通过脚本参数 `--height`、`--width`、`--num_frames` 控制。在每个视频中，前 `num_frames` 帧会被用于训练，因此当视频长度不足 `num_frames` 帧时会报错，图片文件会被视为单帧视频。当 `--height` 和 `--width` 为空时将会开启动态分辨率，按照数据集中每个视频或图片的实际宽高训练。
@@ -236,7 +269,12 @@ video1.mp4,"from sunset to night, a small town, light, house, river",video1_soft
 
 额外输入若包含视频和图像文件，则需要在 `--data_file_keys` 参数中指定要解析的列名。该参数的默认值为 `"image,video"`，即解析列名为 `image` 和 `video` 的列。可根据额外输入增加相应的列名，例如 `--data_file_keys "image,video,control_video"`，同时启用 `--input_contains_control_video`。
 
-### Step 2: 加载模型
+</details>
+
+
+<details>
+
+<summary>Step 2: 加载模型</summary>
 
 类似于推理时的模型加载逻辑，可直接通过模型 ID 配置要加载的模型。例如，推理时我们通过以下设置加载模型
 
@@ -288,7 +326,12 @@ model_configs=[
 ]' \
 ```
 
-### 设置可训练模块
+</details>
+
+
+<details>
+
+<summary>Step 3: 设置可训练模块</summary>
 
 训练框架支持训练基础模型，或 LoRA 模型。以下是几个例子：
 
@@ -298,16 +341,17 @@ model_configs=[
 
 此外，由于训练脚本中加载了多个模块（text encoder、dit、vae），保存模型文件时需要移除前缀，例如在全量训练 DiT 部分或者训练 DiT 部分的 LoRA 模型时，请设置 `--remove_prefix_in_ckpt pipe.dit.`
 
-### 启动训练程序
+</details>
 
-我们构建了一个样例视频数据集，以方便您进行测试，通过以下命令可以下载这个数据集：
 
-```shell
-modelscope download --dataset DiffSynth-Studio/example_video_dataset README.md --local_dir ./data/example_video_dataset
-```
+<details>
+
+<summary>Step 4: 启动训练程序</summary>
 
 我们为每一个模型编写了训练命令，请参考本文档开头的表格。
 
 请注意，14B 模型全量训练需要8个GPU，每个GPU的显存至少为80G。全量训练这些14B模型时需要安装 `deepspeed`（`pip install deepspeed`），我们编写了建议的[配置文件](./model_training/full/accelerate_config_14B.yaml)，这个配置文件会在对应的训练脚本中被加载，这些脚本已在 8*A100 上测试过。
 
 训练脚本的默认视频尺寸为 `480*832*81`，提升分辨率将可能导致显存不足，请添加参数 `--use_gradient_checkpointing_offload` 降低显存占用。
+
+</details>
