@@ -68,7 +68,6 @@ class WanVideoPipeline(BasePipeline):
                 torch.nn.Conv3d: AutoWrappedModule,
                 torch.nn.LayerNorm: AutoWrappedModule,
                 RMSNorm: AutoWrappedModule,
-                torch.nn.Conv2d: AutoWrappedModule,
             },
             module_config = dict(
                 offload_dtype=dtype,
@@ -238,18 +237,6 @@ class WanVideoPipeline(BasePipeline):
         return latents
     
     
-    def prepare_reference_image(self, reference_image, height, width):
-        if reference_image is not None:
-            self.load_models_to_device(["vae"])
-            reference_image = reference_image.resize((width, height))
-            reference_image = self.preprocess_images([reference_image])
-            reference_image = torch.stack(reference_image, dim=2).to(dtype=self.torch_dtype, device=self.device)
-            reference_latents = self.vae.encode(reference_image, device=self.device)
-            return {"reference_latents": reference_latents}
-        else:
-            return {}
-    
-    
     def prepare_controlnet_kwargs(self, control_video, num_frames, height, width, clip_feature=None, y=None, tiled=True, tile_size=(34, 34), tile_stride=(18, 16)):
         if control_video is not None:
             control_latents = self.encode_control_video(control_video, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
@@ -352,7 +339,6 @@ class WanVideoPipeline(BasePipeline):
         end_image=None,
         input_video=None,
         control_video=None,
-        reference_image=None,
         vace_video=None,
         vace_video_mask=None,
         vace_reference_image=None,
@@ -412,9 +398,6 @@ class WanVideoPipeline(BasePipeline):
         else:
             image_emb = {}
             
-        # Reference image
-        reference_image_kwargs = self.prepare_reference_image(reference_image, height, width)
-            
         # ControlNet
         if control_video is not None:
             self.load_models_to_device(["image_encoder", "vae"])
@@ -452,14 +435,14 @@ class WanVideoPipeline(BasePipeline):
                 self.dit, motion_controller=self.motion_controller, vace=self.vace,
                 x=latents, timestep=timestep,
                 **prompt_emb_posi, **image_emb, **extra_input,
-                **tea_cache_posi, **usp_kwargs, **motion_kwargs, **vace_kwargs, **reference_image_kwargs,
+                **tea_cache_posi, **usp_kwargs, **motion_kwargs, **vace_kwargs,
             )
             if cfg_scale != 1.0:
                 noise_pred_nega = model_fn_wan_video(
                     self.dit, motion_controller=self.motion_controller, vace=self.vace,
                     x=latents, timestep=timestep,
                     **prompt_emb_nega, **image_emb, **extra_input,
-                    **tea_cache_nega, **usp_kwargs, **motion_kwargs, **vace_kwargs, **reference_image_kwargs,
+                    **tea_cache_nega, **usp_kwargs, **motion_kwargs, **vace_kwargs,
                 )
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
             else:
@@ -543,7 +526,6 @@ def model_fn_wan_video(
     context: torch.Tensor = None,
     clip_feature: Optional[torch.Tensor] = None,
     y: Optional[torch.Tensor] = None,
-    reference_latents = None,
     vace_context = None,
     vace_scale = 1.0,
     tea_cache: TeaCache = None,
@@ -569,12 +551,6 @@ def model_fn_wan_video(
         context = torch.cat([clip_embdding, context], dim=1)
     
     x, (f, h, w) = dit.patchify(x)
-    
-    # Reference image
-    if reference_latents is not None:
-        reference_latents = dit.ref_conv(reference_latents[:, :, 0]).flatten(2).transpose(1, 2)
-        x = torch.concat([reference_latents, x], dim=1)
-        f += 1
     
     freqs = torch.cat([
         dit.freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
@@ -604,10 +580,6 @@ def model_fn_wan_video(
                 x = x + vace_hints[vace.vace_layers_mapping[block_id]] * vace_scale
         if tea_cache is not None:
             tea_cache.store(x)
-            
-    if reference_latents is not None:
-        x = x[:, reference_latents.shape[1]:]
-        f -= 1
 
     x = dit.head(x, t)
     if use_unified_sequence_parallel:
