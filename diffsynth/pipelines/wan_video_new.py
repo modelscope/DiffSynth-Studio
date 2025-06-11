@@ -1,4 +1,4 @@
-import torch, warnings, glob, os
+import torch, warnings, glob, os, types
 import numpy as np
 from PIL import Image
 from einops import repeat, reduce
@@ -373,6 +373,17 @@ class WanVideoPipeline(BasePipeline):
                 ),
                 vram_limit=vram_limit,
             )
+            
+            
+    def enable_usp(self):
+        from xfuser.core.distributed import get_sequence_parallel_world_size
+        from ..distributed.xdit_context_parallel import usp_attn_forward, usp_dit_forward
+
+        for block in self.dit.blocks:
+            block.self_attn.forward = types.MethodType(usp_attn_forward, block.self_attn)
+        self.dit.forward = types.MethodType(usp_dit_forward, self.dit)
+        self.sp_size = get_sequence_parallel_world_size()
+        self.use_unified_sequence_parallel = True
 
 
     @staticmethod
@@ -384,6 +395,7 @@ class WanVideoPipeline(BasePipeline):
         local_model_path: str = "./models",
         skip_download: bool = False,
         redirect_common_files: bool = True,
+        use_usp=False,
     ):
         # Redirect model path
         if redirect_common_files:
@@ -616,16 +628,20 @@ class WanVideoUnit_NoiseInitializer(PipelineUnit):
 class WanVideoUnit_InputVideoEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("input_video", "noise", "tiled", "tile_size", "tile_stride", "denoising_strength"),
+            input_params=("input_video", "noise", "tiled", "tile_size", "tile_stride", "vace_reference_image"),
             onload_model_names=("vae",)
         )
 
-    def process(self, pipe: WanVideoPipeline, input_video, noise, tiled, tile_size, tile_stride, denoising_strength):
+    def process(self, pipe: WanVideoPipeline, input_video, noise, tiled, tile_size, tile_stride, vace_reference_image):
         if input_video is None:
             return {"latents": noise}
         pipe.load_models_to_device(["vae"])
         input_video = pipe.preprocess_video(input_video)
         input_latents = pipe.vae.encode(input_video, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
+        if vace_reference_image is not None:
+            vace_reference_image = pipe.preprocess_video([vace_reference_image])
+            vace_reference_latents = pipe.vae.encode(vace_reference_image, device=pipe.device).to(dtype=pipe.torch_dtype, device=pipe.device)
+            input_latents = torch.concat([vace_reference_latents, input_latents], dim=2)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
         else:
