@@ -5,6 +5,10 @@ import math
 from typing import Tuple, Optional
 from einops import rearrange
 from .utils import hash_state_dict_keys
+
+from dchen.camera_adapter import SimpleAdapter
+
+
 try:
     import flash_attn_interface
     FLASH_ATTN_3_AVAILABLE = True
@@ -273,6 +277,8 @@ class WanModel(torch.nn.Module):
         has_image_input: bool,
         has_image_pos_emb: bool = False,
         has_ref_conv: bool = False,
+        add_control_adapter: bool = False,
+        in_dim_control_adapter: int = 24,
     ):
         super().__init__()
         self.dim = dim
@@ -309,8 +315,17 @@ class WanModel(torch.nn.Module):
         self.has_image_pos_emb = has_image_pos_emb
         self.has_ref_conv = has_ref_conv
 
-    def patchify(self, x: torch.Tensor):
+        if add_control_adapter:
+            self.control_adapter = SimpleAdapter(in_dim_control_adapter, dim, kernel_size=patch_size[1:], stride=patch_size[1:])
+        else:
+            self.control_adapter = None
+
+    def patchify(self, x: torch.Tensor, control_camera_latents_input: torch.Tensor = None):
         x = self.patch_embedding(x)
+        if self.control_adapter is not None and control_camera_latents_input is not None:
+            y_camera = self.control_adapter(control_camera_latents_input)
+            x = [u + v for u, v in zip(x, y_camera)]
+            x = x[0].unsqueeze(0)
         grid_size = x.shape[2:]
         x = rearrange(x, 'b c f h w -> b (f h w) c').contiguous()
         return x, grid_size  # x, grid_size: (f, h, w)
@@ -611,6 +626,42 @@ class WanModelStateDictConverter:
                 "num_layers": 40,
                 "eps": 1e-6,
                 "has_ref_conv": True
+            }
+        elif hash_state_dict_keys(state_dict) == "ac6a5aa74f4a0aab6f64eb9a72f19901":
+            # 1.3B PAI control-camera v1.1
+            config = {
+                "has_image_input": True,
+                "patch_size": [1, 2, 2],
+                "in_dim": 32,
+                "dim": 1536,
+                "ffn_dim": 8960,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 16,
+                "num_heads": 12,
+                "num_layers": 30,
+                "eps": 1e-6,
+                "has_ref_conv": False,
+                "add_control_adapter": True,
+                "in_dim_control_adapter": 24,
+            }
+        elif hash_state_dict_keys(state_dict) == "b61c605c2adbd23124d152ed28e049ae":
+            # 14B PAI control-camera v1.1
+            config = {
+                "has_image_input": True,
+                "patch_size": [1, 2, 2],
+                "in_dim": 32,
+                "dim": 5120,
+                "ffn_dim": 13824,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 16,
+                "num_heads": 40,
+                "num_layers": 40,
+                "eps": 1e-6,
+                "has_ref_conv": False,
+                "add_control_adapter": True,
+                "in_dim_control_adapter": 24,
             }
         else:
             config = {}
