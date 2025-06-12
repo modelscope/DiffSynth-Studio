@@ -154,7 +154,7 @@ Wan 支持多种加速方案，包括
     * [Flash Attention 2](https://github.com/Dao-AILab/flash-attention)
     * [Sage Attention](https://github.com/thu-ml/SageAttention)
     * [torch SDPA](https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html) (默认设置，建议安装 `torch>=2.5.0`)
-* 统一序列并行：基于 [xDiT](https://github.com/xdit-project/xDiT) 实现的序列并行，请参考[示例代码](./acceleration/unified_sequence_parallel.py)。
+* 统一序列并行：基于 [xDiT](https://github.com/xdit-project/xDiT) 实现的序列并行，请参考[示例代码](./acceleration/unified_sequence_parallel.py)，使用命令 `torchrun --standalone --nproc_per_node=8 examples/wanvideo/acceleration/unified_sequence_parallel.py` 运行。
 * TeaCache：加速技术 [TeaCache](https://github.com/ali-vilab/TeaCache)，请参考[示例代码](./acceleration/teacache.py)。
 
 </details>
