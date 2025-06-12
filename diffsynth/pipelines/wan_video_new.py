@@ -208,6 +208,7 @@ class WanVideoPipeline(BasePipeline):
             WanVideoUnit_InputVideoEmbedder(),
             WanVideoUnit_PromptEmbedder(),
             WanVideoUnit_ImageEmbedder(),
+            WanVideoUnit_FunCamera(),
             WanVideoUnit_FunControl(),
             WanVideoUnit_FunReference(),
             WanVideoUnit_SpeedControl(),
@@ -503,6 +504,8 @@ class WanVideoPipeline(BasePipeline):
         tea_cache_model_id: Optional[str] = "",
         # progress_bar
         progress_bar_cmd=tqdm,
+        # Camera control
+        control_camera_video: Optional[torch.Tensor] = None
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
@@ -521,6 +524,7 @@ class WanVideoPipeline(BasePipeline):
             "end_image": end_image,
             "input_video": input_video, "denoising_strength": denoising_strength,
             "control_video": control_video, "reference_image": reference_image,
+            "control_camera_video": control_camera_video,
             "vace_video": vace_video, "vace_video_mask": vace_video_mask, "vace_reference_image": vace_reference_image, "vace_scale": vace_scale,
             "seed": seed, "rand_device": rand_device,
             "height": height, "width": width, "num_frames": num_frames,
@@ -720,8 +724,38 @@ class WanVideoUnit_ImageEmbedder(PipelineUnit):
         y = y.to(dtype=pipe.torch_dtype, device=pipe.device)
         return {"clip_feature": clip_context, "y": y}
 
+class WanVideoUnit_FunCamera(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("control_camera_video", "cfg_merge", "num_frames", "height", "width", "input_image", "latents"),
+            onload_model_names=("vae")
+        )
 
+    def process(self, pipe: WanVideoPipeline, control_camera_video, cfg_merge, num_frames, height, width, input_image, latents):
+        if control_camera_video is None:
+            return {}
+        control_camera_video = control_camera_video[:num_frames].permute([3, 0, 1, 2]).unsqueeze(0)
+        control_camera_latents = torch.concat(
+            [
+                torch.repeat_interleave(control_camera_video[:, :, 0:1], repeats=4, dim=2),
+                control_camera_video[:, :, 1:]
+            ], dim=2
+        ).transpose(1, 2)
+        b, f, c, h, w = control_camera_latents.shape
+        control_camera_latents = control_camera_latents.contiguous().view(b, f // 4, 4, c, h, w).transpose(2, 3)
+        control_camera_latents = control_camera_latents.contiguous().view(b, f // 4, c * 4, h, w).transpose(1, 2)
+        control_camera_latents_input = control_camera_latents.to(device=pipe.device, dtype=pipe.torch_dtype)
 
+        input_image = input_image.resize((width, height))
+        input_latents = pipe.preprocess_video([input_image])
+        input_latents = pipe.vae.encode(input_latents, device=pipe.device)
+        y = torch.zeros_like(latents).to(pipe.device)
+        if latents.size()[2] != 1:
+            y[:, :, :1] = input_latents
+        y = y.to(dtype=pipe.torch_dtype, device=pipe.device)
+
+        return {"control_camera_latents": control_camera_latents, "control_camera_latents_input": control_camera_latents_input, "y":y}
+ 
 class WanVideoUnit_FunControl(PipelineUnit):
     def __init__(self):
         super().__init__(
@@ -1000,6 +1034,7 @@ def model_fn_wan_video(
     cfg_merge: bool = False,
     use_gradient_checkpointing: bool = False,
     use_gradient_checkpointing_offload: bool = False,
+    control_camera_latents_input = None,
     **kwargs,
 ):
     if sliding_window_size is not None and sliding_window_stride is not None:
@@ -1052,7 +1087,9 @@ def model_fn_wan_video(
         clip_embdding = dit.img_emb(clip_feature)
         context = torch.cat([clip_embdding, context], dim=1)
     
-    x, (f, h, w) = dit.patchify(x)
+    # Add camera control
+    x, (f, h, w) = dit.patchify(x, control_camera_latents_input)
+
     
     # Reference image
     if reference_latents is not None:
