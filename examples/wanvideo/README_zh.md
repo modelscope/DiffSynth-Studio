@@ -78,6 +78,7 @@ ModelConfig(path=[
 * `local_model_path`: 用于保存下载模型的路径，默认值为 `"./models"`。
 * `skip_download`: 是否跳过下载，默认值为 `False`。当您的网络无法访问[魔搭社区](https://modelscope.cn/)时，请手动下载必要的文件，并将其设置为 `True`。
 * `redirect_common_files`: 是否重定向重复模型文件，默认值为 `True`。由于 Wan 系列模型包括多个基础模型，每个基础模型的 text encoder 等模块都是相同的，为避免重复下载，我们会对模型路径进行重定向。
+* `use_usp`: 是否启用 Unified Sequence Parallel，默认值为 `False`。用于多 GPU 并行推理。
 
 </details>
 
@@ -138,6 +139,23 @@ FP8 量化能够大幅度减少显存占用，但不会加速，部分模型在 
 * `vram_limit`: 显存占用量（GB），默认占用设备上的剩余显存。注意这不是一个绝对限制，当设置的显存不足以支持模型进行推理，但实际可用显存足够时，将会以最小化显存占用的形式进行推理。
 * `vram_buffer`: 显存缓冲区大小（GB），默认为 0.5GB。由于部分较大的神经网络层在 onload 阶段会不可控地占用更多显存，因此一个显存缓冲区是必要的，理论上的最优值为模型中最大的层所占的显存。
 * `num_persistent_param_in_dit`: DiT 模型中常驻显存的参数数量（个），默认为无限制。我们将会在未来删除这个参数，请不要依赖这个参数。
+
+</details>
+
+
+<details>
+
+<summary>推理加速</summary>
+
+Wan 支持多种加速方案，包括
+
+* 高效注意力机制实现：当您的 Python 环境中安装过这些注意力机制实现方案时，我们将会按照以下优先级自动启用。
+    * [Flash Attention 3](https://github.com/Dao-AILab/flash-attention)
+    * [Flash Attention 2](https://github.com/Dao-AILab/flash-attention)
+    * [Sage Attention](https://github.com/thu-ml/SageAttention)
+    * [torch SDPA](https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html) (默认设置，建议安装 `torch>=2.5.0`)
+* 统一序列并行：基于 [xDiT](https://github.com/xdit-project/xDiT) 实现的序列并行，请参考[示例代码](./acceleration/unified_sequence_parallel.py)。
+* TeaCache：加速技术 [TeaCache](https://github.com/ali-vilab/TeaCache)，请参考[示例代码](./acceleration/teacache.py)。
 
 </details>
 
