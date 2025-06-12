@@ -316,8 +316,12 @@ class WanModel(torch.nn.Module):
         else:
             self.control_adapter = None
 
-    def patchify(self, x: torch.Tensor):
+    def patchify(self, x: torch.Tensor,control_camera_latents_input: torch.Tensor = None):
         x = self.patch_embedding(x)
+        if self.control_adapter is not None and control_camera_latents_input is not None:
+            y_camera = self.control_adapter(control_camera_latents_input)
+            x = [u + v for u, v in zip(x, y_camera)]
+            x = x[0].unsqueeze(0)
         grid_size = x.shape[2:]
         x = rearrange(x, 'b c f h w -> b (f h w) c').contiguous()
         return x, grid_size  # x, grid_size: (f, h, w)
