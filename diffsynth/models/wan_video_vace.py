@@ -50,7 +50,11 @@ class VaceWanModel(torch.nn.Module):
         # vace patch embeddings
         self.vace_patch_embedding = torch.nn.Conv3d(vace_in_dim, dim, kernel_size=patch_size, stride=patch_size)
 
-    def forward(self, x, vace_context, context, t_mod, freqs):
+    def forward(
+        self, x, vace_context, context, t_mod, freqs,
+        use_gradient_checkpointing: bool = False,
+        use_gradient_checkpointing_offload: bool = False,
+    ):
         c = [self.vace_patch_embedding(u.unsqueeze(0)) for u in vace_context]
         c = [u.flatten(2).transpose(1, 2) for u in c]
         c = torch.cat([
@@ -58,8 +62,27 @@ class VaceWanModel(torch.nn.Module):
                       dim=1) for u in c
         ])
         
+        def create_custom_forward(module):
+            def custom_forward(*inputs):
+                return module(*inputs)
+            return custom_forward
+        
         for block in self.vace_blocks:
-            c = block(c, x, context, t_mod, freqs)
+            if use_gradient_checkpointing_offload:
+                with torch.autograd.graph.save_on_cpu():
+                    c = torch.utils.checkpoint.checkpoint(
+                        create_custom_forward(block),
+                        c, x, context, t_mod, freqs,
+                        use_reentrant=False,
+                    )
+            elif use_gradient_checkpointing:
+                c = torch.utils.checkpoint.checkpoint(
+                    create_custom_forward(block),
+                    c, x, context, t_mod, freqs,
+                    use_reentrant=False,
+                )
+            else:
+                c = block(c, x, context, t_mod, freqs)
         hints = torch.unbind(c)[:-1]
         return hints
     
