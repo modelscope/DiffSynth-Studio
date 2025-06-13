@@ -13,6 +13,5 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --lora_base_model "vace" \
   --lora_target_modules "q,k,v,o,ffn.0,ffn.2" \
   --lora_rank 32 \
-  --input_contains_vace_video \
-  --input_contains_vace_reference_image \
+  --extra_inputs "vace_video,vace_reference_image" \
   --use_gradient_checkpointing_offload

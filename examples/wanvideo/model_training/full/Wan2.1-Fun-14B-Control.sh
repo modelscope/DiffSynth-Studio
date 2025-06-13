@@ -11,4 +11,4 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/Wan2.1-Fun-14B-Control_full" \
   --trainable_models "dit" \
-  --input_contains_control_video
+  --extra_inputs "control_video"

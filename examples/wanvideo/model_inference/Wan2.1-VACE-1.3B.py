@@ -31,7 +31,7 @@ video = pipe(
     vace_video=control_video,
     seed=1, tiled=True
 )
-save_video(video, "video1_14b.mp4", fps=15, quality=5)
+save_video(video, "video1.mp4", fps=15, quality=5)
 
 # Reference image -> Video
 video = pipe(
@@ -40,7 +40,7 @@ video = pipe(
     vace_reference_image=Image.open("data/examples/wan/cat_fightning.jpg").resize((832, 480)),
     seed=1, tiled=True
 )
-save_video(video, "video2_14b.mp4", fps=15, quality=5)
+save_video(video, "video2.mp4", fps=15, quality=5)
 
 # Depth video + Reference image -> Video
 video = pipe(
@@ -50,4 +50,4 @@ video = pipe(
     vace_reference_image=Image.open("data/examples/wan/cat_fightning.jpg").resize((832, 480)),
     seed=1, tiled=True
 )
-save_video(video, "video3_14b.mp4", fps=15, quality=5)
+save_video(video, "video3.mp4", fps=15, quality=5)

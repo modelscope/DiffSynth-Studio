@@ -12,6 +12,5 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --remove_prefix_in_ckpt "pipe.vace." \
   --output_path "./models/train/Wan2.1-VACE-14B_full" \
   --trainable_models "vace" \
-  --input_contains_vace_video \
-  --input_contains_vace_reference_image \
+  --extra_inputs "vace_video,vace_reference_image" \
   --use_gradient_checkpointing_offload

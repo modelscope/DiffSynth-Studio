@@ -11,5 +11,4 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/Wan2.1-Fun-V1.1-1.3B-Control_full" \
   --trainable_models "dit" \
-  --input_contains_control_video \
-  --input_contains_reference_image
+  --extra_inputs "control_video,reference_image"

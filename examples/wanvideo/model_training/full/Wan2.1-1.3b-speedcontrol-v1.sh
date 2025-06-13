@@ -10,4 +10,4 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --remove_prefix_in_ckpt "pipe.motion_controller." \
   --output_path "./models/train/Wan2.1-1.3b-speedcontrol-v1_full" \
   --trainable_models "motion_controller" \
-  --input_contains_motion_bucket_id
+  --extra_inputs "motion_bucket_id"

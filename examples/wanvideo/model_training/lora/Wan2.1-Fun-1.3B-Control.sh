@@ -13,4 +13,4 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --lora_base_model "dit" \
   --lora_target_modules "q,k,v,o,ffn.0,ffn.2" \
   --lora_rank 32 \
-  --input_contains_control_video
+  --extra_inputs "control_video"
