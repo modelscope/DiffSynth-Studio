@@ -394,7 +394,7 @@ The default video resolution in the training script is `480*832*81`. Increasing 
 
 </details>
 
-## 案例展示
+## Gallery
 
 1.3B text-to-video:
 
