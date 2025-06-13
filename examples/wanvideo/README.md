@@ -4,6 +4,10 @@
 
 Wan 2.1 is a collection of video synthesis models open-sourced by Alibaba.
 
+**DiffSynth-Studio has adopted a new inference and training framework. To use the previous version, please click [here](https://github.com/modelscope/DiffSynth-Studio/tree/3edf3583b1f08944cee837b94d9f84d669c2729c).**
+
+## Installation
+
 Before using this model, please install DiffSynth-Studio from **source code**.
 
 ```shell
@@ -11,6 +15,8 @@ git clone https://github.com/modelscope/DiffSynth-Studio.git
 cd DiffSynth-Studio
 pip install -e .
 ```
+
+## Overview
 
 | Model ID | Extra Parameters | Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
 |-|-|-|-|-|-|-|
@@ -387,3 +393,25 @@ Note that full fine-tuning of the 14B model requires 8 GPUs, each with at least 
 The default video resolution in the training script is `480*832*81`. Increasing the resolution may cause out-of-memory errors. To reduce VRAM usage, add the parameter `--use_gradient_checkpointing_offload`.
 
 </details>
+
+## 案例展示
+
+1.3B text-to-video:
+
+https://github.com/user-attachments/assets/124397be-cd6a-4f29-a87c-e4c695aaabb8
+
+Put sunglasses on the dog (1.3B video-to-video):
+
+https://github.com/user-attachments/assets/272808d7-fbeb-4747-a6df-14a0860c75fb
+
+14B text-to-video:
+
+https://github.com/user-attachments/assets/3908bc64-d451-485a-8b61-28f6d32dd92f
+
+14B image-to-video:
+
+https://github.com/user-attachments/assets/c0bdd5ca-292f-45ed-b9bc-afe193156e75
+
+LoRA training:
+
+https://github.com/user-attachments/assets/9bd8e30b-97e8-44f9-bb6f-da004ba376a9
