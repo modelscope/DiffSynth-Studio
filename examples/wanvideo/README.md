@@ -289,7 +289,7 @@ video2.mp4,"a dog is running"
 We have prepared a sample video dataset to help you test. You can download it using the following command:
 
 ```shell
-modelscope download --dataset DiffSynth-Studio/example_video_dataset README.md --local_dir ./data/example_video_dataset
+modelscope download --dataset DiffSynth-Studio/example_video_dataset --local_dir ./data/example_video_dataset
 ```
 
 The dataset supports mixed training of videos and images. Supported video formats include `"mp4", "avi", "mov", "wmv", "mkv", "flv", "webm"`, and supported image formats include `"jpg", "jpeg", "png", "webp"`.

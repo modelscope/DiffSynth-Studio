@@ -292,7 +292,7 @@ video2.mp4,"a dog is running"
 我们构建了一个样例视频数据集，以方便您进行测试，通过以下命令可以下载这个数据集：
 
 ```shell
-modelscope download --dataset DiffSynth-Studio/example_video_dataset README.md --local_dir ./data/example_video_dataset
+modelscope download --dataset DiffSynth-Studio/example_video_dataset --local_dir ./data/example_video_dataset
 ```
 
 数据集支持视频和图片混合训练，支持的视频文件格式包括 `"mp4", "avi", "mov", "wmv", "mkv", "flv", "webm"`，支持的图片格式包括 `"jpg", "jpeg", "png", "webp"`。
