@@ -4,6 +4,10 @@
 
 Wan 2.1 是由阿里巴巴通义实验室开源的一系列视频生成模型。
 
+**DiffSynth-Studio 启用了新的推理和训练框架，如需使用旧版本，请点击[这里](https://github.com/modelscope/DiffSynth-Studio/tree/3edf3583b1f08944cee837b94d9f84d669c2729c)。**
+
+## 安装
+
 在使用本系列模型之前，请通过源码安装 DiffSynth-Studio。
 
 ```shell
@@ -11,6 +15,8 @@ git clone https://github.com/modelscope/DiffSynth-Studio.git
 cd DiffSynth-Studio
 pip install -e .
 ```
+
+## 模型总览
 
 |模型 ID|额外参数|推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
@@ -390,3 +396,25 @@ model_configs=[
 训练脚本的默认视频尺寸为 `480*832*81`，提升分辨率将可能导致显存不足，请添加参数 `--use_gradient_checkpointing_offload` 降低显存占用。
 
 </details>
+
+## 案例展示
+
+1.3B 文生视频：
+
+https://github.com/user-attachments/assets/124397be-cd6a-4f29-a87c-e4c695aaabb8
+
+给狗狗戴上墨镜（1.3B 视频生视频）：
+
+https://github.com/user-attachments/assets/272808d7-fbeb-4747-a6df-14a0860c75fb
+
+14B 文生视频：
+
+https://github.com/user-attachments/assets/3908bc64-d451-485a-8b61-28f6d32dd92f
+
+14B 图生视频：
+
+https://github.com/user-attachments/assets/c0bdd5ca-292f-45ed-b9bc-afe193156e75
+
+LoRA 训练：
+
+https://github.com/user-attachments/assets/9bd8e30b-97e8-44f9-bb6f-da004ba376a9
