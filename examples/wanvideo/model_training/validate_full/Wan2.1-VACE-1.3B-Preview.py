@@ -13,7 +13,7 @@ pipe = WanVideoPipeline.from_pretrained(
         ModelConfig(model_id="iic/VACE-Wan2.1-1.3B-Preview", origin_file_pattern="Wan2.1_VAE.pth", offload_device="cpu"),
     ],
 )
-state_dict = load_state_dict("models/train/VACE-Wan2.1-1.3B-Preview_full/epoch-1.safetensors")
+state_dict = load_state_dict("models/train/Wan2.1-VACE-1.3B-Preview_full/epoch-1.safetensors")
 pipe.vace.load_state_dict(state_dict)
 pipe.enable_vram_management()
 
