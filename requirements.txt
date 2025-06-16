@@ -1,4 +1,4 @@
-torch>=2.6.0
+torch>=2.0.0
 torchvision
 cupy-cuda12x
 transformers
