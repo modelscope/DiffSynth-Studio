@@ -1,6 +1,6 @@
 import torch, os, json
 from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
-from diffsynth.trainers.utils import DiffusionTrainingModule, VideoDataset, launch_training_task, wan_parser
+from diffsynth.trainers.utils import DiffusionTrainingModule, VideoDataset, ModelLogger, launch_training_task, wan_parser
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -107,4 +107,14 @@ if __name__ == "__main__":
         use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
         extra_inputs=args.extra_inputs,
     )
-    launch_training_task(model, dataset, args=args)
+    model_logger = ModelLogger(
+        args.output_path,
+        remove_prefix_in_ckpt=args.remove_prefix_in_ckpt
+    )
+    optimizer = torch.optim.AdamW(model.trainable_modules(), lr=args.learning_rate)
+    scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
+    launch_training_task(
+        dataset, model, model_logger, optimizer, scheduler,
+        num_epochs=args.num_epochs,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+    )
