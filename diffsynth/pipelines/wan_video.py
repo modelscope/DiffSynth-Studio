@@ -609,7 +609,7 @@ def model_fn_wan_video(
         x = x[:, reference_latents.shape[1]:]
         f -= 1
 
-    x = dit.head(x, t)
+    x = dit.head(x, t.unsqueeze(1))
     if use_unified_sequence_parallel:
         if dist.is_initialized() and dist.get_world_size() > 1:
             x = get_sp_group().all_gather(x, dim=1)
