@@ -173,7 +173,7 @@ Wan supports multiple acceleration techniques, including:
 * **Unified Sequence Parallel**: Sequence parallelism based on [xDiT](https://github.com/xdit-project/xDiT). Please refer to [this example](./acceleration/unified_sequence_parallel.py), and run it using the command: 
 
 ```shell
-pip install xfuser>=0.4.3
+pip install "xfuser[flash-attn]>=0.4.3"
 torchrun --standalone --nproc_per_node=8 examples/wanvideo/acceleration/unified_sequence_parallel.py
 ```
 
