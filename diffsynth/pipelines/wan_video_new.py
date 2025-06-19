@@ -168,24 +168,44 @@ class ModelConfig:
 
     def download_if_necessary(self, local_model_path="./models", skip_download=False, use_usp=False):
         if self.path is None:
+            # Check model_id and origin_file_pattern
             if self.model_id is None or self.origin_file_pattern is None:
                 raise ValueError(f"""No valid model files. Please use `ModelConfig(path="xxx")` or `ModelConfig(model_id="xxx/yyy", origin_file_pattern="zzz")`.""")
+            
+            # Skip if not in rank 0
             if use_usp:
                 import torch.distributed as dist
                 skip_download = dist.get_rank() != 0
+                
+            # Check whether the origin path is a folder
+            if isinstance(self.origin_file_pattern, str) and self.origin_file_pattern.endswith("/"):
+                allow_file_pattern = self.origin_file_pattern + "*"
+                is_folder = True
+            else:
+                allow_file_pattern = self.origin_file_pattern
+                is_folder = False
+            
+            # Download
             if not skip_download:
                 downloaded_files = glob.glob(self.origin_file_pattern, root_dir=os.path.join(local_model_path, self.model_id))
                 snapshot_download(
                     self.model_id,
                     local_dir=os.path.join(local_model_path, self.model_id),
-                    allow_file_pattern=self.origin_file_pattern,
+                    allow_file_pattern=allow_file_pattern,
                     ignore_file_pattern=downloaded_files,
                     local_files_only=False
                 )
+            
+            # Let rank 1, 2, ... wait for rank 0
             if use_usp:
                 import torch.distributed as dist
                 dist.barrier(device_ids=[dist.get_rank()])
-            self.path = glob.glob(os.path.join(local_model_path, self.model_id, self.origin_file_pattern))
+                
+            # Return downloaded files
+            if is_folder:
+                self.path = os.path.join(local_model_path, self.model_id, self.origin_file_pattern)
+            else:
+                self.path = glob.glob(os.path.join(local_model_path, self.model_id, self.origin_file_pattern))
             if isinstance(self.path, list) and len(self.path) == 1:
                 self.path = self.path[0]
 
@@ -614,11 +634,17 @@ class PipelineUnitRunner:
         elif unit.seperate_cfg:
             # Positive side
             processor_inputs = {name: inputs_posi.get(name_) for name, name_ in unit.input_params_posi.items()}
+            if unit.input_params is not None:
+                for name in unit.input_params:
+                    processor_inputs[name] = inputs_shared.get(name)
             processor_outputs = unit.process(pipe, **processor_inputs)
             inputs_posi.update(processor_outputs)
             # Negative side
             if inputs_shared["cfg_scale"] != 1:
                 processor_inputs = {name: inputs_nega.get(name_) for name, name_ in unit.input_params_nega.items()}
+                if unit.input_params is not None:
+                    for name in unit.input_params:
+                        processor_inputs[name] = inputs_shared.get(name)
                 processor_outputs = unit.process(pipe, **processor_inputs)
                 inputs_nega.update(processor_outputs)
             else:
