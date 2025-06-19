@@ -175,7 +175,7 @@ Wan 支持多种加速方案，包括
 * 统一序列并行：基于 [xDiT](https://github.com/xdit-project/xDiT) 实现的序列并行，请参考[示例代码](./acceleration/unified_sequence_parallel.py)，使用以下命令运行：
 
 ```shell
-pip install xfuser>=0.4.3
+pip install "xfuser[flash-attn]>=0.4.3"
 torchrun --standalone --nproc_per_node=8 examples/wanvideo/acceleration/unified_sequence_parallel.py
 ```
 
