@@ -43,6 +43,7 @@ class FluxImagePipeline(BasePipeline):
             FluxImageUnit_InputImageEmbedder(),
             FluxImageUnit_ImageIDs(),
             FluxImageUnit_EmbeddedGuidanceEmbedder(),
+            FluxImageUnit_IPAdapter(),
         ]
         self.model_fn = model_fn_flux_image
         
@@ -98,7 +99,9 @@ class FluxImagePipeline(BasePipeline):
         pipe.vae_decoder = model_manager.fetch_model("flux_vae_decoder")
         pipe.vae_encoder = model_manager.fetch_model("flux_vae_encoder")
         pipe.prompter.fetch_models(pipe.text_encoder_1, pipe.text_encoder_2)
-        
+        pipe.ipadapter = model_manager.fetch_model("flux_ipadapter")
+        pipe.ipadapter_image_encoder = model_manager.fetch_model("siglip_vision_model")
+
         return pipe
     
     
@@ -293,6 +296,29 @@ class FluxImageUnit_EmbeddedGuidanceEmbedder(PipelineUnit):
         guidance = torch.Tensor([embedded_guidance] * latents.shape[0]).to(device=latents.device, dtype=latents.dtype)
         return {"guidance": guidance}
 
+
+class FluxImageUnit_IPAdapter(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            take_over=True,
+            onload_model_names=("ipadapter_image_encoder", "ipadapter")
+        )
+
+    def process(self, pipe: FluxImagePipeline, inputs_shared, inputs_posi, inputs_nega):
+        ipadapter_images, ipadapter_scale = inputs_shared.get("ipadapter_images", None), inputs_shared.get("ipadapter_scale", 1.0)
+        if ipadapter_images is None:
+            return inputs_shared, inputs_posi, inputs_nega
+
+        pipe.load_models_to_device(self.onload_model_names)
+        images = [image.convert("RGB").resize((384, 384), resample=3) for image in ipadapter_images]
+        images = [pipe.preprocess_image(image).to(device=pipe.device, dtype=pipe.torch_dtype) for image in images]
+        ipadapter_images = torch.cat(images, dim=0)
+        ipadapter_image_encoding = pipe.ipadapter_image_encoder(ipadapter_images).pooler_output
+
+        inputs_posi.update({"ipadapter_kwargs_list": pipe.ipadapter(ipadapter_image_encoding, scale=ipadapter_scale)})
+        if inputs_shared.get("cfg_scale", 1.0) != 1.0:
+            inputs_nega.update({"ipadapter_kwargs_list": pipe.ipadapter(torch.zeros_like(ipadapter_image_encoding))})
+        return inputs_shared, inputs_posi, inputs_nega
 
 
 class TeaCache:
