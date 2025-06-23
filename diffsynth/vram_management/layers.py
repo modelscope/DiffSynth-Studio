@@ -75,7 +75,7 @@ class AutoLoRALinear(torch.nn.Linear):
         super().__init__(in_features, out_features, bias, device, dtype)
         self.name = name
     
-    def forward(self, x, lora_state_dicts=[], lora_alpahs=[1.0,1.0], lora_patcher=None, **kwargs):
+    def forward(self, x, lora_state_dicts=[], lora_alphas=[1.0,1.0], lora_patcher=None, **kwargs):
         out = torch.nn.functional.linear(x, self.weight, self.bias)
         lora_a_name = f'{self.name}.lora_A.default.weight'
         lora_b_name = f'{self.name}.lora_B.default.weight'

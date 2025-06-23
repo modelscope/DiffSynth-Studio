@@ -401,7 +401,7 @@ class FluxImagePipeline(BasePipeline):
         progress_bar_cmd=tqdm,
         progress_bar_st=None,
         lora_state_dicts=[],
-        lora_alpahs=[],
+        lora_alphas=[],
         lora_patcher=None,
     ):
         height, width = self.check_resize_height_width(height, width)
@@ -443,7 +443,7 @@ class FluxImagePipeline(BasePipeline):
                 dit=self.dit, controlnet=self.controlnet,
                 hidden_states=latents, timestep=timestep,
                 lora_state_dicts=lora_state_dicts,
-                lora_alpahs = lora_alpahs,
+                lora_alphas = lora_alphas,
                 lora_patcher=lora_patcher,
                 **prompt_emb_posi, **tiler_kwargs, **extra_input, **controlnet_kwargs, **ipadapter_kwargs_list_posi, **eligen_kwargs_posi, **tea_cache_kwargs,
             )
@@ -463,7 +463,7 @@ class FluxImagePipeline(BasePipeline):
                     dit=self.dit, controlnet=self.controlnet,
                     hidden_states=latents, timestep=timestep,
                     lora_state_dicts=lora_state_dicts,
-                    lora_alpahs = lora_alpahs,
+                    lora_alphas = lora_alphas,
                     lora_patcher=lora_patcher,
                     **prompt_emb_nega, **tiler_kwargs, **extra_input, **controlnet_kwargs_nega, **ipadapter_kwargs_list_nega, **eligen_kwargs_nega,
                 )
