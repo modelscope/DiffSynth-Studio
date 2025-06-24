@@ -134,7 +134,8 @@ class VideoDataset(torch.utils.data.Dataset):
     def load_image(self, file_path):
         image = Image.open(file_path).convert("RGB")
         image = self.crop_and_resize(image, *self.get_height_width(image))
-        return image
+        frames = [image]
+        return frames
     
     
     def is_image(self, file_path):
