@@ -1,8 +1,5 @@
 import torch
-from PIL import Image
-from diffsynth import save_video, VideoData, download_models
 from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig
-from modelscope import dataset_snapshot_download
 
 #TODO: repalce the local path with model_id
 pipe = FluxImagePipeline.from_pretrained(
