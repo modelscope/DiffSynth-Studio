@@ -1,8 +1,5 @@
 import torch
-from PIL import Image
-from diffsynth import save_video, VideoData
 from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig
-from modelscope import dataset_snapshot_download
 
 
 pipe = FluxImagePipeline.from_pretrained(
@@ -16,8 +13,14 @@ pipe = FluxImagePipeline.from_pretrained(
     ],
 )
 
+prompt = "CG, masterpiece, best quality, solo, long hair, wavy hair, silver hair, blue eyes, blue dress, medium breasts, dress, underwater, air bubble, floating hair, refraction, portrait. The girl's flowing silver hair shimmers with every color of the rainbow and cascades down, merging with the floating flora around her."
+negative_prompt = "worst quality, low quality, monochrome, zombie, interlocked fingers, Aissist, cleavage, nsfw,"
+
+image = pipe(prompt=prompt, seed=0)
+image.save("flux.jpg")
+
 image = pipe(
-    prompt="a girl",
-    seed=0,
+    prompt=prompt, negative_prompt=negative_prompt,
+    seed=0, cfg_scale=2, num_inference_steps=50,
 )
-image.save("0.jpg")
+image.save("flux_cfg.jpg")
