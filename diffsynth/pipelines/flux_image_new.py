@@ -97,6 +97,7 @@ class FluxImagePipeline(BasePipeline):
             FluxImageUnit_InputImageEmbedder(),
             FluxImageUnit_ImageIDs(),
             FluxImageUnit_EmbeddedGuidanceEmbedder(),
+            FluxImageUnit_InfiniteYou(),
             FluxImageUnit_ControlNet(),
             FluxImageUnit_IPAdapter(),
             FluxImageUnit_EntityControl(),
@@ -164,6 +165,10 @@ class FluxImagePipeline(BasePipeline):
         pipe.ipadapter_image_encoder = model_manager.fetch_model("siglip_vision_model")
         pipe.qwenvl = model_manager.fetch_model("qwenvl")
         pipe.step1x_connector = model_manager.fetch_model("step1x_connector")
+        
+        pipe.image_proj_model = model_manager.fetch_model("infiniteyou_image_projector")
+        if pipe.image_proj_model is not None:
+            pipe.infinityou_processor = InfinitYou(device=device)
         
         # ControlNet
         controlnets = []
@@ -549,6 +554,77 @@ class FluxImageUnit_Flex(PipelineUnit):
             return {"flex_condition": flex_condition, "flex_uncondition": flex_uncondition, "flex_control_stop_timestep": flex_control_stop_timestep}
         else:
             return {}
+
+
+
+class FluxImageUnit_InfiniteYou(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("controlnet_inputs", "infinityou_id_image", "infinityou_guidance", "height", "width"),
+        )
+
+    def process(self, pipe: FluxImagePipeline, controlnet_inputs: list[ControlNetInput], infinityou_id_image, infinityou_guidance, height, width):
+        if infinityou_id_image is not None:
+            output = pipe.infinityou_processor.prepare_infinite_you(pipe.image_proj_model, infinityou_id_image, controlnet_inputs, infinityou_guidance, height, width)
+            infinityou_kwargs, controlnet_image = output[0], output[1]
+            if controlnet_inputs is None and isinstance(controlnet_image, Image.Image):
+                infinityou_kwargs["controlnet_inputs"] = [ControlNetInput(image=controlnet_image, scale=1.0, processor_id="None")]
+            return infinityou_kwargs
+        else:
+            return {}
+
+
+
+class InfinitYou:
+    def __init__(self, device="cuda", torch_dtype=torch.bfloat16):
+        from facexlib.recognition import init_recognition_model
+        from insightface.app import FaceAnalysis
+        self.device = device
+        self.torch_dtype = torch_dtype
+        # insightface_root_path = 'models/InfiniteYou/insightface'
+        insightface_root_path = 'models/ByteDance/InfiniteYou/supports/insightface'
+        self.app_640 = FaceAnalysis(name='antelopev2', root=insightface_root_path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        self.app_640.prepare(ctx_id=0, det_size=(640, 640))
+        self.app_320 = FaceAnalysis(name='antelopev2', root=insightface_root_path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        self.app_320.prepare(ctx_id=0, det_size=(320, 320))
+        self.app_160 = FaceAnalysis(name='antelopev2', root=insightface_root_path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        self.app_160.prepare(ctx_id=0, det_size=(160, 160))
+        self.arcface_model = init_recognition_model('arcface', device=self.device)
+
+    def _detect_face(self, id_image_cv2):
+        face_info = self.app_640.get(id_image_cv2)
+        if len(face_info) > 0:
+            return face_info
+        face_info = self.app_320.get(id_image_cv2)
+        if len(face_info) > 0:
+            return face_info
+        face_info = self.app_160.get(id_image_cv2)
+        return face_info
+
+    def extract_arcface_bgr_embedding(self, in_image, landmark):
+        from insightface.utils import face_align
+        arc_face_image = face_align.norm_crop(in_image, landmark=np.array(landmark), image_size=112)
+        arc_face_image = torch.from_numpy(arc_face_image).unsqueeze(0).permute(0, 3, 1, 2) / 255.
+        arc_face_image = 2 * arc_face_image - 1
+        arc_face_image = arc_face_image.contiguous().to(self.device)
+        face_emb = self.arcface_model(arc_face_image)[0] # [512], normalized
+        return face_emb
+
+    def prepare_infinite_you(self, model, id_image, controlnet_image, infinityou_guidance, height, width):
+        import cv2
+        if id_image is None:
+            return {'id_emb': None}, controlnet_image
+        id_image_cv2 = cv2.cvtColor(np.array(id_image), cv2.COLOR_RGB2BGR)
+        face_info = self._detect_face(id_image_cv2)
+        if len(face_info) == 0:
+            raise ValueError('No face detected in the input ID image')
+        landmark = sorted(face_info, key=lambda x:(x['bbox'][2]-x['bbox'][0])*(x['bbox'][3]-x['bbox'][1]))[-1]['kps'] # only use the maximum face
+        id_emb = self.extract_arcface_bgr_embedding(id_image_cv2, landmark)
+        id_emb = model(id_emb.unsqueeze(0).reshape([1, -1, 512]).to(dtype=self.torch_dtype))
+        if controlnet_image is None:
+            controlnet_image = Image.fromarray(np.zeros([height, width, 3]).astype(np.uint8))
+        infinityou_guidance = torch.Tensor([infinityou_guidance]).to(device=self.device, dtype=self.torch_dtype)
+        return {'id_emb': id_emb, 'infinityou_guidance': infinityou_guidance}, controlnet_image
 
 
 class TeaCache:
