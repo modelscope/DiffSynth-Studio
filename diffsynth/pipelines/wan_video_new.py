@@ -178,7 +178,7 @@ class ModelConfig:
                 skip_download = dist.get_rank() != 0
                 
             # Check whether the origin path is a folder
-            if self.origin_file_pattern is None:
+            if self.origin_file_pattern is None or self.origin_file_pattern == "":
                 self.origin_file_pattern = ""
                 allow_file_pattern = None
                 is_folder = True
