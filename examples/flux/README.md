@@ -1,6 +1,6 @@
 # FLUX
 
-[Switch to Chinese](./README_zh.md)
+[切换到中文](./README_zh.md)
 
 FLUX is a series of image generation models open-sourced by Black-Forest-Labs.
 
@@ -44,9 +44,9 @@ image.save("image.jpg")
 **Support for the new framework of the FLUX series models is under active development. Stay tuned!**
 
 | Model ID | Additional Parameters | Inference | Full Training | Validation After Full Training | LoRA Training | Validation After LoRA Training |
-|---------|------------------------|-----------|---------------|-------------------------------|---------------|--------------------------------|
-| [black-forest-labs/FLUX.1-dev](https://modelscope.cn/models/black-forest-labs/FLUX.1-dev) |  | [code](./model_inference/FLUX.1-dev.py) | [code](./model_training/full/FLUX.1-dev.sh) | [code](./model_training/validate_full/FLUX.1-dev.py) | [code](./model_training/lora/FLUX.1-dev.sh) | [code](./model_training/validate_lora/FLUX.1-dev.py) |
-| [black-forest-labs/FLUX.1-Kontext-dev](https://modelscope.cn/models/black-forest-labs/FLUX.1-Kontext-dev) | `kontext_images` | [code](./model_inference/FLUX.1-Kontext-dev.py) |  |  | [code](./model_training/lora/FLUX.1-Kontext-dev.sh) | [code](./model_training/validate_lora/FLUX.1-Kontext-dev.py) |
+|-|-|-|-|-|-|-|
+|[black-forest-labs/FLUX.1-dev](https://modelscope.cn/models/black-forest-labs/FLUX.1-dev)||[code](./model_inference/FLUX.1-dev.py)|[code](./model_training/full/FLUX.1-dev.sh)|[code](./model_training/validate_full/FLUX.1-dev.py)|[code](./model_training/lora/FLUX.1-dev.sh)|[code](./model_training/validate_lora/FLUX.1-dev.py)|
+|[black-forest-labs/FLUX.1-Kontext-dev](https://modelscope.cn/models/black-forest-labs/FLUX.1-Kontext-dev)|`kontext_images`|[code](./model_inference/FLUX.1-Kontext-dev.py)|[code](./model_training/full/FLUX.1-Kontext-dev.sh)|[code](./model_training/validate_full/FLUX.1-Kontext-dev.py)|[code](./model_training/lora/FLUX.1-Kontext-dev.sh)|[code](./model_training/validate_lora/FLUX.1-Kontext-dev.py)|
 
 ## Model Inference
 
