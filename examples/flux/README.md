@@ -178,6 +178,7 @@ The script supports the following parameters:
 * Dataset
   * `--dataset_base_path`: Root path to the dataset.
   * `--dataset_metadata_path`: Path to the metadata file of the dataset.
+  * `--max_pixels`: 最大像素面积，默认为 1024*1024，当启用动态分辨率时，任何分辨率大于这个数值的图片都会被缩小。
   * `--height`: Height of images or videos. Leave `height` and `width` empty to enable dynamic resolution.
   * `--width`: Width of images or videos. Leave `height` and `width` empty to enable dynamic resolution.
   * `--data_file_keys`: Keys in metadata for data files. Comma-separated.
@@ -198,9 +199,9 @@ The script supports the following parameters:
 * Extra Inputs
   * `--extra_inputs`: Additional model inputs. Comma-separated.
 * VRAM Management
-  * `use_gradient_checkpointing`: Whether to use gradient checkpointing.
+  * `--use_gradient_checkpointing`: Whether to use gradient checkpointing.
   * `--use_gradient_checkpointing_offload`: Whether to offload gradient checkpointing to CPU memory.
-  * `gradient_accumulation_steps`: Number of steps for gradient accumulation.
+  * `--gradient_accumulation_steps`: Number of steps for gradient accumulation.
 * Miscellaneous
   * `--align_to_opensource_format`: Whether to align the FLUX DiT LoRA format with the open-source version. Only applicable to LoRA training for FLUX.1-dev and FLUX.1-Kontext-dev.
 
