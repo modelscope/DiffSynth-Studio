@@ -178,7 +178,7 @@ The script supports the following parameters:
 * Dataset
   * `--dataset_base_path`: Root path to the dataset.
   * `--dataset_metadata_path`: Path to the metadata file of the dataset.
-  * `--max_pixels`: 最大像素面积，默认为 1024*1024，当启用动态分辨率时，任何分辨率大于这个数值的图片都会被缩小。
+  * `--max_pixels`: Maximum pixel area, default is 1024*1024. When dynamic resolution is enabled, any image with a resolution larger than this value will be scaled down.。
   * `--height`: Height of images or videos. Leave `height` and `width` empty to enable dynamic resolution.
   * `--width`: Width of images or videos. Leave `height` and `width` empty to enable dynamic resolution.
   * `--data_file_keys`: Keys in metadata for data files. Comma-separated.

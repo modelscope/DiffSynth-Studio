@@ -180,7 +180,7 @@ FLUX 系列模型训练通过统一的 [`./model_training/train.py`](./model_tra
 * 数据集
   * `--dataset_base_path`: 数据集的根路径。
   * `--dataset_metadata_path`: 数据集的元数据文件路径。
-  * `--max_pixels`: Maximum pixel area, default is 1024*1024. When dynamic resolution is enabled, any image with a resolution larger than this value will be scaled down.
+  * `--max_pixels`: 最大像素面积，默认为 1024*1024，当启用动态分辨率时，任何分辨率大于这个数值的图片都会被缩小。
   * `--height`: 图像或视频的高度。将 `height` 和 `width` 留空以启用动态分辨率。
   * `--width`: 图像或视频的宽度。将 `height` 和 `width` 留空以启用动态分辨率。
   * `--data_file_keys`: 元数据中的数据文件键。用逗号分隔。
