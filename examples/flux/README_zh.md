@@ -46,7 +46,7 @@ image.save("image.jpg")
 |模型 ID|额外参数|推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
 |[black-forest-labs/FLUX.1-dev](https://modelscope.cn/models/black-forest-labs/FLUX.1-dev)||[code](./model_inference/FLUX.1-dev.py)|[code](./model_training/full/FLUX.1-dev.sh)|[code](./model_training/validate_full/FLUX.1-dev.py)|[code](./model_training/lora/FLUX.1-dev.sh)|[code](./model_training/validate_lora/FLUX.1-dev.py)|
-|[black-forest-labs/FLUX.1-Kontext-dev](https://modelscope.cn/models/black-forest-labs/FLUX.1-Kontext-dev)|`kontext_images`|[code](./model_inference/FLUX.1-Kontext-dev.py)|||[code](./model_training/lora/FLUX.1-Kontext-dev.sh)|[code](./model_training/validate_lora/FLUX.1-Kontext-dev.py)|
+|[black-forest-labs/FLUX.1-Kontext-dev](https://modelscope.cn/models/black-forest-labs/FLUX.1-Kontext-dev)|`kontext_images`|[code](./model_inference/FLUX.1-Kontext-dev.py)|[code](./model_training/full/FLUX.1-Kontext-dev.sh)|[code](./model_training/validate_full/FLUX.1-Kontext-dev.py)|[code](./model_training/lora/FLUX.1-Kontext-dev.sh)|[code](./model_training/validate_lora/FLUX.1-Kontext-dev.py)|
 
 ## 模型推理
 
@@ -252,7 +252,7 @@ video,prompt,kontext_images
 image1.jpg,"a cat is sleeping",image1_reference.jpg
 ```
 
-额外输入若包含视频和图像文件，则需要在 `--data_file_keys` 参数中指定要解析的列名。可根据额外输入增加相应的列名，例如 `--data_file_keys "image,kontext_images"`。
+额外输入若包含视频和图像文件，则需要在 `--data_file_keys` 参数中指定要解析的列名。可根据额外输入增加相应的列名，例如 `--data_file_keys "image,kontext_images"`，同时启用 `--extra_inputs "kontext_images"`。
 
 </details>
 
