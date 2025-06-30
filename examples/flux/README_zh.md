@@ -180,6 +180,7 @@ FLUX 系列模型训练通过统一的 [`./model_training/train.py`](./model_tra
 * 数据集
   * `--dataset_base_path`: 数据集的根路径。
   * `--dataset_metadata_path`: 数据集的元数据文件路径。
+  * `--max_pixels`: Maximum pixel area, default is 1024*1024. When dynamic resolution is enabled, any image with a resolution larger than this value will be scaled down.
   * `--height`: 图像或视频的高度。将 `height` 和 `width` 留空以启用动态分辨率。
   * `--width`: 图像或视频的宽度。将 `height` 和 `width` 留空以启用动态分辨率。
   * `--data_file_keys`: 元数据中的数据文件键。用逗号分隔。
@@ -200,9 +201,9 @@ FLUX 系列模型训练通过统一的 [`./model_training/train.py`](./model_tra
 * 额外模型输入
   * `--extra_inputs`: 额外的模型输入，以逗号分隔。
 * 显存管理
-  * `use_gradient_checkpointing`: 是否启用 gradient checkpointing。
+  * `--use_gradient_checkpointing`: 是否启用 gradient checkpointing。
   * `--use_gradient_checkpointing_offload`: 是否将 gradient checkpointing 卸载到内存中。
-  * `gradient_accumulation_steps`: 梯度累积步数。
+  * `--gradient_accumulation_steps`: 梯度累积步数。
 * 其他
   * `--align_to_opensource_format`: 是否将 FLUX DiT LoRA 的格式与开源版本对齐，仅对 FLUX.1-dev 和 FLUX.1-Kontext-dev 的 LoRA 训练生效。
 
