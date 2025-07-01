@@ -8,7 +8,7 @@ pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(path="models/Qwen/Qwen2.5-VL-7B-Instruct"),
+        ModelConfig(model_id="Qwen/Qwen2.5-VL-7B-Instruct"),
         ModelConfig(model_id="stepfun-ai/Step1X-Edit", origin_file_pattern="step1x-edit-i1258.safetensors"),
         ModelConfig(model_id="stepfun-ai/Step1X-Edit", origin_file_pattern="vae.safetensors"),
     ],
