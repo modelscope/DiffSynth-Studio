@@ -3,6 +3,7 @@ from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig, C
 from modelscope import dataset_snapshot_download
 from modelscope import snapshot_download
 from PIL import Image
+import numpy as np
 
 
 snapshot_download(
@@ -29,14 +30,19 @@ dataset_snapshot_download(
     allow_file_pattern=f"data/examples/infiniteyou/*",
 )
 
+height, width = 1024, 1024
+controlnet_image = Image.fromarray(np.zeros([height, width, 3]).astype(np.uint8))
+controlnet_inputs = [ControlNetInput(image=controlnet_image, scale=1.0, processor_id="None")]
+
 prompt = "A man, portrait, cinematic"
 id_image = "data/examples/infiniteyou/man.jpg"
 id_image = Image.open(id_image).convert('RGB')
 image = pipe(
     prompt=prompt, seed=1,
     infinityou_id_image=id_image, infinityou_guidance=1.0,
+    controlnet_inputs=controlnet_inputs,
     num_inference_steps=50, embedded_guidance=3.5,
-    height=1024, width=1024,
+    height=height, width=width,
 )
 image.save("man.jpg")
 
@@ -46,7 +52,8 @@ id_image = Image.open(id_image).convert('RGB')
 image = pipe(
     prompt=prompt, seed=1,
     infinityou_id_image=id_image, infinityou_guidance=1.0,
+    controlnet_inputs=controlnet_inputs,
     num_inference_steps=50, embedded_guidance=3.5,
-    height=1024, width=1024,
+    height=height, width=width,
 )
 image.save("woman.jpg")
