@@ -185,7 +185,7 @@ The script supports the following parameters:
   * `--dataset_repeat`: Number of times the dataset repeats per epoch.
 * Models
   * `--model_paths`: Paths to load models. JSON format.
-  * `--model_id_with_origin_paths`: Model IDs with original paths, e.g., Wan-AI/Wan2.1-T2V-1.3B:diffusion_pytorch_model*.safetensors. Comma-separated.
+  * `--model_id_with_origin_paths`: Model IDs with original paths, e.g., black-forest-labs/FLUX.1-dev:flux1-dev.safetensors. Comma-separated.
 * Training
   * `--learning_rate`: Learning rate.
   * `--num_epochs`: Number of training epochs.
@@ -214,16 +214,16 @@ The script supports the following parameters:
 The dataset contains a series of files. We recommend organizing your dataset files as follows:
 
 ```
-data/example_video_dataset/
+data/example_image_dataset/
 ├── metadata.csv
 ├── image1.jpg
 └── image2.jpg
 ```
 
-Here, `image1.jpg`, `image2.jpg` are training video/image data, and `metadata.csv` is the metadata list, for example:
+Here, `image1.jpg`, `image2.jpg` are training image data, and `metadata.csv` is the metadata list, for example:
 
 ```
-video,prompt
+image,prompt
 image1.jpg,"a cat is sleeping"
 image2.jpg,"a dog is running"
 ```
@@ -236,18 +236,18 @@ modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir
 
 The dataset supports multiple image formats: `"jpg", "jpeg", "png", "webp"`.
 
-The image resolution can be controlled via script parameters `--height` and `--width`. When both `--height` and `--width` are left empty, dynamic resolution will be enabled, allowing training with the actual width and height of each video or image in the dataset.
+The image resolution can be controlled via script parameters `--height` and `--width`. When both `--height` and `--width` are left empty, dynamic resolution will be enabled, allowing training with the actual width and height of each image in the dataset.
 
 **We strongly recommend using fixed-resolution training, as there may be load-balancing issues in multi-GPU training with dynamic resolution.**
 
 When the model requires additional inputs—for instance, `kontext_images` required by the controllable model [`black-forest-labs/FLUX.1-Kontext-dev`](https://modelscope.cn/models/black-forest-labs/FLUX.1-Kontext-dev)—please add corresponding columns in the dataset, for example:
 
 ```
-video,prompt,kontext_images
+image,prompt,kontext_images
 image1.jpg,"a cat is sleeping",image1_reference.jpg
 ```
 
-If additional inputs include video or image files, you need to specify the column names to parse using the `--data_file_keys` parameter. You can add more column names accordingly, e.g., `--data_file_keys "image,kontext_images"`.
+If additional inputs include image files, you need to specify the column names to parse using the `--data_file_keys` parameter. You can add more column names accordingly, e.g., `--data_file_keys "image,kontext_images"`.
 
 </details>
 

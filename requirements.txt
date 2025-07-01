@@ -12,3 +12,5 @@ protobuf
 modelscope
 ftfy
 pynvml
+pandas
+accelerate

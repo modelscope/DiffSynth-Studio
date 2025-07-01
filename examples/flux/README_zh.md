@@ -157,7 +157,7 @@ Pipeline 在推理阶段能够接收以下输入参数：
 * `width`: 图像宽度，需保证宽度为 16 的倍数。
 * `seed`: 随机种子。默认为 `None`，即完全随机。
 * `rand_device`: 生成随机高斯噪声矩阵的计算设备，默认为 `"cpu"`。当设置为 `cuda` 时，在不同 GPU 上会导致不同的生成结果。
-* `sigma_shift`: Rectified Flow 理论中的参数，默认为 3。数值越大，模型在去噪的开始阶段停留的步骤数越多，可适当调大这个参数来提高画面质量，但会因生成过程与训练过程不一致导致生成的视频内容与训练数据存在差异。
+* `sigma_shift`: Rectified Flow 理论中的参数，默认为 3。数值越大，模型在去噪的开始阶段停留的步骤数越多，可适当调大这个参数来提高画面质量，但会因生成过程与训练过程不一致导致生成的图像内容与训练数据存在差异。
 * `num_inference_steps`: 推理次数，默认值为 30。
 * `kontext_images`: Kontext 模型的输入图像。
 * `controlnet_inputs`: ControlNet 模型的输入。
@@ -187,7 +187,7 @@ FLUX 系列模型训练通过统一的 [`./model_training/train.py`](./model_tra
   * `--dataset_repeat`: 每个 epoch 中数据集重复的次数。
 * 模型
   * `--model_paths`: 要加载的模型路径。JSON 格式。
-  * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 Wan-AI/Wan2.1-T2V-1.3B:diffusion_pytorch_model*.safetensors。用逗号分隔。
+  * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 black-forest-labs/FLUX.1-dev:flux1-dev.safetensors。用逗号分隔。
 * 训练
   * `--learning_rate`: 学习率。
   * `--num_epochs`: 轮数（Epoch）数量。
@@ -220,21 +220,21 @@ FLUX 系列模型训练通过统一的 [`./model_training/train.py`](./model_tra
 数据集包含一系列文件，我们建议您这样组织数据集文件：
 
 ```
-data/example_video_dataset/
+data/example_image_dataset/
 ├── metadata.csv
 ├── image1.jpg
 └── image2.jpg
 ```
 
-其中 `image1.jpg`、`image2.jpg` 为训练用视频数据，`metadata.csv` 为元数据列表，例如
+其中 `image1.jpg`、`image2.jpg` 为训练用图像数据，`metadata.csv` 为元数据列表，例如
 
 ```
-video,prompt
+image,prompt
 image1.jpg,"a cat is sleeping"
 image2.jpg,"a dog is running"
 ```
 
-我们构建了一个样例视频数据集，以方便您进行测试，通过以下命令可以下载这个数据集：
+我们构建了一个样例图像数据集，以方便您进行测试，通过以下命令可以下载这个数据集：
 
 ```shell
 modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir ./data/example_image_dataset
@@ -242,18 +242,18 @@ modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir
 
 数据集支持多种图片格式，`"jpg", "jpeg", "png", "webp"`。
 
-图片的尺寸可通过脚本参数 `--height`、`--width` 控制。当 `--height` 和 `--width` 为空时将会开启动态分辨率，按照数据集中每个视频或图片的实际宽高训练。
+图片的尺寸可通过脚本参数 `--height`、`--width` 控制。当 `--height` 和 `--width` 为空时将会开启动态分辨率，按照数据集中每个图像的实际宽高训练。
 
 **我们强烈建议使用固定分辨率训练，因为在多卡训练中存在负载均衡问题。**
 
 当模型需要额外输入时，例如具备控制能力的模型 [`black-forest-labs/FLUX.1-Kontext-dev`](https://modelscope.cn/models/black-forest-labs/FLUX.1-Kontext-dev) 所需的 `kontext_images`，请在数据集中补充相应的列，例如：
 
 ```
-video,prompt,kontext_images
+image,prompt,kontext_images
 image1.jpg,"a cat is sleeping",image1_reference.jpg
 ```
 
-额外输入若包含视频和图像文件，则需要在 `--data_file_keys` 参数中指定要解析的列名。可根据额外输入增加相应的列名，例如 `--data_file_keys "image,kontext_images"`，同时启用 `--extra_inputs "kontext_images"`。
+额外输入若包含图像文件，则需要在 `--data_file_keys` 参数中指定要解析的列名。可根据额外输入增加相应的列名，例如 `--data_file_keys "image,kontext_images"`，同时启用 `--extra_inputs "kontext_images"`。
 
 </details>
 
