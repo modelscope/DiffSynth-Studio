@@ -1,0 +1,14 @@
+torch>=2.0.0
+torchvision
+cupy-cuda12x
+transformers
+controlnet-aux==0.0.7
+imageio
+imageio[ffmpeg]
+safetensors
+einops
+sentencepiece
+protobuf
+modelscope
+ftfy
+pynvml
