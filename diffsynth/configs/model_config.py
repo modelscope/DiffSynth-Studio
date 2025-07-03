@@ -64,6 +64,8 @@ from ..models.wan_video_vace import VaceWanModel
 
 from ..models.step1x_connector import Qwen2Connector
 
+from ..lora.flux_lora import FluxLoraPatcher
+
 
 model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -144,6 +146,7 @@ model_loader_configs = [
     (None, "ccc42284ea13e1ad04693284c7a09be6", ["wan_video_vae"], [WanVideoVAE], "civitai"),
     (None, "dbd5ec76bbf977983f972c151d545389", ["wan_video_motion_controller"], [WanMotionControllerModel], "civitai"),
     (None, "d30fb9e02b1dbf4e509142f05cf7dd50", ["flux_dit", "step1x_connector"], [FluxDiT, Qwen2Connector], "civitai"),
+    (None, "30143afb2dea73d1ac580e0787628f8c", ["flux_lora_patcher"], [FluxLoraPatcher], "civitai"),
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
