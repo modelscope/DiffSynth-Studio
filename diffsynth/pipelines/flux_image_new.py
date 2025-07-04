@@ -27,7 +27,7 @@ from transformers.models.t5.modeling_t5 import T5LayerNorm, T5DenseActDense, T5D
 from ..models.flux_dit import RMSNorm
 from ..vram_management import gradient_checkpoint_forward, enable_vram_management, AutoWrappedModule, AutoWrappedLinear
 
-
+from diffsynth.models.value_control import SingleValueEncoder
 
 @dataclass
 class ControlNetInput:
@@ -96,6 +96,11 @@ class FluxImagePipeline(BasePipeline):
         self.step1x_connector: Qwen2Connector = None
         self.infinityou_processor: InfinitYou = None
         self.image_proj_model: InfiniteYouImageProjector = None
+        # value
+        self.value_embedder_color: SingleValueEncoder = None
+        self.value_embedder_photo: SingleValueEncoder = None
+        self.value_embedder_detail: SingleValueEncoder = None
+        self.value_embedder_logic: SingleValueEncoder = None
         self.in_iteration_models = ("dit", "step1x_connector", "controlnet")
         self.units = [
             FluxImageUnit_ShapeChecker(),
@@ -112,6 +117,7 @@ class FluxImagePipeline(BasePipeline):
             FluxImageUnit_TeaCache(),
             FluxImageUnit_Flex(),
             FluxImageUnit_Step1x(),
+            FluxImageUnit_Prefer(),
         ]
         self.model_fn = model_fn_flux_image
         
@@ -289,6 +295,7 @@ class FluxImagePipeline(BasePipeline):
         pipe.image_proj_model = model_manager.fetch_model("infiniteyou_image_projector")
         if pipe.image_proj_model is not None:
             pipe.infinityou_processor = InfinitYou(device=device)
+        pipe.value_embedder_color = model_manager.fetch_model("flux_value_encoder")
         
         # ControlNet
         controlnets = []
@@ -357,10 +364,13 @@ class FluxImagePipeline(BasePipeline):
         tile_stride: int = 64,
         # Progress bar
         progress_bar_cmd = tqdm,
+        # Prefer_value
+        value: dict = None,
+        value_len: int = None,
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
-        
+
         inputs_posi = {
             "prompt": prompt,
         }
@@ -384,6 +394,8 @@ class FluxImagePipeline(BasePipeline):
             "tea_cache_l1_thresh": tea_cache_l1_thresh,
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
             "progress_bar_cmd": progress_bar_cmd,
+            "value": value,
+            "value_len": value_len,
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
@@ -463,7 +475,7 @@ class FluxImageUnit_PromptEmbedder(PipelineUnit):
             input_params_posi={"prompt": "prompt", "positive": "positive"},
             input_params_nega={"prompt": "negative_prompt", "positive": "positive"},
             input_params=("t5_sequence_length",),
-            onload_model_names=("text_encoder_1", "text_encoder_2")
+            onload_model_names=("text_encoder_1", "text_encoder_2",)
         )
 
     def process(self, pipe: FluxImagePipeline, prompt, t5_sequence_length, positive) -> dict:
@@ -520,6 +532,85 @@ class FluxImageUnit_Kontext(PipelineUnit):
         kontext_image_ids = torch.concat(kontext_image_ids, dim=-2)
         return {"kontext_latents": kontext_latents, "kontext_image_ids": kontext_image_ids}
 
+class FluxImageUnit_Prefer(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            take_over=True,
+            onload_model_names=("value_embedder_color", "value_embedder_photo", "value_embedder_detail", "value_embedder_logic","text_encoder_1", "text_encoder_2","prompter",)
+        )
+    
+    def expand_special_tokens(self, prompt, value_token_map):
+        for value_type, length in value_token_map.items():
+            placeholder = f"<{value_type.lower()}>"
+            if placeholder in prompt:
+                expanded_tokens = " ".join([f"<{value_type.upper()}_{i}>" for i in range(length)])
+                prompt = prompt.replace(placeholder, expanded_tokens)
+        return prompt
+
+    def process(self, pipe: FluxImagePipeline, inputs_shared, inputs_posi, inputs_nega):
+        value, value_len, latents, t5_sequence_length = inputs_shared.get("value", None), inputs_shared.get("value_len", None), inputs_shared.get("latents", None), inputs_shared.get("t5_sequence_length", None)
+        prompt = inputs_posi.get("prompt", None)
+        positive = inputs_nega.get("positive", True)
+        if pipe.text_encoder_1 is not None and pipe.text_encoder_2 is not None:
+            if value_len is not None:
+                special_tokens = {
+                    'additional_special_tokens': (
+                        [f"<COLOR_{i}>" for i in range(value_len)] +
+                        [f"<PHOTO_{i}>" for i in range(value_len)] +
+                        [f"<DETAIL_{i}>" for i in range(value_len)] +
+                        [f"<LOGIC_{i}>" for i in range(value_len)]
+                    )
+                }
+                pipe.prompter.tokenizer_2.add_special_tokens(special_tokens)
+                pipe.text_encoder_2.resize_token_embeddings(len(pipe.prompter.tokenizer_2))
+                prompt_temp = f"{prompt} <color> <photo> <detail> <logic>"
+                value_token_map = {
+                    "color": value_len,
+                    "photo": value_len,
+                    "detail": value_len,
+                    "logic": value_len,
+                }
+                prompt = self.expand_special_tokens(prompt_temp, value_token_map)
+
+                prompt_emb, pooled_prompt_emb, text_ids = pipe.prompter.encode_prompt(
+                    prompt, device=pipe.device, positive=positive, t5_sequence_length=t5_sequence_length
+                )
+
+                value_indices = {}
+
+                inputs = pipe.prompter.tokenizer_2(
+                    prompt,
+                    padding="max_length",
+                    truncation=True,
+                    max_length=512,
+                    return_tensors="pt"
+                )
+                input_ids = inputs.input_ids
+                
+                for value_type, length in value_token_map.items():
+                    token_ids = [
+                        pipe.prompter.tokenizer_2.convert_tokens_to_ids(f"<{value_type.upper()}_{i}>")
+                        for i in range(length)
+                    ]
+                    indices = []
+                    for token_id in token_ids:
+                        pos = (input_ids == token_id).nonzero(as_tuple=True)
+                        if len(pos[1]) > 0:
+                            indices.append(pos[1][0].item())
+                    if not indices:
+                        raise ValueError(f"Not find <{value_type.upper()}_x> token!")
+                    value_indices[value_type] = indices
+
+                pipe.load_models_to_device(["value_embedder_color", "value_embedder_photo", "value_embedder_detail", "value_embedder_logic"])
+                value_emb = {}
+                value_emb["color"] = pipe.value_embedder_color(torch.tensor([value["color"]], dtype=latents.dtype, device=latents.device) * 1000, dtype=latents.dtype)
+                value_emb["photo"] = pipe.value_embedder_photo(torch.tensor([value["photo"]], dtype=latents.dtype, device=latents.device) * 1000, dtype=latents.dtype)
+                value_emb["detail"] = pipe.value_embedder_detail(torch.tensor([value["detail"]], dtype=latents.dtype, device=latents.device) * 1000, dtype=latents.dtype)
+                value_emb["logic"] = pipe.value_embedder_logic(torch.tensor([value["logic"]], dtype=latents.dtype, device=latents.device) * 1000, dtype=latents.dtype)
+                inputs_posi.update({"prompt": prompt, "prompt_emb": prompt_emb, "pooled_prompt_emb": pooled_prompt_emb, "text_ids": text_ids})
+                inputs_shared.update({"value_emb": value_emb, "value_indices": value_indices})
+
+        return inputs_shared, inputs_posi, inputs_nega
 
 
 class FluxImageUnit_ControlNet(PipelineUnit):
@@ -846,6 +937,8 @@ def model_fn_flux_image(
     num_inference_steps=1,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
+    value_emb=None, 
+    value_indices=None,
     **kwargs
 ):
     if tiled:
@@ -864,6 +957,8 @@ def model_fn_flux_image(
                 controlnet_inputs=controlnet_inputs,
                 controlnet_conditionings=tiled_controlnet_conditionings,
                 tiled=False,
+                value_emb=None, 
+                value_indices=None,
                 **kwargs
             )
         return FastTileWorker().tiled_forward(
@@ -942,6 +1037,9 @@ def model_fn_flux_image(
         prompt_emb, image_rotary_emb, attention_mask = dit.process_entity_masks(hidden_states, prompt_emb, entity_prompt_emb, entity_masks, text_ids, image_ids)
     else:
         prompt_emb = dit.context_embedder(prompt_emb)
+        if value_emb is not None:
+            for name, emb in value_emb.items():
+                prompt_emb[0, value_indices[name]] = emb.to(prompt_emb.dtype)
         image_rotary_emb = dit.pos_embedder(torch.cat((text_ids, image_ids), dim=1))
         attention_mask = None
 
