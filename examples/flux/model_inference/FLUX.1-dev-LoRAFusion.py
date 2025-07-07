@@ -31,5 +31,5 @@ pipe.load_lora(
     hotload=True
 )
 
-image = pipe(prompt="a beautiful Asian girl", seed=0)
+image = pipe(prompt="This is a digital painting in a soft, ethereal style. a beautiful Asian girl Shine like a diamond. Everywhere is shining with bling bling luster.The background is a textured blue with visible brushstrokes, giving the image an impressionistic style reminiscent of Vincent van Gogh's work", seed=0)
 image.save("flux.jpg")
