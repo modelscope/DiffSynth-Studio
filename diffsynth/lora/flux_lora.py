@@ -6,10 +6,6 @@ from diffsynth.models.lora import FluxLoRAFromCivitai
 class FluxLoRALoader(GeneralLoRALoader):
     def __init__(self, device="cpu", torch_dtype=torch.float32):
         super().__init__(device=device, torch_dtype=torch_dtype)
-
-    def load(self, model: torch.nn.Module, state_dict_lora, alpha=1.0):
-        super().load(model, state_dict_lora, alpha)
-        
     
         self.diffusers_rename_dict = {
             "transformer.single_transformer_blocks.blockid.attn.to_k.lora_A.weight":"single_blocks.blockid.a_to_k.lora_A.default.weight",
