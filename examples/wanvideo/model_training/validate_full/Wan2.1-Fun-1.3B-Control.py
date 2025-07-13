@@ -1,6 +1,6 @@
 import torch
 from PIL import Image
-from diffsynth import save_video, VideoData, load_state_dict
+from diffsynth import save_video, VideoData, load_state_dict, save_frames
 from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
 
@@ -14,19 +14,45 @@ pipe = WanVideoPipeline.from_pretrained(
         ModelConfig(model_id="PAI/Wan2.1-Fun-1.3B-Control", origin_file_pattern="Wan2.1_VAE.pth", offload_device="cpu"),
         ModelConfig(model_id="PAI/Wan2.1-Fun-1.3B-Control", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth", offload_device="cpu"),
     ],
+    redirect_common_files=False,
 )
-state_dict = load_state_dict("models/train/Wan2.1-Fun-1.3B-Control_full/epoch-1.safetensors")
+state_dict = load_state_dict("models/train/Wan2.1-Fun-1.3B-Control_full_albedo/epoch-0.safetensors")
 pipe.dit.load_state_dict(state_dict)
 pipe.enable_vram_management()
 
-video = VideoData("data/example_video_dataset/video1_softedge.mp4", height=480, width=832)
-video = [video[i] for i in range(81)]
+'''
+001
+'''
+video1 = VideoData("/eva_data0/lynn/VideoGAI/DiffSynth-Studio/input/girl.jpg", height=480, width=832)
+video1 = [video1[i] for i in range(1)]
 
 # Control video
-video = pipe(
-    prompt="from sunset to night, a small town, light, house, river",
-    negative_prompt="色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
-    control_video=video,
-    seed=1, tiled=True
+out_video1 = pipe(
+    prompt="generate albedo map",
+    control_video=video1,
+    seed=42, tiled=True,
+    num_frames=len(video1),
 )
-save_video(video, "video_Wan2.1-Fun-1.3B-Control.mp4", fps=15, quality=5)
+# save_video(video, "video_Wan2.1-Fun-1.3B-Control.mp4", fps=15, quality=5)
+save_frames(out_video1, "/eva_data0/lynn/VideoGAI/DiffSynth-Studio/output/full_albedo/seed42/girl/albdeo")
+
+# # Control video
+# out_video1 = pipe(
+#     prompt="generate irradiance map",
+#     control_video=video1,
+#     seed=42, tiled=True,
+#     num_frames=len(video1),
+# )
+# # save_video(video, "video_Wan2.1-Fun-1.3B-Control.mp4", fps=15, quality=5)
+# save_frames(out_video1, "/eva_data0/lynn/VideoGAI/DiffSynth-Studio/output/full_all/seed42/001/irradiance")
+
+# # Control video
+# out_video1 = pipe(
+#     prompt="generate normal map",
+#     control_video=video1,
+#     seed=42, tiled=True,
+#     num_frames=len(video1),
+# )
+# # save_video(video, "video_Wan2.1-Fun-1.3B-Control.mp4", fps=15, quality=5)
+# save_frames(out_video1, "/eva_data0/lynn/VideoGAI/DiffSynth-Studio/output/full_all/seed42/001/normal")
+

@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+input/
+logs/
+output/
+models/
+*.pt
+*.pth
+*.ckpt
