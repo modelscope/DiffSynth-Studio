@@ -102,12 +102,14 @@ class FluxLoRALoader(GeneralLoRALoader):
             for k in state_dict:
                 if "lora_unet_" in k:
                     return 'civitai'
-                elif "transformer." in k:
+                elif k.startswith("transformer."):
                     return 'diffusers'
                 else:
                     None
         
         model_resource = guess_resource(state_dict)
+        if model_resource is None:
+            return state_dict
 
         rename_dict = self.diffusers_rename_dict if model_resource == 'diffusers' else self.civitai_rename_dict
         def guess_alpha(state_dict):
