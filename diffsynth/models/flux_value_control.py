@@ -40,7 +40,8 @@ class SingleValueEncoder(torch.nn.Module):
         emb = self.prefer_proj(value).to(dtype)
         emb = self.prefer_value_embedder(emb).squeeze(0)
         base_embeddings = emb.expand(self.prefer_len, -1)
-        learned_embeddings = base_embeddings + self.positional_embedding
+        positional_embedding = self.positional_embedding.to(dtype=base_embeddings.dtype, device=base_embeddings.device)
+        learned_embeddings = base_embeddings + positional_embedding
         return learned_embeddings
 
     @staticmethod
