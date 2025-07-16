@@ -1047,7 +1047,7 @@ class TemporalTiler_BCTHW:
             mask = self.build_mask(
                 model_output,
                 is_bound=(t == 0, t_ == T),
-                border_width=(sliding_window_size - sliding_window_stride,)
+                border_width=(sliding_window_size - sliding_window_stride + 1,)
             ).to(device=data_device, dtype=data_dtype)
             value[:, :, t: t_, :, :] += model_output * mask
             weight[:, :, t: t_, :, :] += mask
