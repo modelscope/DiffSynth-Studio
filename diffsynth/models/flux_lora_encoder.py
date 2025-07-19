@@ -1,6 +1,5 @@
 import torch
 from .sd_text_encoder import CLIPEncoderLayer
-from einops import reduce
 
 
 class LoRALayerBlock(torch.nn.Module):
@@ -92,7 +91,9 @@ class FluxLoRAEncoder(torch.nn.Module):
         self.final_linear = torch.nn.Linear(embed_dim, embed_dim)
 
     def forward(self, lora):
-        embeds = torch.concat([self.special_embeds, self.embedder(lora)], dim=1)
+        lora_embeds = self.embedder(lora)
+        special_embeds = self.special_embeds.to(dtype=lora_embeds.dtype, device=lora_embeds.device)
+        embeds = torch.concat([special_embeds, lora_embeds], dim=1)
         for encoder_id, encoder in enumerate(self.encoders):
             embeds = encoder(embeds)
         embeds = embeds[:, :self.num_special_embeds]

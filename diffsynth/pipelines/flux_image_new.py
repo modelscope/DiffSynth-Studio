@@ -20,7 +20,7 @@ from ..models.flux_controlnet import FluxControlNet
 from ..models.flux_ipadapter import FluxIpAdapter
 from ..models.flux_value_control import MultiValueEncoder
 from ..models.flux_infiniteyou import InfiniteYouImageProjector
-from ..models.flux_lora_encoder import FluxLoRAEncoder
+from ..models.flux_lora_encoder import FluxLoRAEncoder, LoRALayerBlock
 from ..models.tiler import FastTileWorker
 from .wan_video_new import BasePipeline, ModelConfig, PipelineUnitRunner, PipelineUnit
 from ..lora.flux_lora import FluxLoRALoader, FluxLoraPatcher
@@ -199,6 +199,7 @@ class FluxImagePipeline(BasePipeline):
                     torch.nn.Conv2d: AutoWrappedModule,
                     torch.nn.GroupNorm: AutoWrappedModule,
                     RMSNorm: AutoWrappedModule,
+                    LoRALayerBlock: AutoWrappedModule,
                 },
                 module_config = dict(
                     offload_dtype=dtype,
@@ -249,7 +250,7 @@ class FluxImagePipeline(BasePipeline):
             vram_limit = vram_limit - vram_buffer
 
         # Default config
-        default_vram_management_models = ["text_encoder_1", "vae_decoder", "vae_encoder", "controlnet", "image_proj_model", "ipadapter", "lora_patcher", "value_controller", "step1x_connector"]
+        default_vram_management_models = ["text_encoder_1", "vae_decoder", "vae_encoder", "controlnet", "image_proj_model", "ipadapter", "lora_patcher", "value_controller", "step1x_connector", "lora_encoder"]
         for model_name in default_vram_management_models:
             self._enable_vram_management_with_default_config(getattr(self, model_name), vram_limit)
 
