@@ -13,7 +13,7 @@ pipe = FluxImagePipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/LoRA-Encoder-FLUX.1-Dev", origin_file_pattern="model.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
     ],
 )
-pipe.enable_vram_management(vram_limit=0)
+pipe.enable_vram_management()
 pipe.enable_lora_magic()
 
 lora = ModelConfig(model_id="VoidOc/flux_animal_forest1", origin_file_pattern="20.safetensors")
