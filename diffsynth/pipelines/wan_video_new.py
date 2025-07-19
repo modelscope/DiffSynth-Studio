@@ -165,6 +165,7 @@ class ModelConfig:
     download_resource: str = "ModelScope"
     offload_device: Optional[Union[str, torch.device]] = None
     offload_dtype: Optional[torch.dtype] = None
+    skip_download: bool = False
 
     def download_if_necessary(self, local_model_path="./models", skip_download=False, use_usp=False):
         if self.path is None:
@@ -190,6 +191,7 @@ class ModelConfig:
                 is_folder = False
             
             # Download
+            skip_download = skip_download or self.skip_download
             if not skip_download:
                 downloaded_files = glob.glob(self.origin_file_pattern, root_dir=os.path.join(local_model_path, self.model_id))
                 snapshot_download(
