@@ -679,7 +679,8 @@ class WanVideoUnit_NoiseInitializer(PipelineUnit):
         length = (num_frames - 1) // 4 + 1
         if vace_reference_image is not None:
             length += 1
-        noise = pipe.generate_noise((1, 16, length, height//8, width//8), seed=seed, rand_device=rand_device)
+        shape = (1, pipe.vae.model.z_dim, length, height // pipe.vae.upsampling_factor, width // pipe.vae.upsampling_factor)
+        noise = pipe.generate_noise(shape, seed=seed, rand_device=rand_device)
         if vace_reference_image is not None:
             noise = torch.concat((noise[:, :, -1:], noise[:, :, :-1]), dim=2)
         return {"noise": noise}
