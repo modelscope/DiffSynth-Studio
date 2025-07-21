@@ -13,7 +13,7 @@ pipe = FluxImagePipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/AttriCtrl-FLUX.1-Dev", origin_file_pattern="models/brightness.safetensors")
     ],
 )
+pipe.load_lora(pipe.dit, "models/train/FLUX.1-dev-AttriCtrl_lora/epoch-3.safetensors", alpha=1)
 
-for i in [0.1, 0.3, 0.5, 0.7, 0.9]:
-    image = pipe(prompt="a cat on the beach", seed=2, value_controller_inputs=[i])
-    image.save(f"value_control_{i}.jpg")
+image = pipe(prompt="a cat", seed=0, value_controller_inputs=0.1, rand_device="cuda")
+image.save("image_FLUX.1-dev-AttriCtrl_lora.jpg")

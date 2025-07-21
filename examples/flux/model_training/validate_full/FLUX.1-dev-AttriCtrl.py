@@ -1,5 +1,6 @@
 import torch
 from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig
+from diffsynth import load_state_dict
 
 
 pipe = FluxImagePipeline.from_pretrained(
@@ -13,7 +14,8 @@ pipe = FluxImagePipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/AttriCtrl-FLUX.1-Dev", origin_file_pattern="models/brightness.safetensors")
     ],
 )
+state_dict = load_state_dict("models/train/FLUX.1-dev-AttriCtrl_full/epoch-0.safetensors")
+pipe.value_controller.encoders[0].load_state_dict(state_dict)
 
-for i in [0.1, 0.3, 0.5, 0.7, 0.9]:
-    image = pipe(prompt="a cat on the beach", seed=2, value_controller_inputs=[i])
-    image.save(f"value_control_{i}.jpg")
+image = pipe(prompt="a cat", seed=0, value_controller_inputs=0.1, rand_device="cuda")
+image.save("image_FLUX.1-dev-AttriCtrl_full.jpg")
