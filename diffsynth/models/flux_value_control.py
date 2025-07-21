@@ -18,7 +18,7 @@ class MultiValueEncoder(torch.nn.Module):
 
 
 class SingleValueEncoder(torch.nn.Module):
-    def __init__(self, dim_in=256, dim_out=3072, prefer_len=32, computation_device=None):
+    def __init__(self, dim_in=256, dim_out=4096, prefer_len=32, computation_device=None):
         super().__init__()
         self.prefer_len = prefer_len
         self.prefer_proj = TemporalTimesteps(num_channels=dim_in, flip_sin_to_cos=True, downscale_freq_shift=0, computation_device=computation_device)
