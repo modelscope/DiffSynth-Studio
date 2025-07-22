@@ -18,6 +18,8 @@ pip install -e .
 
 ## Quick Start
 
+You can quickly load the [Wan-AI/Wan2.1-T2V-1.3B](https://www.modelscope.cn/models/Wan-AI/Wan2.1-T2V-1.3B) model and run inference by executing the code below.
+
 ```python
 import torch
 from diffsynth import save_video
@@ -78,6 +80,9 @@ The following sections will help you understand our functionalities and write in
 The model is loaded using `from_pretrained`:
 
 ```python
+import torch
+from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
+
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
@@ -177,11 +182,11 @@ pipe.enable_vram_management()
 
 FP8 quantization significantly reduces VRAM usage but does not accelerate computations. Some models may experience issues such as blurry, torn, or distorted outputs due to insufficient precision when using FP8 quantization. Use FP8 quantization with caution.
 
-The `enable_vram_management` function provides the following parameters to control VRAM usage:
+After enabling VRAM management, the framework will automatically decide the VRAM strategy based on available GPU memory. The `enable_vram_management` function has the following parameters to manually control the VRAM strategy:
 
-* `vram_limit`: VRAM usage limit (in GB). By default, it uses all available VRAM on the device. Note that this is not an absolute limit; if the specified VRAM is insufficient but more VRAM is actually available, inference will proceed using the minimum required VRAM.
-* `vram_buffer`: Size of the VRAM buffer (in GB). Default is 0.5GB. Since certain large neural network layers may consume more VRAM unpredictably during their execution phase, a VRAM buffer is necessary. Ideally, this should match the maximum VRAM consumed by any single layer in the model.
-* `num_persistent_param_in_dit`: Number of persistent parameters in DiT models. By default, there is no limit. We plan to remove this parameter in the future, so please avoid relying on it.
+* `vram_limit`: VRAM usage limit in GB. By default, it uses all free VRAM on the device. Note that this is not an absolute limit. If the set VRAM is not enough but more VRAM is actually available, the model will run with minimal VRAM usage. Setting it to 0 achieves the theoretical minimum VRAM usage.
+* `vram_buffer`: VRAM buffer size in GB. Default is 0.5GB. A buffer is needed because larger neural network layers may use more VRAM than expected during loading. The optimal value is the VRAM used by the largest layer in the model.
+* `num_persistent_param_in_dit`: Number of parameters in the DiT model that stay in VRAM. Default is no limit. We plan to remove this parameter in the future. Do not rely on it.
 
 </details>
 
