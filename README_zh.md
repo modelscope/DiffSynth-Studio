@@ -8,36 +8,36 @@
 [![GitHub pull-requests](https://img.shields.io/github/issues-pr/modelscope/DiffSynth-Studio.svg)](https://GitHub.com/modelscope/DiffSynth-Studio/pull/)
 [![GitHub latest commit](https://badgen.net/github/last-commit/modelscope/DiffSynth-Studio)](https://GitHub.com/modelscope/DiffSynth-Studio/commit/) 
 
-[切换到中文](./README_zh.md)
+[Switch to English](./README.md)
 
-## Introduction
+## 简介
 
-Welcome to the magic world of Diffusion models! DiffSynth-Studio is an open-source Diffusion model engine developed and maintained by [ModelScope](https://www.modelscope.cn/) team. We aim to foster technical innovation through framework development, bring together the power of the open-source community, and explore the limits of generative models!
+欢迎来到 Diffusion 模型的魔法世界！DiffSynth-Studio 是由[魔搭社区](https://www.modelscope.cn/)团队开发和维护的开源 Diffusion 模型引擎。我们期望以框架建设孵化技术创新，凝聚开源社区的力量，探索生成式模型技术的边界！
 
-DiffSynth currently includes two open-source projects:
-* [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio): Focused on aggressive technical exploration, for academia, providing support for more cutting-edge model capabilities.
-* [DiffSynth-Engine](https://github.com/modelscope/DiffSynth-Engine): Focused on stable model deployment, for industry, offering higher computing performance and more stable features.
+DiffSynth 目前包括两个开源项目：
+* [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio): 聚焦于激进的技术探索，面向学术界，提供更前沿的模型能力支持。
+* [DiffSynth-Engine](https://github.com/modelscope/DiffSynth-Engine): 聚焦于稳定的模型部署，面向工业界，提供更高的计算性能与更稳定的功能。
 
-## Installation
+## 安装
 
-Install from source (recommended):
+从源码安装（推荐）：
 
 ```
-git clone https://github.com/modelscope/DiffSynth-Studio.git  
+git clone https://github.com/modelscope/DiffSynth-Studio.git
 cd DiffSynth-Studio
 pip install -e .
 ```
 
 <details>
-<summary>Other installation methods</summary>
+<summary>其他安装方式</summary>
 
-Install from PyPI (version updates may be delayed; for latest features, install from source)
+从 pypi 安装（存在版本更新延迟，如需使用最新功能，请从源码安装）
 
 ```
 pip install diffsynth
 ```
 
-If you meet problems during installation, they might be caused by upstream dependencies. Please check the docs of these packages:
+如果在安装过程中遇到问题，可能是由上游依赖包导致的，请参考这些包的文档：
 
 * [torch](https://pytorch.org/get-started/locally/)
 * [sentencepiece](https://github.com/google/sentencepiece)
@@ -46,19 +46,21 @@ If you meet problems during installation, they might be caused by upstream depen
 
 </details>
 
-## Basic Framework
 
-DiffSynth-Studio redesigns the inference and training pipelines for mainstream Diffusion models (including FLUX, Wan, etc.), enabling efficient memory management and flexible model training.
 
-### FLUX Series
+## 基础框架
 
-Detail page: [./examples/flux/](./examples/flux/)
+DiffSynth-Studio 为主流 Diffusion 模型（包括 FLUX、Wan 等）重新设计了推理和训练流水线，能够实现高效的显存管理、灵活的模型训练。
+
+### FLUX 系列
+
+详细页面：[./examples/flux/](./examples/flux/)
 
 ![Image](https://github.com/user-attachments/assets/c01258e2-f251-441a-aa1e-ebb22f02594d)
 
 <details>
 
-<summary>Quick Start</summary>
+<summary>快速开始</summary>
 
 ```python
 import torch
@@ -83,9 +85,9 @@ image.save("image.jpg")
 
 <details>
 
-<summary>Model Overview</summary>
+<summary>模型总览</summary>
 
-| Model ID | Extra Parameters | Inference | Low VRAM Inference | Full Training | Validate After Full Training | LoRA Training | Validate After LoRA Training |
+|模型 ID|额外参数|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|-|
 |[FLUX.1-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.1-dev)||[code](./examples/flux/model_inference/FLUX.1-dev.py)|[code](./examples/flux/model_inference_low_vram/FLUX.1-dev.py)|[code](./examples/flux/model_training/full/FLUX.1-dev.sh)|[code](./examples/flux/model_training/validate_full/FLUX.1-dev.py)|[code](./examples/flux/model_training/lora/FLUX.1-dev.sh)|[code](./examples/flux/model_training/validate_lora/FLUX.1-dev.py)|
 |[FLUX.1-Kontext-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.1-Kontext-dev)|`kontext_images`|[code](./examples/flux/model_inference/FLUX.1-Kontext-dev.py)|[code](./examples/flux/model_inference_low_vram/FLUX.1-Kontext-dev.py)|[code](./examples/flux/model_training/full/FLUX.1-Kontext-dev.sh)|[code](./examples/flux/model_training/validate_full/FLUX.1-Kontext-dev.py)|[code](./examples/flux/model_training/lora/FLUX.1-Kontext-dev.sh)|[code](./examples/flux/model_training/validate_lora/FLUX.1-Kontext-dev.py)|
@@ -101,17 +103,15 @@ image.save("image.jpg")
 
 </details>
 
+### Wan 系列
 
-
-### Wan Series
-
-Detail page: [./examples/wanvideo/](./examples/wanvideo/)
+详细页面：[./examples/wanvideo/](./examples/wanvideo/)
 
 https://github.com/user-attachments/assets/1d66ae74-3b02-40a9-acc3-ea95fc039314
 
 <details>
 
-<summary>Quick Start</summary>
+<summary>快速开始</summary>
 
 ```python
 import torch
@@ -130,8 +130,8 @@ pipe = WanVideoPipeline.from_pretrained(
 pipe.enable_vram_management()
 
 video = pipe(
-    prompt="A documentary photography style scene: a lively puppy rapidly running on green grass. The puppy has brown-yellow fur, upright ears, and looks focused and joyful. Sunlight shines on its body, making the fur appear soft and shiny. The background is an open field with occasional wildflowers, and faint blue sky and clouds in the distance. Strong sense of perspective captures the motion of the puppy and the vitality of the surrounding grass. Mid-shot side-moving view.",
-    negative_prompt="Bright colors, overexposed, static, blurry details, subtitles, style, artwork, image, still, overall gray, worst quality, low quality, JPEG compression artifacts, ugly, deformed, extra fingers, poorly drawn hands, poorly drawn face, malformed limbs, fused fingers, still frame, messy background, three legs, crowded background people, walking backwards",
+    prompt="纪实摄影风格画面，一只活泼的小狗在绿茵茵的草地上迅速奔跑。小狗毛色棕黄，两只耳朵立起，神情专注而欢快。阳光洒在它身上，使得毛发看上去格外柔软而闪亮。背景是一片开阔的草地，偶尔点缀着几朵野花，远处隐约可见蓝天和几片白云。透视感鲜明，捕捉小狗奔跑时的动感和四周草地的生机。中景侧面移动视角。",
+    negative_prompt="色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
     seed=0, tiled=True,
 )
 save_video(video, "video1.mp4", fps=15, quality=5)
@@ -141,9 +141,9 @@ save_video(video, "video1.mp4", fps=15, quality=5)
 
 <details>
 
-<summary>Model Overview</summary>
+<summary>模型总览</summary>
 
-| Model ID | Extra Parameters | Inference | Full Training | Validate After Full Training | LoRA Training | Validate After LoRA Training |
+|模型 ID|额外参数|推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
 |[Wan-AI/Wan2.1-T2V-1.3B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-1.3B)||[code](./examples/wanvideo/model_inference/Wan2.1-T2V-1.3B.py)|[code](./examples/wanvideo/model_training/full/Wan2.1-T2V-1.3B.sh)|[code](./examples/wanvideo/model_training/validate_full/Wan2.1-T2V-1.3B.py)|[code](./examples/wanvideo/model_training/lora/Wan2.1-T2V-1.3B.sh)|[code](./examples/wanvideo/model_training/validate_lora/Wan2.1-T2V-1.3B.py)|
 |[Wan-AI/Wan2.1-T2V-14B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-14B)||[code](./examples/wanvideo/model_inference/Wan2.1-T2V-14B.py)|[code](./examples/wanvideo/model_training/full/Wan2.1-T2V-14B.sh)|[code](./examples/wanvideo/model_training/validate_full/Wan2.1-T2V-14B.py)|[code](./examples/wanvideo/model_training/lora/Wan2.1-T2V-14B.sh)|[code](./examples/wanvideo/model_training/validate_lora/Wan2.1-T2V-14B.py)|
@@ -167,14 +167,16 @@ save_video(video, "video1.mp4", fps=15, quality=5)
 
 </details>
 
-### More Models
+
+
+### 更多模型
 
 
 
 <details>
-<summary>Image Generation Models</summary>
+<summary>图像生成模型</summary>
 
-Detail page: [./examples/image_synthesis/](./examples/image_synthesis/)
+详细页面：[./examples/image_synthesis/](./examples/image_synthesis/)
 
 |FLUX|Stable Diffusion 3|
 |-|-|
@@ -193,30 +195,30 @@ Detail page: [./examples/image_synthesis/](./examples/image_synthesis/)
 
 
 <details>
-<summary>Video Generation Models</summary>
+<summary>视频生成模型</summary>
 
-- HunyuanVideo: [./examples/HunyuanVideo/](./examples/HunyuanVideo/)
+- HunyuanVideo：[./examples/HunyuanVideo/](./examples/HunyuanVideo/)
 
-https://github.com/user-attachments/assets/48dd24bb-0cc6-40d2-88c3-10feed3267e9  
+https://github.com/user-attachments/assets/48dd24bb-0cc6-40d2-88c3-10feed3267e9
 
-- StepVideo: [./examples/stepvideo/](./examples/stepvideo/)
+- StepVideo：[./examples/stepvideo/](./examples/stepvideo/)
 
-https://github.com/user-attachments/assets/5954fdaa-a3cf-45a3-bd35-886e3cc4581b  
+https://github.com/user-attachments/assets/5954fdaa-a3cf-45a3-bd35-886e3cc4581b
 
-- CogVideoX: [./examples/CogVideoX/](./examples/CogVideoX/)
+- CogVideoX：[./examples/CogVideoX/](./examples/CogVideoX/)
 
-https://github.com/user-attachments/assets/26b044c1-4a60-44a4-842f-627ff289d006  
+https://github.com/user-attachments/assets/26b044c1-4a60-44a4-842f-627ff289d006
 
 </details>
 
 
 
 <details>
-<summary>Image Quality Assessment Models</summary>
+<summary>图像质量评估模型</summary>
 
-We have integrated a series of image quality assessment models. These models can be used for evaluating image generation models, alignment training, and similar tasks.
+我们集成了一系列图像质量评估模型，这些模型可以用于图像生成模型的评测、对齐训练等场景中。
 
-Detail page: [./examples/image_quality_metric/](./examples/image_quality_metric/)
+详细页面：[./examples/image_quality_metric/](./examples/image_quality_metric/)
 
 * [ImageReward](https://github.com/THUDM/ImageReward)
 * [Aesthetic](https://github.com/christophschuhmann/improved-aesthetic-predictor)
@@ -230,30 +232,32 @@ Detail page: [./examples/image_quality_metric/](./examples/image_quality_metric/
 
 
 
-## Innovative Achievements
+## 创新成果
 
-DiffSynth-Studio is not just an engineering model framework, but also a platform for incubating innovative results.
+DiffSynth-Studio 不仅仅是一个工程化的模型框架，更是创新成果的孵化器。
 
 <details>
-<summary>Nexus-Gen: Unified Architecture for Image Understanding, Generation, and Editing</summary>
+<summary>Nexus-Gen: 统一架构的图像理解、生成、编辑</summary>
 
-- Detail page: https://github.com/modelscope/Nexus-Gen  
-- Paper: [Nexus-Gen: Unified Image Understanding, Generation, and Editing via Prefilled Autoregression in Shared Embedding Space](https://arxiv.org/pdf/2504.21356)
-- Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Nexus-GenV2), [HuggingFace](https://huggingface.co/modelscope/Nexus-GenV2)
-- Dataset: [ModelScope Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/Nexus-Gen-Training-Dataset)
-- Online Demo: [ModelScope Nexus-Gen Studio](https://www.modelscope.cn/studios/DiffSynth-Studio/Nexus-Gen)
+- 详细页面：https://github.com/modelscope/Nexus-Gen
+- 论文：[Nexus-Gen: Unified Image Understanding, Generation, and Editing via Prefilled Autoregression in Shared Embedding Space](https://arxiv.org/pdf/2504.21356)
+- 模型：[ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Nexus-GenV2), [HuggingFace](https://huggingface.co/modelscope/Nexus-GenV2)
+- 数据集：[ModelScope Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/Nexus-Gen-Training-Dataset)
+- 在线体验：[ModelScope Nexus-Gen Studio](https://www.modelscope.cn/studios/DiffSynth-Studio/Nexus-Gen)
 
 ![](https://github.com/modelscope/Nexus-Gen/raw/main/assets/illustrations/gen_edit.jpg)
 
 </details>
 
-<details>
-<summary>ArtAug: Aesthetic Enhancement for Image Generation Models</summary>
 
-- Detail page: [./examples/ArtAug/](./examples/ArtAug/)
-- Paper: [ArtAug: Enhancing Text-to-Image Generation through Synthesis-Understanding Interaction](https://arxiv.org/abs/2412.12888)
-- Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1), [HuggingFace](https://huggingface.co/ECNU-CILab/ArtAug-lora-FLUX.1dev-v1)
-- Online Demo: [ModelScope AIGC Tab](https://www.modelscope.cn/aigc/imageGeneration?tab=advanced&versionId=7228&modelType=LoRA&sdVersion=FLUX_1&modelUrl=modelscope%3A%2F%2FDiffSynth-Studio%2FArtAug-lora-FLUX.1dev-v1%3Frevision%3Dv1.0)
+
+<details>
+<summary>ArtAug: 图像生成模型的美学提升</summary>
+
+- 详细页面：[./examples/ArtAug/](./examples/ArtAug/)
+- 论文：[ArtAug: Enhancing Text-to-Image Generation through Synthesis-Understanding Interaction](https://arxiv.org/abs/2412.12888)
+- 模型：[ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1), [HuggingFace](https://huggingface.co/ECNU-CILab/ArtAug-lora-FLUX.1dev-v1)
+- 在线体验：[ModelScope AIGC Tab](https://www.modelscope.cn/aigc/imageGeneration?tab=advanced&versionId=7228&modelType=LoRA&sdVersion=FLUX_1&modelUrl=modelscope%3A%2F%2FDiffSynth-Studio%2FArtAug-lora-FLUX.1dev-v1%3Frevision%3Dv1.0)
 
 |FLUX.1-dev|FLUX.1-dev + ArtAug LoRA|
 |-|-|
@@ -261,50 +265,62 @@ DiffSynth-Studio is not just an engineering model framework, but also a platform
 
 </details>
 
+
+
 <details>
-<summary>EliGen: Precise Image Region Control</summary>
 
-- Detail page: [./examples/EntityControl/](./examples/EntityControl/)
-- Paper: [EliGen: Entity-Level Controlled Image Generation with Regional Attention](https://arxiv.org/abs/2501.01097)
-- Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen), [HuggingFace](https://huggingface.co/modelscope/EliGen)
-- Online Demo: [ModelScope EliGen Studio](https://www.modelscope.cn/studios/DiffSynth-Studio/EliGen)
-- Dataset: [EliGen Train Set](https://www.modelscope.cn/datasets/DiffSynth-Studio/EliGenTrainSet)
+<summary>EliGen: 精准的图像分区控制</summary>
 
-|Entity Control Mask|Generated Image|
+- 详细页面：[./examples/EntityControl/](./examples/EntityControl/)
+- 论文：[EliGen: Entity-Level Controlled Image Generation with Regional Attention](https://arxiv.org/abs/2501.01097)
+- 模型：[ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen), [HuggingFace](https://huggingface.co/modelscope/EliGen)
+- 在线体验：[ModelScope EliGen Studio](https://www.modelscope.cn/studios/DiffSynth-Studio/EliGen)
+- 数据集：[EliGen Train Set](https://www.modelscope.cn/datasets/DiffSynth-Studio/EliGenTrainSet)
+
+|实体控制区域|生成图像|
 |-|-|
 |![eligen_example_2_mask_0](https://github.com/user-attachments/assets/1c6d9445-5022-4d91-ad2e-dc05321883d1)|![eligen_example_2_0](https://github.com/user-attachments/assets/86739945-cb07-4a49-b3b3-3bb65c90d14f)|
 
 </details>
 
-<details>
-<summary>ExVideo: Extended Training for Video Generation Models</summary>
 
-- Project Page: [Project Page](https://ecnu-cilab.github.io/ExVideoProjectPage/)
-- Paper: [ExVideo: Extending Video Diffusion Models via Parameter-Efficient Post-Tuning](https://arxiv.org/abs/2406.14130)
-- Code Example: [./examples/ExVideo/](./examples/ExVideo/)
-- Model: [ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-SVD-128f-v1), [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
+
+<details>
+
+<summary>ExVideo: 视频生成模型的扩展训练</summary>
+
+- 项目页面：[Project Page](https://ecnu-cilab.github.io/ExVideoProjectPage/)
+- 论文：[ExVideo: Extending Video Diffusion Models via Parameter-Efficient Post-Tuning](https://arxiv.org/abs/2406.14130)
+- 代码样例：[./examples/ExVideo/](./examples/ExVideo/)
+- 模型：[ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-SVD-128f-v1), [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1)
 
 https://github.com/modelscope/DiffSynth-Studio/assets/35051019/d97f6aa9-8064-4b5b-9d49-ed6001bb9acc
 
 </details>
 
-<details>
-<summary>Diffutoon: High-Resolution Anime-Style Video Rendering</summary>
 
-- Project Page: [Project Page](https://ecnu-cilab.github.io/DiffutoonProjectPage/)
-- Paper: [Diffutoon: High-Resolution Editable Toon Shading via Diffusion Models](https://arxiv.org/abs/2401.16224)
-- Code Example: [./examples/Diffutoon/](./examples/Diffutoon/)
+
+<details>
+
+<summary>Diffutoon: 高分辨率动漫风格视频渲染</summary>
+
+- 项目页面：[Project Page](https://ecnu-cilab.github.io/DiffutoonProjectPage/)
+- 论文：[Diffutoon: High-Resolution Editable Toon Shading via Diffusion Models](https://arxiv.org/abs/2401.16224)
+- 代码样例：[./examples/Diffutoon/](./examples/Diffutoon/)
 
 https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/b54c05c5-d747-4709-be5e-b39af82404dd
 
 </details>
 
-<details>
-<summary>DiffSynth: The Initial Version of This Project</summary>
 
-- Project Page: [Project Page](https://ecnu-cilab.github.io/DiffSynth.github.io/)
-- Paper: [DiffSynth: Latent In-Iteration Deflickering for Realistic Video Synthesis](https://arxiv.org/abs/2308.03463)
-- Code Example: [./examples/diffsynth/](./examples/diffsynth/)
+
+<details>
+
+<summary>DiffSynth: 本项目的初代版本</summary>
+
+- 项目页面：[Project Page](https://ecnu-cilab.github.io/DiffSynth.github.io/)
+- 论文：[DiffSynth: Latent In-Iteration Deflickering for Realistic Video Synthesis](https://arxiv.org/abs/2308.03463)
+- 代码样例：[./examples/diffsynth/](./examples/diffsynth/)
 
 https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-4481-b79f-0c3a7361a1ea
 
@@ -312,92 +328,92 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 
 
 
-## Update History
+## 更新历史
 
-- **July 11, 2025** 🔥🔥🔥 We propose Nexus-Gen, a unified model that synergizes the language reasoning capabilities of LLMs with the image synthesis power of diffusion models. This framework enables seamless image understanding, generation, and editing tasks.
-  - Paper: [Nexus-Gen: Unified Image Understanding, Generation, and Editing via Prefilled Autoregression in Shared Embedding Space](https://arxiv.org/pdf/2504.21356)
-  - Github Repo: https://github.com/modelscope/Nexus-Gen
-  - Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Nexus-GenV2), [HuggingFace](https://huggingface.co/modelscope/Nexus-GenV2)
-  - Training Dataset: [ModelScope Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/Nexus-Gen-Training-Dataset)
-  - Online Demo: [ModelScope Nexus-Gen Studio](https://www.modelscope.cn/studios/DiffSynth-Studio/Nexus-Gen)
+- **2025年7月11日** 🔥🔥🔥 我们提出 Nexus-Gen，一个将大语言模型（LLM）的语言推理能力与扩散模型的图像生成能力相结合的统一框架。该框架支持无缝的图像理解、生成和编辑任务。
+  - 论文: [Nexus-Gen: Unified Image Understanding, Generation, and Editing via Prefilled Autoregression in Shared Embedding Space](https://arxiv.org/pdf/2504.21356)
+  - Github 仓库: https://github.com/modelscope/Nexus-Gen
+  - 模型: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Nexus-GenV2), [HuggingFace](https://huggingface.co/modelscope/Nexus-GenV2)
+  - 训练数据集: [ModelScope Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/Nexus-Gen-Training-Dataset)
+  - 在线体验: [ModelScope Nexus-Gen Studio](https://www.modelscope.cn/studios/DiffSynth-Studio/Nexus-Gen)
 
-- **June 15, 2025** ModelScope's official evaluation framework, [EvalScope](https://github.com/modelscope/evalscope), now supports text-to-image generation evaluation. Try it with the [Best Practices](https://evalscope.readthedocs.io/zh-cn/latest/best_practice/t2i_eval.html) guide.
+- **2025年6月15日** ModelScope 官方评测框架 [EvalScope](https://github.com/modelscope/evalscope) 现已支持文生图生成评测。请参考[最佳实践](https://evalscope.readthedocs.io/zh-cn/latest/best_practice/t2i_eval.html)指南进行尝试。
 
-- **March 31, 2025** We support InfiniteYou, an identity preserving method for FLUX. Please refer to [./examples/InfiniteYou/](./examples/InfiniteYou/) for more details.
+- **2025年3月31日** 我们支持 InfiniteYou，一种用于 FLUX 的人脸特征保留方法。更多细节请参考 [./examples/InfiniteYou/](./examples/InfiniteYou/)。
 
-- **March 25, 2025** Our new open-source project, [DiffSynth-Engine](https://github.com/modelscope/DiffSynth-Engine), is now open-sourced! Focused on stable model deployment. Geared towards industry. Offers better engineering support, higher computational performance, and more stable functionality.
+- **2025年3月25日** 我们的新开源项目 [DiffSynth-Engine](https://github.com/modelscope/DiffSynth-Engine) 现已开源！专注于稳定的模型部署，面向工业界，提供更好的工程支持、更高的计算性能和更稳定的功能。
 
-- **March 13, 2025** We support HunyuanVideo-I2V, the image-to-video generation version of HunyuanVideo open-sourced by Tencent. Please refer to [./examples/HunyuanVideo/](./examples/HunyuanVideo/) for more details.
+- **2025年3月13日** 我们支持 HunyuanVideo-I2V，即腾讯开源的 HunyuanVideo 的图像到视频生成版本。更多细节请参考 [./examples/HunyuanVideo/](./examples/HunyuanVideo/)。
 
-- **February 25, 2025** We support Wan-Video, a collection of SOTA video synthesis models open-sourced by Alibaba. See [./examples/wanvideo/](./examples/wanvideo/).
+- **2025年2月25日** 我们支持 Wan-Video，这是阿里巴巴开源的一系列最先进的视频合成模型。详见 [./examples/wanvideo/](./examples/wanvideo/)。
 
-- **February 17, 2025** We support [StepVideo](https://modelscope.cn/models/stepfun-ai/stepvideo-t2v/summary)! State-of-the-art video synthesis model! See [./examples/stepvideo](./examples/stepvideo/).
+- **2025年2月17日** 我们支持 [StepVideo](https://modelscope.cn/models/stepfun-ai/stepvideo-t2v/summary)！先进的视频合成模型！详见 [./examples/stepvideo](./examples/stepvideo/)。
 
-- **December 31, 2024** We propose EliGen, a novel framework for precise entity-level controlled text-to-image generation, complemented by an inpainting fusion pipeline to extend its capabilities to image inpainting tasks. EliGen seamlessly integrates with existing community models, such as IP-Adapter and In-Context LoRA, enhancing its versatility. For more details, see [./examples/EntityControl](./examples/EntityControl/).
-  - Paper: [EliGen: Entity-Level Controlled Image Generation with Regional Attention](https://arxiv.org/abs/2501.01097)
-  - Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen), [HuggingFace](https://huggingface.co/modelscope/EliGen)
-  - Online Demo: [ModelScope EliGen Studio](https://www.modelscope.cn/studios/DiffSynth-Studio/EliGen)
-  - Training Dataset: [EliGen Train Set](https://www.modelscope.cn/datasets/DiffSynth-Studio/EliGenTrainSet)
+- **2024年12月31日** 我们提出 EliGen，一种用于精确实体级别控制的文本到图像生成的新框架，并辅以修复融合管道，将其能力扩展到图像修复任务。EliGen 可以无缝集成现有的社区模型，如 IP-Adapter 和 In-Context LoRA，提升其通用性。更多详情，请见 [./examples/EntityControl](./examples/EntityControl/)。
+  - 论文: [EliGen: Entity-Level Controlled Image Generation with Regional Attention](https://arxiv.org/abs/2501.01097)
+  - 模型: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen), [HuggingFace](https://huggingface.co/modelscope/EliGen)
+  - 在线体验: [ModelScope EliGen Studio](https://www.modelscope.cn/studios/DiffSynth-Studio/EliGen)
+  - 训练数据集: [EliGen Train Set](https://www.modelscope.cn/datasets/DiffSynth-Studio/EliGenTrainSet)
 
-- **December 19, 2024** We implement advanced VRAM management for HunyuanVideo, making it possible to generate videos at a resolution of 129x720x1280 using 24GB of VRAM, or at 129x512x384 resolution with just 6GB of VRAM. Please refer to [./examples/HunyuanVideo/](./examples/HunyuanVideo/) for more details.
+- **2024年12月19日** 我们为 HunyuanVideo 实现了高级显存管理，使得在 24GB 显存下可以生成分辨率为 129x720x1280 的视频，或在仅 6GB 显存下生成分辨率为 129x512x384 的视频。更多细节请参考 [./examples/HunyuanVideo/](./examples/HunyuanVideo/)。
 
-- **December 18, 2024** We propose ArtAug, an approach designed to improve text-to-image synthesis models through synthesis-understanding interactions. We have trained an ArtAug enhancement module for FLUX.1-dev in the format of LoRA. This model integrates the aesthetic understanding of Qwen2-VL-72B into FLUX.1-dev, leading to an improvement in the quality of generated images.
-  - Paper: https://arxiv.org/abs/2412.12888
-  - Examples: https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/ArtAug
-  - Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1), [HuggingFace](https://huggingface.co/ECNU-CILab/ArtAug-lora-FLUX.1dev-v1)
-  - Demo: [ModelScope](https://modelscope.cn/aigc/imageGeneration?tab=advanced&versionId=7228&modelType=LoRA&sdVersion=FLUX_1&modelUrl=modelscope%3A%2F%2FDiffSynth-Studio%2FArtAug-lora-FLUX.1dev-v1%3Frevision%3Dv1.0), HuggingFace (Coming soon)
+- **2024年12月18日** 我们提出 ArtAug，一种通过合成-理解交互来改进文生图模型的方法。我们以 LoRA 格式为 FLUX.1-dev 训练了一个 ArtAug 增强模块。该模型将 Qwen2-VL-72B 的美学理解融入 FLUX.1-dev，从而提升了生成图像的质量。
+  - 论文: https://arxiv.org/abs/2412.12888
+  - 示例: https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/ArtAug
+  - 模型: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1), [HuggingFace](https://huggingface.co/ECNU-CILab/ArtAug-lora-FLUX.1dev-v1)
+  - 演示: [ModelScope](https://modelscope.cn/aigc/imageGeneration?tab=advanced&versionId=7228&modelType=LoRA&sdVersion=FLUX_1&modelUrl=modelscope%3A%2F%2FDiffSynth-Studio%2FArtAug-lora-FLUX.1dev-v1%3Frevision%3Dv1.0), HuggingFace (即将上线)
 
-- **October 25, 2024** We provide extensive FLUX ControlNet support. This project supports many different ControlNet models that can be freely combined, even if their structures differ. Additionally, ControlNet models are compatible with high-resolution refinement and partition control techniques, enabling very powerful controllable image generation. See [`./examples/ControlNet/`](./examples/ControlNet/).
+- **2024年10月25日** 我们提供了广泛的 FLUX ControlNet 支持。该项目支持许多不同的 ControlNet 模型，并且可以自由组合，即使它们的结构不同。此外，ControlNet 模型兼容高分辨率优化和分区控制技术，能够实现非常强大的可控图像生成。详见 [`./examples/ControlNet/`](./examples/ControlNet/)。
 
-- **October 8, 2024.** We release the extended LoRA based on CogVideoX-5B and ExVideo. You can download this model from [ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1) or [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1).
+- **2024年10月8日** 我们发布了基于 CogVideoX-5B 和 ExVideo 的扩展 LoRA。您可以从 [ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1) 或 [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-CogVideoX-LoRA-129f-v1) 下载此模型。
 
-- **August 22, 2024.** CogVideoX-5B is supported in this project. See [here](/examples/video_synthesis/). We provide several interesting features for this text-to-video model, including
-  - Text to video
-  - Video editing
-  - Self-upscaling
-  - Video interpolation
+- **2024年8月22日** 本项目现已支持 CogVideoX-5B。详见 [此处](/examples/video_synthesis/)。我们为这个文生视频模型提供了几个有趣的功能，包括：
+  - 文本到视频
+  - 视频编辑
+  - 自我超分
+  - 视频插帧
 
-- **August 22, 2024.** We have implemented an interesting painter that supports all text-to-image models. Now you can create stunning images using the painter, with assistance from AI!
-  - Use it in our [WebUI](#usage-in-webui).
+- **2024年8月22日** 我们实现了一个有趣的画笔功能，支持所有文生图模型。现在，您可以在 AI 的辅助下使用画笔创作惊艳的图像了！
+  - 在我们的 [WebUI](#usage-in-webui) 中使用它。
 
-- **August 21, 2024.** FLUX is supported in DiffSynth-Studio.
-  - Enable CFG and highres-fix to improve visual quality. See [here](/examples/image_synthesis/README.md)
-  - LoRA, ControlNet, and additional models will be available soon.
+- **2024年8月21日** DiffSynth-Studio 现已支持 FLUX。
+  - 启用 CFG 和高分辨率修复以提升视觉质量。详见 [此处](/examples/image_synthesis/README.md)
+  - LoRA、ControlNet 和其他附加模型将很快推出。
 
-- **June 21, 2024.** We propose ExVideo, a post-tuning technique aimed at enhancing the capability of video generation models. We have extended Stable Video Diffusion to achieve the generation of long videos up to 128 frames.
-  - [Project Page](https://ecnu-cilab.github.io/ExVideoProjectPage/)
-  - Source code is released in this repo. See [`examples/ExVideo`](./examples/ExVideo/).
-  - Models are released on [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1) and [ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-SVD-128f-v1).
-  - Technical report is released on [arXiv](https://arxiv.org/abs/2406.14130).
-  - You can try ExVideo in this [Demo](https://huggingface.co/spaces/modelscope/ExVideo-SVD-128f-v1)!
+- **2024年6月21日** 我们提出 ExVideo，一种旨在增强视频生成模型能力的后训练微调技术。我们将 Stable Video Diffusion 进行了扩展，实现了长达 128 帧的长视频生成。
+  - [项目页面](https://ecnu-cilab.github.io/ExVideoProjectPage/)
+  - 源代码已在此仓库中发布。详见 [`examples/ExVideo`](./examples/ExVideo/)。
+  - 模型已发布于 [HuggingFace](https://huggingface.co/ECNU-CILab/ExVideo-SVD-128f-v1) 和 [ModelScope](https://modelscope.cn/models/ECNU-CILab/ExVideo-SVD-128f-v1)。
+  - 技术报告已发布于 [arXiv](https://arxiv.org/abs/2406.14130)。
+  - 您可以在此 [演示](https://huggingface.co/spaces/modelscope/ExVideo-SVD-128f-v1) 中试用 ExVideo！
 
-- **June 13, 2024.** DiffSynth Studio is transferred to ModelScope. The developers have transitioned from "I" to "we". Of course, I will still participate in development and maintenance.
+- **2024年6月13日** DiffSynth Studio 已迁移至 ModelScope。开发团队也从“我”转变为“我们”。当然，我仍会参与后续的开发和维护工作。
 
-- **Jan 29, 2024.** We propose Diffutoon, a fantastic solution for toon shading.
-  - [Project Page](https://ecnu-cilab.github.io/DiffutoonProjectPage/)
-  - The source codes are released in this project.
-  - The technical report (IJCAI 2024) is released on [arXiv](https://arxiv.org/abs/2401.16224).
+- **2024年1月29日** 我们提出 Diffutoon，这是一个出色的卡通着色解决方案。
+  - [项目页面](https://ecnu-cilab.github.io/DiffutoonProjectPage/)
+  - 源代码已在此项目中发布。
+  - 技术报告（IJCAI 2024）已发布于 [arXiv](https://arxiv.org/abs/2401.16224)。
 
-- **Dec 8, 2023.** We decide to develop a new Project, aiming to release the potential of diffusion models, especially in video synthesis. The development of this project is started.
+- **2023年12月8日** 我们决定启动一个新项目，旨在释放扩散模型的潜力，尤其是在视频合成方面。该项目的开发工作正式开始。
 
-- **Nov 15, 2023.** We propose FastBlend, a powerful video deflickering algorithm.
-  - The sd-webui extension is released on [GitHub](https://github.com/Artiprocher/sd-webui-fastblend).
-  - Demo videos are shown on Bilibili, including three tasks.
-    - [Video deflickering](https://www.bilibili.com/video/BV1d94y1W7PE)
-    - [Video interpolation](https://www.bilibili.com/video/BV1Lw411m71p)
-    - [Image-driven video rendering](https://www.bilibili.com/video/BV1RB4y1Z7LF)
-  - The technical report is released on [arXiv](https://arxiv.org/abs/2311.09265).
-  - An unofficial ComfyUI extension developed by other users is released on [GitHub](https://github.com/AInseven/ComfyUI-fastblend).
+- **2023年11月15日** 我们提出 FastBlend，一种强大的视频去闪烁算法。
+  - sd-webui 扩展已发布于 [GitHub](https://github.com/Artiprocher/sd-webui-fastblend)。
+  - 演示视频已在 Bilibili 上展示，包含三个任务：
+    - [视频去闪烁](https://www.bilibili.com/video/BV1d94y1W7PE)
+    - [视频插帧](https://www.bilibili.com/video/BV1Lw411m71p)
+    - [图像驱动的视频渲染](https://www.bilibili.com/video/BV1RB4y1Z7LF)
+  - 技术报告已发布于 [arXiv](https://arxiv.org/abs/2311.09265)。
+  - 其他用户开发的非官方 ComfyUI 扩展已发布于 [GitHub](https://github.com/AInseven/ComfyUI-fastblend)。
 
-- **Oct 1, 2023.** We release an early version of this project, namely FastSDXL. A try for building a diffusion engine.
-  - The source codes are released on [GitHub](https://github.com/Artiprocher/FastSDXL).
-  - FastSDXL includes a trainable OLSS scheduler for efficiency improvement.
-    - The original repo of OLSS is [here](https://github.com/alibaba/EasyNLP/tree/master/diffusion/olss_scheduler).
-    - The technical report (CIKM 2023) is released on [arXiv](https://arxiv.org/abs/2305.14677).
-    - A demo video is shown on [Bilibili](https://www.bilibili.com/video/BV1w8411y7uj).
-    - Since OLSS requires additional training, we don't implement it in this project.
+- **2023年10月1日** 我们发布了该项目的早期版本，名为 FastSDXL。这是构建一个扩散引擎的初步尝试。
+  - 源代码已发布于 [GitHub](https://github.com/Artiprocher/FastSDXL)。
+  - FastSDXL 包含一个可训练的 OLSS 调度器，以提高效率。
+    - OLSS 的原始仓库位于 [此处](https://github.com/alibaba/EasyNLP/tree/master/diffusion/olss_scheduler)。
+    - 技术报告（CIKM 2023）已发布于 [arXiv](https://arxiv.org/abs/2305.14677)。
+    - 演示视频已发布于 [Bilibili](https://www.bilibili.com/video/BV1w8411y7uj)。
+    - 由于 OLSS 需要额外训练，我们未在本项目中实现它。
 
-- **Aug 29, 2023.** We propose DiffSynth, a video synthesis framework.
-  - [Project Page](https://ecnu-cilab.github.io/DiffSynth.github.io/).
-  - The source codes are released in [EasyNLP](https://github.com/alibaba/EasyNLP/tree/master/diffusion/DiffSynth).
-  - The technical report (ECML PKDD 2024) is released on [arXiv](https://arxiv.org/abs/2308.03463).
+- **2023年8月29日** 我们提出 DiffSynth，一个视频合成框架。
+  - [项目页面](https://ecnu-cilab.github.io/DiffSynth.github.io/)。
+  - 源代码已发布在 [EasyNLP](https://github.com/alibaba/EasyNLP/tree/master/diffusion/DiffSynth)。
+  - 技术报告（ECML PKDD 2024）已发布于 [arXiv](https://arxiv.org/abs/2308.03463)。

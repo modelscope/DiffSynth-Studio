@@ -18,6 +18,8 @@ pip install -e .
 
 ## 快速开始
 
+通过运行以下代码可以快速加载 [Wan-AI/Wan2.1-T2V-1.3B](https://www.modelscope.cn/models/Wan-AI/Wan2.1-T2V-1.3B) 模型并进行推理
+
 ```python
 import torch
 from diffsynth import save_video
@@ -70,7 +72,6 @@ save_video(video, "video1.mp4", fps=15, quality=5)
 
 以下部分将会帮助您理解我们的功能并编写推理代码。
 
-
 <details>
 
 <summary>加载模型</summary>
@@ -78,6 +79,9 @@ save_video(video, "video1.mp4", fps=15, quality=5)
 模型通过 `from_pretrained` 加载：
 
 ```python
+import torch
+from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
+
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
@@ -178,9 +182,9 @@ pipe.enable_vram_management()
 
 FP8 量化能够大幅度减少显存占用，但不会加速，部分模型在 FP8 量化下会出现精度不足导致的画面模糊、撕裂、失真问题，请谨慎使用 FP8 量化。
 
-`enable_vram_management` 函数提供了以下参数，用于控制显存使用情况：
+开启显存管理后，框架会自动根据设备上的剩余显存确定显存管理策略。`enable_vram_management` 函数提供了以下参数，用于手动控制显存管理策略：
 
-* `vram_limit`: 显存占用量（GB），默认占用设备上的剩余显存。注意这不是一个绝对限制，当设置的显存不足以支持模型进行推理，但实际可用显存足够时，将会以最小化显存占用的形式进行推理。
+* `vram_limit`: 显存占用量限制（GB），默认占用设备上的剩余显存。注意这不是一个绝对限制，当设置的显存不足以支持模型进行推理，但实际可用显存足够时，将会以最小化显存占用的形式进行推理。将其设置为0时，将会实现理论最小显存占用。
 * `vram_buffer`: 显存缓冲区大小（GB），默认为 0.5GB。由于部分较大的神经网络层在 onload 阶段会不可控地占用更多显存，因此一个显存缓冲区是必要的，理论上的最优值为模型中最大的层所占的显存。
 * `num_persistent_param_in_dit`: DiT 模型中常驻显存的参数数量（个），默认为无限制。我们将会在未来删除这个参数，请不要依赖这个参数。
 
@@ -276,7 +280,7 @@ Wan 系列模型训练通过统一的 [`./model_training/train.py`](./model_trai
   * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 Wan-AI/Wan2.1-T2V-1.3B:diffusion_pytorch_model*.safetensors。用逗号分隔。
 * 训练
   * `--learning_rate`: 学习率。
-  * `--num_epochs`: 轮数（Epoch）数量。
+  * `--num_epochs`: 轮数（Epoch）。
   * `--output_path`: 保存路径。
   * `--remove_prefix_in_ckpt`: 在 ckpt 中移除前缀。
 * 可训练模块
