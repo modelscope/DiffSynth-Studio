@@ -287,14 +287,14 @@ class WanModel(torch.nn.Module):
         has_ref_conv: bool = False,
         add_control_adapter: bool = False,
         in_dim_control_adapter: int = 24,
-        is_5b: bool = False,
+        seperated_timestep: bool = False,
     ):
         super().__init__()
         self.dim = dim
         self.freq_dim = freq_dim
         self.has_image_input = has_image_input
         self.patch_size = patch_size
-        self.is_5b = is_5b
+        self.seperated_timestep = seperated_timestep
 
         self.patch_embedding = nn.Conv3d(
             in_dim, dim, kernel_size=patch_size, stride=patch_size)
@@ -685,7 +685,7 @@ class WanModelStateDictConverter:
                 "num_heads": 24,
                 "num_layers": 30,
                 "eps": 1e-6,
-                "is_5b": True,
+                "seperated_timestep": True,
             }
         else:
             config = {}

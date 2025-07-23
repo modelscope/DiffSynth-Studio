@@ -237,7 +237,7 @@ class WanVideoPipeline(BasePipeline):
             WanVideoUnit_InputVideoEmbedder(),
             WanVideoUnit_PromptEmbedder(),
             WanVideoUnit_ImageEmbedder(),
-            WanVideoUnit_ImageEmbedder5B(),
+            WanVideoUnit_ImageVaeEmbedder(),
             WanVideoUnit_FunControl(),
             WanVideoUnit_FunReference(),
             WanVideoUnit_FunCameraControl(),
@@ -737,7 +737,7 @@ class WanVideoUnit_ImageEmbedder(PipelineUnit):
         )
 
     def process(self, pipe: WanVideoPipeline, input_image, end_image, num_frames, height, width, tiled, tile_size, tile_stride):
-        if input_image is None or pipe.dit.is_5b:
+        if input_image is None or pipe.dit.seperated_timestep:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
         image = pipe.preprocess_image(input_image.resize((width, height))).to(pipe.device)
@@ -766,7 +766,7 @@ class WanVideoUnit_ImageEmbedder(PipelineUnit):
         return {"clip_feature": clip_context, "y": y}
 
 
-class WanVideoUnit_ImageEmbedder5B(PipelineUnit):
+class WanVideoUnit_ImageVaeEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("input_image", "noise", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride"),
@@ -774,7 +774,7 @@ class WanVideoUnit_ImageEmbedder5B(PipelineUnit):
         )
 
     def process(self, pipe: WanVideoPipeline, input_image, noise, num_frames, height, width, tiled, tile_size, tile_stride):
-        if input_image is None or not pipe.dit.is_5b:
+        if input_image is None or not pipe.dit.seperated_timestep:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
         image = pipe.preprocess_image(input_image.resize((width, height))).transpose(0, 1).to(pipe.device)
@@ -789,7 +789,7 @@ class WanVideoUnit_ImageEmbedder5B(PipelineUnit):
             import math
             seq_len = int(math.ceil(seq_len / pipe.sp_size)) * pipe.sp_size
 
-        return {"latents": latents, "mask_5b": mask2[0].unsqueeze(0), "seq_len": seq_len}
+        return {"latents": latents, "latent_mask_for_timestep": mask2[0].unsqueeze(0), "seq_len": seq_len}
 
     @staticmethod
     def masks_like(tensor, zero=False, generator=None, p=0.2):
@@ -1162,8 +1162,8 @@ def model_fn_wan_video(
                                             get_sequence_parallel_world_size,
                                             get_sp_group)
 
-    if dit.is_5b and "mask_5b" in kwargs:
-        temp_ts = (kwargs["mask_5b"][0][0][:, ::2, ::2] * timestep).flatten()
+    if dit.seperated_timestep and "latent_mask_for_timestep" in kwargs:
+        temp_ts = (kwargs["latent_mask_for_timestep"][0][0][:, ::2, ::2] * timestep).flatten()
         temp_ts= torch.cat([temp_ts, temp_ts.new_ones(kwargs["seq_len"] - temp_ts.size(0)) * timestep])
         timestep = temp_ts.unsqueeze(0).flatten()
         t = dit.time_embedding(sinusoidal_embedding_1d(dit.freq_dim, timestep).unflatten(0, (latents.size(0), kwargs["seq_len"])))
