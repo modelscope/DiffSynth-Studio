@@ -105,7 +105,7 @@ ModelConfig(path=[
 ])
 ```
 
-`from_pretrained` 还提供了额外的参数用于控制模型加载时的行为：
+`ModelConfig` 还提供了额外的参数用于控制模型加载时的行为：
 
 * `local_model_path`: 用于保存下载模型的路径，默认值为 `"./models"`。
 * `skip_download`: 是否跳过下载，默认值为 `False`。当您的网络无法访问[魔搭社区](https://modelscope.cn/)时，请手动下载必要的文件，并将其设置为 `True`。

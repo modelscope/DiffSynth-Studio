@@ -121,11 +121,14 @@ ModelConfig(path=[
 ])
 ```
 
-The `from_pretrained` function also provides additional parameters to control the behavior during model loading:
+The `ModelConfig` function provides additional parameters to control the behavior during model loading:
 
-* `tokenizer_config`: Path to the tokenizer of the Wan model. Default value is `ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/*")`.
 * `local_model_path`: Path where downloaded models are saved. Default value is `"./models"`.
 * `skip_download`: Whether to skip downloading models. Default value is `False`. When your network cannot access [ModelScope](https://modelscope.cn/), manually download the necessary files and set this to `True`.
+
+The `from_pretrained` function provides additional parameters to control the behavior during model loading:
+
+* `tokenizer_config`: Path to the tokenizer of the Wan model. Default value is `ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/*")`.
 * `redirect_common_files`: Whether to redirect duplicate model files. Default value is `True`. Since the Wan series models include multiple base models, some modules like text encoder are shared across these models. To avoid redundant downloads, we redirect the model paths.
 * `use_usp`: Whether to enable Unified Sequence Parallel. Default value is `False`. Used for multi-GPU parallel inference.
 

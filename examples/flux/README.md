@@ -105,7 +105,7 @@ ModelConfig(path=[
 ])
 ```
 
-The `from_pretrained` method also provides extra arguments to control model loading behavior:
+The `ModelConfig` method also provides extra arguments to control model loading behavior:
 
 * `local_model_path`: Path to save downloaded models. Default is `"./models"`.
 * `skip_download`: Whether to skip downloading. Default is `False`. If your network cannot access [ModelScope](https://modelscope.cn/  ), download the required files manually and set this to `True`.

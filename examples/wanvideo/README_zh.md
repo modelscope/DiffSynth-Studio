@@ -120,11 +120,14 @@ ModelConfig(path=[
 ])
 ```
 
-`from_pretrained` 还提供了额外的参数用于控制模型加载时的行为：
+`ModelConfig` 提供了额外的参数用于控制模型加载时的行为：
 
-* `tokenizer_config`: Wan 模型的 tokenizer 路径，默认值为 `ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/*")`。
 * `local_model_path`: 用于保存下载模型的路径，默认值为 `"./models"`。
 * `skip_download`: 是否跳过下载，默认值为 `False`。当您的网络无法访问[魔搭社区](https://modelscope.cn/)时，请手动下载必要的文件，并将其设置为 `True`。
+
+`from_pretrained` 提供了额外的参数用于控制模型加载时的行为：
+
+* `tokenizer_config`: Wan 模型的 tokenizer 路径，默认值为 `ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/*")`。
 * `redirect_common_files`: 是否重定向重复模型文件，默认值为 `True`。由于 Wan 系列模型包括多个基础模型，每个基础模型的 text encoder 等模块都是相同的，为避免重复下载，我们会对模型路径进行重定向。
 * `use_usp`: 是否启用 Unified Sequence Parallel，默认值为 `False`。用于多 GPU 并行推理。
 
