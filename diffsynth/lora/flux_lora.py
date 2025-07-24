@@ -1,6 +1,8 @@
 import torch, math
-from diffsynth.lora import GeneralLoRALoader
-from diffsynth.models.lora import FluxLoRAFromCivitai
+from . import GeneralLoRALoader
+from ..utils import ModelConfig
+from ..models.utils import load_state_dict
+from typing import Union
 
 
 class FluxLoRALoader(GeneralLoRALoader):
@@ -276,3 +278,47 @@ class FluxLoraPatcherStateDictConverter:
     
     def from_civitai(self, state_dict):
         return state_dict
+
+
+class FluxLoRAFuser:
+    def __init__(self, device="cuda", torch_dtype=torch.bfloat16):
+        self.device = device
+        self.torch_dtype = torch_dtype
+        
+    def Matrix_Decomposition_lowrank(self, A, k):
+        U, S, V = torch.svd_lowrank(A.float(), q=k)
+        S_k = torch.diag(S[:k])
+        U_hat = U @ S_k
+        return U_hat, V.t()
+
+    def LoRA_State_Dicts_Decomposition(self, lora_state_dicts=[], q=4):
+        lora_1 = lora_state_dicts[0]
+        state_dict_ = {}
+        for k,v in lora_1.items():
+            if 'lora_A.' in k:
+                lora_B_name = k.replace('lora_A.', 'lora_B.')
+                lora_B = lora_1[lora_B_name]
+                weight = torch.mm(lora_B, v)
+                for lora_dict in lora_state_dicts[1:]:
+                    lora_A_ = lora_dict[k]
+                    lora_B_ = lora_dict[lora_B_name]
+                    weight_ = torch.mm(lora_B_, lora_A_)
+                    weight += weight_
+                new_B, new_A = self.Matrix_Decomposition_lowrank(weight, q)
+                state_dict_[lora_B_name] = new_B.to(dtype=torch.bfloat16)
+                state_dict_[k] = new_A.to(dtype=torch.bfloat16)
+        return state_dict_
+        
+    def __call__(self, lora_configs: list[Union[ModelConfig, str]]):
+        loras = []
+        loader = FluxLoRALoader(torch_dtype=self.torch_dtype, device=self.device)
+        for lora_config in lora_configs:
+            if isinstance(lora_config, str):
+                lora = load_state_dict(lora_config, torch_dtype=self.torch_dtype, device=self.device)
+            else:
+                lora_config.download_if_necessary()
+                lora = load_state_dict(lora_config.path, torch_dtype=self.torch_dtype, device=self.device)
+            lora = loader.convert_state_dict(lora)
+            loras.append(lora)
+        lora = self.LoRA_State_Dicts_Decomposition(loras)
+        return lora
