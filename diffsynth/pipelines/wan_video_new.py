@@ -619,7 +619,6 @@ class WanVideoPipeline(BasePipeline):
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             # switch high_noise DiT to low_noise DiT
             if models.get("dit2") is not None and timestep.item() < boundary * self.scheduler.num_train_timesteps:
-                print("switching to low noise DiT")
                 self.load_models_to_device(["dit2", "motion_controller", "vace"])
                 models["dit"] = models.pop("dit2")
             timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
