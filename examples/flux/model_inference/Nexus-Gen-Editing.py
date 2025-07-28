@@ -1,5 +1,6 @@
 import importlib
 import torch
+from PIL import Image
 from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig
 from modelscope import snapshot_download
 
@@ -15,17 +16,19 @@ pipe = FluxImagePipeline.from_pretrained(
     device="cuda",
     model_configs=[
         ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="model*.safetensors"),
-        ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="generation_decoder.bin"),
+        ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="edit_decoder.bin"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors"),
     ],
 )
 
-prompt = "一只可爱的猫咪"
+prompt = "给猫加一副太阳镜"
+ref_image = Image.open("cat.png").convert("RGB")
 image = pipe(
     prompt=prompt, negative_prompt="",
-    seed=0, cfg_scale=3, num_inference_steps=50,
-    height=1024, width=1024,
+    seed=0, cfg_scale=1.0, num_inference_steps=50,
+    nexus_gen_reference_image=ref_image,
+    height=512, width=512,
 )
-image.save("cat.jpg")
+image.save("cat_glasses.jpg")

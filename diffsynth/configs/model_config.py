@@ -69,7 +69,8 @@ from ..models.flux_value_control import SingleValueEncoder
 from ..lora.flux_lora import FluxLoraPatcher
 from ..models.flux_lora_encoder import FluxLoRAEncoder
 
-from ..models.nexus_gen_projector import NexusGenAdapter
+from ..models.nexus_gen_projector import NexusGenAdapter, NexusGenImageEmbeddingMerger
+from ..models.nexus_gen import NexusGenAutoregressiveModel
 
 model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -153,7 +154,9 @@ model_loader_configs = [
     (None, "d30fb9e02b1dbf4e509142f05cf7dd50", ["flux_dit", "step1x_connector"], [FluxDiT, Qwen2Connector], "civitai"),
     (None, "30143afb2dea73d1ac580e0787628f8c", ["flux_lora_patcher"], [FluxLoraPatcher], "civitai"),
     (None, "77c2e4dd2440269eb33bfaa0d004f6ab", ["flux_lora_encoder"], [FluxLoRAEncoder], "civitai"),
-    (None, "3e6c61b0f9471135fc9c6d6a98e98b6d", ["flux_dit", "nexus-gen_adapter"], [FluxDiT, NexusGenAdapter], "civitai"),
+    (None, "3e6c61b0f9471135fc9c6d6a98e98b6d", ["flux_dit", "nexus_gen_generation_adapter"], [FluxDiT, NexusGenAdapter], "civitai"),
+    (None, "63c969fd37cce769a90aa781fbff5f81", ["flux_dit", "nexus_gen_editing_adapter"], [FluxDiT, NexusGenImageEmbeddingMerger], "civitai"),
+    (None, "2bd19e845116e4f875a0a048e27fc219", ["nexus_gen_llm"], [NexusGenAutoregressiveModel], "civitai"),
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.

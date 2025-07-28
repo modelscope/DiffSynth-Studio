@@ -662,8 +662,8 @@ class FluxDiTStateDictConverter:
         return state_dict_
 
     def from_civitai(self, state_dict):
-        if hash_state_dict_keys(state_dict, with_shape=True) == "3e6c61b0f9471135fc9c6d6a98e98b6d":
-            dit_state_dict = {key.replace("pipe.dit.", ""): value for key, value in state_dict.items() if not key.startswith('adapter.')}
+        if hash_state_dict_keys(state_dict, with_shape=True) in ["3e6c61b0f9471135fc9c6d6a98e98b6d", "63c969fd37cce769a90aa781fbff5f81"]:
+            dit_state_dict = {key.replace("pipe.dit.", ""): value for key, value in state_dict.items() if key.startswith('pipe.dit.')}
             return dit_state_dict
         rename_dict = {
             "time_in.in_layer.bias": "time_embedder.timestep_embedder.0.bias",
