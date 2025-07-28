@@ -230,16 +230,17 @@ class WanVideoPipeline(BasePipeline):
         self.vae: WanVideoVAE = None
         self.motion_controller: WanMotionControllerModel = None
         self.vace: VaceWanModel = None
-        self.in_iteration_models = ("dit", "dit2", "motion_controller", "vace")
+        self.in_iteration_models = ("dit", "motion_controller", "vace")
+        self.in_iteration_models_2 = ("dit2", "motion_controller", "vace")
         self.unit_runner = PipelineUnitRunner()
         self.units = [
             WanVideoUnit_ShapeChecker(),
             WanVideoUnit_NoiseInitializer(),
             WanVideoUnit_InputVideoEmbedder(),
             WanVideoUnit_PromptEmbedder(),
-            WanVideoUnit_ImageEmbedder(),
-            WanVideoUnit_ImageVaeEmbedder(),
-            WanVideoUnit_ImageEmbedderNoClip(),
+            WanVideoUnit_ImageEmbedderVAE(),
+            WanVideoUnit_ImageEmbedderCLIP(),
+            WanVideoUnit_ImageEmbedderFused(),
             WanVideoUnit_FunControl(),
             WanVideoUnit_FunReference(),
             WanVideoUnit_FunCameraControl(),
@@ -259,7 +260,9 @@ class WanVideoPipeline(BasePipeline):
 
         
     def training_loss(self, **inputs):
-        timestep_id = torch.randint(0, self.scheduler.num_train_timesteps, (1,))
+        max_timestep_boundary = int(inputs.get("max_timestep_boundary", 1) * self.scheduler.num_train_timesteps)
+        min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * self.scheduler.num_train_timesteps)
+        timestep_id = torch.randint(min_timestep_boundary, max_timestep_boundary, (1,))
         timestep = self.scheduler.timesteps[timestep_id].to(dtype=self.torch_dtype, device=self.device)
         
         inputs["latents"] = self.scheduler.add_noise(inputs["input_latents"], inputs["noise"], timestep)
@@ -517,6 +520,11 @@ class WanVideoPipeline(BasePipeline):
         pipe.image_encoder = model_manager.fetch_model("wan_video_image_encoder")
         pipe.motion_controller = model_manager.fetch_model("wan_video_motion_controller")
         pipe.vace = model_manager.fetch_model("wan_video_vace")
+        
+        # Size division factor
+        if pipe.vae is not None:
+            pipe.height_division_factor = pipe.vae.upsampling_factor * 2
+            pipe.width_division_factor = pipe.vae.upsampling_factor * 2
 
         # Initialize tokenizer
         tokenizer_config.download_if_necessary(local_model_path, skip_download=skip_download)
@@ -564,7 +572,7 @@ class WanVideoPipeline(BasePipeline):
         cfg_scale: Optional[float] = 5.0,
         cfg_merge: Optional[bool] = False,
         # Boundary
-        boundary: Optional[float] = 0.875,
+        switch_DiT_boundary: Optional[float] = 0.875,
         # Scheduler
         num_inference_steps: Optional[int] = 50,
         sigma_shift: Optional[float] = 5.0,
@@ -617,11 +625,14 @@ class WanVideoPipeline(BasePipeline):
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
-            # switch high_noise DiT to low_noise DiT
-            if models.get("dit2") is not None and timestep.item() < boundary * self.scheduler.num_train_timesteps:
-                self.load_models_to_device(["dit2", "motion_controller", "vace"])
-                models["dit"] = models.pop("dit2")
+            # Switch DiT if necessary
+            if timestep.item() < switch_DiT_boundary * self.scheduler.num_train_timesteps and self.dit2 is not None and not models["dit"] is self.dit2:
+                self.load_models_to_device(self.in_iteration_models_2)
+                models["dit"] = self.dit2
+                
+            # Timestep
             timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
+            
             # Inference
             noise_pred_posi = self.model_fn(**models, **inputs_shared, **inputs_posi, timestep=timestep)
             if cfg_scale != 1.0:
@@ -775,6 +786,9 @@ class WanVideoUnit_PromptEmbedder(PipelineUnit):
 
 
 class WanVideoUnit_ImageEmbedder(PipelineUnit):
+    """
+    Deprecated
+    """
     def __init__(self):
         super().__init__(
             input_params=("input_image", "end_image", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride"),
@@ -811,70 +825,38 @@ class WanVideoUnit_ImageEmbedder(PipelineUnit):
         return {"clip_feature": clip_context, "y": y}
 
 
-class WanVideoUnit_ImageVaeEmbedder(PipelineUnit):
-    """
-    Encode input image to latents using VAE. This unit is for Wan-AI/Wan2.2-TI2V-5B.
-    """
+
+class WanVideoUnit_ImageEmbedderCLIP(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("input_image", "noise", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride"),
-            onload_model_names=("vae")
+            input_params=("input_image", "end_image", "height", "width"),
+            onload_model_names=("image_encoder",)
         )
 
-    def process(self, pipe: WanVideoPipeline, input_image, noise, num_frames, height, width, tiled, tile_size, tile_stride):
-        if input_image is None or not pipe.dit.seperated_timestep:
+    def process(self, pipe: WanVideoPipeline, input_image, end_image, height, width):
+        if input_image is None or pipe.image_encoder is None or not pipe.dit.require_clip_embedding:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
-        image = pipe.preprocess_image(input_image.resize((width, height))).transpose(0, 1).to(pipe.device)
-        z = pipe.vae.encode([image.to(dtype=pipe.torch_dtype, device=pipe.device)], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0]
+        image = pipe.preprocess_image(input_image.resize((width, height))).to(pipe.device)
+        clip_context = pipe.image_encoder.encode_image([image])
+        if end_image is not None:
+            end_image = pipe.preprocess_image(end_image.resize((width, height))).to(pipe.device)
+            if pipe.dit.has_image_pos_emb:
+                clip_context = torch.concat([clip_context, pipe.image_encoder.encode_image([end_image])], dim=1)
+        clip_context = clip_context.to(dtype=pipe.torch_dtype, device=pipe.device)
+        return {"clip_feature": clip_context}
+    
 
-        _, mask2 = self.masks_like([noise.squeeze(0)], zero=True)
-        latents = (1. - mask2[0]) * z + mask2[0] * noise.squeeze(0)
-        latents = latents.unsqueeze(0)
 
-        seq_len = ((num_frames - 1) // 4 + 1) * (height // pipe.vae.upsampling_factor) * (width // pipe.vae.upsampling_factor) // (2 * 2)
-        if hasattr(pipe, "use_unified_sequence_parallel") and pipe.use_unified_sequence_parallel:
-            import math
-            seq_len = int(math.ceil(seq_len / pipe.sp_size)) * pipe.sp_size
-
-        return {"latents": latents, "latent_mask_for_timestep": mask2[0].unsqueeze(0), "seq_len": seq_len}
-
-    @staticmethod
-    def masks_like(tensor, zero=False, generator=None, p=0.2):
-        assert isinstance(tensor, list)
-        out1 = [torch.ones(u.shape, dtype=u.dtype, device=u.device) for u in tensor]
-        out2 = [torch.ones(u.shape, dtype=u.dtype, device=u.device) for u in tensor]
-
-        if zero:
-            if generator is not None:
-                for u, v in zip(out1, out2):
-                    random_num = torch.rand(1, generator=generator, device=generator.device).item()
-                    if random_num < p:
-                        u[:, 0] = torch.normal(mean=-3.5, std=0.5, size=(1,), device=u.device, generator=generator).expand_as(u[:, 0]).exp()
-                        v[:, 0] = torch.zeros_like(v[:, 0])
-                    else:
-                        u[:, 0] = u[:, 0]
-                        v[:, 0] = v[:, 0]
-            else:
-                for u, v in zip(out1, out2):
-                    u[:, 0] = torch.zeros_like(u[:, 0])
-                    v[:, 0] = torch.zeros_like(v[:, 0])
-
-        return out1, out2
-
- 
-class WanVideoUnit_ImageEmbedderNoClip(PipelineUnit):
-    """
-    Encode input image to fused_y using only VAE. This unit is for Wan-AI/Wan2.2-I2V-A14B.
-    """
+class WanVideoUnit_ImageEmbedderVAE(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("input_image", "end_image", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride"),
-            onload_model_names=("vae")
+            onload_model_names=("vae",)
         )
 
     def process(self, pipe: WanVideoPipeline, input_image, end_image, num_frames, height, width, tiled, tile_size, tile_stride):
-        if input_image is None or pipe.image_encoder is not None or pipe.dit.seperated_timestep:
+        if input_image is None or not pipe.dit.require_vae_embedding:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
         image = pipe.preprocess_image(input_image.resize((width, height))).to(pipe.device)
@@ -896,14 +878,36 @@ class WanVideoUnit_ImageEmbedderNoClip(PipelineUnit):
         y = torch.concat([msk, y])
         y = y.unsqueeze(0)
         y = y.to(dtype=pipe.torch_dtype, device=pipe.device)
-        return {"fused_y": y}
+        return {"y": y}
+
+
+
+class WanVideoUnit_ImageEmbedderFused(PipelineUnit):
+    """
+    Encode input image to latents using VAE. This unit is for Wan-AI/Wan2.2-TI2V-5B.
+    """
+    def __init__(self):
+        super().__init__(
+            input_params=("input_image", "latents", "height", "width", "tiled", "tile_size", "tile_stride"),
+            onload_model_names=("vae",)
+        )
+
+    def process(self, pipe: WanVideoPipeline, input_image, latents, height, width, tiled, tile_size, tile_stride):
+        if input_image is None or not pipe.dit.fuse_vae_embedding_in_latents:
+            return {}
+        pipe.load_models_to_device(self.onload_model_names)
+        image = pipe.preprocess_image(input_image.resize((width, height))).transpose(0, 1)
+        z = pipe.vae.encode([image], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+        latents[:, :, 0: 1] = z
+        return {"latents": latents, "fuse_vae_embedding_in_latents": True}
+
 
 
 class WanVideoUnit_FunControl(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("control_video", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride", "clip_feature", "y"),
-            onload_model_names=("vae")
+            onload_model_names=("vae",)
         )
 
     def process(self, pipe: WanVideoPipeline, control_video, num_frames, height, width, tiled, tile_size, tile_stride, clip_feature, y):
@@ -927,7 +931,7 @@ class WanVideoUnit_FunReference(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("reference_image", "height", "width", "reference_image"),
-            onload_model_names=("vae")
+            onload_model_names=("vae",)
         )
 
     def process(self, pipe: WanVideoPipeline, reference_image, height, width):
@@ -1200,7 +1204,6 @@ def model_fn_wan_video(
     context: torch.Tensor = None,
     clip_feature: Optional[torch.Tensor] = None,
     y: Optional[torch.Tensor] = None,
-    fused_y: Optional[torch.Tensor] = None,
     reference_latents = None,
     vace_context = None,
     vace_scale = 1.0,
@@ -1213,6 +1216,7 @@ def model_fn_wan_video(
     use_gradient_checkpointing: bool = False,
     use_gradient_checkpointing_offload: bool = False,
     control_camera_latents_input = None,
+    fuse_vae_embedding_in_latents: bool = False,
     **kwargs,
 ):
     if sliding_window_size is not None and sliding_window_stride is not None:
@@ -1247,15 +1251,19 @@ def model_fn_wan_video(
                                             get_sequence_parallel_world_size,
                                             get_sp_group)
 
-    if dit.seperated_timestep and "latent_mask_for_timestep" in kwargs:
-        temp_ts = (kwargs["latent_mask_for_timestep"][0][0][:, ::2, ::2] * timestep).flatten()
-        temp_ts= torch.cat([temp_ts, temp_ts.new_ones(kwargs["seq_len"] - temp_ts.size(0)) * timestep])
-        timestep = temp_ts.unsqueeze(0).flatten()
-        t = dit.time_embedding(sinusoidal_embedding_1d(dit.freq_dim, timestep).unflatten(0, (latents.size(0), kwargs["seq_len"])))
+    # Timestep
+    if dit.seperated_timestep and fuse_vae_embedding_in_latents:
+        timestep = torch.concat([
+            torch.zeros((1, latents.shape[3] * latents.shape[4] // 4), dtype=latents.dtype, device=latents.device),
+            torch.ones((latents.shape[2] - 1, latents.shape[3] * latents.shape[4] // 4), dtype=latents.dtype, device=latents.device) * timestep
+        ]).flatten()
+        t = dit.time_embedding(sinusoidal_embedding_1d(dit.freq_dim, timestep).unsqueeze(0))
         t_mod = dit.time_projection(t).unflatten(2, (6, dit.dim))
     else:
         t = dit.time_embedding(sinusoidal_embedding_1d(dit.freq_dim, timestep))
         t_mod = dit.time_projection(t).unflatten(1, (6, dit.dim))
+    
+    # Motion Controller
     if motion_bucket_id is not None and motion_controller is not None:
         t_mod = t_mod + motion_controller(motion_bucket_id).unflatten(1, (6, dit.dim))
     context = dit.text_embedding(context)
@@ -1267,16 +1275,15 @@ def model_fn_wan_video(
     if timestep.shape[0] != context.shape[0]:
         timestep = torch.concat([timestep] * context.shape[0], dim=0)
 
-    if dit.has_image_input:
-        x = torch.cat([x, y], dim=1)  # (b, c_x + c_y, f, h, w)
+    # Image Embedding
+    if y is not None and dit.require_vae_embedding:
+        x = torch.cat([x, y], dim=1)
+    if clip_feature is not None and dit.require_clip_embedding:
         clip_embdding = dit.img_emb(clip_feature)
         context = torch.cat([clip_embdding, context], dim=1)
-    if fused_y is not None:
-        x = torch.cat([x, fused_y], dim=1)  # (b, c_x + c_y + c_fused_y, f, h, w)
     
     # Add camera control
     x, (f, h, w) = dit.patchify(x, control_camera_latents_input)
-
     
     # Reference image
     if reference_latents is not None:
