@@ -646,6 +646,8 @@ class WanVideoPipeline(BasePipeline):
 
             # Scheduler
             inputs_shared["latents"] = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], inputs_shared["latents"])
+            if "first_frame_latents" in inputs_shared:
+                inputs_shared["latents"][:, :, 0:1] = inputs_shared["first_frame_latents"]
         
         # VACE (TODO: remove it)
         if vace_reference_image is not None:
@@ -899,7 +901,7 @@ class WanVideoUnit_ImageEmbedderFused(PipelineUnit):
         image = pipe.preprocess_image(input_image.resize((width, height))).transpose(0, 1)
         z = pipe.vae.encode([image], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         latents[:, :, 0: 1] = z
-        return {"latents": latents, "fuse_vae_embedding_in_latents": True}
+        return {"latents": latents, "fuse_vae_embedding_in_latents": True, "first_frame_latents": z}
 
 
 
