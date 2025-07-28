@@ -706,7 +706,8 @@ class WanVideoUnit_FunReference(PipelineUnit):
 class WanVideoUnit_FunCameraControl(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("height", "width", "num_frames", "camera_control_direction", "camera_control_speed", "camera_control_origin", "latents", "input_image")
+            input_params=("height", "width", "num_frames", "camera_control_direction", "camera_control_speed", "camera_control_origin", "latents", "input_image"),
+            onload_model_names=("vae",)
         )
 
     def process(self, pipe: WanVideoPipeline, height, width, num_frames, camera_control_direction, camera_control_speed, camera_control_origin, latents, input_image):
@@ -729,6 +730,7 @@ class WanVideoUnit_FunCameraControl(PipelineUnit):
 
         input_image = input_image.resize((width, height))
         input_latents = pipe.preprocess_video([input_image])
+        pipe.load_models_to_device(self.onload_model_names)
         input_latents = pipe.vae.encode(input_latents, device=pipe.device)
         y = torch.zeros_like(latents).to(pipe.device)
         y[:, :, :1] = input_latents
