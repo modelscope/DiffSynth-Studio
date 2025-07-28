@@ -69,6 +69,7 @@ from ..models.flux_value_control import SingleValueEncoder
 from ..lora.flux_lora import FluxLoraPatcher
 from ..models.flux_lora_encoder import FluxLoRAEncoder
 
+from ..models.nexus_gen_projector import NexusGenAdapter
 
 model_loader_configs = [
     # These configs are provided for detecting model type automatically.
@@ -152,6 +153,7 @@ model_loader_configs = [
     (None, "d30fb9e02b1dbf4e509142f05cf7dd50", ["flux_dit", "step1x_connector"], [FluxDiT, Qwen2Connector], "civitai"),
     (None, "30143afb2dea73d1ac580e0787628f8c", ["flux_lora_patcher"], [FluxLoraPatcher], "civitai"),
     (None, "77c2e4dd2440269eb33bfaa0d004f6ab", ["flux_lora_encoder"], [FluxLoRAEncoder], "civitai"),
+    (None, "3e6c61b0f9471135fc9c6d6a98e98b6d", ["flux_dit", "nexus-gen_adapter"], [FluxDiT, NexusGenAdapter], "civitai"),
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
