@@ -323,10 +323,11 @@ class WanVideoPipeline(BasePipeline):
         
         # Load models
         pipe.text_encoder = model_manager.fetch_model("wan_video_text_encoder")
-        pipe.dit = model_manager.fetch_model("wan_video_dit")
-        num_dits = len([model_name for model_name in model_manager.model_name if model_name == "wan_video_dit"])
-        if num_dits == 2:
-            pipe.dit2 = [model for model, model_name in zip(model_manager.model, model_manager.model_name) if model_name == "wan_video_dit"][-1]
+        dit = model_manager.fetch_model("wan_video_dit", index=2)
+        if isinstance(dit, list):
+            pipe.dit, pipe.dit2 = dit
+        else:
+            pipe.dit = dit
         pipe.vae = model_manager.fetch_model("wan_video_vae")
         pipe.image_encoder = model_manager.fetch_model("wan_video_image_encoder")
         pipe.motion_controller = model_manager.fetch_model("wan_video_motion_controller")
