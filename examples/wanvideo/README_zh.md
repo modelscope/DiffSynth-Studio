@@ -1,8 +1,8 @@
-# 通义万相 2.1（Wan 2.1）
+# 通义万相（Wan）
 
 [Switch to English](./README.md)
 
-Wan 2.1 是由阿里巴巴通义实验室开源的一系列视频生成模型。
+Wan 是由阿里巴巴通义实验室开源的一系列视频生成模型。
 
 **DiffSynth-Studio 启用了新的推理和训练框架，如需使用旧版本，请点击[这里](https://github.com/modelscope/DiffSynth-Studio/tree/3edf3583b1f08944cee837b94d9f84d669c2729c)。**
 
@@ -67,6 +67,9 @@ save_video(video, "video1.mp4", fps=15, quality=5)
 |[Wan-AI/Wan2.1-VACE-1.3B](https://modelscope.cn/models/Wan-AI/Wan2.1-VACE-1.3B)|`vace_control_video`, `vace_reference_image`|[code](./model_inference/Wan2.1-VACE-1.3B.py)|[code](./model_training/full/Wan2.1-VACE-1.3B.sh)|[code](./model_training/validate_full/Wan2.1-VACE-1.3B.py)|[code](./model_training/lora/Wan2.1-VACE-1.3B.sh)|[code](./model_training/validate_lora/Wan2.1-VACE-1.3B.py)|
 |[Wan-AI/Wan2.1-VACE-14B](https://modelscope.cn/models/Wan-AI/Wan2.1-VACE-14B)|`vace_control_video`, `vace_reference_image`|[code](./model_inference/Wan2.1-VACE-14B.py)|[code](./model_training/full/Wan2.1-VACE-14B.sh)|[code](./model_training/validate_full/Wan2.1-VACE-14B.py)|[code](./model_training/lora/Wan2.1-VACE-14B.sh)|[code](./model_training/validate_lora/Wan2.1-VACE-14B.py)|
 |[DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1](https://modelscope.cn/models/DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1)|`motion_bucket_id`|[code](./model_inference/Wan2.1-1.3b-speedcontrol-v1.py)|[code](./model_training/full/Wan2.1-1.3b-speedcontrol-v1.sh)|[code](./model_training/validate_full/Wan2.1-1.3b-speedcontrol-v1.py)|[code](./model_training/lora/Wan2.1-1.3b-speedcontrol-v1.sh)|[code](./model_training/validate_lora/Wan2.1-1.3b-speedcontrol-v1.py)|
+|[Wan-AI/Wan2.2-I2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-I2V-A14B)|`input_image`|[code](./model_inference/Wan2.2-I2V-A14B.py)|[code](./model_training/full/Wan2.2-I2V-A14B.sh)|[code](./model_training/validate_full/Wan2.2-I2V-A14B.py)|[code](./model_training/lora/Wan2.2-I2V-A14B.sh)|[code](./model_training/validate_lora/Wan2.2-I2V-A14B.py)|
+|[Wan-AI/Wan2.2-T2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-T2V-A14B)||[code](./model_inference/Wan2.2-T2V-A14B.py)|[code](./model_training/full/Wan2.2-T2V-A14B.sh)|[code](./model_training/validate_full/Wan2.2-T2V-A14B.py)|[code](./model_training/lora/Wan2.2-T2V-A14B.sh)|[code](./model_training/validate_lora/Wan2.2-T2V-A14B.py)|
+|[Wan-AI/Wan2.2-TI2V-5B](https://modelscope.cn/models/Wan-AI/Wan2.2-TI2V-5B)|`input_image`|[code](./model_inference/Wan2.2-TI2V-5B.py)|[code](./model_training/full/Wan2.2-TI2V-5B.sh)|[code](./model_training/validate_full/Wan2.2-TI2V-5B.py)|[code](./model_training/lora/Wan2.2-TI2V-5B.sh)|[code](./model_training/validate_lora/Wan2.2-TI2V-5B.py)|
 
 ## 模型推理
 
@@ -245,6 +248,7 @@ Pipeline 在推理阶段能够接收以下输入参数：
 * `num_frames`: 帧数，默认为 81。需设置为 4 的倍数 + 1，不满足时向上取整，最小值为 1。
 * `cfg_scale`: Classifier-free guidance 机制的数值，默认为 5。数值越大，提示词的控制效果越强，但画面崩坏的概率越大。
 * `cfg_merge`: 是否合并 Classifier-free guidance 的两侧进行统一推理，默认为 `False`。该参数目前仅在基础的文生视频和图生视频模型上生效。
+* `switch_DiT_boundary`: 切换 DiT 模型的时间点，默认值为 0.875，仅对多 DiT 的混合模型生效，例如 [Wan-AI/Wan2.2-I2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-I2V-A14B)。
 * `num_inference_steps`: 推理次数，默认值为 50。
 * `sigma_shift`: Rectified Flow 理论中的参数，默认为 5。数值越大，模型在去噪的开始阶段停留的步骤数越多，可适当调大这个参数来提高画面质量，但会因生成过程与训练过程不一致导致生成的视频内容与训练数据存在差异。
 * `motion_bucket_id`: 运动幅度，范围为 [0, 100]。适用于速度控制模块，例如 [`DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1`](https://modelscope.cn/models/DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1)，数值越大，运动幅度越大。
@@ -281,6 +285,8 @@ Wan 系列模型训练通过统一的 [`./model_training/train.py`](./model_trai
 * 模型
   * `--model_paths`: 要加载的模型路径。JSON 格式。
   * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 Wan-AI/Wan2.1-T2V-1.3B:diffusion_pytorch_model*.safetensors。用逗号分隔。
+  * `--max_timestep_boundary`: Timestep 区间最大值，范围为 0～1，默认为 1，仅在多 DiT 的混合模型训练中需要手动设置，例如 [Wan-AI/Wan2.2-I2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-I2V-A14B)。
+  * `--min_timestep_boundary`: Timestep 区间最小值，范围为 0～1，默认为 1，仅在多 DiT 的混合模型训练中需要手动设置，例如 [Wan-AI/Wan2.2-I2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-I2V-A14B)。
 * 训练
   * `--learning_rate`: 学习率。
   * `--num_epochs`: 轮数（Epoch）。

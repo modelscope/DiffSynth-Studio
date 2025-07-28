@@ -426,7 +426,7 @@ class ModelManager:
             self.load_model(file_path, model_names, device=device, torch_dtype=torch_dtype)
 
     
-    def fetch_model(self, model_name, file_path=None, require_model_path=False):
+    def fetch_model(self, model_name, file_path=None, require_model_path=False, index=None):
         fetched_models = []
         fetched_model_paths = []
         for model, model_path, model_name_ in zip(self.model, self.model_path, self.model_name):
@@ -440,12 +440,25 @@ class ModelManager:
             return None
         if len(fetched_models) == 1:
             print(f"Using {model_name} from {fetched_model_paths[0]}.")
+            model = fetched_models[0]
+            path = fetched_model_paths[0]
         else:
-            print(f"More than one {model_name} models are loaded in model manager: {fetched_model_paths}. Using {model_name} from {fetched_model_paths[0]}.")
+            if index is None:
+                model = fetched_models[0]
+                path = fetched_model_paths[0]
+                print(f"More than one {model_name} models are loaded in model manager: {fetched_model_paths}. Using {model_name} from {fetched_model_paths[0]}.")
+            elif isinstance(index, int):
+                model = fetched_models[:index]
+                path = fetched_model_paths[:index]
+                print(f"More than one {model_name} models are loaded in model manager: {fetched_model_paths}. Using {model_name} from {fetched_model_paths[:index]}.")
+            else:
+                model = fetched_models
+                path = fetched_model_paths
+                print(f"More than one {model_name} models are loaded in model manager: {fetched_model_paths}. Using {model_name} from {fetched_model_paths}.")
         if require_model_path:
-            return fetched_models[0], fetched_model_paths[0]
+            return model, path
         else:
-            return fetched_models[0]
+            return model
         
 
     def to(self, device):
