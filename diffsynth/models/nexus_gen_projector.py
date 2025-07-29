@@ -253,11 +253,66 @@ class Qwen2_5_VLDecoderLayer(nn.Module):
 
 
 class NexusGenImageEmbeddingMerger(nn.Module):
-    def __init__(self, model_path="models/DiffSynth-Studio/Nexus-GenV2", num_layers=1, out_channel=4096, expand_ratio=4, device='cpu'):
+    def __init__(self, num_layers=1, out_channel=4096, expand_ratio=4, device='cpu'):
         super().__init__()
-        from transformers import AutoConfig
+        from transformers import Qwen2_5_VLConfig
         from transformers.activations import ACT2FN
-        config = AutoConfig.from_pretrained(model_path)
+        config = Qwen2_5_VLConfig(**{
+            "_name_or_path": "DiffSynth-Studio/Nexus-GenV2",
+            "architectures": [
+                "Qwen2_5_VLForConditionalGeneration"
+            ],
+            "attention_dropout": 0.0,
+            "auto_map": {
+                "AutoConfig": "configuration_qwen2_5_vl.Qwen2_5_VLConfig",
+                "AutoModel": "modeling_qwen2_5_vl.Qwen2_5_VLModel",
+                "AutoModelForCausalLM": "modeling_qwen2_5_vl.Qwen2_5_VLForConditionalGeneration"
+            },
+            "bos_token_id": 151643,
+            "eos_token_id": 151645,
+            "hidden_act": "silu",
+            "hidden_size": 3584,
+            "image_token_id": 151655,
+            "initializer_range": 0.02,
+            "intermediate_size": 18944,
+            "max_position_embeddings": 128000,
+            "max_window_layers": 28,
+            "model_type": "qwen2_5_vl",
+            "num_attention_heads": 28,
+            "num_hidden_layers": 28,
+            "num_key_value_heads": 4,
+            "pad_token_id": 151643,
+            "rms_norm_eps": 1e-06,
+            "rope_scaling": {
+                "mrope_section": [
+                16,
+                24,
+                24
+                ],
+                "rope_type": "default",
+                "type": "default"
+            },
+            "rope_theta": 1000000.0,
+            "sliding_window": 32768,
+            "tie_word_embeddings": False,
+            "torch_dtype": "bfloat16",
+            "transformers_version": "4.49.0",
+            "use_cache": False,
+            "use_sliding_window": False,
+            "video_token_id": 151656,
+            "vision_config": {
+                "hidden_size": 1280,
+                "in_chans": 3,
+                "model_type": "qwen2_5_vl",
+                "spatial_patch_size": 14,
+                "tokens_per_second": 2,
+                "torch_dtype": "bfloat16"
+            },
+            "vision_end_token_id": 151653,
+            "vision_start_token_id": 151652,
+            "vision_token_id": 151654,
+            "vocab_size": 152064
+        })
         self.config = config
         self.num_layers = num_layers
         self.layers = nn.ModuleList([Qwen2_5_VLDecoderLayer(config, layer_idx) for layer_idx in range(num_layers)])

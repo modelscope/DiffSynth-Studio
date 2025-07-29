@@ -375,7 +375,7 @@ class FluxImagePipeline(BasePipeline):
         torch_dtype: torch.dtype = torch.bfloat16,
         device: Union[str, torch.device] = "cuda",
         model_configs: list[ModelConfig] = [],
-        nexus_gen_processor_config: ModelConfig = None,
+        nexus_gen_processor_config: ModelConfig = ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="processor/"),
     ):
         # Download and load models
         model_manager = ModelManager()
