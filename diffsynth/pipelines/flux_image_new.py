@@ -767,9 +767,10 @@ class FluxImageUnit_EntityControl(PipelineUnit):
         if eligen_entity_prompts is None or eligen_entity_masks is None:
             return inputs_shared, inputs_posi, inputs_nega
         pipe.load_models_to_device(self.onload_model_names)
+        eligen_enable_on_negative = inputs_shared.get("eligen_enable_on_negative", False)
         eligen_kwargs_posi, eligen_kwargs_nega = self.prepare_eligen(pipe, inputs_nega,
             eligen_entity_prompts, eligen_entity_masks, inputs_shared["width"], inputs_shared["height"], 
-            inputs_shared["t5_sequence_length"], inputs_shared["eligen_enable_on_negative"], inputs_shared["cfg_scale"])
+            inputs_shared["t5_sequence_length"], eligen_enable_on_negative, inputs_shared["cfg_scale"])
         inputs_posi.update(eligen_kwargs_posi)
         if inputs_shared.get("cfg_scale", 1.0) != 1.0:
             inputs_nega.update(eligen_kwargs_nega)
