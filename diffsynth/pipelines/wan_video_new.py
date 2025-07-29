@@ -1012,7 +1012,7 @@ class TemporalTiler_BCTHW:
     def __init__(self):
         pass
 
-    def build_1d_mask(length, left_bound, right_bound, border_width):
+    def build_1d_mask(self, length, left_bound, right_bound, border_width):
         x = torch.ones((length,))
         if border_width == 0:
             return x
