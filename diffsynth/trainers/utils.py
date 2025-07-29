@@ -121,7 +121,6 @@ class ImageDataset(torch.utils.data.Dataset):
         for key in self.data_file_keys:
             if key in data:
                 if isinstance(data[key], list):
-                    print(f"Loading multiple files for key '{key}'.")
                     path = [os.path.join(self.base_path, p) for p in data[key]]
                     data[key] = [self.load_data(p) for p in path]
                 else:
