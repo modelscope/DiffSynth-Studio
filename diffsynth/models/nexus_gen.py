@@ -1,18 +1,77 @@
 import torch
 from PIL import Image
-from qwen_vl_utils import smart_resize
-from transformers import AutoConfig
-from .nexus_gen_ar_model import Qwen2_5_VLForConditionalGeneration, Qwen2_5_VLProcessor
 
 
 class NexusGenAutoregressiveModel(torch.nn.Module):
-    def __init__(self, model_path="models/DiffSynth-Studio/Nexus-GenV2", max_length=1024, max_pixels=262640, dtype=torch.bfloat16, device="cuda"):
+    def __init__(self, max_length=1024, max_pixels=262640):
         super(NexusGenAutoregressiveModel, self).__init__()
+        from .nexus_gen_ar_model import Qwen2_5_VLForConditionalGeneration
+        from transformers import Qwen2_5_VLConfig
         self.max_length = max_length
         self.max_pixels = max_pixels
-        model_config = AutoConfig.from_pretrained(model_path)
+        model_config = Qwen2_5_VLConfig(**{
+            "_name_or_path": "DiffSynth-Studio/Nexus-GenV2",
+            "architectures": [
+                "Qwen2_5_VLForConditionalGeneration"
+            ],
+            "attention_dropout": 0.0,
+            "auto_map": {
+                "AutoConfig": "configuration_qwen2_5_vl.Qwen2_5_VLConfig",
+                "AutoModel": "modeling_qwen2_5_vl.Qwen2_5_VLModel",
+                "AutoModelForCausalLM": "modeling_qwen2_5_vl.Qwen2_5_VLForConditionalGeneration"
+            },
+            "bos_token_id": 151643,
+            "eos_token_id": 151645,
+            "hidden_act": "silu",
+            "hidden_size": 3584,
+            "image_token_id": 151655,
+            "initializer_range": 0.02,
+            "intermediate_size": 18944,
+            "max_position_embeddings": 128000,
+            "max_window_layers": 28,
+            "model_type": "qwen2_5_vl",
+            "num_attention_heads": 28,
+            "num_hidden_layers": 28,
+            "num_key_value_heads": 4,
+            "pad_token_id": 151643,
+            "rms_norm_eps": 1e-06,
+            "rope_scaling": {
+                "mrope_section": [
+                16,
+                24,
+                24
+                ],
+                "rope_type": "default",
+                "type": "default"
+            },
+            "rope_theta": 1000000.0,
+            "sliding_window": 32768,
+            "tie_word_embeddings": False,
+            "torch_dtype": "bfloat16",
+            "transformers_version": "4.49.0",
+            "use_cache": False,
+            "use_sliding_window": False,
+            "video_token_id": 151656,
+            "vision_config": {
+                "hidden_size": 1280,
+                "in_chans": 3,
+                "model_type": "qwen2_5_vl",
+                "spatial_patch_size": 14,
+                "tokens_per_second": 2,
+                "torch_dtype": "bfloat16"
+            },
+            "vision_end_token_id": 151653,
+            "vision_start_token_id": 151652,
+            "vision_token_id": 151654,
+            "vocab_size": 152064
+        })
         self.model = Qwen2_5_VLForConditionalGeneration(model_config)
-        self.processor = Qwen2_5_VLProcessor.from_pretrained(model_path)
+        self.processor = None
+        
+        
+    def load_processor(self, path):
+        from .nexus_gen_ar_model import Qwen2_5_VLProcessor
+        self.processor = Qwen2_5_VLProcessor.from_pretrained(path)
 
 
     @staticmethod
@@ -20,6 +79,7 @@ class NexusGenAutoregressiveModel(torch.nn.Module):
         return NexusGenAutoregressiveModelStateDictConverter()
 
     def bound_image(self, image, max_pixels=262640):
+        from qwen_vl_utils import smart_resize
         resized_height, resized_width = smart_resize(
             image.height,
             image.width,
