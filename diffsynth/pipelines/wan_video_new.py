@@ -911,10 +911,14 @@ class TemporalTiler_BCTHW:
 
     def build_1d_mask(self, length, left_bound, right_bound, border_width):
         x = torch.ones((length,))
+        if border_width == 0:
+            return x
+        
+        shift = 0.5
         if not left_bound:
-            x[:border_width] = (torch.arange(border_width) + 1) / border_width
+            x[:border_width] = (torch.arange(border_width) + shift) / border_width
         if not right_bound:
-            x[-border_width:] = torch.flip((torch.arange(border_width) + 1) / border_width, dims=(0,))
+            x[-border_width:] = torch.flip((torch.arange(border_width) + shift) / border_width, dims=(0,))
         return x
 
     def build_mask(self, data, is_bound, border_width):
