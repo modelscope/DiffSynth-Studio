@@ -26,12 +26,15 @@ def pad_freqs(original_tensor, target_len):
     
 def rope_apply(x, freqs, num_heads):
     x = rearrange(x, "b s (n d) -> b s n d", n=num_heads)
+    s_per_rank = x.shape[1]
 
     x_out = torch.view_as_complex(x.to(torch.float64).reshape(
         x.shape[0], x.shape[1], x.shape[2], -1, 2))
 
+    sp_size = get_sequence_parallel_world_size()
     sp_rank = get_sequence_parallel_rank()
-    freqs_rank = torch.chunk(freqs, dim=0)[sp_rank] # chunk freqs like x
+    freqs = pad_freqs(freqs, s_per_rank * sp_size)
+    freqs_rank = freqs[(sp_rank * s_per_rank):((sp_rank + 1) * s_per_rank), :, :]
 
     x_out = torch.view_as_real(x_out * freqs_rank).flatten(2)
     return x_out.to(x.dtype)
