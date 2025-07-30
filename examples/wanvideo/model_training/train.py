@@ -14,6 +14,8 @@ class WanTrainingModule(DiffusionTrainingModule):
         use_gradient_checkpointing=True,
         use_gradient_checkpointing_offload=False,
         extra_inputs=None,
+        max_timestep_boundary=1.0,
+        min_timestep_boundary=0.0,
     ):
         super().__init__()
         # Load models
@@ -45,6 +47,8 @@ class WanTrainingModule(DiffusionTrainingModule):
         self.use_gradient_checkpointing = use_gradient_checkpointing
         self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
         self.extra_inputs = extra_inputs.split(",") if extra_inputs is not None else []
+        self.max_timestep_boundary = max_timestep_boundary
+        self.min_timestep_boundary = min_timestep_boundary
         
         
     def forward_preprocess(self, data):
@@ -69,6 +73,8 @@ class WanTrainingModule(DiffusionTrainingModule):
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
             "cfg_merge": False,
             "vace_scale": 1,
+            "max_timestep_boundary": self.max_timestep_boundary,
+            "min_timestep_boundary": self.min_timestep_boundary,
         }
         
         # Extra inputs
@@ -77,6 +83,8 @@ class WanTrainingModule(DiffusionTrainingModule):
                 inputs_shared["input_image"] = data["video"][0]
             elif extra_input == "end_image":
                 inputs_shared["end_image"] = data["video"][-1]
+            elif extra_input == "reference_image" or extra_input == "vace_reference_image":
+                inputs_shared[extra_input] = data[extra_input][0]
             else:
                 inputs_shared[extra_input] = data[extra_input]
         
@@ -106,6 +114,8 @@ if __name__ == "__main__":
         lora_rank=args.lora_rank,
         use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
         extra_inputs=args.extra_inputs,
+        max_timestep_boundary=args.max_timestep_boundary,
+        min_timestep_boundary=args.min_timestep_boundary,
     )
     model_logger = ModelLogger(
         args.output_path,

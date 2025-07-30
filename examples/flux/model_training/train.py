@@ -1,5 +1,5 @@
 import torch, os, json
-from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig
+from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig, ControlNetInput
 from diffsynth.trainers.utils import DiffusionTrainingModule, ImageDataset, ModelLogger, launch_training_task, flux_parser
 from diffsynth.models.lora import FluxLoRAConverter
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -51,7 +51,7 @@ class FluxTrainingModule(DiffusionTrainingModule):
     def forward_preprocess(self, data):
         # CFG-sensitive parameters
         inputs_posi = {"prompt": data["prompt"]}
-        inputs_nega = {}
+        inputs_nega = {"negative_prompt": ""}
         
         # CFG-unsensitive parameters
         inputs_shared = {
@@ -72,8 +72,14 @@ class FluxTrainingModule(DiffusionTrainingModule):
         }
         
         # Extra inputs
+        controlnet_input = {}
         for extra_input in self.extra_inputs:
-            inputs_shared[extra_input] = data[extra_input]
+            if extra_input.startswith("controlnet_"):
+                controlnet_input[extra_input.replace("controlnet_", "")] = data[extra_input]
+            else:
+                inputs_shared[extra_input] = data[extra_input]
+        if len(controlnet_input) > 0:
+            inputs_shared["controlnet_inputs"] = [ControlNetInput(**controlnet_input)]
         
         # Pipeline units will automatically process the input parameters.
         for unit in self.pipe.units:
@@ -100,6 +106,7 @@ if __name__ == "__main__":
         lora_base_model=args.lora_base_model,
         lora_target_modules=args.lora_target_modules,
         lora_rank=args.lora_rank,
+        use_gradient_checkpointing=args.use_gradient_checkpointing,
         use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
         extra_inputs=args.extra_inputs,
     )

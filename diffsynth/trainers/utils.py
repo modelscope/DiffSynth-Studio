@@ -120,8 +120,12 @@ class ImageDataset(torch.utils.data.Dataset):
         data = self.data[data_id % len(self.data)].copy()
         for key in self.data_file_keys:
             if key in data:
-                path = os.path.join(self.base_path, data[key])
-                data[key] = self.load_data(path)
+                if isinstance(data[key], list):
+                    path = [os.path.join(self.base_path, p) for p in data[key]]
+                    data[key] = [self.load_data(p) for p in path]
+                else:
+                    path = os.path.join(self.base_path, data[key])
+                    data[key] = self.load_data(path)
                 if data[key] is None:
                     warnings.warn(f"cannot load file {data[key]}.")
                     return None
@@ -434,6 +438,8 @@ def wan_parser():
     parser.add_argument("--extra_inputs", default=None, help="Additional model inputs, comma-separated.")
     parser.add_argument("--use_gradient_checkpointing_offload", default=False, action="store_true", help="Whether to offload gradient checkpointing to CPU memory.")
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help="Gradient accumulation steps.")
+    parser.add_argument("--max_timestep_boundary", type=float, default=1.0, help="Max timestep boundary (for mixed models, e.g., Wan-AI/Wan2.2-I2V-A14B).")
+    parser.add_argument("--min_timestep_boundary", type=float, default=0.0, help="Min timestep boundary (for mixed models, e.g., Wan-AI/Wan2.2-I2V-A14B).")
     return parser
 
 

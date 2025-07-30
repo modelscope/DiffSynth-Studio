@@ -212,9 +212,16 @@ class DiTBlock(nn.Module):
         self.gate = GateModule()
 
     def forward(self, x, context, t_mod, freqs):
+        has_seq = len(t_mod.shape) == 4
+        chunk_dim = 2 if has_seq else 1
         # msa: multi-head self-attention  mlp: multi-layer perceptron
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = (
-            self.modulation.to(dtype=t_mod.dtype, device=t_mod.device) + t_mod).chunk(6, dim=1)
+            self.modulation.to(dtype=t_mod.dtype, device=t_mod.device) + t_mod).chunk(6, dim=chunk_dim)
+        if has_seq:
+            shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = (
+                shift_msa.squeeze(2), scale_msa.squeeze(2), gate_msa.squeeze(2),
+                shift_mlp.squeeze(2), scale_mlp.squeeze(2), gate_mlp.squeeze(2),
+            )
         input_x = modulate(self.norm1(x), shift_msa, scale_msa)
         x = self.gate(x, gate_msa, self.self_attn(input_x, freqs))
         x = x + self.cross_attn(self.norm3(x), context)
@@ -253,8 +260,12 @@ class Head(nn.Module):
         self.modulation = nn.Parameter(torch.randn(1, 2, dim) / dim**0.5)
 
     def forward(self, x, t_mod):
-        shift, scale = (self.modulation.to(dtype=t_mod.dtype, device=t_mod.device) + t_mod).chunk(2, dim=1)
-        x = (self.head(self.norm(x) * (1 + scale) + shift))
+        if len(t_mod.shape) == 3:
+            shift, scale = (self.modulation.unsqueeze(0).to(dtype=t_mod.dtype, device=t_mod.device) + t_mod.unsqueeze(2)).chunk(2, dim=2)
+            x = (self.head(self.norm(x) * (1 + scale.squeeze(2)) + shift.squeeze(2)))
+        else:
+            shift, scale = (self.modulation.to(dtype=t_mod.dtype, device=t_mod.device) + t_mod).chunk(2, dim=1)
+            x = (self.head(self.norm(x) * (1 + scale) + shift))
         return x
 
 
@@ -276,12 +287,20 @@ class WanModel(torch.nn.Module):
         has_ref_conv: bool = False,
         add_control_adapter: bool = False,
         in_dim_control_adapter: int = 24,
+        seperated_timestep: bool = False,
+        require_vae_embedding: bool = True,
+        require_clip_embedding: bool = True,
+        fuse_vae_embedding_in_latents: bool = False,
     ):
         super().__init__()
         self.dim = dim
         self.freq_dim = freq_dim
         self.has_image_input = has_image_input
         self.patch_size = patch_size
+        self.seperated_timestep = seperated_timestep
+        self.require_vae_embedding = require_vae_embedding
+        self.require_clip_embedding = require_clip_embedding
+        self.fuse_vae_embedding_in_latents = fuse_vae_embedding_in_latents
 
         self.patch_embedding = nn.Conv3d(
             in_dim, dim, kernel_size=patch_size, stride=patch_size)
@@ -658,6 +677,41 @@ class WanModelStateDictConverter:
                 "has_ref_conv": False,
                 "add_control_adapter": True,
                 "in_dim_control_adapter": 24,
+            }
+        elif hash_state_dict_keys(state_dict) == "1f5ab7703c6fc803fdded85ff040c316":
+            # Wan-AI/Wan2.2-TI2V-5B
+            config = {
+                "has_image_input": False,
+                "patch_size": [1, 2, 2],
+                "in_dim": 48,
+                "dim": 3072,
+                "ffn_dim": 14336,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 48,
+                "num_heads": 24,
+                "num_layers": 30,
+                "eps": 1e-6,
+                "seperated_timestep": True,
+                "require_clip_embedding": False,
+                "require_vae_embedding": False,
+                "fuse_vae_embedding_in_latents": True,
+            }
+        elif hash_state_dict_keys(state_dict) == "5b013604280dd715f8457c6ed6d6a626":
+            # Wan-AI/Wan2.2-I2V-A14B
+            config = {
+                "has_image_input": False,
+                "patch_size": [1, 2, 2],
+                "in_dim": 36,
+                "dim": 5120,
+                "ffn_dim": 13824,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 16,
+                "num_heads": 40,
+                "num_layers": 40,
+                "eps": 1e-6,
+                "require_clip_embedding": False,
             }
         else:
             config = {}

@@ -18,12 +18,15 @@ from ..models import ModelManager, load_state_dict, SD3TextEncoder1, FluxTextEnc
 from ..models.step1x_connector import Qwen2Connector
 from ..models.flux_controlnet import FluxControlNet
 from ..models.flux_ipadapter import FluxIpAdapter
+from ..models.flux_value_control import MultiValueEncoder
 from ..models.flux_infiniteyou import InfiniteYouImageProjector
+from ..models.flux_lora_encoder import FluxLoRAEncoder, LoRALayerBlock
 from ..models.tiler import FastTileWorker
-from .wan_video_new import BasePipeline, ModelConfig, PipelineUnitRunner, PipelineUnit
-from ..lora.flux_lora import FluxLoRALoader, FluxLoraPatcher
+from ..models.nexus_gen import NexusGenAutoregressiveModel
+from ..models.nexus_gen_projector import NexusGenAdapter, NexusGenImageEmbeddingMerger
+from ..utils import BasePipeline, ModelConfig, PipelineUnitRunner, PipelineUnit
+from ..lora.flux_lora import FluxLoRALoader, FluxLoraPatcher, FluxLoRAFuser
 
-from transformers.models.t5.modeling_t5 import T5LayerNorm, T5DenseActDense, T5DenseGatedActDense
 from ..models.flux_dit import RMSNorm
 from ..vram_management import gradient_checkpoint_forward, enable_vram_management, AutoWrappedModule, AutoWrappedLinear
 
@@ -93,9 +96,14 @@ class FluxImagePipeline(BasePipeline):
         self.ipadapter_image_encoder = None
         self.qwenvl = None
         self.step1x_connector: Qwen2Connector = None
+        self.nexus_gen: NexusGenAutoregressiveModel = None
+        self.nexus_gen_generation_adapter: NexusGenAdapter = None
+        self.nexus_gen_editing_adapter: NexusGenImageEmbeddingMerger = None
+        self.value_controller: MultiValueEncoder = None
         self.infinityou_processor: InfinitYou = None
         self.image_proj_model: InfiniteYouImageProjector = None
         self.lora_patcher: FluxLoraPatcher = None
+        self.lora_encoder: FluxLoRAEncoder = None
         self.unit_runner = PipelineUnitRunner()
         self.in_iteration_models = ("dit", "step1x_connector", "controlnet", "lora_patcher")
         self.units = [
@@ -110,9 +118,12 @@ class FluxImagePipeline(BasePipeline):
             FluxImageUnit_ControlNet(),
             FluxImageUnit_IPAdapter(),
             FluxImageUnit_EntityControl(),
+            FluxImageUnit_NexusGen(),
             FluxImageUnit_TeaCache(),
             FluxImageUnit_Flex(),
             FluxImageUnit_Step1x(),
+            FluxImageUnit_ValueControl(),
+            FluxImageUnit_LoRAEncode(),
         ]
         self.model_fn = model_fn_flux_image
         
@@ -120,18 +131,20 @@ class FluxImagePipeline(BasePipeline):
     def load_lora(
         self,
         module: torch.nn.Module,
-        lora_config: Union[ModelConfig, str],
+        lora_config: Union[ModelConfig, str] = None,
         alpha=1,
         hotload=False,
-        local_model_path="./models",
-        skip_download=False
+        state_dict=None,
     ):
-        if isinstance(lora_config, str):
-            lora_config = ModelConfig(path=lora_config)
+        if state_dict is None:
+            if isinstance(lora_config, str):
+                lora = load_state_dict(lora_config, torch_dtype=self.torch_dtype, device=self.device)
+            else:
+                lora_config.download_if_necessary()
+                lora = load_state_dict(lora_config.path, torch_dtype=self.torch_dtype, device=self.device)
         else:
-            lora_config.download_if_necessary(local_model_path, skip_download=skip_download)
+            lora = state_dict
         loader = FluxLoRALoader(torch_dtype=self.torch_dtype, device=self.device)
-        lora = load_state_dict(lora_config.path, torch_dtype=self.torch_dtype, device=self.device)
         lora = loader.convert_state_dict(lora)
         if hotload:
             for name, module in module.named_modules():
@@ -145,19 +158,21 @@ class FluxImagePipeline(BasePipeline):
             loader.load(module, lora, alpha=alpha)
 
 
-    def enable_lora_patcher(self):
-        if not (hasattr(self, "vram_management_enabled") and self.vram_management_enabled):
-            print("Please enable VRAM management using `enable_vram_management()` before `enable_lora_patcher()`.")
-            return
-        if self.lora_patcher is None:
-            print("Please load lora patcher models before `enable_lora_patcher()`.")
-            return
-        for name, module in self.dit.named_modules():
-            if isinstance(module, AutoWrappedLinear):
-                merger_name = name.replace(".", "___")
-                if merger_name in self.lora_patcher.model_dict:
-                    module.lora_merger = self.lora_patcher.model_dict[merger_name]
-    
+    def load_loras(
+        self,
+        module: torch.nn.Module,
+        lora_configs: list[Union[ModelConfig, str]],
+        alpha=1,
+        hotload=False,
+        extra_fused_lora=False,
+    ):
+        for lora_config in lora_configs:
+            self.load_lora(module, lora_config, hotload=hotload, alpha=alpha)
+        if extra_fused_lora:
+            lora_fuser = FluxLoRAFuser(device="cuda", torch_dtype=torch.bfloat16)
+            fused_lora = lora_fuser(lora_configs)
+            self.load_lora(module, state_dict=fused_lora, hotload=hotload, alpha=alpha)
+
     
     def clear_lora(self):
         for name, module in self.named_modules():
@@ -182,22 +197,19 @@ class FluxImagePipeline(BasePipeline):
         return loss
     
     
-    def enable_vram_management(self, num_persistent_param_in_dit=None, vram_limit=None, vram_buffer=0.5):
-        self.vram_management_enabled = True
-        if num_persistent_param_in_dit is not None:
-            vram_limit = None
-        else:
-            if vram_limit is None:
-                vram_limit = self.get_vram()
-            vram_limit = vram_limit - vram_buffer
-        if self.text_encoder_1 is not None:
-            dtype = next(iter(self.text_encoder_1.parameters())).dtype
+    def _enable_vram_management_with_default_config(self, model, vram_limit):
+        if model is not None:
+            dtype = next(iter(model.parameters())).dtype
             enable_vram_management(
-                self.text_encoder_1,
+                model,
                 module_map = {
                     torch.nn.Linear: AutoWrappedLinear,
                     torch.nn.Embedding: AutoWrappedModule,
                     torch.nn.LayerNorm: AutoWrappedModule,
+                    torch.nn.Conv2d: AutoWrappedModule,
+                    torch.nn.GroupNorm: AutoWrappedModule,
+                    RMSNorm: AutoWrappedModule,
+                    LoRALayerBlock: AutoWrappedModule,
                 },
                 module_config = dict(
                     offload_dtype=dtype,
@@ -209,7 +221,52 @@ class FluxImagePipeline(BasePipeline):
                 ),
                 vram_limit=vram_limit,
             )
+            
+            
+    def enable_lora_magic(self):
+        if self.dit is not None:
+            if not (hasattr(self.dit, "vram_management_enabled") and self.dit.vram_management_enabled):
+                dtype = next(iter(self.dit.parameters())).dtype
+                enable_vram_management(
+                    self.dit,
+                    module_map = {
+                        torch.nn.Linear: AutoWrappedLinear,
+                    },
+                    module_config = dict(
+                        offload_dtype=dtype,
+                        offload_device=self.device,
+                        onload_dtype=dtype,
+                        onload_device=self.device,
+                        computation_dtype=self.torch_dtype,
+                        computation_device=self.device,
+                    ),
+                    vram_limit=None,
+                )
+        if self.lora_patcher is not None:
+            for name, module in self.dit.named_modules():
+                if isinstance(module, AutoWrappedLinear):
+                    merger_name = name.replace(".", "___")
+                    if merger_name in self.lora_patcher.model_dict:
+                        module.lora_merger = self.lora_patcher.model_dict[merger_name]
+    
+    
+    def enable_vram_management(self, num_persistent_param_in_dit=None, vram_limit=None, vram_buffer=0.5):
+        self.vram_management_enabled = True
+        if num_persistent_param_in_dit is not None:
+            vram_limit = None
+        else:
+            if vram_limit is None:
+                vram_limit = self.get_vram()
+            vram_limit = vram_limit - vram_buffer
+
+        # Default config
+        default_vram_management_models = ["text_encoder_1", "vae_decoder", "vae_encoder", "controlnet", "image_proj_model", "ipadapter", "lora_patcher", "value_controller", "step1x_connector", "lora_encoder"]
+        for model_name in default_vram_management_models:
+            self._enable_vram_management_with_default_config(getattr(self, model_name), vram_limit)
+
+        # Special config
         if self.text_encoder_2 is not None:
+            from transformers.models.t5.modeling_t5 import T5LayerNorm, T5DenseActDense, T5DenseGatedActDense
             dtype = next(iter(self.text_encoder_2.parameters())).dtype
             enable_vram_management(
                 self.text_encoder_2,
@@ -258,14 +315,18 @@ class FluxImagePipeline(BasePipeline):
                 ),
                 vram_limit=vram_limit,
             )
-        if self.vae_decoder is not None:
-            dtype = next(iter(self.vae_decoder.parameters())).dtype
+        if self.ipadapter_image_encoder is not None:
+            from transformers.models.siglip.modeling_siglip import SiglipVisionEmbeddings, SiglipEncoder, SiglipMultiheadAttentionPoolingHead
+            dtype = next(iter(self.ipadapter_image_encoder.parameters())).dtype
             enable_vram_management(
-                self.vae_decoder,
+                self.ipadapter_image_encoder,
                 module_map = {
+                    SiglipVisionEmbeddings: AutoWrappedModule,
+                    SiglipEncoder: AutoWrappedModule,
+                    SiglipMultiheadAttentionPoolingHead: AutoWrappedModule,
+                    torch.nn.MultiheadAttention: AutoWrappedModule,
                     torch.nn.Linear: AutoWrappedLinear,
-                    torch.nn.Conv2d: AutoWrappedModule,
-                    torch.nn.GroupNorm: AutoWrappedModule,
+                    torch.nn.LayerNorm: AutoWrappedModule,
                 },
                 module_config = dict(
                     offload_dtype=dtype,
@@ -277,14 +338,25 @@ class FluxImagePipeline(BasePipeline):
                 ),
                 vram_limit=vram_limit,
             )
-        if self.vae_encoder is not None:
-            dtype = next(iter(self.vae_encoder.parameters())).dtype
+        if self.qwenvl is not None:
+            from transformers.models.qwen2_5_vl.modeling_qwen2_5_vl import (
+                Qwen2_5_VisionPatchEmbed, Qwen2_5_VLVisionBlock, Qwen2_5_VLPatchMerger,
+                Qwen2_5_VLDecoderLayer, Qwen2_5_VisionRotaryEmbedding, Qwen2_5_VLRotaryEmbedding, Qwen2RMSNorm
+            )
+            dtype = next(iter(self.qwenvl.parameters())).dtype
             enable_vram_management(
-                self.vae_encoder,
+                self.qwenvl,
                 module_map = {
+                    Qwen2_5_VisionPatchEmbed: AutoWrappedModule,
+                    Qwen2_5_VLVisionBlock: AutoWrappedModule,
+                    Qwen2_5_VLPatchMerger: AutoWrappedModule,
+                    Qwen2_5_VLDecoderLayer: AutoWrappedModule,
+                    Qwen2_5_VisionRotaryEmbedding: AutoWrappedModule,
+                    Qwen2_5_VLRotaryEmbedding: AutoWrappedModule,
+                    Qwen2RMSNorm: AutoWrappedModule,
+                    torch.nn.Embedding: AutoWrappedModule,
                     torch.nn.Linear: AutoWrappedLinear,
-                    torch.nn.Conv2d: AutoWrappedModule,
-                    torch.nn.GroupNorm: AutoWrappedModule,
+                    torch.nn.LayerNorm: AutoWrappedModule,
                 },
                 module_config = dict(
                     offload_dtype=dtype,
@@ -303,16 +375,12 @@ class FluxImagePipeline(BasePipeline):
         torch_dtype: torch.dtype = torch.bfloat16,
         device: Union[str, torch.device] = "cuda",
         model_configs: list[ModelConfig] = [],
-        tokenizer_config: ModelConfig = ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/*"),
-        local_model_path: str = "./models",
-        skip_download: bool = False,
-        redirect_common_files: bool = True,
-        use_usp=False,
+        nexus_gen_processor_config: ModelConfig = ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="processor/"),
     ):
         # Download and load models
         model_manager = ModelManager()
         for model_config in model_configs:
-            model_config.download_if_necessary(local_model_path, skip_download=skip_download)
+            model_config.download_if_necessary()
             model_manager.load_model(
                 model_config.path,
                 device=model_config.offload_device or device,
@@ -335,13 +403,29 @@ class FluxImagePipeline(BasePipeline):
         if pipe.image_proj_model is not None:
             pipe.infinityou_processor = InfinitYou(device=device)
         pipe.lora_patcher = model_manager.fetch_model("flux_lora_patcher")
+        pipe.lora_encoder = model_manager.fetch_model("flux_lora_encoder")
+        pipe.nexus_gen = model_manager.fetch_model("nexus_gen_llm")
+        pipe.nexus_gen_generation_adapter = model_manager.fetch_model("nexus_gen_generation_adapter")
+        pipe.nexus_gen_editing_adapter = model_manager.fetch_model("nexus_gen_editing_adapter")
+        if nexus_gen_processor_config is not None and pipe.nexus_gen is not None:
+            nexus_gen_processor_config.download_if_necessary()
+            pipe.nexus_gen.load_processor(nexus_gen_processor_config.path)
         
         # ControlNet
         controlnets = []
         for model_name, model in zip(model_manager.model_name, model_manager.model):
             if model_name == "flux_controlnet":
                 controlnets.append(model)
-        pipe.controlnet = MultiControlNet(controlnets)
+        if len(controlnets) > 0:
+            pipe.controlnet = MultiControlNet(controlnets)
+
+        # Value Controller
+        value_controllers = []
+        for model_name, model in zip(model_manager.model_name, model_manager.model):
+            if model_name == "flux_value_controller":
+                value_controllers.append(model)
+        if len(value_controllers) > 0:
+            pipe.value_controller = MultiValueEncoder(value_controllers)
 
         return pipe
     
@@ -393,8 +477,15 @@ class FluxImagePipeline(BasePipeline):
         flex_control_image: Image.Image = None,
         flex_control_strength: float = 0.5,
         flex_control_stop: float = 0.5,
+        # Value Controller
+        value_controller_inputs: Union[list[float], float] = None,
         # Step1x
         step1x_reference_image: Image.Image = None,
+        # NexusGen
+        nexus_gen_reference_image: Image.Image = None,
+        # LoRA Encoder
+        lora_encoder_inputs: Union[list[ModelConfig], ModelConfig, str] = None,
+        lora_encoder_scale: float = 1.0,
         # TeaCache
         tea_cache_l1_thresh: float = None,
         # Tile
@@ -426,7 +517,10 @@ class FluxImagePipeline(BasePipeline):
             "eligen_entity_prompts": eligen_entity_prompts, "eligen_entity_masks": eligen_entity_masks, "eligen_enable_on_negative": eligen_enable_on_negative, "eligen_enable_inpaint": eligen_enable_inpaint,
             "infinityou_id_image": infinityou_id_image, "infinityou_guidance": infinityou_guidance,
             "flex_inpaint_image": flex_inpaint_image, "flex_inpaint_mask": flex_inpaint_mask, "flex_control_image": flex_control_image, "flex_control_strength": flex_control_strength, "flex_control_stop": flex_control_stop,
+            "value_controller_inputs": value_controller_inputs,
             "step1x_reference_image": step1x_reference_image,
+            "nexus_gen_reference_image": nexus_gen_reference_image,
+            "lora_encoder_inputs": lora_encoder_inputs, "lora_encoder_scale": lora_encoder_scale,
             "tea_cache_l1_thresh": tea_cache_l1_thresh,
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
             "progress_bar_cmd": progress_bar_cmd,
@@ -677,13 +771,68 @@ class FluxImageUnit_EntityControl(PipelineUnit):
         if eligen_entity_prompts is None or eligen_entity_masks is None:
             return inputs_shared, inputs_posi, inputs_nega
         pipe.load_models_to_device(self.onload_model_names)
+        eligen_enable_on_negative = inputs_shared.get("eligen_enable_on_negative", False)
         eligen_kwargs_posi, eligen_kwargs_nega = self.prepare_eligen(pipe, inputs_nega,
             eligen_entity_prompts, eligen_entity_masks, inputs_shared["width"], inputs_shared["height"], 
-            inputs_shared["t5_sequence_length"], inputs_shared["eligen_enable_on_negative"], inputs_shared["cfg_scale"])
+            inputs_shared["t5_sequence_length"], eligen_enable_on_negative, inputs_shared["cfg_scale"])
         inputs_posi.update(eligen_kwargs_posi)
         if inputs_shared.get("cfg_scale", 1.0) != 1.0:
             inputs_nega.update(eligen_kwargs_nega)
         return inputs_shared, inputs_posi, inputs_nega
+
+
+class FluxImageUnit_NexusGen(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            take_over=True,
+            onload_model_names=("nexus_gen", "nexus_gen_generation_adapter", "nexus_gen_editing_adapter"),
+        )
+
+    def process(self, pipe: FluxImagePipeline, inputs_shared, inputs_posi, inputs_nega):
+        if pipe.nexus_gen is None:
+            return inputs_shared, inputs_posi, inputs_nega
+        pipe.load_models_to_device(self.onload_model_names)
+        if inputs_shared.get("nexus_gen_reference_image", None) is None:
+            assert pipe.nexus_gen_generation_adapter is not None, "NexusGen requires a generation adapter to be set."
+            embed = pipe.nexus_gen(inputs_posi["prompt"])[0].unsqueeze(0)
+            inputs_posi["prompt_emb"] = pipe.nexus_gen_generation_adapter(embed)
+            inputs_posi['text_ids'] = torch.zeros(embed.shape[0], embed.shape[1], 3).to(device=pipe.device, dtype=pipe.torch_dtype)
+        else:
+            assert pipe.nexus_gen_editing_adapter is not None, "NexusGen requires an editing adapter to be set."
+            embed, ref_embed, grids = pipe.nexus_gen(inputs_posi["prompt"], inputs_shared["nexus_gen_reference_image"])
+            embeds_grid = grids[1:2].to(device=pipe.device, dtype=torch.long)
+            ref_embeds_grid = grids[0:1].to(device=pipe.device, dtype=torch.long)
+
+            inputs_posi["prompt_emb"] = pipe.nexus_gen_editing_adapter(embed.unsqueeze(0), embeds_grid, ref_embed.unsqueeze(0), ref_embeds_grid)
+            inputs_posi["text_ids"] = self.get_editing_text_ids(
+                inputs_shared["latents"],
+                embeds_grid[0][1].item(), embeds_grid[0][2].item(),
+                ref_embeds_grid[0][1].item(), ref_embeds_grid[0][2].item(),
+                )
+        return inputs_shared, inputs_posi, inputs_nega
+
+
+    def get_editing_text_ids(self, latents, target_embed_height, target_embed_width, ref_embed_height, ref_embed_width):
+        # prepare text ids for target and reference embeddings
+        batch_size, height, width = latents.shape[0], target_embed_height, target_embed_width
+        embed_ids = torch.zeros(height // 2, width // 2, 3)
+        scale_factor_height, scale_factor_width = latents.shape[-2] / height, latents.shape[-1] / width
+        embed_ids[..., 1] = embed_ids[..., 1] + torch.arange(height // 2)[:, None] * scale_factor_height
+        embed_ids[..., 2] = embed_ids[..., 2] + torch.arange(width // 2)[None, :] * scale_factor_width
+        embed_ids = embed_ids[None, :].repeat(batch_size, 1, 1, 1).reshape(batch_size, height // 2 * width // 2, 3)
+        embed_text_ids = embed_ids.to(device=latents.device, dtype=latents.dtype)
+
+        batch_size, height, width = latents.shape[0], ref_embed_height, ref_embed_width
+        ref_embed_ids = torch.zeros(height // 2, width // 2, 3)
+        scale_factor_height, scale_factor_width = latents.shape[-2] / height, latents.shape[-1] / width
+        ref_embed_ids[..., 0] = ref_embed_ids[..., 0] + 1.0
+        ref_embed_ids[..., 1] = ref_embed_ids[..., 1] + torch.arange(height // 2)[:, None] * scale_factor_height
+        ref_embed_ids[..., 2] = ref_embed_ids[..., 2] + torch.arange(width // 2)[None, :] * scale_factor_width
+        ref_embed_ids = ref_embed_ids[None, :].repeat(batch_size, 1, 1, 1).reshape(batch_size, height // 2 * width // 2, 3)
+        ref_embed_text_ids = ref_embed_ids.to(device=latents.device, dtype=latents.dtype)
+
+        text_ids = torch.cat([embed_text_ids, ref_embed_text_ids], dim=1)
+        return text_ids
 
 
 class FluxImageUnit_Step1x(PipelineUnit):
@@ -704,7 +853,8 @@ class FluxImageUnit_Step1x(PipelineUnit):
             image = pipe.preprocess_image(image).to(device=pipe.device, dtype=pipe.torch_dtype)
             image = pipe.vae_encoder(image)
             inputs_posi.update({"step1x_llm_embedding": embs[0:1], "step1x_mask": masks[0:1], "step1x_reference_latents": image})
-            inputs_nega.update({"step1x_llm_embedding": embs[1:2], "step1x_mask": masks[1:2], "step1x_reference_latents": image})
+            if inputs_shared.get("cfg_scale", 1) != 1:
+                inputs_nega.update({"step1x_llm_embedding": embs[1:2], "step1x_mask": masks[1:2], "step1x_reference_latents": image})
             return inputs_shared, inputs_posi, inputs_nega
 
             
@@ -723,10 +873,12 @@ class FluxImageUnit_Flex(PipelineUnit):
         super().__init__(
             input_params=("latents", "flex_inpaint_image", "flex_inpaint_mask", "flex_control_image", "flex_control_strength", "flex_control_stop", "tiled", "tile_size", "tile_stride"),
             onload_model_names=("vae_encoder",)
-            )
+        )
 
     def process(self, pipe: FluxImagePipeline, latents, flex_inpaint_image, flex_inpaint_mask, flex_control_image, flex_control_strength, flex_control_stop, tiled, tile_size, tile_stride):
         if pipe.dit.input_dim == 196:
+            if flex_control_stop is None:
+                flex_control_stop = 1
             pipe.load_models_to_device(self.onload_model_names)
             if flex_inpaint_image is None:
                 flex_inpaint_image = torch.zeros_like(latents)
@@ -756,18 +908,53 @@ class FluxImageUnit_Flex(PipelineUnit):
 
 class FluxImageUnit_InfiniteYou(PipelineUnit):
     def __init__(self):
-        super().__init__(input_params=("infinityou_id_image", "infinityou_guidance"))
+        super().__init__(
+            input_params=("infinityou_id_image", "infinityou_guidance"),
+            onload_model_names=("infinityou_processor",)
+        )
 
     def process(self, pipe: FluxImagePipeline, infinityou_id_image, infinityou_guidance):
+        pipe.load_models_to_device("infinityou_processor")
         if infinityou_id_image is not None:
-            return pipe.infinityou_processor.prepare_infinite_you(pipe.image_proj_model, infinityou_id_image, infinityou_guidance)
+            return pipe.infinityou_processor.prepare_infinite_you(pipe.image_proj_model, infinityou_id_image, infinityou_guidance, pipe.device)
         else:
             return {}
 
 
 
-class InfinitYou:
+class FluxImageUnit_ValueControl(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            seperate_cfg=True,
+            input_params_posi={"prompt_emb": "prompt_emb", "text_ids": "text_ids"},
+            input_params_nega={"prompt_emb": "prompt_emb", "text_ids": "text_ids"},
+            input_params=("value_controller_inputs",),
+            onload_model_names=("value_controller",)
+        )
+        
+    def add_to_text_embedding(self, prompt_emb, text_ids, value_emb):
+        prompt_emb = torch.concat([prompt_emb, value_emb], dim=1)
+        extra_text_ids = torch.zeros((value_emb.shape[0], value_emb.shape[1], 3), device=value_emb.device, dtype=value_emb.dtype)
+        text_ids = torch.concat([text_ids, extra_text_ids], dim=1)
+        return prompt_emb, text_ids
+
+    def process(self, pipe: FluxImagePipeline, prompt_emb, text_ids, value_controller_inputs):
+        if value_controller_inputs is None:
+            return {}
+        if not isinstance(value_controller_inputs, list):
+            value_controller_inputs = [value_controller_inputs]
+        value_controller_inputs = torch.tensor(value_controller_inputs).to(dtype=pipe.torch_dtype, device=pipe.device)
+        pipe.load_models_to_device(["value_controller"])
+        value_emb = pipe.value_controller(value_controller_inputs, pipe.torch_dtype)
+        value_emb = value_emb.unsqueeze(0)
+        prompt_emb, text_ids = self.add_to_text_embedding(prompt_emb, text_ids, value_emb)
+        return {"prompt_emb": prompt_emb, "text_ids": text_ids}
+
+
+
+class InfinitYou(torch.nn.Module):
     def __init__(self, device="cuda", torch_dtype=torch.bfloat16):
+        super().__init__()
         from facexlib.recognition import init_recognition_model
         from insightface.app import FaceAnalysis
         self.device = device
@@ -779,7 +966,7 @@ class InfinitYou:
         self.app_320.prepare(ctx_id=0, det_size=(320, 320))
         self.app_160 = FaceAnalysis(name='antelopev2', root=insightface_root_path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
         self.app_160.prepare(ctx_id=0, det_size=(160, 160))
-        self.arcface_model = init_recognition_model('arcface', device=self.device)
+        self.arcface_model = init_recognition_model('arcface', device=self.device).to(torch_dtype)
 
     def _detect_face(self, id_image_cv2):
         face_info = self.app_640.get(id_image_cv2)
@@ -791,16 +978,16 @@ class InfinitYou:
         face_info = self.app_160.get(id_image_cv2)
         return face_info
 
-    def extract_arcface_bgr_embedding(self, in_image, landmark):
+    def extract_arcface_bgr_embedding(self, in_image, landmark, device):
         from insightface.utils import face_align
         arc_face_image = face_align.norm_crop(in_image, landmark=np.array(landmark), image_size=112)
         arc_face_image = torch.from_numpy(arc_face_image).unsqueeze(0).permute(0, 3, 1, 2) / 255.
         arc_face_image = 2 * arc_face_image - 1
-        arc_face_image = arc_face_image.contiguous().to(self.device)
+        arc_face_image = arc_face_image.contiguous().to(device=device, dtype=self.torch_dtype)
         face_emb = self.arcface_model(arc_face_image)[0] # [512], normalized
         return face_emb
 
-    def prepare_infinite_you(self, model, id_image, infinityou_guidance):
+    def prepare_infinite_you(self, model, id_image, infinityou_guidance, device):
         import cv2
         if id_image is None:
             return {'id_emb': None}
@@ -809,10 +996,70 @@ class InfinitYou:
         if len(face_info) == 0:
             raise ValueError('No face detected in the input ID image')
         landmark = sorted(face_info, key=lambda x:(x['bbox'][2]-x['bbox'][0])*(x['bbox'][3]-x['bbox'][1]))[-1]['kps'] # only use the maximum face
-        id_emb = self.extract_arcface_bgr_embedding(id_image_cv2, landmark)
+        id_emb = self.extract_arcface_bgr_embedding(id_image_cv2, landmark, device)
         id_emb = model(id_emb.unsqueeze(0).reshape([1, -1, 512]).to(dtype=self.torch_dtype))
-        infinityou_guidance = torch.Tensor([infinityou_guidance]).to(device=self.device, dtype=self.torch_dtype)
+        infinityou_guidance = torch.Tensor([infinityou_guidance]).to(device=device, dtype=self.torch_dtype)
         return {'id_emb': id_emb, 'infinityou_guidance': infinityou_guidance}
+
+
+
+class FluxImageUnit_LoRAEncode(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            take_over=True,
+            onload_model_names=("lora_encoder",)
+        )
+        
+    def parse_lora_encoder_inputs(self, lora_encoder_inputs):
+        if not isinstance(lora_encoder_inputs, list):
+            lora_encoder_inputs = [lora_encoder_inputs]
+        lora_configs = []
+        for lora_encoder_input in lora_encoder_inputs:
+            if isinstance(lora_encoder_input, str):
+                lora_encoder_input = ModelConfig(path=lora_encoder_input)
+            lora_encoder_input.download_if_necessary()
+            lora_configs.append(lora_encoder_input)
+        return lora_configs
+        
+    def load_lora(self, lora_config, dtype, device):
+        loader = FluxLoRALoader(torch_dtype=dtype, device=device)
+        lora = load_state_dict(lora_config.path, torch_dtype=dtype, device=device)
+        lora = loader.convert_state_dict(lora)
+        return lora
+    
+    def lora_embedding(self, pipe, lora_encoder_inputs):
+        lora_emb = []
+        for lora_config in self.parse_lora_encoder_inputs(lora_encoder_inputs):
+            lora = self.load_lora(lora_config, pipe.torch_dtype, pipe.device)
+            lora_emb.append(pipe.lora_encoder(lora))
+        lora_emb = torch.concat(lora_emb, dim=1)
+        return lora_emb
+    
+    def add_to_text_embedding(self, prompt_emb, text_ids, lora_emb):
+        prompt_emb = torch.concat([prompt_emb, lora_emb], dim=1)
+        extra_text_ids = torch.zeros((lora_emb.shape[0], lora_emb.shape[1], 3), device=lora_emb.device, dtype=lora_emb.dtype)
+        text_ids = torch.concat([text_ids, extra_text_ids], dim=1)
+        return prompt_emb, text_ids
+
+    def process(self, pipe: FluxImagePipeline, inputs_shared, inputs_posi, inputs_nega):
+        if inputs_shared.get("lora_encoder_inputs", None) is None:
+            return inputs_shared, inputs_posi, inputs_nega
+        
+        # Encode
+        pipe.load_models_to_device(["lora_encoder"])
+        lora_encoder_inputs = inputs_shared["lora_encoder_inputs"]
+        lora_emb = self.lora_embedding(pipe, lora_encoder_inputs)
+        
+        # Scale
+        lora_encoder_scale = inputs_shared.get("lora_encoder_scale", None)
+        if lora_encoder_scale is not None:
+            lora_emb = lora_emb * lora_encoder_scale
+        
+        # Add to prompt embedding
+        inputs_posi["prompt_emb"], inputs_posi["text_ids"] = self.add_to_text_embedding(
+            inputs_posi["prompt_emb"], inputs_posi["text_ids"], lora_emb)
+        return inputs_shared, inputs_posi, inputs_nega
+
 
 
 class TeaCache:
@@ -984,6 +1231,7 @@ def model_fn_flux_image(
         
     hidden_states = dit.x_embedder(hidden_states)
 
+    # EliGen
     if entity_prompt_emb is not None and entity_masks is not None:
         prompt_emb, image_rotary_emb, attention_mask = dit.process_entity_masks(hidden_states, prompt_emb, entity_prompt_emb, entity_masks, text_ids, image_ids)
     else:

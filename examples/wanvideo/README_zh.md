@@ -1,8 +1,8 @@
-# 通义万相 2.1（Wan 2.1）
+# 通义万相（Wan）
 
 [Switch to English](./README.md)
 
-Wan 2.1 是由阿里巴巴通义实验室开源的一系列视频生成模型。
+Wan 是由阿里巴巴通义实验室开源的一系列视频生成模型。
 
 **DiffSynth-Studio 启用了新的推理和训练框架，如需使用旧版本，请点击[这里](https://github.com/modelscope/DiffSynth-Studio/tree/3edf3583b1f08944cee837b94d9f84d669c2729c)。**
 
@@ -17,6 +17,8 @@ pip install -e .
 ```
 
 ## 快速开始
+
+通过运行以下代码可以快速加载 [Wan-AI/Wan2.1-T2V-1.3B](https://www.modelscope.cn/models/Wan-AI/Wan2.1-T2V-1.3B) 模型并进行推理
 
 ```python
 import torch
@@ -46,6 +48,9 @@ save_video(video, "video1.mp4", fps=15, quality=5)
 
 |模型 ID|额外参数|推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
+|[Wan-AI/Wan2.2-I2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-I2V-A14B)|`input_image`|[code](./model_inference/Wan2.2-I2V-A14B.py)|[code](./model_training/full/Wan2.2-I2V-A14B.sh)|[code](./model_training/validate_full/Wan2.2-I2V-A14B.py)|[code](./model_training/lora/Wan2.2-I2V-A14B.sh)|[code](./model_training/validate_lora/Wan2.2-I2V-A14B.py)|
+|[Wan-AI/Wan2.2-T2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-T2V-A14B)||[code](./model_inference/Wan2.2-T2V-A14B.py)|[code](./model_training/full/Wan2.2-T2V-A14B.sh)|[code](./model_training/validate_full/Wan2.2-T2V-A14B.py)|[code](./model_training/lora/Wan2.2-T2V-A14B.sh)|[code](./model_training/validate_lora/Wan2.2-T2V-A14B.py)|
+|[Wan-AI/Wan2.2-TI2V-5B](https://modelscope.cn/models/Wan-AI/Wan2.2-TI2V-5B)|`input_image`|[code](./model_inference/Wan2.2-TI2V-5B.py)|[code](./model_training/full/Wan2.2-TI2V-5B.sh)|[code](./model_training/validate_full/Wan2.2-TI2V-5B.py)|[code](./model_training/lora/Wan2.2-TI2V-5B.sh)|[code](./model_training/validate_lora/Wan2.2-TI2V-5B.py)|
 |[Wan-AI/Wan2.1-T2V-1.3B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-1.3B)||[code](./model_inference/Wan2.1-T2V-1.3B.py)|[code](./model_training/full/Wan2.1-T2V-1.3B.sh)|[code](./model_training/validate_full/Wan2.1-T2V-1.3B.py)|[code](./model_training/lora/Wan2.1-T2V-1.3B.sh)|[code](./model_training/validate_lora/Wan2.1-T2V-1.3B.py)|
 |[Wan-AI/Wan2.1-T2V-14B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-14B)||[code](./model_inference/Wan2.1-T2V-14B.py)|[code](./model_training/full/Wan2.1-T2V-14B.sh)|[code](./model_training/validate_full/Wan2.1-T2V-14B.py)|[code](./model_training/lora/Wan2.1-T2V-14B.sh)|[code](./model_training/validate_lora/Wan2.1-T2V-14B.py)|
 |[Wan-AI/Wan2.1-I2V-14B-480P](https://modelscope.cn/models/Wan-AI/Wan2.1-I2V-14B-480P)|`input_image`|[code](./model_inference/Wan2.1-I2V-14B-480P.py)|[code](./model_training/full/Wan2.1-I2V-14B-480P.sh)|[code](./model_training/validate_full/Wan2.1-I2V-14B-480P.py)|[code](./model_training/lora/Wan2.1-I2V-14B-480P.sh)|[code](./model_training/validate_lora/Wan2.1-I2V-14B-480P.py)|
@@ -70,7 +75,6 @@ save_video(video, "video1.mp4", fps=15, quality=5)
 
 以下部分将会帮助您理解我们的功能并编写推理代码。
 
-
 <details>
 
 <summary>加载模型</summary>
@@ -78,6 +82,9 @@ save_video(video, "video1.mp4", fps=15, quality=5)
 模型通过 `from_pretrained` 加载：
 
 ```python
+import torch
+from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
+
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
@@ -116,11 +123,14 @@ ModelConfig(path=[
 ])
 ```
 
-`from_pretrained` 还提供了额外的参数用于控制模型加载时的行为：
+`ModelConfig` 提供了额外的参数用于控制模型加载时的行为：
 
-* `tokenizer_config`: Wan 模型的 tokenizer 路径，默认值为 `ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/*")`。
 * `local_model_path`: 用于保存下载模型的路径，默认值为 `"./models"`。
 * `skip_download`: 是否跳过下载，默认值为 `False`。当您的网络无法访问[魔搭社区](https://modelscope.cn/)时，请手动下载必要的文件，并将其设置为 `True`。
+
+`from_pretrained` 提供了额外的参数用于控制模型加载时的行为：
+
+* `tokenizer_config`: Wan 模型的 tokenizer 路径，默认值为 `ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/*")`。
 * `redirect_common_files`: 是否重定向重复模型文件，默认值为 `True`。由于 Wan 系列模型包括多个基础模型，每个基础模型的 text encoder 等模块都是相同的，为避免重复下载，我们会对模型路径进行重定向。
 * `use_usp`: 是否启用 Unified Sequence Parallel，默认值为 `False`。用于多 GPU 并行推理。
 
@@ -178,9 +188,9 @@ pipe.enable_vram_management()
 
 FP8 量化能够大幅度减少显存占用，但不会加速，部分模型在 FP8 量化下会出现精度不足导致的画面模糊、撕裂、失真问题，请谨慎使用 FP8 量化。
 
-`enable_vram_management` 函数提供了以下参数，用于控制显存使用情况：
+开启显存管理后，框架会自动根据设备上的剩余显存确定显存管理策略。`enable_vram_management` 函数提供了以下参数，用于手动控制显存管理策略：
 
-* `vram_limit`: 显存占用量（GB），默认占用设备上的剩余显存。注意这不是一个绝对限制，当设置的显存不足以支持模型进行推理，但实际可用显存足够时，将会以最小化显存占用的形式进行推理。
+* `vram_limit`: 显存占用量限制（GB），默认占用设备上的剩余显存。注意这不是一个绝对限制，当设置的显存不足以支持模型进行推理，但实际可用显存足够时，将会以最小化显存占用的形式进行推理。将其设置为0时，将会实现理论最小显存占用。
 * `vram_buffer`: 显存缓冲区大小（GB），默认为 0.5GB。由于部分较大的神经网络层在 onload 阶段会不可控地占用更多显存，因此一个显存缓冲区是必要的，理论上的最优值为模型中最大的层所占的显存。
 * `num_persistent_param_in_dit`: DiT 模型中常驻显存的参数数量（个），默认为无限制。我们将会在未来删除这个参数，请不要依赖这个参数。
 
@@ -238,6 +248,7 @@ Pipeline 在推理阶段能够接收以下输入参数：
 * `num_frames`: 帧数，默认为 81。需设置为 4 的倍数 + 1，不满足时向上取整，最小值为 1。
 * `cfg_scale`: Classifier-free guidance 机制的数值，默认为 5。数值越大，提示词的控制效果越强，但画面崩坏的概率越大。
 * `cfg_merge`: 是否合并 Classifier-free guidance 的两侧进行统一推理，默认为 `False`。该参数目前仅在基础的文生视频和图生视频模型上生效。
+* `switch_DiT_boundary`: 切换 DiT 模型的时间点，默认值为 0.875，仅对多 DiT 的混合模型生效，例如 [Wan-AI/Wan2.2-I2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-I2V-A14B)。
 * `num_inference_steps`: 推理次数，默认值为 50。
 * `sigma_shift`: Rectified Flow 理论中的参数，默认为 5。数值越大，模型在去噪的开始阶段停留的步骤数越多，可适当调大这个参数来提高画面质量，但会因生成过程与训练过程不一致导致生成的视频内容与训练数据存在差异。
 * `motion_bucket_id`: 运动幅度，范围为 [0, 100]。适用于速度控制模块，例如 [`DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1`](https://modelscope.cn/models/DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1)，数值越大，运动幅度越大。
@@ -274,9 +285,11 @@ Wan 系列模型训练通过统一的 [`./model_training/train.py`](./model_trai
 * 模型
   * `--model_paths`: 要加载的模型路径。JSON 格式。
   * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 Wan-AI/Wan2.1-T2V-1.3B:diffusion_pytorch_model*.safetensors。用逗号分隔。
+  * `--max_timestep_boundary`: Timestep 区间最大值，范围为 0～1，默认为 1，仅在多 DiT 的混合模型训练中需要手动设置，例如 [Wan-AI/Wan2.2-I2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-I2V-A14B)。
+  * `--min_timestep_boundary`: Timestep 区间最小值，范围为 0～1，默认为 1，仅在多 DiT 的混合模型训练中需要手动设置，例如 [Wan-AI/Wan2.2-I2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-I2V-A14B)。
 * 训练
   * `--learning_rate`: 学习率。
-  * `--num_epochs`: 轮数（Epoch）数量。
+  * `--num_epochs`: 轮数（Epoch）。
   * `--output_path`: 保存路径。
   * `--remove_prefix_in_ckpt`: 在 ckpt 中移除前缀。
 * 可训练模块

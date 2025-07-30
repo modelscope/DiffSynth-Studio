@@ -2,7 +2,7 @@ import torch
 from .sd3_dit import TimestepEmbeddings, AdaLayerNorm, RMSNorm
 from einops import rearrange
 from .tiler import TileWorker
-from .utils import init_weights_on_device
+from .utils import init_weights_on_device, hash_state_dict_keys
 
 def interact_with_ipadapter(hidden_states, q, ip_k, ip_v, scale=1.0):
     batch_size, num_tokens = hidden_states.shape[0:2]
@@ -662,6 +662,9 @@ class FluxDiTStateDictConverter:
         return state_dict_
 
     def from_civitai(self, state_dict):
+        if hash_state_dict_keys(state_dict, with_shape=True) in ["3e6c61b0f9471135fc9c6d6a98e98b6d", "63c969fd37cce769a90aa781fbff5f81"]:
+            dit_state_dict = {key.replace("pipe.dit.", ""): value for key, value in state_dict.items() if key.startswith('pipe.dit.')}
+            return dit_state_dict
         rename_dict = {
             "time_in.in_layer.bias": "time_embedder.timestep_embedder.0.bias",
             "time_in.in_layer.weight": "time_embedder.timestep_embedder.0.weight",

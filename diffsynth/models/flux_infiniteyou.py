@@ -104,6 +104,7 @@ class InfiniteYouImageProjector(nn.Module):
     def forward(self, x):
 
         latents = self.latents.repeat(x.size(0), 1, 1)
+        latents = latents.to(dtype=x.dtype, device=x.device)
 
         x = self.proj_in(x)
 
