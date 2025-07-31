@@ -53,6 +53,12 @@ class ImageDataset(torch.utils.data.Dataset):
             with open(metadata_path, "r") as f:
                 metadata = json.load(f)
             self.data = metadata
+        elif metadata_path.endswith(".jsonl"):
+            metadata = []
+            with open(metadata_path, 'r') as f:
+                for line in tqdm(f):
+                    metadata.append(json.loads(line.strip()))
+            self.data = metadata
         else:
             metadata = pd.read_csv(metadata_path)
             self.data = [metadata.iloc[i].to_dict() for i in range(len(metadata))]
