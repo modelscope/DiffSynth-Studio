@@ -73,9 +73,10 @@ def usp_dit_forward(self,
         return custom_forward
 
     # Context Parallel
-    x = torch.chunk(
-        x, get_sequence_parallel_world_size(),
-        dim=1)[get_sequence_parallel_rank()]
+    chunks = torch.chunk(x, get_sequence_parallel_world_size(), dim=1)
+    pad_shape = chunks[0].shape[1] - chunks[-1].shape[1]
+    chunks = [torch.nn.functional.pad(chunk, (0, 0, 0, chunks[0].shape[1]-chunk.shape[1]), value=0) for chunk in chunks]
+    x = chunks[get_sequence_parallel_rank()]
 
     for block in self.blocks:
         if self.training and use_gradient_checkpointing:
@@ -99,6 +100,7 @@ def usp_dit_forward(self,
 
     # Context Parallel
     x = get_sp_group().all_gather(x, dim=1)
+    x = x[:, :-pad_shape] if pad_shape > 0 else x
 
     # unpatchify
     x = self.unpatchify(x, (f, h, w))

@@ -178,9 +178,9 @@ class ModelConfig:
                 is_folder = False
             
             # Download
+            if self.local_model_path is None:
+                self.local_model_path = "./models"
             if not skip_download:
-                if self.local_model_path is None:
-                    self.local_model_path = "./models"
                 downloaded_files = glob.glob(self.origin_file_pattern, root_dir=os.path.join(self.local_model_path, self.model_id))
                 snapshot_download(
                     self.model_id,

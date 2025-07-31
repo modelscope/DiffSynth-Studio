@@ -1074,7 +1074,10 @@ def model_fn_wan_video(
     # blocks
     if use_unified_sequence_parallel:
         if dist.is_initialized() and dist.get_world_size() > 1:
-            x = torch.chunk(x, get_sequence_parallel_world_size(), dim=1)[get_sequence_parallel_rank()]
+            chunks = torch.chunk(x, get_sequence_parallel_world_size(), dim=1)
+            pad_shape = chunks[0].shape[1] - chunks[-1].shape[1]
+            chunks = [torch.nn.functional.pad(chunk, (0, 0, 0, chunks[0].shape[1]-chunk.shape[1]), value=0) for chunk in chunks]
+            x = chunks[get_sequence_parallel_rank()]
     if tea_cache_update:
         x = tea_cache.update(x)
     else:
@@ -1103,6 +1106,7 @@ def model_fn_wan_video(
                 current_vace_hint = vace_hints[vace.vace_layers_mapping[block_id]]
                 if use_unified_sequence_parallel and dist.is_initialized() and dist.get_world_size() > 1:
                     current_vace_hint = torch.chunk(current_vace_hint, get_sequence_parallel_world_size(), dim=1)[get_sequence_parallel_rank()]
+                    current_vace_hint = torch.nn.functional.pad(current_vace_hint, (0, 0, 0, chunks[0].shape[1] - current_vace_hint.shape[1]), value=0)
                 x = x + current_vace_hint * vace_scale
         if tea_cache is not None:
             tea_cache.store(x)
@@ -1111,6 +1115,7 @@ def model_fn_wan_video(
     if use_unified_sequence_parallel:
         if dist.is_initialized() and dist.get_world_size() > 1:
             x = get_sp_group().all_gather(x, dim=1)
+            x = x[:, :-pad_shape] if pad_shape > 0 else x
     # Remove reference latents
     if reference_latents is not None:
         x = x[:, reference_latents.shape[1]:]
