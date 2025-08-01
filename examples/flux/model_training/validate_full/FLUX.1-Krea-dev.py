@@ -13,8 +13,8 @@ pipe = FluxImagePipeline.from_pretrained(
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors"),
     ],
 )
-state_dict = load_state_dict("models/train/FLUX.1-Kera-dev_full/epoch-0.safetensors")
+state_dict = load_state_dict("models/train/FLUX.1-Krea-dev_full/epoch-0.safetensors")
 pipe.dit.load_state_dict(state_dict)
 
 image = pipe(prompt="a dog", seed=0)
-image.save("image_FLUX.1-Kera-dev_full.jpg")
+image.save("image_FLUX.1-Krea-dev_full.jpg")

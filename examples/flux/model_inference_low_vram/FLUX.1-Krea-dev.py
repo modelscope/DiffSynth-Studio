@@ -18,11 +18,11 @@ prompt = "An beautiful woman is riding a bicycle in a park, wearing a red dress"
 negative_prompt = "worst quality, low quality, monochrome, zombie, interlocked fingers, Aissist, cleavage, nsfw,"
 
 image = pipe(prompt=prompt, seed=0, embedded_guidance=4.5)
-image.save("flux_kera.jpg")
+image.save("flux_krea.jpg")
 
 image = pipe(
     prompt=prompt, negative_prompt=negative_prompt,
     seed=0, cfg_scale=2, num_inference_steps=50,
     embedded_guidance=4.5
 )
-image.save("flux_kera_cfg.jpg")
+image.save("flux_krea_cfg.jpg")

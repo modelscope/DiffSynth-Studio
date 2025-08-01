@@ -1,15 +1,12 @@
-accelerate launch examples/flux/model_training/train.py \
+accelerate launch --config_file examples/flux/model_training/full/accelerate_config.yaml examples/flux/model_training/train.py \
   --dataset_base_path data/example_image_dataset \
   --dataset_metadata_path data/example_image_dataset/metadata.csv \
   --max_pixels 1048576 \
-  --dataset_repeat 50 \
+  --dataset_repeat 400 \
   --model_id_with_origin_paths "black-forest-labs/FLUX.1-Krea-dev:flux1-krea-dev.safetensors,black-forest-labs/FLUX.1-dev:text_encoder/model.safetensors,black-forest-labs/FLUX.1-dev:text_encoder_2/,black-forest-labs/FLUX.1-dev:ae.safetensors" \
-  --learning_rate 1e-4 \
-  --num_epochs 5 \
+  --learning_rate 1e-5 \
+  --num_epochs 1 \
   --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/FLUX.1-Kera-dev_lora" \
-  --lora_base_model "dit" \
-  --lora_target_modules "a_to_qkv,b_to_qkv,ff_a.0,ff_a.2,ff_b.0,ff_b.2,a_to_out,b_to_out,proj_out,norm.linear,norm1_a.linear,norm1_b.linear,to_qkv_mlp" \
-  --lora_rank 32 \
-  --align_to_opensource_format \
+  --output_path "./models/train/FLUX.1-Krea-dev_full" \
+  --trainable_models "dit" \
   --use_gradient_checkpointing
