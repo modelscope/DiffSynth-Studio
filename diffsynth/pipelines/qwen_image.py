@@ -235,7 +235,7 @@ class QwenImagePipeline(BasePipeline):
             inputs_shared["latents"] = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], inputs_shared["latents"])
         
         # Decode
-        self.load_models_to_device(['vae_decoder'])
+        self.load_models_to_device(['vae'])
         image = self.vae.decode(inputs_shared["latents"], device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         image = self.vae_output_to_image(image)
         self.load_models_to_device([])
@@ -268,7 +268,7 @@ class QwenImageUnit_InputImageEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("input_image", "noise", "tiled", "tile_size", "tile_stride"),
-            onload_model_names=("vae_encoder",)
+            onload_model_names=("vae",)
         )
 
     def process(self, pipe: QwenImagePipeline, input_image, noise, tiled, tile_size, tile_stride):
