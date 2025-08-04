@@ -1,10 +1,23 @@
-import torch
+import torch, math
 
 
 
 class FlowMatchScheduler():
 
-    def __init__(self, num_inference_steps=100, num_train_timesteps=1000, shift=3.0, sigma_max=1.0, sigma_min=0.003/1.002, inverse_timesteps=False, extra_one_step=False, reverse_sigmas=False):
+    def __init__(
+        self,
+        num_inference_steps=100,
+        num_train_timesteps=1000,
+        shift=3.0,
+        sigma_max=1.0,
+        sigma_min=0.003/1.002,
+        inverse_timesteps=False,
+        extra_one_step=False,
+        reverse_sigmas=False,
+        exponential_shift=False,
+        exponential_shift_mu=None,
+        shift_terminal=None,
+    ):
         self.num_train_timesteps = num_train_timesteps
         self.shift = shift
         self.sigma_max = sigma_max
@@ -12,10 +25,13 @@ class FlowMatchScheduler():
         self.inverse_timesteps = inverse_timesteps
         self.extra_one_step = extra_one_step
         self.reverse_sigmas = reverse_sigmas
+        self.exponential_shift = exponential_shift
+        self.exponential_shift_mu = exponential_shift_mu
+        self.shift_terminal = shift_terminal
         self.set_timesteps(num_inference_steps)
 
 
-    def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0, training=False, shift=None):
+    def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0, training=False, shift=None, dynamic_shift_len=None):
         if shift is not None:
             self.shift = shift
         sigma_start = self.sigma_min + (self.sigma_max - self.sigma_min) * denoising_strength
@@ -25,7 +41,15 @@ class FlowMatchScheduler():
             self.sigmas = torch.linspace(sigma_start, self.sigma_min, num_inference_steps)
         if self.inverse_timesteps:
             self.sigmas = torch.flip(self.sigmas, dims=[0])
-        self.sigmas = self.shift * self.sigmas / (1 + (self.shift - 1) * self.sigmas)
+        if self.exponential_shift:
+            mu = self.calculate_shift(dynamic_shift_len) if dynamic_shift_len is not None else self.exponential_shift_mu
+            self.sigmas = math.exp(mu) / (math.exp(mu) + (1 / self.sigmas - 1))
+        else:
+            self.sigmas = self.shift * self.sigmas / (1 + (self.shift - 1) * self.sigmas)
+        if self.shift_terminal is not None:
+            one_minus_z = 1 - self.sigmas
+            scale_factor = one_minus_z[-1] / (1 - self.shift_terminal)
+            self.sigmas = 1 - (one_minus_z / scale_factor)
         if self.reverse_sigmas:
             self.sigmas = 1 - self.sigmas
         self.timesteps = self.sigmas * self.num_train_timesteps
@@ -80,3 +104,17 @@ class FlowMatchScheduler():
         timestep_id = torch.argmin((self.timesteps - timestep.to(self.timesteps.device)).abs())
         weights = self.linear_timesteps_weights[timestep_id]
         return weights
+    
+    
+    def calculate_shift(
+        self,
+        image_seq_len,
+        base_seq_len: int = 256,
+        max_seq_len: int = 8192,
+        base_shift: float = 0.5,
+        max_shift: float = 0.9,
+    ):
+        m = (max_shift - base_shift) / (max_seq_len - base_seq_len)
+        b = base_shift - m * base_seq_len
+        mu = image_seq_len * m + b
+        return mu
