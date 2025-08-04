@@ -50,14 +50,30 @@ class PatchEmbed(torch.nn.Module):
         return latent + pos_embed
 
 
+class DiffusersCompatibleTimestepProj(torch.nn.Module):
+    def __init__(self, dim_in, dim_out):
+        super().__init__()
+        self.linear_1 = torch.nn.Linear(dim_in, dim_out)
+        self.act = torch.nn.SiLU()
+        self.linear_2 = torch.nn.Linear(dim_out, dim_out)
+
+    def forward(self, x):
+        x = self.linear_1(x)
+        x = self.act(x)
+        x = self.linear_2(x)
+        return x
+
 
 class TimestepEmbeddings(torch.nn.Module):
-    def __init__(self, dim_in, dim_out, computation_device=None):
+    def __init__(self, dim_in, dim_out, computation_device=None, diffusers_compatible_format=False, scale=1, align_dtype_to_timestep=False):
         super().__init__()
-        self.time_proj = TemporalTimesteps(num_channels=dim_in, flip_sin_to_cos=True, downscale_freq_shift=0, computation_device=computation_device)
-        self.timestep_embedder = torch.nn.Sequential(
-            torch.nn.Linear(dim_in, dim_out), torch.nn.SiLU(), torch.nn.Linear(dim_out, dim_out)
-        )
+        self.time_proj = TemporalTimesteps(num_channels=dim_in, flip_sin_to_cos=True, downscale_freq_shift=0, computation_device=computation_device, scale=scale, align_dtype_to_timestep=align_dtype_to_timestep)
+        if diffusers_compatible_format:
+            self.timestep_embedder = DiffusersCompatibleTimestepProj(dim_in, dim_out)
+        else:
+            self.timestep_embedder = torch.nn.Sequential(
+                torch.nn.Linear(dim_in, dim_out), torch.nn.SiLU(), torch.nn.Linear(dim_out, dim_out)
+            )
 
     def forward(self, timestep, dtype):
         time_emb = self.time_proj(timestep).to(dtype)
