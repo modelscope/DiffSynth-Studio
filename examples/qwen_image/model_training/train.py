@@ -1,6 +1,7 @@
 import torch, os, json
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
-from diffsynth.trainers.utils import DiffusionTrainingModule, ImageDataset, ModelLogger, launch_training_task, qwen_image_parser
+from diffsynth.trainers.utils import DiffusionTrainingModule, ModelLogger, launch_training_task, qwen_image_parser
+from diffsynth.trainers.dataset import ImageDataset
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -92,7 +93,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
 if __name__ == "__main__":
     parser = qwen_image_parser()
     args = parser.parse_args()
-    dataset = ImageDataset(args=args)
+    dataset = ImageDataset(args=args, default_key_model="qwen-image")
     model = QwenImageTrainingModule(
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
