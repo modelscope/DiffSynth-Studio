@@ -38,6 +38,7 @@ class QwenImagePipeline(BasePipeline):
             QwenImageUnit_NoiseInitializer(),
             QwenImageUnit_InputImageEmbedder(),
             QwenImageUnit_PromptEmbedder(),
+            QwenImageUnit_EntityControl(),
         ]
         self.model_fn = model_fn_qwen_image
         
@@ -190,6 +191,10 @@ class QwenImagePipeline(BasePipeline):
         rand_device: str = "cpu",
         # Steps
         num_inference_steps: int = 30,
+        # EliGen
+        eligen_entity_prompts: list[str] = None,
+        eligen_entity_masks: list[Image.Image] = None,
+        eligen_enable_on_negative: bool = False,
         # Tile
         tiled: bool = False,
         tile_size: int = 128,
@@ -213,6 +218,7 @@ class QwenImagePipeline(BasePipeline):
             "height": height, "width": width,
             "seed": seed, "rand_device": rand_device,
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
+            "eligen_entity_prompts": eligen_entity_prompts, "eligen_entity_masks": eligen_entity_masks, "eligen_enable_on_negative": eligen_enable_on_negative,
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
@@ -322,6 +328,84 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
             return {}
 
 
+class QwenImageUnit_EntityControl(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            take_over=True,
+            onload_model_names=("text_encoder")
+        )
+
+    def extract_masked_hidden(self, hidden_states: torch.Tensor, mask: torch.Tensor):
+        bool_mask = mask.bool()
+        valid_lengths = bool_mask.sum(dim=1)
+        selected = hidden_states[bool_mask]
+        split_result = torch.split(selected, valid_lengths.tolist(), dim=0)
+        return split_result
+
+    def get_prompt_emb(self, pipe: QwenImagePipeline, prompt) -> dict:
+        if pipe.text_encoder is not None:
+            prompt = [prompt]
+            template = "<|im_start|>system\nDescribe the image by detailing the color, shape, size, texture, quantity, text, spatial relationships of the objects and background:<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n"
+            drop_idx = 34
+            txt = [template.format(e) for e in prompt]
+            txt_tokens = pipe.tokenizer(txt, max_length=1024+drop_idx, padding=True, truncation=True, return_tensors="pt").to(pipe.device)
+            hidden_states = pipe.text_encoder(input_ids=txt_tokens.input_ids, attention_mask=txt_tokens.attention_mask, output_hidden_states=True,)[-1]
+            
+            split_hidden_states = self.extract_masked_hidden(hidden_states, txt_tokens.attention_mask)
+            split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
+            attn_mask_list = [torch.ones(e.size(0), dtype=torch.long, device=e.device) for e in split_hidden_states]
+            max_seq_len = max([e.size(0) for e in split_hidden_states])
+            prompt_embeds = torch.stack([torch.cat([u, u.new_zeros(max_seq_len - u.size(0), u.size(1))]) for u in split_hidden_states])
+            encoder_attention_mask = torch.stack([torch.cat([u, u.new_zeros(max_seq_len - u.size(0))]) for u in attn_mask_list])
+            prompt_embeds = prompt_embeds.to(dtype=pipe.torch_dtype, device=pipe.device)
+            return {"prompt_emb": prompt_embeds, "prompt_emb_mask": encoder_attention_mask}
+        else:
+            return {}
+
+    def preprocess_masks(self, pipe, masks, height, width, dim):
+        out_masks = []
+        for mask in masks:
+            mask = pipe.preprocess_image(mask.resize((width, height), resample=Image.NEAREST)).mean(dim=1, keepdim=True) > 0
+            mask = mask.repeat(1, dim, 1, 1).to(device=pipe.device, dtype=pipe.torch_dtype)
+            out_masks.append(mask)
+        return out_masks
+
+    def prepare_entity_inputs(self, pipe, entity_prompts, entity_masks, width, height):
+        entity_masks = self.preprocess_masks(pipe, entity_masks, height//8, width//8, 1)
+        entity_masks = torch.cat(entity_masks, dim=0).unsqueeze(0) # b, n_mask, c, h, w
+        prompt_embs, prompt_emb_masks = [], []
+        for entity_prompt in entity_prompts:
+            prompt_emb_dict = self.get_prompt_emb(pipe, entity_prompt)
+            prompt_embs.append(prompt_emb_dict['prompt_emb'])
+            prompt_emb_masks.append(prompt_emb_dict['prompt_emb_mask'])
+        return prompt_embs, prompt_emb_masks, entity_masks
+
+    def prepare_eligen(self, pipe, prompt_emb_nega, eligen_entity_prompts, eligen_entity_masks, width, height, enable_eligen_on_negative, cfg_scale):
+        entity_prompt_emb_posi, entity_prompt_emb_posi_mask, entity_masks_posi = self.prepare_entity_inputs(pipe, eligen_entity_prompts, eligen_entity_masks, width, height)
+        if enable_eligen_on_negative and cfg_scale != 1.0:
+            entity_prompt_emb_nega = [prompt_emb_nega['prompt_emb']] * len(entity_prompt_emb_posi)
+            entity_prompt_emb_nega_mask = [prompt_emb_nega['prompt_emb_mask']] * len(entity_prompt_emb_posi)
+            entity_masks_nega = entity_masks_posi
+        else:
+            entity_prompt_emb_nega, entity_prompt_emb_nega_mask, entity_masks_nega = None, None, None
+        eligen_kwargs_posi = {"entity_prompt_emb": entity_prompt_emb_posi, "entity_masks": entity_masks_posi, "entity_prompt_emb_mask": entity_prompt_emb_posi_mask}
+        eligen_kwargs_nega = {"entity_prompt_emb": entity_prompt_emb_nega, "entity_masks": entity_masks_nega, "entity_prompt_emb_mask": entity_prompt_emb_nega_mask}
+        return eligen_kwargs_posi, eligen_kwargs_nega
+
+    def process(self, pipe: QwenImagePipeline, inputs_shared, inputs_posi, inputs_nega):
+        eligen_entity_prompts, eligen_entity_masks = inputs_shared.get("eligen_entity_prompts", None), inputs_shared.get("eligen_entity_masks", None)
+        if eligen_entity_prompts is None or eligen_entity_masks is None or len(eligen_entity_prompts) == 0 or len(eligen_entity_masks) == 0:
+            return inputs_shared, inputs_posi, inputs_nega
+        pipe.load_models_to_device(self.onload_model_names)
+        eligen_enable_on_negative = inputs_shared.get("eligen_enable_on_negative", False)
+        eligen_kwargs_posi, eligen_kwargs_nega = self.prepare_eligen(pipe, inputs_nega,
+            eligen_entity_prompts, eligen_entity_masks, inputs_shared["width"], inputs_shared["height"],
+            eligen_enable_on_negative, inputs_shared["cfg_scale"])
+        inputs_posi.update(eligen_kwargs_posi)
+        if inputs_shared.get("cfg_scale", 1.0) != 1.0:
+            inputs_nega.update(eligen_kwargs_nega)
+        return inputs_shared, inputs_posi, inputs_nega
+
 
 def model_fn_qwen_image(
     dit: QwenImageDiT = None,
@@ -331,6 +415,9 @@ def model_fn_qwen_image(
     prompt_emb_mask=None,
     height=None,
     width=None,
+    entity_prompt_emb=None,
+    entity_prompt_emb_mask=None,
+    entity_masks=None,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     **kwargs
@@ -342,9 +429,17 @@ def model_fn_qwen_image(
     image = rearrange(latents, "B C (H P) (W Q) -> B (H W) (C P Q)", H=height//16, W=width//16, P=2, Q=2)
     
     image = dit.img_in(image)
-    text = dit.txt_in(dit.txt_norm(prompt_emb))
     conditioning = dit.time_text_embed(timestep, image.dtype)
-    image_rotary_emb = dit.pos_embed(img_shapes, txt_seq_lens, device=latents.device)
+
+    if entity_prompt_emb is not None:
+        text, image_rotary_emb, attention_mask = dit.process_entity_masks(
+            latents, prompt_emb, prompt_emb_mask, entity_prompt_emb, entity_prompt_emb_mask,
+            entity_masks, height, width, image, img_shapes,
+        )
+    else:
+        text = dit.txt_in(dit.txt_norm(prompt_emb))
+        image_rotary_emb = dit.pos_embed(img_shapes, txt_seq_lens, device=latents.device)
+        attention_mask = None
 
     for block in dit.transformer_blocks:
         text, image = gradient_checkpoint_forward(
@@ -355,6 +450,7 @@ def model_fn_qwen_image(
             text=text,
             temb=conditioning,
             image_rotary_emb=image_rotary_emb,
+            attention_mask=attention_mask,
         )
     
     image = dit.norm_out(image, conditioning)
