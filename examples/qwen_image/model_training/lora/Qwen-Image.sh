@@ -12,4 +12,6 @@ accelerate launch examples/qwen_image/model_training/train.py \
   --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_out.0,to_add_out,img_mlp.net.2,img_mod.1,txt_mlp.net.2,txt_mod.1" \
   --lora_rank 32 \
   --align_to_opensource_format \
-  --use_gradient_checkpointing
+  --use_gradient_checkpointing \
+  --dataset_num_workers 8 \
+  --find_unused_parameters

@@ -249,6 +249,7 @@ The script includes the following parameters:
   * `--width`: Width of the image or video. Leave `height` and `width` empty to enable dynamic resolution.
   * `--data_file_keys`: Data file keys in the metadata. Separate with commas.
   * `--dataset_repeat`: Number of times the dataset repeats per epoch.
+  * `--dataset_num_workers`: Number of workers for data loading.
 * Model
   * `--model_paths`: Paths to load models. In JSON format.
   * `--model_id_with_origin_paths`: Model ID with original paths, e.g., black-forest-labs/FLUX.1-dev:flux1-dev.safetensors. Separate with commas.
@@ -257,6 +258,8 @@ The script includes the following parameters:
   * `--num_epochs`: Number of epochs.
   * `--output_path`: Save path.
   * `--remove_prefix_in_ckpt`: Remove prefix in checkpoint.
+  * `--save_steps`: Number of checkpoint saving invervals. If None, checkpoints will be saved every epoch.
+  * `--find_unused_parameters`: Whether to find unused parameters in DDP.
 * Trainable Modules
   * `--trainable_models`: Models that can be trained, e.g., dit, vae, text_encoder.
   * `--lora_base_model`: Which model to add LoRA to.
