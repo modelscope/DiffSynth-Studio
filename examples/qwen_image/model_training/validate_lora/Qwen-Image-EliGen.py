@@ -13,7 +13,7 @@ pipe = QwenImagePipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
 )
-pipe.load_lora(pipe.dit, "models/train/Qwen-Image_lora/epoch-4.safetensors")
+pipe.load_lora(pipe.dit, "models/train/Qwen-Image-EliGen_lora/epoch-4.safetensors")
 
 
 entity_prompts = ["A beautiful girl", "sign 'Entity Control'", "shorts", "shirt"]
