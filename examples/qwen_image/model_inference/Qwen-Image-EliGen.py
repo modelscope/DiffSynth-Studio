@@ -1,14 +1,14 @@
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 import torch
 from PIL import Image, ImageDraw, ImageFont
-from modelscope import dataset_snapshot_download
+from modelscope import dataset_snapshot_download, snapshot_download
 import random
 
 
 def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_random_colors=False):
     # Create a blank image for overlays
     overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
-    
+
     colors = [
         (165, 238, 173, 80),
         (76, 102, 221, 80),
@@ -30,10 +30,10 @@ def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_r
     # Generate random colors for each mask
     if use_random_colors:
         colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 80) for _ in range(len(masks))]
-    
+
     # Font settings
     try:
-        font = ImageFont.truetype("arial", font_size)  # Adjust as needed
+        font = ImageFont.truetype("wqy-zenhei.ttc", font_size)  # Adjust as needed
     except IOError:
         font = ImageFont.load_default(font_size)
 
@@ -53,18 +53,18 @@ def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_r
 
         # Alpha composite the overlay with this mask
         overlay = Image.alpha_composite(overlay, mask_rgba)
-    
+
     # Composite the overlay onto the original image
     result = Image.alpha_composite(image.convert('RGBA'), overlay)
-    
+
     # Save or display the resulting image
     result.save(output_path)
 
     return result
 
 def example(pipe, seeds, example_id, global_prompt, entity_prompts):
-    dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern=f"data/examples/eligen/entity_control/example_{example_id}/*.png")
-    masks = [Image.open(f"./data/examples/eligen/entity_control/example_{example_id}/{i}.png").convert('RGB') for i in range(len(entity_prompts))]
+    dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern=f"data/examples/eligen/qwen-image/example_{example_id}/*.png")
+    masks = [Image.open(f"./data/examples/eligen/qwen-image/example_{example_id}/{i}.png").convert('RGB') for i in range(len(entity_prompts))]
     negative_prompt = ""
     for seed in seeds:
         # generate image
@@ -93,8 +93,8 @@ pipe = QwenImagePipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
 )
-pipe.load_lora(pipe.dit, "models/train/Qwen-Image-EliGen_lora/step-20000.safetensors")
-
+snapshot_download("DiffSynth-Studio/Qwen-Image-EliGen", local_dir="models/DiffSynth-Studio/Qwen-Image-EliGen", allow_file_pattern="model.safetensors")
+pipe.load_lora(pipe.dit, "models/DiffSynth-Studio/Qwen-Image-EliGen/model.safetensors")
 
 # example 1
 global_prompt = "A breathtaking beauty of Raja Ampat by the late-night moonlight , one beautiful woman from behind wearing a pale blue long dress with soft glow, sitting at the top of a cliff looking towards the beach,pastell light colors, a group of small distant birds flying in far sky, a boat sailing on the sea, best quality, realistic, whimsical, fantastic, splash art, intricate detailed, hyperdetailed, maximalist style, photorealistic, concept art, sharp focus, harmony, serenity, tranquility, soft pastell colors,ambient occlusion, cozy ambient lighting, masterpiece, liiv1, linquivera, metix, mentixis, masterpiece, award winning, view from above\n"
@@ -103,7 +103,7 @@ example(pipe, [0], 1, global_prompt, entity_prompts)
 
 # example 2
 global_prompt = "samurai girl wearing a kimono, she's holding a sword  glowing with red flame, her long hair is flowing in the wind, she is looking at a small bird perched on the back of her hand. ultra realist style. maximum image detail. maximum realistic render."
-entity_prompts = ["flowing hair", "sword glowing with red flame", "A cute bird", "blue belt"]
+entity_prompts = ["flowing hair", "sword glowing with red flame", "A cute bird", "yellow belt"]
 example(pipe, [0], 2, global_prompt, entity_prompts)
 
 # example 3
@@ -121,13 +121,14 @@ global_prompt = "A captivating, dramatic scene in a painting that exudes mystery
 entity_prompts = ["crescent yellow moon", "a solitary woman", "water", "swirling blue clouds"]
 example(pipe, [0], 5, global_prompt, entity_prompts)
 
-# example 6
-global_prompt = "Snow White and the 6 Dwarfs."
-entity_prompts = ["Dwarf 1", "Dwarf 2", "Dwarf 3", "Snow White", "Dwarf 4", "Dwarf 5", "Dwarf 6"]
-example(pipe, [8], 6, global_prompt, entity_prompts)
+# example 6, poster
+seeds = range(0, 1)
+global_prompt =  "瑞幸咖啡蓝莓奶背的宣传海报，主体是两杯浅绿色的瑞幸蓝莓奶昔杯装饮品，背景是浅蓝色水雾，海报写着“Luckin Coffee 蓝莓奶昔闪耀回归”，“新品上市” "
+entity_prompts = ["杯装饮品", "杯装饮品", "字：“新品上市”", "字：“Luckin Coffee 蓝莓奶昔闪耀回归”"]
+example(pipe, seeds, 6, global_prompt, entity_prompts)
 
 # example 7, same prompt with different seeds
 seeds = range(5, 9)
-global_prompt = "A beautiful asia woman wearing white dress, holding a mirror, with a forest background;"
+global_prompt = "A beautiful asia woman wearing white dress, holding a mirror, with a forest background."
 entity_prompts = ["A beautiful woman", "mirror", "necklace", "glasses", "earring", "white dress", "jewelry headpiece"]
 example(pipe, seeds, 7, global_prompt, entity_prompts)

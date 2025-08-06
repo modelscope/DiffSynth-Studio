@@ -5,23 +5,23 @@ from PIL import Image, ImageDraw, ImageFont
 import random
 import json
 import gradio as gr
-from diffsynth import ModelManager, FluxImagePipeline, download_customized_models
-from modelscope import dataset_snapshot_download
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
+from modelscope import dataset_snapshot_download, snapshot_download
 
 # pip install pydantic==2.10.6
 # pip install gradio==5.4.0
 
+snapshot_download("DiffSynth-Studio/Qwen-Image-EliGen", local_dir="models/DiffSynth-Studio/Qwen-Image-EliGen", allow_file_pattern="model.safetensors")
 
-dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern=f"data/examples/eligen/entity_control/*")
-example_json = 'data/examples/eligen/entity_control/ui_examples.json'
+dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern=f"data/examples/eligen/qwen-image/*")
+example_json = 'data/examples/eligen/qwen-image/ui_examples.json'
 with open(example_json, 'r') as f:
     examples = json.load(f)['examples']
 
 for idx in range(len(examples)):
     example_id = examples[idx]['example_id']
     entity_prompts = examples[idx]['local_prompt_list']
-    examples[idx]['mask_lists'] = [Image.open(f"data/examples/eligen/entity_control/example_{example_id}/{i}.png").convert('RGB') for i in range(len(entity_prompts))]
+    examples[idx]['mask_lists'] = [Image.open(f"data/examples/eligen/qwen-image/example_{example_id}/{i}.png").convert('RGB') for i in range(len(entity_prompts))]
 
 def create_canvas_data(background, masks):
     if background.shape[-1] == 3:
@@ -113,7 +113,10 @@ def visualize_masks(image, masks, mask_prompts, font_size=35, use_random_colors=
     if use_random_colors:
         colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 80) for _ in range(len(masks))]
     # Font settings
-    font = ImageFont.truetype("dinglieciweifont20250217-2.ttf", font_size)  # Adjust as needed
+    try:
+        font = ImageFont.truetype("wqy-zenhei.ttc", font_size)  # Adjust as needed
+    except IOError:
+        font = ImageFont.load_default(font_size)
     # Overlay each mask onto the overlay image
     for mask, mask_prompt, color in zip(masks, mask_prompts, colors):
         if mask is None:
@@ -158,7 +161,7 @@ def load_model(model_type='qwen-image'):
         ],
         tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
     )
-    pipe.load_lora(pipe.dit, "models/train/Qwen-Image-EliGen_lora/step-20000.safetensors")
+    pipe.load_lora(pipe.dit, "models/DiffSynth-Studio/Qwen-Image-EliGen/model.safetensors")
     model_dict[model_key] = pipe
     return pipe
 
@@ -171,7 +174,7 @@ with gr.Blocks() as app:
                 2. On the right, input the **local prompt** for each entity, such as "person," and draw the corresponding mask in the **Entity Mask Painter**. Generally, solid rectangular masks yield better results.
                 3. Click the **Generate** button to create the image. By selecting different **random seeds**, you can generate diverse images.
                 4. **You can directly click the "Load Example" button on any sample at the bottom to load example inputs.**
-                """
+        """
     )
 
     loading_status = gr.Textbox(label="Loading Model...", value="Loading model... Please wait...", visible=True)
@@ -207,10 +210,9 @@ with gr.Blocks() as app:
                     seed = gr.Number(minimum=0, maximum=10**9, value=42, interactive=True, label="Random seed", show_label=True)
                     num_inference_steps = gr.Slider(minimum=1, maximum=100, value=30, step=1, interactive=True, label="Inference steps")
                     cfg_scale = gr.Slider(minimum=2.0, maximum=10.0, value=4.0, step=0.1, interactive=True, label="Classifier-free guidance scale")
-                    embedded_guidance = gr.Slider(minimum=0.0, maximum=10.0, value=3.5, step=0.1, interactive=True, label="Embedded guidance scale")
                     height = gr.Slider(minimum=64, maximum=2048, value=1024, step=64, interactive=True, label="Height")
                     width = gr.Slider(minimum=64, maximum=2048, value=1024, step=64, interactive=True, label="Width")
-                with gr.Accordion(label="Inpaint Input Image", open=False):
+                with gr.Accordion(label="Inpaint Input Image", open=False, visible=False):
                     input_image = gr.Image(sources=None, show_label=False, interactive=True, type="pil")
                     background_weight = gr.Slider(minimum=0.0, maximum=1000., value=0., step=1, interactive=False, label="background_weight", visible=False)
 
@@ -266,11 +268,11 @@ with gr.Blocks() as app:
                     mask_out = gr.State(None)
 
                     @gr.on(
-                        inputs=[model_type, prompt, negative_prompt, cfg_scale, embedded_guidance, num_inference_steps, height, width, return_with_mask, seed, input_image, background_weight, random_mask_dir] + local_prompt_list + canvas_list,
+                        inputs=[model_type, prompt, negative_prompt, cfg_scale, num_inference_steps, height, width, return_with_mask, seed, input_image, background_weight, random_mask_dir] + local_prompt_list + canvas_list,
                         outputs=[output_image, real_output, mask_out],
                         triggers=run_button.click
                     )
-                    def generate_image(model_type, prompt, negative_prompt, cfg_scale, embedded_guidance, num_inference_steps, height, width, return_with_mask, seed, input_image, background_weight, random_mask_dir, *args, progress=gr.Progress()):
+                    def generate_image(model_type, prompt, negative_prompt, cfg_scale, num_inference_steps, height, width, return_with_mask, seed, input_image, background_weight, random_mask_dir, *args, progress=gr.Progress()):
                         pipe = load_model(model_type)
                         input_params = {
                             "prompt": prompt,
@@ -281,11 +283,9 @@ with gr.Blocks() as app:
                             "width": width,
                             "progress_bar_cmd": progress.tqdm,
                         }
-                        if isinstance(pipe, FluxImagePipeline):
-                            input_params["embedded_guidance"] = embedded_guidance
-                        if input_image is not None:
-                            input_params["input_image"] = input_image.resize((width, height)).convert("RGB")
-                            input_params["enable_eligen_inpaint"] = True
+                        # if input_image is not None:
+                        #     input_params["input_image"] = input_image.resize((width, height)).convert("RGB")
+                        #     input_params["enable_eligen_inpaint"] = True
 
                         local_prompt_list, canvas_list = (
                             args[0 * config["max_num_painter_layers"]: 1 * config["max_num_painter_layers"]],
@@ -349,7 +349,7 @@ with gr.Blocks() as app:
                         example = examples[i]
                         with gr.Column():
                             example_image = gr.Image(
-                                value=f"data/examples/eligen/entity_control/example_{example['example_id']}/example_image.png",
+                                value=f"data/examples/eligen/qwen-image/example_{example['example_id']}/example_image.png",
                                 label=example["description"],
                                 interactive=False,
                                 width=1024,
@@ -366,7 +366,7 @@ with gr.Blocks() as app:
                         example = examples[i + 1]
                         with gr.Column():
                             example_image = gr.Image(
-                                value=f"data/examples/eligen/entity_control/example_{example['example_id']}/example_image.png",
+                                value=f"data/examples/eligen/qwen-image/example_{example['example_id']}/example_image.png",
                                 label=example["description"],
                                 interactive=False,
                                 width=1024,

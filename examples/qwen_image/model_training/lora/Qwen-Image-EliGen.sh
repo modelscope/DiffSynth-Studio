@@ -1,5 +1,5 @@
 accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
+  --dataset_base_path "data/example_image_dataset" \
   --dataset_metadata_path data/example_image_dataset/metadata_eligen.json \
   --data_file_keys "image,eligen_entity_masks" \
   --max_pixels 1048576 \
@@ -15,5 +15,4 @@ accelerate launch examples/qwen_image/model_training/train.py \
   --align_to_opensource_format \
   --extra_inputs "eligen_entity_masks,eligen_entity_prompts" \
   --use_gradient_checkpointing \
-  --dataset_num_workers 8 \
   --find_unused_parameters

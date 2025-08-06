@@ -26,4 +26,4 @@ image = pipe(global_prompt,
              width=1024,
              eligen_entity_prompts=entity_prompts,
              eligen_entity_masks=masks)
-image.save("image.jpg")
+image.save("Qwen-Image_EliGen.jpg")
