@@ -383,5 +383,20 @@ class WanLoRAConverter:
         return state_dict
 
 
+class QwenImageLoRAConverter:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def align_to_opensource_format(state_dict, **kwargs):
+        state_dict = {name.replace(".default.", "."): param for name, param in state_dict.items()}
+        return state_dict
+    
+    @staticmethod
+    def align_to_diffsynth_format(state_dict, **kwargs):
+        state_dict = {name.replace(".lora_A.weight", ".lora_A.default.weight").replace(".lora_B.weight", ".lora_B.default.weight"): param for name, param in state_dict.items()}
+        return state_dict
+
+
 def get_lora_loaders():
     return [SDLoRAFromCivitai(), SDXLLoRAFromCivitai(), FluxLoRAFromCivitai(), HunyuanVideoLoRAFromCivitai(), GeneralLoRAFromPeft()]
