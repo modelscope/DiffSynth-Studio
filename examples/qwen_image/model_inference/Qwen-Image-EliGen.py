@@ -62,6 +62,26 @@ def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_r
 
     return result
 
+def example(pipe, seeds, example_id, global_prompt, entity_prompts):
+    dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern=f"data/examples/eligen/entity_control/example_{example_id}/*.png")
+    masks = [Image.open(f"./data/examples/eligen/entity_control/example_{example_id}/{i}.png").convert('RGB') for i in range(len(entity_prompts))]
+    negative_prompt = ""
+    for seed in seeds:
+        # generate image
+        image = pipe(
+            prompt=global_prompt,
+            cfg_scale=4.0,
+            negative_prompt=negative_prompt,
+            num_inference_steps=30,
+            seed=seed,
+            height=1024,
+            width=1024,
+            eligen_entity_prompts=entity_prompts,
+            eligen_entity_masks=masks,
+        )
+        image.save(f"eligen_example_{example_id}_{seed}.png")
+        visualize_masks(image, masks, entity_prompts, f"eligen_example_{example_id}_mask_{seed}.png")
+
 
 pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -73,17 +93,41 @@ pipe = QwenImagePipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
 )
-example_id = 1
-global_prompt = "A breathtaking beauty of Raja Ampat by the late-night moonlight , one beautiful woman from behind wearing a long dress, sitting at the top of a cliff looking towards the beach,pastell light colors, a group of small distant birds flying in far sky, a boat sailing on the sea\n"
-dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern=f"data/examples/eligen/entity_control/example_{example_id}/*.png")
-entity_prompts = ["cliff", "sea", "red moon", "sailing boat", "a seated beautiful woman wearing red dress", "yellow long dress"]
-masks = [Image.open(f"./data/examples/eligen/entity_control/example_{example_id}/{i}.png").convert('RGB') for i in range(len(entity_prompts))]
+pipe.load_lora(pipe.dit, "models/train/Qwen-Image-EliGen_lora/step-20000.safetensors")
 
-for seed in range(20):
-    image = pipe(global_prompt, seed=seed, num_inference_steps=40, eligen_entity_prompts=entity_prompts, eligen_entity_masks=masks, cfg_scale=4.0, height=1024, width=1024)
-    image.save(f"workdirs/qwen_image/eligen_{seed}.jpg")
 
-    visualize_masks(image, masks, entity_prompts, f"workdirs/qwen_image/eligen_{seed}_mask.png")
+# example 1
+global_prompt = "A breathtaking beauty of Raja Ampat by the late-night moonlight , one beautiful woman from behind wearing a pale blue long dress with soft glow, sitting at the top of a cliff looking towards the beach,pastell light colors, a group of small distant birds flying in far sky, a boat sailing on the sea, best quality, realistic, whimsical, fantastic, splash art, intricate detailed, hyperdetailed, maximalist style, photorealistic, concept art, sharp focus, harmony, serenity, tranquility, soft pastell colors,ambient occlusion, cozy ambient lighting, masterpiece, liiv1, linquivera, metix, mentixis, masterpiece, award winning, view from above\n"
+entity_prompts = ["cliff", "sea", "moon", "sailing boat", "a seated beautiful woman", "pale blue long dress with soft glow"]
+example(pipe, [0], 1, global_prompt, entity_prompts)
 
-    image1 = pipe(global_prompt, seed=seed, num_inference_steps=40, height=1024, width=1024, cfg_scale=4.0)
-    image1.save(f"workdirs/qwen_image/qwenimage_{seed}.jpg")
+# example 2
+global_prompt = "samurai girl wearing a kimono, she's holding a sword  glowing with red flame, her long hair is flowing in the wind, she is looking at a small bird perched on the back of her hand. ultra realist style. maximum image detail. maximum realistic render."
+entity_prompts = ["flowing hair", "sword glowing with red flame", "A cute bird", "blue belt"]
+example(pipe, [0], 2, global_prompt, entity_prompts)
+
+# example 3
+global_prompt = "Image of a neverending staircase up to a mysterious palace in the sky, The ancient palace stood majestically atop a mist-shrouded mountain, sunrise, two traditional monk walk in the stair looking at the sunrise, fog,see-through, best quality, whimsical, fantastic, splash art, intricate detailed, hyperdetailed, photorealistic, concept art, harmony, serenity, tranquility, ambient occlusion, halation, cozy ambient lighting, dynamic lighting,masterpiece, liiv1, linquivera, metix, mentixis, masterpiece, award winning,"
+entity_prompts = ["ancient palace", "stone staircase with railings", "a traditional monk", "a traditional monk"]
+example(pipe, [27], 3, global_prompt, entity_prompts)
+
+# example 4
+global_prompt = "A beautiful girl wearing shirt and shorts in the street,  holding a sign 'Entity Control'"
+entity_prompts = ["A beautiful girl", "sign 'Entity Control'", "shorts", "shirt"]
+example(pipe, [21], 4, global_prompt, entity_prompts)
+
+# example 5
+global_prompt = "A captivating, dramatic scene in a painting that exudes mystery and foreboding. A white sky, swirling blue clouds, and a crescent yellow moon illuminate a solitary woman standing near the water's edge. Her long dress flows in the wind, silhouetted against the eerie glow. The water mirrors the fiery sky and moonlight, amplifying the uneasy atmosphere."
+entity_prompts = ["crescent yellow moon", "a solitary woman", "water", "swirling blue clouds"]
+example(pipe, [0], 5, global_prompt, entity_prompts)
+
+# example 6
+global_prompt = "Snow White and the 6 Dwarfs."
+entity_prompts = ["Dwarf 1", "Dwarf 2", "Dwarf 3", "Snow White", "Dwarf 4", "Dwarf 5", "Dwarf 6"]
+example(pipe, [8], 6, global_prompt, entity_prompts)
+
+# example 7, same prompt with different seeds
+seeds = range(5, 9)
+global_prompt = "A beautiful asia woman wearing white dress, holding a mirror, with a forest background;"
+entity_prompts = ["A beautiful woman", "mirror", "necklace", "glasses", "earring", "white dress", "jewelry headpiece"]
+example(pipe, seeds, 7, global_prompt, entity_prompts)
