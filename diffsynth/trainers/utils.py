@@ -404,6 +404,7 @@ def launch_training_task(
     )
     model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
     
+    global_steps = 0
     for epoch_id in range(num_epochs):
         for step_id, data in enumerate(tqdm(dataloader)):
             with accelerator.accumulate(model):

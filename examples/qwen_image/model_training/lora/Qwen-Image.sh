@@ -13,5 +13,5 @@ accelerate launch examples/qwen_image/model_training/train.py \
   --lora_rank 32 \
   --align_to_opensource_format \
   --use_gradient_checkpointing \
-  --num_workers 8 \
+  --dataset_num_workers 8 \
   --find_unused_parameters
