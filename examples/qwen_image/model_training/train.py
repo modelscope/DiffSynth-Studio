@@ -1,5 +1,5 @@
 import torch, os, json
-from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
+from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig, ControlNetInput
 from diffsynth.trainers.utils import DiffusionTrainingModule, ImageDataset, ModelLogger, launch_training_task, qwen_image_parser
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -72,8 +72,14 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         }
         
         # Extra inputs
+        controlnet_input = {}
         for extra_input in self.extra_inputs:
-            inputs_shared[extra_input] = data[extra_input]
+            if extra_input.startswith("controlnet_"):
+                controlnet_input[extra_input.replace("controlnet_", "")] = data[extra_input]
+            else:
+                inputs_shared[extra_input] = data[extra_input]
+        if len(controlnet_input) > 0:
+            inputs_shared["controlnet_inputs"] = [ControlNetInput(**controlnet_input)]
         
         # Pipeline units will automatically process the input parameters.
         for unit in self.pipe.units:
