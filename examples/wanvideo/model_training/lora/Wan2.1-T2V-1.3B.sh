@@ -1,6 +1,7 @@
 accelerate launch examples/wanvideo/model_training/train.py \
   --dataset_base_path data/example_video_dataset \
   --dataset_metadata_path data/example_video_dataset/metadata.csv \
+  --dataset_input_configs "prompt,video" \
   --height 480 \
   --width 832 \
   --dataset_repeat 100 \

@@ -1,6 +1,7 @@
 import torch, os, json
 from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig, ControlNetInput
-from diffsynth.trainers.utils import DiffusionTrainingModule, ImageDataset, ModelLogger, launch_training_task, flux_parser
+from diffsynth.trainers.utils import DiffusionTrainingModule, ModelLogger, launch_training_task, flux_parser
+from diffsynth.trainers.dataset import ImageDataset
 from diffsynth.models.lora import FluxLoRAConverter
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -98,7 +99,7 @@ class FluxTrainingModule(DiffusionTrainingModule):
 if __name__ == "__main__":
     parser = flux_parser()
     args = parser.parse_args()
-    dataset = ImageDataset(args=args)
+    dataset = ImageDataset(args=args, default_key_model="flux")
     model = FluxTrainingModule(
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
