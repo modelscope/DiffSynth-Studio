@@ -127,4 +127,7 @@ if __name__ == "__main__":
         dataset, model, model_logger, optimizer, scheduler,
         num_epochs=args.num_epochs,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
+        save_steps=args.save_steps,
+        find_unused_parameters=args.find_unused_parameters,
+        num_workers=args.dataset_num_workers,
     )

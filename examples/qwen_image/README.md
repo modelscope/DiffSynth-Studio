@@ -43,6 +43,7 @@ image.save("image.jpg")
 |Model ID|Inference|Full Training|Validation after Full Training|LoRA Training|Validation after LoRA Training|
 |-|-|-|-|-|-|
 |[Qwen/Qwen-Image](https://www.modelscope.cn/models/Qwen/Qwen-Image  )|[code](./model_inference/Qwen-Image.py)|[code](./model_training/full/Qwen-Image.sh)|[code](./model_training/validate_full/Qwen-Image.py)|[code](./model_training/lora/Qwen-Image.sh)|[code](./model_training/validate_lora/Qwen-Image.py)|
+|[DiffSynth-Studio/Qwen-Image-Distill-Full](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Distill-Full)|[code](./model_inference/Qwen-Image-Distill-Full.py)|[code](./model_training/full/Qwen-Image-Distill-Full.sh)|[code](./model_training/validate_full/Qwen-Image-Distill-Full.py)|[code](./model_training/lora/Qwen-Image-Distill-Full.sh)|[code](./model_training/validate_lora/Qwen-Image-Distill-Full.py)|
 
 
 ## Model Inference
@@ -218,6 +219,7 @@ The script includes the following parameters:
   * `--width`: Width of image or video. Leave `height` and `width` empty to enable dynamic resolution.
   * `--data_file_keys`: Data file keys in metadata. Separate with commas.
   * `--dataset_repeat`: Number of times the dataset repeats per epoch.
+  * `--dataset_num_workers`: Number of workers for data loading.
 * Model
   * `--model_paths`: Model paths to load. In JSON format.
   * `--model_id_with_origin_paths`: Model ID with original paths, e.g., Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors. Separate with commas.
@@ -227,6 +229,8 @@ The script includes the following parameters:
   * `--num_epochs`: Number of epochs.
   * `--output_path`: Save path.
   * `--remove_prefix_in_ckpt`: Remove prefix in checkpoint.
+  * `--save_steps`: Number of checkpoint saving invervals. If None, checkpoints will be saved every epoch.
+  * `--find_unused_parameters`: Whether to find unused parameters in DDP.
 * Trainable Modules
   * `--trainable_models`: Models to train, e.g., dit, vae, text_encoder.
   * `--lora_base_model`: Which model to add LoRA to.

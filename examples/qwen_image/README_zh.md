@@ -43,6 +43,7 @@ image.save("image.jpg")
 |模型 ID|推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|
 |[Qwen/Qwen-Image](https://www.modelscope.cn/models/Qwen/Qwen-Image)|[code](./model_inference/Qwen-Image.py)|[code](./model_training/full/Qwen-Image.sh)|[code](./model_training/validate_full/Qwen-Image.py)|[code](./model_training/lora/Qwen-Image.sh)|[code](./model_training/validate_lora/Qwen-Image.py)|
+|[DiffSynth-Studio/Qwen-Image-Distill-Full](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Distill-Full)|[code](./model_inference/Qwen-Image-Distill-Full.py)|[code](./model_training/full/Qwen-Image-Distill-Full.sh)|[code](./model_training/validate_full/Qwen-Image-Distill-Full.py)|[code](./model_training/lora/Qwen-Image-Distill-Full.sh)|[code](./model_training/validate_lora/Qwen-Image-Distill-Full.py)|
 
 
 ## 模型推理
@@ -218,6 +219,7 @@ Qwen-Image 系列模型训练通过统一的 [`./model_training/train.py`](./mod
   * `--width`: 图像或视频的宽度。将 `height` 和 `width` 留空以启用动态分辨率。
   * `--data_file_keys`: 元数据中的数据文件键。用逗号分隔。
   * `--dataset_repeat`: 每个 epoch 中数据集重复的次数。
+  * `--dataset_num_workers`: 每个 Dataloder 的进程数量。
 * 模型
   * `--model_paths`: 要加载的模型路径。JSON 格式。
   * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors。用逗号分隔。
@@ -227,6 +229,8 @@ Qwen-Image 系列模型训练通过统一的 [`./model_training/train.py`](./mod
   * `--num_epochs`: 轮数（Epoch）。
   * `--output_path`: 保存路径。
   * `--remove_prefix_in_ckpt`: 在 ckpt 中移除前缀。
+  * `--save_steps`: 保存模型的间隔 step 数量，如果设置为 None ，则每个 epoch 保存一次
+  * `--find_unused_parameters`: DDP 训练中是否存在未使用的参数
 * 可训练模块
   * `--trainable_models`: 可训练的模型，例如 dit、vae、text_encoder。
   * `--lora_base_model`: LoRA 添加到哪个模型上。

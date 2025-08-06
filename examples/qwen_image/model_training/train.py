@@ -1,6 +1,7 @@
 import torch, os, json
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 from diffsynth.trainers.utils import DiffusionTrainingModule, ImageDataset, ModelLogger, launch_training_task, qwen_image_parser
+from diffsynth.models.lora import QwenImageLoRAConverter
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -29,7 +30,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
             self.pipe = QwenImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device="cpu", model_configs=model_configs, tokenizer_config=ModelConfig(tokenizer_path))
         else:
             self.pipe = QwenImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device="cpu", model_configs=model_configs)
-        
+
         # Reset training scheduler (do it in each training step)
         self.pipe.scheduler.set_timesteps(1000, training=True)
         
@@ -49,7 +50,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         self.use_gradient_checkpointing = use_gradient_checkpointing
         self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
         self.extra_inputs = extra_inputs.split(",") if extra_inputs is not None else []
-        
+
     
     def forward_preprocess(self, data):
         # CFG-sensitive parameters
@@ -108,6 +109,7 @@ if __name__ == "__main__":
     model_logger = ModelLogger(
         args.output_path,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
+        state_dict_converter=QwenImageLoRAConverter.align_to_opensource_format if args.align_to_opensource_format else lambda x:x,
     )
     optimizer = torch.optim.AdamW(model.trainable_modules(), lr=args.learning_rate)
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
@@ -115,4 +117,7 @@ if __name__ == "__main__":
         dataset, model, model_logger, optimizer, scheduler,
         num_epochs=args.num_epochs,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
+        save_steps=args.save_steps,
+        find_unused_parameters=args.find_unused_parameters,
+        num_workers=args.dataset_num_workers,
     )

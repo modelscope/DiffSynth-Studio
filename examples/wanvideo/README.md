@@ -280,6 +280,7 @@ The script includes the following parameters:
   * `--num_frames`: Number of frames per video. Frames are sampled from the video prefix.
   * `--data_file_keys`: Data file keys in the metadata. Comma-separated.
   * `--dataset_repeat`: Number of times to repeat the dataset per epoch.
+  * `--dataset_num_workers`: Number of workers for data loading.
 * Models
   * `--model_paths`: Paths to load models. In JSON format.
   * `--model_id_with_origin_paths`: Model ID with origin paths, e.g., Wan-AI/Wan2.1-T2V-1.3B:diffusion_pytorch_model*.safetensors. Comma-separated.
@@ -290,6 +291,8 @@ The script includes the following parameters:
   * `--num_epochs`: Number of epochs.
   * `--output_path`: Output save path.
   * `--remove_prefix_in_ckpt`: Remove prefix in ckpt.
+  * `--save_steps`: Number of checkpoint saving invervals. If None, checkpoints will be saved every epoch.
+  * `--find_unused_parameters`: Whether to find unused parameters in DDP.
 * Trainable Modules
   * `--trainable_models`: Models to train, e.g., dit, vae, text_encoder.
   * `--lora_base_model`: Which model LoRA is added to.

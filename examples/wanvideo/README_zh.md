@@ -282,6 +282,7 @@ Wan 系列模型训练通过统一的 [`./model_training/train.py`](./model_trai
   * `--num_frames`: 每个视频中的帧数。帧从视频前缀中采样。
   * `--data_file_keys`: 元数据中的数据文件键。用逗号分隔。
   * `--dataset_repeat`: 每个 epoch 中数据集重复的次数。
+  * `--dataset_num_workers`: 每个 Dataloder 的进程数量。
 * 模型
   * `--model_paths`: 要加载的模型路径。JSON 格式。
   * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 Wan-AI/Wan2.1-T2V-1.3B:diffusion_pytorch_model*.safetensors。用逗号分隔。
@@ -292,6 +293,8 @@ Wan 系列模型训练通过统一的 [`./model_training/train.py`](./model_trai
   * `--num_epochs`: 轮数（Epoch）。
   * `--output_path`: 保存路径。
   * `--remove_prefix_in_ckpt`: 在 ckpt 中移除前缀。
+  * `--save_steps`: 保存模型的间隔 step 数量，如果设置为 None ，则每个 epoch 保存一次
+  * `--find_unused_parameters`: DDP 训练中是否存在未使用的参数
 * 可训练模块
   * `--trainable_models`: 可训练的模型，例如 dit、vae、text_encoder。
   * `--lora_base_model`: LoRA 添加到哪个模型上。

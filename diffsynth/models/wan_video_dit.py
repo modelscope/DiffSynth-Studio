@@ -335,7 +335,7 @@ class WanModel(torch.nn.Module):
         else:
             self.control_adapter = None
 
-    def patchify(self, x: torch.Tensor,control_camera_latents_input: torch.Tensor = None):
+    def patchify(self, x: torch.Tensor, control_camera_latents_input: Optional[torch.Tensor] = None):
         x = self.patch_embedding(x)
         if self.control_adapter is not None and control_camera_latents_input is not None:
             y_camera = self.control_adapter(control_camera_latents_input)
