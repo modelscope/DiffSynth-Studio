@@ -762,7 +762,7 @@ def lets_dance_flux(
     hidden_states = dit.x_embedder(hidden_states)
 
     if entity_prompt_emb is not None and entity_masks is not None:
-        prompt_emb, image_rotary_emb, attention_mask = dit.process_entity_masks(hidden_states, prompt_emb, entity_prompt_emb, entity_masks, text_ids, image_ids)
+        prompt_emb, image_rotary_emb, attention_mask = dit.process_entity_masks(hidden_states, prompt_emb, entity_prompt_emb, entity_masks, text_ids, image_ids, 16)
     else:
         prompt_emb = dit.context_embedder(prompt_emb)
         image_rotary_emb = dit.pos_embedder(torch.cat((text_ids, image_ids), dim=1))

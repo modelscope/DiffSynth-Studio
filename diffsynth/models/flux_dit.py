@@ -375,8 +375,7 @@ class FluxDiT(torch.nn.Module):
         return attention_mask
 
 
-    def process_entity_masks(self, hidden_states, prompt_emb, entity_prompt_emb, entity_masks, text_ids, image_ids):
-        repeat_dim = hidden_states.shape[1]
+    def process_entity_masks(self, hidden_states, prompt_emb, entity_prompt_emb, entity_masks, text_ids, image_ids, repeat_dim):
         max_masks = 0
         attention_mask = None
         prompt_embs = [prompt_emb]
