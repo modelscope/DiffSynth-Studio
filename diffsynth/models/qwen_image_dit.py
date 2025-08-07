@@ -158,7 +158,8 @@ class QwenDoubleStreamAttention(nn.Module):
         self,
         image: torch.FloatTensor,
         text: torch.FloatTensor,
-        image_rotary_emb: Optional[Tuple[torch.Tensor, torch.Tensor]] = None
+        image_rotary_emb: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+        attention_mask: Optional[torch.FloatTensor] = None,
     ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         img_q, img_k, img_v = self.to_q(image), self.to_k(image), self.to_v(image)
         txt_q, txt_k, txt_v = self.add_q_proj(text), self.add_k_proj(text), self.add_v_proj(text)
@@ -186,7 +187,7 @@ class QwenDoubleStreamAttention(nn.Module):
         joint_k = torch.cat([txt_k, img_k], dim=2)
         joint_v = torch.cat([txt_v, img_v], dim=2)
 
-        joint_attn_out = torch.nn.functional.scaled_dot_product_attention(joint_q, joint_k, joint_v)
+        joint_attn_out = torch.nn.functional.scaled_dot_product_attention(joint_q, joint_k, joint_v, attn_mask=attention_mask)
 
         joint_attn_out = rearrange(joint_attn_out, 'b h s d -> b s (h d)').to(joint_q.dtype)
 
@@ -245,6 +246,7 @@ class QwenImageTransformerBlock(nn.Module):
         text: torch.Tensor,
         temb: torch.Tensor, 
         image_rotary_emb: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+        attention_mask: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
         img_mod_attn, img_mod_mlp = self.img_mod(temb).chunk(2, dim=-1)  # [B, 3*dim] each
@@ -260,6 +262,7 @@ class QwenImageTransformerBlock(nn.Module):
             image=img_modulated,
             text=txt_modulated,
             image_rotary_emb=image_rotary_emb,
+            attention_mask=attention_mask,
         )
         
         image = image + img_gate * img_attn_out
@@ -309,6 +312,69 @@ class QwenImageDiT(torch.nn.Module):
         self.proj_out = nn.Linear(3072, 64)
 
 
+    def process_entity_masks(self, latents, prompt_emb, prompt_emb_mask, entity_prompt_emb, entity_prompt_emb_mask, entity_masks, height, width, image, img_shapes):
+        # prompt_emb
+        all_prompt_emb = entity_prompt_emb + [prompt_emb]
+        all_prompt_emb = [self.txt_in(self.txt_norm(local_prompt_emb)) for local_prompt_emb in all_prompt_emb]
+        all_prompt_emb = torch.cat(all_prompt_emb, dim=1)
+
+        # image_rotary_emb
+        txt_seq_lens = prompt_emb_mask.sum(dim=1).tolist()
+        image_rotary_emb = self.pos_embed(img_shapes, txt_seq_lens, device=latents.device)
+        entity_seq_lens = [emb_mask.sum(dim=1).tolist() for emb_mask in entity_prompt_emb_mask]
+        entity_rotary_emb = [self.pos_embed(img_shapes, entity_seq_len, device=latents.device)[1] for entity_seq_len in entity_seq_lens]
+        txt_rotary_emb = torch.cat(entity_rotary_emb + [image_rotary_emb[1]], dim=0)
+        image_rotary_emb = (image_rotary_emb[0], txt_rotary_emb)
+
+        # attention_mask
+        repeat_dim = latents.shape[1]
+        max_masks = entity_masks.shape[1]
+        entity_masks = entity_masks.repeat(1, 1, repeat_dim, 1, 1)
+        entity_masks = [entity_masks[:, i, None].squeeze(1) for i in range(max_masks)]
+        global_mask = torch.ones_like(entity_masks[0]).to(device=latents.device, dtype=latents.dtype)
+        entity_masks = entity_masks + [global_mask]
+
+        N = len(entity_masks)
+        batch_size = entity_masks[0].shape[0]
+        seq_lens = [mask_.sum(dim=1).item() for mask_ in entity_prompt_emb_mask] + [prompt_emb_mask.sum(dim=1).item()]
+        total_seq_len = sum(seq_lens) + image.shape[1]
+        patched_masks = []
+        for i in range(N):
+            patched_mask = rearrange(entity_masks[i], "B C (H P) (W Q) -> B (H W) (C P Q)", H=height//16, W=width//16, P=2, Q=2)
+            patched_masks.append(patched_mask)
+        attention_mask = torch.ones((batch_size, total_seq_len, total_seq_len), dtype=torch.bool).to(device=entity_masks[0].device)
+
+        # prompt-image attention mask
+        image_start = sum(seq_lens)
+        image_end = total_seq_len
+        cumsum = [0]
+        for length in seq_lens:
+            cumsum.append(cumsum[-1] + length)
+        for i in range(N):
+            prompt_start = cumsum[i]
+            prompt_end = cumsum[i+1]
+            image_mask = torch.sum(patched_masks[i], dim=-1) > 0
+            image_mask = image_mask.unsqueeze(1).repeat(1, seq_lens[i], 1)
+            # prompt update with image
+            attention_mask[:, prompt_start:prompt_end, image_start:image_end] = image_mask
+            # image update with prompt
+            attention_mask[:, image_start:image_end, prompt_start:prompt_end] = image_mask.transpose(1, 2)
+        # prompt-prompt attention mask, let the prompt tokens not attend to each other
+        for i in range(N):
+            for j in range(N):
+                if i == j:
+                    continue
+                start_i, end_i = cumsum[i], cumsum[i+1]
+                start_j, end_j = cumsum[j], cumsum[j+1]
+                attention_mask[:, start_i:end_i, start_j:end_j] = False
+
+        attention_mask = attention_mask.float()
+        attention_mask[attention_mask == 0] = float('-inf')
+        attention_mask[attention_mask == 1] = 0
+        attention_mask = attention_mask.to(device=latents.device, dtype=latents.dtype).unsqueeze(1)
+
+        return all_prompt_emb, image_rotary_emb, attention_mask
+        
     def forward(
         self,
         latents=None,
