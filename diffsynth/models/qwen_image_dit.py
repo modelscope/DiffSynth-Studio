@@ -296,8 +296,8 @@ class QwenImageTransformerBlock(nn.Module):
             image=img_modulated,
             text=txt_modulated,
             image_rotary_emb=image_rotary_emb,
-            attention_mask: Optional[torch.Tensor] = None,
-            enable_fp8_attention = False,
+            attention_mask=attention_mask,
+            enable_fp8_attention=enable_fp8_attention,
         )
         
         image = image + img_gate * img_attn_out

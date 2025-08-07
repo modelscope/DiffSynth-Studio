@@ -216,6 +216,8 @@ class QwenImagePipeline(BasePipeline):
         eligen_entity_prompts: list[str] = None,
         eligen_entity_masks: list[Image.Image] = None,
         eligen_enable_on_negative: bool = False,
+        # FP8
+        enable_fp8_attention: bool = False,
         # Tile
         tiled: bool = False,
         tile_size: int = 128,
