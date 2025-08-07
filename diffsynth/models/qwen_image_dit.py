@@ -13,7 +13,7 @@ except ModuleNotFoundError:
 
 
 def qwen_image_flash_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, num_heads: int, attention_mask = None, enable_fp8_attention: bool = False):
-    if FLASH_ATTN_3_AVAILABLE:
+    if FLASH_ATTN_3_AVAILABLE and attention_mask is None:
         if not enable_fp8_attention:
             q = rearrange(q, "b n s d -> b s n d", n=num_heads)
             k = rearrange(k, "b n s d -> b s n d", n=num_heads)
