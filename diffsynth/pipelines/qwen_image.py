@@ -63,14 +63,12 @@ class QwenImagePipeline(BasePipeline):
         return loss
     
     
-    def enable_vram_management(self, num_persistent_param_in_dit=None, vram_limit=None, vram_buffer=0.5):
+    def enable_vram_management(self, num_persistent_param_in_dit=None, vram_limit=None, vram_buffer=0.5, enable_dit_fp8_computation=False):
         self.vram_management_enabled = True
-        if num_persistent_param_in_dit is not None:
-            vram_limit = None
-        else:
-            if vram_limit is None:
-                vram_limit = self.get_vram()
-            vram_limit = vram_limit - vram_buffer
+        if vram_limit is None:
+            vram_limit = self.get_vram()
+        vram_limit = vram_limit - vram_buffer
+        
         if self.text_encoder is not None:
             from transformers.models.qwen2_5_vl.modeling_qwen2_5_vl import Qwen2_5_VLRotaryEmbedding, Qwen2RMSNorm
             dtype = next(iter(self.text_encoder.parameters())).dtype
@@ -96,31 +94,54 @@ class QwenImagePipeline(BasePipeline):
             from ..models.qwen_image_dit import RMSNorm
             dtype = next(iter(self.dit.parameters())).dtype
             device = "cpu" if vram_limit is not None else self.device
-            enable_vram_management(
-                self.dit,
-                module_map = {
-                    RMSNorm: AutoWrappedModule,
-                    torch.nn.Linear: AutoWrappedLinear,
-                },
-                module_config = dict(
-                    offload_dtype=dtype,
-                    offload_device="cpu",
-                    onload_dtype=dtype,
-                    onload_device=device,
-                    computation_dtype=self.torch_dtype,
-                    computation_device=self.device,
-                ),
-                max_num_param=num_persistent_param_in_dit,
-                overflow_module_config = dict(
-                    offload_dtype=dtype,
-                    offload_device="cpu",
-                    onload_dtype=dtype,
-                    onload_device="cpu",
-                    computation_dtype=self.torch_dtype,
-                    computation_device=self.device,
-                ),
-                vram_limit=vram_limit,
-            )
+            if not enable_dit_fp8_computation:
+                enable_vram_management(
+                    self.dit,
+                    module_map = {
+                        RMSNorm: AutoWrappedModule,
+                        torch.nn.Linear: AutoWrappedLinear,
+                    },
+                    module_config = dict(
+                        offload_dtype=dtype,
+                        offload_device="cpu",
+                        onload_dtype=dtype,
+                        onload_device=device,
+                        computation_dtype=self.torch_dtype,
+                        computation_device=self.device,
+                    ),
+                    vram_limit=vram_limit,
+                )
+            else:
+                enable_vram_management(
+                    self.dit,
+                    module_map = {
+                        RMSNorm: AutoWrappedModule,
+                    },
+                    module_config = dict(
+                        offload_dtype=dtype,
+                        offload_device="cpu",
+                        onload_dtype=dtype,
+                        onload_device=device,
+                        computation_dtype=self.torch_dtype,
+                        computation_device=self.device,
+                    ),
+                    vram_limit=vram_limit,
+                )
+                enable_vram_management(
+                    self.dit,
+                    module_map = {
+                        torch.nn.Linear: AutoWrappedLinear,
+                    },
+                    module_config = dict(
+                        offload_dtype=dtype,
+                        offload_device="cpu",
+                        onload_dtype=dtype,
+                        onload_device=device,
+                        computation_dtype=dtype,
+                        computation_device=self.device,
+                    ),
+                    vram_limit=vram_limit,
+                )
         if self.vae is not None:
             from ..models.qwen_image_vae import QwenImageRMS_norm
             dtype = next(iter(self.vae.parameters())).dtype
@@ -195,6 +216,8 @@ class QwenImagePipeline(BasePipeline):
         eligen_entity_prompts: list[str] = None,
         eligen_entity_masks: list[Image.Image] = None,
         eligen_enable_on_negative: bool = False,
+        # FP8
+        enable_fp8_attention: bool = False,
         # Tile
         tiled: bool = False,
         tile_size: int = 128,
@@ -217,6 +240,7 @@ class QwenImagePipeline(BasePipeline):
             "input_image": input_image, "denoising_strength": denoising_strength,
             "height": height, "width": width,
             "seed": seed, "rand_device": rand_device,
+            "enable_fp8_attention": enable_fp8_attention,
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
             "eligen_entity_prompts": eligen_entity_prompts, "eligen_entity_masks": eligen_entity_masks, "eligen_enable_on_negative": eligen_enable_on_negative,
         }
@@ -418,6 +442,7 @@ def model_fn_qwen_image(
     entity_prompt_emb=None,
     entity_prompt_emb_mask=None,
     entity_masks=None,
+    enable_fp8_attention=False,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     **kwargs
@@ -451,6 +476,7 @@ def model_fn_qwen_image(
             temb=conditioning,
             image_rotary_emb=image_rotary_emb,
             attention_mask=attention_mask,
+            enable_fp8_attention=enable_fp8_attention,
         )
     
     image = dit.norm_out(image, conditioning)

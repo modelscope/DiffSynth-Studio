@@ -164,6 +164,7 @@ FP8 量化能够大幅度减少显存占用，但不会加速，部分模型在 
 * `vram_limit`: 显存占用量限制（GB），默认占用设备上的剩余显存。注意这不是一个绝对限制，当设置的显存不足以支持模型进行推理，但实际可用显存足够时，将会以最小化显存占用的形式进行推理。将其设置为0时，将会实现理论最小显存占用。
 * `vram_buffer`: 显存缓冲区大小（GB），默认为 0.5GB。由于部分较大的神经网络层在 onload 阶段会不可控地占用更多显存，因此一个显存缓冲区是必要的，理论上的最优值为模型中最大的层所占的显存。
 * `num_persistent_param_in_dit`: DiT 模型中常驻显存的参数数量（个），默认为无限制。我们将会在未来删除这个参数，请不要依赖这个参数。
+* `enable_dit_fp8_computation`: 是否启用 DiT 模型中的 FP8 计算，仅适用于支持 FP8 运算的 GPU（例如 H200 等），默认不启用。
 
 </details>
 
@@ -172,7 +173,11 @@ FP8 量化能够大幅度减少显存占用，但不会加速，部分模型在 
 
 <summary>推理加速</summary>
 
-Qwen-Image 的推理加速技术正在开发中，敬请期待！
+* FP8 量化：根据您的硬件与需求，请选择合适的量化方式
+    * GPU 不支持 FP8 计算（例如 A100、4090 等）：FP8 量化仅能降低显存占用，无法加速，代码：[./model_inference_lor_vram/Qwen-Image.py](./model_inference_lor_vram/Qwen-Image.py)
+    * GPU 支持 FP8 运算（例如 H200 等）：请安装 [Flash Attention 3](https://github.com/Dao-AILab/flash-attention)，否则 FP8 加速仅对 Linear 层生效
+        * 更快的速度，但更大的显存：请使用 [./accelerate/Qwen-Image-FP8.py](./accelerate/Qwen-Image-FP8.py)
+        * 稍慢的速度，但更小的显存：请使用 [./accelerate/Qwen-Image-FP8-offload.py](./accelerate/Qwen-Image-FP8-offload.py)
 
 </details>
 
