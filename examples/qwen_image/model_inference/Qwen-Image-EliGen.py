@@ -121,12 +121,6 @@ global_prompt = "A captivating, dramatic scene in a painting that exudes mystery
 entity_prompts = ["crescent yellow moon", "a solitary woman", "water", "swirling blue clouds"]
 example(pipe, [0], 5, global_prompt, entity_prompts)
 
-# example 6, poster
-seeds = range(0, 1)
-global_prompt =  "瑞幸咖啡蓝莓奶背的宣传海报，主体是两杯浅绿色的瑞幸蓝莓奶昔杯装饮品，背景是浅蓝色水雾，海报写着“Luckin Coffee 蓝莓奶昔闪耀回归”，“新品上市” "
-entity_prompts = ["杯装饮品", "杯装饮品", "字：“新品上市”", "字：“Luckin Coffee 蓝莓奶昔闪耀回归”"]
-example(pipe, seeds, 6, global_prompt, entity_prompts)
-
 # example 7, same prompt with different seeds
 seeds = range(5, 9)
 global_prompt = "A beautiful asia woman wearing white dress, holding a mirror, with a forest background."
