@@ -172,7 +172,11 @@ FP8 量化能够大幅度减少显存占用，但不会加速，部分模型在 
 
 <summary>推理加速</summary>
 
-Qwen-Image 的推理加速技术正在开发中，敬请期待！
+* FP8 量化：根据您的硬件与需求，请选择合适的量化方式
+    * GPU 不支持 FP8 计算（例如 A100、4090 等）：FP8 量化仅能降低显存占用，无法加速，代码：[./model_inference_lor_vram/Qwen-Image.py](./model_inference_lor_vram/Qwen-Image.py)
+    * GPU 支持 FP8 运算（例如 H200 等）：请安装 [Flash Attention 3](https://github.com/Dao-AILab/flash-attention)，否则 FP8 加速仅对 Linear 层生效
+        * 更快的速度，但更大的显存：请使用 [./accelerate/Qwen-Image-FP8.py](./accelerate/Qwen-Image-FP8.py)
+        * 稍慢的速度，但更小的显存：请使用 [./accelerate/Qwen-Image-FP8-offload.py](./accelerate/Qwen-Image-FP8-offload.py)
 
 </details>
 
