@@ -31,11 +31,13 @@ class FlowMatchScheduler():
         self.set_timesteps(num_inference_steps)
 
 
-    def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0, training=False, shift=None, dynamic_shift_len=None):
+    def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0, training=False, shift=None, dynamic_shift_len=None, random_sigmas=False):
         if shift is not None:
             self.shift = shift
         sigma_start = self.sigma_min + (self.sigma_max - self.sigma_min) * denoising_strength
-        if self.extra_one_step:
+        if random_sigmas:
+            self.sigmas = torch.Tensor(sorted([torch.rand((1,)).item() * (sigma_start - self.sigma_min) for i in range(num_inference_steps - 1)] + [sigma_start], reverse=True))
+        elif self.extra_one_step:
             self.sigmas = torch.linspace(sigma_start, self.sigma_min, num_inference_steps + 1)[:-1]
         else:
             self.sigmas = torch.linspace(sigma_start, self.sigma_min, num_inference_steps)

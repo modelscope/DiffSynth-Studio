@@ -72,6 +72,7 @@ from ..models.flux_lora_encoder import FluxLoRAEncoder
 from ..models.nexus_gen_projector import NexusGenAdapter, NexusGenImageEmbeddingMerger
 from ..models.nexus_gen import NexusGenAutoregressiveModel
 
+from ..models.qwen_image_accelerate_adapter import QwenImageAccelerateAdapter
 from ..models.qwen_image_dit import QwenImageDiT
 from ..models.qwen_image_text_encoder import QwenImageTextEncoder
 from ..models.qwen_image_vae import QwenImageVAE
@@ -165,6 +166,7 @@ model_loader_configs = [
     (None, "63c969fd37cce769a90aa781fbff5f81", ["flux_dit", "nexus_gen_editing_adapter"], [FluxDiT, NexusGenImageEmbeddingMerger], "civitai"),
     (None, "2bd19e845116e4f875a0a048e27fc219", ["nexus_gen_llm"], [NexusGenAutoregressiveModel], "civitai"),
     (None, "0319a1cb19835fb510907dd3367c95ff", ["qwen_image_dit"], [QwenImageDiT], "civitai"),
+    (None, "ae9d13bfc578702baf6445d2cf3d1d46", ["qwen_image_accelerate_adapter"], [QwenImageAccelerateAdapter], "civitai"),
     (None, "8004730443f55db63092006dd9f7110e", ["qwen_image_text_encoder"], [QwenImageTextEncoder], "diffusers"),
     (None, "ed4ea5824d55ec3107b09815e318123a", ["qwen_image_vae"], [QwenImageVAE], "diffusers"),
 ]
