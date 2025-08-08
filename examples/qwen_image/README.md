@@ -247,8 +247,6 @@ The script includes the following parameters:
   * `--use_gradient_checkpointing`: Whether to enable gradient checkpointing.
   * `--use_gradient_checkpointing_offload`: Whether to offload gradient checkpointing to CPU memory.
   * `--gradient_accumulation_steps`: Number of gradient accumulation steps.
-* Others
-  * `--align_to_opensource_format`: Whether to align DiT LoRA format with open-source version. Only works for LoRA training.
 
 In addition, the training framework is built on [`accelerate`](https://huggingface.co/docs/accelerate/index). Run `accelerate config` before training to set GPU-related settings. For some training tasks (e.g., full training of 20B model), we provide suggested `accelerate` config files. Check the corresponding training script for details.
 

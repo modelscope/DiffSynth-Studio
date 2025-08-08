@@ -247,8 +247,6 @@ Qwen-Image 系列模型训练通过统一的 [`./model_training/train.py`](./mod
   * `--use_gradient_checkpointing`: 是否启用 gradient checkpointing。
   * `--use_gradient_checkpointing_offload`: 是否将 gradient checkpointing 卸载到内存中。
   * `--gradient_accumulation_steps`: 梯度累积步数。
-* 其他
-  * `--align_to_opensource_format`: 是否将 DiT LoRA 的格式与开源版本对齐，仅对 LoRA 训练生效。
 
 此外，训练框架基于 [`accelerate`](https://huggingface.co/docs/accelerate/index) 构建，在开始训练前运行 `accelerate config` 可配置 GPU 的相关参数。对于部分模型训练（例如 20B 模型的全量训练）脚本，我们提供了建议的 `accelerate` 配置文件，可在对应的训练脚本中查看。
 
