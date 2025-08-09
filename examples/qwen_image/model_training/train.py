@@ -32,10 +32,10 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
 
         # Reset training scheduler (do it in each training step)
         self.pipe.scheduler.set_timesteps(1000, training=True)
-        
+
         # Freeze untrainable models
         self.pipe.freeze_except([] if trainable_models is None else trainable_models.split(","))
-        
+
         # Add LoRA to the base models
         if lora_base_model is not None:
             model = self.add_lora_to_model(
@@ -44,18 +44,18 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
                 lora_rank=lora_rank
             )
             setattr(self.pipe, lora_base_model, model)
-            
+
         # Store other configs
         self.use_gradient_checkpointing = use_gradient_checkpointing
         self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
         self.extra_inputs = extra_inputs.split(",") if extra_inputs is not None else []
 
-    
+
     def forward_preprocess(self, data):
         # CFG-sensitive parameters
         inputs_posi = {"prompt": data["prompt"]}
         inputs_nega = {"negative_prompt": ""}
-        
+
         # CFG-unsensitive parameters
         inputs_shared = {
             # Assume you are using this pipeline for inference,
@@ -70,17 +70,17 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
         }
-        
+
         # Extra inputs
         for extra_input in self.extra_inputs:
             inputs_shared[extra_input] = data[extra_input]
-        
+
         # Pipeline units will automatically process the input parameters.
         for unit in self.pipe.units:
             inputs_shared, inputs_posi, inputs_nega = self.pipe.unit_runner(unit, self.pipe, inputs_shared, inputs_posi, inputs_nega)
         return {**inputs_shared, **inputs_posi}
-    
-    
+
+
     def forward(self, data, inputs=None):
         if inputs is None: inputs = self.forward_preprocess(data)
         models = {name: getattr(self.pipe, name) for name in self.pipe.in_iteration_models}

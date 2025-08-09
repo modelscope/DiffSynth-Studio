@@ -27,7 +27,7 @@ class ImageDataset(torch.utils.data.Dataset):
             max_pixels = args.max_pixels
             data_file_keys = args.data_file_keys.split(",")
             repeat = args.dataset_repeat
-            
+
         self.base_path = base_path
         self.max_pixels = max_pixels
         self.height = height
@@ -44,7 +44,7 @@ class ImageDataset(torch.utils.data.Dataset):
         elif height is None and width is None:
             print("Height and width are none. Setting `dynamic_resolution` to True.")
             self.dynamic_resolution = True
-            
+
         if metadata_path is None:
             print("No metadata. Trying to generate it.")
             metadata = self.generate_metadata(base_path)
@@ -86,8 +86,8 @@ class ImageDataset(torch.utils.data.Dataset):
         metadata["image"] = image_list
         metadata["prompt"] = prompt_list
         return metadata
-    
-    
+
+
     def crop_and_resize(self, image, target_height, target_width):
         width, height = image.size
         scale = max(target_width / width, target_height / height)
@@ -98,8 +98,8 @@ class ImageDataset(torch.utils.data.Dataset):
         )
         image = torchvision.transforms.functional.center_crop(image, (target_height, target_width))
         return image
-    
-    
+
+
     def get_height_width(self, image):
         if self.dynamic_resolution:
             width, height = image.size
@@ -111,14 +111,14 @@ class ImageDataset(torch.utils.data.Dataset):
         else:
             height, width = self.height, self.width
         return height, width
-    
-    
+
+
     def load_image(self, file_path):
         image = Image.open(file_path).convert("RGB")
         image = self.crop_and_resize(image, *self.get_height_width(image))
         return image
-    
-    
+
+
     def load_data(self, file_path):
         return self.load_image(file_path)
 
@@ -137,7 +137,7 @@ class ImageDataset(torch.utils.data.Dataset):
                     warnings.warn(f"cannot load file {data[key]}.")
                     return None
         return data
-    
+
 
     def __len__(self):
         return len(self.data) * self.repeat
@@ -167,7 +167,7 @@ class VideoDataset(torch.utils.data.Dataset):
             num_frames = args.num_frames
             data_file_keys = args.data_file_keys.split(",")
             repeat = args.dataset_repeat
-        
+
         self.base_path = base_path
         self.num_frames = num_frames
         self.time_division_factor = time_division_factor
@@ -181,14 +181,14 @@ class VideoDataset(torch.utils.data.Dataset):
         self.image_file_extension = image_file_extension
         self.video_file_extension = video_file_extension
         self.repeat = repeat
-        
+
         if height is not None and width is not None:
             print("Height and width are fixed. Setting `dynamic_resolution` to False.")
             self.dynamic_resolution = False
         elif height is None and width is None:
             print("Height and width are none. Setting `dynamic_resolution` to True.")
             self.dynamic_resolution = True
-            
+
         if metadata_path is None:
             print("No metadata. Trying to generate it.")
             metadata = self.generate_metadata(base_path)
@@ -201,8 +201,8 @@ class VideoDataset(torch.utils.data.Dataset):
         else:
             metadata = pd.read_csv(metadata_path)
             self.data = [metadata.iloc[i].to_dict() for i in range(len(metadata))]
-            
-    
+
+
     def generate_metadata(self, folder):
         video_list, prompt_list = [], []
         file_set = set(os.listdir(folder))
@@ -224,8 +224,8 @@ class VideoDataset(torch.utils.data.Dataset):
         metadata["video"] = video_list
         metadata["prompt"] = prompt_list
         return metadata
-        
-        
+
+
     def crop_and_resize(self, image, target_height, target_width):
         width, height = image.size
         scale = max(target_width / width, target_height / height)
@@ -236,8 +236,8 @@ class VideoDataset(torch.utils.data.Dataset):
         )
         image = torchvision.transforms.functional.center_crop(image, (target_height, target_width))
         return image
-    
-    
+
+
     def get_height_width(self, image):
         if self.dynamic_resolution:
             width, height = image.size
@@ -249,8 +249,8 @@ class VideoDataset(torch.utils.data.Dataset):
         else:
             height, width = self.height, self.width
         return height, width
-    
-    
+
+
     def get_num_frames(self, reader):
         num_frames = self.num_frames
         if int(reader.count_frames()) < num_frames:
@@ -258,7 +258,7 @@ class VideoDataset(torch.utils.data.Dataset):
             while num_frames > 1 and num_frames % self.time_division_factor != self.time_division_remainder:
                 num_frames -= 1
         return num_frames
-    
+
 
     def load_video(self, file_path):
         reader = imageio.get_reader(file_path)
@@ -271,25 +271,25 @@ class VideoDataset(torch.utils.data.Dataset):
             frames.append(frame)
         reader.close()
         return frames
-    
-    
+
+
     def load_image(self, file_path):
         image = Image.open(file_path).convert("RGB")
         image = self.crop_and_resize(image, *self.get_height_width(image))
         frames = [image]
         return frames
-    
-    
+
+
     def is_image(self, file_path):
         file_ext_name = file_path.split(".")[-1]
         return file_ext_name.lower() in self.image_file_extension
-    
-    
+
+
     def is_video(self, file_path):
         file_ext_name = file_path.split(".")[-1]
         return file_ext_name.lower() in self.video_file_extension
-    
-    
+
+
     def load_data(self, file_path):
         if self.is_image(file_path):
             return self.load_image(file_path)
@@ -309,7 +309,7 @@ class VideoDataset(torch.utils.data.Dataset):
                     warnings.warn(f"cannot load file {data[key]}.")
                     return None
         return data
-    
+
 
     def __len__(self):
         return len(self.data) * self.repeat
@@ -319,33 +319,33 @@ class VideoDataset(torch.utils.data.Dataset):
 class DiffusionTrainingModule(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        
-        
+
+
     def to(self, *args, **kwargs):
         for name, model in self.named_children():
             model.to(*args, **kwargs)
         return self
-        
-        
+
+
     def trainable_modules(self):
         trainable_modules = filter(lambda p: p.requires_grad, self.parameters())
         return trainable_modules
-    
-    
+
+
     def trainable_param_names(self):
         trainable_param_names = list(filter(lambda named_param: named_param[1].requires_grad, self.named_parameters()))
         trainable_param_names = set([named_param[0] for named_param in trainable_param_names])
         return trainable_param_names
-    
-    
+
+
     def add_lora_to_model(self, model, target_modules, lora_rank, lora_alpha=None):
         if lora_alpha is None:
             lora_alpha = lora_rank
         lora_config = LoraConfig(r=lora_rank, lora_alpha=lora_alpha, target_modules=target_modules)
         model = inject_adapter_in_model(lora_config, model)
         return model
-    
-    
+
+
     def export_trainable_state_dict(self, state_dict, remove_prefix=None):
         trainable_param_names = self.trainable_param_names()
         state_dict = {name: param for name, param in state_dict.items() if name in trainable_param_names}
