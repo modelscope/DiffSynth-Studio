@@ -9,9 +9,15 @@ Qwen-Image is an open-source image generation model developed by Tongyi Lab, Ali
 Before using this model series, install DiffSynth-Studio from source code.
 
 ```shell
-git clone https://github.com/modelscope/DiffSynth-Studio.git  
+git clone https://github.com/modelscope/DiffSynth-Studio.git
 cd DiffSynth-Studio
 pip install -e .
+```
+
+For W&B experiment tracking, also install:
+
+```shell
+pip install wandb
 ```
 
 ## Quick Start
@@ -231,6 +237,7 @@ The script includes the following parameters:
   * `--tokenizer_path`: Tokenizer path. Leave empty to auto-download.
 * Training
   * `--learning_rate`: Learning rate.
+  * `--weight_decay`: Weight decay for optimizer.
   * `--num_epochs`: Number of epochs.
   * `--output_path`: Save path.
   * `--remove_prefix_in_ckpt`: Remove prefix in checkpoint.
@@ -247,8 +254,94 @@ The script includes the following parameters:
   * `--use_gradient_checkpointing`: Whether to enable gradient checkpointing.
   * `--use_gradient_checkpointing_offload`: Whether to offload gradient checkpointing to CPU memory.
   * `--gradient_accumulation_steps`: Number of gradient accumulation steps.
+* Weights & Biases Tracking
+  * `--use_wandb`: Whether to use Weights & Biases for experiment tracking.
+  * `--wandb_project`: W&B project name. Default is "qwen-image-lora".
+  * `--wandb_entity`: W&B entity (team) name.
+  * `--wandb_run_name`: W&B run name. If None, auto-generated.
+  * `--wandb_tags`: W&B tags, comma-separated.
+  * `--wandb_notes`: W&B run notes.
+  * `--wandb_log_freq`: W&B logging frequency in steps. Default is 10.
 
 In addition, the training framework is built on [`accelerate`](https://huggingface.co/docs/accelerate/index). Run `accelerate config` before training to set GPU-related settings. For some training tasks (e.g., full training of 20B model), we provide suggested `accelerate` config files. Check the corresponding training script for details.
+
+</details>
+
+
+<details>
+
+<summary>Weights & Biases Integration</summary>
+
+DiffSynth-Studio now supports Weights & Biases (W&B) for experiment tracking and monitoring. This integration automatically logs:
+
+* **Training Metrics**:
+  * Training loss at configurable intervals
+  * Learning rate schedule
+  * Weight decay values
+  * Epoch-level average loss
+
+* **Configuration Parameters**:
+  * All hyperparameters (learning rate, LoRA rank, etc.)
+  * Model architecture settings
+  * Dataset configuration
+  * Training settings (gradient accumulation, checkpointing, etc.)
+
+### Setup W&B Tracking
+
+1. **Install W&B** (if not already installed):
+   ```shell
+   pip install wandb
+   ```
+
+2. **Login to W&B**:
+   ```shell
+   wandb login
+   ```
+
+3. **Enable W&B in training**:
+   ```shell
+   python model_training/train.py \
+     --use_wandb \
+     --wandb_project "my-qwen-experiments" \
+     --wandb_run_name "qwen-lora-experiment-1" \
+     --wandb_tags "lora,qwen,experiment" \
+     --wandb_notes "Testing LoRA training with custom dataset" \
+     --wandb_log_freq 20 \
+     # ... other training arguments
+   ```
+
+### W&B Dashboard Features
+
+The W&B dashboard will show:
+
+* **Real-time loss curves** and training progress
+* **Hyperparameter tracking** for easy comparison between runs
+* **System metrics** (GPU utilization, memory usage)
+* **Model checkpoints** linked to training runs
+* **Experiment comparison** across different configurations
+
+### Example Training Command with W&B
+
+```shell
+python model_training/train.py \
+  --dataset_base_path "./data/my_dataset" \
+  --dataset_metadata_path "./data/my_dataset/metadata.csv" \
+  --model_id_with_origin_paths "Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors,Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors" \
+  --learning_rate 1e-4 \
+  --weight_decay 0.01 \
+  --num_epochs 10 \
+  --lora_base_model dit \
+  --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_out.0,to_add_out,img_mlp.net.2,img_mod.1,txt_mlp.net.2,txt_mod.1" \
+  --lora_rank 32 \
+  --use_wandb \
+  --wandb_project "qwen-image-lora" \
+  --wandb_run_name "high-lr-experiment" \
+  --wandb_tags "lora,qwen,high-lr" \
+  --wandb_log_freq 10 \
+  --output_path "./models/qwen_lora"
+```
+
+For comprehensive documentation on W&B integration features, troubleshooting, and advanced usage, see [`WANDB_INTEGRATION.md`](./WANDB_INTEGRATION.md).
 
 </details>
 

@@ -401,6 +401,142 @@ class ModelLogger:
             accelerator.save(state_dict, path, safe_serialization=True)
 
 
+class WandBModelLogger(ModelLogger):
+    def __init__(self, output_path, remove_prefix_in_ckpt=None, state_dict_converter=lambda x:x,
+                 wandb_config=None, log_freq=10):
+        super().__init__(output_path, remove_prefix_in_ckpt, state_dict_converter)
+        self.wandb_config = wandb_config
+        self.log_freq = log_freq
+        self.wandb_initialized = False
+
+        # Initialize W&B if config is provided
+        if self.wandb_config:
+            try:
+                import wandb
+                self.wandb = wandb
+
+                # Parse tags if provided
+                tags = None
+                if self.wandb_config.get('tags'):
+                    tags = [tag.strip() for tag in self.wandb_config['tags'].split(',')]
+
+                # Initialize W&B run
+                self.wandb.init(
+                    project=self.wandb_config.get('project', 'qwen-image-lora'),
+                    entity=self.wandb_config.get('entity'),
+                    name=self.wandb_config.get('run_name'),
+                    tags=tags,
+                    notes=self.wandb_config.get('notes'),
+                    config=self.wandb_config.get('training_config', {}),
+                    resume="allow"
+                )
+                self.wandb_initialized = True
+                print("W&B initialized successfully")
+            except ImportError:
+                print("Warning: wandb not installed. Install with 'pip install wandb' to enable W&B logging.")
+                self.wandb_initialized = False
+            except Exception as e:
+                print(f"Warning: Failed to initialize W&B: {e}")
+                self.wandb_initialized = False
+
+    def log_metrics(self, metrics, step=None):
+        """Log metrics to W&B"""
+        if self.wandb_initialized:
+            try:
+                if step is not None:
+                    self.wandb.log(metrics, step=step)
+                else:
+                    self.wandb.log(metrics)
+            except Exception as e:
+                print(f"Warning: Failed to log to W&B: {e}")
+
+    def compute_gradient_norm(self, model):
+        """Compute gradient norm for the model"""
+        total_norm = 0.0
+        param_count = 0
+        for p in model.parameters():
+            if p.grad is not None:
+                param_norm = p.grad.data.norm(2)
+                total_norm += param_norm.item() ** 2
+                param_count += 1
+        return (total_norm ** 0.5) if param_count > 0 else 0.0
+
+    def compute_model_stats(self, model):
+        """Compute model parameter statistics"""
+        stats = {}
+        total_params = 0
+        trainable_params = 0
+
+        for p in model.parameters():
+            total_params += p.numel()
+            if p.requires_grad:
+                trainable_params += p.numel()
+
+        stats['model/total_parameters'] = total_params
+        stats['model/trainable_parameters'] = trainable_params
+        stats['model/trainable_ratio'] = trainable_params / total_params if total_params > 0 else 0
+
+        return stats
+
+    def on_step_end(self, accelerator, model, save_steps=None, loss=None, optimizer=None):
+        super().on_step_end(accelerator, model, save_steps)
+
+        # Log metrics to W&B
+        if self.wandb_initialized and accelerator.is_main_process and self.num_steps % self.log_freq == 0:
+            metrics = {"step": self.num_steps}
+
+            if loss is not None:
+                metrics["train/loss"] = float(loss)
+
+            if optimizer is not None:
+                # Log learning rate and optimizer parameters
+                for param_group in optimizer.param_groups:
+                    metrics["train/learning_rate"] = param_group['lr']
+                    if 'weight_decay' in param_group:
+                        metrics["train/weight_decay"] = param_group['weight_decay']
+                    break  # Just log the first group
+
+                # Log gradient norm
+                try:
+                    grad_norm = self.compute_gradient_norm(accelerator.unwrap_model(model))
+                    metrics["train/gradient_norm"] = grad_norm
+                except Exception as e:
+                    print(f"Warning: Failed to compute gradient norm: {e}")
+
+            # Log model statistics (only occasionally to avoid overhead)
+            if self.num_steps == self.log_freq or self.num_steps % (self.log_freq * 10) == 0:
+                try:
+                    model_stats = self.compute_model_stats(accelerator.unwrap_model(model))
+                    metrics.update(model_stats)
+                except Exception as e:
+                    print(f"Warning: Failed to compute model stats: {e}")
+
+            self.log_metrics(metrics, step=self.num_steps)
+
+    def on_epoch_end(self, accelerator, model, epoch_id, epoch_loss=None):
+        super().on_epoch_end(accelerator, model, epoch_id)
+
+        # Log epoch metrics to W&B
+        if self.wandb_initialized and accelerator.is_main_process:
+            metrics = {"epoch": epoch_id}
+
+            if epoch_loss is not None:
+                metrics["train/epoch_loss"] = float(epoch_loss)
+
+            self.log_metrics(metrics, step=self.num_steps)
+
+    def on_training_end(self, accelerator, model, save_steps=None):
+        super().on_training_end(accelerator, model, save_steps)
+
+        # Finish W&B run
+        if self.wandb_initialized:
+            try:
+                self.wandb.finish()
+                print("W&B run finished successfully")
+            except Exception as e:
+                print(f"Warning: Failed to finish W&B run: {e}")
+
+
 def launch_training_task(
     dataset: torch.utils.data.Dataset,
     model: DiffusionTrainingModule,
@@ -419,18 +555,41 @@ def launch_training_task(
         kwargs_handlers=[DistributedDataParallelKwargs(find_unused_parameters=find_unused_parameters)],
     )
     model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
-    
+
+    total_steps = 0
     for epoch_id in range(num_epochs):
+        epoch_loss = 0
+        num_batches = 0
+
         for data in tqdm(dataloader):
             with accelerator.accumulate(model):
                 optimizer.zero_grad()
                 loss = model(data)
                 accelerator.backward(loss)
                 optimizer.step()
-                model_logger.on_step_end(accelerator, model, save_steps)
+
+                # Enhanced logging for W&B
+                if isinstance(model_logger, WandBModelLogger):
+                    model_logger.on_step_end(accelerator, model, save_steps, loss=loss, optimizer=optimizer)
+                else:
+                    model_logger.on_step_end(accelerator, model, save_steps)
+
                 scheduler.step()
+
+                # Track epoch loss
+                epoch_loss += float(loss)
+                num_batches += 1
+                total_steps += 1
+
+        # Calculate average epoch loss
+        avg_epoch_loss = epoch_loss / num_batches if num_batches > 0 else 0
+
         if save_steps is None:
-            model_logger.on_epoch_end(accelerator, model, epoch_id)
+            if isinstance(model_logger, WandBModelLogger):
+                model_logger.on_epoch_end(accelerator, model, epoch_id, epoch_loss=avg_epoch_loss)
+            else:
+                model_logger.on_epoch_end(accelerator, model, epoch_id)
+
     model_logger.on_training_end(accelerator, model, save_steps)
 
 
@@ -537,4 +696,15 @@ def qwen_image_parser():
     parser.add_argument("--find_unused_parameters", default=False, action="store_true", help="Whether to find unused parameters in DDP.")
     parser.add_argument("--save_steps", type=int, default=None, help="Number of checkpoint saving invervals. If None, checkpoints will be saved every epoch.")
     parser.add_argument("--dataset_num_workers", type=int, default=0, help="Number of workers for data loading.")
+
+    # W&B arguments
+    parser.add_argument("--use_wandb", default=False, action="store_true", help="Whether to use Weights & Biases for experiment tracking.")
+    parser.add_argument("--wandb_project", type=str, default="qwen-image-lora", help="W&B project name.")
+    parser.add_argument("--wandb_entity", type=str, default=None, help="W&B entity (team) name.")
+    parser.add_argument("--wandb_run_name", type=str, default=None, help="W&B run name. If None, auto-generated.")
+    parser.add_argument("--wandb_tags", type=str, default=None, help="W&B tags, comma-separated.")
+    parser.add_argument("--wandb_notes", type=str, default=None, help="W&B run notes.")
+    parser.add_argument("--wandb_log_freq", type=int, default=10, help="W&B logging frequency in steps.")
+    parser.add_argument("--weight_decay", type=float, default=0.0, help="Weight decay for optimizer.")
+
     return parser

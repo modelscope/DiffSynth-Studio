@@ -1,6 +1,6 @@
 import torch, os, json
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
-from diffsynth.trainers.utils import DiffusionTrainingModule, ImageDataset, ModelLogger, launch_training_task, qwen_image_parser
+from diffsynth.trainers.utils import DiffusionTrainingModule, ImageDataset, ModelLogger, WandBModelLogger, launch_training_task, qwen_image_parser
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -105,9 +105,49 @@ if __name__ == "__main__":
         use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
         extra_inputs=args.extra_inputs,
     )
-    model_logger = ModelLogger(args.output_path, remove_prefix_in_ckpt=args.remove_prefix_in_ckpt)
-    optimizer = torch.optim.AdamW(model.trainable_modules(), lr=args.learning_rate)
+
+    # Setup model logger with optional W&B tracking
+    if args.use_wandb:
+        # Prepare W&B configuration
+        wandb_config = {
+            'project': args.wandb_project,
+            'entity': args.wandb_entity,
+            'run_name': args.wandb_run_name,
+            'tags': args.wandb_tags,
+            'notes': args.wandb_notes,
+            'training_config': {
+                'learning_rate': args.learning_rate,
+                'weight_decay': args.weight_decay,
+                'num_epochs': args.num_epochs,
+                'gradient_accumulation_steps': args.gradient_accumulation_steps,
+                'lora_rank': args.lora_rank,
+                'lora_target_modules': args.lora_target_modules,
+                'trainable_models': args.trainable_models,
+                'height': args.height,
+                'width': args.width,
+                'max_pixels': args.max_pixels,
+                'dataset_repeat': args.dataset_repeat,
+                'use_gradient_checkpointing': args.use_gradient_checkpointing,
+                'use_gradient_checkpointing_offload': args.use_gradient_checkpointing_offload,
+            }
+        }
+        model_logger = WandBModelLogger(
+            args.output_path,
+            remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
+            wandb_config=wandb_config,
+            log_freq=args.wandb_log_freq
+        )
+    else:
+        model_logger = ModelLogger(args.output_path, remove_prefix_in_ckpt=args.remove_prefix_in_ckpt)
+
+    # Setup optimizer with weight decay support
+    optimizer = torch.optim.AdamW(
+        model.trainable_modules(),
+        lr=args.learning_rate,
+        weight_decay=args.weight_decay
+    )
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
+
     launch_training_task(
         dataset, model, model_logger, optimizer, scheduler,
         num_epochs=args.num_epochs,
