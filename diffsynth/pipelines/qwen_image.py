@@ -4,17 +4,45 @@ from typing import Union
 from PIL import Image
 from tqdm import tqdm
 from einops import rearrange
+import numpy as np
 
 from ..models import ModelManager, load_state_dict
 from ..models.qwen_image_dit import QwenImageDiT
 from ..models.qwen_image_text_encoder import QwenImageTextEncoder
 from ..models.qwen_image_vae import QwenImageVAE
+from ..models.qwen_image_controlnet import QwenImageBlockWiseControlNet
 from ..schedulers import FlowMatchScheduler
 from ..utils import BasePipeline, ModelConfig, PipelineUnitRunner, PipelineUnit
 from ..lora import GeneralLoRALoader
+from .flux_image_new import ControlNetInput
 
 from ..vram_management import gradient_checkpoint_forward, enable_vram_management, AutoWrappedModule, AutoWrappedLinear
 
+
+class QwenImageBlockwiseMultiControlNet(torch.nn.Module):
+    def __init__(self, models: list[QwenImageBlockWiseControlNet]):
+        super().__init__()
+        if not isinstance(models, list):
+            models = [models]
+        self.models = torch.nn.ModuleList(models)
+
+    def preprocess(self, controlnet_inputs: list[ControlNetInput], conditionings: list[torch.Tensor], **kwargs):
+        processed_conditionings = []
+        for controlnet_input, conditioning in zip(controlnet_inputs, conditionings):
+            conditioning = rearrange(conditioning, "B C (H P) (W Q) -> B (H W) (C P Q)", P=2, Q=2)
+            model_output = self.models[controlnet_input.controlnet_id].process_controlnet_conditioning(conditioning)
+            processed_conditionings.append(model_output)
+        return processed_conditionings
+
+    def blockwise_forward(self, image, conditionings: list[torch.Tensor], controlnet_inputs: list[ControlNetInput], progress_id, num_inference_steps, block_id, **kwargs):
+        res = 0
+        for controlnet_input, conditioning in zip(controlnet_inputs, conditionings):
+            progress = (num_inference_steps - 1 - progress_id) / max(num_inference_steps - 1, 1)
+            if progress > controlnet_input.start + (1e-4) or progress < controlnet_input.end - (1e-4):
+                continue
+            model_output = self.models[controlnet_input.controlnet_id].blockwise_forward(image, conditioning, block_id)
+            res = res + model_output * controlnet_input.scale
+        return res
 
 
 class QwenImagePipeline(BasePipeline):
@@ -30,15 +58,17 @@ class QwenImagePipeline(BasePipeline):
         self.text_encoder: QwenImageTextEncoder = None
         self.dit: QwenImageDiT = None
         self.vae: QwenImageVAE = None
+        self.blockwise_controlnet: QwenImageBlockwiseMultiControlNet = None
         self.tokenizer: Qwen2Tokenizer = None
         self.unit_runner = PipelineUnitRunner()
-        self.in_iteration_models = ("dit",)
+        self.in_iteration_models = ("dit", "blockwise_controlnet")
         self.units = [
             QwenImageUnit_ShapeChecker(),
             QwenImageUnit_NoiseInitializer(),
             QwenImageUnit_InputImageEmbedder(),
             QwenImageUnit_PromptEmbedder(),
             QwenImageUnit_EntityControl(),
+            QwenImageUnit_BlockwiseControlNet(),
         ]
         self.model_fn = model_fn_qwen_image
         
@@ -187,6 +217,7 @@ class QwenImagePipeline(BasePipeline):
         pipe.text_encoder = model_manager.fetch_model("qwen_image_text_encoder")
         pipe.dit = model_manager.fetch_model("qwen_image_dit")
         pipe.vae = model_manager.fetch_model("qwen_image_vae")
+        pipe.blockwise_controlnet = QwenImageBlockwiseMultiControlNet(model_manager.fetch_model("qwen_image_blockwise_controlnet", index="all"))
         if tokenizer_config is not None and pipe.text_encoder is not None:
             tokenizer_config.download_if_necessary()
             from transformers import Qwen2Tokenizer
@@ -212,6 +243,8 @@ class QwenImagePipeline(BasePipeline):
         rand_device: str = "cpu",
         # Steps
         num_inference_steps: int = 30,
+        # Blockwise ControlNet
+        blockwise_controlnet_inputs: list[ControlNetInput] = None,
         # EliGen
         eligen_entity_prompts: list[str] = None,
         eligen_entity_masks: list[Image.Image] = None,
@@ -241,6 +274,8 @@ class QwenImagePipeline(BasePipeline):
             "height": height, "width": width,
             "seed": seed, "rand_device": rand_device,
             "enable_fp8_attention": enable_fp8_attention,
+            "num_inference_steps": num_inference_steps,
+            "blockwise_controlnet_inputs": blockwise_controlnet_inputs,
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
             "eligen_entity_prompts": eligen_entity_prompts, "eligen_entity_masks": eligen_entity_masks, "eligen_enable_on_negative": eligen_enable_on_negative,
         }
@@ -431,14 +466,62 @@ class QwenImageUnit_EntityControl(PipelineUnit):
         return inputs_shared, inputs_posi, inputs_nega
 
 
+
+class QwenImageUnit_BlockwiseControlNet(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("blockwise_controlnet_inputs", "tiled", "tile_size", "tile_stride"),
+            onload_model_names=("vae",)
+        )
+
+    def apply_controlnet_mask_on_latents(self, pipe, latents, mask):
+        mask = (pipe.preprocess_image(mask) + 1) / 2
+        mask = mask.mean(dim=1, keepdim=True)
+        mask = 1 - torch.nn.functional.interpolate(mask, size=latents.shape[-2:])
+        latents = torch.concat([latents, mask], dim=1)
+        return latents
+
+    def apply_controlnet_mask_on_image(self, pipe, image, mask):
+        mask = mask.resize(image.size)
+        mask = pipe.preprocess_image(mask).mean(dim=[0, 1]).cpu()
+        image = np.array(image)
+        image[mask > 0] = 0
+        image = Image.fromarray(image)
+        return image
+
+    def process(self, pipe: QwenImagePipeline, blockwise_controlnet_inputs: list[ControlNetInput], tiled, tile_size, tile_stride):
+        if blockwise_controlnet_inputs is None:
+            return {}
+        pipe.load_models_to_device(self.onload_model_names)
+        conditionings = []
+        for controlnet_input in blockwise_controlnet_inputs:
+            image = controlnet_input.image
+            if controlnet_input.inpaint_mask is not None:
+                image = self.apply_controlnet_mask_on_image(pipe, image, controlnet_input.inpaint_mask)
+
+            image = pipe.preprocess_image(image).to(device=pipe.device, dtype=pipe.torch_dtype)
+            image = pipe.vae.encode(image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+
+            if controlnet_input.inpaint_mask is not None:
+                image = self.apply_controlnet_mask_on_latents(pipe, image, controlnet_input.inpaint_mask)
+            conditionings.append(image)
+            
+        return {"blockwise_controlnet_conditioning": conditionings}
+
+
 def model_fn_qwen_image(
     dit: QwenImageDiT = None,
+    blockwise_controlnet: QwenImageBlockwiseMultiControlNet = None,
     latents=None,
     timestep=None,
     prompt_emb=None,
     prompt_emb_mask=None,
     height=None,
     width=None,
+    blockwise_controlnet_conditioning=None,
+    blockwise_controlnet_inputs=None,
+    progress_id=0,
+    num_inference_steps=1,
     entity_prompt_emb=None,
     entity_prompt_emb_mask=None,
     entity_masks=None,
@@ -465,8 +548,12 @@ def model_fn_qwen_image(
         text = dit.txt_in(dit.txt_norm(prompt_emb))
         image_rotary_emb = dit.pos_embed(img_shapes, txt_seq_lens, device=latents.device)
         attention_mask = None
+        
+    if blockwise_controlnet_conditioning is not None:
+        blockwise_controlnet_conditioning = blockwise_controlnet.preprocess(
+            blockwise_controlnet_inputs, blockwise_controlnet_conditioning)
 
-    for block in dit.transformer_blocks:
+    for block_id, block in enumerate(dit.transformer_blocks):
         text, image = gradient_checkpoint_forward(
             block,
             use_gradient_checkpointing,
@@ -478,6 +565,12 @@ def model_fn_qwen_image(
             attention_mask=attention_mask,
             enable_fp8_attention=enable_fp8_attention,
         )
+        if blockwise_controlnet_conditioning is not None:
+            image = image + blockwise_controlnet.blockwise_forward(
+                image=image, conditionings=blockwise_controlnet_conditioning,
+                controlnet_inputs=blockwise_controlnet_inputs, block_id=block_id,
+                progress_id=progress_id, num_inference_steps=num_inference_steps,
+            )
     
     image = dit.norm_out(image, conditioning)
     image = dit.proj_out(image)
