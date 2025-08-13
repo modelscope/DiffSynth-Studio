@@ -11,7 +11,7 @@ pipe = QwenImagePipeline.from_pretrained(
         ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
         ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors"),
         ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
-        ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Canny", origin_file_pattern="model.safetensors"),
+        ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Depth", origin_file_pattern="model.safetensors"),
     ],
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
 )
@@ -19,11 +19,12 @@ pipe = QwenImagePipeline.from_pretrained(
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/example_image_dataset",
     local_dir="./data/example_image_dataset",
-    allow_file_pattern="canny/image_1.jpg"
+    allow_file_pattern="depth/image_1.jpg"
 )
-controlnet_image = Image.open("data/example_image_dataset/canny/image_1.jpg").resize((1328, 1328))
 
-prompt = "一只小狗，毛发光洁柔顺，眼神灵动，背景是樱花纷飞的春日庭院，唯美温馨。"
+controlnet_image = Image.open("data/example_image_dataset/depth/image_1.jpg").resize((1328, 1328))
+
+prompt = "精致肖像，水下少女，蓝裙飘逸，发丝轻扬，光影透澈，气泡环绕，面容恬静，细节精致，梦幻唯美。"
 image = pipe(
     prompt, seed=0,
     blockwise_controlnet_inputs=[ControlNetInput(image=controlnet_image)]
