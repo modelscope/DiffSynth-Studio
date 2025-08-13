@@ -1007,12 +1007,50 @@ def model_fn_wan_video(
             tensor_names=["latents", "y"],
             batch_size=2 if cfg_merge else 1
         )
-    
+
     if use_unified_sequence_parallel:
         import torch.distributed as dist
         from xfuser.core.distributed import (get_sequence_parallel_rank,
                                             get_sequence_parallel_world_size,
                                             get_sp_group)
+
+    # ====== NEW: pre-pad to multiples of patch size ======
+    # keep original spatial size for later crop-back
+    B, C, Fv, H0, W0 = latents.shape
+    # DiT uses Conv3d with kernel=stride=patch_size (no padding)
+    pt, ph, pw = dit.patch_size  # typically (1,2,2)
+    need_h = (ph - (H0 % ph)) % ph
+    need_w = (pw - (W0 % pw)) % pw
+
+    def pad_video_5d(x):
+        if x is None:
+            return None
+        # x is [B, C, F, H, W]
+        if need_h == 0 and need_w == 0:
+            return x
+        return torch.nn.functional.pad(x, (0, need_w, 0, need_h, 0, 0))  # (Wl,Wr,Hl,Hr,Fl,Fr)
+
+    def pad_image_4d(x):
+        if x is None:
+            return None
+        # x is [B, C, H, W]
+        if need_h == 0 and need_w == 0:
+            return x
+        return torch.nn.functional.pad(x, (0, need_w, 0, need_h))  # (Wl,Wr,Hl,Hr)
+
+    latents = pad_video_5d(latents)
+    if y is not None and dit.require_vae_embedding:
+        y = pad_video_5d(y)
+
+    ref_hw_cropped = False
+    if reference_latents is not None:
+        # reference_latents can be [B,C,H,W] or [B,C,F,H,W] (then only F=1 is used)
+        if len(reference_latents.shape) == 5:
+            reference_latents = reference_latents[:, :, 0]  # -> [B,C,H,W]
+        # pad to match multiples
+        reference_latents = pad_image_4d(reference_latents)
+        ref_hw_cropped = True
+    # =====================================================
 
     # Timestep
     if dit.seperated_timestep and fuse_vae_embedding_in_latents:
@@ -1029,7 +1067,7 @@ def model_fn_wan_video(
     else:
         t = dit.time_embedding(sinusoidal_embedding_1d(dit.freq_dim, timestep))
         t_mod = dit.time_projection(t).unflatten(1, (6, dit.dim))
-    
+
     # Motion Controller
     if motion_bucket_id is not None and motion_controller is not None:
         t_mod = t_mod + motion_controller(motion_bucket_id).unflatten(1, (6, dit.dim))
@@ -1048,33 +1086,31 @@ def model_fn_wan_video(
     if clip_feature is not None and dit.require_clip_embedding:
         clip_embdding = dit.img_emb(clip_feature)
         context = torch.cat([clip_embdding, context], dim=1)
-    
+
     # Add camera control
     x, (f, h, w) = dit.patchify(x, control_camera_latents_input)
-    
+
     # Reference image
     if reference_latents is not None:
-        if len(reference_latents.shape) == 5:
-            reference_latents = reference_latents[:, :, 0]
         reference_latents = dit.ref_conv(reference_latents).flatten(2).transpose(1, 2)
         x = torch.concat([reference_latents, x], dim=1)
         f += 1
-    
+
     freqs = torch.cat([
         dit.freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
         dit.freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
         dit.freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
     ], dim=-1).reshape(f * h * w, 1, -1).to(x.device)
-    
+
     # TeaCache
     if tea_cache is not None:
         tea_cache_update = tea_cache.check(dit, x, t_mod)
     else:
         tea_cache_update = False
-        
+
     if vace_context is not None:
         vace_hints = vace(x, vace_context, context, t_mod, freqs)
-    
+
     # blocks
     if use_unified_sequence_parallel:
         if dist.is_initialized() and dist.get_world_size() > 1:
@@ -1089,7 +1125,7 @@ def model_fn_wan_video(
             def custom_forward(*inputs):
                 return module(*inputs)
             return custom_forward
-        
+
         for block_id, block in enumerate(dit.blocks):
             if use_gradient_checkpointing_offload:
                 with torch.autograd.graph.save_on_cpu():
@@ -1114,7 +1150,7 @@ def model_fn_wan_video(
                 x = x + current_vace_hint * vace_scale
         if tea_cache is not None:
             tea_cache.store(x)
-            
+
     x = dit.head(x, t)
     if use_unified_sequence_parallel:
         if dist.is_initialized() and dist.get_world_size() > 1:
@@ -1125,4 +1161,10 @@ def model_fn_wan_video(
         x = x[:, reference_latents.shape[1]:]
         f -= 1
     x = dit.unpatchify(x, (f, h, w))
+
+    # ====== NEW: crop back to original H0, W0 ======
+    if need_h or need_w:
+        x = x[:, :, :, :H0, :W0]
+    # =================================================
+
     return x
