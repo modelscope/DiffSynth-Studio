@@ -90,8 +90,39 @@ class QwenEmbedRope(nn.Module):
         )
         freqs = torch.polar(torch.ones_like(freqs), freqs)
         return freqs
-    
+
+
+    def _expand_pos_freqs_if_needed(self, video_fhw, txt_seq_lens):
+        if isinstance(video_fhw, list):
+            video_fhw = video_fhw[0]
+        _, height, width = video_fhw
+        if self.scale_rope:
+            max_vid_index = max(height // 2, width // 2)
+        else:
+            max_vid_index = max(height, width)
+        required_len = max_vid_index + max(txt_seq_lens)
+        cur_max_len = self.pos_freqs.shape[0]
+        if required_len <= cur_max_len:
+            return
+
+        new_max_len = math.ceil(required_len / 512) * 512
+        pos_index = torch.arange(new_max_len)
+        neg_index = torch.arange(new_max_len).flip(0) * -1 - 1
+        self.pos_freqs = torch.cat([
+            self.rope_params(pos_index, self.axes_dim[0], self.theta),
+            self.rope_params(pos_index, self.axes_dim[1], self.theta),
+            self.rope_params(pos_index, self.axes_dim[2], self.theta),
+        ], dim=1)
+        self.neg_freqs = torch.cat([
+            self.rope_params(neg_index, self.axes_dim[0], self.theta),
+            self.rope_params(neg_index, self.axes_dim[1], self.theta),
+            self.rope_params(neg_index, self.axes_dim[2], self.theta),
+        ], dim=1)
+        return
+
+
     def forward(self, video_fhw, txt_seq_lens, device):
+        self._expand_pos_freqs_if_needed(video_fhw, txt_seq_lens)
         if self.pos_freqs.device != device:
             self.pos_freqs = self.pos_freqs.to(device)
             self.neg_freqs = self.neg_freqs.to(device)
