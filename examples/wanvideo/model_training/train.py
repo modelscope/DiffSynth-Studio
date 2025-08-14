@@ -1,4 +1,5 @@
 import torch, os, json
+from diffsynth import load_state_dict
 from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
 from diffsynth.trainers.utils import DiffusionTrainingModule, VideoDataset, ModelLogger, launch_training_task, wan_parser
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -10,7 +11,7 @@ class WanTrainingModule(DiffusionTrainingModule):
         self,
         model_paths=None, model_id_with_origin_paths=None,
         trainable_models=None,
-        lora_base_model=None, lora_target_modules="q,k,v,o,ffn.0,ffn.2", lora_rank=32,
+        lora_base_model=None, lora_target_modules="q,k,v,o,ffn.0,ffn.2", lora_rank=32, lora_checkpoint=None,
         use_gradient_checkpointing=True,
         use_gradient_checkpointing_offload=False,
         extra_inputs=None,
@@ -41,6 +42,12 @@ class WanTrainingModule(DiffusionTrainingModule):
                 target_modules=lora_target_modules.split(","),
                 lora_rank=lora_rank
             )
+            if lora_checkpoint is not None:
+                state_dict = load_state_dict(lora_checkpoint)
+                state_dict = self.mapping_lora_state_dict(state_dict)
+                load_result = model.load_state_dict(state_dict, strict=False)
+                if len(load_result[1]) > 0:
+                    print(f"Warning, LoRA key mismatch! Unexpected keys in LoRA checkpoint: {load_result[1]}")
             setattr(self.pipe, lora_base_model, model)
             
         # Store other configs
@@ -112,6 +119,7 @@ if __name__ == "__main__":
         lora_base_model=args.lora_base_model,
         lora_target_modules=args.lora_target_modules,
         lora_rank=args.lora_rank,
+        lora_checkpoint=args.lora_checkpoint,
         use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
         extra_inputs=args.extra_inputs,
         max_timestep_boundary=args.max_timestep_boundary,
@@ -121,7 +129,7 @@ if __name__ == "__main__":
         args.output_path,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt
     )
-    optimizer = torch.optim.AdamW(model.trainable_modules(), lr=args.learning_rate)
+    optimizer = torch.optim.AdamW(model.trainable_modules(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
     launch_training_task(
         dataset, model, model_logger, optimizer, scheduler,

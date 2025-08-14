@@ -290,11 +290,13 @@ Wan 系列模型训练通过统一的 [`./model_training/train.py`](./model_trai
   * `--min_timestep_boundary`: Timestep 区间最小值，范围为 0～1，默认为 1，仅在多 DiT 的混合模型训练中需要手动设置，例如 [Wan-AI/Wan2.2-I2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-I2V-A14B)。
 * 训练
   * `--learning_rate`: 学习率。
+  * `--weight_decay`：权重衰减大小。
   * `--num_epochs`: 轮数（Epoch）。
   * `--output_path`: 保存路径。
   * `--remove_prefix_in_ckpt`: 在 ckpt 中移除前缀。
   * `--save_steps`: 保存模型的间隔 step 数量，如果设置为 None ，则每个 epoch 保存一次
   * `--find_unused_parameters`: DDP 训练中是否存在未使用的参数
+  * `--lora_checkpoint`: LoRA 检查点的路径。如果提供此路径，LoRA 将从此检查点加载。
 * 可训练模块
   * `--trainable_models`: 可训练的模型，例如 dit、vae、text_encoder。
   * `--lora_base_model`: LoRA 添加到哪个模型上。

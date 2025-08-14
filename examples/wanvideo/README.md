@@ -288,6 +288,7 @@ The script includes the following parameters:
   * `--min_timestep_boundary`: Minimum value of the timestep interval, ranging from 0 to 1. Default is 1. This needs to be manually set only when training mixed models with multiple DiTs, for example, [Wan-AI/Wan2.2-I2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-I2V-A14B).
 * Training
   * `--learning_rate`: Learning rate.
+  * `--weight_decay`: Weight decay.
   * `--num_epochs`: Number of epochs.
   * `--output_path`: Output save path.
   * `--remove_prefix_in_ckpt`: Remove prefix in ckpt.
@@ -298,6 +299,7 @@ The script includes the following parameters:
   * `--lora_base_model`: Which model LoRA is added to.
   * `--lora_target_modules`: Which layers LoRA is added to.
   * `--lora_rank`: Rank of LoRA.
+  * `--lora_checkpoint`: Path to the LoRA checkpoint. If provided, LoRA will be loaded from this checkpoint.
 * Extra Inputs
   * `--extra_inputs`: Additional model inputs, comma-separated.
 * VRAM Management

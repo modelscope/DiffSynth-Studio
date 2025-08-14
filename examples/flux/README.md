@@ -255,6 +255,7 @@ The script includes the following parameters:
   * `--model_id_with_origin_paths`: Model ID with original paths, e.g., black-forest-labs/FLUX.1-dev:flux1-dev.safetensors. Separate with commas.
 * Training
   * `--learning_rate`: Learning rate.
+  * `--weight_decay`: Weight decay.
   * `--num_epochs`: Number of epochs.
   * `--output_path`: Save path.
   * `--remove_prefix_in_ckpt`: Remove prefix in checkpoint.
@@ -265,6 +266,7 @@ The script includes the following parameters:
   * `--lora_base_model`: Which model to add LoRA to.
   * `--lora_target_modules`: Which layers to add LoRA to.
   * `--lora_rank`: Rank of LoRA.
+  * `--lora_checkpoint`: Path to the LoRA checkpoint. If provided, LoRA will be loaded from this checkpoint.
 * Extra Model Inputs
   * `--extra_inputs`: Extra model inputs, separated by commas.
 * VRAM Management
