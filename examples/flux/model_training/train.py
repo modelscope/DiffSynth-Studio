@@ -1,4 +1,5 @@
 import torch, os, json
+from diffsynth import load_state_dict
 from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig, ControlNetInput
 from diffsynth.trainers.utils import DiffusionTrainingModule, ImageDataset, ModelLogger, launch_training_task, flux_parser
 from diffsynth.models.lora import FluxLoRAConverter
@@ -11,7 +12,7 @@ class FluxTrainingModule(DiffusionTrainingModule):
         self,
         model_paths=None, model_id_with_origin_paths=None,
         trainable_models=None,
-        lora_base_model=None, lora_target_modules="a_to_qkv,b_to_qkv,ff_a.0,ff_a.2,ff_b.0,ff_b.2,a_to_out,b_to_out,proj_out,norm.linear,norm1_a.linear,norm1_b.linear,to_qkv_mlp", lora_rank=32,
+        lora_base_model=None, lora_target_modules="a_to_qkv,b_to_qkv,ff_a.0,ff_a.2,ff_b.0,ff_b.2,a_to_out,b_to_out,proj_out,norm.linear,norm1_a.linear,norm1_b.linear,to_qkv_mlp", lora_rank=32, lora_checkpoint=None,
         use_gradient_checkpointing=True,
         use_gradient_checkpointing_offload=False,
         extra_inputs=None,
@@ -40,6 +41,12 @@ class FluxTrainingModule(DiffusionTrainingModule):
                 target_modules=lora_target_modules.split(","),
                 lora_rank=lora_rank
             )
+            if lora_checkpoint is not None:
+                state_dict = load_state_dict(lora_checkpoint)
+                state_dict = self.mapping_lora_state_dict(state_dict)
+                load_result = model.load_state_dict(state_dict, strict=False)
+                if len(load_result[1]) > 0:
+                    print(f"Warning, LoRA key mismatch! Unexpected keys in LoRA checkpoint: {load_result[1]}")
             setattr(self.pipe, lora_base_model, model)
             
         # Store other configs
@@ -106,6 +113,7 @@ if __name__ == "__main__":
         lora_base_model=args.lora_base_model,
         lora_target_modules=args.lora_target_modules,
         lora_rank=args.lora_rank,
+        lora_checkpoint=args.lora_checkpoint,
         use_gradient_checkpointing=args.use_gradient_checkpointing,
         use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
         extra_inputs=args.extra_inputs,
@@ -115,7 +123,7 @@ if __name__ == "__main__":
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         state_dict_converter=FluxLoRAConverter.align_to_opensource_format if args.align_to_opensource_format else lambda x:x,
     )
-    optimizer = torch.optim.AdamW(model.trainable_modules(), lr=args.learning_rate)
+    optimizer = torch.optim.AdamW(model.trainable_modules(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
     launch_training_task(
         dataset, model, model_logger, optimizer, scheduler,

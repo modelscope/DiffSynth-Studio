@@ -237,6 +237,7 @@ Qwen-Image 系列模型训练通过统一的 [`./model_training/train.py`](./mod
   * `--tokenizer_path`: tokenizer 路径，留空将会自动下载。
 * 训练
   * `--learning_rate`: 学习率。
+  * `--weight_decay`：权重衰减大小。
   * `--num_epochs`: 轮数（Epoch）。
   * `--output_path`: 保存路径。
   * `--remove_prefix_in_ckpt`: 在 ckpt 中移除前缀。
@@ -247,6 +248,7 @@ Qwen-Image 系列模型训练通过统一的 [`./model_training/train.py`](./mod
   * `--lora_base_model`: LoRA 添加到哪个模型上。
   * `--lora_target_modules`: LoRA 添加到哪一层上。
   * `--lora_rank`: LoRA 的秩（Rank）。
+  * `--lora_checkpoint`: LoRA 检查点的路径。如果提供此路径，LoRA 将从此检查点加载。
 * 额外模型输入
   * `--extra_inputs`: 额外的模型输入，以逗号分隔。
 * 显存管理

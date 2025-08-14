@@ -255,6 +255,7 @@ FLUX 系列模型训练通过统一的 [`./model_training/train.py`](./model_tra
   * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 black-forest-labs/FLUX.1-dev:flux1-dev.safetensors。用逗号分隔。
 * 训练
   * `--learning_rate`: 学习率。
+  * `--weight_decay`：权重衰减大小。
   * `--num_epochs`: 轮数（Epoch）。
   * `--output_path`: 保存路径。
   * `--remove_prefix_in_ckpt`: 在 ckpt 中移除前缀。
@@ -265,6 +266,7 @@ FLUX 系列模型训练通过统一的 [`./model_training/train.py`](./model_tra
   * `--lora_base_model`: LoRA 添加到哪个模型上。
   * `--lora_target_modules`: LoRA 添加到哪一层上。
   * `--lora_rank`: LoRA 的秩（Rank）。
+  * `--lora_checkpoint`: LoRA 检查点的路径。如果提供此路径，LoRA 将从此检查点加载。
 * 额外模型输入
   * `--extra_inputs`: 额外的模型输入，以逗号分隔。
 * 显存管理
