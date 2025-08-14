@@ -82,7 +82,6 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         # Extra inputs
         controlnet_input = {}
         for extra_input in self.extra_inputs:
-            inputs_shared[extra_input] = data[extra_input]
             if extra_input.startswith("blockwise_controlnet_"):
                 controlnet_input[extra_input.replace("blockwise_controlnet_", "")] = data[extra_input]
             elif extra_input.startswith("controlnet_"):
