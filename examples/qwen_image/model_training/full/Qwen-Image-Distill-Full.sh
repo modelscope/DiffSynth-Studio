@@ -9,4 +9,5 @@ accelerate launch --config_file examples/qwen_image/model_training/full/accelera
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/Qwen-Image-Distill-Full_full" \
   --trainable_models "dit" \
-  --use_gradient_checkpointing
+  --use_gradient_checkpointing \
+  --find_unused_parameters
