@@ -13,8 +13,9 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --lora_base_model "dit" \
   --lora_target_modules "q,k,v,o,ffn.0,ffn.2" \
   --lora_rank 32 \
-  --max_timestep_boundary 1 \
-  --min_timestep_boundary 0.875
+  --max_timestep_boundary 0.417 \
+  --min_timestep_boundary 0
+# boundary corresponds to timesteps [875, 1000]
 
 
 accelerate launch examples/wanvideo/model_training/train.py \
@@ -32,5 +33,6 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --lora_base_model "dit" \
   --lora_target_modules "q,k,v,o,ffn.0,ffn.2" \
   --lora_rank 32 \
-  --max_timestep_boundary 0.875 \
-  --min_timestep_boundary 0
+  --max_timestep_boundary 1 \
+  --min_timestep_boundary 0.417
+# boundary corresponds to timesteps [0, 875)

@@ -13,8 +13,9 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --trainable_models "dit" \
   --extra_inputs "input_image" \
   --use_gradient_checkpointing_offload \
-  --max_timestep_boundary 1 \
-  --min_timestep_boundary 0.875
+  --max_timestep_boundary 0.358 \
+  --min_timestep_boundary 0
+# boundary corresponds to timesteps [900, 1000]
 
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/wanvideo/model_training/train.py \
   --dataset_base_path data/example_video_dataset \
@@ -31,5 +32,6 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --trainable_models "dit" \
   --extra_inputs "input_image" \
   --use_gradient_checkpointing_offload \
-  --max_timestep_boundary 0.875 \
-  --min_timestep_boundary 0
+  --max_timestep_boundary 1 \
+  --min_timestep_boundary 0.358
+# boundary corresponds to timesteps [0, 900)
