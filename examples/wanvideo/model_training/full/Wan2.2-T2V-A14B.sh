@@ -11,8 +11,9 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/Wan2.2-T2V-A14B_high_noise_full" \
   --trainable_models "dit" \
-  --max_timestep_boundary 1 \
-  --min_timestep_boundary 0.875
+  --max_timestep_boundary 0.417 \
+  --min_timestep_boundary 0
+# boundary corresponds to timesteps [875, 1000]
 
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/wanvideo/model_training/train.py \
   --dataset_base_path data/example_video_dataset \
@@ -27,5 +28,6 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/Wan2.2-T2V-A14B_low_noise_full" \
   --trainable_models "dit" \
-  --max_timestep_boundary 0.875 \
-  --min_timestep_boundary 0
+  --max_timestep_boundary 1 \
+  --min_timestep_boundary 0.417
+# boundary corresponds to timesteps [0, 875)
