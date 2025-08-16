@@ -1,10 +1,7 @@
 import torch
 import torch.nn as nn
-from .qwen_image_dit import QwenEmbedRope, QwenImageTransformerBlock
-from ..vram_management import gradient_checkpoint_forward
-from einops import rearrange
-from .sd3_dit import TimestepEmbeddings, RMSNorm
-
+from .sd3_dit import RMSNorm
+from .utils import hash_state_dict_keys
 
 
 class BlockWiseControlBlock(torch.nn.Module):
@@ -35,10 +32,11 @@ class QwenImageBlockWiseControlNet(torch.nn.Module):
         self,
         num_layers: int = 60,
         in_dim: int = 64,
+        additional_in_dim: int = 0,
         dim: int = 3072,
     ):
         super().__init__()
-        self.img_in = nn.Linear(in_dim, dim)
+        self.img_in = nn.Linear(in_dim + additional_in_dim, dim)
         self.controlnet_blocks = nn.ModuleList(
             [
                 BlockWiseControlBlock(dim)
@@ -68,4 +66,9 @@ class QwenImageBlockWiseControlNetStateDictConverter():
         pass
 
     def from_civitai(self, state_dict):
-        return state_dict
+        hash_value = hash_state_dict_keys(state_dict)
+        extra_kwargs = {}
+        if hash_value == "a9e54e480a628f0b956a688a81c33bab":
+            # inpaint controlnet
+            extra_kwargs = {"additional_in_dim": 4}
+        return state_dict, extra_kwargs
