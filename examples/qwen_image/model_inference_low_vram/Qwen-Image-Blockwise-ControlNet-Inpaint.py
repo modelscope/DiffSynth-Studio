@@ -23,12 +23,12 @@ dataset_snapshot_download(
     allow_file_pattern="inpaint/*.jpg"
 )
 prompt = "a cat with sunglasses"
-controlnet_image = Image.open("./data/example_image_dataset/inpaint/image_1.jpg").convert("RGB").resize((1024, 1024))
-inpaint_mask = Image.open("./data/example_image_dataset/inpaint/mask.jpg").convert("RGB").resize((1024, 1024))
+controlnet_image = Image.open("./data/example_image_dataset/inpaint/image_1.jpg").convert("RGB").resize((1328, 1328))
+inpaint_mask = Image.open("./data/example_image_dataset/inpaint/mask.jpg").convert("RGB").resize((1328, 1328))
 image = pipe(
     prompt, seed=0,
+    input_image=controlnet_image, inpaint_mask=inpaint_mask,
     blockwise_controlnet_inputs=[ControlNetInput(image=controlnet_image, inpaint_mask=inpaint_mask)],
-    height=1024, width=1024,
     num_inference_steps=40,
 )
 image.save("image.jpg")
