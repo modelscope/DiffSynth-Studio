@@ -19,6 +19,5 @@ image = pipe(prompt=prompt, seed=0, num_inference_steps=40, height=1024, width=1
 image.save("image1.jpg")
 
 prompt = "将裙子改为粉色"
-for seed in range(1, 10):
-    image = pipe(prompt, edit_image=image, seed=seed, num_inference_steps=40, height=1024, width=1024)
-    image.save(f"image2_{seed}.jpg")
+image = pipe(prompt, edit_image=image, seed=1, num_inference_steps=40, height=1024, width=1024)
+image.save(f"image2.jpg")
