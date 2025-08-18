@@ -139,6 +139,20 @@ class BasePipeline(torch.nn.Module):
             else:
                 model.eval()
                 model.requires_grad_(False)
+                
+    
+    def blend_with_mask(self, base, addition, mask):
+        return base * (1 - mask) + addition * mask
+    
+    
+    def step(self, scheduler, latents, progress_id, noise_pred, input_latents=None, inpaint_mask=None, **kwargs):
+        timestep = scheduler.timesteps[progress_id]
+        if inpaint_mask is not None:
+            noise_pred_expected = scheduler.return_to_timestep(scheduler.timesteps[progress_id], latents, input_latents)
+            noise_pred = self.blend_with_mask(noise_pred_expected, noise_pred, inpaint_mask)
+        latents_next = scheduler.step(noise_pred, timestep, latents)
+        return latents_next
+
 
 
 @dataclass
