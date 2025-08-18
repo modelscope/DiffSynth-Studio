@@ -236,7 +236,6 @@ The script includes the following parameters:
   * `--model_paths`: Model paths to load. In JSON format.
   * `--model_id_with_origin_paths`: Model ID with original paths, e.g., Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors. Separate with commas.
   * `--tokenizer_path`: Tokenizer path. Leave empty to auto-download.
-  * `--edit_model`: Whether to use Qwen-Image-Edit. If True, the model will be used for image editing.
   * `--processor_path`: Path to the processor of Qwen-Image-Edit. Leave empty to auto-download.
 * Training
   * `--learning_rate`: Learning rate.

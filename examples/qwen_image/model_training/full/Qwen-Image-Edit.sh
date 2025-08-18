@@ -1,5 +1,4 @@
 accelerate launch --config_file examples/qwen_image/model_training/full/accelerate_config_zero2offload.yaml examples/qwen_image/model_training/train.py \
-  --edit_model \
   --dataset_base_path data/example_image_dataset \
   --dataset_metadata_path data/example_image_dataset/metadata_edit.csv \
   --max_pixels 1048576 \

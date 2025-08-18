@@ -236,7 +236,6 @@ Qwen-Image 系列模型训练通过统一的 [`./model_training/train.py`](./mod
   * `--model_paths`: 要加载的模型路径。JSON 格式。
   * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors。用逗号分隔。
   * `--tokenizer_path`: tokenizer 路径，留空将会自动下载。
-  * `--edit_model`：是否使用 Qwen-Image-Edit。若为 True，则将使用该模型进行图像编辑。  
   * `--processor_path`：Qwen-Image-Edit 的 processor 路径。留空则自动下载。
 * 训练
   * `--learning_rate`: 学习率。
