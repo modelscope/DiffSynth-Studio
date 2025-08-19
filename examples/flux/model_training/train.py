@@ -45,6 +45,7 @@ class FluxTrainingModule(DiffusionTrainingModule):
                 state_dict = load_state_dict(lora_checkpoint)
                 state_dict = self.mapping_lora_state_dict(state_dict)
                 load_result = model.load_state_dict(state_dict, strict=False)
+                print(f"LoRA checkpoint loaded: {lora_checkpoint}, total {len(state_dict)} keys")
                 if len(load_result[1]) > 0:
                     print(f"Warning, LoRA key mismatch! Unexpected keys in LoRA checkpoint: {load_result[1]}")
             setattr(self.pipe, lora_base_model, model)
