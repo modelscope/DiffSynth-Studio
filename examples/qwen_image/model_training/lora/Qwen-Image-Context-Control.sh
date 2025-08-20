@@ -1,0 +1,20 @@
+accelerate launch examples/qwen_image/model_training/train.py \
+  --dataset_base_path "data/example_image_dataset" \
+  --dataset_metadata_path data/example_image_dataset/metadata_qwenimage_context.csv \
+  --data_file_keys "image,context_image" \
+  --max_pixels 1048576 \
+  --dataset_repeat 50 \
+  --model_id_with_origin_paths "Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors,Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors" \
+  --learning_rate 1e-4 \
+  --num_epochs 5 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/Qwen-Image-Context-Control_lora" \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_out.0,to_add_out,img_mlp.net.2,img_mod.1,txt_mlp.net.2,txt_mod.1" \
+  --lora_rank 64 \
+  --lora_checkpoint "models/DiffSynth-Studio/Qwen-Image-Context-Control/model.safetensors" \
+  --extra_inputs "context_image" \
+  --use_gradient_checkpointing \
+  --find_unused_parameters
+
+# if you want to train from scratch, you can remove the --lora_checkpoint argument
