@@ -24,5 +24,5 @@ image.save("image.jpg")
 
 prompt = "将裙子变成粉色"
 image = image.resize((512, 384))
-image = pipe(prompt, edit_image=image, seed=1, num_inference_steps=40, height=1024, width=768, edit_rope_interpolation=True)
+image = pipe(prompt, edit_image=image, seed=1, num_inference_steps=40, height=1024, width=768, edit_rope_interpolation=True, edit_image_auto_resize=False)
 image.save(f"image2.jpg")

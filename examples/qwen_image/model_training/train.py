@@ -78,6 +78,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
             "rand_device": self.pipe.device,
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
+            "edit_image_auto_resize": True,
         }
         
         # Extra inputs
