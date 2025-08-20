@@ -3,9 +3,9 @@ import torch
 from modelscope import dataset_snapshot_download, snapshot_download
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 from diffsynth.controlnets.processors import Annotator
-from diffsynth import download_models
 
-download_models(["Annotators:Depth"])
+allow_file_pattern = ["sk_model.pth", "sk_model2.pth", "dpt_hybrid-midas-501f0c75.pt", "ControlNetHED.pth", "body_pose_model.pth", "hand_pose_model.pth", "facenet.pth", "scannet.pt"]
+snapshot_download("lllyasviel/Annotators", local_dir="models/Annotators", allow_file_pattern=allow_file_pattern)
 
 pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
