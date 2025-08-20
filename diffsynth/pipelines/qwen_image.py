@@ -278,8 +278,9 @@ class QwenImagePipeline(BasePipeline):
         eligen_entity_prompts: list[str] = None,
         eligen_entity_masks: list[Image.Image] = None,
         eligen_enable_on_negative: bool = False,
-        # Edit Image
+        # Qwen-Image-Edit
         edit_image: Image.Image = None,
+        edit_image_auto_resize: bool = True,
         edit_rope_interpolation: bool = False,
         # FP8
         enable_fp8_attention: bool = False,
@@ -311,7 +312,7 @@ class QwenImagePipeline(BasePipeline):
             "blockwise_controlnet_inputs": blockwise_controlnet_inputs,
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
             "eligen_entity_prompts": eligen_entity_prompts, "eligen_entity_masks": eligen_entity_masks, "eligen_enable_on_negative": eligen_enable_on_negative,
-            "edit_image": edit_image, "edit_rope_interpolation": edit_rope_interpolation,
+            "edit_image": edit_image, "edit_image_auto_resize": edit_image_auto_resize, "edit_rope_interpolation": edit_rope_interpolation, 
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
@@ -584,17 +585,33 @@ class QwenImageUnit_BlockwiseControlNet(PipelineUnit):
 class QwenImageUnit_EditImageEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("edit_image", "tiled", "tile_size", "tile_stride"),
+            input_params=("edit_image", "tiled", "tile_size", "tile_stride", "edit_image_auto_resize"),
             onload_model_names=("vae",)
         )
 
-    def process(self, pipe: QwenImagePipeline, edit_image, tiled, tile_size, tile_stride):
+
+    def calculate_dimensions(self, target_area, ratio):
+        import math
+        width = math.sqrt(target_area * ratio)
+        height = width / ratio
+        width = round(width / 32) * 32
+        height = round(height / 32) * 32
+        return width, height
+
+
+    def edit_image_auto_resize(self, edit_image):
+        calculated_width, calculated_height = self.calculate_dimensions(1024 * 1024, edit_image.size[0] / edit_image.size[1])
+        return edit_image.resize((calculated_width, calculated_height))
+
+
+    def process(self, pipe: QwenImagePipeline, edit_image, tiled, tile_size, tile_stride, edit_image_auto_resize=False):
         if edit_image is None:
             return {}
+        resized_edit_image = self.edit_image_auto_resize(edit_image) if edit_image_auto_resize else edit_image
         pipe.load_models_to_device(['vae'])
-        edit_image = pipe.preprocess_image(edit_image).to(device=pipe.device, dtype=pipe.torch_dtype)
+        edit_image = pipe.preprocess_image(resized_edit_image).to(device=pipe.device, dtype=pipe.torch_dtype)
         edit_latents = pipe.vae.encode(edit_image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
-        return {"edit_latents": edit_latents}
+        return {"edit_latents": edit_latents, "edit_image": resized_edit_image}
 
 
 def model_fn_qwen_image(
