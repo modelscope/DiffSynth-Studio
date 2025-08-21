@@ -283,11 +283,16 @@ class VideoDataset(torch.utils.data.Dataset):
             # make a ((start,end),frameid) struct
             start_end_idx_map = [((sum(delays[:i]), sum(delays[:i+1])), i) for i in range(len(delays))]
             _frames = []
+            # according gemini-code-assist, make it more efficient to locate
+            # where to sample the frame
+            last_match = 0
             for i in range(sum(delays) // minimal_interval):
                 current_time = minimal_interval * i
-                for ((start, end), frame_idx) in start_end_idx_map:
+                for idx, ((start, end), frame_idx) in enumerate(start_end_idx_map[last_match:]):
                     if start <= current_time < end:
                         _frames.append(frames[frame_idx])
+                        last_match = idx + last_match
+                        break
             frames = _frames
         return frames
     
