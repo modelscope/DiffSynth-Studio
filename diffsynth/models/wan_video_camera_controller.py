@@ -182,7 +182,7 @@ def process_pose_file(cam_params, width=672, height=384, original_pose_width=128
 
 
 def generate_camera_coordinates(
-    direction: Literal["Left", "Right", "Up", "Down", "LeftUp", "LeftDown", "RightUp", "RightDown"],
+    direction: Literal["Left", "Right", "Up", "Down", "LeftUp", "LeftDown", "RightUp", "RightDown", "In", "Out"],
     length: int,
     speed: float = 1/54,
     origin=(0, 0.532139961, 0.946026558, 0.5, 0.5, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0)
@@ -198,5 +198,9 @@ def generate_camera_coordinates(
             coor[13] += speed
         if "Down" in direction:
             coor[13] -= speed
+        if "In" in direction:
+            coor[18] -= speed
+        if "Out" in direction:
+            coor[18] += speed
         coordinates.append(coor)
     return coordinates
