@@ -18,8 +18,8 @@ pipe = QwenImagePipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
 )
 pipe.enable_vram_management()
-snapshot_download("DiffSynth-Studio/Qwen-Image-Context-Control", local_dir="models/DiffSynth-Studio/Qwen-Image-Context-Control", allow_file_pattern="model.safetensors")
-pipe.load_lora(pipe.dit, "models/DiffSynth-Studio/Qwen-Image-Context-Control/model.safetensors")
+snapshot_download("DiffSynth-Studio/Qwen-Image-In-Context-Control-Union", local_dir="models/DiffSynth-Studio/Qwen-Image-In-Context-Control-Union", allow_file_pattern="model.safetensors")
+pipe.load_lora(pipe.dit, "models/DiffSynth-Studio/Qwen-Image-In-Context-Control-Union/model.safetensors")
 
 dataset_snapshot_download(dataset_id="DiffSynth-Studio/examples_in_diffsynth", local_dir="./", allow_file_pattern=f"data/examples/qwen-image-context-control/image.jpg")
 origin_image = Image.open("data/examples/qwen-image-context-control/image.jpg").resize((1024, 1024))

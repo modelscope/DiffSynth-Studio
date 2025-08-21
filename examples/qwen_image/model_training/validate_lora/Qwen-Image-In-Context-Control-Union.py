@@ -12,7 +12,7 @@ pipe = QwenImagePipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
 )
-pipe.load_lora(pipe.dit, "models/train/Qwen-Image-Context-Control_lora/epoch-4.safetensors")
+pipe.load_lora(pipe.dit, "models/train/Qwen-Image-In-Context-Control-Union_lora/epoch-4.safetensors")
 image = Image.open("data/example_image_dataset/canny/image_1.jpg").resize((1024, 1024))
 prompt = "Context_Control. a dog"
 image = pipe(prompt=prompt, seed=0, context_image=image, height=1024, width=1024)

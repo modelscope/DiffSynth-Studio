@@ -8,11 +8,11 @@ accelerate launch examples/qwen_image/model_training/train.py \
   --learning_rate 1e-4 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/Qwen-Image-Context-Control_lora" \
+  --output_path "./models/train/Qwen-Image-In-Context-Control-Union_lora" \
   --lora_base_model "dit" \
   --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_out.0,to_add_out,img_mlp.net.2,img_mod.1,txt_mlp.net.2,txt_mod.1" \
   --lora_rank 64 \
-  --lora_checkpoint "models/DiffSynth-Studio/Qwen-Image-Context-Control/model.safetensors" \
+  --lora_checkpoint "models/DiffSynth-Studio/Qwen-Image-In-Context-Control-Union/model.safetensors" \
   --extra_inputs "context_image" \
   --use_gradient_checkpointing \
   --find_unused_parameters

@@ -716,8 +716,7 @@ def model_fn_qwen_image(
     
     image = dit.norm_out(image, conditioning)
     image = dit.proj_out(image)
-    if edit_latents is not None or context_latents is not None:
-        image = image[:, :image_seq_len]
+    image = image[:, :image_seq_len]
     
     latents = rearrange(image, "B (H W) (C P Q) -> B C (H P) (W Q)", H=height//16, W=width//16, P=2, Q=2)
     return latents
