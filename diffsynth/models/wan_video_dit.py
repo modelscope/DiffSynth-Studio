@@ -294,6 +294,7 @@ class WanModel(torch.nn.Module):
     ):
         super().__init__()
         self.dim = dim
+        self.in_dim = dim
         self.freq_dim = freq_dim
         self.has_image_input = has_image_input
         self.patch_size = patch_size
