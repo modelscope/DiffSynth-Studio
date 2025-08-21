@@ -285,7 +285,7 @@ class QwenImagePipeline(BasePipeline):
         edit_image: Image.Image = None,
         edit_image_auto_resize: bool = True,
         edit_rope_interpolation: bool = False,
-        # Qwen-Image-Context-Control
+        # In-context control
         context_image: Image.Image = None,
         # FP8
         enable_fp8_attention: bool = False,
