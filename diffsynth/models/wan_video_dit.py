@@ -294,6 +294,7 @@ class WanModel(torch.nn.Module):
     ):
         super().__init__()
         self.dim = dim
+        self.in_dim = in_dim
         self.freq_dim = freq_dim
         self.has_image_input = has_image_input
         self.patch_size = patch_size
@@ -711,6 +712,42 @@ class WanModelStateDictConverter:
                 "num_heads": 40,
                 "num_layers": 40,
                 "eps": 1e-6,
+                "require_clip_embedding": False,
+            }
+        elif hash_state_dict_keys(state_dict) == "2267d489f0ceb9f21836532952852ee5":
+            # Wan2.2-Fun-A14B-Control
+            config = {
+                "has_image_input": False,
+                "patch_size": [1, 2, 2],
+                "in_dim": 52,
+                "dim": 5120,
+                "ffn_dim": 13824,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 16,
+                "num_heads": 40,
+                "num_layers": 40,
+                "eps": 1e-6,
+                "has_ref_conv": True,
+                "require_clip_embedding": False,
+            }
+        elif hash_state_dict_keys(state_dict) == "47dbeab5e560db3180adf51dc0232fb1":
+            # Wan2.2-Fun-A14B-Control-Camera
+            config = {
+                "has_image_input": False,
+                "patch_size": [1, 2, 2],
+                "in_dim": 36,
+                "dim": 5120,
+                "ffn_dim": 13824,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 16,
+                "num_heads": 40,
+                "num_layers": 40,
+                "eps": 1e-6,
+                "has_ref_conv": False,
+                "add_control_adapter": True,
+                "in_dim_control_adapter": 24,
                 "require_clip_embedding": False,
             }
         else:
