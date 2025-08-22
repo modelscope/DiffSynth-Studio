@@ -294,6 +294,13 @@ class VideoDataset(torch.utils.data.Dataset):
                         last_match = idx + last_match
                         break
             frames = _frames
+        num_frames = len(frames)
+        if num_frames > self.num_frames:
+            num_frames = self.num_frames
+        else:
+            while num_frames > 1 and num_frames % self.time_division_factor != self.time_division_remainder:
+                num_frames -= 1
+        frames = frames[:num_frames]
         return frames
     
     def load_video(self, file_path):
