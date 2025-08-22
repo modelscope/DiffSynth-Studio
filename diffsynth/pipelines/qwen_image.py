@@ -761,11 +761,13 @@ def model_fn_qwen_image(
             enable_fp8_attention=enable_fp8_attention,
         )
         if blockwise_controlnet_conditioning is not None:
-            image[:, :image_seq_len] = image[:, :image_seq_len] + blockwise_controlnet.blockwise_forward(
-                image=image[:, :image_seq_len], conditionings=blockwise_controlnet_conditioning,
+            image_slice = image[:, :image_seq_len].clone()
+            controlnet_output = blockwise_controlnet.blockwise_forward(
+                image=image_slice, conditionings=blockwise_controlnet_conditioning,
                 controlnet_inputs=blockwise_controlnet_inputs, block_id=block_id,
                 progress_id=progress_id, num_inference_steps=num_inference_steps,
             )
+            image[:, :image_seq_len] = image_slice + controlnet_output
     
     image = dit.norm_out(image, conditioning)
     image = dit.proj_out(image)
