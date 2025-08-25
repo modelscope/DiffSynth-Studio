@@ -150,6 +150,35 @@ class QwenImagePipeline(BasePipeline):
         return loss
     
     
+    def _enable_fp8_lora_training(self, dtype):
+        from transformers.models.qwen2_5_vl.modeling_qwen2_5_vl import Qwen2_5_VLRotaryEmbedding, Qwen2RMSNorm, Qwen2_5_VisionPatchEmbed, Qwen2_5_VisionRotaryEmbedding
+        from ..models.qwen_image_dit import RMSNorm
+        from ..models.qwen_image_vae import QwenImageRMS_norm
+        module_map = {
+            RMSNorm: AutoWrappedModule,
+            torch.nn.Linear: AutoWrappedLinear,
+            torch.nn.Conv3d: AutoWrappedModule,
+            torch.nn.Conv2d: AutoWrappedModule,
+            torch.nn.Embedding: AutoWrappedModule,
+            Qwen2_5_VLRotaryEmbedding: AutoWrappedModule,
+            Qwen2RMSNorm: AutoWrappedModule,
+            Qwen2_5_VisionPatchEmbed: AutoWrappedModule,
+            Qwen2_5_VisionRotaryEmbedding: AutoWrappedModule,
+            QwenImageRMS_norm: AutoWrappedModule,
+        }
+        model_config = dict(
+            offload_dtype=dtype,
+            offload_device="cuda",
+            onload_dtype=dtype,
+            onload_device="cuda",
+            computation_dtype=self.torch_dtype,
+            computation_device="cuda",
+        )
+        enable_vram_management(self.text_encoder, module_map=module_map, module_config=model_config)
+        enable_vram_management(self.dit, module_map=module_map, module_config=model_config)
+        enable_vram_management(self.vae, module_map=module_map, module_config=model_config)
+    
+    
     def enable_vram_management(self, num_persistent_param_in_dit=None, vram_limit=None, vram_buffer=0.5, enable_dit_fp8_computation=False):
         self.vram_management_enabled = True
         if vram_limit is None:
