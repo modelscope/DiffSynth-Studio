@@ -262,9 +262,17 @@ class VideoDataset(torch.utils.data.Dataset):
 
     def load_video(self, file_path):
         reader = imageio.get_reader(file_path)
+        total_frames = int(reader.count_frames())
         num_frames = self.get_num_frames(reader)
+        start_idx = 0
+        import random
+        if total_frames>num_frames:
+            # 计算随机起始位置（确保能截取到81帧）
+            max_start_idx = total_frames - num_frames
+            start_idx = random.randint(0, max_start_idx)
+            
         frames = []
-        for frame_id in range(num_frames):
+        for frame_id in range(start_idx,start_idx+num_frames):
             frame = reader.get_data(frame_id)
             frame = Image.fromarray(frame)
             frame = self.crop_and_resize(frame, *self.get_height_width(frame))
