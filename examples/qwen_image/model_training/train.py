@@ -17,20 +17,26 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         use_gradient_checkpointing=True,
         use_gradient_checkpointing_offload=False,
         extra_inputs=None,
+        enable_fp8_training=False,
     ):
         super().__init__()
         # Load models
+        offload_dtype = torch.float8_e4m3fn if enable_fp8_training else None
         model_configs = []
         if model_paths is not None:
             model_paths = json.loads(model_paths)
-            model_configs += [ModelConfig(path=path) for path in model_paths]
+            model_configs += [ModelConfig(path=path, offload_dtype=offload_dtype) for path in model_paths]
         if model_id_with_origin_paths is not None:
             model_id_with_origin_paths = model_id_with_origin_paths.split(",")
-            model_configs += [ModelConfig(model_id=i.split(":")[0], origin_file_pattern=i.split(":")[1]) for i in model_id_with_origin_paths]
+            model_configs += [ModelConfig(model_id=i.split(":")[0], origin_file_pattern=i.split(":")[1], offload_dtype=offload_dtype) for i in model_id_with_origin_paths]
 
         tokenizer_config = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/") if tokenizer_path is None else ModelConfig(tokenizer_path)
         processor_config = ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/") if processor_path is None else ModelConfig(processor_path)
         self.pipe = QwenImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device="cpu", model_configs=model_configs, tokenizer_config=tokenizer_config, processor_config=processor_config)
+        
+        # Enable FP8
+        if enable_fp8_training:
+            self.pipe._enable_fp8_lora_training(torch.float8_e4m3fn)
         
         # Reset training scheduler (do it in each training step)
         self.pipe.scheduler.set_timesteps(1000, training=True)
@@ -43,7 +49,8 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
             model = self.add_lora_to_model(
                 getattr(self.pipe, lora_base_model),
                 target_modules=lora_target_modules.split(","),
-                lora_rank=lora_rank
+                lora_rank=lora_rank,
+                upcast_dtype=self.pipe.torch_dtype,
             )
             if lora_checkpoint is not None:
                 state_dict = load_state_dict(lora_checkpoint)
@@ -126,6 +133,7 @@ if __name__ == "__main__":
         use_gradient_checkpointing=args.use_gradient_checkpointing,
         use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
         extra_inputs=args.extra_inputs,
+        enable_fp8_training=args.enable_fp8_training,
     )
     model_logger = ModelLogger(args.output_path, remove_prefix_in_ckpt=args.remove_prefix_in_ckpt)
     optimizer = torch.optim.AdamW(model.trainable_modules(), lr=args.learning_rate, weight_decay=args.weight_decay)
