@@ -9,10 +9,10 @@ pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="PAI/Wan2.2-Fun-A14B-Comtrol-Camera", origin_file_pattern="high_noise_model/diffusion_pytorch_model*.safetensors", offload_device="cpu"),
-        ModelConfig(model_id="PAI/Wan2.2-Fun-A14B-Comtrol-Camera", origin_file_pattern="low_noise_model/diffusion_pytorch_model*.safetensors", offload_device="cpu"),
-        ModelConfig(model_id="PAI/Wan2.2-Fun-A14B-Comtrol-Camera", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth", offload_device="cpu"),
-        ModelConfig(model_id="PAI/Wan2.2-Fun-A14B-Comtrol-Camera", origin_file_pattern="Wan2.1_VAE.pth", offload_device="cpu"),
+        ModelConfig(model_id="PAI/Wan2.2-Fun-A14B-Control-Camera", origin_file_pattern="high_noise_model/diffusion_pytorch_model*.safetensors", offload_device="cpu"),
+        ModelConfig(model_id="PAI/Wan2.2-Fun-A14B-Control-Camera", origin_file_pattern="low_noise_model/diffusion_pytorch_model*.safetensors", offload_device="cpu"),
+        ModelConfig(model_id="PAI/Wan2.2-Fun-A14B-Control-Camera", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth", offload_device="cpu"),
+        ModelConfig(model_id="PAI/Wan2.2-Fun-A14B-Control-Camera", origin_file_pattern="Wan2.1_VAE.pth", offload_device="cpu"),
     ],
 )
 pipe.load_lora(pipe.dit, "models/train/Wan2.2-Fun-A14B-Control-Camera_high_noise_lora/epoch-4.safetensors", alpha=1)
@@ -29,4 +29,4 @@ video = pipe(
     camera_control_direction="Left", camera_control_speed=0.0,
     seed=0, tiled=True
 )
-save_video(video, "video_Wan2.2-Fun-A14B-Comtrol-Camera.mp4", fps=15, quality=5)
+save_video(video, "video_Wan2.2-Fun-A14B-Control-Camera.mp4", fps=15, quality=5)
