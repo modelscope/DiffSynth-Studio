@@ -94,7 +94,7 @@ class QwenEmbedRope(nn.Module):
 
     def _expand_pos_freqs_if_needed(self, video_fhw, txt_seq_lens):
         if isinstance(video_fhw, list):
-            video_fhw = video_fhw[0]
+            video_fhw = tuple(max([i[j] for i in video_fhw]) for j in range(3))
         _, height, width = video_fhw
         if self.scale_rope:
             max_vid_index = max(height // 2, width // 2)
