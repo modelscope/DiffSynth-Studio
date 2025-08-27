@@ -459,10 +459,13 @@ class WanS2VModel(torch.nn.Module):
             )
         return x, rope_embs, mask_input
 
-    def after_transformer_block(self, block_idx, hidden_states, audio_emb_global, audio_emb, original_seq_len):
+    def after_transformer_block(self, block_idx, hidden_states, audio_emb_global, audio_emb, original_seq_len, use_unified_sequence_parallel=False):
         if block_idx in self.audio_injector.injected_block_id.keys():
             audio_attn_id = self.audio_injector.injected_block_id[block_idx]
             num_frames = audio_emb.shape[1]
+            if use_unified_sequence_parallel:
+                from xfuser.core.distributed import get_sp_group
+                hidden_states = get_sp_group().all_gather(hidden_states, dim=1)
 
             input_hidden_states = hidden_states[:, :original_seq_len].clone()  # b (f h w) c
             input_hidden_states = rearrange(input_hidden_states, "b (t n) c -> (b t) n c", t=num_frames)
@@ -476,7 +479,9 @@ class WanS2VModel(torch.nn.Module):
             residual_out = self.audio_injector.injector[audio_attn_id](attn_hidden_states, attn_audio_emb)
             residual_out = rearrange(residual_out, "(b t) n c -> b (t n) c", t=num_frames)
             hidden_states[:, :original_seq_len] = hidden_states[:, :original_seq_len] + residual_out
-
+            if use_unified_sequence_parallel:
+                from xfuser.core.distributed import get_sequence_parallel_world_size, get_sequence_parallel_rank
+                hidden_states = torch.chunk(hidden_states, get_sequence_parallel_world_size(), dim=1)[get_sequence_parallel_rank()]
         return hidden_states
 
     def cal_audio_emb(self, audio_input, motion_frames=[73, 19]):
