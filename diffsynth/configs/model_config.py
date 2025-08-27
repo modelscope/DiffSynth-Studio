@@ -56,11 +56,13 @@ from ..models.stepvideo_vae import StepVideoVAE
 from ..models.stepvideo_dit import StepVideoModel
 
 from ..models.wan_video_dit import WanModel
+from ..models.wan_video_dit_s2v import WanS2VModel
 from ..models.wan_video_text_encoder import WanTextEncoder
 from ..models.wan_video_image_encoder import WanImageEncoder
 from ..models.wan_video_vae import WanVideoVAE, WanVideoVAE38
 from ..models.wan_video_motion_controller import WanMotionControllerModel
 from ..models.wan_video_vace import VaceWanModel
+from ..models.wav2vec import WanS2VAudioEncoder
 
 from ..models.step1x_connector import Qwen2Connector
 
@@ -155,6 +157,7 @@ model_loader_configs = [
     (None, "a61453409b67cd3246cf0c3bebad47ba", ["wan_video_dit", "wan_video_vace"], [WanModel, VaceWanModel], "civitai"),
     (None, "7a513e1f257a861512b1afd387a8ecd9", ["wan_video_dit", "wan_video_vace"], [WanModel, VaceWanModel], "civitai"),
     (None, "cb104773c6c2cb6df4f9529ad5c60d0b", ["wan_video_dit"], [WanModel], "diffusers"),
+    (None, "966cffdcc52f9c46c391768b27637614", ["wan_video_dit"], [WanS2VModel], "civitai"),
     (None, "9c8818c2cbea55eca56c7b447df170da", ["wan_video_text_encoder"], [WanTextEncoder], "civitai"),
     (None, "5941c53e207d62f20f9025686193c40b", ["wan_video_image_encoder"], [WanImageEncoder], "civitai"),
     (None, "1378ea763357eea97acdef78e65d6d96", ["wan_video_vae"], [WanVideoVAE], "civitai"),
@@ -172,6 +175,7 @@ model_loader_configs = [
     (None, "ed4ea5824d55ec3107b09815e318123a", ["qwen_image_vae"], [QwenImageVAE], "diffusers"),
     (None, "073bce9cf969e317e5662cd570c3e79c", ["qwen_image_blockwise_controlnet"], [QwenImageBlockWiseControlNet], "civitai"),
     (None, "a9e54e480a628f0b956a688a81c33bab", ["qwen_image_blockwise_controlnet"], [QwenImageBlockWiseControlNet], "civitai"),
+    (None, "06be60f3a4526586d8431cd038a71486", ["wans2v_audio_encoder"], [WanS2VAudioEncoder], "civitai"),
 ]
 huggingface_model_loader_configs = [
     # These configs are provided for detecting model type automatically.
