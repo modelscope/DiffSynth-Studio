@@ -50,9 +50,9 @@ class WanVideoPipeline(BasePipeline):
         self.units = [
             WanVideoUnit_ShapeChecker(),
             WanVideoUnit_NoiseInitializer(),
+            WanVideoUnit_PromptEmbedder(),
             WanVideoUnit_S2V(),
             WanVideoUnit_InputVideoEmbedder(),
-            WanVideoUnit_PromptEmbedder(),
             WanVideoUnit_ImageEmbedderVAE(),
             WanVideoUnit_ImageEmbedderCLIP(),
             WanVideoUnit_ImageEmbedderFused(),
@@ -266,13 +266,14 @@ class WanVideoPipeline(BasePipeline):
                 module_map = {
                     torch.nn.Linear: AutoWrappedLinear,
                     torch.nn.LayerNorm: AutoWrappedModule,
+                    torch.nn.Conv1d: AutoWrappedModule,
                 },
                 module_config = dict(
                     offload_dtype=dtype,
                     offload_device="cpu",
                     onload_dtype=dtype,
                     onload_device="cpu",
-                    computation_dtype=dtype,
+                    computation_dtype=self.torch_dtype,
                     computation_device=self.device,
                 ),
             )
@@ -905,14 +906,14 @@ class WanVideoUnit_S2V(PipelineUnit):
     def __init__(self):
         super().__init__(
             take_over=True,
-            onload_model_names=("audio_encoder", "vae", )
+            onload_model_names=("audio_encoder", "vae",)
         )
 
     def process_audio(self, pipe: WanVideoPipeline, input_audio, audio_sample_rate, num_frames):
         if input_audio is None or pipe.audio_encoder is None or pipe.audio_processor is None:
             return {}
         pipe.load_models_to_device(["audio_encoder"])
-        z = pipe.audio_encoder.extract_audio_feat(input_audio, audio_sample_rate, pipe.audio_processor, return_all_layers=True)
+        z = pipe.audio_encoder.extract_audio_feat(input_audio, audio_sample_rate, pipe.audio_processor, return_all_layers=True, dtype=pipe.torch_dtype, device=pipe.device)
         audio_embed_bucket, num_repeat = pipe.audio_encoder.get_audio_embed_bucket_fps(
             z, fps=16, batch_frames=num_frames - 1, m=0
         )
