@@ -2,6 +2,8 @@ import imageio, os
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
+import subprocess
+import shutil
 
 
 class LowMemoryVideo:
@@ -146,3 +148,70 @@ def save_frames(frames, save_path):
     os.makedirs(save_path, exist_ok=True)
     for i, frame in enumerate(tqdm(frames, desc="Saving images")):
         frame.save(os.path.join(save_path, f"{i}.png"))
+
+
+def merge_video_audio(video_path: str, audio_path: str):
+    # TODO: may need a in-python implementation to avoid subprocess dependency
+    """
+    Merge the video and audio into a new video, with the duration set to the shorter of the two,
+    and overwrite the original video file.
+
+    Parameters:
+    video_path (str): Path to the original video file
+    audio_path (str): Path to the audio file
+    """
+
+    # check
+    if not os.path.exists(video_path):
+        raise FileNotFoundError(f"video file {video_path} does not exist")
+    if not os.path.exists(audio_path):
+        raise FileNotFoundError(f"audio file {audio_path} does not exist")
+
+    base, ext = os.path.splitext(video_path)
+    temp_output = f"{base}_temp{ext}"
+
+    try:
+        # create ffmpeg command
+        command = [
+            'ffmpeg',
+            '-y',  # overwrite
+            '-i',
+            video_path,
+            '-i',
+            audio_path,
+            '-c:v',
+            'copy',  # copy video stream
+            '-c:a',
+            'aac',  # use AAC audio encoder
+            '-b:a',
+            '192k',  # set audio bitrate (optional)
+            '-map',
+            '0:v:0',  # select the first video stream
+            '-map',
+            '1:a:0',  # select the first audio stream
+            '-shortest',  # choose the shortest duration
+            temp_output
+        ]
+
+        # execute the command
+        result = subprocess.run(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        # check result
+        if result.returncode != 0:
+            error_msg = f"FFmpeg execute failed: {result.stderr}"
+            print(error_msg)
+            raise RuntimeError(error_msg)
+
+        shutil.move(temp_output, video_path)
+        print(f"Merge completed, saved to {video_path}")
+
+    except Exception as e:
+        if os.path.exists(temp_output):
+            os.remove(temp_output)
+        print(f"merge_video_audio failed with error: {e}")
+
+
+def save_video_with_audio(frames, save_path, audio_path, fps=16, quality=9, ffmpeg_params=None):
+    save_video(frames, save_path, fps, quality, ffmpeg_params)
+    merge_video_audio(save_path, audio_path)
