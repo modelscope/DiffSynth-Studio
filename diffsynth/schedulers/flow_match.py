@@ -104,6 +104,18 @@ class FlowMatchScheduler():
         timestep_id = torch.argmin((self.timesteps - timestep.to(self.timesteps.device)).abs())
         weights = self.linear_timesteps_weights[timestep_id]
         return weights
+
+
+    def get_sigma_t(self, timestep):
+        if isinstance(timestep, torch.Tensor):
+            timestep = timestep.cpu()
+        timestep_id = torch.argmin((self.timesteps - timestep).abs())
+        sigma = self.sigmas[timestep_id]
+        return sigma
+
+
+    def get_alpha_t(self, timestep):
+        return 1.0
     
     
     def calculate_shift(
