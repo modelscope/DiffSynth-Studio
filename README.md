@@ -64,6 +64,7 @@ Details: [./examples/qwen_image/](./examples/qwen_image/)
 
 ```python
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
+from PIL import Image
 import torch
 
 pipe = QwenImagePipeline.from_pretrained(
@@ -77,7 +78,10 @@ pipe = QwenImagePipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
 )
 prompt = "A detailed portrait of a girl underwater, wearing a blue flowing dress, hair gently floating, clear light and shadow, surrounded by bubbles, calm expression, fine details, dreamy and beautiful."
-image = pipe(prompt, seed=0, num_inference_steps=40)
+image = pipe(
+    prompt, seed=0, num_inference_steps=40,
+    # edit_image=Image.open("xxx.jpg").resize((1328, 1328)) # For Qwen-Image-Edit
+)
 image.save("image.jpg")
 ```
 

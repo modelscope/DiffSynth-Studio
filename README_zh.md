@@ -66,6 +66,7 @@ DiffSynth-Studio 为主流 Diffusion 模型（包括 FLUX、Wan 等）重新设�
 
 ```python
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
+from PIL import Image
 import torch
 
 pipe = QwenImagePipeline.from_pretrained(
@@ -79,7 +80,10 @@ pipe = QwenImagePipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
 )
 prompt = "精致肖像，水下少女，蓝裙飘逸，发丝轻扬，光影透澈，气泡环绕，面容恬静，细节精致，梦幻唯美。"
-image = pipe(prompt, seed=0, num_inference_steps=40)
+image = pipe(
+    prompt, seed=0, num_inference_steps=40,
+    # edit_image=Image.open("xxx.jpg").resize((1328, 1328)) # For Qwen-Image-Edit
+)
 image.save("image.jpg")
 ```
 
