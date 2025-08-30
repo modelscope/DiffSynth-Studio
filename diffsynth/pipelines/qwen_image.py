@@ -377,6 +377,8 @@ class QwenImagePipeline(BasePipeline):
         tile_stride: int = 64,
         # Progress bar
         progress_bar_cmd = tqdm,
+        # UI for flowbench, def progress_callback(current, total, status)
+        progress_callback = None,
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, dynamic_shift_len=(height // 16) * (width // 16))
@@ -421,7 +423,10 @@ class QwenImagePipeline(BasePipeline):
 
             # Scheduler
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
-        
+            # UI
+            if progress_callback is not None:
+                progress_callback(progress_id, len(self.scheduler.timesteps), "DENOISING")
+
         # Decode
         self.load_models_to_device(['vae'])
         image = self.vae.decode(inputs_shared["latents"], device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
