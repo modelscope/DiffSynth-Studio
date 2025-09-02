@@ -2,7 +2,7 @@ import torch, os, json
 from diffsynth import load_state_dict
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 from diffsynth.pipelines.flux_image_new import ControlNetInput
-from diffsynth.trainers.utils import DiffusionTrainingModule, ModelLogger, launch_training_task, qwen_image_parser
+from diffsynth.trainers.utils import DiffusionTrainingModule, ModelLogger, launch_data_process_task, qwen_image_parser
 from diffsynth.trainers.unified_dataset import UnifiedDataset
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -111,10 +111,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
     
     def forward(self, data, inputs=None):
         if inputs is None: inputs = self.forward_preprocess(data)
-        else: inputs = self.transfer_data_to_device(inputs, self.pipe.device)
-        models = {name: getattr(self.pipe, name) for name in self.pipe.in_iteration_models}
-        loss = self.pipe.training_loss(**models, **inputs)
-        return loss
+        return inputs
 
 
 
@@ -124,7 +121,7 @@ if __name__ == "__main__":
     dataset = UnifiedDataset(
         base_path=args.dataset_base_path,
         metadata_path=args.dataset_metadata_path,
-        repeat=args.dataset_repeat,
+        repeat=1, # Set repeat = 1
         data_file_keys=args.data_file_keys.split(","),
         main_data_operator=UnifiedDataset.default_image_operator(
             base_path=args.dataset_base_path,
@@ -151,13 +148,7 @@ if __name__ == "__main__":
         enable_fp8_training=args.enable_fp8_training,
     )
     model_logger = ModelLogger(args.output_path, remove_prefix_in_ckpt=args.remove_prefix_in_ckpt)
-    optimizer = torch.optim.AdamW(model.trainable_modules(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
-    launch_training_task(
-        dataset, model, model_logger, optimizer, scheduler,
-        num_epochs=args.num_epochs,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        save_steps=args.save_steps,
-        find_unused_parameters=args.find_unused_parameters,
+    launch_data_process_task(
+        dataset, model, model_logger,
         num_workers=args.dataset_num_workers,
     )

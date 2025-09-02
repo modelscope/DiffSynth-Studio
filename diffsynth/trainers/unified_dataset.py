@@ -214,7 +214,7 @@ class LoadTorchPickle(DataProcessingOperator):
         self.map_location = map_location
         
     def __call__(self, data):
-        return torch.load(data, map_location=self.map_location)
+        return torch.load(data, map_location=self.map_location, weights_only=False)
 
 
 
@@ -306,7 +306,7 @@ class UnifiedDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, data_id):
         if self.load_from_cache:
-            data = self.cached_data[data_id % len(self.data)].copy()
+            data = self.cached_data[data_id % len(self.cached_data)]
             data = self.cached_data_operator(data)
         else:
             data = self.data[data_id % len(self.data)].copy()
