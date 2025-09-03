@@ -227,14 +227,18 @@ class PipelineUnit:
         input_params: tuple[str] = None,
         input_params_posi: dict[str, str] = None,
         input_params_nega: dict[str, str] = None,
-        onload_model_names: tuple[str] = None
+        output_params: tuple[str] = None,
+        onload_model_names: tuple[str] = None,
+        mendatory: bool = True
     ):
         self.seperate_cfg = seperate_cfg
         self.take_over = take_over
         self.input_params = input_params
         self.input_params_posi = input_params_posi
         self.input_params_nega = input_params_nega
+        self.output_params = output_params
         self.onload_model_names = onload_model_names
+        self.mendatory = mendatory
 
 
     def process(self, pipe: BasePipeline, inputs: dict, positive=True, **kwargs) -> dict:
@@ -247,6 +251,14 @@ class PipelineUnitRunner:
         pass
 
     def __call__(self, unit: PipelineUnit, pipe: BasePipeline, inputs_shared: dict, inputs_posi: dict, inputs_nega: dict) -> tuple[dict, dict]:
+
+
+        # Skip if any of the onload_model_names is not in the pipe
+        if any(pipe.getattr(model) is None for model in unit.onload_model_names):
+            if unit.mendatory and any(output_param not in inputs_shared.keys() for output_param in unit.output_params):
+                raise ValueError(f"The output parameters {unit.output_params} are not in the inputs_shared. Please check the pipeline unit {unit}.")
+            return inputs_shared, inputs_posi, inputs_nega
+        
         if unit.take_over:
             # Let the pipeline unit take over this function.
             inputs_shared, inputs_posi, inputs_nega = unit.process(pipe, inputs_shared=inputs_shared, inputs_posi=inputs_posi, inputs_nega=inputs_nega)

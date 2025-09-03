@@ -48,22 +48,6 @@ class WanVideoPipeline(BasePipeline):
         self.in_iteration_models_2 = ("dit2", "motion_controller", "vace")
         self.unit_runner = PipelineUnitRunner()
         self.units = [
-            WanVideoUnit_ShapeChecker(),
-            WanVideoUnit_NoiseInitializer(),
-            WanVideoUnit_PromptEmbedder(),
-            WanVideoUnit_S2V(),
-            WanVideoUnit_InputVideoEmbedder(),
-            WanVideoUnit_ImageEmbedderVAE(),
-            WanVideoUnit_ImageEmbedderCLIP(),
-            WanVideoUnit_ImageEmbedderFused(),
-            WanVideoUnit_FunControl(),
-            WanVideoUnit_FunReference(),
-            WanVideoUnit_FunCameraControl(),
-            WanVideoUnit_SpeedControl(),
-            WanVideoUnit_VACE(),
-            WanVideoUnit_UnifiedSequenceParallel(),
-            WanVideoUnit_TeaCache(),
-            WanVideoUnit_CfgMerger(),
         ]
         self.post_units = [
             WanVideoPostUnit_S2V(),
@@ -367,9 +351,10 @@ class WanVideoPipeline(BasePipeline):
             pipe.width_division_factor = pipe.vae.upsampling_factor * 2
 
         # Initialize tokenizer
-        tokenizer_config.download_if_necessary(use_usp=use_usp)
-        pipe.prompter.fetch_models(pipe.text_encoder)
-        pipe.prompter.fetch_tokenizer(tokenizer_config.path)
+        if pipe.text_encoder is not None:
+            tokenizer_config.download_if_necessary(use_usp=use_usp)
+            pipe.prompter.fetch_models(pipe.text_encoder)
+            pipe.prompter.fetch_tokenizer(tokenizer_config.path)
 
         if audio_processor_config is not None:
             audio_processor_config.download_if_necessary(use_usp=use_usp)
@@ -377,8 +362,30 @@ class WanVideoPipeline(BasePipeline):
             pipe.audio_processor = Wav2Vec2Processor.from_pretrained(audio_processor_config.path)
         # Unified Sequence Parallel
         if use_usp: pipe.enable_usp()
+
+        pipe.initalize_units()
+
         return pipe
 
+    def initalize_units(self):
+        self.units = [
+            WanVideoUnit_ShapeChecker(),
+            WanVideoUnit_NoiseInitializer(),
+            WanVideoUnit_PromptEmbedder(),
+            WanVideoUnit_S2V(),
+            WanVideoUnit_InputVideoEmbedder(),
+            WanVideoUnit_ImageEmbedderVAE(),
+            WanVideoUnit_ImageEmbedderCLIP(),
+            WanVideoUnit_ImageEmbedderFused(),
+            WanVideoUnit_FunControl(),
+            WanVideoUnit_FunReference(),
+            WanVideoUnit_FunCameraControl(),
+            WanVideoUnit_SpeedControl(),
+            WanVideoUnit_VACE(),
+            WanVideoUnit_UnifiedSequenceParallel(),
+            WanVideoUnit_TeaCache(),
+            WanVideoUnit_CfgMerger()
+            ]
 
     @torch.no_grad()
     def __call__(
@@ -519,7 +526,8 @@ class WanVideoPipeline(BasePipeline):
 
 class WanVideoUnit_ShapeChecker(PipelineUnit):
     def __init__(self):
-        super().__init__(input_params=("height", "width", "num_frames"))
+        super().__init__(input_params=("height", "width", "num_frames"),
+                         output_params=("height", "width", "num_frames"))
 
     def process(self, pipe: WanVideoPipeline, height, width, num_frames):
         height, width, num_frames = pipe.check_resize_height_width(height, width, num_frames)
@@ -529,7 +537,8 @@ class WanVideoUnit_ShapeChecker(PipelineUnit):
 
 class WanVideoUnit_NoiseInitializer(PipelineUnit):
     def __init__(self):
-        super().__init__(input_params=("height", "width", "num_frames", "seed", "rand_device", "vace_reference_image"))
+        super().__init__(input_params=("height", "width", "num_frames", "seed", "rand_device", "vace_reference_image"),
+                         output_params=("noise"))
 
     def process(self, pipe: WanVideoPipeline, height, width, num_frames, seed, rand_device, vace_reference_image):
         length = (num_frames - 1) // 4 + 1
@@ -547,6 +556,7 @@ class WanVideoUnit_InputVideoEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("input_video", "noise", "tiled", "tile_size", "tile_stride", "vace_reference_image"),
+            output_params=("latents"),
             onload_model_names=("vae",)
         )
 
@@ -574,6 +584,7 @@ class WanVideoUnit_PromptEmbedder(PipelineUnit):
             seperate_cfg=True,
             input_params_posi={"prompt": "prompt", "positive": "positive"},
             input_params_nega={"prompt": "negative_prompt", "positive": "positive"},
+            output_params=("context"),
             onload_model_names=("text_encoder",)
         )
 
@@ -582,8 +593,6 @@ class WanVideoUnit_PromptEmbedder(PipelineUnit):
         prompt_emb = pipe.prompter.encode_prompt(prompt, positive=positive, device=pipe.device)
         return {"context": prompt_emb}
 
-
-
 class WanVideoUnit_ImageEmbedder(PipelineUnit):
     """
     Deprecated
@@ -591,6 +600,7 @@ class WanVideoUnit_ImageEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("input_image", "end_image", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride"),
+            output_params=("clip_context", "y"),
             onload_model_names=("image_encoder", "vae")
         )
 
@@ -629,6 +639,7 @@ class WanVideoUnit_ImageEmbedderCLIP(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("input_image", "end_image", "height", "width"),
+            output_params=("clip_feature"),
             onload_model_names=("image_encoder",)
         )
 
@@ -651,6 +662,7 @@ class WanVideoUnit_ImageEmbedderVAE(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("input_image", "end_image", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride"),
+            output_params=("y"),
             onload_model_names=("vae",)
         )
 
@@ -688,7 +700,9 @@ class WanVideoUnit_ImageEmbedderFused(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("input_image", "latents", "height", "width", "tiled", "tile_size", "tile_stride"),
-            onload_model_names=("vae",)
+            output_params=("latents", "fuse_vae_embedding_in_latents", "first_frame_latents"),
+            onload_model_names=("vae",),
+            mendatory=False
         )
 
     def process(self, pipe: WanVideoPipeline, input_image, latents, height, width, tiled, tile_size, tile_stride):
@@ -706,7 +720,9 @@ class WanVideoUnit_FunControl(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("control_video", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride", "clip_feature", "y", "latents"),
-            onload_model_names=("vae",)
+            output_params=("clip_feature", "y"),
+            onload_model_names=("vae",),
+            mendatory=False
         )
 
     def process(self, pipe: WanVideoPipeline, control_video, num_frames, height, width, tiled, tile_size, tile_stride, clip_feature, y, latents):
@@ -731,7 +747,9 @@ class WanVideoUnit_FunReference(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("reference_image", "height", "width", "reference_image"),
-            onload_model_names=("vae",)
+            output_params=("reference_latents", "clip_feature"),
+            onload_model_names=("vae",),
+            mendatory=False
         )
 
     def process(self, pipe: WanVideoPipeline, reference_image, height, width):
@@ -753,7 +771,9 @@ class WanVideoUnit_FunCameraControl(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("height", "width", "num_frames", "camera_control_direction", "camera_control_speed", "camera_control_origin", "latents", "input_image", "tiled", "tile_size", "tile_stride"),
-            onload_model_names=("vae",)
+            output_params=("control_camera_latents_input", "y"),
+            onload_model_names=("vae",),
+            mendatory=False
         )
 
     def process(self, pipe: WanVideoPipeline, height, width, num_frames, camera_control_direction, camera_control_speed, camera_control_origin, latents, input_image, tiled, tile_size, tile_stride):
@@ -801,7 +821,8 @@ class WanVideoUnit_FunCameraControl(PipelineUnit):
 
 class WanVideoUnit_SpeedControl(PipelineUnit):
     def __init__(self):
-        super().__init__(input_params=("motion_bucket_id",))
+        super().__init__(input_params=("motion_bucket_id",),
+                         mendatory=False)
 
     def process(self, pipe: WanVideoPipeline, motion_bucket_id):
         if motion_bucket_id is None:
@@ -815,7 +836,9 @@ class WanVideoUnit_VACE(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("vace_video", "vace_video_mask", "vace_reference_image", "vace_scale", "height", "width", "num_frames", "tiled", "tile_size", "tile_stride"),
-            onload_model_names=("vae",)
+            output_params=("vace_context", "vace_scale"),
+            onload_model_names=("vae",),
+            mendatory=False
         )
 
     def process(
@@ -914,7 +937,9 @@ class WanVideoUnit_S2V(PipelineUnit):
     def __init__(self):
         super().__init__(
             take_over=True,
-            onload_model_names=("audio_encoder", "vae",)
+            onload_model_names=("audio_encoder", "vae",),
+            output_params=("audio_embeds", "s2v_pose_latents", "motion_latents"),
+            mendatory=False
         )
 
     def process_audio(self, pipe: WanVideoPipeline, input_audio, audio_sample_rate, num_frames, fps=16, audio_embeds=None, return_all=False):
@@ -994,7 +1019,8 @@ class WanVideoUnit_S2V(PipelineUnit):
 
 class WanVideoPostUnit_S2V(PipelineUnit):
     def __init__(self):
-        super().__init__(input_params=("latents", "motion_latents", "drop_motion_frames"))
+        super().__init__(input_params=("latents", "motion_latents", "drop_motion_frames"),
+                         output_params=("latents"))
 
     def process(self, pipe: WanVideoPipeline, latents, motion_latents, drop_motion_frames):
         if pipe.audio_encoder is None or motion_latents is None or drop_motion_frames:
