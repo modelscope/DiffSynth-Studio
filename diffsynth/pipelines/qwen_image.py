@@ -174,9 +174,12 @@ class QwenImagePipeline(BasePipeline):
             computation_dtype=self.torch_dtype,
             computation_device="cuda",
         )
-        enable_vram_management(self.text_encoder, module_map=module_map, module_config=model_config)
-        enable_vram_management(self.dit, module_map=module_map, module_config=model_config)
-        enable_vram_management(self.vae, module_map=module_map, module_config=model_config)
+        if self.text_encoder is not None:
+            enable_vram_management(self.text_encoder, module_map=module_map, module_config=model_config)
+        if self.dit is not None:
+            enable_vram_management(self.dit, module_map=module_map, module_config=model_config)
+        if self.vae is not None:
+            enable_vram_management(self.vae, module_map=module_map, module_config=model_config)
     
     
     def enable_vram_management(self, num_persistent_param_in_dit=None, vram_limit=None, vram_buffer=0.5, enable_dit_fp8_computation=False):

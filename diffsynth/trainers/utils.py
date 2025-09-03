@@ -417,6 +417,13 @@ class DiffusionTrainingModule(torch.nn.Module):
                 state_dict_[name] = param
             state_dict = state_dict_
         return state_dict
+    
+    
+    def transfer_data_to_device(self, data, device):
+        for key in data:
+            if isinstance(data[key], torch.Tensor):
+                data[key] = data[key].to(device)
+        return data
 
 
 
@@ -484,7 +491,10 @@ def launch_training_task(
         for data in tqdm(dataloader):
             with accelerator.accumulate(model):
                 optimizer.zero_grad()
-                loss = model(data)
+                if dataset.load_from_cache:
+                    loss = model({}, inputs=data)
+                else:
+                    loss = model(data)
                 accelerator.backward(loss)
                 optimizer.step()
                 model_logger.on_step_end(accelerator, model, save_steps)
@@ -494,16 +504,24 @@ def launch_training_task(
     model_logger.on_training_end(accelerator, model, save_steps)
 
 
-def launch_data_process_task(model: DiffusionTrainingModule, dataset, output_path="./models"):
-    dataloader = torch.utils.data.DataLoader(dataset, shuffle=False, collate_fn=lambda x: x[0])
+def launch_data_process_task(
+    dataset: torch.utils.data.Dataset,
+    model: DiffusionTrainingModule,
+    model_logger: ModelLogger,
+    num_workers: int = 8,
+):
+    dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
     accelerator = Accelerator()
     model, dataloader = accelerator.prepare(model, dataloader)
-    os.makedirs(os.path.join(output_path, "data_cache"), exist_ok=True)
-    for data_id, data in enumerate(tqdm(dataloader)):
-        with torch.no_grad():
-            inputs = model.forward_preprocess(data)
-            inputs = {key: inputs[key] for key in model.model_input_keys if key in inputs}
-            torch.save(inputs, os.path.join(output_path, "data_cache", f"{data_id}.pth"))
+    
+    for data_id, data in tqdm(enumerate(dataloader)):
+        with accelerator.accumulate(model):
+            with torch.no_grad():
+                folder = os.path.join(model_logger.output_path, str(accelerator.process_index))
+                os.makedirs(folder, exist_ok=True)
+                save_path = os.path.join(model_logger.output_path, str(accelerator.process_index), f"{data_id}.pth")
+                data = model(data)
+                torch.save(data, save_path)
 
 
 

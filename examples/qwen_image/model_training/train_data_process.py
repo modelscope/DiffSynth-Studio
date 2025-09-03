@@ -1,36 +1,45 @@
 import torch, os, json
 from diffsynth import load_state_dict
-from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
-from diffsynth.trainers.utils import DiffusionTrainingModule, ModelLogger, launch_training_task, wan_parser
+from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
+from diffsynth.pipelines.flux_image_new import ControlNetInput
+from diffsynth.trainers.utils import DiffusionTrainingModule, ModelLogger, launch_data_process_task, qwen_image_parser
 from diffsynth.trainers.unified_dataset import UnifiedDataset
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 
-class WanTrainingModule(DiffusionTrainingModule):
+class QwenImageTrainingModule(DiffusionTrainingModule):
     def __init__(
         self,
         model_paths=None, model_id_with_origin_paths=None,
+        tokenizer_path=None, processor_path=None,
         trainable_models=None,
-        lora_base_model=None, lora_target_modules="q,k,v,o,ffn.0,ffn.2", lora_rank=32, lora_checkpoint=None,
+        lora_base_model=None, lora_target_modules="", lora_rank=32, lora_checkpoint=None,
         use_gradient_checkpointing=True,
         use_gradient_checkpointing_offload=False,
         extra_inputs=None,
-        max_timestep_boundary=1.0,
-        min_timestep_boundary=0.0,
+        enable_fp8_training=False,
     ):
         super().__init__()
         # Load models
+        offload_dtype = torch.float8_e4m3fn if enable_fp8_training else None
         model_configs = []
         if model_paths is not None:
             model_paths = json.loads(model_paths)
-            model_configs += [ModelConfig(path=path) for path in model_paths]
+            model_configs += [ModelConfig(path=path, offload_dtype=offload_dtype) for path in model_paths]
         if model_id_with_origin_paths is not None:
             model_id_with_origin_paths = model_id_with_origin_paths.split(",")
-            model_configs += [ModelConfig(model_id=i.split(":")[0], origin_file_pattern=i.split(":")[1]) for i in model_id_with_origin_paths]
-        self.pipe = WanVideoPipeline.from_pretrained(torch_dtype=torch.bfloat16, device="cpu", model_configs=model_configs)
+            model_configs += [ModelConfig(model_id=i.split(":")[0], origin_file_pattern=i.split(":")[1], offload_dtype=offload_dtype) for i in model_id_with_origin_paths]
+
+        tokenizer_config = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/") if tokenizer_path is None else ModelConfig(tokenizer_path)
+        processor_config = ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/") if processor_path is None else ModelConfig(processor_path)
+        self.pipe = QwenImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device="cpu", model_configs=model_configs, tokenizer_config=tokenizer_config, processor_config=processor_config)
         
-        # Reset training scheduler
+        # Enable FP8
+        if enable_fp8_training:
+            self.pipe._enable_fp8_lora_training(torch.float8_e4m3fn)
+        
+        # Reset training scheduler (do it in each training step)
         self.pipe.scheduler.set_timesteps(1000, training=True)
         
         # Freeze untrainable models
@@ -41,7 +50,8 @@ class WanTrainingModule(DiffusionTrainingModule):
             model = self.add_lora_to_model(
                 getattr(self.pipe, lora_base_model),
                 target_modules=lora_target_modules.split(","),
-                lora_rank=lora_rank
+                lora_rank=lora_rank,
+                upcast_dtype=self.pipe.torch_dtype,
             )
             if lora_checkpoint is not None:
                 state_dict = load_state_dict(lora_checkpoint)
@@ -56,46 +66,42 @@ class WanTrainingModule(DiffusionTrainingModule):
         self.use_gradient_checkpointing = use_gradient_checkpointing
         self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
         self.extra_inputs = extra_inputs.split(",") if extra_inputs is not None else []
-        self.max_timestep_boundary = max_timestep_boundary
-        self.min_timestep_boundary = min_timestep_boundary
-        
-        
+
+    
     def forward_preprocess(self, data):
         # CFG-sensitive parameters
         inputs_posi = {"prompt": data["prompt"]}
-        inputs_nega = {}
+        inputs_nega = {"negative_prompt": ""}
         
         # CFG-unsensitive parameters
         inputs_shared = {
             # Assume you are using this pipeline for inference,
             # please fill in the input parameters.
-            "input_video": data["video"],
-            "height": data["video"][0].size[1],
-            "width": data["video"][0].size[0],
-            "num_frames": len(data["video"]),
+            "input_image": data["image"],
+            "height": data["image"].size[1],
+            "width": data["image"].size[0],
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
             "cfg_scale": 1,
-            "tiled": False,
             "rand_device": self.pipe.device,
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
-            "cfg_merge": False,
-            "vace_scale": 1,
-            "max_timestep_boundary": self.max_timestep_boundary,
-            "min_timestep_boundary": self.min_timestep_boundary,
+            "edit_image_auto_resize": True,
         }
         
         # Extra inputs
+        controlnet_input, blockwise_controlnet_input = {}, {}
         for extra_input in self.extra_inputs:
-            if extra_input == "input_image":
-                inputs_shared["input_image"] = data["video"][0]
-            elif extra_input == "end_image":
-                inputs_shared["end_image"] = data["video"][-1]
-            elif extra_input == "reference_image" or extra_input == "vace_reference_image":
-                inputs_shared[extra_input] = data[extra_input][0]
+            if extra_input.startswith("blockwise_controlnet_"):
+                blockwise_controlnet_input[extra_input.replace("blockwise_controlnet_", "")] = data[extra_input]
+            elif extra_input.startswith("controlnet_"):
+                controlnet_input[extra_input.replace("controlnet_", "")] = data[extra_input]
             else:
                 inputs_shared[extra_input] = data[extra_input]
+        if len(controlnet_input) > 0:
+            inputs_shared["controlnet_inputs"] = [ControlNetInput(**controlnet_input)]
+        if len(blockwise_controlnet_input) > 0:
+            inputs_shared["blockwise_controlnet_inputs"] = [ControlNetInput(**blockwise_controlnet_input)]
         
         # Pipeline units will automatically process the input parameters.
         for unit in self.pipe.units:
@@ -105,55 +111,44 @@ class WanTrainingModule(DiffusionTrainingModule):
     
     def forward(self, data, inputs=None):
         if inputs is None: inputs = self.forward_preprocess(data)
-        models = {name: getattr(self.pipe, name) for name in self.pipe.in_iteration_models}
-        loss = self.pipe.training_loss(**models, **inputs)
-        return loss
+        return inputs
+
 
 
 if __name__ == "__main__":
-    parser = wan_parser()
+    parser = qwen_image_parser()
     args = parser.parse_args()
     dataset = UnifiedDataset(
         base_path=args.dataset_base_path,
         metadata_path=args.dataset_metadata_path,
-        repeat=args.dataset_repeat,
+        repeat=1, # Set repeat = 1
         data_file_keys=args.data_file_keys.split(","),
-        main_data_operator=UnifiedDataset.default_video_operator(
+        main_data_operator=UnifiedDataset.default_image_operator(
             base_path=args.dataset_base_path,
             max_pixels=args.max_pixels,
             height=args.height,
             width=args.width,
             height_division_factor=16,
             width_division_factor=16,
-            num_frames=args.num_frames,
-            time_division_factor=4,
-            time_division_remainder=1,
-        ),
+        )
     )
-    model = WanTrainingModule(
+    model = QwenImageTrainingModule(
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
+        tokenizer_path=args.tokenizer_path,
+        processor_path=args.processor_path,
         trainable_models=args.trainable_models,
         lora_base_model=args.lora_base_model,
         lora_target_modules=args.lora_target_modules,
         lora_rank=args.lora_rank,
         lora_checkpoint=args.lora_checkpoint,
+        use_gradient_checkpointing=args.use_gradient_checkpointing,
         use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
         extra_inputs=args.extra_inputs,
-        max_timestep_boundary=args.max_timestep_boundary,
-        min_timestep_boundary=args.min_timestep_boundary,
+        enable_fp8_training=args.enable_fp8_training,
     )
-    model_logger = ModelLogger(
-        args.output_path,
-        remove_prefix_in_ckpt=args.remove_prefix_in_ckpt
-    )
-    optimizer = torch.optim.AdamW(model.trainable_modules(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
-    launch_training_task(
-        dataset, model, model_logger, optimizer, scheduler,
-        num_epochs=args.num_epochs,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        save_steps=args.save_steps,
-        find_unused_parameters=args.find_unused_parameters,
+    model_logger = ModelLogger(args.output_path, remove_prefix_in_ckpt=args.remove_prefix_in_ckpt)
+    launch_data_process_task(
+        dataset, model, model_logger,
         num_workers=args.dataset_num_workers,
     )
