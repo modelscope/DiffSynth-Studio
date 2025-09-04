@@ -951,8 +951,7 @@ class WanVideoUnit_S2V(PipelineUnit):
     def __init__(self):
         super().__init__(
             take_over=True,
-            onload_model_names=("audio_encoder", "vae",),
-            output_params=("audio_embeds", "s2v_pose_latents", "motion_latents"),
+            onload_model_names=("audio_encoder", "vae",)
         )
 
     def process_audio(self, pipe: WanVideoPipeline, input_audio, audio_sample_rate, num_frames, fps=16, audio_embeds=None, return_all=False):
