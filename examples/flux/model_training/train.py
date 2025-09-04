@@ -20,37 +20,16 @@ class FluxTrainingModule(DiffusionTrainingModule):
     ):
         super().__init__()
         # Load models
-        model_configs = []
-        if model_paths is not None:
-            model_paths = json.loads(model_paths)
-            model_configs += [ModelConfig(path=path) for path in model_paths]
-        if model_id_with_origin_paths is not None:
-            model_id_with_origin_paths = model_id_with_origin_paths.split(",")
-            model_configs += [ModelConfig(model_id=i.split(":")[0], origin_file_pattern=i.split(":")[1]) for i in model_id_with_origin_paths]
+        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, enable_fp8_training=False)
         self.pipe = FluxImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device="cpu", model_configs=model_configs)
         
-        # Reset training scheduler
-        self.pipe.scheduler.set_timesteps(1000, training=True)
+        # Training mode
+        self.switch_pipe_to_training_mode(
+            self.pipe, trainable_models,
+            lora_base_model, lora_target_modules, lora_rank, lora_checkpoint=lora_checkpoint,
+            enable_fp8_training=False,
+        )
         
-        # Freeze untrainable models
-        self.pipe.freeze_except([] if trainable_models is None else trainable_models.split(","))
-        
-        # Add LoRA to the base models
-        if lora_base_model is not None:
-            model = self.add_lora_to_model(
-                getattr(self.pipe, lora_base_model),
-                target_modules=lora_target_modules.split(","),
-                lora_rank=lora_rank
-            )
-            if lora_checkpoint is not None:
-                state_dict = load_state_dict(lora_checkpoint)
-                state_dict = self.mapping_lora_state_dict(state_dict)
-                load_result = model.load_state_dict(state_dict, strict=False)
-                print(f"LoRA checkpoint loaded: {lora_checkpoint}, total {len(state_dict)} keys")
-                if len(load_result[1]) > 0:
-                    print(f"Warning, LoRA key mismatch! Unexpected keys in LoRA checkpoint: {load_result[1]}")
-            setattr(self.pipe, lora_base_model, model)
-            
         # Store other configs
         self.use_gradient_checkpointing = use_gradient_checkpointing
         self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
@@ -138,13 +117,4 @@ if __name__ == "__main__":
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         state_dict_converter=FluxLoRAConverter.align_to_opensource_format if args.align_to_opensource_format else lambda x:x,
     )
-    optimizer = torch.optim.AdamW(model.trainable_modules(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
-    launch_training_task(
-        dataset, model, model_logger, optimizer, scheduler,
-        num_epochs=args.num_epochs,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        save_steps=args.save_steps,
-        find_unused_parameters=args.find_unused_parameters,
-        num_workers=args.dataset_num_workers,
-    )
+    launch_training_task(dataset, model, model_logger, args=args)
