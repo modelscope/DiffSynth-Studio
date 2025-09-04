@@ -254,7 +254,7 @@ class PipelineUnitRunner:
 
 
         # Skip if any of the onload_model_names is not in the pipe
-        if any(pipe.getattr(model) is None for model in unit.onload_model_names):
+        if any(pipe.getattr(model) is None for model in unit.onload_model_names) or any(input_param not in inputs_shared.keys() for input_param in unit.input_params):
             if unit.mendatory and any(output_param not in inputs_shared.keys() for output_param in unit.output_params):
                 raise ValueError(f"The output parameters {unit.output_params} are not in the inputs_shared. Please check the pipeline unit {unit}.")
             return inputs_shared, inputs_posi, inputs_nega

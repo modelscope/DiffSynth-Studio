@@ -74,7 +74,7 @@ class WanVideoPipeline(BasePipeline):
         
         loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
         loss = loss * self.scheduler.training_weight(timestep)
-        return loss
+        return loss, noise_pred
 
 
     def enable_vram_management(self, num_persistent_param_in_dit=None, vram_limit=None, vram_buffer=0.5):
@@ -560,7 +560,7 @@ class WanVideoUnit_InputVideoEmbedder(PipelineUnit):
             onload_model_names=("vae",)
         )
 
-    def process(self, pipe: WanVideoPipeline, input_video, noise, tiled, tile_size, tile_stride, vace_reference_image):
+    def process(self, pipe: WanVideoPipeline, input_video, noise, tiled, tile_size, tile_stride, vace_reference_image, pre_encoding=False):
         if input_video is None:
             return {"latents": noise}
         pipe.load_models_to_device(["vae"])
@@ -570,7 +570,9 @@ class WanVideoUnit_InputVideoEmbedder(PipelineUnit):
             vace_reference_image = pipe.preprocess_video([vace_reference_image])
             vace_reference_latents = pipe.vae.encode(vace_reference_image, device=pipe.device).to(dtype=pipe.torch_dtype, device=pipe.device)
             input_latents = torch.concat([vace_reference_latents, input_latents], dim=2)
-        if pipe.scheduler.training:
+        if pre_encoding:
+            return {"input_latents": input_latents}
+        elif pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
         else:
             latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
