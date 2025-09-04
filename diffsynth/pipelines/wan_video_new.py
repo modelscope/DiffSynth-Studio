@@ -837,8 +837,7 @@ class WanVideoUnit_FunCameraControl(PipelineUnit):
 
 class WanVideoUnit_SpeedControl(PipelineUnit):
     def __init__(self):
-        super().__init__(input_params=("motion_bucket_id",),
-                         mendatory=False)
+        super().__init__(input_params=("motion_bucket_id",))
 
     def process(self, pipe: WanVideoPipeline, motion_bucket_id):
         if motion_bucket_id is None:
