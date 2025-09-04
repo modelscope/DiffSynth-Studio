@@ -128,11 +128,4 @@ if __name__ == "__main__":
     )
     optimizer = torch.optim.AdamW(model.trainable_modules(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
-    launch_training_task(
-        dataset, model, model_logger, optimizer, scheduler,
-        num_epochs=args.num_epochs,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        save_steps=args.save_steps,
-        find_unused_parameters=args.find_unused_parameters,
-        num_workers=args.dataset_num_workers,
-    )
+    launch_training_task(dataset, model, model_logger, args=args)
