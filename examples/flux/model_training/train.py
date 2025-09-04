@@ -25,7 +25,7 @@ class FluxTrainingModule(DiffusionTrainingModule):
         
         # Training mode
         self.switch_pipe_to_training_mode(
-            self, self.pipe, trainable_models,
+            self.pipe, trainable_models,
             lora_base_model, lora_target_modules, lora_rank, lora_checkpoint=lora_checkpoint,
             enable_fp8_training=False,
         )

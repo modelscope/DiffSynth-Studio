@@ -1,11 +1,12 @@
-accelerate launch examples/qwen_image/model_training/train_data_process.py \
+accelerate launch examples/qwen_image/model_training/train.py \
   --dataset_base_path data/example_image_dataset \
   --dataset_metadata_path data/example_image_dataset/metadata.csv \
   --max_pixels 1048576 \
   --model_id_with_origin_paths "Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors" \
   --output_path "./models/train/Qwen-Image_lora_cache" \
   --use_gradient_checkpointing \
-  --dataset_num_workers 8
+  --dataset_num_workers 8 \
+  --task data_process
 
 accelerate launch examples/qwen_image/model_training/train.py \
   --dataset_base_path models/train/Qwen-Image_lora_cache \
