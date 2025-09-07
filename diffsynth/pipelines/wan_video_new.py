@@ -304,6 +304,7 @@ class WanVideoPipeline(BasePipeline):
         audio_processor_config: ModelConfig = None,
         redirect_common_files: bool = True,
         use_usp=False,
+        offline_preprocessing=False
     ):
         # Redirect model path
         if redirect_common_files:
@@ -320,7 +321,7 @@ class WanVideoPipeline(BasePipeline):
                     model_config.model_id = redirect_dict[model_config.origin_file_pattern]
         
         # Initialize pipeline
-        pipe = WanVideoPipeline(device=device, torch_dtype=torch_dtype)
+        pipe = WanVideoPipeline(device=device, torch_dtype=torch_dtype, offline_preprocessing=offline_preprocessing)
         if use_usp: pipe.initialize_usp()
         
         # Download and load models
