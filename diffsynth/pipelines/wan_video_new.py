@@ -392,6 +392,7 @@ class WanVideoPipeline(BasePipeline):
             self.units = [
                 WanVideoUnit_ShapeChecker(),
                 WanVideoUnit_NoiseInitializer(),
+                WanVideoUnit_InputVideoEmbedderPassThrough(),
                 WanVideoUnit_ImageEmbedderFusingOnly(),
                 WanVideoUnit_FunControl(),
                 WanVideoUnit_FunReference(),
@@ -588,6 +589,18 @@ class WanVideoUnit_InputVideoEmbedder(PipelineUnit):
             latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
             return {"latents": latents}
 
+class WanVideoUnit_InputVideoEmbedderPassThrough(PipelineUnit):
+    def __init__(self):
+        super().__init__(input_params=("input_latents", "noise", "tiled", "tile_size", "tile_stride", "vace_reference_image"))
+    
+    def process(self, pipe: WanVideoPipeline, input_latents, noise, tiled, tile_size, tile_stride, vace_reference_image):
+       if input_latents is None:
+            return {"latents": noise}
+       elif pipe.scheduler.training:
+            return {"latents": noise, "input_latents": input_latents}
+       else:
+            latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
+            return {"latents": latents}
 
 
 class WanVideoUnit_PromptEmbedder(PipelineUnit):
