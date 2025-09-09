@@ -1226,6 +1226,7 @@ def model_fn_wan_video(
             use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
             use_gradient_checkpointing=use_gradient_checkpointing,
             use_unified_sequence_parallel=use_unified_sequence_parallel,
+            tea_cache=tea_cache,
         )
 
     if use_unified_sequence_parallel:
@@ -1447,7 +1448,7 @@ def model_fn_wans2v(
             else:
                 x = block(x, context, t_mod, seq_len_x, pre_compute_freqs[0])
                 x = dit.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x_global, use_unified_sequence_parallel)
-                
+
         if tea_cache is not None:
             tea_cache.store(x)
 
