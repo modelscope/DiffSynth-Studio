@@ -45,6 +45,8 @@ video = pipe(
     audio_sample_rate=sample_rate,
     input_audio=input_audio,
     num_inference_steps=40,
+    tea_cache_l1_thresh=0.05,
+    tea_cache_model_id="Wan2.1-I2V-14B-480P",
 )
 save_video_with_audio(video[1:], "video_with_audio.mp4", audio_path, fps=16, quality=5)
 

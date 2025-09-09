@@ -1360,6 +1360,7 @@ def model_fn_wans2v(
     use_gradient_checkpointing_offload=False,
     use_gradient_checkpointing=False,
     use_unified_sequence_parallel=False,
+    tea_cache=None,
 ):
     if use_unified_sequence_parallel:
         import torch.distributed as dist
@@ -1398,6 +1399,11 @@ def model_fn_wans2v(
     t = dit.time_embedding(sinusoidal_embedding_1d(dit.freq_dim, timestep))
     t_mod = dit.time_projection(t).unflatten(1, (6, dit.dim)).unsqueeze(2).transpose(0, 2)
 
+    if tea_cache is not None:
+        tea_cache_update = tea_cache.check(dit, x, t_mod)
+    else:
+        tea_cache_update = False
+
     if use_unified_sequence_parallel and dist.is_initialized() and dist.get_world_size() > 1:
         world_size, sp_rank = get_sequence_parallel_world_size(), get_sequence_parallel_rank()
         assert x.shape[1] % world_size == 0, f"the dimension after chunk must be divisible by world size, but got {x.shape[1]} and {get_sequence_parallel_world_size()}"
@@ -1406,14 +1412,28 @@ def model_fn_wans2v(
         seq_len_x_list = [min(max(0, seq_len_x - seg_idxs[i]), x.shape[1]) for i in range(len(seg_idxs)-1)]
         seq_len_x = seq_len_x_list[sp_rank]
 
-    def create_custom_forward(module):
-        def custom_forward(*inputs):
-            return module(*inputs)
-        return custom_forward
+    if tea_cache_update:
+        x = tea_cache.update(x)
+    else:
+        def create_custom_forward(module):
+            def custom_forward(*inputs):
+                return module(*inputs)
+            return custom_forward
 
-    for block_id, block in enumerate(dit.blocks):
-        if use_gradient_checkpointing_offload:
-            with torch.autograd.graph.save_on_cpu():
+        for block_id, block in enumerate(dit.blocks):
+            if use_gradient_checkpointing_offload:
+                with torch.autograd.graph.save_on_cpu():
+                    x = torch.utils.checkpoint.checkpoint(
+                        create_custom_forward(block),
+                        x, context, t_mod, seq_len_x, pre_compute_freqs[0],
+                        use_reentrant=False,
+                    )
+                    x = torch.utils.checkpoint.checkpoint(
+                        create_custom_forward(lambda x: dit.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x)),
+                        x,
+                        use_reentrant=False,
+                    )
+            elif use_gradient_checkpointing:
                 x = torch.utils.checkpoint.checkpoint(
                     create_custom_forward(block),
                     x, context, t_mod, seq_len_x, pre_compute_freqs[0],
@@ -1424,20 +1444,12 @@ def model_fn_wans2v(
                     x,
                     use_reentrant=False,
                 )
-        elif use_gradient_checkpointing:
-            x = torch.utils.checkpoint.checkpoint(
-                create_custom_forward(block),
-                x, context, t_mod, seq_len_x, pre_compute_freqs[0],
-                use_reentrant=False,
-            )
-            x = torch.utils.checkpoint.checkpoint(
-                create_custom_forward(lambda x: dit.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x)),
-                x,
-                use_reentrant=False,
-            )
-        else:
-            x = block(x, context, t_mod, seq_len_x, pre_compute_freqs[0])
-            x = dit.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x_global, use_unified_sequence_parallel)
+            else:
+                x = block(x, context, t_mod, seq_len_x, pre_compute_freqs[0])
+                x = dit.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x_global, use_unified_sequence_parallel)
+                
+        if tea_cache is not None:
+            tea_cache.store(x)
 
     if use_unified_sequence_parallel and dist.is_initialized() and dist.get_world_size() > 1:
         x = get_sp_group().all_gather(x, dim=1)
