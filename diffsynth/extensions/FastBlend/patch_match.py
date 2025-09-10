@@ -261,8 +261,8 @@ class PyramidPatchMatcher:
     def update_nnf(self, nnf, level):
         # upscale
         nnf = nnf.repeat(2, axis=1).repeat(2, axis=2) * 2
-        nnf[: , [i for i in range(nnf.shape[0]) if i & 1], : , 0] += 1
-        nnf[: , : , [i for i in range(nnf.shape[0]) if i & 1], 1] += 1
+        nnf[:, 1::2, :, 0] += 1
+        nnf[:, :, 1::2, 1] += 1
         # check if scale is 2
         height, width = self.pyramid_heights[level], self.pyramid_widths[level]
         if height != nnf.shape[0] * 2 or width != nnf.shape[1] * 2:
