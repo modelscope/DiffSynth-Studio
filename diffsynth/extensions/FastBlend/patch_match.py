@@ -2,7 +2,8 @@ from .cupy_kernels import remapping_kernel, patch_error_kernel, pairwise_patch_e
 import numpy as np
 import cupy as cp
 import cv2
-
+import torch
+import torch.nn.functional as F
 
 class PatchMatcher:
     def __init__(
@@ -233,13 +234,11 @@ class PyramidPatchMatcher:
 
     def resample_image(self, images, level):
         height, width = self.pyramid_heights[level], self.pyramid_widths[level]
-        images = images.get()
-        images_resample = []
-        for image in images:
-            image_resample = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
-            images_resample.append(image_resample)
-        images_resample = cp.array(np.stack(images_resample), dtype=cp.float32)
-        return images_resample
+        images_torch = torch.as_tensor(images, device='cuda', dtype=torch.float32)
+        images_torch = images_torch.permute(0, 3, 1, 2)
+        images_resample = F.interpolate(images_torch, size=(height, width), mode='area', align_corners=None)
+        images_resample = images_resample.permute(0, 2, 3, 1).contiguous()
+        return cp.asarray(images_resample)
 
     def initialize_nnf(self, batch_size):
         if self.initialize == "random":
@@ -262,14 +261,16 @@ class PyramidPatchMatcher:
     def update_nnf(self, nnf, level):
         # upscale
         nnf = nnf.repeat(2, axis=1).repeat(2, axis=2) * 2
-        nnf[:,[i for i in range(nnf.shape[0]) if i&1],:,0] += 1
-        nnf[:,:,[i for i in range(nnf.shape[0]) if i&1],1] += 1
+        nnf[: , [i for i in range(nnf.shape[0]) if i & 1], : , 0] += 1
+        nnf[: , : , [i for i in range(nnf.shape[0]) if i & 1], 1] += 1
         # check if scale is 2
         height, width = self.pyramid_heights[level], self.pyramid_widths[level]
         if height != nnf.shape[0] * 2 or width != nnf.shape[1] * 2:
-            nnf = nnf.get().astype(np.float32)
-            nnf = [cv2.resize(n, (width, height), interpolation=cv2.INTER_LINEAR) for n in nnf]
-            nnf = cp.array(np.stack(nnf), dtype=cp.int32)
+            nnf_torch = torch.as_tensor(nnf, device='cuda', dtype=torch.float32)
+            nnf_torch = nnf_torch.permute(0, 3, 1, 2)
+            nnf_resized = F.interpolate(nnf_torch, size=(height, width), mode='bilinear', align_corners=False)
+            nnf_resized = nnf_resized.permute(0, 2, 3, 1)
+            nnf = cp.asarray(nnf_resized).astype(cp.int32)
             nnf = self.patch_matchers[level].clamp_bound(nnf)
         return nnf
 
