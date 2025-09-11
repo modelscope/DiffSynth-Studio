@@ -1061,7 +1061,7 @@ class TeaCache:
         self.previous_modulated_input = None
         self.rel_l1_thresh = rel_l1_thresh
         self.previous_residual = None
-        self.previous_hidden_states = None
+        self.previous_hidden_states = None  
         
         self.coefficients_dict = {
             "Wan2.1-T2V-1.3B": [-5.21862437e+04, 9.23041404e+03, -5.28275948e+02, 1.36987616e+01, -4.99875664e-02],
@@ -1212,17 +1212,17 @@ def model_fn_wan_video(
             tensor_names=["latents", "y"],
             batch_size=2 if cfg_merge else 1
         )
+        
     # wan2.2 s2v
     if audio_embeds is not None:
-        return model_fn_wans2v(
-            dit=dit,
+        return dit(
             latents=latents,
             timestep=timestep,
-            context=context,
-            audio_embeds=audio_embeds,
+            encoder_hidden_states=context,
+            audio_input=audio_embeds,
             motion_latents=motion_latents,
-            s2v_pose_latents=s2v_pose_latents,
-            drop_motion_frames=drop_motion_frames,
+            pose_cond=s2v_pose_latents,
+            motion_latents=drop_motion_frames,
             use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
             use_gradient_checkpointing=use_gradient_checkpointing,
             use_unified_sequence_parallel=use_unified_sequence_parallel,

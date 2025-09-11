@@ -510,8 +510,17 @@ class WanS2VModel(torch.nn.Module):
         motion_latents,
         pose_cond,
         use_gradient_checkpointing_offload=False,
-        use_gradient_checkpointing=False
+        use_gradient_checkpointing=False,
+        use_unified_sequence_parallel=False,
+        tea_cache=None,
     ):
+        if use_unified_sequence_parallel:
+            import torch.distributed as dist
+            from xfuser.core.distributed import (get_sequence_parallel_rank,
+                                                get_sequence_parallel_world_size,
+                                                get_sp_group)
+
+
         origin_ref_latents = latents[:, :, 0:1]
         hidden_states = latents[:, :, 1:]
 
@@ -546,14 +555,45 @@ class WanS2VModel(torch.nn.Module):
         t = self.time_embedding(sinusoidal_embedding_1d(self.freq_dim, timestep))
         t_mod = self.time_projection(t).unflatten(1, (6, self.dim)).unsqueeze(2).transpose(0, 2)
 
-        def create_custom_forward(module):
-            def custom_forward(*inputs):
-                return module(*inputs)
-            return custom_forward
+        if tea_cache is not None:
+            tea_cache_update = tea_cache.check(self, hidden_states, t_mod)
+        else:
+            tea_cache_update = False
 
-        for block_id, block in enumerate(self.blocks):
-            if use_gradient_checkpointing_offload:
-                with torch.autograd.graph.save_on_cpu():
+        if use_unified_sequence_parallel and dist.is_initialized() and dist.get_world_size() > 1:
+            world_size, sp_rank = get_sequence_parallel_world_size(), get_sequence_parallel_rank()
+            assert hidden_states.shape[1] % world_size == 0, f"the dimension after chunk must be divisible by world size, but got {hidden_states.shape[1]} and {get_sequence_parallel_world_size()}"
+            hidden_states = torch.chunk(hidden_states, world_size, dim=1)[sp_rank]
+            seg_idxs = [0] + list(torch.cumsum(torch.tensor([hidden_states.shape[1]] * world_size), dim=0).cpu().numpy())
+            seq_len_x_list = [min(max(0, seq_len_x - seg_idxs[i]), hidden_states.shape[1]) for i in range(len(seg_idxs)-1)]
+            seq_len_x = seq_len_x_list[sp_rank]
+
+        if tea_cache_update:
+            hidden_states = tea_cache.update(hidden_states)
+        else:
+            def create_custom_forward(module):
+                def custom_forward(*inputs):
+                    return module(*inputs)
+                return custom_forward
+
+            for block_id, block in enumerate(self.blocks):
+                if use_gradient_checkpointing_offload:
+                    with torch.autograd.graph.save_on_cpu():
+                        hidden_states = torch.utils.checkpoint.checkpoint(
+                            create_custom_forward(block),
+                            hidden_states,
+                            encoder_hidden_states,
+                            t_mod,
+                            seq_len_x,
+                            pre_compute_freqs[0],
+                            use_reentrant=False,
+                        )
+                        hidden_states = torch.utils.checkpoint.checkpoint(
+                            create_custom_forward(lambda x: self.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x)),
+                            hidden_states,
+                            use_reentrant=False,
+                        )
+                elif use_gradient_checkpointing:
                     hidden_states = torch.utils.checkpoint.checkpoint(
                         create_custom_forward(block),
                         hidden_states,
@@ -568,24 +608,15 @@ class WanS2VModel(torch.nn.Module):
                         hidden_states,
                         use_reentrant=False,
                     )
-            elif use_gradient_checkpointing:
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(block),
-                    hidden_states,
-                    encoder_hidden_states,
-                    t_mod,
-                    seq_len_x,
-                    pre_compute_freqs[0],
-                    use_reentrant=False,
-                )
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(lambda x: self.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x)),
-                    hidden_states,
-                    use_reentrant=False,
-                )
-            else:
-                hidden_states = block(hidden_states, encoder_hidden_states, t_mod, seq_len_x, pre_compute_freqs[0])
-                hidden_states = self.after_transformer_block(block_id, hidden_states, audio_emb_global, merged_audio_emb, seq_len_x)
+                else:
+                    hidden_states = block(hidden_states, encoder_hidden_states, t_mod, seq_len_x, pre_compute_freqs[0])
+                    hidden_states = self.after_transformer_block(block_id, hidden_states, audio_emb_global, merged_audio_emb, seq_len_x)
+
+            if tea_cache is not None:
+                tea_cache.store(hidden_states)
+
+        if use_unified_sequence_parallel and dist.is_initialized() and dist.get_world_size() > 1:
+            hidden_states = get_sp_group().all_gather(hidden_states, dim=1)
 
         hidden_states = hidden_states[:, :seq_len_x]
         hidden_states = self.head(hidden_states, t[:-1])
