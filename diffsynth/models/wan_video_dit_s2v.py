@@ -345,7 +345,7 @@ class WanS2VDiTBlock(DiTBlock):
         t_mod = (self.modulation.unsqueeze(2).to(dtype=t_mod.dtype, device=t_mod.device) + t_mod).chunk(6, dim=1)
         # t_mod[:, :, 0] for x, t_mod[:, :, 1] for other like ref, motion, etc.
         t_mod = [
-            torch.cat([element[:, :, 0].expand(1, seq_len_x, x.shape[-1]), element[:, :, 1].expand(1, x.shape[1] - seq_len_x, x.shape[-1])], dim=1)
+            torch.cat([element[:, :, 0].expand(1, seq_len_x, hidden_states.shape[-1]), element[:, :, 1].expand(1, hidden_states.shape[1] - seq_len_x, hidden_states.shape[-1])], dim=1)
             for element in t_mod
         ]
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = t_mod
