@@ -341,7 +341,7 @@ class CausalAudioEncoder(nn.Module):
 
 class WanS2VDiTBlock(DiTBlock):
 
-    def forward(self, x, context, t_mod, seq_len_x, freqs):
+    def forward(self, hidden_states, encoder_hidden_states, t_mod, seq_len_x, freqs):
         t_mod = (self.modulation.unsqueeze(2).to(dtype=t_mod.dtype, device=t_mod.device) + t_mod).chunk(6, dim=1)
         # t_mod[:, :, 0] for x, t_mod[:, :, 1] for other like ref, motion, etc.
         t_mod = [
@@ -349,12 +349,12 @@ class WanS2VDiTBlock(DiTBlock):
             for element in t_mod
         ]
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = t_mod
-        input_x = modulate(self.norm1(x), shift_msa, scale_msa)
-        x = self.gate(x, gate_msa, self.self_attn(input_x, freqs))
-        x = x + self.cross_attn(self.norm3(x), context)
-        input_x = modulate(self.norm2(x), shift_mlp, scale_mlp)
-        x = self.gate(x, gate_mlp, self.ffn(input_x))
-        return x
+        input_x = modulate(self.norm1(hidden_states), shift_msa, scale_msa)
+        hidden_states = self.gate(hidden_states, gate_msa, self.self_attn(input_x, freqs))
+        hidden_states = hidden_states + self.cross_attn(self.norm3(hidden_states), encoder_hidden_states)
+        input_x = modulate(self.norm2(hidden_states), shift_mlp, scale_mlp)
+        hidden_states = self.gate(hidden_states, gate_mlp, self.ffn(input_x))
+        return hidden_states
 
 
 class WanS2VModel(torch.nn.Module):
@@ -505,7 +505,7 @@ class WanS2VModel(torch.nn.Module):
         self,
         latents,
         timestep,
-        context,
+        encoder_hidden_states,
         audio_input,
         motion_latents,
         pose_cond,
@@ -513,33 +513,33 @@ class WanS2VModel(torch.nn.Module):
         use_gradient_checkpointing=False
     ):
         origin_ref_latents = latents[:, :, 0:1]
-        x = latents[:, :, 1:]
+        hidden_states = latents[:, :, 1:]
 
         # context embedding
-        context = self.text_embedding(context)
+        encoder_hidden_states = self.text_embedding(encoder_hidden_states)
 
         # audio encode
         audio_emb_global, merged_audio_emb = self.cal_audio_emb(audio_input)
 
         # x and pose_cond
-        pose_cond = torch.zeros_like(x) if pose_cond is None else pose_cond
-        x, (f, h, w) = self.patchify(self.patch_embedding(x) + self.cond_encoder(pose_cond))  # torch.Size([1, 29120, 5120])
-        seq_len_x = x.shape[1]
+        pose_cond = torch.zeros_like(hidden_states) if pose_cond is None else pose_cond
+        hidden_states, (f, h, w) = self.patchify(self.patch_embedding(hidden_states) + self.cond_encoder(pose_cond))  # torch.Size([1, 29120, 5120])
+        seq_len_x = hidden_states.shape[1]
 
         # reference image
         ref_latents, (rf, rh, rw) = self.patchify(self.patch_embedding(origin_ref_latents))  # torch.Size([1, 1456, 5120])
         grid_sizes = self.get_grid_sizes((f, h, w), (rf, rh, rw))
-        x = torch.cat([x, ref_latents], dim=1)
+        hidden_states = torch.cat([hidden_states, ref_latents], dim=1)
         # mask
-        mask = torch.cat([torch.zeros([1, seq_len_x]), torch.ones([1, ref_latents.shape[1]])], dim=1).to(torch.long).to(x.device)
+        mask = torch.cat([torch.zeros([1, seq_len_x]), torch.ones([1, ref_latents.shape[1]])], dim=1).to(torch.long).to(hidden_states.device)
         # freqs
         pre_compute_freqs = rope_precompute(
-            x.detach().view(1, x.size(1), self.num_heads, self.dim // self.num_heads), grid_sizes, self.freqs, start=None
+            hidden_states.detach().view(1, hidden_states.size(1), self.num_heads, self.dim // self.num_heads), grid_sizes, self.freqs, start=None
         )
         # motion
-        x, pre_compute_freqs, mask = self.inject_motion(x, pre_compute_freqs, mask, motion_latents, add_last_motion=2)
+        hidden_states, pre_compute_freqs, mask = self.inject_motion(hidden_states, pre_compute_freqs, mask, motion_latents, add_last_motion=2)
 
-        x = x + self.trainable_cond_mask(mask).to(x.dtype)
+        hidden_states = hidden_states + self.trainable_cond_mask(mask).to(hidden_states.dtype)
 
         # t_mod
         timestep = torch.cat([timestep, torch.zeros([1], dtype=timestep.dtype, device=timestep.device)])
@@ -554,45 +554,45 @@ class WanS2VModel(torch.nn.Module):
         for block_id, block in enumerate(self.blocks):
             if use_gradient_checkpointing_offload:
                 with torch.autograd.graph.save_on_cpu():
-                    x = torch.utils.checkpoint.checkpoint(
+                    hidden_states = torch.utils.checkpoint.checkpoint(
                         create_custom_forward(block),
-                        x,
-                        context,
+                        hidden_states,
+                        encoder_hidden_states,
                         t_mod,
                         seq_len_x,
                         pre_compute_freqs[0],
                         use_reentrant=False,
                     )
-                    x = torch.utils.checkpoint.checkpoint(
+                    hidden_states = torch.utils.checkpoint.checkpoint(
                         create_custom_forward(lambda x: self.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x)),
-                        x,
+                        hidden_states,
                         use_reentrant=False,
                     )
             elif use_gradient_checkpointing:
-                x = torch.utils.checkpoint.checkpoint(
+                hidden_states = torch.utils.checkpoint.checkpoint(
                     create_custom_forward(block),
-                    x,
-                    context,
+                    hidden_states,
+                    encoder_hidden_states,
                     t_mod,
                     seq_len_x,
                     pre_compute_freqs[0],
                     use_reentrant=False,
                 )
-                x = torch.utils.checkpoint.checkpoint(
+                hidden_states = torch.utils.checkpoint.checkpoint(
                     create_custom_forward(lambda x: self.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x)),
-                    x,
+                    hidden_states,
                     use_reentrant=False,
                 )
             else:
-                x = block(x, context, t_mod, seq_len_x, pre_compute_freqs[0])
-                x = self.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x)
+                hidden_states = block(hidden_states, encoder_hidden_states, t_mod, seq_len_x, pre_compute_freqs[0])
+                hidden_states = self.after_transformer_block(block_id, hidden_states, audio_emb_global, merged_audio_emb, seq_len_x)
 
-        x = x[:, :seq_len_x]
-        x = self.head(x, t[:-1])
-        x = self.unpatchify(x, (f, h, w))
+        hidden_states = hidden_states[:, :seq_len_x]
+        hidden_states = self.head(hidden_states, t[:-1])
+        hidden_states = self.unpatchify(hidden_states, (f, h, w))
         # make compatible with wan video
-        x = torch.cat([origin_ref_latents, x], dim=2)
-        return x
+        hidden_states = torch.cat([origin_ref_latents, hidden_states], dim=2)
+        return hidden_states
 
     @staticmethod
     def state_dict_converter():

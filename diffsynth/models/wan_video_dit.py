@@ -211,7 +211,7 @@ class DiTBlock(nn.Module):
         self.modulation = nn.Parameter(torch.randn(1, 6, dim) / dim**0.5)
         self.gate = GateModule()
 
-    def forward(self, x, context, t_mod, freqs):
+    def forward(self, hidden_states, encoder_hidden_states, t_mod, freqs):
         has_seq = len(t_mod.shape) == 4
         chunk_dim = 2 if has_seq else 1
         # msa: multi-head self-attention  mlp: multi-layer perceptron
@@ -222,12 +222,12 @@ class DiTBlock(nn.Module):
                 shift_msa.squeeze(2), scale_msa.squeeze(2), gate_msa.squeeze(2),
                 shift_mlp.squeeze(2), scale_mlp.squeeze(2), gate_mlp.squeeze(2),
             )
-        input_x = modulate(self.norm1(x), shift_msa, scale_msa)
-        x = self.gate(x, gate_msa, self.self_attn(input_x, freqs))
-        x = x + self.cross_attn(self.norm3(x), context)
-        input_x = modulate(self.norm2(x), shift_mlp, scale_mlp)
-        x = self.gate(x, gate_mlp, self.ffn(input_x))
-        return x
+        input_x = modulate(self.norm1(hidden_states), shift_msa, scale_msa)
+        hidden_states = self.gate(hidden_states, gate_msa, self.self_attn(input_x, freqs))
+        hidden_states = hidden_states + self.cross_attn(self.norm3(hidden_states), encoder_hidden_states)
+        input_x = modulate(self.norm2(hidden_states), shift_mlp, scale_mlp)
+        hidden_states = self.gate(hidden_states, gate_mlp, self.ffn(input_x))
+        return hidden_states
 
 
 class MLP(torch.nn.Module):
@@ -244,10 +244,10 @@ class MLP(torch.nn.Module):
         if has_pos_emb:
             self.emb_pos = torch.nn.Parameter(torch.zeros((1, 514, 1280)))
 
-    def forward(self, x):
+    def forward(self, hidden_states):
         if self.has_pos_emb:
-            x = x + self.emb_pos.to(dtype=x.dtype, device=x.device)
-        return self.proj(x)
+            hidden_states = hidden_states + self.emb_pos.to(dtype=hidden_states.dtype, device=hidden_states.device)
+        return self.proj(hidden_states)
 
 
 class Head(nn.Module):
@@ -259,14 +259,14 @@ class Head(nn.Module):
         self.head = nn.Linear(dim, out_dim * math.prod(patch_size))
         self.modulation = nn.Parameter(torch.randn(1, 2, dim) / dim**0.5)
 
-    def forward(self, x, t_mod):
+    def forward(self, hidden_states, t_mod):
         if len(t_mod.shape) == 3:
             shift, scale = (self.modulation.unsqueeze(0).to(dtype=t_mod.dtype, device=t_mod.device) + t_mod.unsqueeze(2)).chunk(2, dim=2)
-            x = (self.head(self.norm(x) * (1 + scale.squeeze(2)) + shift.squeeze(2)))
+            hidden_states = (self.head(self.norm(hidden_states) * (1 + scale.squeeze(2)) + shift.squeeze(2)))
         else:
             shift, scale = (self.modulation.to(dtype=t_mod.dtype, device=t_mod.device) + t_mod).chunk(2, dim=1)
-            x = (self.head(self.norm(x) * (1 + scale) + shift))
-        return x
+            hidden_states = (self.head(self.norm(hidden_states) * (1 + scale) + shift))
+        return hidden_states
 
 
 class WanModel(torch.nn.Module):
@@ -354,9 +354,9 @@ class WanModel(torch.nn.Module):
         )
 
     def forward(self,
-                x: torch.Tensor,
+                hidden_states: torch.Tensor,
                 timestep: torch.Tensor,
-                context: torch.Tensor,
+                encoder_hidden_states: torch.Tensor,
                 clip_feature: Optional[torch.Tensor] = None,
                 y: Optional[torch.Tensor] = None,
                 use_gradient_checkpointing: bool = False,
@@ -366,20 +366,20 @@ class WanModel(torch.nn.Module):
         t = self.time_embedding(
             sinusoidal_embedding_1d(self.freq_dim, timestep))
         t_mod = self.time_projection(t).unflatten(1, (6, self.dim))
-        context = self.text_embedding(context)
+        context = self.text_embedding(encoder_hidden_states)
         
         if self.has_image_input:
-            x = torch.cat([x, y], dim=1)  # (b, c_x + c_y, f, h, w)
+            hidden_states = torch.cat([hidden_states, encoder_hidden_states], dim=1)  # (b, c_x + c_y, f, h, w)
             clip_embdding = self.img_emb(clip_feature)
             context = torch.cat([clip_embdding, context], dim=1)
         
-        x, (f, h, w) = self.patchify(x)
+        hidden_states, (f, h, w) = self.patchify(hidden_states)
         
         freqs = torch.cat([
             self.freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
             self.freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
             self.freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
-        ], dim=-1).reshape(f * h * w, 1, -1).to(x.device)
+        ], dim=-1).reshape(f * h * w, 1, -1).to(hidden_states.device)
         
         def create_custom_forward(module):
             def custom_forward(*inputs):
@@ -390,23 +390,23 @@ class WanModel(torch.nn.Module):
             if self.training and use_gradient_checkpointing:
                 if use_gradient_checkpointing_offload:
                     with torch.autograd.graph.save_on_cpu():
-                        x = torch.utils.checkpoint.checkpoint(
+                        hidden_states = torch.utils.checkpoint.checkpoint(
                             create_custom_forward(block),
                             x, context, t_mod, freqs,
                             use_reentrant=False,
                         )
                 else:
-                    x = torch.utils.checkpoint.checkpoint(
+                    hidden_states = torch.utils.checkpoint.checkpoint(
                         create_custom_forward(block),
                         x, context, t_mod, freqs,
                         use_reentrant=False,
                     )
             else:
-                x = block(x, context, t_mod, freqs)
+                hidden_states = block(hidden_states, context, t_mod, freqs)
 
-        x = self.head(x, t)
-        x = self.unpatchify(x, (f, h, w))
-        return x
+        hidden_states = self.head(hidden_states, t)
+        hidden_states = self.unpatchify(hidden_states, (f, h, w))
+        return hidden_states
 
     @staticmethod
     def state_dict_converter():
