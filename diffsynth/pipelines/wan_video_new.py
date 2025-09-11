@@ -1212,17 +1212,16 @@ def model_fn_wan_video(
             tensor_names=["latents", "y"],
             batch_size=2 if cfg_merge else 1
         )
-        
+
     # wan2.2 s2v
     if audio_embeds is not None:
         return dit(
             latents=latents,
             timestep=timestep,
             encoder_hidden_states=context,
-            audio_input=audio_embeds,
-            motion_latents=motion_latents,
+            audio_input=audio_embeds,   
             pose_cond=s2v_pose_latents,
-            motion_latents=drop_motion_frames,
+            motion_latents=motion_latents,
             use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
             use_gradient_checkpointing=use_gradient_checkpointing,
             use_unified_sequence_parallel=use_unified_sequence_parallel,
