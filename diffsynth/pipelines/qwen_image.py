@@ -371,6 +371,7 @@ class QwenImagePipeline(BasePipeline):
         rand_device: str = "cpu",
         # Steps
         num_inference_steps: int = 30,
+        exponential_shift_mu: float = None,
         # Blockwise ControlNet
         blockwise_controlnet_inputs: list[ControlNetInput] = None,
         # EliGen
@@ -393,7 +394,7 @@ class QwenImagePipeline(BasePipeline):
         progress_bar_cmd = tqdm,
     ):
         # Scheduler
-        self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, dynamic_shift_len=(height // 16) * (width // 16))
+        self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, dynamic_shift_len=(height // 16) * (width // 16), exponential_shift_mu=exponential_shift_mu)
         
         # Parameters
         inputs_posi = {
