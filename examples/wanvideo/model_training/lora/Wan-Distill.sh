@@ -1,0 +1,13 @@
+accelerate launch examples/wanvideo/model_training/train_distill.py \
+  --dataset_base_path "data/paired_beverage_video_advertising" \
+  --dataset_metadata_path "data/paired_beverage_video_advertising/metadata.csv" \
+  --model_id_with_origin_paths "Wan-AI/Wan2.2-T2V-1.3B:diffusion_pytorch_model.safetensors" \
+  --teacher_model_id_with_origin_paths "Wan-AI/Wan2.2-TI2V-5B:diffusion_pytorch_model.safetensors" \
+  --lora_base_model "dit" \
+  --output_path "./models/train/wan_distill_lora" \
+  --lora_rank 32 \
+  --distillation_weight 0.5 \
+  --learning_rate 1e-4 \
+  --num_epochs 5 \
+  --trainable_models "dit" \
+  --use_gradient_checkpointing_offload
