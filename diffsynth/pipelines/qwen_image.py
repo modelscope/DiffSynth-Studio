@@ -140,8 +140,9 @@ class QwenImagePipeline(BasePipeline):
         timestep_id = torch.randint(0, self.scheduler.num_train_timesteps, (1,))
         timestep = self.scheduler.timesteps[timestep_id].to(dtype=self.torch_dtype, device=self.device)
         
-        inputs["latents"] = self.scheduler.add_noise(inputs["input_latents"], inputs["noise"], timestep)
-        training_target = self.scheduler.training_target(inputs["input_latents"], inputs["noise"], timestep)
+        noise = torch.randn_like(inputs["input_latents"])
+        inputs["latents"] = self.scheduler.add_noise(inputs["input_latents"], noise, timestep)
+        training_target = self.scheduler.training_target(inputs["input_latents"], noise, timestep)
         
         noise_pred = self.model_fn(**inputs, timestep=timestep)
         
