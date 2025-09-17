@@ -85,8 +85,10 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
     
     def forward(self, data, inputs=None, return_inputs=False):
         # Inputs
-        if inputs is None: inputs = self.forward_preprocess(data)
-        else: inputs = self.transfer_data_to_device(inputs, self.pipe.device)
+        if inputs is None:
+            inputs = self.forward_preprocess(data)
+        else:
+            inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)
         if return_inputs: return inputs
         
         # Loss
