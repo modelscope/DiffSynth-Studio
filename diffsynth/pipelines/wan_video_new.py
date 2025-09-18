@@ -1243,7 +1243,11 @@ def model_fn_wan_video(
         tea_cache_update = False
         
     if vace_context is not None:
-        vace_hints = vace(x, vace_context, context, t_mod, freqs)
+        vace_hints = vace(
+            x, vace_context, context, t_mod, freqs,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload
+        )
     
     # blocks
     if use_unified_sequence_parallel:
