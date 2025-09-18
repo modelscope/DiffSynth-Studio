@@ -25,6 +25,8 @@ from ..schedulers.flow_match import FlowMatchScheduler
 from ..prompters import WanPrompter
 from ..vram_management import enable_vram_management, AutoWrappedModule, AutoWrappedLinear, WanAutoCastLayerNorm
 from ..lora import GeneralLoRALoader
+from ..classifiers.open_logo import OpenLogoClassifier
+from ..models.logo_detector import LogoDetector
 
 
 
@@ -44,6 +46,7 @@ class WanVideoPipeline(BasePipeline):
         self.vae: WanVideoVAE = None
         self.motion_controller: WanMotionControllerModel = None
         self.vace: VaceWanModel = None
+        self.classifier: OpenLogoClassifier = None
         self.in_iteration_models = ("dit", "motion_controller", "vace")
         self.in_iteration_models_2 = ("dit2", "motion_controller", "vace")
         self.unit_runner = PipelineUnitRunner()
@@ -77,6 +80,10 @@ class WanVideoPipeline(BasePipeline):
         loader.load(module, lora, alpha=alpha)
 
         
+    def load_classifier(self, model_path, **kwargs):
+        self.classifier = OpenLogoClassifier(model_path, device=self.device, **kwargs)
+
+
     def training_loss(self, **inputs):
         max_timestep_boundary = int(inputs.get("max_timestep_boundary", 1) * self.scheduler.num_train_timesteps)
         min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * self.scheduler.num_train_timesteps)
@@ -380,6 +387,19 @@ class WanVideoPipeline(BasePipeline):
         return pipe
 
 
+    def get_guidance_strength(self, progress_id, num_inference_steps, schedule_name="late_step_emphasis"):
+        if schedule_name == "late_step_emphasis":
+            # Start guidance after 60% of the steps
+            start_step = int(num_inference_steps * 0.6)
+            if progress_id < start_step:
+                return 0.0
+            else:
+                # Ramp up from 0 to 1
+                return (progress_id - start_step) / (num_inference_steps - start_step)
+        else:
+            return 1.0
+
+
     @torch.no_grad()
     def __call__(
         self,
@@ -422,6 +442,12 @@ class WanVideoPipeline(BasePipeline):
         # Classifier-free guidance
         cfg_scale: Optional[float] = 5.0,
         cfg_merge: Optional[bool] = False,
+        # Classifier guidance
+        classifier_guidance_scale: float = 0.0,
+        logo_mask: Optional[torch.Tensor] = None,
+        classifier_class_id: int = 0,
+        guidance_schedule: str = "late_step_emphasis",
+        logo_detector_path: Optional[str] = None,
         # Boundary
         switch_DiT_boundary: Optional[float] = 0.875,
         # Scheduler
@@ -473,6 +499,14 @@ class WanVideoPipeline(BasePipeline):
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
 
+        # Logo detection
+        if logo_detector_path is not None:
+            logo_detector = LogoDetector(logo_detector_path, device=self.device)
+            if input_image is not None:
+                input_image_tensor = self.preprocess_image(input_image.resize((width, height)))
+                logo_mask = logo_detector.get_logo_mask(input_image_tensor)
+                logo_mask = logo_mask.to(dtype=self.torch_dtype, device=self.device)
+
         # Denoise
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
@@ -495,6 +529,25 @@ class WanVideoPipeline(BasePipeline):
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
             else:
                 noise_pred = noise_pred_posi
+
+            # Classifier guidance
+            if self.classifier is not None and classifier_guidance_scale > 0.0:
+                g_t = self.get_guidance_strength(progress_id, num_inference_steps, guidance_schedule)
+                if g_t > 0:
+                    latents_for_grad = inputs_shared["latents"].detach().requires_grad_(True)
+                    grad = self.classifier.compute_gradient(
+                        latents=latents_for_grad,
+                        pipeline=self,
+                        timestep=timestep,
+                        class_id=classifier_class_id,
+                        mask=logo_mask,
+                    )
+
+                    alpha_t = self.scheduler.get_alpha_t(timestep)
+                    sigma_t = self.scheduler.get_sigma_t(timestep)
+
+                    guidance = -alpha_t * g_t * classifier_guidance_scale * sigma_t * grad
+                    noise_pred = noise_pred + guidance
 
             # Scheduler
             inputs_shared["latents"] = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], inputs_shared["latents"])
