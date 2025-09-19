@@ -40,9 +40,9 @@ def rope_apply(x, freqs, num_heads):
     return x_out.to(x.dtype)
 
 def usp_dit_forward(self,
-            x: torch.Tensor,
+            latents: torch.Tensor,
             timestep: torch.Tensor,
-            context: torch.Tensor,
+            encoder_hidden_states: torch.Tensor,
             clip_feature: Optional[torch.Tensor] = None,
             y: Optional[torch.Tensor] = None,
             use_gradient_checkpointing: bool = False,
@@ -52,20 +52,20 @@ def usp_dit_forward(self,
     t = self.time_embedding(
         sinusoidal_embedding_1d(self.freq_dim, timestep))
     t_mod = self.time_projection(t).unflatten(1, (6, self.dim))
-    context = self.text_embedding(context)
+    encoder_hidden_states = self.text_embedding(encoder_hidden_states)
     
     if self.has_image_input:
-        x = torch.cat([x, y], dim=1)  # (b, c_x + c_y, f, h, w)
+        latents = torch.cat([latents, y], dim=1)  # (b, c_x + c_y, f, h, w)
         clip_embdding = self.img_emb(clip_feature)
-        context = torch.cat([clip_embdding, context], dim=1)
+        encoder_hidden_states = torch.cat([clip_embdding, encoder_hidden_states], dim=1)
     
-    x, (f, h, w) = self.patchify(x)
+    latents, (f, h, w) = self.patchify(latents)
     
     freqs = torch.cat([
         self.freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
         self.freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
         self.freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
-    ], dim=-1).reshape(f * h * w, 1, -1).to(x.device)
+    ], dim=-1).reshape(f * h * w, 1, -1).to(latents.device)
     
     def create_custom_forward(module):
         def custom_forward(*inputs):
@@ -73,44 +73,44 @@ def usp_dit_forward(self,
         return custom_forward
 
     # Context Parallel
-    chunks = torch.chunk(x, get_sequence_parallel_world_size(), dim=1)
+    chunks = torch.chunk(latents, get_sequence_parallel_world_size(), dim=1)
     pad_shape = chunks[0].shape[1] - chunks[-1].shape[1]
     chunks = [torch.nn.functional.pad(chunk, (0, 0, 0, chunks[0].shape[1]-chunk.shape[1]), value=0) for chunk in chunks]
-    x = chunks[get_sequence_parallel_rank()]
+    latents = chunks[get_sequence_parallel_rank()]
 
     for block in self.blocks:
         if self.training and use_gradient_checkpointing:
             if use_gradient_checkpointing_offload:
                 with torch.autograd.graph.save_on_cpu():
-                    x = torch.utils.checkpoint.checkpoint(
+                    latents = torch.utils.checkpoint.checkpoint(
                         create_custom_forward(block),
-                        x, context, t_mod, freqs,
+                        latents, encoder_hidden_states, t_mod, freqs,
                         use_reentrant=False,
                     )
             else:
-                x = torch.utils.checkpoint.checkpoint(
+                latents = torch.utils.checkpoint.checkpoint(
                     create_custom_forward(block),
-                    x, context, t_mod, freqs,
+                    latents, encoder_hidden_states, t_mod, freqs,
                     use_reentrant=False,
                 )
         else:
-            x = block(x, context, t_mod, freqs)
+            latents = block(latents, encoder_hidden_states, t_mod, freqs)
 
-    x = self.head(x, t)
+    latents = self.head(latents, t)
 
     # Context Parallel
-    x = get_sp_group().all_gather(x, dim=1)
-    x = x[:, :-pad_shape] if pad_shape > 0 else x
+    latents = get_sp_group().all_gather(latents, dim=1)
+    latents = latents[:, :-pad_shape] if pad_shape > 0 else latents
 
     # unpatchify
-    x = self.unpatchify(x, (f, h, w))
-    return x
+    latents = self.unpatchify(latents, (f, h, w))
+    return latents
 
 
-def usp_attn_forward(self, x, freqs):
-    q = self.norm_q(self.q(x))
-    k = self.norm_k(self.k(x))
-    v = self.v(x)
+def usp_attn_forward(self, latents, freqs):
+    q = self.norm_q(self.q(latents))
+    k = self.norm_k(self.k(latents))
+    v = self.v(latents)
 
     q = rope_apply(q, freqs, self.num_heads)
     k = rope_apply(k, freqs, self.num_heads)
@@ -118,14 +118,14 @@ def usp_attn_forward(self, x, freqs):
     k = rearrange(k, "b s (n d) -> b s n d", n=self.num_heads)
     v = rearrange(v, "b s (n d) -> b s n d", n=self.num_heads)
 
-    x = xFuserLongContextAttention()(
+    latents = xFuserLongContextAttention()(
         None,
         query=q,
         key=k,
         value=v,
     )
-    x = x.flatten(2)
+    latents = latents.flatten(2)
 
     del q, k, v
     torch.cuda.empty_cache()
-    return self.o(x)
+    return self.o(latents)
