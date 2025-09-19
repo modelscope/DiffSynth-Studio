@@ -286,7 +286,7 @@ class WanVideoPipeline(BasePipeline):
 
         for block in self.dit.blocks:
             block.self_attn.forward = types.MethodType(usp_attn_forward, block.self_attn)
-        self.dit.forward = types.MethodType(usp_dit_forward, self.dit)
+        #self.dit.forward = types.MethodType(usp_dit_forward, self.dit)
         if self.dit2 is not None:
             for block in self.dit2.blocks:
                 block.self_attn.forward = types.MethodType(usp_attn_forward, block.self_attn)
