@@ -519,7 +519,6 @@ class WanS2VModel(torch.nn.Module):
             from xfuser.core.distributed import (get_sequence_parallel_rank,
                                                 get_sequence_parallel_world_size,
                                                 get_sp_group)
-            print("use_unified_sequence_parallel", dist.is_initialized(), dist.get_world_size())
 
 
         origin_ref_latents = latents[:, :, 0:1]
@@ -568,7 +567,6 @@ class WanS2VModel(torch.nn.Module):
             seg_idxs = [0] + list(torch.cumsum(torch.tensor([hidden_states.shape[1]] * world_size), dim=0).cpu().numpy())
             seq_len_x_list = [min(max(0, seq_len_x - seg_idxs[i]), hidden_states.shape[1]) for i in range(len(seg_idxs)-1)]
             seq_len_x = seq_len_x_list[sp_rank]
-            print("use_unified_sequence_parallel seq_len_x", sp_rank, world_size)
 
         if tea_cache_update:
             hidden_states = tea_cache.update(hidden_states)
@@ -619,7 +617,6 @@ class WanS2VModel(torch.nn.Module):
 
         if use_unified_sequence_parallel and dist.is_initialized() and dist.get_world_size() > 1:
             hidden_states = get_sp_group().all_gather(hidden_states, dim=1)
-            print("use_unified_sequence_parallel all_gather", sp_rank, world_size)
 
         hidden_states = hidden_states[:, :seq_len_x_global]
         hidden_states = self.head(hidden_states, t[:-1])
