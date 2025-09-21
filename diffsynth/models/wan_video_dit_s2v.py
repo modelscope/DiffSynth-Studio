@@ -612,7 +612,7 @@ class WanS2VModel(torch.nn.Module):
                     )
                 else:
                     hidden_states = block(hidden_states, encoder_hidden_states, t_mod, seq_len_x, pre_compute_freqs[0])
-                    hidden_states = self.after_transformer_block(block_id, hidden_states, audio_emb_global, merged_audio_emb, seq_len_x_global)
+                    hidden_states = self.after_transformer_block(block_id, hidden_states, audio_emb_global, merged_audio_emb, seq_len_x_global, use_unified_sequence_parallel=use_unified_sequence_parallel)
 
             if tea_cache is not None:
                 tea_cache.store(hidden_states)
