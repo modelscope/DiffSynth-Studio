@@ -49,6 +49,7 @@ def usp_dit_forward(self,
             use_gradient_checkpointing_offload: bool = False,
             **kwargs,
             ):
+    print("usp_dit_forward")
     t = self.time_embedding(
         sinusoidal_embedding_1d(self.freq_dim, timestep))
     t_mod = self.time_projection(t).unflatten(1, (6, self.dim))
@@ -108,6 +109,7 @@ def usp_dit_forward(self,
 
 
 def usp_attn_forward(self, latents, freqs):
+    print("usp_attn_forward")
     q = self.norm_q(self.q(latents))
     k = self.norm_k(self.k(latents))
     v = self.v(latents)

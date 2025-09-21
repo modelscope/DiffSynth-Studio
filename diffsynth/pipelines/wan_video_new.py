@@ -919,7 +919,9 @@ class WanVideoUnit_UnifiedSequenceParallel(PipelineUnit):
     def process(self, pipe: WanVideoPipeline):
         if hasattr(pipe, "use_unified_sequence_parallel"):
             if pipe.use_unified_sequence_parallel:
+                print("use_unified_sequence_parallel true")
                 return {"use_unified_sequence_parallel": True}
+
         return {}
 
 
