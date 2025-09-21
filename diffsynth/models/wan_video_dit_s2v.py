@@ -534,7 +534,7 @@ class WanS2VModel(torch.nn.Module):
         # x and pose_cond
         pose_cond = torch.zeros_like(hidden_states) if pose_cond is None else pose_cond
         hidden_states, (f, h, w) = self.patchify(self.patch_embedding(hidden_states) + self.cond_encoder(pose_cond))  # torch.Size([1, 29120, 5120])
-        seq_len_x = hidden_states.shape[1]
+        seq_len_x = seq_len_x_global = hidden_states.shape[1]
 
         # reference image
         ref_latents, (rf, rh, rw) = self.patchify(self.patch_embedding(origin_ref_latents))  # torch.Size([1, 1456, 5120])
@@ -612,7 +612,7 @@ class WanS2VModel(torch.nn.Module):
                     )
                 else:
                     hidden_states = block(hidden_states, encoder_hidden_states, t_mod, seq_len_x, pre_compute_freqs[0])
-                    hidden_states = self.after_transformer_block(block_id, hidden_states, audio_emb_global, merged_audio_emb, seq_len_x)
+                    hidden_states = self.after_transformer_block(block_id, hidden_states, audio_emb_global, merged_audio_emb, seq_len_x_global)
 
             if tea_cache is not None:
                 tea_cache.store(hidden_states)
@@ -621,7 +621,7 @@ class WanS2VModel(torch.nn.Module):
             hidden_states = get_sp_group().all_gather(hidden_states, dim=1)
             print("use_unified_sequence_parallel all_gather", sp_rank, world_size)
 
-        hidden_states = hidden_states[:, :seq_len_x]
+        hidden_states = hidden_states[:, :seq_len_x_global]
         hidden_states = self.head(hidden_states, t[:-1])
         hidden_states = self.unpatchify(hidden_states, (f, h, w))
         # make compatible with wan video
