@@ -519,7 +519,7 @@ class WanS2VModel(torch.nn.Module):
             from xfuser.core.distributed import (get_sequence_parallel_rank,
                                                 get_sequence_parallel_world_size,
                                                 get_sp_group)
-            print("use_unified_sequence_parallel")
+            print("use_unified_sequence_parallel", dist.is_initialized(), dist.get_world_size()")
 
 
         origin_ref_latents = latents[:, :, 0:1]
