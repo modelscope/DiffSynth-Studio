@@ -525,7 +525,7 @@ class QwenImageUnit_PromptEmbedder(PipelineUnit):
         return split_result
 
     def process(self, pipe: QwenImagePipeline, prompt, edit_image=None) -> dict:
-        if pipe.text_encoder is not None:
+        if pipe.text_encoder is not None and prompt is not None:
             prompt = [prompt]
             # If edit_image is None, use the default template for Qwen-Image, otherwise use the template for Qwen-Image-Edit
             if edit_image is None:
