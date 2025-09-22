@@ -356,7 +356,7 @@ class QwenImagePipeline(BasePipeline):
         self,
         # Prompt
         prompt: str,
-        negative_prompt: str = " ",
+        negative_prompt: str = "",
         cfg_scale: float = 4.0,
         # Image
         input_image: Image.Image = None,
