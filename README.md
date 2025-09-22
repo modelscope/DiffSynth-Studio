@@ -381,6 +381,8 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 
 ## Update History
 
+- **September 22, 2025**: We have supported Direct Preference Optimization (DPO) training for Qwen-Image. Please refer to the [example code](examples/qwen_image/model_training/lora/Qwen-Image-DPO.sh) for the training script.
+
 - **September 9, 2025**: Our training framework now supports multiple training modes and has been adapted for Qwen-Image. In addition to the standard SFT training mode, Direct Distill is now also supported; please refer to [our example code](./examples/qwen_image/model_training/lora/Qwen-Image-Distill-LoRA.sh). This feature is experimental, and we will continue to improve it to support comprehensive model training capabilities.
 
 - **August 28, 2025** We support Wan2.2-S2V, an audio-driven cinematic video generation model open-sourced by Alibaba. See [./examples/wanvideo/](./examples/wanvideo/).

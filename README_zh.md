@@ -397,6 +397,8 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 
 ## 更新历史
 
+- **2025年9月22日** 我们支持了 Qwen-Image 的直接偏好对齐 (DPO) 训练，训练脚本请参考[示例代码](examples/qwen_image/model_training/lora/Qwen-Image-DPO.sh)。
+
 - **2025年9月9日** 我们的训练框架支持了多种训练模式，目前已适配 Qwen-Image，除标准 SFT 训练模式外，已支持 Direct Distill，请参考[我们的示例代码](./examples/qwen_image/model_training/lora/Qwen-Image-Distill-LoRA.sh)。这项功能是实验性的，我们将会继续完善已支持更全面的模型训练功能。
 
 - **2025年8月28日** 我们支持了Wan2.2-S2V，一个音频驱动的电影级视频生成模型。请参见[./examples/wanvideo/](./examples/wanvideo/)。
