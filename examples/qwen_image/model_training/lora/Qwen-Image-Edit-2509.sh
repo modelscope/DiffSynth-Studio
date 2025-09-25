@@ -1,6 +1,6 @@
 accelerate launch examples/qwen_image/model_training/train.py \
   --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_edit.csv \
+  --dataset_metadata_path data/example_image_dataset/metadata_qwen_imgae_edit_multi.json \
   --data_file_keys "image,edit_image" \
   --extra_inputs "edit_image" \
   --max_pixels 1048576 \

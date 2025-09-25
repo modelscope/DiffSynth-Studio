@@ -17,7 +17,10 @@ pipe = QwenImagePipeline.from_pretrained(
 state_dict = load_state_dict("models/train/Qwen-Image-Edit-2509_full/epoch-1.safetensors")
 pipe.dit.load_state_dict(state_dict)
 
-prompt = "将裙子改为粉色"
-image = Image.open("data/example_image_dataset/edit/image1.jpg").resize((1024, 1024))
-image = pipe(prompt, edit_image=image, seed=0, num_inference_steps=40, height=1024, width=1024)
-image.save(f"image.jpg")
+prompt = "Change the color of the dress in Figure 1 to the color shown in Figure 2."
+images = [
+    Image.open("data/example_image_dataset/edit/image1.jpg").resize((1024, 1024)),
+    Image.open("data/example_image_dataset/edit/image_color.jpg").resize((1024, 1024)),
+]
+image = pipe(prompt, edit_image=images, seed=123, num_inference_steps=40, height=1024, width=1024)
+image.save("image.jpg")
