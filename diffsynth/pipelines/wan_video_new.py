@@ -359,7 +359,7 @@ class WanVideoPipeline(BasePipeline):
         pipe.vae = model_manager.fetch_model("wan_video_vae")
         pipe.image_encoder = model_manager.fetch_model("wan_video_image_encoder")
         pipe.motion_controller = model_manager.fetch_model("wan_video_motion_controller")
-        pipe.vace = model_manager.fetch_model("wan_video_vace")
+        vace = model_manager.fetch_model("wan_video_vace")
         if isinstance(vace, list):
             pipe.vace, pipe.vace2 = vace
         else:
