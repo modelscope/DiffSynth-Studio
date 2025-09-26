@@ -2,10 +2,10 @@
 __pycache__/
 
 models/
-
+data/
 # 忽略所有 .pyc 文件
 *.pyc
-
+.gitignore
 # 忽略 Python 自动生成的缓存文件
 *.pyo
 *.pyd
