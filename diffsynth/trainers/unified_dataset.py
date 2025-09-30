@@ -316,7 +316,7 @@ class UnifiedDataset(torch.utils.data.Dataset):
             for key in self.data_file_keys:
                 if key in data:
                     if key in self.special_operator_map:
-                        data[key] = self.special_operator_map[key]
+                        data[key] = self.special_operator_map[key](data[key])
                     elif key in self.data_file_keys:
                         data[key] = self.main_data_operator(data[key])
         return data

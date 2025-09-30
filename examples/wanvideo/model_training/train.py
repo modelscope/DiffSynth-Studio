@@ -2,7 +2,7 @@ import torch, os, json
 from diffsynth import load_state_dict
 from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
 from diffsynth.trainers.utils import DiffusionTrainingModule, ModelLogger, launch_training_task, wan_parser
-from diffsynth.trainers.unified_dataset import UnifiedDataset
+from diffsynth.trainers.unified_dataset import UnifiedDataset, LoadVideo, ImageCropAndResize, ToAbsolutePath
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -108,6 +108,9 @@ if __name__ == "__main__":
             time_division_factor=4,
             time_division_remainder=1,
         ),
+        special_operator_map={
+            "animate_face_video": ToAbsolutePath(args.dataset_base_path) >> LoadVideo(args.num_frames, 4, 1, frame_processor=ImageCropAndResize(512, 512, None, 16, 16))
+        }
     )
     model = WanTrainingModule(
         model_paths=args.model_paths,
