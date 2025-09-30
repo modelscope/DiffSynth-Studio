@@ -342,9 +342,7 @@ class WanModel(torch.nn.Module):
             y_camera = self.control_adapter(control_camera_latents_input)
             x = [u + v for u, v in zip(x, y_camera)]
             x = x[0].unsqueeze(0)
-        grid_size = x.shape[2:]
-        x = rearrange(x, 'b c f h w -> b (f h w) c').contiguous()
-        return x, grid_size  # x, grid_size: (f, h, w)
+        return x
 
     def unpatchify(self, x: torch.Tensor, grid_size: torch.Tensor):
         return rearrange(
@@ -496,6 +494,7 @@ class WanModelStateDictConverter:
     
     def from_civitai(self, state_dict):
         state_dict = {name: param for name, param in state_dict.items() if not name.startswith("vace")}
+        state_dict = {name: param for name, param in state_dict.items() if name.split(".")[0] not in ["pose_patch_embedding", "face_adapter", "face_encoder", "motion_encoder"]}
         if hash_state_dict_keys(state_dict) == "9269f8db9040a9d860eaca435be61814":
             config = {
                 "has_image_input": False,
@@ -550,20 +549,6 @@ class WanModelStateDictConverter:
                 "out_dim": 16,
                 "num_heads": 12,
                 "num_layers": 30,
-                "eps": 1e-6
-            }
-        elif hash_state_dict_keys(state_dict) == "6bfcfb3b342cb286ce886889d519a77e":
-            config = {
-                "has_image_input": True,
-                "patch_size": [1, 2, 2],
-                "in_dim": 36,
-                "dim": 5120,
-                "ffn_dim": 13824,
-                "freq_dim": 256,
-                "text_dim": 4096,
-                "out_dim": 16,
-                "num_heads": 40,
-                "num_layers": 40,
                 "eps": 1e-6
             }
         elif hash_state_dict_keys(state_dict) == "349723183fc063b2bfc10bb2835cf677":
