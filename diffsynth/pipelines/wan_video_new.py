@@ -543,7 +543,11 @@ class WanVideoPipeline(BasePipeline):
         
         # VACE (TODO: remove it)
         if vace_reference_image is not None or (animate_pose_video is not None and animate_face_video is not None):
-            inputs_shared["latents"] = inputs_shared["latents"][:, :, 1:]
+            if vace_reference_image is not None and isinstance(vace_reference_image, list):
+                f = len(vace_reference_image)
+            else:
+                f = 1
+            inputs_shared["latents"] = inputs_shared["latents"][:, :, f:]
         # post-denoising, pre-decoding processing logic
         for unit in self.post_units:
             inputs_shared, _, _ = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
@@ -598,7 +602,9 @@ class WanVideoUnit_InputVideoEmbedder(PipelineUnit):
         input_video = pipe.preprocess_video(input_video)
         input_latents = pipe.vae.encode(input_video, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
         if vace_reference_image is not None:
-            vace_reference_image = pipe.preprocess_video([vace_reference_image])
+            if not isinstance(vace_reference_image, list):
+                vace_reference_image = [vace_reference_image]
+            vace_reference_image = pipe.preprocess_video(vace_reference_image)
             vace_reference_latents = pipe.vae.encode(vace_reference_image, device=pipe.device).to(dtype=pipe.torch_dtype, device=pipe.device)
             input_latents = torch.concat([vace_reference_latents, input_latents], dim=2)
         if pipe.scheduler.training:
@@ -900,11 +906,12 @@ class WanVideoUnit_VACE(PipelineUnit):
                 for j in range(f):
                     new_vace_ref_images.append(vace_reference_image[0, :, j:j+1])
                 vace_reference_image = new_vace_ref_images
-
-                vace_reference_image = pipe.preprocess_video([vace_reference_image])
+                
                 vace_reference_latents = pipe.vae.encode(vace_reference_image, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
-                vace_reference_latents = torch.concat((*vace_reference_latents, torch.zeros_like(vace_reference_latents)), dim=1)
-                vace_video_latents = torch.concat((vace_reference_latents, vace_video_latents), dim=2)
+                vace_reference_latents = torch.concat((vace_reference_latents, torch.zeros_like(vace_reference_latents)), dim=1)
+                vace_reference_latents = [u.unsqueeze(0) for u in vace_reference_latents]
+
+                vace_video_latents = torch.concat((*vace_reference_latents, vace_video_latents), dim=2)
                 vace_mask_latents = torch.concat((torch.zeros_like(vace_mask_latents[:, :, :f]), vace_mask_latents), dim=2)
             
             vace_context = torch.concat((vace_video_latents, vace_mask_latents), dim=1)
