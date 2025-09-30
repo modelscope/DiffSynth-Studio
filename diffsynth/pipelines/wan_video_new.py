@@ -647,7 +647,7 @@ class WanVideoUnit_ImageEmbedder(PipelineUnit):
         pipe.load_models_to_device(self.onload_model_names)
         image = pipe.preprocess_image(input_image.resize((width, height))).to(pipe.device)
         clip_context = pipe.image_encoder.encode_image([image])
-        msk = torch.ones(1, num_frames, height//8, width//8, device=pipe.device)
+        msk = torch.ones(1, num_frames, height//(pipe.height_division_factor//2), width//(pipe.width_division_factor//2), device=pipe.device)
         msk[:, 1:] = 0
         if end_image is not None:
             end_image = pipe.preprocess_image(end_image.resize((width, height))).to(pipe.device)
@@ -659,7 +659,7 @@ class WanVideoUnit_ImageEmbedder(PipelineUnit):
             vae_input = torch.concat([image.transpose(0, 1), torch.zeros(3, num_frames-1, height, width).to(image.device)], dim=1)
 
         msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
-        msk = msk.view(1, msk.shape[1] // 4, 4, height//8, width//8)
+        msk = msk.view(1, msk.shape[1] // 4, 4, height//(pipe.height_division_factor//2), width//(pipe.width_division_factor//2))
         msk = msk.transpose(1, 2)[0]
         
         y = pipe.vae.encode([vae_input.to(dtype=pipe.torch_dtype, device=pipe.device)], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0]
@@ -706,7 +706,7 @@ class WanVideoUnit_ImageEmbedderVAE(PipelineUnit):
             return {}
         pipe.load_models_to_device(self.onload_model_names)
         image = pipe.preprocess_image(input_image.resize((width, height))).to(pipe.device)
-        msk = torch.ones(1, num_frames, height//8, width//8, device=pipe.device)
+        msk = torch.ones(1, num_frames, height//(pipe.height_division_factor//2), width//(pipe.width_division_factor//2), device=pipe.device)
         msk[:, 1:] = 0
         if end_image is not None:
             end_image = pipe.preprocess_image(end_image.resize((width, height))).to(pipe.device)
@@ -716,7 +716,7 @@ class WanVideoUnit_ImageEmbedderVAE(PipelineUnit):
             vae_input = torch.concat([image.transpose(0, 1), torch.zeros(3, num_frames-1, height, width).to(image.device)], dim=1)
 
         msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
-        msk = msk.view(1, msk.shape[1] // 4, 4, height//8, width//8)
+        msk = msk.view(1, msk.shape[1] // 4, 4, height//(pipe.height_division_factor//2), width//(pipe.width_division_factor//2))
         msk = msk.transpose(1, 2)[0]
         
         y = pipe.vae.encode([vae_input.to(dtype=pipe.torch_dtype, device=pipe.device)], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0]
@@ -766,9 +766,11 @@ class WanVideoUnit_FunControl(PipelineUnit):
         y_dim = pipe.dit.in_dim-control_latents.shape[1]-latents.shape[1]
         if clip_feature is None or y is None:
             clip_feature = torch.zeros((1, 257, 1280), dtype=pipe.torch_dtype, device=pipe.device)
-            y = torch.zeros((1, y_dim, (num_frames - 1) // 4 + 1, height//8, width//8), dtype=pipe.torch_dtype, device=pipe.device)
+            height_division_factor, width_division_factor = pipe.height_division_factor // 2, pipe.width_division_factor // 2
+            y = torch.zeros((1, y_dim, (num_frames - 1) // 4 + 1, height//height_division_factor, width//width_division_factor), dtype=pipe.torch_dtype, device=pipe.device)
         else:
             y = y[:, -y_dim:]
+
         y = torch.concat([control_latents, y], dim=1)
         return {"clip_feature": clip_feature, "y": y}
     
@@ -834,10 +836,10 @@ class WanVideoUnit_FunCameraControl(PipelineUnit):
             vae_input = torch.concat([image.transpose(0, 1), torch.zeros(3, num_frames-1, height, width).to(image.device)], dim=1)
             y = pipe.vae.encode([vae_input.to(dtype=pipe.torch_dtype, device=pipe.device)], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0]
             y = y.to(dtype=pipe.torch_dtype, device=pipe.device)
-            msk = torch.ones(1, num_frames, height//8, width//8, device=pipe.device)
+            msk = torch.ones(1, num_frames, height//(pipe.height_division_factor//2), width//(pipe.width_division_factor//2), device=pipe.device)
             msk[:, 1:] = 0
             msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
-            msk = msk.view(1, msk.shape[1] // 4, 4, height//8, width//8)
+            msk = msk.view(1, msk.shape[1] // 4, 4, height//(pipe.height_division_factor//2), width//(pipe.width_division_factor//2))
             msk = msk.transpose(1, 2)[0]
             y = torch.cat([msk,y])
             y = y.unsqueeze(0)
