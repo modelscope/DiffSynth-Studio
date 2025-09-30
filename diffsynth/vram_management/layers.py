@@ -116,7 +116,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         self,
         input: torch.Tensor,
         weight: torch.Tensor,
-        bias: torch.Tensor | None = None,
+        bias: torch.Tensor = None,
     ) -> torch.Tensor:
         device = input.device
         origin_dtype = input.dtype
