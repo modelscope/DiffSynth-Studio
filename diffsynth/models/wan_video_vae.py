@@ -49,6 +49,8 @@ class CausalConv3d(nn.Conv3d):
             padding[4] -= cache_x.shape[2]
         x = F.pad(x, padding)
 
+        if x.device != self.weight.device or x.dtype != self.weight.dtype:
+            x = x.to(device=self.weight.device, dtype=self.weight.dtype)
         return super().forward(x)
 
 
