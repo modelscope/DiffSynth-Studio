@@ -1102,7 +1102,7 @@ class WanVideoPostUnit_AnimateFacePixelValues(PipelineUnit):
 
     def process(self, pipe: WanVideoPipeline, inputs_shared, inputs_posi, inputs_nega):
         if inputs_shared.get("animate_face_video", None) is None:
-            return {}
+            return inputs_shared, inputs_posi, inputs_nega
         inputs_posi["face_pixel_values"] = pipe.preprocess_video(inputs_shared["animate_face_video"])
         inputs_nega["face_pixel_values"] = torch.zeros_like(inputs_posi["face_pixel_values"]) - 1
         return inputs_shared, inputs_posi, inputs_nega
@@ -1374,7 +1374,8 @@ def model_fn_wan_video(
     x = dit.patchify(x, control_camera_latents_input)
     
     # Animate
-    x, motion_vec = animate_adapter.after_patch_embedding(x, pose_latents, face_pixel_values)
+    if pose_latents is not None and face_pixel_values is not None:
+        x, motion_vec = animate_adapter.after_patch_embedding(x, pose_latents, face_pixel_values)
     
     # Patchify
     f, h, w = x.shape[2:]
