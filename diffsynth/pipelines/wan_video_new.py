@@ -315,11 +315,17 @@ class WanVideoPipeline(BasePipeline):
         model_manager = ModelManager()
         for model_config in model_configs:
             model_config.download_if_necessary(use_usp=use_usp)
-            model_manager.load_model(
-                model_config.path,
-                device=model_config.offload_device or device,
-                torch_dtype=model_config.offload_dtype or torch_dtype
-            )
+            paths_to_load = model_config.path
+            if not isinstance(paths_to_load, list):
+                paths_to_load = [paths_to_load]
+            for path in paths_to_load:
+                if path is None:
+                    continue
+                model_manager.load_model(
+                    path,
+                    device=model_config.offload_device or device,
+                    torch_dtype=model_config.offload_dtype or torch_dtype
+                )
         
         # Load models
         pipe.text_encoder = model_manager.fetch_model("wan_video_text_encoder")
