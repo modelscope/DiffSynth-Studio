@@ -64,11 +64,15 @@ def load_state_dict_from_folder(file_path, torch_dtype=None):
 
 def load_state_dict(file_path, torch_dtype=None, device="cpu"):
     if isinstance(file_path, list):
-        merged_state_dict = {}
-        for single_file_path in file_path:
-            single_state_dict = load_state_dict(single_file_path, device=device, torch_dtype=torch_dtype)
-            merged_state_dict.update(single_state_dict)
-        return merged_state_dict
+        # If it's a list, for matching purposes, we only inspect the first file.
+        # The main loading logic will handle merging the full state dict.
+        if not file_path:
+            return {}
+        file_path = file_path[0]
+
+    if not isinstance(file_path, str):
+        raise TypeError(f"file_path must be a string, but got {type(file_path)}")
+
     if file_path.endswith(".safetensors"):
         return load_state_dict_from_safetensors(file_path, torch_dtype=torch_dtype, device=device)
     else:
