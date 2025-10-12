@@ -63,6 +63,12 @@ def load_state_dict_from_folder(file_path, torch_dtype=None):
 
 
 def load_state_dict(file_path, torch_dtype=None, device="cpu"):
+    if isinstance(file_path, list):
+        merged_state_dict = {}
+        for single_file_path in file_path:
+            single_state_dict = load_state_dict(single_file_path, device=device, torch_dtype=torch_dtype)
+            merged_state_dict.update(single_state_dict)
+        return merged_state_dict
     if file_path.endswith(".safetensors"):
         return load_state_dict_from_safetensors(file_path, torch_dtype=torch_dtype, device=device)
     else:
