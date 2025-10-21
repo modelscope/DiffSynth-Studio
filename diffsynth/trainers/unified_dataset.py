@@ -225,6 +225,13 @@ class ToAbsolutePath(DataProcessingOperator):
     def __call__(self, data):
         return os.path.join(self.base_path, data)
 
+class LoadAudio(DataProcessingOperator):
+    def __init__(self, sr=16000):
+        self.sr = sr
+    def __call__(self, data: str):
+        import librosa
+        input_audio, sample_rate = librosa.load(data, sr=self.sr)
+        return {'input_audio':input_audio, 'sample_rate':sample_rate}
 
 
 class UnifiedDataset(torch.utils.data.Dataset):
