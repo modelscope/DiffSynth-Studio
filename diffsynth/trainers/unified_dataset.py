@@ -231,7 +231,7 @@ class LoadAudio(DataProcessingOperator):
     def __call__(self, data: str):
         import librosa
         input_audio, sample_rate = librosa.load(data, sr=self.sr)
-        return {'input_audio':input_audio, 'sample_rate':sample_rate}
+        return input_audio
 
 
 class UnifiedDataset(torch.utils.data.Dataset):

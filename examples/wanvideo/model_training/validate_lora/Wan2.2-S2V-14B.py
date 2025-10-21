@@ -6,7 +6,7 @@ from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
 
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
-    device="cuda:0",
+    device="cuda",
     model_configs=[
         ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="diffusion_pytorch_model*.safetensors"),
         ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/model.safetensors"),
@@ -48,4 +48,4 @@ video = pipe(
     s2v_pose_video=pose_video,
     num_inference_steps=40,
 )
-save_video_with_audio(video[1:], "video_pose_with_audio_lora.mp4", audio_path, fps=16, quality=5)
+save_video_with_audio(video[1:], "video_pose_with_audio.mp4", audio_path, fps=16, quality=5)

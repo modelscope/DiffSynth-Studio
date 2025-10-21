@@ -54,9 +54,6 @@ class WanTrainingModule(DiffusionTrainingModule):
             "height": data["video"][0].size[1],
             "width": data["video"][0].size[0],
             "num_frames": len(data["video"]),
-            "audio_embeds":None,
-            "s2v_pose_latents":None,
-            "motion_video":None,
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
             "cfg_scale": 1,
@@ -78,9 +75,6 @@ class WanTrainingModule(DiffusionTrainingModule):
                 inputs_shared["end_image"] = data["video"][-1]
             elif extra_input == "reference_image" or extra_input == "vace_reference_image":
                 inputs_shared[extra_input] = data[extra_input][0]
-            elif extra_input == "input_audio":
-                inputs_shared['input_audio'] = data['input_audio']['input_audio']
-                inputs_shared['sample_rate'] = data['input_audio']['sample_rate']
             else:
                 inputs_shared[extra_input] = data[extra_input]
         
@@ -118,7 +112,7 @@ if __name__ == "__main__":
         ),
         special_operator_map={
             "animate_face_video": ToAbsolutePath(args.dataset_base_path) >> LoadVideo(args.num_frames, 4, 1, frame_processor=ImageCropAndResize(512, 512, None, 16, 16)),
-            'input_audio': ToAbsolutePath(args.dataset_base_path) >> LoadAudio(sr=16000),
+            "input_audio": ToAbsolutePath(args.dataset_base_path) >> LoadAudio(sr=16000),
         }
     )
     model = WanTrainingModule(

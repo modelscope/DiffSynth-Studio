@@ -50,4 +50,4 @@ video = pipe(
     s2v_pose_video=pose_video,
     num_inference_steps=40,
 )
-save_video_with_audio(video[1:], "video_pose_with_audio_full.mp4", audio_path, fps=16, quality=5)
+save_video_with_audio(video[1:], "video_pose_with_audio.mp4", audio_path, fps=16, quality=5)
