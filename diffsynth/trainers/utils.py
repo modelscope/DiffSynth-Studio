@@ -603,6 +603,7 @@ def wan_parser():
     parser.add_argument("--dataset_repeat", type=int, default=1, help="Number of times to repeat the dataset per epoch.")
     parser.add_argument("--model_paths", type=str, default=None, help="Paths to load models. In JSON format.")
     parser.add_argument("--model_id_with_origin_paths", type=str, default=None, help="Model ID with origin paths, e.g., Wan-AI/Wan2.1-T2V-1.3B:diffusion_pytorch_model*.safetensors. Comma-separated.")
+    parser.add_argument("--audio_processor_config", type=str, default=None, help="Model ID with origin paths to the audio processor config, e.g., Wan-AI/Wan2.2-S2V-14B:wav2vec2-large-xlsr-53-english/")
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate.")
     parser.add_argument("--num_epochs", type=int, default=1, help="Number of epochs.")
     parser.add_argument("--output_path", type=str, default="./models", help="Output save path.")

@@ -2,7 +2,7 @@ import torch, os, json
 from diffsynth import load_state_dict
 from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
 from diffsynth.trainers.utils import DiffusionTrainingModule, ModelLogger, launch_training_task, wan_parser
-from diffsynth.trainers.unified_dataset import UnifiedDataset, LoadVideo, ImageCropAndResize, ToAbsolutePath
+from diffsynth.trainers.unified_dataset import UnifiedDataset, LoadVideo, LoadAudio, ImageCropAndResize, ToAbsolutePath
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -10,7 +10,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 class WanTrainingModule(DiffusionTrainingModule):
     def __init__(
         self,
-        model_paths=None, model_id_with_origin_paths=None,
+        model_paths=None, model_id_with_origin_paths=None, audio_processor_config=None,
         trainable_models=None,
         lora_base_model=None, lora_target_modules="q,k,v,o,ffn.0,ffn.2", lora_rank=32, lora_checkpoint=None,
         use_gradient_checkpointing=True,
@@ -22,7 +22,9 @@ class WanTrainingModule(DiffusionTrainingModule):
         super().__init__()
         # Load models
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, enable_fp8_training=False)
-        self.pipe = WanVideoPipeline.from_pretrained(torch_dtype=torch.bfloat16, device="cpu", model_configs=model_configs)
+        if audio_processor_config is not None:
+            audio_processor_config = ModelConfig(model_id=audio_processor_config.split(":")[0], origin_file_pattern=audio_processor_config.split(":")[1])
+        self.pipe = WanVideoPipeline.from_pretrained(torch_dtype=torch.bfloat16, device="cpu", model_configs=model_configs, audio_processor_config=audio_processor_config)
         
         # Training mode
         self.switch_pipe_to_training_mode(
@@ -109,12 +111,14 @@ if __name__ == "__main__":
             time_division_remainder=1,
         ),
         special_operator_map={
-            "animate_face_video": ToAbsolutePath(args.dataset_base_path) >> LoadVideo(args.num_frames, 4, 1, frame_processor=ImageCropAndResize(512, 512, None, 16, 16))
+            "animate_face_video": ToAbsolutePath(args.dataset_base_path) >> LoadVideo(args.num_frames, 4, 1, frame_processor=ImageCropAndResize(512, 512, None, 16, 16)),
+            "input_audio": ToAbsolutePath(args.dataset_base_path) >> LoadAudio(sr=16000),
         }
     )
     model = WanTrainingModule(
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
+        audio_processor_config=args.audio_processor_config,
         trainable_models=args.trainable_models,
         lora_base_model=args.lora_base_model,
         lora_target_modules=args.lora_target_modules,
