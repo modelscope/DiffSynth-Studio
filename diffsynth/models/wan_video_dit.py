@@ -287,6 +287,7 @@ class WanModel(torch.nn.Module):
         has_ref_conv: bool = False,
         add_control_adapter: bool = False,
         in_dim_control_adapter: int = 24,
+        downscale_factor_control_adapter: int = 8,
         seperated_timestep: bool = False,
         require_vae_embedding: bool = True,
         require_clip_embedding: bool = True,
@@ -328,11 +329,13 @@ class WanModel(torch.nn.Module):
         if has_image_input:
             self.img_emb = MLP(1280, dim, has_pos_emb=has_image_pos_emb)  # clip_feature_dim = 1280
         if has_ref_conv:
-            self.ref_conv = nn.Conv2d(16, dim, kernel_size=(2, 2), stride=(2, 2))
+            self.ref_conv = nn.Conv2d(out_dim, dim, kernel_size=(2, 2), stride=(2, 2))
         self.has_image_pos_emb = has_image_pos_emb
         self.has_ref_conv = has_ref_conv
         if add_control_adapter:
-            self.control_adapter = SimpleAdapter(in_dim_control_adapter, dim, kernel_size=patch_size[1:], stride=patch_size[1:])
+            self.control_adapter = SimpleAdapter(in_dim_control_adapter, dim,
+                                                 kernel_size=patch_size[1:], stride=patch_size[1:],
+                                                 downscale_factor=downscale_factor_control_adapter)
         else:
             self.control_adapter = None
 
@@ -734,6 +737,47 @@ class WanModelStateDictConverter:
                 "add_control_adapter": True,
                 "in_dim_control_adapter": 24,
                 "require_clip_embedding": False,
+            }
+        elif hash_state_dict_keys(state_dict) == "8cf5720f1d99f2d3d9f4d059c99f7e25":
+            # Wan2.2-Fun-5B-Control
+            config = {
+                "has_image_input": False,
+                "patch_size": [1, 2, 2],
+                "in_dim": 148,
+                "dim": 3072,
+                "ffn_dim": 14336,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 48,
+                "num_heads": 24,
+                "num_layers": 30,
+                "eps": 1e-6,
+                "has_ref_conv": True,
+                "require_clip_embedding": False,
+                "seperated_timestep": True,
+                "require_vae_embedding": True,
+                "fuse_vae_embedding_in_latents": True,
+            }
+        elif hash_state_dict_keys(state_dict) == "0e2ab7dec4711919374f3d7ffdea90be":
+            # Wan2.2-Fun-5B-Control-Camera
+            config = {
+                "has_image_input": False,
+                "patch_size": [1, 2, 2],
+                "in_dim": 100,
+                "dim": 3072,
+                "ffn_dim": 14336,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 48,
+                "num_heads": 24,
+                "num_layers": 30,
+                "eps": 1e-6,
+                "has_ref_conv": False,
+                "require_clip_embedding": False,
+                "seperated_timestep": True,
+                "add_control_adapter": True,
+                "downscale_factor_control_adapter": 16,
+                "in_dim_control_adapter": 24,
             }
         else:
             config = {}
