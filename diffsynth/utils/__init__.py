@@ -245,7 +245,7 @@ class PipelineUnit:
 class PipelineUnitRunner:
     def __init__(self):
         pass
-
+    # MODIFIED: Remove VAE from pipe to avoid deadlock issues(https://github.com/modelscope/DiffSynth-Studio/issues/687)
     def __call__(self, unit: PipelineUnit, pipe: BasePipeline, inputs_shared: dict, inputs_posi: dict, inputs_nega: dict) -> tuple[dict, dict]:
         if unit.take_over:
             # Let the pipeline unit take over this function.

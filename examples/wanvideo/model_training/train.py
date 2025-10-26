@@ -26,6 +26,10 @@ class WanTrainingModule(DiffusionTrainingModule):
             audio_processor_config = ModelConfig(model_id=audio_processor_config.split(":")[0], origin_file_pattern=audio_processor_config.split(":")[1])
         self.pipe = WanVideoPipeline.from_pretrained(torch_dtype=torch.bfloat16, device="cpu", model_configs=model_configs, audio_processor_config=audio_processor_config)
         
+        # MODIFIED: Remove VAE from pipe to avoid deadlock issues(https://github.com/modelscope/DiffSynth-Studio/issues/687)
+        self.vae = self.pipe.vae
+        self.pipe.vae = None
+
         # Training mode
         self.switch_pipe_to_training_mode(
             self.pipe, trainable_models,
@@ -65,6 +69,9 @@ class WanTrainingModule(DiffusionTrainingModule):
             "vace_scale": 1,
             "max_timestep_boundary": self.max_timestep_boundary,
             "min_timestep_boundary": self.min_timestep_boundary,
+            
+            # MODIFIED: Remove VAE from pipe to avoid deadlock issues(https://github.com/modelscope/DiffSynth-Studio/issues/687)
+            "vae": self.vae,
         }
         
         # Extra inputs

@@ -572,15 +572,19 @@ class WanVideoUnit_ShapeChecker(PipelineUnit):
 
 
 class WanVideoUnit_NoiseInitializer(PipelineUnit):
+    # MODIFIED: Remove VAE from pipe to avoid deadlock issues(https://github.com/modelscope/DiffSynth-Studio/issues/687)
     def __init__(self):
-        super().__init__(input_params=("height", "width", "num_frames", "seed", "rand_device", "vace_reference_image"))
+        super().__init__(input_params=("height", "width", "num_frames", "seed", "rand_device", "vace_reference_image", "vae"))
 
-    def process(self, pipe: WanVideoPipeline, height, width, num_frames, seed, rand_device, vace_reference_image):
+    def process(self, pipe: WanVideoPipeline, height, width, num_frames, seed, rand_device, vace_reference_image, vae):
         length = (num_frames - 1) // 4 + 1
         if vace_reference_image is not None:
             f = len(vace_reference_image) if isinstance(vace_reference_image, list) else 1
             length += f
-        shape = (1, pipe.vae.model.z_dim, length, height // pipe.vae.upsampling_factor, width // pipe.vae.upsampling_factor)
+            
+        # shape = (1, pipe.vae.model.z_dim, length, height // pipe.vae.upsampling_factor, width // pipe.vae.upsampling_factor)
+        shape = (1, vae.model.z_dim, length, height // vae.upsampling_factor, width // vae.upsampling_factor)
+        
         noise = pipe.generate_noise(shape, seed=seed, rand_device=rand_device)
         if vace_reference_image is not None:
             noise = torch.concat((noise[:, :, -f:], noise[:, :, :-f]), dim=2)
@@ -589,23 +593,33 @@ class WanVideoUnit_NoiseInitializer(PipelineUnit):
 
 
 class WanVideoUnit_InputVideoEmbedder(PipelineUnit):
+    # MODIFIED: Remove VAE from pipe to avoid deadlock issues(https://github.com/modelscope/DiffSynth-Studio/issues/687)
     def __init__(self):
         super().__init__(
-            input_params=("input_video", "noise", "tiled", "tile_size", "tile_stride", "vace_reference_image"),
+            input_params=("input_video", "noise", "tiled", "tile_size", "tile_stride", "vace_reference_image", "vae"),
             onload_model_names=("vae",)
         )
-
-    def process(self, pipe: WanVideoPipeline, input_video, noise, tiled, tile_size, tile_stride, vace_reference_image):
+    def process(self, pipe: WanVideoPipeline, input_video, noise, tiled, tile_size, tile_stride, vace_reference_image, vae):
         if input_video is None:
             return {"latents": noise}
         pipe.load_models_to_device(["vae"])
         input_video = pipe.preprocess_video(input_video)
-        input_latents = pipe.vae.encode(input_video, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
+        
+        # input_latents = pipe.vae.encode(input_video, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
+        vae_device = "cuda:4"
+        vae.to(vae_device)
+        input_latents = vae.encode(input_video, device=vae_device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
+        input_video.cpu()
+        vae.cpu()
+
         if vace_reference_image is not None:
             if not isinstance(vace_reference_image, list):
                 vace_reference_image = [vace_reference_image]
             vace_reference_image = pipe.preprocess_video(vace_reference_image)
-            vace_reference_latents = pipe.vae.encode(vace_reference_image, device=pipe.device).to(dtype=pipe.torch_dtype, device=pipe.device)
+            
+            # vace_reference_latents = pipe.vae.encode(vace_reference_image, device=pipe.device).to(dtype=pipe.torch_dtype, device=pipe.device)
+            vace_reference_latents = vae.encode(vace_reference_image, device=pipe.device).to(dtype=pipe.torch_dtype, device=pipe.device)
+            
             input_latents = torch.concat([vace_reference_latents, input_latents], dim=2)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
@@ -635,13 +649,14 @@ class WanVideoUnit_ImageEmbedder(PipelineUnit):
     """
     Deprecated
     """
+    # MODIFIED: Remove VAE from pipe to avoid deadlock issues(https://github.com/modelscope/DiffSynth-Studio/issues/687)
     def __init__(self):
         super().__init__(
-            input_params=("input_image", "end_image", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride"),
+            input_params=("input_image", "end_image", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride", "vae"),
             onload_model_names=("image_encoder", "vae")
         )
 
-    def process(self, pipe: WanVideoPipeline, input_image, end_image, num_frames, height, width, tiled, tile_size, tile_stride):
+    def process(self, pipe: WanVideoPipeline, input_image, end_image, num_frames, height, width, tiled, tile_size, tile_stride, vae):
         if input_image is None or pipe.image_encoder is None:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
@@ -662,7 +677,9 @@ class WanVideoUnit_ImageEmbedder(PipelineUnit):
         msk = msk.view(1, msk.shape[1] // 4, 4, height//8, width//8)
         msk = msk.transpose(1, 2)[0]
         
-        y = pipe.vae.encode([vae_input.to(dtype=pipe.torch_dtype, device=pipe.device)], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0]
+        # y = pipe.vae.encode([vae_input.to(dtype=pipe.torch_dtype, device=pipe.device)], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0]
+        y = vae.encode([vae_input.to(dtype=pipe.torch_dtype, device=pipe.device)], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0]
+        
         y = y.to(dtype=pipe.torch_dtype, device=pipe.device)
         y = torch.concat([msk, y])
         y = y.unsqueeze(0)
@@ -695,13 +712,14 @@ class WanVideoUnit_ImageEmbedderCLIP(PipelineUnit):
 
 
 class WanVideoUnit_ImageEmbedderVAE(PipelineUnit):
+    # MODIFIED: Remove VAE from pipe to avoid deadlock issues(https://github.com/modelscope/DiffSynth-Studio/issues/687)
     def __init__(self):
         super().__init__(
-            input_params=("input_image", "end_image", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride"),
+            input_params=("input_image", "end_image", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride", "vae"),
             onload_model_names=("vae",)
         )
 
-    def process(self, pipe: WanVideoPipeline, input_image, end_image, num_frames, height, width, tiled, tile_size, tile_stride):
+    def process(self, pipe: WanVideoPipeline, input_image, end_image, num_frames, height, width, tiled, tile_size, tile_stride, vae):
         if input_image is None or not pipe.dit.require_vae_embedding:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
@@ -719,7 +737,9 @@ class WanVideoUnit_ImageEmbedderVAE(PipelineUnit):
         msk = msk.view(1, msk.shape[1] // 4, 4, height//8, width//8)
         msk = msk.transpose(1, 2)[0]
         
-        y = pipe.vae.encode([vae_input.to(dtype=pipe.torch_dtype, device=pipe.device)], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0]
+        # y = pipe.vae.encode([vae_input.to(dtype=pipe.torch_dtype, device=pipe.device)], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0]
+        y = vae.encode([vae_input.to(dtype=pipe.torch_dtype, device=pipe.device)], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0]
+
         y = y.to(dtype=pipe.torch_dtype, device=pipe.device)
         y = torch.concat([msk, y])
         y = y.unsqueeze(0)
@@ -729,21 +749,28 @@ class WanVideoUnit_ImageEmbedderVAE(PipelineUnit):
 
 
 class WanVideoUnit_ImageEmbedderFused(PipelineUnit):
+    # MODIFIED: Remove VAE from pipe to avoid deadlock issues(https://github.com/modelscope/DiffSynth-Studio/issues/687)
     """
     Encode input image to latents using VAE. This unit is for Wan-AI/Wan2.2-TI2V-5B.
     """
     def __init__(self):
         super().__init__(
-            input_params=("input_image", "latents", "height", "width", "tiled", "tile_size", "tile_stride"),
+            input_params=("input_image", "latents", "height", "width", "tiled", "tile_size", "tile_stride", "vae"),
             onload_model_names=("vae",)
         )
 
-    def process(self, pipe: WanVideoPipeline, input_image, latents, height, width, tiled, tile_size, tile_stride):
+    def process(self, pipe: WanVideoPipeline, input_image, latents, height, width, tiled, tile_size, tile_stride, vae):
         if input_image is None or not pipe.dit.fuse_vae_embedding_in_latents:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
         image = pipe.preprocess_image(input_image.resize((width, height))).transpose(0, 1)
-        z = pipe.vae.encode([image], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+
+        # z = pipe.vae.encode([image], device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+        vae_device = "cuda:4"
+        vae.to(vae_device)
+        z = vae.encode([image], device=vae_device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(pipe.device)
+        vae.cpu()
+
         latents[:, :, 0: 1] = z
         return {"latents": latents, "fuse_vae_embedding_in_latents": True, "first_frame_latents": z}
 

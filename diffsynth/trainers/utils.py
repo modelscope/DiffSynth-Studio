@@ -547,7 +547,10 @@ def launch_training_task(
         gradient_accumulation_steps=gradient_accumulation_steps,
         kwargs_handlers=[DistributedDataParallelKwargs(find_unused_parameters=find_unused_parameters)],
     )
-    model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
+    # model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
+    
+    # MODIFIED: Remove VAE from pipe to avoid deadlock issues(https://github.com/modelscope/DiffSynth-Studio/issues/687)
+    model.pipe, optimizer, dataloader, scheduler = accelerator.prepare(model.pipe, optimizer, dataloader, scheduler)
     
     for epoch_id in range(num_epochs):
         for data in tqdm(dataloader):
