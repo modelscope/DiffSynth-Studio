@@ -1,5 +1,6 @@
 import torch
-from diffsynth import save_video
+from PIL import Image
+from diffsynth import save_video, VideoData, load_state_dict
 from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
 
 
@@ -12,6 +13,8 @@ pipe = WanVideoPipeline.from_pretrained(
         ModelConfig(model_id="Wan-AI/Wan2.1-T2V-14B", origin_file_pattern="Wan2.1_VAE.pth", offload_device="cpu"),
     ],
 )
+
+pipe.load_lora(pipe.dit, "models/train/krea-realtime-video_lora/epoch-4.safetensors", alpha=1)
 pipe.enable_vram_management()
 
 # Text-to-video
@@ -22,4 +25,4 @@ video = pipe(
     cfg_scale=1,
     sigma_shift=20,
 )
-save_video(video, "video1.mp4", fps=15, quality=5)
+save_video(video, "output.mp4", fps=15, quality=5)
