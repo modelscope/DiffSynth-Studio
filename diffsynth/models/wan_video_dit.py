@@ -495,6 +495,12 @@ class WanModelStateDictConverter:
     def from_civitai(self, state_dict):
         state_dict = {name: param for name, param in state_dict.items() if not name.startswith("vace")}
         state_dict = {name: param for name, param in state_dict.items() if name.split(".")[0] not in ["pose_patch_embedding", "face_adapter", "face_encoder", "motion_encoder"]}
+        state_dict_ = {}
+        for name, param in state_dict.items():
+            if name.startswith("model."):
+                name = name[len("model."):]
+            state_dict_[name] = param
+        state_dict = state_dict_
         if hash_state_dict_keys(state_dict) == "9269f8db9040a9d860eaca435be61814":
             config = {
                 "has_image_input": False,
