@@ -270,7 +270,10 @@ class WanVideoPipeline(BasePipeline):
     def initialize_usp(self):
         import torch.distributed as dist
         from xfuser.core.distributed import initialize_model_parallel, init_distributed_environment
-        dist.init_process_group(backend="nccl", init_method="env://")
+        
+        if not dist.is_initialized():
+            dist.init_process_group(backend="nccl", init_method="env://")
+        
         init_distributed_environment(rank=dist.get_rank(), world_size=dist.get_world_size())
         initialize_model_parallel(
             sequence_parallel_degree=dist.get_world_size(),
@@ -464,6 +467,7 @@ class WanVideoPipeline(BasePipeline):
         tea_cache_model_id: Optional[str] = "",
         # progress_bar
         progress_bar_cmd=tqdm,
+        fps: Optional[int] = 16,
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
@@ -492,6 +496,7 @@ class WanVideoPipeline(BasePipeline):
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
             "sliding_window_size": sliding_window_size, "sliding_window_stride": sliding_window_stride,
             "input_audio": input_audio, "audio_sample_rate": audio_sample_rate, "s2v_pose_video": s2v_pose_video, "audio_embeds": audio_embeds, "s2v_pose_latents": s2v_pose_latents, "motion_video": motion_video,
+            "fps": fps,
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
@@ -969,7 +974,7 @@ class WanVideoUnit_S2V(PipelineUnit):
             onload_model_names=("audio_encoder", "vae",)
         )
 
-    def process_audio(self, pipe: WanVideoPipeline, input_audio, audio_sample_rate, num_frames, fps=16, audio_embeds=None, return_all=False):
+    def process_audio(self, pipe: WanVideoPipeline, input_audio, audio_sample_rate, num_frames, fps, audio_embeds=None, return_all=False):
         if audio_embeds is not None:
             return {"audio_embeds": audio_embeds}
         pipe.load_models_to_device(["audio_encoder"])
@@ -1023,8 +1028,8 @@ class WanVideoUnit_S2V(PipelineUnit):
         num_frames, height, width, tiled, tile_size, tile_stride = inputs_shared.get("num_frames"), inputs_shared.get("height"), inputs_shared.get("width"), inputs_shared.get("tiled"), inputs_shared.get("tile_size"), inputs_shared.get("tile_stride")
         input_audio, audio_embeds, audio_sample_rate = inputs_shared.pop("input_audio"), inputs_shared.pop("audio_embeds"), inputs_shared.get("audio_sample_rate")
         s2v_pose_video, s2v_pose_latents, motion_video = inputs_shared.pop("s2v_pose_video"), inputs_shared.pop("s2v_pose_latents"), inputs_shared.pop("motion_video")
-
-        audio_input_positive = self.process_audio(pipe, input_audio, audio_sample_rate, num_frames, audio_embeds=audio_embeds)
+        fps = inputs_shared.get("fps")
+        audio_input_positive = self.process_audio(pipe, input_audio, audio_sample_rate, num_frames, fps, audio_embeds=audio_embeds)
         inputs_posi.update(audio_input_positive)
         inputs_nega.update({"audio_embeds": 0.0 * audio_input_positive["audio_embeds"]})
 
