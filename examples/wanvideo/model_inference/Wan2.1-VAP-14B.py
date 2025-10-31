@@ -34,11 +34,6 @@ pipe = WanVideoPipeline.from_pretrained(
     ],
 )
 
-dataset_snapshot_download(
-    dataset_id="DiffSynth-Studio/examples_in_diffsynth",
-    local_dir="./",
-    allow_file_pattern=f"data/examples/wan/input_image.jpg"
-)
 
 ref_video_path = 'data/examples/wanvap/vap_ref.mp4'
 target_image_path = 'data/examples/wanvap/input_image.jpg'
