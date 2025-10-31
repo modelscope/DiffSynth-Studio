@@ -997,8 +997,6 @@ class WanVideoUnit_VAP(PipelineUnit):
             vap_video = pipe.preprocess_video(vap_video)
             vap_latent = pipe.vae.encode(vap_video, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
 
-            # latent_mot_ref = (latent_mot_ref - latents_mean) * latents_std
-
             vap_latent = torch.concat([vap_latent,y], dim=1).to(dtype=pipe.torch_dtype, device=pipe.device)
             inputs_shared.update({"vap_hidden_state":vap_latent})
             pipe.load_models_to_device([])
@@ -1488,6 +1486,7 @@ def model_fn_wan_video(
     if clip_feature is not None and dit.require_clip_embedding:
         clip_embdding = dit.img_emb(clip_feature)
         context = torch.cat([clip_embdding, context], dim=1)
+        
     # Camera control
     x = dit.patchify(x, control_camera_latents_input)
     
@@ -1605,7 +1604,6 @@ def model_fn_wan_video(
         f -= 1
     x = dit.unpatchify(x, (f, h, w))
     return x
-
 
 def model_fn_longcat_video(
     dit: LongCatVideoTransformer3DModel,
