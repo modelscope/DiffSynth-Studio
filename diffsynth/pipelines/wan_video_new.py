@@ -23,10 +23,7 @@ from ..models.wan_video_vace import VaceWanModel
 from ..models.wan_video_motion_controller import WanMotionControllerModel
 from ..models.wan_video_animate_adapter import WanAnimateAdapter
 from ..models.wan_video_mot import MotWanModel
-<<<<<<< Updated upstream
 from ..models.longcat_video_dit import LongCatVideoTransformer3DModel
-=======
->>>>>>> Stashed changes
 from ..schedulers.flow_match import FlowMatchScheduler
 from ..prompters import WanPrompter
 from ..vram_management import enable_vram_management, AutoWrappedModule, AutoWrappedLinear, WanAutoCastLayerNorm
