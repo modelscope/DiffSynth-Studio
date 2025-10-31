@@ -437,6 +437,11 @@ class WanModelStateDictConverter:
             "blocks.0.attn2.to_q.weight": "blocks.0.cross_attn.q.weight",
             "blocks.0.attn2.to_v.bias": "blocks.0.cross_attn.v.bias",
             "blocks.0.attn2.to_v.weight": "blocks.0.cross_attn.v.weight",
+            "blocks.0.attn2.add_k_proj.bias":"blocks.0.cross_attn.k_img.bias",
+            "blocks.0.attn2.add_k_proj.weight":"blocks.0.cross_attn.k_img.weight",
+            "blocks.0.attn2.add_v_proj.bias":"blocks.0.cross_attn.v_img.bias",
+            "blocks.0.attn2.add_v_proj.weight":"blocks.0.cross_attn.v_img.weight",
+            "blocks.0.attn2.norm_added_k.weight":"blocks.0.cross_attn.norm_k_img.weight",
             "blocks.0.ffn.net.0.proj.bias": "blocks.0.ffn.0.bias",
             "blocks.0.ffn.net.0.proj.weight": "blocks.0.ffn.0.weight",
             "blocks.0.ffn.net.2.bias": "blocks.0.ffn.2.bias",
@@ -454,6 +459,14 @@ class WanModelStateDictConverter:
             "condition_embedder.time_embedder.linear_2.weight": "time_embedding.2.weight",
             "condition_embedder.time_proj.bias": "time_projection.1.bias",
             "condition_embedder.time_proj.weight": "time_projection.1.weight",
+            "condition_embedder.image_embedder.ff.net.0.proj.bias":"img_emb.proj.1.bias",
+            "condition_embedder.image_embedder.ff.net.0.proj.weight":"img_emb.proj.1.weight",
+            "condition_embedder.image_embedder.ff.net.2.bias":"img_emb.proj.3.bias",
+            "condition_embedder.image_embedder.ff.net.2.weight":"img_emb.proj.3.weight",
+            "condition_embedder.image_embedder.norm1.bias":"img_emb.proj.0.bias",
+            "condition_embedder.image_embedder.norm1.weight":"img_emb.proj.0.weight",
+            "condition_embedder.image_embedder.norm2.bias":"img_emb.proj.4.bias",
+            "condition_embedder.image_embedder.norm2.weight":"img_emb.proj.4.weight",
             "patch_embedding.bias": "patch_embedding.bias",
             "patch_embedding.weight": "patch_embedding.weight",
             "scale_shift_table": "head.modulation",
@@ -470,7 +483,7 @@ class WanModelStateDictConverter:
                     name_ = rename_dict[name_]
                     name_ = ".".join(name_.split(".")[:1] + [name.split(".")[1]] + name_.split(".")[2:])
                     state_dict_[name_] = param
-        if hash_state_dict_keys(state_dict) == "cb104773c6c2cb6df4f9529ad5c60d0b":
+        if hash_state_dict_keys(state_dict_) == "cb104773c6c2cb6df4f9529ad5c60d0b":
             config = {
                 "model_type": "t2v",
                 "patch_size": (1, 2, 2),
@@ -487,6 +500,20 @@ class WanModelStateDictConverter:
                 "qk_norm": True,
                 "cross_attn_norm": True,
                 "eps": 1e-6,
+            }
+        elif hash_state_dict_keys(state_dict_) == "6bfcfb3b342cb286ce886889d519a77e":
+            config = {
+                "has_image_input": True,
+                "patch_size": [1, 2, 2],
+                "in_dim": 36,
+                "dim": 5120,
+                "ffn_dim": 13824,
+                "freq_dim": 256,
+                "text_dim": 4096,
+                "out_dim": 16,
+                "num_heads": 40,
+                "num_layers": 40,
+                "eps": 1e-6
             }
         else:
             config = {}
