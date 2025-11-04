@@ -1,5 +1,5 @@
 import torch
-from .wan_video_dit import DiTBlock, SelfAttention, CrossAttention, rope_apply,flash_attention,modulate,MLP
+from .wan_video_dit import DiTBlock, SelfAttention, rope_apply, flash_attention, modulate, MLP
 from .utils import hash_state_dict_keys
 import einops
 import torch.nn as nn
@@ -164,36 +164,10 @@ class MotWanModel(torch.nn.Module):
         ], dim=-1).reshape(f * h * w, 1, -1)
         return freqs
 
-    def forward(
-        self, wan_block, x, context, t_mod, freqs, x_mot, context_mot, t_mod_mot, freqs_mot, block_id,
-        use_gradient_checkpointing: bool = False,
-        use_gradient_checkpointing_offload: bool = False,
-        
-    ):
-
-        def create_custom_forward(module):
-            def custom_forward(*inputs):
-                return module(*inputs)
-            return custom_forward
-        
+    def forward(self, wan_block, x, context, t_mod, freqs, x_mot, context_mot, t_mod_mot, freqs_mot, block_id):
         block = self.blocks[self.mot_layers_mapping[block_id]]
-        if use_gradient_checkpointing_offload:
-            with torch.autograd.graph.save_on_cpu():
-                x,x_mot = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(block),
-                    wan_block, x, context, t_mod, freqs, x_mot, context_mot, t_mod_mot, freqs_mot,
-                    use_reentrant=False,
-                )
-        elif use_gradient_checkpointing:
-            x,x_mot = torch.utils.checkpoint.checkpoint(
-                create_custom_forward(block),
-                wan_block, x, context, t_mod, freqs, x_mot, context_mot, t_mod_mot, freqs_mot,
-                use_reentrant=False,
-            )
-        else:
-            x,x_mot = block(wan_block, x, context, t_mod, freqs, x_mot, context_mot, t_mod_mot, freqs_mot)
-        
-        return x,x_mot
+        x, x_mot = block(wan_block, x, context, t_mod, freqs, x_mot, context_mot, t_mod_mot, freqs_mot)
+        return x, x_mot
     
     @staticmethod
     def state_dict_converter():

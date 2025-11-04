@@ -50,8 +50,8 @@ class WanVideoPipeline(BasePipeline):
         self.vace2: VaceWanModel = None
         self.vap: MotWanModel = None
         self.animate_adapter: WanAnimateAdapter = None
-        self.in_iteration_models = ("dit", "motion_controller", "vace", "animate_adapter","vap")
-        self.in_iteration_models_2 = ("dit2", "motion_controller", "vace2", "animate_adapter")
+        self.in_iteration_models = ("dit", "motion_controller", "vace", "animate_adapter", "vap")
+        self.in_iteration_models_2 = ("dit2", "motion_controller", "vace2", "animate_adapter", "vap")
         self.unit_runner = PipelineUnitRunner()
         self.units = [
             WanVideoUnit_ShapeChecker(),
@@ -501,7 +501,7 @@ class WanVideoPipeline(BasePipeline):
         # Inputs
         inputs_posi = {
             "prompt": prompt,
-            "vap_prompt":vap_prompt,
+            "vap_prompt": vap_prompt,
             "tea_cache_l1_thresh": tea_cache_l1_thresh, "tea_cache_model_id": tea_cache_model_id, "num_inference_steps": num_inference_steps,
         }
         inputs_nega = {
@@ -942,22 +942,22 @@ class WanVideoUnit_VAP(PipelineUnit):
     def __init__(self):
         super().__init__(
             take_over=True,
-            onload_model_names=("text_encoder","vae","image_encoder")
+            onload_model_names=("text_encoder", "vae", "image_encoder")
         )
+
     def process(self, pipe: WanVideoPipeline, inputs_shared, inputs_posi, inputs_nega):
-        if pipe.vap is None or inputs_shared.get("vap_video") is None:
+        if inputs_shared.get("vap_video") is None:
             return inputs_shared, inputs_posi, inputs_nega
         else:
             # 1. encode vap prompt
             pipe.load_models_to_device(["text_encoder"])
-            vap_prompt, negative_vap_prompt = inputs_posi.get("vap_prompt"), inputs_nega.get("negative_vap_prompt")
+            vap_prompt, negative_vap_prompt = inputs_posi.get("vap_prompt", ""), inputs_nega.get("negative_vap_prompt", "")
             vap_prompt_emb = pipe.prompter.encode_prompt(vap_prompt, positive=inputs_posi.get('positive',None), device=pipe.device)
             negative_vap_prompt_emb = pipe.prompter.encode_prompt(negative_vap_prompt, positive=inputs_nega.get('positive',None), device=pipe.device)
             inputs_posi.update({"context_vap":vap_prompt_emb})
             inputs_nega.update({"context_vap":negative_vap_prompt_emb})
             # 2. prepare vap image clip embedding
-            pipe.load_models_to_device(["vae"])
-            pipe.load_models_to_device(["image_encoder"])
+            pipe.load_models_to_device(["vae", "image_encoder"])
             vap_video, end_image = inputs_shared.get("vap_video"), inputs_shared.get("end_image")
 
             num_frames, height, width, mot_num = inputs_shared.get("num_frames"),inputs_shared.get("height"), inputs_shared.get("width"), inputs_shared.get("mot_num",1)
@@ -968,7 +968,7 @@ class WanVideoUnit_VAP(PipelineUnit):
             if end_image is not None:
                 vap_end_image = pipe.preprocess_image(vap_video[-1].resize((width, height))).to(pipe.device)
                 if pipe.dit.has_image_pos_emb:
-                    vap_clip_context = torch.concat([clip_context, pipe.image_encoder.encode_image([vap_end_image])], dim=1)
+                    vap_clip_context = torch.concat([vap_clip_context, pipe.image_encoder.encode_image([vap_end_image])], dim=1)
             vap_clip_context = vap_clip_context.to(dtype=pipe.torch_dtype, device=pipe.device)
             inputs_shared.update({"vap_clip_feature":vap_clip_context})
 
@@ -1559,25 +1559,45 @@ def model_fn_wan_video(
                 return module(*inputs)
             return custom_forward
         
+        def create_custom_forward_vap(block, vap):
+            def custom_forward(*inputs):
+                return vap(block, *inputs)
+            return custom_forward
+        
         for block_id, block in enumerate(dit.blocks):
             # Block
             if vap is not None and block_id in vap.mot_layers_mapping:
-                x, x_vap = vap(block, x, context, t_mod, freqs, x_vap, context_vap, t_mod_vap, freqs_vap, block_id)
-            elif use_gradient_checkpointing_offload:
-                with torch.autograd.graph.save_on_cpu():
+                if use_gradient_checkpointing_offload:
+                    with torch.autograd.graph.save_on_cpu():
+                        x, x_vap = torch.utils.checkpoint.checkpoint(
+                            create_custom_forward_vap(block, vap),
+                            x, context, t_mod, freqs, x_vap, context_vap, t_mod_vap, freqs_vap, block_id,
+                            use_reentrant=False,
+                        )
+                elif use_gradient_checkpointing:
+                    x, x_vap = torch.utils.checkpoint.checkpoint(
+                        create_custom_forward_vap(block, vap),
+                        x, context, t_mod, freqs, x_vap, context_vap, t_mod_vap, freqs_vap, block_id,
+                        use_reentrant=False,
+                    )
+                else:
+                    x, x_vap = vap(block, x, context, t_mod, freqs, x_vap, context_vap, t_mod_vap, freqs_vap, block_id)
+            else:
+                if use_gradient_checkpointing_offload:
+                    with torch.autograd.graph.save_on_cpu():
+                        x = torch.utils.checkpoint.checkpoint(
+                            create_custom_forward(block),
+                            x, context, t_mod, freqs,
+                            use_reentrant=False,
+                        )
+                elif use_gradient_checkpointing:
                     x = torch.utils.checkpoint.checkpoint(
                         create_custom_forward(block),
                         x, context, t_mod, freqs,
                         use_reentrant=False,
                     )
-            elif use_gradient_checkpointing:
-                x = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(block),
-                    x, context, t_mod, freqs,
-                    use_reentrant=False,
-                )
-            else:
-                x = block(x, context, t_mod, freqs)
+                else:
+                    x = block(x, context, t_mod, freqs)
             
             # VACE
             if vace_context is not None and block_id in vace.vace_layers_mapping:
@@ -1604,6 +1624,7 @@ def model_fn_wan_video(
         f -= 1
     x = dit.unpatchify(x, (f, h, w))
     return x
+
 
 def model_fn_longcat_video(
     dit: LongCatVideoTransformer3DModel,
