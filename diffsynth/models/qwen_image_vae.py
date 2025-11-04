@@ -721,16 +721,3 @@ class QwenImageVAE(torch.nn.Module):
         x = self.decoder(x)
         x = x.squeeze(2)
         return x
-    
-    @staticmethod
-    def state_dict_converter():
-        return QwenImageVAEStateDictConverter()
-
-
-
-class QwenImageVAEStateDictConverter():
-    def __init__(self):
-        pass
-
-    def from_diffusers(self, state_dict):
-        return state_dict

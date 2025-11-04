@@ -2,8 +2,7 @@ import torch, math
 import torch.nn as nn
 from typing import Tuple, Optional, Union, List
 from einops import rearrange
-from .sd3_dit import TimestepEmbeddings, RMSNorm
-from .flux_dit import AdaLayerNorm
+from .general_modules import TimestepEmbeddings, RMSNorm, AdaLayerNorm
 
 try:
     import flash_attn_interface
@@ -532,16 +531,3 @@ class QwenImageDiT(torch.nn.Module):
         
         latents = rearrange(image, "B (H W) (C P Q) -> B C (H P) (W Q)", H=height//16, W=width//16, P=2, Q=2)
         return image
-    
-    @staticmethod
-    def state_dict_converter():
-        return QwenImageDiTStateDictConverter()
-
-
-
-class QwenImageDiTStateDictConverter():
-    def __init__(self):
-        pass
-
-    def from_civitai(self, state_dict):
-        return state_dict
