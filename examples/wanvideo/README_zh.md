@@ -78,7 +78,7 @@ save_video(video, "video1.mp4", fps=15, quality=5)
 |[DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1](https://modelscope.cn/models/DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1)|`motion_bucket_id`|[code](./model_inference/Wan2.1-1.3b-speedcontrol-v1.py)|[code](./model_training/full/Wan2.1-1.3b-speedcontrol-v1.sh)|[code](./model_training/validate_full/Wan2.1-1.3b-speedcontrol-v1.py)|[code](./model_training/lora/Wan2.1-1.3b-speedcontrol-v1.sh)|[code](./model_training/validate_lora/Wan2.1-1.3b-speedcontrol-v1.py)|
 |[krea/krea-realtime-video](https://www.modelscope.cn/models/krea/krea-realtime-video)||[code](./model_inference/krea-realtime-video.py)|[code](./model_training/full/krea-realtime-video.sh)|[code](./model_training/validate_full/krea-realtime-video.py)|[code](./model_training/lora/krea-realtime-video.sh)|[code](./model_training/validate_lora/krea-realtime-video.py)|
 |[meituan-longcat/LongCat-Video](https://www.modelscope.cn/models/meituan-longcat/LongCat-Video)|`longcat_video`|[code](./model_inference/LongCat-Video.py)|[code](./model_training/full/LongCat-Video.sh)|[code](./model_training/validate_full/LongCat-Video.py)|[code](./model_training/lora/LongCat-Video.sh)|[code](./model_training/validate_lora/LongCat-Video.py)|
-
+|[ByteDance/Video-As-Prompt-Wan2.1-14B](https://modelscope.cn/models/ByteDance/Video-As-Prompt-Wan2.1-14B)|`vap_video`, `vap_prompt`|[code](./model_inference/Video-As-Prompt-Wan2.1-14B.py)|[code](./model_training/full/Video-As-Prompt-Wan2.1-14B.sh)|[code](./model_training/validate_full/Video-As-Prompt-Wan2.1-14B.py)|[code](./model_training/lora/Video-As-Prompt-Wan2.1-14B.sh)|[code](./model_training/validate_lora/Video-As-Prompt-Wan2.1-14B.py)|
 
 ## 模型推理
 
