@@ -140,6 +140,8 @@ image.save("image.jpg")
 
 在更为极端的情况下，当内存也不足以存储整个模型时，Disk Offload 功能可以让模型参数惰性加载，即，模型中的每个 Layer 仅在调用 forward 时才会从硬盘中读取相应的参数。启用这一功能时，我们建议使用高速的 SSD 硬盘。
 
+Disk Offload 是极为特殊的显存管理方案，只支持 `.safetensors` 格式文件，不支持 `.bin`、`.pth`、`.ckpt` 等二进制文件，不支持带 Tensor reshape 的 [state dict converter](../Developer_Guide/Integrating_Your_Model.md#step-2-模型文件格式转换)。
+
 ```python
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 import torch
