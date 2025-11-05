@@ -5,12 +5,14 @@
 ## 注意力机制
 
 注意力机制是在论文[《Attention Is All You Need》](https://arxiv.org/abs/1706.03762)中提出的模型结构，在原论文中，注意力机制按照如下公式实现：
+
 $$
 \text{Attention}(Q, K, V) = \text{Softmax}\left(
     \frac{QK^T}{\sqrt{d_k}}
 \right)
 V.
 $$
+
 在 `PyTorch` 中，可以用如下代码实现：
 ```python
 import torch
@@ -65,6 +67,10 @@ print((output_1 - output_2).abs().mean())
 ```
 
 请注意，加速的同时会引入误差，但在大多数情况下误差是可以忽略不计的。
+
+## 开发者导引
+
+在为 `DiffSynth-Studio` 接入新模型时，开发者可自行决定是否调用 `diffsynth.core.attention` 中的 `attention_forward`，但我们期望模型能够尽可能优先调用这一模块，以便让新的注意力机制实现能够在这些模型上直接生效。
 
 ## 最佳实践
 

@@ -1,7 +1,7 @@
 from ..core.loader import load_model, hash_model_file
 from ..core.vram import AutoWrappedModule
 from ..configs import MODEL_CONFIGS, VRAM_MANAGEMENT_MODULE_MAPS
-import importlib, json
+import importlib, json, torch
 
 
 class ModelPool:
@@ -46,8 +46,23 @@ class ModelPool:
         )
         return model
     
-    def auto_load_model(self, path, vram_config, vram_limit=None):
+    def default_vram_config(self):
+        vram_config = {
+            "offload_dtype": None,
+            "offload_device": None,
+            "onload_dtype": torch.bfloat16,
+            "onload_device": "cpu",
+            "preparing_dtype": torch.bfloat16,
+            "preparing_device": "cpu",
+            "computation_dtype": torch.bfloat16,
+            "computation_device": "cpu",
+        }
+        return vram_config
+    
+    def auto_load_model(self, path, vram_config=None, vram_limit=None):
         print(f"Loading models from: {json.dumps(path, indent=4)}")
+        if vram_config is None:
+            vram_config = self.default_vram_config()
         model_hash = hash_model_file(path)
         loaded = False
         for config in MODEL_CONFIGS:

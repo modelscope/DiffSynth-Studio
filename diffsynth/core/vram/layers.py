@@ -158,7 +158,7 @@ class AutoWrappedModule(AutoTorchModule):
         if self.state < 1:
             if self.disk_offload and self.onload_device != "disk" and self.offload_device == "disk":
                 self.load_from_disk(self.onload_dtype, self.onload_device)
-            else:
+            elif self.onload_device != "disk":
                 self.to(dtype=self.onload_dtype, device=self.onload_device)
             self.state = 1
             
@@ -167,7 +167,7 @@ class AutoWrappedModule(AutoTorchModule):
         if self.state != 2:
             if self.disk_offload and self.preparing_device != "disk" and self.onload_device == "disk":
                 self.load_from_disk(self.preparing_dtype, self.preparing_device)
-            else:
+            elif self.preparing_device != "disk":
                 self.to(dtype=self.preparing_dtype, device=self.preparing_device)
             self.state = 2
             
@@ -308,7 +308,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         if self.state < 1:
             if self.disk_offload and self.onload_device != "disk" and self.offload_device == "disk":
                 self.load_from_disk(self.onload_dtype, self.onload_device)
-            else:
+            elif self.onload_device != "disk":
                 self.to(dtype=self.onload_dtype, device=self.onload_device)
             self.state = 1
             
@@ -317,7 +317,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         if self.state != 2:
             if self.disk_offload and self.preparing_device != "disk" and self.onload_device == "disk":
                 self.load_from_disk(self.preparing_dtype, self.preparing_device)
-            else:
+            elif self.preparing_device != "disk":
                 self.to(dtype=self.preparing_dtype, device=self.preparing_device)
             self.state = 2
             

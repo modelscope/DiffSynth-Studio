@@ -147,6 +147,40 @@ if hash_model_file(model_path) == model_hash:
 
 `diffsynth/configs/model_configs.py` 中的 `model_hash` 不是唯一存在的，同一模型文件中可能存在多个模型。对于这种情况，请使用多个模型 Config 分别加载每个模型，编写相应的 `state_dict_converter` 分离每个模型所需的参数。
 
-## Step 4: 编写模型显存管理方案
+## Step 4: 检验模型是否能被识别和加载
 
-`DiffSynth-Studio` 支持复杂的显存管理，详见[启用显存管理](./Enabling_VRAM_management.py)。
+模型接入之后，可通过以下代码验证模型是否能够被正确识别和加载，以下代码会试图将模型加载到内存中：
+
+```python
+from diffsynth.models.model_loader import ModelPool
+
+model_pool = ModelPool()
+model_pool.auto_load_model(
+    [
+        "models/Qwen/Qwen-Image/text_encoder/model-00001-of-00004.safetensors",
+        "models/Qwen/Qwen-Image/text_encoder/model-00002-of-00004.safetensors",
+        "models/Qwen/Qwen-Image/text_encoder/model-00003-of-00004.safetensors",
+        "models/Qwen/Qwen-Image/text_encoder/model-00004-of-00004.safetensors",
+    ],
+)
+```
+
+如果模型能够被识别和加载，则会看到以下输出内容：
+
+```
+Loading models from: [
+    "models/Qwen/Qwen-Image/text_encoder/model-00001-of-00004.safetensors",
+    "models/Qwen/Qwen-Image/text_encoder/model-00002-of-00004.safetensors",
+    "models/Qwen/Qwen-Image/text_encoder/model-00003-of-00004.safetensors",
+    "models/Qwen/Qwen-Image/text_encoder/model-00004-of-00004.safetensors"
+]
+Loaded model: {
+    "model_name": "qwen_image_text_encoder",
+    "model_class": "diffsynth.models.qwen_image_text_encoder.QwenImageTextEncoder",
+    "extra_kwargs": null
+}
+```
+
+## Step 5: 编写模型显存管理方案
+
+`DiffSynth-Studio` 支持复杂的显存管理，详见[启用显存管理](./Enabling_VRAM_management.md)。
