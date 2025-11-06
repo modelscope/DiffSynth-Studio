@@ -402,17 +402,3 @@ def enable_vram_management(model: torch.nn.Module, module_map: dict, vram_config
     # `vram_management_enabled` is a flag that allows the pipeline to determine whether VRAM management is enabled.
     model.vram_management_enabled = True
     return model
-
-
-def reset_vram_config(model: torch.nn.Module, vram_config: dict, vram_limit=None):
-    disk_map = None
-    for module in model.modules():
-        if isinstance(module, AutoTorchModule):
-            module.set_dtype_and_device(**vram_config, vram_limit=vram_limit)
-            if hasattr(module, "disk_map") and getattr(module, "disk_map") is not None:
-                disk_map = getattr(module, "disk_map")
-    if disk_map is not None:
-        devices = [vram_config["offload_device"], vram_config["onload_device"], vram_config["preparing_device"], vram_config["computation_device"]]
-        device = [d for d in devices if d != "disk"][0]
-        disk_map.device = device
-        disk_map.flush_files()

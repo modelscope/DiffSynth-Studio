@@ -1,4 +1,4 @@
-# 模型训练
+# 接入模型训练
 
 在[接入模型](./Integrating_Your_Model.md)并[实现 Pipeline](./Building_a_Pipeline.md)后，接下来接入模型训练功能。
 

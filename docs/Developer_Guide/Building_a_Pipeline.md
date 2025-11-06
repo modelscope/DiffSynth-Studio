@@ -1,4 +1,4 @@
-# Pipeline 构建
+# 接入 Pipeline
 
 在[将 Pipeline 所需的模型接入](./Integrating_Your_Model.md)之后，还需构建 `Pipeline` 用于模型推理，本文档提供 `Pipeline` 构建的标准化流程，开发者也可参考现有的 `Pipeline` 进行构建。
 

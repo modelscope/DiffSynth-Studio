@@ -1,4 +1,4 @@
-# `diffsynth.core.gradient`: 梯度检查点
+# `diffsynth.core.gradient`: 梯度检查点及其 Offload
 
 `diffsynth.core.gradient` 中提供了封装好的梯度检查点及其 Offload 版本，用于模型训练。
 

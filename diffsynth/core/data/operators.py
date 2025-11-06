@@ -3,7 +3,6 @@ import imageio.v3 as iio
 from PIL import Image
 
 
-
 class DataProcessingPipeline:
     def __init__(self, operators=None):
         self.operators: list[DataProcessingOperator] = [] if operators is None else operators
@@ -19,7 +18,6 @@ class DataProcessingPipeline:
         return DataProcessingPipeline(self.operators + pipe.operators)
 
 
-
 class DataProcessingOperator:
     def __call__(self, data):
         raise NotImplementedError("DataProcessingOperator cannot be called directly.")
@@ -30,11 +28,9 @@ class DataProcessingOperator:
         return DataProcessingPipeline([self]).__rshift__(pipe)
 
 
-
 class DataProcessingOperatorRaw(DataProcessingOperator):
     def __call__(self, data):
         return data
-
 
 
 class ToInt(DataProcessingOperator):
@@ -42,11 +38,9 @@ class ToInt(DataProcessingOperator):
         return int(data)
 
 
-
 class ToFloat(DataProcessingOperator):
     def __call__(self, data):
         return float(data)
-
 
 
 class ToStr(DataProcessingOperator):
@@ -56,7 +50,6 @@ class ToStr(DataProcessingOperator):
     def __call__(self, data):
         if data is None: data = self.none_value
         return str(data)
-
 
 
 class LoadImage(DataProcessingOperator):
@@ -69,9 +62,8 @@ class LoadImage(DataProcessingOperator):
         return image
 
 
-
 class ImageCropAndResize(DataProcessingOperator):
-    def __init__(self, height, width, max_pixels, height_division_factor, width_division_factor):
+    def __init__(self, height=None, width=None, max_pixels=None, height_division_factor=1, width_division_factor=1):
         self.height = height
         self.width = width
         self.max_pixels = max_pixels
@@ -101,18 +93,15 @@ class ImageCropAndResize(DataProcessingOperator):
             height, width = self.height, self.width
         return height, width
     
-    
     def __call__(self, data: Image.Image):
         image = self.crop_and_resize(data, *self.get_height_width(data))
         return image
-
 
 
 class ToList(DataProcessingOperator):
     def __call__(self, data):
         return [data]
     
-
 
 class LoadVideo(DataProcessingOperator):
     def __init__(self, num_frames=81, time_division_factor=4, time_division_remainder=1, frame_processor=lambda x: x):
@@ -143,14 +132,12 @@ class LoadVideo(DataProcessingOperator):
         return frames
 
 
-
 class SequencialProcess(DataProcessingOperator):
     def __init__(self, operator=lambda x: x):
         self.operator = operator
         
     def __call__(self, data):
         return [self.operator(i) for i in data]
-
 
 
 class LoadGIF(DataProcessingOperator):
@@ -181,7 +168,6 @@ class LoadGIF(DataProcessingOperator):
             if len(frames) >= num_frames:
                 break
         return frames
-    
 
 
 class RouteByExtensionName(DataProcessingOperator):
@@ -196,7 +182,6 @@ class RouteByExtensionName(DataProcessingOperator):
         raise ValueError(f"Unsupported file: {data}")
 
 
-
 class RouteByType(DataProcessingOperator):
     def __init__(self, operator_map):
         self.operator_map = operator_map
@@ -208,14 +193,12 @@ class RouteByType(DataProcessingOperator):
         raise ValueError(f"Unsupported data: {data}")
 
 
-
 class LoadTorchPickle(DataProcessingOperator):
     def __init__(self, map_location="cpu"):
         self.map_location = map_location
         
     def __call__(self, data):
         return torch.load(data, map_location=self.map_location, weights_only=False)
-
 
 
 class ToAbsolutePath(DataProcessingOperator):
@@ -225,3 +208,11 @@ class ToAbsolutePath(DataProcessingOperator):
     def __call__(self, data):
         return os.path.join(self.base_path, data)
 
+
+class LoadAudio(DataProcessingOperator):
+    def __init__(self, sr=16000):
+        self.sr = sr
+    def __call__(self, data: str):
+        import librosa
+        input_audio, sample_rate = librosa.load(data, sr=self.sr)
+        return input_audio

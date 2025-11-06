@@ -1,4 +1,4 @@
-# 启用显存管理
+# 细粒度显存管理方案
 
 本文档介绍如何为模型编写合理的细粒度显存管理方案，以及如何将 `DiffSynth-Studio` 中的显存管理功能用于外部的其他代码库，在阅读本文档前，请先阅读文档[显存管理](../Pipeline_Usage/VRAM_management.md)。
 
@@ -33,7 +33,7 @@ with torch.no_grad():
     output = model(**inputs)
 ```
 
-## 细粒度显存管理方案
+## 编写细粒度显存管理方案
 
 为了编写细粒度的显存管理方案，我们需用 `print(model)` 观察和分析模型结构：
 
