@@ -1,6 +1,4 @@
-# 快速开始
-
-## 安装
+# 安装依赖
 
 从源码安装（推荐）：
 
@@ -9,9 +7,6 @@ git clone https://github.com/modelscope/DiffSynth-Studio.git
 cd DiffSynth-Studio
 pip install -e .
 ```
-
-<details>
-<summary>其他安装方式</summary>
 
 从 pypi 安装（存在版本更新延迟，如需使用最新功能，请从源码安装）
 
@@ -24,5 +19,3 @@ pip install diffsynth
 * [torch](https://pytorch.org/get-started/locally/)
 * [sentencepiece](https://github.com/google/sentencepiece)
 * [cmake](https://cmake.org)
-
-</details>

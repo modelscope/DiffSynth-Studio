@@ -21,7 +21,10 @@ config = ModelConfig(
 )
 # Download models
 config.download_if_necessary()
+print(config.path)
 ```
+
+调用 `download_if_necessary` 后，模型会自动下载，并将路径返回到 `config.path` 中。
 
 ### 从本地路径加载模型
 
@@ -45,6 +48,10 @@ config = ModelConfig(path=[
     "models/Qwen/Qwen-Image/text_encoder/model-00004-of-00004.safetensors"
 ])
 ```
+
+### 显存管理配置
+
+`ModelConfig` 也包含了显存管理配置信息，详见[显存管理](/docs/Pipeline_Usage/VRAM_management.md#更多使用方式)。
 
 ## 模型文件加载
 

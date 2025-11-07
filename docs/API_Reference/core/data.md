@@ -98,6 +98,7 @@ image,prompt
 image_1.jpg,"a dog"
 image_2.jpg,"a cat"
 ```
+
 * `json` 格式：可读性高、支持列表数据、内存占用大
 
 ```json

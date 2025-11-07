@@ -10,9 +10,9 @@ def add_dataset_base_config(parser: argparse.ArgumentParser):
     return parser
 
 def add_image_size_config(parser: argparse.ArgumentParser):
-    parser.add_argument("--max_pixels", type=int, default=1024*1024, help="Maximum number of pixels per frame, used for dynamic resolution..")
     parser.add_argument("--height", type=int, default=None, help="Height of images. Leave `height` and `width` empty to enable dynamic resolution.")
     parser.add_argument("--width", type=int, default=None, help="Width of images. Leave `height` and `width` empty to enable dynamic resolution.")
+    parser.add_argument("--max_pixels", type=int, default=1024*1024, help="Maximum number of pixels per frame, used for dynamic resolution.")
     return parser
 
 def add_model_config(parser: argparse.ArgumentParser):
