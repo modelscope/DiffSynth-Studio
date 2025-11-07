@@ -30,7 +30,7 @@
 * 差分 LoRA 训练
 * 拆分训练
 
-## Section 3: 模型接入
+## Section 4: 模型接入
 
 本节介绍如何将模型接入 `DiffSynth-Studio` 从而使用框架基础功能，帮助开发者为本项目提供新模型的支持，或进行私有化模型的推理和训练。
 
@@ -39,7 +39,7 @@
 * [接入细粒度显存管理](./Developer_Guide/Enabling_VRAM_management.md)
 * [接入模型训练](./Developer_Guide/Training_Diffusion_Models.md)
 
-## Section 4: API 参考
+## Section 5: API 参考
 
 本节介绍 `DiffSynth-Studio` 中的独立核心模块 `diffsynth.core`，介绍内部的功能是如何设计和运作的，开发者如有需要，可将其中的功能模块用于其他代码库的开发中。
 
@@ -49,7 +49,7 @@
 * [`diffsynth.core.loader`](./API_Reference/core/loader.md): 模型下载与加载
 * [`diffsynth.core.vram`](./API_Reference/core/vram.md): 显存管理
 
-## Section 5: 学术导引
+## Section 6: 学术导引
 
 本节介绍如何利用 `DiffSynth-Studio` 训练新的模型，帮助科研工作者探索新的模型技术。
 
@@ -58,7 +58,7 @@
 * 设计可控生成模型【coming soon】
 * 创建新的训练范式【coming soon】
 
-## Section 6: 常见问题
+## Section 7: 常见问题
 
 本节总结了开发者常见的问题，如果你在使用和开发中遇到了问题，请参考本节内容，如果仍无法解决，请到 GitHub 上给我们提 issue。
 
