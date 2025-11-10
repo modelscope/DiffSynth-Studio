@@ -2,6 +2,26 @@
 
 欢迎来到 Diffusion 模型的魔法世界！`DiffSynth-Studio` 是由[魔搭社区](https://www.modelscope.cn/)团队开发和维护的开源 Diffusion 模型引擎。我们期望构建一个通用的 Diffusion 模型框架，以框架建设孵化技术创新，凝聚开源社区的力量，探索生成式模型技术的边界！
 
+<details>
+
+<summary>文档阅读导引</summary>
+
+```mermaid
+graph LR;
+    我想要使用模型进行推理和训练-->sec1[Section 1: 上手使用];
+    我想要使用模型进行推理和训练-->sec2[Section 2: 模型详解];
+    我想要使用模型进行推理和训练-->sec3[Section 3: 训练框架];
+    我想要基于此框架进行二次开发-->sec3[Section 3: 训练框架];
+    我想要基于此框架进行二次开发-->sec4[Section 4: 模型接入];
+    我想要基于此框架进行二次开发-->sec5[Section 5: API 参考];
+    我想要基于本项目探索新的技术-->sec4[Section 4: 模型接入];
+    我想要基于本项目探索新的技术-->sec5[Section 5: API 参考];
+    我想要基于本项目探索新的技术-->sec6[Section 6: 学术导引];
+    我遇到了问题-->sec7[Section 7: 常见问题];
+```
+
+</details>
+
 ## Section 1: 上手使用
 
 本节介绍 `DiffSynth-Studio` 的基本使用方式，包括如何启用显存管理从而在极低显存的 GPU 上进行推理，以及如何训练任意基础模型、LoRA、ControlNet 等模型。
