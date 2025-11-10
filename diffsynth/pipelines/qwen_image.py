@@ -113,8 +113,6 @@ class QwenImagePipeline(BasePipeline):
         edit_rope_interpolation: bool = False,
         # In-context control
         context_image: Image.Image = None,
-        # FP8
-        enable_fp8_attention: bool = False,
         # Tile
         tiled: bool = False,
         tile_size: int = 128,
@@ -138,7 +136,6 @@ class QwenImagePipeline(BasePipeline):
             "inpaint_mask": inpaint_mask, "inpaint_blur_size": inpaint_blur_size, "inpaint_blur_sigma": inpaint_blur_sigma,
             "height": height, "width": width,
             "seed": seed, "rand_device": rand_device,
-            "enable_fp8_attention": enable_fp8_attention,
             "num_inference_steps": num_inference_steps,
             "blockwise_controlnet_inputs": blockwise_controlnet_inputs,
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,

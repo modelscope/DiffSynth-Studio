@@ -36,4 +36,5 @@ accelerate launch examples/qwen_image/model_training/train.py \
   --use_gradient_checkpointing \
   --dataset_num_workers 8 \
   --find_unused_parameters \
-  --preset_lora_path "./models/train/Qwen-Image-LoRA-deterministic/epoch-4.safetensors"
+  --preset_lora_path "./models/train/Qwen-Image-LoRA-deterministic/epoch-4.safetensors" \
+  --preset_lora_model "dit"

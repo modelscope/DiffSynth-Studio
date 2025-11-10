@@ -17,7 +17,7 @@
 本节介绍 `DiffSynth-Studio` 所支持的 Diffusion 模型，部分模型 Pipeline 具备可控生成、并行加速等特色功能。
 
 * [模型目录](./Model_Details/Overview.md)
-* [Qwen-Image](./Model_Details/Qwen-Image.md)【TODO】
+* [Qwen-Image](./Model_Details/Qwen-Image.md)
 * [FLUX](./Model_Details/FLUX.md)【TODO】
 * [Wan](./Model_Details/Wan.md)【TODO】
 
@@ -29,8 +29,8 @@
 * [标准监督训练](./Training/Supervised_Fine_Tuning.md)
 * [在训练中启用 FP8 精度](./Training/FP8_Precision.md)
 * [端到端的蒸馏加速训练](./Training/Direct_Distill.md)
-* 两阶段拆分训练
-* 差分 LoRA 训练
+* [两阶段拆分训练](./Training/Split_Training.md)
+* [差分 LoRA 训练](./Training/Differential_LoRA.md)
 
 ## Section 4: 模型接入
 
@@ -64,4 +64,4 @@
 
 本节总结了开发者常见的问题，如果你在使用和开发中遇到了问题，请参考本节内容，如果仍无法解决，请到 GitHub 上给我们提 issue。
 
-* [常见问题](./QA.md)【TODO】
+* [常见问题](./QA.md)

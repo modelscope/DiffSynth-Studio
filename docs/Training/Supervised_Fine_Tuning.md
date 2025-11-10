@@ -1,6 +1,6 @@
 # 标准监督训练
 
-在理解 [Diffusion 模型基本原理](./Understanding_Diffusion_models.md)之后，本文档介绍框架如何实现 Diffusion 模型的训练。
+在理解 [Diffusion 模型基本原理](./Understanding_Diffusion_models.md)之后，本文档介绍框架如何实现 Diffusion 模型的训练。本文档介绍框架的原理，帮助开发者编写新的训练代码，如需使用我们提供的默认训练功能，请参考[模型训练](/docs/Pipeline_Usage/Model_Training.md)。
 
 回顾前文中的模型训练伪代码，当我们实际编写代码时，情况会变得极为复杂。部分模型需要输入额外的引导条件并进行预处理，例如 ControlNet；部分模型需要与去噪模型进行交叉式的计算，例如 VACE；部分模型因显存需求过大，需要开启 Gradient Checkpointing，例如 Qwen-Image 的 DiT。
 
