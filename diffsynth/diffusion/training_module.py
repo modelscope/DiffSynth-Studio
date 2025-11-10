@@ -115,8 +115,8 @@ class DiffusionTrainingModule(torch.nn.Module):
     def switch_pipe_to_training_mode(
         self,
         pipe,
-        trainable_models,
-        lora_base_model, lora_target_modules, lora_rank, lora_checkpoint=None,
+        trainable_models=None,
+        lora_base_model=None, lora_target_modules="", lora_rank=32, lora_checkpoint=None,
         preset_lora_path=None, preset_lora_model=None,
     ):
         # Scheduler

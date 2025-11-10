@@ -72,6 +72,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
     
     def forward(self, data, inputs=None):
         if self.fp8_models is not None:
+            # TODO: remove it
             self.pipe.flush_vram_management_device(self.pipe.device)
         if inputs is None: inputs = self.get_pipeline_inputs(data)
         inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)

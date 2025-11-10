@@ -227,6 +227,12 @@ class QwenImageUnit_EntityControl(PipelineUnit):
 * `input_params_nega`: Negative 侧输入参数
 * `onload_model_names`: 需调用的模型组件名
 
+在设计 `unit` 时请尽量按照以下原则进行：
+
+* 缺省兜底：可选功能的 `unit` 输入参数默认为 `None`，而不是 `False` 或其他数值，请对此默认值进行兜底处理。
+* 参数触发：部分 Adapter 模型可能是未被加载的，例如 ControlNet，对应的 `unit` 应当以参数输入是否为 `None` 来控制触发，而不是以模型是否被加载来控制触发。例如当用户输入了 `controlnet_image` 但没有加载 ControlNet 模型时，代码应当给出报错，而不是忽略这些输入参数继续执行。
+* 显存高效：在 `unit` 中调用模型时，请使用 `pipe.load_models_to_device(self.onload_model_names)` 激活对应的模型，请不要调用 `onload_model_names` 之外的其他模型，`unit` 计算完成后，请不要使用 `pipe.load_models_to_device([])` 手动释放显存。
+
 > Q: 部分参数并未在推理过程中调用，例如 `output_params`，是否仍有必要配置？
 > 
 > A: 这些参数不会影响推理过程，但会影响一些实验性功能，因此我们建议将其配置好。例如“拆分训练”，我们可以将训练中的前处理离线完成，但部分需要梯度回传的模型计算无法拆分，这些参数用于构建计算图从而推断哪些计算是可以拆分的。

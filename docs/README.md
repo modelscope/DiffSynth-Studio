@@ -21,14 +21,16 @@
 * [FLUX](./Model_Details/FLUX.md)【TODO】
 * [Wan](./Model_Details/Wan.md)【TODO】
 
-## Section 3: 特殊训练
+## Section 3: 训练框架
 
-本节介绍 `DiffSynth-Studio` 所支持的特殊训练模式
+本节介绍 `DiffSynth-Studio` 中训练框架的设计思路，帮助开发者理解 Diffusion 模型训练算法的原理。
 
-* FP8 训练
-* 端到端蒸馏训练
+* [Diffusion 模型基本原理](./Training/Understanding_Diffusion_models.md)
+* [标准监督训练](./Training/Supervised_Fine_Tuning.md)
+* [在训练中启用 FP8 精度](./Training/FP8_Precision.md)
+* [端到端的蒸馏加速训练](./Training/Direct_Distill.md)
+* 两阶段拆分训练
 * 差分 LoRA 训练
-* 拆分训练
 
 ## Section 4: 模型接入
 

@@ -12,7 +12,7 @@ def launch_training_task(
     model_logger: ModelLogger,
     learning_rate: float = 1e-5,
     weight_decay: float = 1e-2,
-    num_workers: int = 8,
+    num_workers: int = 1,
     save_steps: int = None,
     num_epochs: int = 1,
     args = None,
