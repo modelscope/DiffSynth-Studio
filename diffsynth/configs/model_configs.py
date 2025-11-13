@@ -1,29 +1,266 @@
-MODEL_CONFIGS = [
+qwen_image_series = [
     {
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors")
         "model_hash": "0319a1cb19835fb510907dd3367c95ff",
         "model_name": "qwen_image_dit",
         "model_class": "diffsynth.models.qwen_image_dit.QwenImageDiT",
     },
     {
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
         "model_hash": "8004730443f55db63092006dd9f7110e",
         "model_name": "qwen_image_text_encoder",
         "model_class": "diffsynth.models.qwen_image_text_encoder.QwenImageTextEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.qwen_image_text_encoder.QwenImageTextEncoderStateDictConverter",
     },
     {
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
         "model_hash": "ed4ea5824d55ec3107b09815e318123a",
         "model_name": "qwen_image_vae",
         "model_class": "diffsynth.models.qwen_image_vae.QwenImageVAE",
     },
     {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Depth", origin_file_pattern="model.safetensors")
         "model_hash": "073bce9cf969e317e5662cd570c3e79c",
         "model_name": "qwen_image_blockwise_controlnet",
         "model_class": "diffsynth.models.qwen_image_controlnet.QwenImageBlockWiseControlNet",
     },
     {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Inpaint", origin_file_pattern="model.safetensors")
         "model_hash": "a9e54e480a628f0b956a688a81c33bab",
         "model_name": "qwen_image_blockwise_controlnet",
         "model_class": "diffsynth.models.qwen_image_controlnet.QwenImageBlockWiseControlNet",
-        "extra_kwargs": {"additional_in_dim": 4}
+        "extra_kwargs": {"additional_in_dim": 4},
     },
 ]
+
+wan_series = [
+    {
+        # Example: ModelConfig(model_id="krea/krea-realtime-video", origin_file_pattern="krea-realtime-video-14b.safetensors")
+        "model_hash": "5ec04e02b42d2580483ad69f4e76346a",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': False, 'patch_size': [1, 2, 2], 'in_dim': 16, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_dit.WanVideoDiTStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.1-T2V-14B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth")
+        "model_hash": "9c8818c2cbea55eca56c7b447df170da",
+        "model_name": "wan_video_text_encoder",
+        "model_class": "diffsynth.models.wan_video_text_encoder.WanTextEncoder",
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.1-T2V-14B", origin_file_pattern="Wan2.1_VAE.pth")
+        "model_hash": "ccc42284ea13e1ad04693284c7a09be6",
+        "model_name": "wan_video_vae",
+        "model_class": "diffsynth.models.wan_video_vae.WanVideoVAE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_vae.WanVideoVAEStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="meituan-longcat/LongCat-Video", origin_file_pattern="dit/diffusion_pytorch_model*.safetensors")
+        "model_hash": "8b27900f680d7251ce44e2dc8ae1ffef",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.longcat_video_dit.LongCatVideoTransformer3DModel",
+    },
+    {
+        # Example: ModelConfig(model_id="ByteDance/Video-As-Prompt-Wan2.1-14B", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        "model_hash": "5f90e66a0672219f12d9a626c8c21f61",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 36, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_dit.WanVideoDiTFromDiffusers"
+    },
+    {
+        # Example: ModelConfig(model_id="ByteDance/Video-As-Prompt-Wan2.1-14B", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        "model_hash": "5f90e66a0672219f12d9a626c8c21f61",
+        "model_name": "wan_video_vap",
+        "model_class": "diffsynth.models.wan_video_mot.MotWanModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_mot.WanVideoMotStateDictConverter"
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.1-I2V-14B-480P", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth")
+        "model_hash": "5941c53e207d62f20f9025686193c40b",
+        "model_name": "wan_video_image_encoder",
+        "model_class": "diffsynth.models.wan_video_image_encoder.WanImageEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_image_encoder.WanImageEncoderStateDictConverter"
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1", origin_file_pattern="model.safetensors")
+        "model_hash": "dbd5ec76bbf977983f972c151d545389",
+        "model_name": "wan_video_motion_controller",
+        "model_class": "diffsynth.models.wan_video_motion_controller.WanMotionControllerModel",
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "9269f8db9040a9d860eaca435be61814",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': False, 'patch_size': [1, 2, 2], 'in_dim': 16, 'dim': 1536, 'ffn_dim': 8960, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 12, 'num_layers': 30, 'eps': 1e-06}
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.1-FLF2V-14B-720P", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "3ef3b1f8e1dab83d5b71fd7b617f859f",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 36, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06, 'has_image_pos_emb': True}
+    },
+    {
+        # Example: ModelConfig(model_id="PAI/Wan2.1-Fun-1.3B-Control", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "349723183fc063b2bfc10bb2835cf677",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 48, 'dim': 1536, 'ffn_dim': 8960, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 12, 'num_layers': 30, 'eps': 1e-06}
+    },
+    {
+        # Example: ModelConfig(model_id="PAI/Wan2.1-Fun-1.3B-InP", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "6d6ccde6845b95ad9114ab993d917893",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 36, 'dim': 1536, 'ffn_dim': 8960, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 12, 'num_layers': 30, 'eps': 1e-06}
+    },
+    {
+        # Example: ModelConfig(model_id="PAI/Wan2.1-Fun-14B-Control", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "efa44cddf936c70abd0ea28b6cbe946c",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 48, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06}
+    },
+    {
+        # Example: ModelConfig(model_id="PAI/Wan2.1-Fun-14B-InP", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "6bfcfb3b342cb286ce886889d519a77e",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 36, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06}
+    },
+    {
+        # Example: ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-1.3B-Control-Camera", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "ac6a5aa74f4a0aab6f64eb9a72f19901",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 32, 'dim': 1536, 'ffn_dim': 8960, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 12, 'num_layers': 30, 'eps': 1e-06, 'has_ref_conv': False, 'add_control_adapter': True, 'in_dim_control_adapter': 24}
+    },
+    {
+        # Example: ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-1.3B-Control", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "70ddad9d3a133785da5ea371aae09504",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 48, 'dim': 1536, 'ffn_dim': 8960, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 12, 'num_layers': 30, 'eps': 1e-06, 'has_ref_conv': True}
+    },
+    {
+        # Example: ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-14B-Control-Camera", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "b61c605c2adbd23124d152ed28e049ae",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 32, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06, 'has_ref_conv': False, 'add_control_adapter': True, 'in_dim_control_adapter': 24}
+    },
+    {
+        # Example: ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-14B-Control", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "26bde73488a92e64cc20b0a7485b9e5b",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 48, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06, 'has_ref_conv': True}
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.1-T2V-14B", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "aafcfd9672c3a2456dc46e1cb6e52c70",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': False, 'patch_size': [1, 2, 2], 'in_dim': 16, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06}
+    },
+    {
+        # Example: ModelConfig(model_id="iic/VACE-Wan2.1-1.3B-Preview", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "a61453409b67cd3246cf0c3bebad47ba",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': False, 'patch_size': [1, 2, 2], 'in_dim': 16, 'dim': 1536, 'ffn_dim': 8960, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 12, 'num_layers': 30, 'eps': 1e-06},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_dit.WanVideoDiTStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="iic/VACE-Wan2.1-1.3B-Preview", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "a61453409b67cd3246cf0c3bebad47ba",
+        "model_name": "wan_video_vace",
+        "model_class": "diffsynth.models.wan_video_vace.VaceWanModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_vace.VaceWanModelDictConverter"
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.1-VACE-14B", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "7a513e1f257a861512b1afd387a8ecd9",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': False, 'patch_size': [1, 2, 2], 'in_dim': 16, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_dit.WanVideoDiTStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.1-VACE-14B", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "7a513e1f257a861512b1afd387a8ecd9",
+        "model_name": "wan_video_vace",
+        "model_class": "diffsynth.models.wan_video_vace.VaceWanModel",
+        "extra_kwargs": {'vace_layers': (0, 5, 10, 15, 20, 25, 30, 35), 'vace_in_dim': 96, 'patch_size': (1, 2, 2), 'has_image_input': False, 'dim': 5120, 'num_heads': 40, 'ffn_dim': 13824, 'eps': 1e-06},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_vace.VaceWanModelDictConverter"
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.2-Animate-14B", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "31fa352acb8a1b1d33cd8764273d80a2",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 36, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_dit.WanVideoDiTStateDictConverter"
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.2-Animate-14B", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "31fa352acb8a1b1d33cd8764273d80a2",
+        "model_name": "wan_video_animate_adapter",
+        "model_class": "diffsynth.models.wan_video_animate_adapter.WanAnimateAdapter",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_animate_adapter.WanAnimateAdapterStateDictConverter"
+    },
+    {
+        # Example: ModelConfig(model_id="PAI/Wan2.2-Fun-A14B-Control-Camera", origin_file_pattern="high_noise_model/diffusion_pytorch_model*.safetensors")
+        "model_hash": "47dbeab5e560db3180adf51dc0232fb1",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': False, 'patch_size': [1, 2, 2], 'in_dim': 36, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06, 'has_ref_conv': False, 'add_control_adapter': True, 'in_dim_control_adapter': 24, 'require_clip_embedding': False}
+    },
+    {
+        # Example: ModelConfig(model_id="PAI/Wan2.2-Fun-A14B-Control", origin_file_pattern="high_noise_model/diffusion_pytorch_model*.safetensors")
+        "model_hash": "2267d489f0ceb9f21836532952852ee5",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': False, 'patch_size': [1, 2, 2], 'in_dim': 52, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06, 'has_ref_conv': True, 'require_clip_embedding': False},
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.2-I2V-A14B", origin_file_pattern="high_noise_model/diffusion_pytorch_model*.safetensors")
+        "model_hash": "5b013604280dd715f8457c6ed6d6a626",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': False, 'patch_size': [1, 2, 2], 'in_dim': 36, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06, 'require_clip_embedding': False}
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "966cffdcc52f9c46c391768b27637614",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit_s2v.WanS2VModel",
+        "extra_kwargs": {'dim': 5120, 'in_dim': 16, 'ffn_dim': 13824, 'out_dim': 16, 'text_dim': 4096, 'freq_dim': 256, 'eps': 1e-06, 'patch_size': (1, 2, 2), 'num_heads': 40, 'num_layers': 40, 'cond_dim': 16, 'audio_dim': 1024, 'num_audio_token': 4}
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.2-TI2V-5B", origin_file_pattern="diffusion_pytorch_model*.safetensors")
+        "model_hash": "1f5ab7703c6fc803fdded85ff040c316",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': False, 'patch_size': [1, 2, 2], 'in_dim': 48, 'dim': 3072, 'ffn_dim': 14336, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 48, 'num_heads': 24, 'num_layers': 30, 'eps': 1e-06, 'seperated_timestep': True, 'require_clip_embedding': False, 'require_vae_embedding': False, 'fuse_vae_embedding_in_latents': True}
+    },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.2-TI2V-5B", origin_file_pattern="Wan2.2_VAE.pth")
+        "model_hash": "e1de6c02cdac79f8b739f4d3698cd216",
+        "model_name": "wan_video_vae",
+        "model_class": "diffsynth.models.wan_video_vae.WanVideoVAE38",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_vae.WanVideoVAEStateDictConverter",
+    },
+    {
+        # ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/model.safetensors")
+        "model_hash": "06be60f3a4526586d8431cd038a71486",
+        "model_name": "wans2v_audio_encoder",
+        "model_class": "diffsynth.models.wav2vec.WanS2VAudioEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.wans2v_audio_encoder.WanS2VAudioEncoderStateDictConverter",
+    }
+]
+
+MODEL_CONFIGS = qwen_image_series + wan_series

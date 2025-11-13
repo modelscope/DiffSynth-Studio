@@ -151,16 +151,11 @@ class QwenImagePipeline(BasePipeline):
         models = {name: getattr(self, name) for name in self.in_iteration_models}
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
-
-            # Inference
-            noise_pred_posi = self.model_fn(**models, **inputs_shared, **inputs_posi, timestep=timestep, progress_id=progress_id)
-            if cfg_scale != 1.0:
-                noise_pred_nega = self.model_fn(**models, **inputs_shared, **inputs_nega, timestep=timestep, progress_id=progress_id)
-                noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
-            else:
-                noise_pred = noise_pred_posi
-
-            # Scheduler
+            noise_pred = self.cfg_guided_model_fn(
+                self.model_fn, cfg_scale,
+                inputs_shared, inputs_posi, inputs_nega,
+                **models, timestep=timestep, progress_id=progress_id
+            )
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
         
         # Decode

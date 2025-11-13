@@ -28,7 +28,7 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
         # and DiskMap can load only the parameters of a single model,
         # avoiding the need to load all parameters in the file.
         if use_disk_map:
-            state_dict = DiskMap(path, device)
+            state_dict = DiskMap(path, device, torch_dtype=torch_dtype)
         else:
             state_dict = load_state_dict(path, torch_dtype, device)
         # Why do we use `state_dict_converter`?

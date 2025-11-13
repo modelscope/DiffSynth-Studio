@@ -31,6 +31,8 @@ def load_state_dict_from_bin(file_path, torch_dtype=None, device="cpu"):
             state_dict = state_dict["state_dict"]
         elif "module" in state_dict:
             state_dict = state_dict["module"]
+        elif "model_state" in state_dict:
+            state_dict = state_dict["model_state"]
     if torch_dtype is not None:
         for i in state_dict:
             if isinstance(state_dict[i], torch.Tensor):

@@ -284,6 +284,16 @@ class BasePipeline(torch.nn.Module):
             if hasattr(module, "vram_management_enabled") and getattr(module, "vram_management_enabled"):
                 vram_management_enabled = True
         return vram_management_enabled
+    
+    
+    def cfg_guided_model_fn(self, model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, **inputs_others):
+        noise_pred_posi = model_fn(**inputs_posi, **inputs_shared, **inputs_others)
+        if cfg_scale != 1.0:
+            noise_pred_nega = model_fn(**inputs_nega, **inputs_shared, **inputs_others)
+            noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
+        else:
+            noise_pred = noise_pred_posi
+        return noise_pred
 
 
 class PipelineUnitGraph:

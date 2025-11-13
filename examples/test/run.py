@@ -20,14 +20,17 @@ def run_inference(script_path):
 def run_tasks_on_single_GPU(script_path, gpu_id, num_gpu):
     output_path = os.path.join("data", script_path)
     for script_id, script in enumerate(sorted(os.listdir(script_path))):
-        if not script.endswith(".sh"):
+        if not script.endswith(".sh") and not script.endswith(".py"):
             continue
         if script_id % num_gpu != gpu_id:
             continue
         source_path = os.path.join(script_path, script)
         target_path = os.path.join(output_path, script)
         os.makedirs(target_path, exist_ok=True)
-        cmd = f"CUDA_VISIBLE_DEVICES={gpu_id} bash {source_path} > {target_path}/log.txt 2>&1"
+        if script.endswith(".sh"):
+            cmd = f"CUDA_VISIBLE_DEVICES={gpu_id} bash {source_path} > {target_path}/log.txt 2>&1"
+        else:
+            cmd = f"CUDA_VISIBLE_DEVICES={gpu_id} python {source_path} > {target_path}/log.txt 2>&1"
         print(cmd)
         os.system(cmd)
 
@@ -60,5 +63,6 @@ if __name__ == "__main__":
     # run_train_single_GPU("examples/qwen_image/model_training/lora")
     # run_inference("examples/qwen_image/model_inference")
     # run_inference("examples/qwen_image/model_inference_low_vram")
-    run_inference("examples/qwen_image/model_training/validate_full")
-    run_inference("examples/qwen_image/model_training/validate_lora")
+    # run_inference("examples/qwen_image/model_training/validate_full")
+    # run_inference("examples/qwen_image/model_training/validate_lora")
+    run_train_single_GPU("examples/wanvideo/model_inference")
