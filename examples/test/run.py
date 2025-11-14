@@ -31,7 +31,7 @@ def run_tasks_on_single_GPU(script_path, gpu_id, num_gpu):
             cmd = f"CUDA_VISIBLE_DEVICES={gpu_id} bash {source_path} > {target_path}/log.txt 2>&1"
         else:
             cmd = f"CUDA_VISIBLE_DEVICES={gpu_id} python {source_path} > {target_path}/log.txt 2>&1"
-        print(cmd)
+        print(cmd, flush=True)
         os.system(cmd)
 
 
@@ -65,4 +65,4 @@ if __name__ == "__main__":
     # run_inference("examples/qwen_image/model_inference_low_vram")
     # run_inference("examples/qwen_image/model_training/validate_full")
     # run_inference("examples/qwen_image/model_training/validate_lora")
-    run_train_single_GPU("examples/wanvideo/model_inference")
+    run_train_single_GPU("examples/wanvideo/model_inference_low_vram")

@@ -6,7 +6,7 @@ def add_dataset_base_config(parser: argparse.ArgumentParser):
     parser.add_argument("--dataset_metadata_path", type=str, default=None, help="Path to the metadata file of the dataset.")
     parser.add_argument("--dataset_repeat", type=int, default=1, help="Number of times to repeat the dataset per epoch.")
     parser.add_argument("--dataset_num_workers", type=int, default=0, help="Number of workers for data loading.")
-    parser.add_argument("--data_file_keys", type=str, default="image", help="Data file keys in the metadata. Comma-separated.")
+    parser.add_argument("--data_file_keys", type=str, default="image,video", help="Data file keys in the metadata. Comma-separated.")
     return parser
 
 def add_image_size_config(parser: argparse.ArgumentParser):
@@ -15,11 +15,19 @@ def add_image_size_config(parser: argparse.ArgumentParser):
     parser.add_argument("--max_pixels", type=int, default=1024*1024, help="Maximum number of pixels per frame, used for dynamic resolution.")
     return parser
 
+def add_video_size_config(parser: argparse.ArgumentParser):
+    parser.add_argument("--height", type=int, default=None, help="Height of images. Leave `height` and `width` empty to enable dynamic resolution.")
+    parser.add_argument("--width", type=int, default=None, help="Width of images. Leave `height` and `width` empty to enable dynamic resolution.")
+    parser.add_argument("--max_pixels", type=int, default=1024*1024, help="Maximum number of pixels per frame, used for dynamic resolution.")
+    parser.add_argument("--num_frames", type=int, default=81, help="Number of frames per video. Frames are sampled from the video prefix.")
+    return parser
+
 def add_model_config(parser: argparse.ArgumentParser):
     parser.add_argument("--model_paths", type=str, default=None, help="Paths to load models. In JSON format.")
     parser.add_argument("--model_id_with_origin_paths", type=str, default=None, help="Model ID with origin paths, e.g., Wan-AI/Wan2.1-T2V-1.3B:diffusion_pytorch_model*.safetensors. Comma-separated.")
     parser.add_argument("--extra_inputs", default=None, help="Additional model inputs, comma-separated.")
     parser.add_argument("--fp8_models", default=None, help="Models with FP8 precision, comma-separated.")
+    parser.add_argument("--offload_models", default=None, help="Models with offload, comma-separated. Only used in splited training.")
     return parser
 
 def add_training_config(parser: argparse.ArgumentParser):

@@ -82,32 +82,55 @@ class DiffusionTrainingModule(torch.nn.Module):
         else:
             return data
     
+    def parse_vram_config(self, fp8=False, offload=False, device="cpu"):
+        if fp8:
+            return {
+                "offload_dtype": torch.float8_e4m3fn,
+                "offload_device": device,
+                "onload_dtype": torch.float8_e4m3fn,
+                "onload_device": device,
+                "preparing_dtype": torch.float8_e4m3fn,
+                "preparing_device": device,
+                "computation_dtype": torch.bfloat16,
+                "computation_device": device,
+            }
+        elif offload:
+            return {
+                "offload_dtype": "disk",
+                "offload_device": "disk",
+                "onload_dtype": "disk",
+                "onload_device": "disk",
+                "preparing_dtype": torch.bfloat16,
+                "preparing_device": device,
+                "computation_dtype": torch.bfloat16,
+                "computation_device": device,
+                "clear_parameters": True,
+            }
+        else:
+            return {}
     
-    def parse_model_configs(self, model_paths, model_id_with_origin_paths, fp8_models=None, device="cpu"):
+    def parse_model_configs(self, model_paths, model_id_with_origin_paths, fp8_models=None, offload_models=None, device="cpu"):
         fp8_models = [] if fp8_models is None else fp8_models.split(",")
-        fp8_config = {
-            # To accommodate multi-GPU training,
-            # the model will be temporarily stored in CPU memory.
-            "offload_dtype": torch.float8_e4m3fn,
-            "offload_device": device,
-            "onload_dtype": torch.float8_e4m3fn,
-            "onload_device": device,
-            "preparing_dtype": torch.float8_e4m3fn,
-            "preparing_device": device,
-            "computation_dtype": torch.bfloat16,
-            "computation_device": device,
-        }
+        offload_models = [] if offload_models is None else offload_models.split(",")
         model_configs = []
         if model_paths is not None:
             model_paths = json.loads(model_paths)
             for path in model_paths:
-                vram_config = fp8_config if path in fp8_models else {}
+                vram_config = self.parse_vram_config(
+                    fp8=path in fp8_models,
+                    offload=path in offload_models,
+                    device=device
+                )
                 model_configs.append(ModelConfig(path=path, **vram_config))
         if model_id_with_origin_paths is not None:
             model_id_with_origin_paths = model_id_with_origin_paths.split(",")
             for model_id_with_origin_path in model_id_with_origin_paths:
                 model_id, origin_file_pattern = model_id_with_origin_path.split(":")
-                vram_config = fp8_config if model_id_with_origin_path in fp8_models else {}
+                vram_config = self.parse_vram_config(
+                    fp8=model_id_with_origin_path in fp8_models,
+                    offload=model_id_with_origin_path in offload_models,
+                    device=device
+                )
                 model_configs.append(ModelConfig(model_id=model_id, origin_file_pattern=origin_file_pattern, **vram_config))
         return model_configs
     
@@ -118,6 +141,7 @@ class DiffusionTrainingModule(torch.nn.Module):
         trainable_models=None,
         lora_base_model=None, lora_target_modules="", lora_rank=32, lora_checkpoint=None,
         preset_lora_path=None, preset_lora_model=None,
+        task="sft",
     ):
         # Scheduler
         pipe.scheduler.set_timesteps(1000, training=True)
@@ -134,7 +158,7 @@ class DiffusionTrainingModule(torch.nn.Module):
         # It is delegated to the subclass.
         
         # Add LoRA to the base models
-        if lora_base_model is not None:
+        if lora_base_model is not None and not task.endswith(":data_process"):
             if (not hasattr(pipe, lora_base_model)) or getattr(pipe, lora_base_model) is None:
                 print(f"No {lora_base_model} models in the pipeline. We cannot patch LoRA on the model. If this occurs during the data processing stage, it is normal.")
                 return

@@ -375,7 +375,7 @@ class Blur(nn.Module):
 		if upsample_factor > 1:
 			kernel = kernel * (upsample_factor ** 2)
 
-		self.register_buffer('kernel', kernel)
+		self.kernel = torch.nn.Parameter(kernel)
 
 		self.pad = pad
 
@@ -648,23 +648,3 @@ class WanAnimateAdapter(torch.nn.Module):
             residual_out = self.face_adapter.fuser_blocks[block_idx // 5](*adapter_args)
             x = residual_out + x
         return x
-    
-    @staticmethod
-    def state_dict_converter():
-        return WanAnimateAdapterStateDictConverter()
-
-
-class WanAnimateAdapterStateDictConverter:
-    def __init__(self):
-        pass
-
-    def from_diffusers(self, state_dict):
-        return state_dict
-    
-    def from_civitai(self, state_dict):
-        state_dict_ = {}
-        for name, param in state_dict.items():
-            if name.startswith("pose_patch_embedding.") or name.startswith("face_adapter") or name.startswith("face_encoder") or name.startswith("motion_encoder"):
-                state_dict_[name] = param
-        return state_dict_
-

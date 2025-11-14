@@ -17,12 +17,13 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         use_gradient_checkpointing_offload=False,
         extra_inputs=None,
         fp8_models=None,
+        offload_models=None,
         device="cpu",
         task="sft",
     ):
         super().__init__()
         # Load models
-        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, device=device)
+        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
         tokenizer_config = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/") if tokenizer_path is None else ModelConfig(tokenizer_path)
         processor_config = ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/") if processor_path is None else ModelConfig(processor_path)
         self.pipe = QwenImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config, processor_config=processor_config)
@@ -33,6 +34,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
             self.pipe, trainable_models,
             lora_base_model, lora_target_modules, lora_rank, lora_checkpoint,
             preset_lora_path, preset_lora_model,
+            task=task,
         )
         
         # Other configs
@@ -42,8 +44,8 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         self.fp8_models = fp8_models
         self.task = task
         self.task_to_loss = {
-            "sft:data_process": lambda *args: args,
-            "direct_distill:data_process": lambda *args: args,
+            "sft:data_process": lambda pipe, *args: args,
+            "direct_distill:data_process": lambda pipe, *args: args,
             "sft": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTLoss(pipe, **inputs_shared, **inputs_posi),
             "sft:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTLoss(pipe, **inputs_shared, **inputs_posi),
             "direct_distill": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(pipe, **inputs_shared, **inputs_posi),
@@ -71,9 +73,6 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         return inputs_shared, inputs_posi, inputs_nega
     
     def forward(self, data, inputs=None):
-        if self.fp8_models is not None:
-            # TODO: remove it
-            self.pipe.flush_vram_management_device(self.pipe.device)
         if inputs is None: inputs = self.get_pipeline_inputs(data)
         inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)
         for unit in self.pipe.units:
@@ -128,6 +127,7 @@ if __name__ == "__main__":
         use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
+        offload_models=args.offload_models,
         task=args.task,
         device=accelerator.device,
     )

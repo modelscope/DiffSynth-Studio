@@ -1,0 +1,14 @@
+accelerate launch examples/wanvideo/model_training/train.py \
+  --dataset_base_path data/example_video_dataset \
+  --dataset_metadata_path data/example_video_dataset/metadata.csv \
+  --height 480 \
+  --width 832 \
+  --dataset_repeat 100 \
+  --model_id_with_origin_paths "meituan-longcat/LongCat-Video:dit/diffusion_pytorch_model*.safetensors,Wan-AI/Wan2.1-T2V-14B:models_t5_umt5-xxl-enc-bf16.pth,Wan-AI/Wan2.1-T2V-14B:Wan2.1_VAE.pth" \
+  --learning_rate 1e-4 \
+  --num_epochs 5 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/LongCat-Video_lora" \
+  --lora_base_model "dit" \
+  --lora_target_modules "adaLN_modulation.1,attn.qkv,attn.proj,cross_attn.q_linear,cross_attn.kv_linear,cross_attn.proj,ffn.w1,ffn.w2,ffn.w3" \
+  --lora_rank 32

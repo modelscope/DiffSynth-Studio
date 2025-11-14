@@ -1,8 +1,9 @@
 import torch
 from PIL import Image
+from diffsynth.core import load_state_dict
 from diffsynth.utils.data import save_video, VideoData
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
-from modelscope import dataset_snapshot_download
+from modelscope import dataset_snapshot_download, snapshot_download
 
 
 pipe = WanVideoPipeline.from_pretrained(
@@ -14,6 +15,7 @@ pipe = WanVideoPipeline.from_pretrained(
         ModelConfig(model_id="Wan-AI/Wan2.2-Animate-14B", origin_file_pattern="Wan2.1_VAE.pth"),
         ModelConfig(model_id="Wan-AI/Wan2.2-Animate-14B", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"),
     ],
+    tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
 )
 
 dataset_snapshot_download(
@@ -38,7 +40,9 @@ video = pipe(
 save_video(video, "video_1_Wan2.2-Animate-14B.mp4", fps=15, quality=5)
 
 # Replace
-pipe.load_lora(pipe.dit, ModelConfig(model_id="Wan-AI/Wan2.2-Animate-14B", origin_file_pattern="relighting_lora.ckpt"))
+snapshot_download("Wan-AI/Wan2.2-Animate-14B", allow_file_pattern="relighting_lora.ckpt", local_dir="models/Wan-AI/Wan2.2-Animate-14B")
+lora_state_dict = load_state_dict("models/Wan-AI/Wan2.2-Animate-14B/relighting_lora.ckpt", torch_dtype=torch.float32, device="cuda")["state_dict"]
+pipe.load_lora(pipe.dit, state_dict=lora_state_dict)
 input_image = Image.open("data/examples/wan/animate/replace_input_image.png")
 animate_pose_video = VideoData("data/examples/wan/animate/replace_pose_video.mp4").raw_data()[:81-4]
 animate_face_video = VideoData("data/examples/wan/animate/replace_face_video.mp4").raw_data()[:81-4]

@@ -1,3 +1,5 @@
+# Without VRAM Management, 80G VRAM is not enough to run this example.
+# We recommend to use `examples/wanvideo/model_inference_low_vram/Wan2.2-VACE-Fun-A14B.py`.
 import torch
 from PIL import Image
 from diffsynth.utils.data import save_video, VideoData
@@ -14,6 +16,7 @@ pipe = WanVideoPipeline.from_pretrained(
         ModelConfig(model_id="PAI/Wan2.2-VACE-Fun-A14B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
         ModelConfig(model_id="PAI/Wan2.2-VACE-Fun-A14B", origin_file_pattern="Wan2.1_VAE.pth"),
     ],
+    tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
 )
 
 

@@ -274,6 +274,7 @@ class BasePipeline(torch.nn.Module):
                 model_config.path,
                 vram_config=vram_config,
                 vram_limit=vram_limit,
+                clear_parameters=model_config.clear_parameters,
             )
         return model_pool
     

@@ -21,6 +21,7 @@ class ModelConfig:
     preparing_dtype: Optional[torch.dtype] = None
     computation_device: Optional[Union[str, torch.device]] = None
     computation_dtype: Optional[torch.dtype] = None
+    clear_parameters: bool = False
     
     def check_input(self):
         if self.path is None and self.model_id is None:
