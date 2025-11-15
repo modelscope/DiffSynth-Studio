@@ -29,7 +29,7 @@ def run_tasks_on_single_GPU(script_path, gpu_id, num_gpu):
         os.makedirs(target_path, exist_ok=True)
         if script.endswith(".sh"):
             cmd = f"CUDA_VISIBLE_DEVICES={gpu_id} bash {source_path} > {target_path}/log.txt 2>&1"
-        else:
+        elif script.endswith(".py"):
             cmd = f"CUDA_VISIBLE_DEVICES={gpu_id} python {source_path} > {target_path}/log.txt 2>&1"
         print(cmd, flush=True)
         os.system(cmd)
@@ -58,6 +58,12 @@ def run_train_single_GPU(script_path):
         p.join()
 
 
+def move_files(prefix, target_folder):
+    os.makedirs(target_folder, exist_ok=True)
+    os.system(f"cp -r {prefix}* {target_folder}")
+    os.system(f"rm -rf {prefix}*")
+
+
 if __name__ == "__main__":
     # run_train_multi_GPU("examples/qwen_image/model_training/full")
     # run_train_single_GPU("examples/qwen_image/model_training/lora")
@@ -66,3 +72,12 @@ if __name__ == "__main__":
     # run_inference("examples/qwen_image/model_training/validate_full")
     # run_inference("examples/qwen_image/model_training/validate_lora")
     run_train_single_GPU("examples/wanvideo/model_inference_low_vram")
+    move_files("video_", "data/output/model_inference_low_vram")
+    run_train_single_GPU("examples/wanvideo/model_inference")
+    move_files("video_", "data/output/model_inference")
+    run_train_single_GPU("examples/wanvideo/model_training/lora")
+    run_train_single_GPU("examples/wanvideo/model_training/validate_lora")
+    move_files("video_", "data/output/validate_lora")
+    run_train_multi_GPU("examples/wanvideo/model_training/full")
+    run_train_single_GPU("examples/wanvideo/model_training/validate_full")
+    move_files("video_", "data/output/validate_full")

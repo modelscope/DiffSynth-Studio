@@ -198,6 +198,66 @@ class AutoWrappedModule(AutoTorchModule):
             return getattr(self.module, name)
 
 
+class AutoWrappedNonRecurseModule(AutoWrappedModule):
+
+    def __init__(
+        self,
+        module: torch.nn.Module,
+        offload_dtype: torch.dtype = None,
+        offload_device: Union[str, torch.device] = None,
+        onload_dtype: torch.dtype = None,
+        onload_device: Union[str, torch.device] = None,
+        preparing_dtype: torch.dtype = None,
+        preparing_device: Union[str, torch.device] = None,
+        computation_dtype: torch.dtype = None,
+        computation_device: Union[str, torch.device] = None,
+        vram_limit: float = None,
+        name: str = "",
+        disk_map: DiskMap = None,
+        **kwargs
+    ):
+        super().__init__(
+            module,
+            offload_dtype,
+            offload_device,
+            onload_dtype,
+            onload_device,
+            preparing_dtype,
+            preparing_device,
+            computation_dtype,
+            computation_device,
+            vram_limit,
+            name,
+            disk_map,
+            **kwargs
+        )
+        if self.disk_offload:
+            self.required_params = [name for name, _ in self.module.named_parameters(recurse=False)]
+            
+    def load_from_disk(self, torch_dtype, device, copy_module=False):
+        if copy_module:
+            module = copy.deepcopy(self.module)
+        else:
+            module = self.module
+        state_dict = {}
+        for name in self.required_params:
+            param = self.disk_map[self.param_name(name)]
+            param = param.to(dtype=torch_dtype, device=device)
+            state_dict[name] = param
+        module.load_state_dict(state_dict, assign=True, strict=False)
+        return module
+    
+    def offload_to_disk(self, model: torch.nn.Module):
+        for name in self.required_params:
+            getattr(self, name).to("meta")
+    
+    def __getattr__(self, name):
+        if name in self.__dict__ or name == "module":
+            return super().__getattr__(name)
+        else:
+            return getattr(self.module, name)
+
+
 class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
     def __init__(
         self,
@@ -366,11 +426,15 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
 
 
 def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict, vram_config: dict, vram_limit=None, name_prefix="", disk_map=None, **kwargs):
+    if isinstance(model, AutoWrappedNonRecurseModule):
+        model = model.module
     for name, module in model.named_children():
         layer_name = name if name_prefix == "" else name_prefix + "." + name
         for source_module, target_module in module_map.items():
             if isinstance(module, source_module):
                 module_ = target_module(module, **vram_config, vram_limit=vram_limit, name=layer_name, disk_map=disk_map, **kwargs)
+                if isinstance(module_, AutoWrappedNonRecurseModule):
+                    enable_vram_management_recursively(module_, module_map, vram_config, vram_limit=vram_limit, name_prefix=layer_name, disk_map=disk_map, **kwargs)
                 setattr(model, name, module_)
                 break
         else:
