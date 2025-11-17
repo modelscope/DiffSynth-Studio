@@ -285,6 +285,34 @@ flux_series = [
         "model_class": "diffsynth.models.flux_text_encoder_t5.FluxTextEncoderT5",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_text_encoder_t5.FluxTextEncoderT5StateDictConverter",
     },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors")
+        "model_hash": "21ea55f476dfc4fd135587abb59dfe5d",
+        "model_name": "flux_vae_encoder",
+        "model_class": "diffsynth.models.flux_vae.FluxVAEEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_vae.FluxVAEEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors")
+        "model_hash": "21ea55f476dfc4fd135587abb59dfe5d",
+        "model_name": "flux_vae_decoder",
+        "model_class": "diffsynth.models.flux_vae.FluxVAEDecoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_vae.FluxVAEDecoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="ostris/Flex.2-preview", origin_file_pattern="Flex.2-preview.safetensors")
+        "model_hash": "d02f41c13549fa5093d3521f62a5570a",
+        "model_name": "flux_dit",
+        "model_class": "diffsynth.models.flux_dit.FluxDiT",
+        "extra_kwargs": {'input_dim': 196, 'num_blocks': 8},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/AttriCtrl-FLUX.1-Dev", origin_file_pattern="models/brightness.safetensors")
+        "model_hash": "0629116fce1472503a66992f96f3eb1a",
+        "model_name": "flux_value_controller",
+        "model_class": "diffsynth.models.flux_value_control.SingleValueEncoder",
+    }
 ]
 
 MODEL_CONFIGS = qwen_image_series + wan_series + flux_series

@@ -1,7 +1,36 @@
-from .svd_image_encoder import SVDImageEncoder
-from .sd3_dit import RMSNorm
-from transformers import CLIPImageProcessor
+from .general_modules import RMSNorm
+from transformers import SiglipVisionModel, SiglipVisionConfig
 import torch
+
+
+class SiglipVisionModelSO400M(SiglipVisionModel):
+    def __init__(self):
+        config = SiglipVisionConfig(**{
+            "architectures": [
+                "SiglipModel"
+            ],
+            "initializer_factor": 1.0,
+            "model_type": "siglip",
+            "text_config": {
+                "hidden_size": 1152,
+                "intermediate_size": 4304,
+                "model_type": "siglip_text_model",
+                "num_attention_heads": 16,
+                "num_hidden_layers": 27
+            },
+            "torch_dtype": "float32",
+            "transformers_version": "4.37.0.dev0",
+            "vision_config": {
+                "hidden_size": 1152,
+                "image_size": 384,
+                "intermediate_size": 4304,
+                "model_type": "siglip_vision_model",
+                "num_attention_heads": 16,
+                "num_hidden_layers": 27,
+                "patch_size": 14
+            }
+        })
+        super().__init__(config)
 
 
 class MLPProjModel(torch.nn.Module):

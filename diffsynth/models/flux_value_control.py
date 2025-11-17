@@ -1,10 +1,12 @@
 import torch
-from diffsynth.models.svd_unet import TemporalTimesteps
+from .general_modules import TemporalTimesteps
 
 
 class MultiValueEncoder(torch.nn.Module):
     def __init__(self, encoders=()):
         super().__init__()
+        if not isinstance(encoders, list):
+            encoders = [encoders]
         self.encoders = torch.nn.ModuleList(encoders)
 
     def __call__(self, values, dtype):
