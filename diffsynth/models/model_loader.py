@@ -77,7 +77,7 @@ class ModelPool:
                 print(f"Loaded model: {json.dumps(model_info, indent=4)}")
                 loaded = True
         if not loaded:
-            raise ValueError(f"Cannot detect the model type. File: {path}")
+            raise ValueError(f"Cannot detect the model type. File: {path}. Model hash: {model_hash}.")
     
     def fetch_model(self, model_name, index=None):
         fetched_models = []

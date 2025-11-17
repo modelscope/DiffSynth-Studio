@@ -16,7 +16,7 @@ pipe = WanVideoPipeline.from_pretrained(
         ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-14B-Control-Camera", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"),
     ],
 )
-pipe.load_lora(pipe.dit, "models/train/Wan2.1-Fun-V1.1-1.3B-Control-Camera_lora/epoch-4.safetensors", alpha=1)
+pipe.load_lora(pipe.dit, "models/train/Wan2.1-Fun-V1.1-14B-Control-Camera_lora/epoch-4.safetensors", alpha=1)
 
 video = VideoData("data/example_video_dataset/video1.mp4", height=480, width=832)
 

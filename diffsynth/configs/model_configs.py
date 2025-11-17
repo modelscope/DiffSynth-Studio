@@ -255,12 +255,36 @@ wan_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.wan_video_vae.WanVideoVAEStateDictConverter",
     },
     {
-        # ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/model.safetensors")
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/model.safetensors")
         "model_hash": "06be60f3a4526586d8431cd038a71486",
         "model_name": "wans2v_audio_encoder",
         "model_class": "diffsynth.models.wav2vec.WanS2VAudioEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.wans2v_audio_encoder.WanS2VAudioEncoderStateDictConverter",
-    }
+    },
 ]
 
-MODEL_CONFIGS = qwen_image_series + wan_series
+flux_series = [
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors")
+        "model_hash": "a29710fea6dddb0314663ee823598e50",
+        "model_name": "flux_dit",
+        "model_class": "diffsynth.models.flux_dit.FluxDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors")
+        "model_hash": "94eefa3dac9cec93cb1ebaf1747d7b78",
+        "model_name": "flux_text_encoder_clip",
+        "model_class": "diffsynth.models.flux_text_encoder_clip.FluxTextEncoderClip",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_text_encoder_clip.FluxTextEncoderClipStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors")
+        "model_hash": "22540b49eaedbc2f2784b2091a234c7c",
+        "model_name": "flux_text_encoder_t5",
+        "model_class": "diffsynth.models.flux_text_encoder_t5.FluxTextEncoderT5",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_text_encoder_t5.FluxTextEncoderT5StateDictConverter",
+    },
+]
+
+MODEL_CONFIGS = qwen_image_series + wan_series + flux_series
