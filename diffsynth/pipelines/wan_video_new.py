@@ -374,15 +374,30 @@ class WanVideoPipeline(BasePipeline):
         pipe = WanVideoPipeline(device=device, torch_dtype=torch_dtype)
         if use_usp: pipe.initialize_usp()
         
+        import glob
         # Download and load models
         model_manager = ModelManager()
         for model_config in model_configs:
             model_config.download_if_necessary(use_usp=use_usp)
-            model_manager.load_model(
-                model_config.path,
-                device=model_config.offload_device or device,
-                torch_dtype=model_config.offload_dtype or torch_dtype
-            )
+            paths_to_load = []
+            potential_paths = model_config.path
+            if not isinstance(potential_paths, list):
+                potential_paths = [potential_paths]
+            for p in potential_paths:
+                if p is None:
+                    continue
+                if isinstance(p, str) and ('*' in p or '?' in p):
+                    paths_to_load.extend(glob.glob(p, recursive=True))
+                else:
+                    paths_to_load.append(p)
+            for path in paths_to_load:
+                if path is None:
+                    continue
+                model_manager.load_model(
+                    path,
+                    device=model_config.offload_device or device,
+                    torch_dtype=model_config.offload_dtype or torch_dtype
+                )
         
         # Load models
         pipe.text_encoder = model_manager.fetch_model("wan_video_text_encoder")
