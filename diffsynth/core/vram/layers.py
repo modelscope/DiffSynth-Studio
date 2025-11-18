@@ -255,8 +255,7 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
             getattr(self, name).to("meta")
     
     def cast_to(self, module, dtype, device):
-        for name in self.required_params:
-            getattr(module, name).to(dtype=dtype, device=device)
+        # Parameter casting is implemented in the model architecture.
         return module
     
     def __getattr__(self, name):
