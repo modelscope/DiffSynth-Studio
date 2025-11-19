@@ -312,7 +312,107 @@ flux_series = [
         "model_hash": "0629116fce1472503a66992f96f3eb1a",
         "model_name": "flux_value_controller",
         "model_class": "diffsynth.models.flux_value_control.SingleValueEncoder",
-    }
+    },
+    {
+        # Example: ModelConfig(model_id="alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta", origin_file_pattern="diffusion_pytorch_model.safetensors")
+        "model_hash": "52357cb26250681367488a8954c271e8",
+        "model_name": "flux_controlnet",
+        "model_class": "diffsynth.models.flux_controlnet.FluxControlNet",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_controlnet.FluxControlNetStateDictConverter",
+        "extra_kwargs": {"num_joint_blocks": 6, "num_single_blocks": 0, "additional_input_dim": 4},
+    },
+    {
+        # Example: ModelConfig(model_id="InstantX/FLUX.1-dev-Controlnet-Union-alpha", origin_file_pattern="diffusion_pytorch_model.safetensors")
+        "model_hash": "78d18b9101345ff695f312e7e62538c0",
+        "model_name": "flux_controlnet",
+        "model_class": "diffsynth.models.flux_controlnet.FluxControlNet",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_controlnet.FluxControlNetStateDictConverter",
+        "extra_kwargs": {"num_mode": 10, "mode_dict": {"canny": 0, "tile": 1, "depth": 2, "blur": 3, "pose": 4, "gray": 5, "lq": 6}},
+    },
+    {
+        # Example: ModelConfig(model_id="jasperai/Flux.1-dev-Controlnet-Upscaler", origin_file_pattern="diffusion_pytorch_model.safetensors")
+        "model_hash": "b001c89139b5f053c715fe772362dd2a",
+        "model_name": "flux_controlnet",
+        "model_class": "diffsynth.models.flux_controlnet.FluxControlNet",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_controlnet.FluxControlNetStateDictConverter",
+        "extra_kwargs": {"num_single_blocks": 0},
+    },
+    {
+        # Example: ModelConfig(model_id="ByteDance/InfiniteYou", origin_file_pattern="infu_flux_v1.0/aes_stage2/image_proj_model.bin")
+        "model_hash": "c07c0f04f5ff55e86b4e937c7a40d481",
+        "model_name": "infiniteyou_image_projector",
+        "model_class": "diffsynth.models.flux_infiniteyou.InfiniteYouImageProjector",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_infiniteyou.FluxInfiniteYouImageProjectorStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="ByteDance/InfiniteYou", origin_file_pattern="infu_flux_v1.0/aes_stage2/InfuseNetModel/*.safetensors")
+        "model_hash": "7f9583eb8ba86642abb9a21a4b2c9e16",
+        "model_name": "flux_controlnet",
+        "model_class": "diffsynth.models.flux_controlnet.FluxControlNet",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_controlnet.FluxControlNetStateDictConverter",
+        "extra_kwargs": {"num_joint_blocks": 4, "num_single_blocks": 10},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/LoRA-Encoder-FLUX.1-Dev", origin_file_pattern="model.safetensors")
+        "model_hash": "77c2e4dd2440269eb33bfaa0d004f6ab",
+        "model_name": "flux_lora_encoder",
+        "model_class": "diffsynth.models.flux_lora_encoder.FluxLoRAEncoder",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/LoRAFusion-preview-FLUX.1-dev", origin_file_pattern="model.safetensors")
+        "model_hash": "30143afb2dea73d1ac580e0787628f8c",
+        "model_name": "flux_lora_patcher",
+        "model_class": "diffsynth.models.flux_lora_patcher.FluxLoraPatcher",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="model*.safetensors")
+        "model_hash": "2bd19e845116e4f875a0a048e27fc219",
+        "model_name": "nexus_gen_llm",
+        "model_class": "diffsynth.models.nexus_gen.NexusGenAutoregressiveModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.nexus_gen.NexusGenAutoregressiveModelStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="edit_decoder.bin")
+        "model_hash": "63c969fd37cce769a90aa781fbff5f81",
+        "model_name": "nexus_gen_editing_adapter",
+        "model_class": "diffsynth.models.nexus_gen_projector.NexusGenImageEmbeddingMerger",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.nexus_gen_projector.NexusGenMergerStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="edit_decoder.bin")
+        "model_hash": "63c969fd37cce769a90aa781fbff5f81",
+        "model_name": "flux_dit",
+        "model_class": "diffsynth.models.flux_dit.FluxDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="generation_decoder.bin")
+        "model_hash": "3e6c61b0f9471135fc9c6d6a98e98b6d",
+        "model_name": "nexus_gen_generation_adapter",
+        "model_class": "diffsynth.models.nexus_gen_projector.NexusGenAdapter",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.nexus_gen_projector.NexusGenAdapterStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="generation_decoder.bin")
+        "model_hash": "3e6c61b0f9471135fc9c6d6a98e98b6d",
+        "model_name": "flux_dit",
+        "model_class": "diffsynth.models.flux_dit.FluxDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="InstantX/FLUX.1-dev-IP-Adapter", origin_file_pattern="ip-adapter.bin")
+        "model_hash": "4daaa66cc656a8fe369908693dad0a35",
+        "model_name": "flux_ipadapter",
+        "model_class": "diffsynth.models.flux_ipadapter.FluxIpAdapter",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_ipadapter.FluxIpAdapterStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="google/siglip-so400m-patch14-384", origin_file_pattern="model.safetensors")
+        "model_hash": "04d8c1e20a1f1b25f7434f111992a33f",
+        "model_name": "siglip_vision_model",
+        "model_class": "diffsynth.models.flux_ipadapter.SiglipVisionModelSO400M",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_ipadapter.SiglipStateDictConverter",
+    },
 ]
 
 MODEL_CONFIGS = qwen_image_series + wan_series + flux_series
