@@ -1,4 +1,41 @@
+import torch
+import hashlib
+
+def convert_state_dict_keys_to_single_str(state_dict, with_shape=True):
+    keys = []
+    all_keys = sorted(list(state_dict))
+    
+    for key in all_keys:
+        value = state_dict[key]
+        if isinstance(key, str):
+            if isinstance(value, torch.Tensor):
+                if with_shape:
+                    shape = "_".join(map(str, list(value.shape)))
+                    keys.append(key + ":" + shape)
+                keys.append(key)
+            elif isinstance(value, dict):
+                keys.append(key + "|" + convert_state_dict_keys_to_single_str(value, with_shape=with_shape))
+    keys.sort()
+    keys_str = ",".join(keys)
+    return keys_str
+
+def hash_state_dict_keys(state_dict, with_shape=True):
+    keys_str = convert_state_dict_keys_to_single_str(state_dict, with_shape=with_shape)
+    keys_str = keys_str.encode(encoding="UTF-8")
+    return hashlib.md5(keys_str).hexdigest()
+
 def FluxDiTStateDictConverter(state_dict):
+    model_hash = hash_state_dict_keys(state_dict, with_shape=True)
+    
+    if model_hash in ["3e6c61b0f9471135fc9c6d6a98e98b6d", "63c969fd37cce769a90aa781fbff5f81"]:
+        dit_state_dict = {}
+        for key in state_dict:
+            if key.startswith('pipe.dit.'):
+                value = state_dict[key]
+                new_key = key.replace("pipe.dit.", "")
+                dit_state_dict[new_key] = value
+        return dit_state_dict
+
     rename_dict = {
         "time_in.in_layer.bias": "time_embedder.timestep_embedder.0.bias",
         "time_in.in_layer.weight": "time_embedder.timestep_embedder.0.weight",

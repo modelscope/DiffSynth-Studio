@@ -5,33 +5,20 @@ import torch
 
 class SiglipVisionModelSO400M(SiglipVisionModel):
     def __init__(self):
-        config = SiglipVisionConfig(**{
-            "architectures": [
-                "SiglipModel"
-            ],
-            "initializer_factor": 1.0,
-            "model_type": "siglip",
-            "text_config": {
-                "hidden_size": 1152,
-                "intermediate_size": 4304,
-                "model_type": "siglip_text_model",
-                "num_attention_heads": 16,
-                "num_hidden_layers": 27
-            },
-            "torch_dtype": "float32",
-            "transformers_version": "4.37.0.dev0",
-            "vision_config": {
-                "hidden_size": 1152,
-                "image_size": 384,
-                "intermediate_size": 4304,
-                "model_type": "siglip_vision_model",
-                "num_attention_heads": 16,
-                "num_hidden_layers": 27,
-                "patch_size": 14
-            }
-        })
+        config = SiglipVisionConfig(
+            hidden_size=1152,
+            image_size=384,
+            intermediate_size=4304,
+            model_type="siglip_vision_model",
+            num_attention_heads=16,
+            num_hidden_layers=27,
+            patch_size=14,
+            architectures=["SiglipModel"],
+            initializer_factor=1.0,
+            torch_dtype="float32",
+            transformers_version="4.37.0.dev0"
+        )
         super().__init__(config)
-
 
 class MLPProjModel(torch.nn.Module):
     def __init__(self, cross_attention_dim=768, id_embeddings_dim=512, num_tokens=4):

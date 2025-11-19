@@ -16,7 +16,7 @@ from ..models.flux_text_encoder_clip import FluxTextEncoderClip
 from ..models.flux_text_encoder_t5 import FluxTextEncoderT5
 from ..models.flux_vae import FluxVAEEncoder, FluxVAEDecoder
 from ..models.flux_value_control import MultiValueEncoder
-
+from ..core.vram.layers import AutoWrappedLinear
 
 class MultiControlNet(torch.nn.Module):
     def __init__(self, models: list[torch.nn.Module]):
@@ -104,7 +104,12 @@ class FluxImagePipeline(BasePipeline):
         self.lora_loader = FluxLoRALoader
 
     def enable_lora_magic(self):
-        pass
+        if self.lora_patcher is not None:
+            for name, module in self.dit.named_modules():
+                if isinstance(module, AutoWrappedLinear):
+                    merger_name = name.replace(".", "___")
+                    if merger_name in self.lora_patcher.model_dict:
+                        module.lora_merger = self.lora_patcher.model_dict[merger_name]
 
     @staticmethod
     def from_pretrained(
