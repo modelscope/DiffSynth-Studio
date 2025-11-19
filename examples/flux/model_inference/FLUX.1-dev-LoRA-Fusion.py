@@ -18,12 +18,10 @@ pipe.enable_lora_magic()
 pipe.load_lora(
     pipe.dit,
     ModelConfig(model_id="cancel13/cxsk", origin_file_pattern="30.safetensors"),
-    hotload=True,
 )
 pipe.load_lora(
     pipe.dit,
     ModelConfig(model_id="DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1", origin_file_pattern="merged_lora.safetensors"),
-    hotload=True,
 )
 image = pipe(prompt="a cat", seed=0)
 image.save("image_fused.jpg")

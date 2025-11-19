@@ -102,8 +102,10 @@ class FluxImagePipeline(BasePipeline):
         ]
         self.model_fn = model_fn_flux_image
         self.lora_loader = FluxLoRALoader
-    
-    
+
+    def enable_lora_magic(self):
+        pass
+
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
