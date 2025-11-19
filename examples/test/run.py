@@ -5,8 +5,9 @@ def script_is_processed(output_path, script):
     return os.path.exists(os.path.join(output_path, script))
 
 
-def filter_unprocessed_tasks(script_path, output_path):
+def filter_unprocessed_tasks(script_path):
     tasks = []
+    output_path = os.path.join("data", script_path)
     for script in sorted(os.listdir(script_path)):
         if not script.endswith(".sh") and not script.endswith(".py"):
             continue
@@ -59,8 +60,8 @@ def run_train_multi_GPU(script_path, tasks):
         
 
 
-def run_train_single_GPU(script_path):
-    processes = [multiprocessing.Process(target=run_tasks_on_single_GPU, args=(script_path, i, 8)) for i in range(8)]
+def run_train_single_GPU(script_path, tasks):
+    processes = [multiprocessing.Process(target=run_tasks_on_single_GPU, args=(script_path, tasks, i, 8)) for i in range(8)]
     for p in processes:
         p.start()
     for p in processes:
@@ -85,8 +86,8 @@ if __name__ == "__main__":
     # run_train_single_GPU("examples/wanvideo/model_inference")
     # move_files("video_", "data/output/model_inference")
     # run_train_single_GPU("examples/wanvideo/model_training/lora")
-    # run_train_single_GPU("examples/wanvideo/model_training/validate_lora")
-    # move_files("video_", "data/output/validate_lora")
+    run_train_single_GPU("examples/wanvideo/model_training/validate_lora", filter_unprocessed_tasks("examples/wanvideo/model_training/validate_lora"))
+    move_files("video_", "data/output/validate_lora")
     # run_train_multi_GPU("examples/wanvideo/model_training/full")
     # run_train_single_GPU("examples/wanvideo/model_training/validate_full")
     # move_files("video_", "data/output/validate_full")
