@@ -413,6 +413,21 @@ flux_series = [
         "model_class": "diffsynth.models.flux_ipadapter.SiglipVisionModelSO400M",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_ipadapter.SiglipStateDictConverter",
     },
+    {
+        # Example: ModelConfig(model_id="stepfun-ai/Step1X-Edit", origin_file_pattern="step1x-edit-i1258.safetensors"),
+        "model_hash": "d30fb9e02b1dbf4e509142f05cf7dd50",
+        "model_name": "step1x_connector",
+        "model_class": "diffsynth.models.step1x_connector.Qwen2Connector",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.step1x_connector.Qwen2ConnectorStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="stepfun-ai/Step1X-Edit", origin_file_pattern="step1x-edit-i1258.safetensors"),
+        "model_hash": "d30fb9e02b1dbf4e509142f05cf7dd50",
+        "model_name": "flux_dit",
+        "model_class": "diffsynth.models.flux_dit.FluxDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
+        "extra_kwargs": {"disable_guidance_embedder": True},
+    },
 ]
 
 MODEL_CONFIGS = qwen_image_series + wan_series + flux_series

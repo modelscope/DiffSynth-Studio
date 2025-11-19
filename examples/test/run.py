@@ -2,7 +2,7 @@ import os, shutil, multiprocessing, time
 
 
 def script_is_processed(output_path, script):
-    return os.path.exists(os.path.join(output_path, script))
+    return os.path.exists(os.path.join(output_path, script)) and "log.txt" in os.listdir(os.path.join(output_path, script))
 
 
 def filter_unprocessed_tasks(script_path):
@@ -11,13 +11,14 @@ def filter_unprocessed_tasks(script_path):
     for script in sorted(os.listdir(script_path)):
         if not script.endswith(".sh") and not script.endswith(".py"):
             continue
-        if os.path.exists(os.path.join(output_path, script)):
+        if script_is_processed(output_path, script):
             continue
         tasks.append(script)
     return tasks
 
 
-def run_inference(script_path, tasks):
+def run_inference(script_path):
+    tasks = filter_unprocessed_tasks(script_path)
     output_path = os.path.join("data", script_path)
     for script in tasks:
         source_path = os.path.join(script_path, script)
@@ -47,7 +48,8 @@ def run_tasks_on_single_GPU(script_path, tasks, gpu_id, num_gpu):
         os.system(cmd)
 
 
-def run_train_multi_GPU(script_path, tasks):
+def run_train_multi_GPU(script_path):
+    tasks = filter_unprocessed_tasks(script_path)
     output_path = os.path.join("data", script_path)
     for script in tasks:
         source_path = os.path.join(script_path, script)
@@ -56,11 +58,11 @@ def run_train_multi_GPU(script_path, tasks):
         cmd = f"bash {source_path} > {target_path}/log.txt 2>&1"
         print(cmd, flush=True)
         os.system(cmd)
-        time.sleep(3*60)
+        time.sleep(1)
         
 
-
-def run_train_single_GPU(script_path, tasks):
+def run_train_single_GPU(script_path):
+    tasks = filter_unprocessed_tasks(script_path)
     processes = [multiprocessing.Process(target=run_tasks_on_single_GPU, args=(script_path, tasks, i, 8)) for i in range(8)]
     for p in processes:
         p.start()
@@ -74,21 +76,38 @@ def move_files(prefix, target_folder):
     os.system(f"rm -rf {prefix}*")
 
 
-if __name__ == "__main__":
-    # run_train_multi_GPU("examples/qwen_image/model_training/full")
-    # run_train_single_GPU("examples/qwen_image/model_training/lora")
-    # run_inference("examples/qwen_image/model_inference")
-    # run_inference("examples/qwen_image/model_inference_low_vram")
-    # run_inference("examples/qwen_image/model_training/validate_full")
-    # run_inference("examples/qwen_image/model_training/validate_lora")
-    # run_train_single_GPU("examples/wanvideo/model_inference_low_vram")
-    # move_files("video_", "data/output/model_inference_low_vram")
-    # run_train_single_GPU("examples/wanvideo/model_inference")
-    # move_files("video_", "data/output/model_inference")
-    # run_train_single_GPU("examples/wanvideo/model_training/lora")
-    run_train_single_GPU("examples/wanvideo/model_training/validate_lora", filter_unprocessed_tasks("examples/wanvideo/model_training/validate_lora"))
+def test_qwen_image():
+    run_inference("examples/qwen_image/model_inference")
+    run_inference("examples/qwen_image/model_inference_low_vram")
+    run_train_multi_GPU("examples/qwen_image/model_training/full")
+    run_inference("examples/qwen_image/model_training/validate_full")
+    run_train_single_GPU("examples/qwen_image/model_training/lora")
+    run_inference("examples/qwen_image/model_training/validate_lora")
+    
+
+def test_wan():
+    run_train_single_GPU("examples/wanvideo/model_inference")
+    move_files("video_", "data/output/model_inference")
+    run_train_single_GPU("examples/wanvideo/model_inference_low_vram")
+    move_files("video_", "data/output/model_inference_low_vram")
+    run_train_multi_GPU("examples/wanvideo/model_training/full")
+    run_train_single_GPU("examples/wanvideo/model_training/validate_full")
+    move_files("video_", "data/output/validate_full")
+    run_train_single_GPU("examples/wanvideo/model_training/lora")
+    run_train_single_GPU("examples/wanvideo/model_training/validate_lora")
     move_files("video_", "data/output/validate_lora")
-    # run_train_multi_GPU("examples/wanvideo/model_training/full")
-    # run_train_single_GPU("examples/wanvideo/model_training/validate_full")
-    # move_files("video_", "data/output/validate_full")
-    pass
+
+
+def test_flux():
+    run_inference("examples/flux/model_inference")
+    run_inference("examples/flux/model_inference_low_vram")
+    run_train_multi_GPU("examples/flux/model_training/full")
+    run_inference("examples/flux/model_training/validate_full")
+    run_train_single_GPU("examples/flux/model_training/lora")
+    run_inference("examples/flux/model_training/validate_lora")
+
+
+if __name__ == "__main__":
+    test_qwen_image()
+    test_wan()
+    test_flux()

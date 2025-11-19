@@ -143,6 +143,7 @@ class QwenImageTextEncoder(torch.nn.Module):
         })
         self.model = Qwen2_5_VLModel(config)
         self.lm_head = torch.nn.Linear(config.text_config.hidden_size, config.text_config.vocab_size, bias=False)
+        self.config = config
         
     def forward(
         self,

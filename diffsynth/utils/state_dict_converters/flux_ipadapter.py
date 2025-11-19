@@ -1,5 +1,3 @@
-import torch
-
 def FluxIpAdapterStateDictConverter(state_dict):
     state_dict_ = {}
     

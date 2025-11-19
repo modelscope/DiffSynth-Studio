@@ -1,0 +1,14 @@
+accelerate launch --config_file examples/flux/model_training/full/accelerate_config_zero2offload.yaml examples/flux/model_training/train.py \
+  --dataset_base_path data/example_image_dataset \
+  --dataset_metadata_path data/example_image_dataset/metadata_nexusgen_edit.csv \
+  --data_file_keys "image,nexus_gen_reference_image" \
+  --max_pixels 262144 \
+  --dataset_repeat 400 \
+  --model_id_with_origin_paths "DiffSynth-Studio/Nexus-GenV2:model*.safetensors,DiffSynth-Studio/Nexus-GenV2:edit_decoder.bin,black-forest-labs/FLUX.1-dev:text_encoder/model.safetensors,black-forest-labs/FLUX.1-dev:text_encoder_2/*.safetensors,black-forest-labs/FLUX.1-dev:ae.safetensors" \
+  --learning_rate 1e-5 \
+  --num_epochs 1 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/FLUX.1-NexusGen-Edit_full" \
+  --trainable_models "dit" \
+  --extra_inputs "nexus_gen_reference_image" \
+  --use_gradient_checkpointing_offload

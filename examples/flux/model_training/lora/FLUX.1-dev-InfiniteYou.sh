@@ -1,0 +1,17 @@
+accelerate launch examples/flux/model_training/train.py \
+  --dataset_base_path data/example_image_dataset \
+  --dataset_metadata_path data/example_image_dataset/metadata_infiniteyou.csv \
+  --data_file_keys "image,controlnet_image,infinityou_id_image" \
+  --max_pixels 1048576 \
+  --dataset_repeat 100 \
+  --model_id_with_origin_paths "black-forest-labs/FLUX.1-dev:flux1-dev.safetensors,black-forest-labs/FLUX.1-dev:text_encoder/model.safetensors,black-forest-labs/FLUX.1-dev:text_encoder_2/*.safetensors,black-forest-labs/FLUX.1-dev:ae.safetensors,ByteDance/InfiniteYou:infu_flux_v1.0/aes_stage2/image_proj_model.bin,ByteDance/InfiniteYou:infu_flux_v1.0/aes_stage2/InfuseNetModel/*.safetensors" \
+  --learning_rate 1e-4 \
+  --num_epochs 5 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/FLUX.1-dev-InfiniteYou_lora" \
+  --lora_base_model "dit" \
+  --lora_target_modules "a_to_qkv,b_to_qkv,ff_a.0,ff_a.2,ff_b.0,ff_b.2,a_to_out,b_to_out,proj_out,norm.linear,norm1_a.linear,norm1_b.linear,to_qkv_mlp" \
+  --lora_rank 32 \
+  --extra_inputs "controlnet_image,infinityou_id_image,infinityou_guidance" \
+  --align_to_opensource_format \
+  --use_gradient_checkpointing

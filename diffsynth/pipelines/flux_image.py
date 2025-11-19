@@ -16,6 +16,7 @@ from ..models.flux_text_encoder_clip import FluxTextEncoderClip
 from ..models.flux_text_encoder_t5 import FluxTextEncoderT5
 from ..models.flux_vae import FluxVAEEncoder, FluxVAEDecoder
 from ..models.flux_value_control import MultiValueEncoder
+from ..models.step1x_text_encoder import Step1xEditEmbedder
 from ..core.vram.layers import AutoWrappedLinear
 
 class MultiControlNet(torch.nn.Module):
@@ -103,7 +104,7 @@ class FluxImagePipeline(BasePipeline):
         self.model_fn = model_fn_flux_image
         self.lora_loader = FluxLoRALoader
 
-    def enable_lora_magic(self):
+    def enable_lora_merger(self):
         if self.lora_patcher is not None:
             for name, module in self.dit.named_modules():
                 if isinstance(module, AutoWrappedLinear):
@@ -118,7 +119,8 @@ class FluxImagePipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         tokenizer_1_config: ModelConfig = ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="tokenizer/"),
         tokenizer_2_config: ModelConfig = ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="tokenizer_2/"),
-        nexus_gen_processor_config: ModelConfig = None,
+        nexus_gen_processor_config: ModelConfig = ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="processor/"),
+        step1x_processor_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen2.5-VL-7B-Instruct", origin_file_pattern=""),
         vram_limit: float = None,
     ):
         # Initialize pipeline
@@ -144,7 +146,12 @@ class FluxImagePipeline(BasePipeline):
         if controlnets is not None: pipe.controlnet = MultiControlNet(controlnets)
         pipe.ipadapter = model_pool.fetch_model("flux_ipadapter")
         pipe.ipadapter_image_encoder = model_pool.fetch_model("siglip_vision_model")
-        pipe.qwenvl = model_pool.fetch_model("qwenvl")
+        qwenvl = model_pool.fetch_model("qwen_image_text_encoder")
+        if qwenvl is not None:
+            from transformers import AutoProcessor
+            step1x_processor_config.download_if_necessary()
+            processor = AutoProcessor.from_pretrained(step1x_processor_config.path, min_pixels=256 * 28 * 28, max_pixels=324 * 28 * 28)
+            pipe.qwenvl = Step1xEditEmbedder(qwenvl, processor)
         pipe.step1x_connector = model_pool.fetch_model("step1x_connector")
         pipe.image_proj_model = model_pool.fetch_model("infiniteyou_image_projector")
         if pipe.image_proj_model is not None:
@@ -154,7 +161,7 @@ class FluxImagePipeline(BasePipeline):
         pipe.nexus_gen = model_pool.fetch_model("nexus_gen_llm")
         pipe.nexus_gen_generation_adapter = model_pool.fetch_model("nexus_gen_generation_adapter")
         pipe.nexus_gen_editing_adapter = model_pool.fetch_model("nexus_gen_editing_adapter")
-        if nexus_gen_processor_config is not None and pipe.nexus_gen is not None:
+        if pipe.nexus_gen is not None:
             nexus_gen_processor_config.download_if_necessary()
             pipe.nexus_gen.load_processor(nexus_gen_processor_config.path)
         

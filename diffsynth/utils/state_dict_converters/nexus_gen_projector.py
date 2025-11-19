@@ -1,5 +1,3 @@
-import torch
-
 def NexusGenMergerStateDictConverter(state_dict):
     merger_state_dict = {}
     for key in state_dict:
