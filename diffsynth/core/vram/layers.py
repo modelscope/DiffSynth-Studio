@@ -170,6 +170,9 @@ class AutoWrappedModule(AutoTorchModule):
             elif self.preparing_device != "disk":
                 self.to(dtype=self.preparing_dtype, device=self.preparing_device)
             self.state = 2
+
+    def cast_to(self, module, dtype, device):
+        return copy.deepcopy(module).to(dtype=dtype, device=device)
             
     def computation(self):
         # onload / preparing -> computation (temporary)
@@ -182,7 +185,7 @@ class AutoWrappedModule(AutoTorchModule):
         elif self.disk_offload and device == "disk":
             module = self.load_from_disk(self.computation_dtype, self.computation_device, copy_module=True)
         else:
-            module = copy.deepcopy(self.module).to(dtype=self.computation_dtype, device=self.computation_device)
+            module = self.cast_to(self.module, dtype=self.computation_dtype, device=self.computation_device)
         return module
 
     def forward(self, *args, **kwargs):
@@ -250,6 +253,10 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
     def offload_to_disk(self, model: torch.nn.Module):
         for name in self.required_params:
             getattr(self, name).to("meta")
+    
+    def cast_to(self, module, dtype, device):
+        # Parameter casting is implemented in the model architecture.
+        return module
     
     def __getattr__(self, name):
         if name in self.__dict__ or name == "module":
