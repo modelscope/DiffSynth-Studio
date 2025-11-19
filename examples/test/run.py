@@ -37,14 +37,14 @@ def run_tasks_on_single_GPU(script_path, gpu_id, num_gpu):
 
 def run_train_multi_GPU(script_path):
     output_path = os.path.join("data", script_path)
-    for script in os.listdir(script_path):
+    for script in os.listdir(script_path)[::-1]:
         if not script.endswith(".sh"):
             continue
         source_path = os.path.join(script_path, script)
         target_path = os.path.join(output_path, script)
         os.makedirs(target_path, exist_ok=True)
         cmd = f"bash {source_path} > {target_path}/log.txt 2>&1"
-        print(cmd)
+        print(cmd, flush=True)
         os.system(cmd)
         time.sleep(3*60)
         
@@ -79,5 +79,5 @@ if __name__ == "__main__":
     # run_train_single_GPU("examples/wanvideo/model_training/validate_lora")
     # move_files("video_", "data/output/validate_lora")
     # run_train_multi_GPU("examples/wanvideo/model_training/full")
-    run_train_multi_GPU("examples/wanvideo/model_training/validate_full")
+    run_train_single_GPU("examples/wanvideo/model_training/validate_full")
     move_files("video_", "data/output/validate_full")
