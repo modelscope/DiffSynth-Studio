@@ -60,9 +60,10 @@ class DiskMap:
         if self.rename_dict is not None: name = self.rename_dict[name]
         file_id = self.name_map[name]
         param = self.files[file_id].get_tensor(name)
-        if self.torch_dtype is not None:
+        if self.torch_dtype is not None and isinstance(param, torch.Tensor):
             param = param.to(self.torch_dtype)
-        self.num_params += param.numel()
+        if isinstance(param, torch.Tensor):
+            self.num_params += param.numel()
         if self.num_params > self.buffer_size:
             self.flush_files()
         return param

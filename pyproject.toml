@@ -8,7 +8,7 @@ version = "2.0.0"
 description = "Enjoy the magic of Diffusion models!"
 authors = [{name = "ModelScope Team"}]
 license = {text = "Apache-2.0"}
-requires-python = ">=3.6"
+requires-python = ">=3.10"
 dependencies = [
     "torch>=2.0.0",
     "torchvision",
@@ -21,10 +21,10 @@ dependencies = [
     "protobuf",
     "modelscope",
     "ftfy",
-    "pynvml",
     "pandas",
     "accelerate",
     "peft",
+    "datasets",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

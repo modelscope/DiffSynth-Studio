@@ -1,5 +1,6 @@
 /data
 /models
+/scripts
 *.pkl
 *.safetensors
 *.pth

@@ -5,7 +5,9 @@ from modelscope import snapshot_download
 from PIL import Image
 import numpy as np
 
-
+# This model has additional requirements.
+# Please install the following packages.
+# pip install facexlib insightface onnxruntime
 snapshot_download(
     "ByteDance/InfiniteYou",
     allow_file_pattern="supports/insightface/models/antelopev2/*",

@@ -6,6 +6,9 @@ from PIL import Image
 import numpy as np
 
 
+# This model has additional requirements.
+# Please install the following packages.
+# pip install facexlib insightface onnxruntime
 vram_config = {
     "onload_dtype": torch.float8_e4m3fn,
     "onload_device": "cpu",
