@@ -105,6 +105,8 @@ class FluxImagePipeline(BasePipeline):
         self.lora_loader = FluxLoRALoader
 
     def enable_lora_merger(self):
+        if not (hasattr(self.dit, "vram_management_enabled") and getattr(self.dit, "vram_management_enabled")):
+            raise ValueError("DiT VRAM management is not enabled.")
         if self.lora_patcher is not None:
             for name, module in self.dit.named_modules():
                 if isinstance(module, AutoWrappedLinear):
@@ -141,7 +143,9 @@ class FluxImagePipeline(BasePipeline):
             pipe.tokenizer_2 = T5TokenizerFast.from_pretrained(tokenizer_2_config.path)
         
         value_controllers = model_pool.fetch_model("flux_value_controller")
-        if value_controllers is not None: pipe.value_controller = MultiValueEncoder(value_controllers)
+        if value_controllers is not None:
+            pipe.value_controller = MultiValueEncoder(value_controllers)
+            pipe.value_controller.vram_management_enabled = pipe.value_controller.encoders[0].vram_management_enabled
         controlnets = model_pool.fetch_model("flux_controlnet")
         if controlnets is not None: pipe.controlnet = MultiControlNet(controlnets)
         pipe.ipadapter = model_pool.fetch_model("flux_ipadapter")

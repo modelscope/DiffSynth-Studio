@@ -6,8 +6,8 @@ from modelscope import dataset_snapshot_download
 
 
 vram_config = {
-    "onload_dtype": torch.float8_e4m3fn,
-    "onload_device": "cpu",
+    "offload_dtype": torch.float8_e4m3fn,
+    "offload_device": "cpu",
     "onload_dtype": torch.float8_e4m3fn,
     "onload_device": "cpu",
     "preparing_dtype": torch.float8_e4m3fn,

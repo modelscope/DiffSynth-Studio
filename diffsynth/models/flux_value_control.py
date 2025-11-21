@@ -30,12 +30,6 @@ class SingleValueEncoder(torch.nn.Module):
         self.positional_embedding = torch.nn.Parameter(
             torch.randn(self.prefer_len, dim_out) 
         )
-        self._initialize_weights()
-
-    def _initialize_weights(self):
-        last_linear = self.prefer_value_embedder[-1]
-        torch.nn.init.zeros_(last_linear.weight)
-        torch.nn.init.zeros_(last_linear.bias)
 
     def forward(self, value, dtype):
         value = value * 1000

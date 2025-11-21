@@ -1,3 +1,14 @@
+flux_general_vram_config = {
+    "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+    "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+    "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+    "torch.nn.GroupNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    "diffsynth.models.general_modules.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    "diffsynth.models.flux_lora_encoder.LoRALayerBlock": "diffsynth.core.vram.layers.AutoWrappedModule",
+    "diffsynth.models.flux_lora_patcher.LoraMerger": "diffsynth.core.vram.layers.AutoWrappedModule",
+}
+
 VRAM_MANAGEMENT_MODULE_MAPS = {
     "diffsynth.models.qwen_image_dit.QwenImageDiT": {
         "diffsynth.models.qwen_image_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
@@ -114,5 +125,29 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
     "diffsynth.models.flux_dit.FluxDiT": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "diffsynth.models.flux_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.flux_text_encoder_clip.FluxTextEncoderClip": flux_general_vram_config,
+    "diffsynth.models.flux_vae.FluxVAEEncoder": flux_general_vram_config,
+    "diffsynth.models.flux_vae.FluxVAEDecoder": flux_general_vram_config,
+    "diffsynth.models.flux_controlnet.FluxControlNet": flux_general_vram_config,
+    "diffsynth.models.flux_infiniteyou.InfiniteYouImageProjector": flux_general_vram_config,
+    "diffsynth.models.flux_ipadapter.FluxIpAdapter": flux_general_vram_config,
+    "diffsynth.models.flux_lora_patcher.FluxLoraPatcher": flux_general_vram_config,
+    "diffsynth.models.step1x_connector.Qwen2Connector": flux_general_vram_config,
+    "diffsynth.models.flux_lora_encoder.FluxLoRAEncoder": flux_general_vram_config,
+    "diffsynth.models.flux_text_encoder_t5.FluxTextEncoderT5": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.t5.modeling_t5.T5LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.t5.modeling_t5.T5DenseActDense": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.t5.modeling_t5.T5DenseGatedActDense": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.flux_ipadapter.SiglipVisionModelSO400M": {
+        "transformers.models.siglip.modeling_siglip.SiglipVisionEmbeddings": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.siglip.modeling_siglip.SiglipEncoder": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.siglip.modeling_siglip.SiglipMultiheadAttentionPoolingHead": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.MultiheadAttention": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
 }

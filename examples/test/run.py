@@ -1,4 +1,5 @@
 import os, shutil, multiprocessing, time
+NUM_GPUS = 7
 
 
 def script_is_processed(output_path, script):
@@ -63,7 +64,7 @@ def run_train_multi_GPU(script_path):
 
 def run_train_single_GPU(script_path):
     tasks = filter_unprocessed_tasks(script_path)
-    processes = [multiprocessing.Process(target=run_tasks_on_single_GPU, args=(script_path, tasks, i, 8)) for i in range(8)]
+    processes = [multiprocessing.Process(target=run_tasks_on_single_GPU, args=(script_path, tasks, i, NUM_GPUS)) for i in range(NUM_GPUS)]
     for p in processes:
         p.start()
     for p in processes:

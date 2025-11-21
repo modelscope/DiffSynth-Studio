@@ -10,8 +10,8 @@ import numpy as np
 # Please install the following packages.
 # pip install facexlib insightface onnxruntime
 vram_config = {
-    "onload_dtype": torch.float8_e4m3fn,
-    "onload_device": "cpu",
+    "offload_dtype": torch.float8_e4m3fn,
+    "offload_device": "cpu",
     "onload_dtype": torch.float8_e4m3fn,
     "onload_device": "cpu",
     "preparing_dtype": torch.float8_e4m3fn,
