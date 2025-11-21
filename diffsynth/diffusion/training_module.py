@@ -202,7 +202,7 @@ class DiffusionTrainingModule(torch.nn.Module):
                     if name not in controlnet_inputs:
                         controlnet_inputs[name] = {}
                     controlnet_inputs[name][extra_input.replace(prefix, "")] = data[extra_input]
-                break
+                    break
             else:
                 inputs_shared[extra_input] = data[extra_input]
         for name, params in controlnet_inputs.items():

@@ -110,5 +110,5 @@ def test_flux():
 
 if __name__ == "__main__":
     test_qwen_image()
-    test_wan()
     test_flux()
+    test_wan()

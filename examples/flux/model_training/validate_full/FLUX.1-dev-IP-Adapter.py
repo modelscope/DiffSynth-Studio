@@ -13,7 +13,7 @@ pipe = FluxImagePipeline.from_pretrained(
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors"),
         ModelConfig(model_id="InstantX/FLUX.1-dev-IP-Adapter", origin_file_pattern="ip-adapter.bin"),
-        ModelConfig(model_id="google/siglip-so400m-patch14-384"),
+        ModelConfig(model_id="google/siglip-so400m-patch14-384", origin_file_pattern="model.safetensors"),
     ],
 )
 state_dict = load_state_dict("models/train/FLUX.1-dev-IP-Adapter_full/epoch-0.safetensors")
