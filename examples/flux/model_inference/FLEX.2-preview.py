@@ -21,12 +21,12 @@ image = pipe(
     num_inference_steps=50, embedded_guidance=3.5,
     seed=0
 )
-image.save(f"image_1.jpg")
+image.save("image_1.jpg")
 
 mask = np.zeros((1024, 1024, 3), dtype=np.uint8)
 mask[200:400, 400:700] = 255
 mask = Image.fromarray(mask)
-mask.save(f"image_mask.jpg")
+mask.save("image_mask.jpg")
 
 inpaint_image = image
 
@@ -36,7 +36,7 @@ image = pipe(
     flex_inpaint_image=inpaint_image, flex_inpaint_mask=mask,
     seed=4
 )
-image.save(f"image_2_new.jpg")
+image.save("image_2.jpg")
 
 control_image = Annotator("canny")(image)
 control_image.save("image_control.jpg")
@@ -47,4 +47,4 @@ image = pipe(
     flex_control_image=control_image,
     seed=4
 )
-image.save(f"image_3_new.jpg")
+image.save("image_3.jpg")

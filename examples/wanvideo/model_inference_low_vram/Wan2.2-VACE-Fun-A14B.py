@@ -1,5 +1,3 @@
-# Without VRAM Management, 80G VRAM is not enough to run this example.
-# We recommend to use `examples/wanvideo/model_inference_low_vram/Wan2.2-VACE-Fun-A14B.py`.
 import torch
 from PIL import Image
 from diffsynth.utils.data import save_video, VideoData

@@ -1,6 +1,6 @@
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/wanvideo/model_training/train.py \
-  --dataset_base_path data/example_video_dataset/wans2v \
-  --dataset_metadata_path data/example_video_dataset/wans2v/metadata.csv \
+  --dataset_base_path data/example_video_dataset \
+  --dataset_metadata_path data/example_video_dataset/metadata_s2v.csv \
   --data_file_keys "video,input_audio,s2v_pose_video" \
   --height 448 \
   --width 832 \

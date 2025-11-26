@@ -1,6 +1,7 @@
 /data
 /models
 /scripts
+/diffusers
 *.pkl
 *.safetensors
 *.pth
