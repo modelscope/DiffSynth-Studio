@@ -4,6 +4,7 @@ import numpy as np
 from einops import repeat, reduce
 from typing import Union
 from ..core import AutoTorchModule, AutoWrappedLinear, load_state_dict, ModelConfig
+from ..utils.device import empty_cache, get_torch_device
 from ..utils.lora import GeneralLoRALoader
 from ..models.model_loader import ModelPool
 from ..utils.controlnet import ControlNetInput
@@ -154,7 +155,7 @@ class BasePipeline(torch.nn.Module):
                             for module in model.modules():
                                 if hasattr(module, "offload"):
                                     module.offload()
-            torch.cuda.empty_cache()
+            empty_cache()
             # onload models
             for name, model in self.named_children():
                 if name in model_names:
@@ -176,7 +177,7 @@ class BasePipeline(torch.nn.Module):
 
         
     def get_vram(self):
-        return torch.cuda.mem_get_info(self.device)[1] / (1024 ** 3)
+        return get_torch_device().mem_get_info(self.device)[1] / (1024 ** 3)
     
     def get_module(self, model, name):
         if "." in name:

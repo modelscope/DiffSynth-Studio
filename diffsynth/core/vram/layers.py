@@ -2,6 +2,7 @@ import torch, copy
 from typing import Union
 from .initialization import skip_model_initialization
 from .disk_map import DiskMap
+from ...utils.device import get_torch_device
 
 
 class AutoTorchModule(torch.nn.Module):
@@ -61,7 +62,7 @@ class AutoTorchModule(torch.nn.Module):
         return r
 
     def check_free_vram(self):
-        gpu_mem_state = torch.cuda.mem_get_info(self.computation_device)
+        gpu_mem_state = get_torch_device().mem_get_info(self.computation_device)
         used_memory = (gpu_mem_state[1] - gpu_mem_state[0]) / (1024**3)
         return used_memory < self.vram_limit
 

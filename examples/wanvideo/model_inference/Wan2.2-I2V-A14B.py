@@ -1,12 +1,13 @@
 import torch
 from PIL import Image
-from diffsynth.utils.data import save_video
-from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
+from diffsynth import save_video
+from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
+from diffsynth.utils.device import get_device_name
 from modelscope import dataset_snapshot_download
 
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
-    device="cuda",
+    device=get_device_name(),
     model_configs=[
         ModelConfig(model_id="Wan-AI/Wan2.2-I2V-A14B", origin_file_pattern="high_noise_model/diffusion_pytorch_model*.safetensors"),
         ModelConfig(model_id="Wan-AI/Wan2.2-I2V-A14B", origin_file_pattern="low_noise_model/diffusion_pytorch_model*.safetensors"),
