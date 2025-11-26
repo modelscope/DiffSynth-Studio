@@ -1,0 +1,32 @@
+accelerate launch train.py \
+  --dataset_base_path data/example_image_dataset \
+  --dataset_metadata_path data/example_image_dataset/metadata.csv \
+  --max_pixels 1048576 \
+  --dataset_repeat 1 \
+  --model_id_with_origin_paths "black-forest-labs/FLUX.2-dev:text_encoder/*.safetensors,black-forest-labs/FLUX.2-dev:vae/diffusion_pytorch_model.safetensors" \
+  --learning_rate 1e-4 \
+  --num_epochs 5 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/FLUX.2-dev-LoRA-splited-cache" \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_qkv_mlp_proj" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --dataset_num_workers 8 \
+  --task "sft:data_process"
+
+accelerate launch train.py \
+  --dataset_base_path "./models/train/FLUX.2-dev-LoRA-splited-cache" \
+  --max_pixels 1048576 \
+  --dataset_repeat 50 \
+  --model_id_with_origin_paths "black-forest-labs/FLUX.2-dev:transformer/*.safetensors" \
+  --learning_rate 1e-4 \
+  --num_epochs 5 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/FLUX.2-dev-LoRA-splited" \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_qkv_mlp_proj" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --dataset_num_workers 8 \
+  --task "sft:train"

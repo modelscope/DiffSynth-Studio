@@ -429,5 +429,26 @@ flux_series = [
         "extra_kwargs": {"disable_guidance_embedder": True},
     },
 ]
+flux2_series = [
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="text_encoder/*.safetensors")
+        "model_hash": "28fca3d8e5bf2a2d1271748a773f6757",
+        "model_name": "flux2_text_encoder",
+        "model_class": "diffsynth.models.flux2_text_encoder.Flux2TextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux2_text_encoder.Flux2TextEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "d38e1d5c5aec3b0a11e79327ac6e3b0f",
+        "model_name": "flux2_dit",
+        "model_class": "diffsynth.models.flux2_dit.Flux2DiT",
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "c54288e3ee12ca215898840682337b95",
+        "model_name": "flux2_vae",
+        "model_class": "diffsynth.models.flux2_vae.Flux2VAE",
+    },
+]
 
-MODEL_CONFIGS = qwen_image_series + wan_series + flux_series
+MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series
