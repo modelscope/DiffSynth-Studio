@@ -429,6 +429,7 @@ flux_series = [
         "extra_kwargs": {"disable_guidance_embedder": True},
     },
 ]
+
 flux2_series = [
     {
         # Example: ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="text_encoder/*.safetensors")
@@ -451,4 +452,35 @@ flux2_series = [
     },
 ]
 
-MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series
+z_image_series = [
+    {
+        # Example: ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "fc3a8a1247fe185ce116ccbe0e426c28",
+        "model_name": "z_image_dit",
+        "model_class": "diffsynth.models.z_image_dit.ZImageDiT",
+    },
+    {
+        # Example: ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="text_encoder/*.safetensors")
+        "model_hash": "0f050f62a88876fea6eae0a18dac5a2e",
+        "model_name": "z_image_text_encoder",
+        "model_class": "diffsynth.models.z_image_text_encoder.ZImageTextEncoder",
+    },
+    {
+        # Example: ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="vae/vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "1aafa3cc91716fb6b300cc1cd51b85a3",
+        "model_name": "flux_vae_encoder",
+        "model_class": "diffsynth.models.flux_vae.FluxVAEEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_vae.FluxVAEEncoderStateDictConverterDiffusers",
+        "extra_kwargs": {"use_conv_attention": False},
+    },
+    {
+        # Example: ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="vae/vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "1aafa3cc91716fb6b300cc1cd51b85a3",
+        "model_name": "flux_vae_decoder",
+        "model_class": "diffsynth.models.flux_vae.FluxVAEDecoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_vae.FluxVAEDecoderStateDictConverterDiffusers",
+        "extra_kwargs": {"use_conv_attention": False},
+    },
+]
+
+MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series
