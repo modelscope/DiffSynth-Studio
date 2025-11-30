@@ -62,6 +62,8 @@ class DiskMap:
         param = self.files[file_id].get_tensor(name)
         if self.torch_dtype is not None and isinstance(param, torch.Tensor):
             param = param.to(self.torch_dtype)
+        if param.device == "cpu":
+            param = param.clone()
         if isinstance(param, torch.Tensor):
             self.num_params += param.numel()
         if self.num_params > self.buffer_size:

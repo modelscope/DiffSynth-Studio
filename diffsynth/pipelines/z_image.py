@@ -119,7 +119,7 @@ class ZImagePipeline(BasePipeline):
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
         
         # Decode
-        self.load_models_to_device(['vae'])
+        self.load_models_to_device(['vae_decoder'])
         image = self.vae_decoder(inputs_shared["latents"])
         image = self.vae_output_to_image(image)
         self.load_models_to_device([])
