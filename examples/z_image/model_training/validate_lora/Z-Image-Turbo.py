@@ -12,7 +12,7 @@ pipe = ZImagePipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"),
 )
-pipe.load_lora(pipe.dit, "/models/train/Z-Image-Turbo_lora/epoch-4.safetensors")
+pipe.load_lora(pipe.dit, "./models/train/Z-Image-Turbo_lora/epoch-4.safetensors")
 prompt = "a dog"
 image = pipe(prompt=prompt, seed=42, rand_device="cuda")
 image.save("image.jpg")

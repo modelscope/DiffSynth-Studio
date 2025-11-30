@@ -9,7 +9,7 @@ accelerate launch examples/z_image/model_training/train.py \
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/Z-Image-Turbo_lora" \
   --lora_base_model "dit" \
-  --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj" \
+  --lora_target_modules "to_q,to_k,to_v,to_out.0,w1,w2,w3" \
   --lora_rank 32 \
   --use_gradient_checkpointing \
   --dataset_num_workers 8
