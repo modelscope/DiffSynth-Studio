@@ -60,7 +60,7 @@ class FluxImagePipeline(BasePipeline):
             device=device, torch_dtype=torch_dtype,
             height_division_factor=16, width_division_factor=16,
         )
-        self.scheduler = FlowMatchScheduler()
+        self.scheduler = FlowMatchScheduler("FLUX.1")
         self.tokenizer_1: CLIPTokenizer = None
         self.tokenizer_2: T5TokenizerFast = None
         self.text_encoder_1: FluxTextEncoderClip = None

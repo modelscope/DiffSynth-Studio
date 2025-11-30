@@ -23,7 +23,7 @@ class ZImagePipeline(BasePipeline):
             device=device, torch_dtype=torch_dtype,
             height_division_factor=16, width_division_factor=16,
         )
-        self.scheduler = FlowMatchScheduler()
+        self.scheduler = FlowMatchScheduler("Z-Image")
         self.text_encoder: ZImageTextEncoder = None
         self.dit: ZImageDiT = None
         self.vae_encoder: FluxVAEEncoder = None

@@ -24,7 +24,7 @@ class QwenImagePipeline(BasePipeline):
         )
         from transformers import Qwen2Tokenizer, Qwen2VLProcessor
         
-        self.scheduler = FlowMatchScheduler(sigma_min=0, sigma_max=1, extra_one_step=True, exponential_shift=True, exponential_shift_mu=0.8, shift_terminal=0.02)
+        self.scheduler = FlowMatchScheduler("Qwen-Image")
         self.text_encoder: QwenImageTextEncoder = None
         self.dit: QwenImageDiT = None
         self.vae: QwenImageVAE = None
