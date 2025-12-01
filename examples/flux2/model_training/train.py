@@ -80,7 +80,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         return loss
 
 
-def qwen_image_parser():
+def flux2_parser():
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser = add_general_config(parser)
     parser = add_image_size_config(parser)
@@ -89,7 +89,7 @@ def qwen_image_parser():
 
 
 if __name__ == "__main__":
-    parser = qwen_image_parser()
+    parser = flux2_parser()
     args = parser.parse_args()
     accelerator = accelerate.Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,

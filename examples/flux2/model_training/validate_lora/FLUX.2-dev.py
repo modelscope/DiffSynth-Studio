@@ -23,6 +23,6 @@ pipe = Flux2ImagePipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="tokenizer/"),
 )
 pipe.load_lora(pipe.dit, "./models/train/FLUX.2-dev-LoRA-splited/epoch-4.safetensors")
-prompt = "a dog is jumping"
+prompt = "a dog"
 image = pipe(prompt, seed=0)
 image.save("image_FLUX.2-dev_lora.jpg")

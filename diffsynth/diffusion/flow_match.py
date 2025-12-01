@@ -89,7 +89,7 @@ class FlowMatchScheduler():
         return float(mu)
     
     @staticmethod
-    def set_timesteps_flux2(num_inference_steps=100, denoising_strength=1.0, dynamic_shift_len=None):
+    def set_timesteps_flux2(num_inference_steps=100, denoising_strength=1.0, dynamic_shift_len=1024//16*1024//16):
         sigma_min = 1 / num_inference_steps
         sigma_max = 1.0
         num_train_timesteps = 1000
