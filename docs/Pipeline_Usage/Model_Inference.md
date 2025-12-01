@@ -38,6 +38,14 @@ pipe = QwenImagePipeline.from_pretrained(
 > 
 > 默认情况下，即使模型已经下载完毕，程序仍会向远程查询是否有遗漏文件，如果要完全关闭远程请求，请将[环境变量 DIFFSYNTH_SKIP_DOWNLOAD](/docs/Pipeline_Usage/Environment_Variables.md#diffsynth_skip_download) 设置为 `True`。
 
+如需从 [HuggingFace](https://huggingface.co/) 下载模型，可通过设置[环境变量](Environment_Variables.md)实现：
+
+```shell
+import os
+os.environ["DIFFSYNTH_DOWNLOAD_RESOURCE"] = "huggingface"
+import diffsynth
+```
+
 </details>
 
 <details>
