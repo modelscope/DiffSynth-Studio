@@ -49,15 +49,6 @@ image.save("image.jpg")
 * 差分 LoRA 训练：[doc](/docs/Training/Differential_LoRA.md)、[code](/examples/z_image/model_training/special/differential_training/)
 * 轨迹模仿蒸馏训练（实验性功能）：[code](/examples/z_image/model_training/special/trajectory_imitation/)
 
-训练技巧：
-
-* [Tongyi-MAI/Z-Image-Turbo](https://www.modelscope.cn/models/Tongyi-MAI/Z-Image-Turbo) 是一个蒸馏加速的模型，因此直接训练将会迅速让模型失去加速能力，以“加速配置”（`num_inference_steps=8`，`cfg_scale=1`）推理的效果变差，以“无加速配置”（`num_inference_steps=30`，`cfg_scale=2`）推理的效果变好。可采用以下方案训练和推理：
-    * 标准 SFT 训练（[code](/examples/z_image/model_training/lora/Z-Image-Turbo.sh)） + 无加速配置推理
-    * 差分 LoRA 训练（[code](/examples/z_image/model_training/special/differential_training/)） + 加速配置推理
-        * 差分 LoRA 训练中需加载一个额外的 LoRA，例如 [ostris/zimage_turbo_training_adapter](https://www.modelscope.cn/models/ostris/zimage_turbo_training_adapter)
-    * 标准 SFT 训练（[code](/examples/z_image/model_training/lora/Z-Image-Turbo.sh)）+ 轨迹模仿蒸馏训练（[code](/examples/z_image/model_training/special/trajectory_imitation/)）+ 加速配置推理
-    * 标准 SFT 训练（[code](/examples/z_image/model_training/lora/Z-Image-Turbo.sh)）+ 推理时加载蒸馏加速 LoRA（[link](https://www.modelscope.cn/models/DiffSynth-Studio/Z-Image-Turbo-DistillFix)） + 加速配置推理
-
 ## 模型推理
 
 模型通过 `ZImagePipeline.from_pretrained` 加载，详见[加载模型](/docs/Pipeline_Usage/Model_Inference.md#加载模型)。
@@ -129,3 +120,12 @@ modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir
 ```
 
 我们为每个模型编写了推荐的训练脚本，请参考前文"模型总览"中的表格。关于如何编写模型训练脚本，请参考[模型训练](/docs/Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](/docs/Training/)。
+
+训练技巧：
+
+* [Tongyi-MAI/Z-Image-Turbo](https://www.modelscope.cn/models/Tongyi-MAI/Z-Image-Turbo) 是一个蒸馏加速的模型，因此直接训练将会迅速让模型失去加速能力，以“加速配置”（`num_inference_steps=8`，`cfg_scale=1`）推理的效果变差，以“无加速配置”（`num_inference_steps=30`，`cfg_scale=2`）推理的效果变好。可采用以下方案训练和推理：
+    * 标准 SFT 训练（[code](/examples/z_image/model_training/lora/Z-Image-Turbo.sh)） + 无加速配置推理
+    * 差分 LoRA 训练（[code](/examples/z_image/model_training/special/differential_training/)） + 加速配置推理
+        * 差分 LoRA 训练中需加载一个额外的 LoRA，例如 [ostris/zimage_turbo_training_adapter](https://www.modelscope.cn/models/ostris/zimage_turbo_training_adapter)
+    * 标准 SFT 训练（[code](/examples/z_image/model_training/lora/Z-Image-Turbo.sh)）+ 轨迹模仿蒸馏训练（[code](/examples/z_image/model_training/special/trajectory_imitation/)）+ 加速配置推理
+    * 标准 SFT 训练（[code](/examples/z_image/model_training/lora/Z-Image-Turbo.sh)）+ 推理时加载蒸馏加速 LoRA（[link](https://www.modelscope.cn/models/DiffSynth-Studio/Z-Image-Turbo-DistillFix)） + 加速配置推理
