@@ -26,11 +26,18 @@ def fix_path(doc_root_path):
         context = read_file(file)
         matches = pattern.findall(context)
         
+        edited = False
         for match in matches:
             target = "](" + file_map[match.split("/")[-1].replace("](", "")]
             context = context.replace(match, target)
-            print(match, target)
+            if target != match:
+                print(match, target)
+                edited = True
+            print(file, match, target)
         
-        with open(file, "w", encoding="utf-8") as f:
-            f.write(context)
+        if edited:
+            with open(file, "w", encoding="utf-8") as f:
+                f.write(context)
 
+fix_path("doc/zh")
+fix_path("doc/en")
