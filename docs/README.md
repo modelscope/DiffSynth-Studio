@@ -36,10 +36,11 @@ graph LR;
 
 本节介绍 `DiffSynth-Studio` 所支持的 Diffusion 模型，部分模型 Pipeline 具备可控生成、并行加速等特色功能。
 
-* [模型目录](./Model_Details/Overview.md)
+* [FLUX.1](./Model_Details/FLUX.md)
+* [Wan](./Model_Details/Wan.md)
 * [Qwen-Image](./Model_Details/Qwen-Image.md)
-* [FLUX](./Model_Details/FLUX.md)【TODO】
-* [Wan](./Model_Details/Wan.md)【TODO】
+* [FLUX.2](./Model_Details/FLUX2.md)
+* [Z-Image](./Model_Details/Z-Image.md)
 
 ## Section 3: 训练框架
 
