@@ -14,7 +14,7 @@ cd DiffSynth-Studio
 pip install -e .
 ```
 
-更多关于安装的信息，请参考[安装依赖](/docs/Pipeline_Usage/Setup.md)。
+更多关于安装的信息，请参考[安装依赖](/docs/zh/Pipeline_Usage/Setup.md)。
 
 ## 快速开始
 
@@ -96,14 +96,14 @@ graph LR;
 
 特殊训练脚本：
 
-* 差分 LoRA 训练：[doc](/docs/Training/Differential_LoRA.md)、[code](/examples/qwen_image/model_training/special/differential_training/)
-* FP8 精度训练：[doc](/docs/Training/FP8_Precision.md)、[code](/examples/qwen_image/model_training/special/fp8_training/)
-* 两阶段拆分训练：[doc](/docs/Training/Split_Training.md)、[code](/examples/qwen_image/model_training/special/split_training/)
-* 端到端直接蒸馏：[doc](/docs/Training/Direct_Distill.md)、[code](/examples/qwen_image/model_training/lora/Qwen-Image-Distill-LoRA.sh)
+* 差分 LoRA 训练：[doc](/docs/zh/Training/Differential_LoRA.md)、[code](/examples/qwen_image/model_training/special/differential_training/)
+* FP8 精度训练：[doc](/docs/zh/Training/FP8_Precision.md)、[code](/examples/qwen_image/model_training/special/fp8_training/)
+* 两阶段拆分训练：[doc](/docs/zh/Training/Split_Training.md)、[code](/examples/qwen_image/model_training/special/split_training/)
+* 端到端直接蒸馏：[doc](/docs/zh/Training/Direct_Distill.md)、[code](/examples/qwen_image/model_training/lora/Qwen-Image-Distill-LoRA.sh)
 
 ## 模型推理
 
-模型通过 `QwenImagePipeline.from_pretrained` 加载，详见[加载模型](/docs/Pipeline_Usage/Model_Inference.md#加载模型)。
+模型通过 `QwenImagePipeline.from_pretrained` 加载，详见[加载模型](/docs/zh/Pipeline_Usage/Model_Inference.md#加载模型)。
 
 `QwenImagePipeline` 推理的输入参数包括：
 
@@ -134,7 +134,7 @@ graph LR;
 * `tile_stride`: VAE 编解码阶段的分块步长，默认为 64，仅在 `tiled=True` 时生效，需保证其数值小于或等于 `tile_size`。
 * `progress_bar_cmd`: 进度条，默认为 `tqdm.tqdm`。可通过设置为 `lambda x:x` 来屏蔽进度条。
 
-如果显存不足，请开启[显存管理](/docs/Pipeline_Usage/VRAM_management.md)，我们在示例代码中提供了每个模型推荐的低显存配置，详见前文“模型总览”中的表格。
+如果显存不足，请开启[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)，我们在示例代码中提供了每个模型推荐的低显存配置，详见前文“模型总览”中的表格。
 
 ## 模型训练
 
@@ -188,4 +188,4 @@ Qwen-Image 系列模型统一通过 [`examples/qwen_image/model_training/train.p
 modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir ./data/example_image_dataset
 ```
 
-我们为每个模型编写了推荐的训练脚本，请参考前文“模型总览”中的表格。关于如何编写模型训练脚本，请参考[模型训练](/docs/Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](/docs/Training/)。
+我们为每个模型编写了推荐的训练脚本，请参考前文“模型总览”中的表格。关于如何编写模型训练脚本，请参考[模型训练](/docs/zh/Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](/docs/Training/)。

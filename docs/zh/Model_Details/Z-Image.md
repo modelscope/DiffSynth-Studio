@@ -12,7 +12,7 @@ cd DiffSynth-Studio
 pip install -e .
 ```
 
-更多关于安装的信息，请参考[安装依赖](/docs/Pipeline_Usage/Setup.md)。
+更多关于安装的信息，请参考[安装依赖](/docs/zh/Pipeline_Usage/Setup.md)。
 
 ## 快速开始
 
@@ -46,12 +46,12 @@ image.save("image.jpg")
 
 特殊训练脚本：
 
-* 差分 LoRA 训练：[doc](/docs/Training/Differential_LoRA.md)、[code](/examples/z_image/model_training/special/differential_training/)
+* 差分 LoRA 训练：[doc](/docs/zh/Training/Differential_LoRA.md)、[code](/examples/z_image/model_training/special/differential_training/)
 * 轨迹模仿蒸馏训练（实验性功能）：[code](/examples/z_image/model_training/special/trajectory_imitation/)
 
 ## 模型推理
 
-模型通过 `ZImagePipeline.from_pretrained` 加载，详见[加载模型](/docs/Pipeline_Usage/Model_Inference.md#加载模型)。
+模型通过 `ZImagePipeline.from_pretrained` 加载，详见[加载模型](/docs/zh/Pipeline_Usage/Model_Inference.md#加载模型)。
 
 `ZImagePipeline` 推理的输入参数包括：
 
@@ -66,7 +66,7 @@ image.save("image.jpg")
 * `rand_device`: 生成随机高斯噪声矩阵的计算设备，默认为 `"cpu"`。当设置为 `cuda` 时，在不同 GPU 上会导致不同的生成结果。
 * `num_inference_steps`: 推理次数，默认值为 8。
 
-如果显存不足，请开启[显存管理](/docs/Pipeline_Usage/VRAM_management.md)，我们在示例代码中提供了每个模型推荐的低显存配置，详见前文"模型总览"中的表格。
+如果显存不足，请开启[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)，我们在示例代码中提供了每个模型推荐的低显存配置，详见前文"模型总览"中的表格。
 
 ## 模型训练
 
@@ -119,7 +119,7 @@ Z-Image 系列模型统一通过 [`examples/z_image/model_training/train.py`](/e
 modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir ./data/example_image_dataset
 ```
 
-我们为每个模型编写了推荐的训练脚本，请参考前文"模型总览"中的表格。关于如何编写模型训练脚本，请参考[模型训练](/docs/Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](/docs/Training/)。
+我们为每个模型编写了推荐的训练脚本，请参考前文"模型总览"中的表格。关于如何编写模型训练脚本，请参考[模型训练](/docs/zh/Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](/docs/Training/)。
 
 训练技巧：
 

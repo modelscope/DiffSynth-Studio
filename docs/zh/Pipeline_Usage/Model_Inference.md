@@ -22,7 +22,7 @@ pipe = QwenImagePipeline.from_pretrained(
 )
 ```
 
-其中 `torch_dtype` 和 `device` 是计算精度和计算设备（不是模型的精度和设备）。`model_configs` 可通过多种方式配置模型路径，关于本项目内部是如何加载模型的，请参考 [`diffsynth.core.loader`](/docs/API_Reference/core/loader.md)。
+其中 `torch_dtype` 和 `device` 是计算精度和计算设备（不是模型的精度和设备）。`model_configs` 可通过多种方式配置模型路径，关于本项目内部是如何加载模型的，请参考 [`diffsynth.core.loader`](/docs/zh/API_Reference/core/loader.md)。
 
 <details>
 
@@ -34,7 +34,7 @@ pipe = QwenImagePipeline.from_pretrained(
 > ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
 > ```
 > 
-> 模型文件默认下载到 `./models` 路径，该路径可通过[环境变量 DIFFSYNTH_MODEL_BASE_PATH](/docs/Pipeline_Usage/Environment_Variables.md#diffsynth_model_base_path) 修改。
+> 模型文件默认下载到 `./models` 路径，该路径可通过[环境变量 DIFFSYNTH_MODEL_BASE_PATH](/docs/zh/Pipeline_Usage/Environment_Variables.md#diffsynth_model_base_path) 修改。
 
 </details>
 
@@ -61,7 +61,7 @@ pipe = QwenImagePipeline.from_pretrained(
 
 </details>
 
-默认情况下，即使模型已经下载完毕，程序仍会向远程查询是否有遗漏文件，如果要完全关闭远程请求，请将[环境变量 DIFFSYNTH_SKIP_DOWNLOAD](/docs/Pipeline_Usage/Environment_Variables.md#diffsynth_skip_download) 设置为 `True`。
+默认情况下，即使模型已经下载完毕，程序仍会向远程查询是否有遗漏文件，如果要完全关闭远程请求，请将[环境变量 DIFFSYNTH_SKIP_DOWNLOAD](/docs/zh/Pipeline_Usage/Environment_Variables.md#diffsynth_skip_download) 设置为 `True`。
 
 ```shell
 import os
@@ -69,7 +69,7 @@ os.environ["DIFFSYNTH_SKIP_DOWNLOAD"] = "True"
 import diffsynth
 ```
 
-如需从 [HuggingFace](https://huggingface.co/) 下载模型，请将[环境变量 DIFFSYNTH_DOWNLOAD_RESOURCE](/docs/Pipeline_Usage/Environment_Variables.md#diffsynth_download_resource) 设置为 `huggingface`。
+如需从 [HuggingFace](https://huggingface.co/) 下载模型，请将[环境变量 DIFFSYNTH_DOWNLOAD_RESOURCE](/docs/zh/Pipeline_Usage/Environment_Variables.md#diffsynth_download_resource) 设置为 `huggingface`。
 
 ```shell
 import os
@@ -102,4 +102,4 @@ image.save("image.jpg")
 
 每个模型 `Pipeline` 的输入参数不同，请参考各模型的文档。
 
-如果模型参数量太大，导致显存不足，请开启[显存管理](./VRAM_management.md)。
+如果模型参数量太大，导致显存不足，请开启[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)。

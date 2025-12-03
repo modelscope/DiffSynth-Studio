@@ -14,7 +14,7 @@ cd DiffSynth-Studio
 pip install -e .
 ```
 
-更多关于安装的信息，请参考[安装依赖](/docs/Pipeline_Usage/Setup.md)。
+更多关于安装的信息，请参考[安装依赖](/docs/zh/Pipeline_Usage/Setup.md)。
 
 ## 快速开始
 
@@ -140,13 +140,13 @@ graph LR;
 |[PAI/Wan2.2-Fun-A14B-Control](https://modelscope.cn/models/PAI/Wan2.2-Fun-A14B-Control)|`control_video`, `reference_image`|[code](/examples/wanvideo/model_inference/Wan2.2-Fun-A14B-Control.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-Fun-A14B-Control.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-Fun-A14B-Control.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-Fun-A14B-Control.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Fun-A14B-Control.py)|
 |[PAI/Wan2.2-Fun-A14B-Control-Camera](https://modelscope.cn/models/PAI/Wan2.2-Fun-A14B-Control-Camera)|`control_camera_video`, `input_image`|[code](/examples/wanvideo/model_inference/Wan2.2-Fun-A14B-Control-Camera.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-Fun-A14B-Control-Camera.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-Fun-A14B-Control-Camera.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-Fun-A14B-Control-Camera.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Fun-A14B-Control-Camera.py)|
 
-* FP8 精度训练：[doc](/docs/Training/FP8_Precision.md)、[code](/examples/wanvideo/model_training/special/fp8_training/)
-* 两阶段拆分训练：[doc](/docs/Training/Split_Training.md)、[code](/examples/wanvideo/model_training/special/split_training/)
-* 端到端直接蒸馏：[doc](/docs/Training/Direct_Distill.md)、[code](/examples/wanvideo/model_training/special/direct_distill/)
+* FP8 精度训练：[doc](/docs/zh/Training/FP8_Precision.md)、[code](/examples/wanvideo/model_training/special/fp8_training/)
+* 两阶段拆分训练：[doc](/docs/zh/Training/Split_Training.md)、[code](/examples/wanvideo/model_training/special/split_training/)
+* 端到端直接蒸馏：[doc](/docs/zh/Training/Direct_Distill.md)、[code](/examples/wanvideo/model_training/special/direct_distill/)
 
 ## 模型推理
 
-模型通过 `WanVideoPipeline.from_pretrained` 加载，详见[加载模型](/docs/Pipeline_Usage/Model_Inference.md#加载模型)。
+模型通过 `WanVideoPipeline.from_pretrained` 加载，详见[加载模型](/docs/zh/Pipeline_Usage/Model_Inference.md#加载模型)。
 
 `WanVideoPipeline` 推理的输入参数包括：
 
@@ -196,7 +196,7 @@ graph LR;
 * `tea_cache_model_id`: TeaCache 使用的模型 ID。
 * `progress_bar_cmd`: 进度条，默认为 `tqdm.tqdm`。可通过设置为 `lambda x:x` 来屏蔽进度条。
 
-如果显存不足，请开启[显存管理](/docs/Pipeline_Usage/VRAM_management.md)，我们在示例代码中提供了每个模型推荐的低显存配置，详见前文"模型总览"中的表格。
+如果显存不足，请开启[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)，我们在示例代码中提供了每个模型推荐的低显存配置，详见前文"模型总览"中的表格。
 
 ## 模型训练
 
@@ -251,4 +251,4 @@ Wan 系列模型统一通过 [`examples/wanvideo/model_training/train.py`](/exam
 modelscope download --dataset DiffSynth-Studio/example_video_dataset --local_dir ./data/example_video_dataset
 ```
 
-我们为每个模型编写了推荐的训练脚本，请参考前文"模型总览"中的表格。关于如何编写模型训练脚本，请参考[模型训练](/docs/Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](/docs/Training/)。
+我们为每个模型编写了推荐的训练脚本，请参考前文"模型总览"中的表格。关于如何编写模型训练脚本，请参考[模型训练](/docs/zh/Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](/docs/Training/)。
