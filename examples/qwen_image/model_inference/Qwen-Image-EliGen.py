@@ -105,24 +105,3 @@ example(pipe, [0], 1, global_prompt, entity_prompts)
 global_prompt = "samurai girl wearing a kimono, she's holding a sword  glowing with red flame, her long hair is flowing in the wind, she is looking at a small bird perched on the back of her hand. ultra realist style. maximum image detail. maximum realistic render."
 entity_prompts = ["flowing hair", "sword glowing with red flame", "A cute bird", "yellow belt"]
 example(pipe, [0], 2, global_prompt, entity_prompts)
-
-# example 3
-global_prompt = "Image of a neverending staircase up to a mysterious palace in the sky, The ancient palace stood majestically atop a mist-shrouded mountain, sunrise, two traditional monk walk in the stair looking at the sunrise, fog,see-through, best quality, whimsical, fantastic, splash art, intricate detailed, hyperdetailed, photorealistic, concept art, harmony, serenity, tranquility, ambient occlusion, halation, cozy ambient lighting, dynamic lighting,masterpiece, liiv1, linquivera, metix, mentixis, masterpiece, award winning,"
-entity_prompts = ["ancient palace", "stone staircase with railings", "a traditional monk", "a traditional monk"]
-example(pipe, [27], 3, global_prompt, entity_prompts)
-
-# example 4
-global_prompt = "A beautiful girl wearing shirt and shorts in the street,  holding a sign 'Entity Control'"
-entity_prompts = ["A beautiful girl", "sign 'Entity Control'", "shorts", "shirt"]
-example(pipe, [21], 4, global_prompt, entity_prompts)
-
-# example 5
-global_prompt = "A captivating, dramatic scene in a painting that exudes mystery and foreboding. A white sky, swirling blue clouds, and a crescent yellow moon illuminate a solitary woman standing near the water's edge. Her long dress flows in the wind, silhouetted against the eerie glow. The water mirrors the fiery sky and moonlight, amplifying the uneasy atmosphere."
-entity_prompts = ["crescent yellow moon", "a solitary woman", "water", "swirling blue clouds"]
-example(pipe, [0], 5, global_prompt, entity_prompts)
-
-# example 7, same prompt with different seeds
-seeds = range(5, 9)
-global_prompt = "A beautiful asia woman wearing white dress, holding a mirror, with a forest background."
-entity_prompts = ["A beautiful woman", "mirror", "necklace", "glasses", "earring", "white dress", "jewelry headpiece"]
-example(pipe, seeds, 7, global_prompt, entity_prompts)

@@ -3,7 +3,7 @@ accelerate launch --config_file examples/flux/model_training/full/accelerate_con
   --dataset_metadata_path data/example_image_dataset/metadata.csv \
   --max_pixels 1048576 \
   --dataset_repeat 200 \
-  --model_id_with_origin_paths "ostris/Flex.2-preview:Flex.2-preview.safetensors,black-forest-labs/FLUX.1-dev:text_encoder/model.safetensors,black-forest-labs/FLUX.1-dev:text_encoder_2/,black-forest-labs/FLUX.1-dev:ae.safetensors" \
+  --model_id_with_origin_paths "ostris/Flex.2-preview:Flex.2-preview.safetensors,black-forest-labs/FLUX.1-dev:text_encoder/model.safetensors,black-forest-labs/FLUX.1-dev:text_encoder_2/*.safetensors,black-forest-labs/FLUX.1-dev:ae.safetensors" \
   --learning_rate 1e-5 \
   --num_epochs 1 \
   --remove_prefix_in_ckpt "pipe.dit." \

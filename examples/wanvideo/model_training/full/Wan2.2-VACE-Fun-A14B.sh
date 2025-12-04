@@ -15,7 +15,8 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --extra_inputs "vace_video,vace_reference_image" \
   --use_gradient_checkpointing_offload \
   --max_timestep_boundary 0.358 \
-  --min_timestep_boundary 0
+  --min_timestep_boundary 0 \
+  --initialize_model_on_cpu
 # boundary corresponds to timesteps [900, 1000]
 
 
@@ -36,5 +37,6 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --extra_inputs "vace_video,vace_reference_image" \
   --use_gradient_checkpointing_offload \
   --max_timestep_boundary 1 \
-  --min_timestep_boundary 0.358
+  --min_timestep_boundary 0.358 \
+  --initialize_model_on_cpu
 # boundary corresponds to timesteps [0, 900]

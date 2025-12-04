@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple
-from .utils import hash_state_dict_keys
 from .wan_video_dit import rearrange, precompute_freqs_cis_3d, DiTBlock, Head, CrossAttention, modulate, sinusoidal_embedding_1d
 
 
@@ -593,33 +592,3 @@ class WanS2VModel(torch.nn.Module):
         # make compatible with wan video
         x = torch.cat([origin_ref_latents, x], dim=2)
         return x
-
-    @staticmethod
-    def state_dict_converter():
-        return WanS2VModelStateDictConverter()
-
-
-class WanS2VModelStateDictConverter:
-
-    def __init__(self):
-        pass
-
-    def from_civitai(self, state_dict):
-        config = {}
-        if hash_state_dict_keys(state_dict) == "966cffdcc52f9c46c391768b27637614":
-            config = {
-                "dim": 5120,
-                "in_dim": 16,
-                "ffn_dim": 13824,
-                "out_dim": 16,
-                "text_dim": 4096,
-                "freq_dim": 256,
-                "eps": 1e-06,
-                "patch_size": (1, 2, 2),
-                "num_heads": 40,
-                "num_layers": 40,
-                "cond_dim": 16,
-                "audio_dim": 1024,
-                "num_audio_token": 4,
-            }
-        return state_dict, config

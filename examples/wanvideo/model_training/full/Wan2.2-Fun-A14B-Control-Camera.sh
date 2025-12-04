@@ -9,7 +9,7 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --learning_rate 1e-4 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/Wan2.2-Fun-A14B-Control-Camera_high_niose_full" \
+  --output_path "./models/train/Wan2.2-Fun-A14B-Control-Camera_high_noise_full" \
   --trainable_models "dit" \
   --extra_inputs "input_image,camera_control_direction,camera_control_speed" \
   --max_timestep_boundary 0.358 \

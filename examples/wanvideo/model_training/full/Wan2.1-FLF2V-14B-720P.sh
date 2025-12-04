@@ -10,4 +10,5 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/Wan2.1-FLF2V-14B-720P_full" \
   --trainable_models "dit" \
-  --extra_inputs "input_image,end_image"
+  --extra_inputs "input_image,end_image" \
+  --initialize_model_on_cpu

@@ -92,23 +92,33 @@ def example(pipe, seeds, example_id, global_prompt, entity_prompts, height=784, 
         visualize_masks(image, masks, entity_prompts, f"eligen_poster_example_{example_id}_mask_{seed}.png")
 
 
+vram_config = {
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": torch.float8_e4m3fn,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
 pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
+        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
     ],
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
-pipe.enable_vram_management()
 snapshot_download(
     "DiffSynth-Studio/Qwen-Image-EliGen-Poster",
     local_dir="models/DiffSynth-Studio/Qwen-Image-EliGen-Poster",
     allow_file_pattern="model.safetensors",
 )
-pipe.load_lora(pipe.dit, "models/DiffSynth-Studio/Qwen-Image-EliGen-Poster/model.safetensors")
+pipe.load_lora(pipe.dit, "models/DiffSynth-Studio/Qwen-Image-EliGen-Poster/model.safetensors", hotload=True)
 global_prompt = "一张以柔粉紫为背景的海报，左侧有大号粉紫色文字“Qwen-Image EliGen-Poster”，粉紫色椭圆框内白色小字：“图像精确分区控制模型”。右侧有一只小兔子在拆礼物，旁边站着一只头顶迷你烟花发射器的小龙（卡通Q版）。背景有一些白云点缀。整体风格卡通可爱，传达节日惊喜的主题。"
 entity_prompts = ["粉紫色文字“Qwen-Image EliGen-Poster”", "粉紫色椭圆框内白色小字：“图像精确分区控制模型”", "一只小兔子在拆礼物，小兔子旁边站着一只头顶迷你烟花发射器的小龙（卡通Q版）"]
 seed = [42]

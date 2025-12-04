@@ -189,16 +189,3 @@ class WanS2VAudioEncoder(torch.nn.Module):
         audio_embed_bucket = audio_embed_bucket.unsqueeze(0).permute(0, 2, 3, 1).to(device, dtype)
         audio_embeds = [audio_embed_bucket[..., i * batch_frames:(i + 1) * batch_frames] for i in range(min_batch_num)]
         return audio_embeds
-
-    @staticmethod
-    def state_dict_converter():
-        return WanS2VAudioEncoderStateDictConverter()
-
-
-class WanS2VAudioEncoderStateDictConverter():
-    def __init__(self):
-        pass
-
-    def from_civitai(self, state_dict):
-        state_dict = {'model.' + k: v for k, v in state_dict.items()}
-        return state_dict
