@@ -209,6 +209,13 @@ If you meet problems during installation, they might be caused by upstream depen
 
 DiffSynth-Studio redesigns the inference and training pipelines for mainstream Diffusion models (including FLUX, Wan, etc.), enabling efficient memory management and flexible model training.
 
+> Before using model inference or training, you can configure the model download source via [environment variables](/docs/en/Pipeline_Usage/Environment_Variables.md). By default, this project downloads models from ModelScope. Users outside China can switch the download source to Hugging Face:
+>
+> ```python
+> import os
+> os.environ["DIFFSYNTH_DOWNLOAD_SOURCE"] = "huggingface"
+> ```
+
 ### Image Synthesis
 
 ![Image](https://github.com/user-attachments/assets/c01258e2-f251-441a-aa1e-ebb22f02594d)

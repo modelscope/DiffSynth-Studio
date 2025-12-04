@@ -34,6 +34,6 @@ DIFFSYNTH_MODEL_BASE_PATH="./path_to_my_models" python xxx.py
 
 硬盘直连中的 Buffer 大小，默认是 1B（1000000000），数值越大，占用内存越大，速度越快。
 
-## `DIFFSYNTH_DOWNLOAD_RESOURCE`
+## `DIFFSYNTH_DOWNLOAD_SOURCE`
 
 远程模型下载源，可设置为 `modelscope` 或 `huggingface`，控制模型下载的来源，默认值为 `modelscope`。

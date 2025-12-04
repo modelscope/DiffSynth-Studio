@@ -34,6 +34,6 @@ Attention mechanism implementation method. Can be set to `flash_attention_3`, `f
 
 Buffer size in disk mapping. Default is 1B (1000000000). Larger values occupy more memory but result in faster speeds.
 
-## `DIFFSYNTH_DOWNLOAD_RESOURCE`
+## `DIFFSYNTH_DOWNLOAD_SOURCE`
 
 Remote model download source. Can be set to `modelscope` or `huggingface` to control the source of model downloads. Default value is `modelscope`.

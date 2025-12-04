@@ -11,7 +11,7 @@ class ModelConfig:
     path: Union[str, list[str]] = None
     model_id: str = None
     origin_file_pattern: Union[str, list[str]] = None
-    download_resource: str = None
+    download_source: str = None
     local_model_path: str = None
     skip_download: bool = None
     offload_device: Optional[Union[str, torch.device]] = None
@@ -36,14 +36,14 @@ class ModelConfig:
         else:
             return self.origin_file_pattern
         
-    def parse_download_resource(self):
-        if self.download_resource is None:
-            if os.environ.get('DIFFSYNTH_DOWNLOAD_RESOURCE') is not None:
-                return os.environ.get('DIFFSYNTH_DOWNLOAD_RESOURCE')
+    def parse_download_source(self):
+        if self.download_source is None:
+            if os.environ.get('DIFFSYNTH_DOWNLOAD_SOURCE') is not None:
+                return os.environ.get('DIFFSYNTH_DOWNLOAD_SOURCE')
             else:
                 return "modelscope"
         else:
-            return self.download_resource
+            return self.download_source
         
     def parse_skip_download(self):
         if self.skip_download is None:
@@ -60,8 +60,8 @@ class ModelConfig:
     def download(self):
         origin_file_pattern = self.parse_original_file_pattern()
         downloaded_files = glob.glob(origin_file_pattern, root_dir=os.path.join(self.local_model_path, self.model_id))
-        download_resource = self.parse_download_resource()
-        if download_resource.lower() == "modelscope":
+        download_source = self.parse_download_source()
+        if download_source.lower() == "modelscope":
             snapshot_download(
                 self.model_id,
                 local_dir=os.path.join(self.local_model_path, self.model_id),
@@ -69,7 +69,7 @@ class ModelConfig:
                 ignore_file_pattern=downloaded_files,
                 local_files_only=False
             )
-        elif download_resource.lower() == "huggingface":
+        elif download_source.lower() == "huggingface":
             hf_snapshot_download(
                 self.model_id,
                 local_dir=os.path.join(self.local_model_path, self.model_id),
@@ -78,7 +78,7 @@ class ModelConfig:
                 local_files_only=False
             )
         else:
-            raise ValueError("`download_resource` should be `modelscope` or `huggingface`.")
+            raise ValueError("`download_source` should be `modelscope` or `huggingface`.")
         
     def require_downloading(self):
         if self.path is not None:

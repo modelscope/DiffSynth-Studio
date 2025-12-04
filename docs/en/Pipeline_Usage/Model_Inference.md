@@ -69,11 +69,11 @@ os.environ["DIFFSYNTH_SKIP_DOWNLOAD"] = "True"
 import diffsynth
 ```
 
-To download models from [HuggingFace](https://huggingface.co/), set [environment variable DIFFSYNTH_DOWNLOAD_RESOURCE](/docs/en/Pipeline_Usage/Environment_Variables.md#diffsynth_download_resource) to `huggingface`.
+To download models from [HuggingFace](https://huggingface.co/), set [environment variable DIFFSYNTH_DOWNLOAD_SOURCE](/docs/en/Pipeline_Usage/Environment_Variables.md#diffsynth_download_source) to `huggingface`.
 
 ```shell
 import os
-os.environ["DIFFSYNTH_DOWNLOAD_RESOURCE"] = "huggingface"
+os.environ["DIFFSYNTH_DOWNLOAD_SOURCE"] = "huggingface"
 import diffsynth
 ```
 
