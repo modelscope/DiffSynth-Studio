@@ -43,20 +43,11 @@ pipe = FluxImagePipeline.from_pretrained(
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", **vram_config),
     ],
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 1,
 )
-
 prompt = "CG, masterpiece, best quality, solo, long hair, wavy hair, silver hair, blue eyes, blue dress, medium breasts, dress, underwater, air bubble, floating hair, refraction, portrait. The girl's flowing silver hair shimmers with every color of the rainbow and cascades down, merging with the floating flora around her."
-negative_prompt = "worst quality, low quality, monochrome, zombie, interlocked fingers, Aissist, cleavage, nsfw,"
-
 image = pipe(prompt=prompt, seed=0)
-image.save("flux.jpg")
-
-image = pipe(
-    prompt=prompt, negative_prompt=negative_prompt,
-    seed=0, cfg_scale=2, num_inference_steps=50,
-)
-image.save("flux_cfg.jpg")
+image.save("image.jpg")
 ```
 
 ## Model Overview
