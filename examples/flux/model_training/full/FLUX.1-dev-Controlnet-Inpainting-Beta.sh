@@ -4,7 +4,7 @@ accelerate launch --config_file examples/flux/model_training/full/accelerate_con
   --data_file_keys "image,controlnet_image,controlnet_inpaint_mask" \
   --max_pixels 1048576 \
   --dataset_repeat 400 \
-  --model_id_with_origin_paths "black-forest-labs/FLUX.1-dev:flux1-dev.safetensors,black-forest-labs/FLUX.1-dev:text_encoder/model.safetensors,black-forest-labs/FLUX.1-dev:text_encoder_2/,black-forest-labs/FLUX.1-dev:ae.safetensors,alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta:diffusion_pytorch_model.safetensors" \
+  --model_id_with_origin_paths "black-forest-labs/FLUX.1-dev:flux1-dev.safetensors,black-forest-labs/FLUX.1-dev:text_encoder/model.safetensors,black-forest-labs/FLUX.1-dev:text_encoder_2/*.safetensors,black-forest-labs/FLUX.1-dev:ae.safetensors,alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta:diffusion_pytorch_model.safetensors" \
   --learning_rate 1e-5 \
   --num_epochs 1 \
   --remove_prefix_in_ckpt "pipe.controlnet.models.0." \

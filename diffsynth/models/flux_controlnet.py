@@ -1,9 +1,62 @@
 import torch
 from einops import rearrange, repeat
 from .flux_dit import RoPEEmbedding, TimestepEmbeddings, FluxJointTransformerBlock, FluxSingleTransformerBlock, RMSNorm
-from .utils import hash_state_dict_keys, init_weights_on_device
+# from .utils import hash_state_dict_keys, init_weights_on_device
+from contextlib import contextmanager
 
+def hash_state_dict_keys(state_dict, with_shape=True):
+    keys_str = convert_state_dict_keys_to_single_str(state_dict, with_shape=with_shape)
+    keys_str = keys_str.encode(encoding="UTF-8")
+    return hashlib.md5(keys_str).hexdigest()
 
+@contextmanager
+def init_weights_on_device(device = torch.device("meta"), include_buffers :bool = False):
+    
+    old_register_parameter = torch.nn.Module.register_parameter
+    if include_buffers:
+        old_register_buffer = torch.nn.Module.register_buffer
+    
+    def register_empty_parameter(module, name, param):
+        old_register_parameter(module, name, param)
+        if param is not None:
+            param_cls = type(module._parameters[name])
+            kwargs = module._parameters[name].__dict__
+            kwargs["requires_grad"] = param.requires_grad
+            module._parameters[name] = param_cls(module._parameters[name].to(device), **kwargs)
+
+    def register_empty_buffer(module, name, buffer, persistent=True):
+        old_register_buffer(module, name, buffer, persistent=persistent)
+        if buffer is not None:
+            module._buffers[name] = module._buffers[name].to(device)
+            
+    def patch_tensor_constructor(fn):
+        def wrapper(*args, **kwargs):
+            kwargs["device"] = device
+            return fn(*args, **kwargs)
+
+        return wrapper
+    
+    if include_buffers:
+        tensor_constructors_to_patch = {
+            torch_function_name: getattr(torch, torch_function_name)
+            for torch_function_name in ["empty", "zeros", "ones", "full"]
+        }
+    else:
+        tensor_constructors_to_patch = {}
+    
+    try:
+        torch.nn.Module.register_parameter = register_empty_parameter
+        if include_buffers:
+            torch.nn.Module.register_buffer = register_empty_buffer
+        for torch_function_name in tensor_constructors_to_patch.keys():
+            setattr(torch, torch_function_name, patch_tensor_constructor(getattr(torch, torch_function_name)))
+        yield
+    finally:
+        torch.nn.Module.register_parameter = old_register_parameter
+        if include_buffers:
+            torch.nn.Module.register_buffer = old_register_buffer
+        for torch_function_name, old_torch_function in tensor_constructors_to_patch.items():
+            setattr(torch, torch_function_name, old_torch_function)
 
 class FluxControlNet(torch.nn.Module):
     def __init__(self, disable_guidance_embedder=False, num_joint_blocks=5, num_single_blocks=10, num_mode=0, mode_dict={}, additional_input_dim=0):
@@ -102,9 +155,9 @@ class FluxControlNet(torch.nn.Module):
         return controlnet_res_stack, controlnet_single_res_stack
 
 
-    @staticmethod
-    def state_dict_converter():
-        return FluxControlNetStateDictConverter()
+    # @staticmethod
+    # def state_dict_converter():
+    #     return FluxControlNetStateDictConverter()
     
     def quantize(self):
         def cast_to(weight, dtype=None, device=None, copy=False):

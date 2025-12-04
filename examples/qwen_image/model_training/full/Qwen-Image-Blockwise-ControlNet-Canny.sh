@@ -3,9 +3,9 @@ accelerate launch examples/qwen_image/model_training/train.py \
   --dataset_metadata_path data/example_image_dataset/metadata_blockwise_controlnet_canny.csv \
   --data_file_keys "image,blockwise_controlnet_image" \
   --max_pixels 1048576 \
-  --dataset_repeat 50 \
+  --dataset_repeat 400 \
   --model_id_with_origin_paths "Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors,Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors,DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Canny:model.safetensors" \
-  --learning_rate 1e-4 \
+  --learning_rate 1e-3 \
   --num_epochs 2 \
   --remove_prefix_in_ckpt "pipe.blockwise_controlnet.models.0." \
   --output_path "./models/train/Qwen-Image-Blockwise-ControlNet-Canny_full" \

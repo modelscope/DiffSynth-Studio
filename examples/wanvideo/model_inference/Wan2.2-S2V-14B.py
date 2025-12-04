@@ -1,9 +1,12 @@
+# This script can generate a single video clip.
+# If you need generate long videos, please refer to `Wan2.2-S2V-14B_multi_clips.py`.
 import torch
 from PIL import Image
 import librosa
-from diffsynth import VideoData, save_video_with_audio
-from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
+from diffsynth.utils.data import VideoData, save_video_with_audio
+from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
+
 
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -14,6 +17,7 @@ pipe = WanVideoPipeline.from_pretrained(
         ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
         ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="Wan2.1_VAE.pth"),
     ],
+    tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
     audio_processor_config=ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/"),
 )
 dataset_snapshot_download(
@@ -46,7 +50,7 @@ video = pipe(
     input_audio=input_audio,
     num_inference_steps=40,
 )
-save_video_with_audio(video[1:], "video_with_audio.mp4", audio_path, fps=16, quality=5)
+save_video_with_audio(video[1:], "video_1_Wan2.2-S2V-14B.mp4", audio_path, fps=16, quality=5)
 
 # s2v will use the first (num_frames) frames as reference. height and width must be the same as input_image. And fps should be 16, the same as output video fps.
 pose_video_path = 'data/example_video_dataset/wans2v/pose.mp4'
@@ -66,4 +70,4 @@ video = pipe(
     s2v_pose_video=pose_video,
     num_inference_steps=40,
 )
-save_video_with_audio(video[1:], "video_pose_with_audio.mp4", audio_path, fps=16, quality=5)
+save_video_with_audio(video[1:], "video_2_Wan2.2-S2V-14B.mp4", audio_path, fps=16, quality=5)

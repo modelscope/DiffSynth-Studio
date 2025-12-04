@@ -12,4 +12,5 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --output_path "./models/train/Wan2.1-I2V-14B-720P_full" \
   --trainable_models "dit" \
   --extra_inputs "input_image" \
-  --use_gradient_checkpointing_offload
+  --use_gradient_checkpointing_offload \
+  --initialize_model_on_cpu

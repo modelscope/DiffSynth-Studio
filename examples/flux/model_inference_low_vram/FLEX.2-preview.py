@@ -1,33 +1,43 @@
 import torch
-from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig
-from diffsynth.controlnets.processors import Annotator
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
+from diffsynth.utils.controlnet import Annotator
 import numpy as np
 from PIL import Image
 
 
+vram_config = {
+    "offload_dtype": torch.float8_e4m3fn,
+    "offload_device": "cpu",
+    "onload_dtype": torch.float8_e4m3fn,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
 pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="ostris/Flex.2-preview", origin_file_pattern="Flex.2-preview.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
+        ModelConfig(model_id="ostris/Flex.2-preview", origin_file_pattern="Flex.2-preview.safetensors", **vram_config),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", **vram_config),
     ],
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
-pipe.enable_vram_management()
 
 image = pipe(
     prompt="portrait of a beautiful Asian girl, long hair, red t-shirt, sunshine, beach",
     num_inference_steps=50, embedded_guidance=3.5,
     seed=0
 )
-image.save(f"image_1.jpg")
+image.save("image_1.jpg")
 
 mask = np.zeros((1024, 1024, 3), dtype=np.uint8)
 mask[200:400, 400:700] = 255
 mask = Image.fromarray(mask)
-mask.save(f"image_mask.jpg")
+mask.save("image_mask.jpg")
 
 inpaint_image = image
 
@@ -37,7 +47,7 @@ image = pipe(
     flex_inpaint_image=inpaint_image, flex_inpaint_mask=mask,
     seed=4
 )
-image.save(f"image_2_new.jpg")
+image.save("image_2.jpg")
 
 control_image = Annotator("canny")(image)
 control_image.save("image_control.jpg")
@@ -48,4 +58,4 @@ image = pipe(
     flex_control_image=control_image,
     seed=4
 )
-image.save(f"image_3_new.jpg")
+image.save("image_3.jpg")

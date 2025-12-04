@@ -1,8 +1,9 @@
 import torch
 from PIL import Image
 import librosa
-from diffsynth import VideoData, save_video_with_audio, load_state_dict
-from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
+from diffsynth.utils.data import VideoData, save_video_with_audio
+from diffsynth.core import load_state_dict
+from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 
 
 pipe = WanVideoPipeline.from_pretrained(
@@ -19,7 +20,6 @@ pipe = WanVideoPipeline.from_pretrained(
 
 state_dict = load_state_dict("models/train/Wan2.2-S2V-14B_full/epoch-0.safetensors")
 pipe.dit.load_state_dict(state_dict, strict=False)
-pipe.enable_vram_management()
 
 
 num_frames = 81 # 4n+1
@@ -50,4 +50,4 @@ video = pipe(
     s2v_pose_video=pose_video,
     num_inference_steps=40,
 )
-save_video_with_audio(video[1:], "video_pose_with_audio.mp4", audio_path, fps=16, quality=5)
+save_video_with_audio(video[1:], "video_Wan2.2-S2V-14B.mp4", audio_path, fps=16, quality=5)

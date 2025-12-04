@@ -1,19 +1,29 @@
 import torch
-from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 from PIL import Image
 import numpy as np
 
 
+vram_config = {
+    "offload_dtype": torch.float8_e4m3fn,
+    "offload_device": "cpu",
+    "onload_dtype": torch.float8_e4m3fn,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
 pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Qwen/Qwen2.5-VL-7B-Instruct", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="stepfun-ai/Step1X-Edit", origin_file_pattern="step1x-edit-i1258.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="stepfun-ai/Step1X-Edit", origin_file_pattern="vae.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
+        ModelConfig(model_id="Qwen/Qwen2.5-VL-7B-Instruct", origin_file_pattern="model-*.safetensors", **vram_config),
+        ModelConfig(model_id="stepfun-ai/Step1X-Edit", origin_file_pattern="step1x-edit-i1258.safetensors", **vram_config),
+        ModelConfig(model_id="stepfun-ai/Step1X-Edit", origin_file_pattern="vae.safetensors", **vram_config),
     ],
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
-pipe.enable_vram_management()
 
 image = Image.fromarray(np.zeros((1248, 832, 3), dtype=np.uint8) + 255)
 image = pipe(

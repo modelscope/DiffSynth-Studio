@@ -9,7 +9,7 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --learning_rate 1e-4 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/Wan2.2-Fun-A14B-Control-Camera_high_niose_lora" \
+  --output_path "./models/train/Wan2.2-Fun-A14B-Control-Camera_high_noise_lora" \
   --lora_base_model "dit" \
   --lora_target_modules "q,k,v,o,ffn.0,ffn.2" \
   --lora_rank 32 \

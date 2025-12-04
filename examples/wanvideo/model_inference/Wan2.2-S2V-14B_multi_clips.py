@@ -1,8 +1,8 @@
 import torch
 from PIL import Image
 import librosa
-from diffsynth import VideoData, save_video_with_audio
-from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig, WanVideoUnit_S2V
+from diffsynth.utils.data import VideoData, save_video_with_audio
+from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig, WanVideoUnit_S2V
 from modelscope import dataset_snapshot_download
 
 
@@ -76,6 +76,7 @@ pipe = WanVideoPipeline.from_pretrained(
         ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/model.safetensors"),
         ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="Wan2.1_VAE.pth"),
     ],
+    tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
     audio_processor_config=ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/"),
 )
 
@@ -99,7 +100,7 @@ video_with_audio = speech_to_video(
     audio_path='data/example_video_dataset/wans2v/sing.MP3',
     negative_prompt=negative_prompt,
     pose_video_path='data/example_video_dataset/wans2v/pose.mp4',
-    save_path="video_with_audio_full.mp4",
+    save_path="video_full_Wan2.2-S2V-14B.mp4",
     infer_frames=infer_frames,
     height=height,
     width=width,
@@ -111,6 +112,6 @@ video_with_audio_pose = speech_to_video(
     audio_path='data/example_video_dataset/wans2v/sing.MP3',
     negative_prompt=negative_prompt,
     pose_video_path='data/example_video_dataset/wans2v/pose.mp4',
-    save_path="video_with_audio_pose_clip_2.mp4",
+    save_path="video_clip_2_Wan2.2-S2V-14B.mp4",
     num_clip=2
 )
