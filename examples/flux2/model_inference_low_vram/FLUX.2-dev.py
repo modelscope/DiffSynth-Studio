@@ -1,7 +1,6 @@
 from diffsynth.pipelines.flux2_image import Flux2ImagePipeline, ModelConfig
 import torch
 
-
 vram_config = {
     "offload_dtype": "disk",
     "offload_device": "disk",
@@ -23,6 +22,6 @@ pipe = Flux2ImagePipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="tokenizer/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
-prompt = "Realistic macro photograph of a hermit crab using a soda can as its shell, partially emerging from the can, captured with sharp detail and natural colors, on a sunlit beach with soft shadows and a shallow depth of field, with blurred ocean waves in the background. The can has the text `BFL Diffusers` on it and it has a color gradient that start with #FF5733 at the top and transitions to #33FF57 at the bottom."
+prompt = "High resolution. A dreamy underwater portrait of a serene young woman in a flowing blue dress. Her hair floats softly around her face, strands delicately suspended in the water. Clear, shimmering light filters through, casting gentle highlights, while tiny bubbles rise around her. Her expression is calm, her features finely detailed—creating a tranquil, ethereal scene."
 image = pipe(prompt, seed=42, rand_device="cuda", num_inference_steps=50)
-image.save("image_FLUX.2-dev.jpg")
+image.save("image.jpg")
