@@ -209,12 +209,21 @@ pip install diffsynth
 
 DiffSynth-Studio 为主流 Diffusion 模型（包括 FLUX、Wan 等）重新设计了推理和训练流水线，能够实现高效的显存管理、灵活的模型训练。
 
-> 在进行模型推理和训练前，可通过[环境变量](/docs/zh/Pipeline_Usage/Environment_Variables.md)配置模型下载源，本项目默认从魔搭社区下载模型，非中国用户可将模型下载源修改为 Huggingface：
+<details>
+<summary>环境变量配置</summary>
+
+> 在进行模型推理和训练前，可通过[环境变量](/docs/zh/Pipeline_Usage/Environment_Variables.md)配置模型下载源等。
+> 
+> 本项目默认从魔搭社区下载模型。对于非中国区域的用户，可以通过以下配置从魔搭社区的国际站下载模型：
 > 
 > ```python
 > import os
-> os.environ["DIFFSYNTH_DOWNLOAD_SOURCE"] = "huggingface"
+> os.environ["MODELSCOPE_DOMAIN"] = "www.modelscope.ai"
 > ```
+> 
+> 如需从其他站点下载，请修改[环境变量 DIFFSYNTH_DOWNLOAD_SOURCE](/docs/zh/Pipeline_Usage/Environment_Variables.md#diffsynth_download_source)。
+
+</details>
 
 ### 图像生成模型
 
