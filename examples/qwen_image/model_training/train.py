@@ -1,7 +1,16 @@
 import torch, os, argparse, accelerate
+
+# 触发 quanto / peft 的 workarounds
+import diffsynth.utils.quantisation.quanto_workarounds  # noqa: F401
+import diffsynth.utils.quantisation.peft_workarounds    # noqa: F401
+
 from diffsynth.core import UnifiedDataset
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 from diffsynth.diffusion import *
+
+from diffsynth.utils.quantisation import quantise_model
+from types import SimpleNamespace
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -20,13 +29,63 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         offload_models=None,
         device="cpu",
         task="sft",
+        base_model_precision: str = "no_change",
+        text_encoder_1_precision: str = "no_change",
+        quantize_activations: bool = False,
+        result_image_field_name: str = "result_image",
     ):
         super().__init__()
         # Load models
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
         tokenizer_config = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/") if tokenizer_path is None else ModelConfig(tokenizer_path)
         processor_config = ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/") if processor_path is None else ModelConfig(processor_path)
-        self.pipe = QwenImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config, processor_config=processor_config)
+        
+        # 是否启用 quanto：只要 base_model_precision 或 text_encoder_1_precision 包含 "quanto"
+        use_quanto = (
+            (base_model_precision is not None and "quanto" in base_model_precision.lower())
+            or (text_encoder_1_precision is not None and "quanto" in text_encoder_1_precision.lower())
+        )
+
+        load_device = "cpu" if use_quanto else device
+        load_dtype = torch.bfloat16
+
+        # 1. 先在 load_device 上加载整条 pipeline
+        self.pipe = QwenImagePipeline.from_pretrained(
+            torch_dtype=load_dtype,
+            device=load_device,
+            model_configs=model_configs,
+            tokenizer_config=tokenizer_config,
+            processor_config=processor_config,
+        )
+
+        # 2. 如果启用 quanto，对 DiT + 文本编码器做 SimpleTuner 风格量化
+        if use_quanto:
+            fake_args = SimpleNamespace(
+                base_model_precision=base_model_precision,
+                text_encoder_1_precision=text_encoder_1_precision,
+                text_encoder_2_precision="no_change",
+                text_encoder_3_precision="no_change",
+                text_encoder_4_precision="no_change",
+                quantize_activations=quantize_activations,
+            )
+
+            dit, text_encoders, _, _ = quantise_model(
+                model=self.pipe.dit,
+                text_encoders=[self.pipe.text_encoder],
+                controlnet=None,
+                ema=None,
+                args=fake_args,
+            )
+            self.pipe.dit = dit
+            if text_encoders is not None and len(text_encoders) > 0:
+                self.pipe.text_encoder = text_encoders[0]
+
+        # 3. 把整个 pipeline 挪到 accelerator.device
+        if load_device != device:
+            self.pipe.to(device)
+        self.pipe.device = device
+        
+        # 4. 保持原来的 split + peft LoRA 逻辑
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
 
         # Training mode
@@ -51,6 +110,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
             "direct_distill": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(pipe, **inputs_shared, **inputs_posi),
             "direct_distill:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(pipe, **inputs_shared, **inputs_posi),
         }
+        self.result_image_field_name = result_image_field_name
         
     def get_pipeline_inputs(self, data):
         inputs_posi = {"prompt": data["prompt"]}
@@ -58,9 +118,9 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         inputs_shared = {
             # Assume you are using this pipeline for inference,
             # please fill in the input parameters.
-            "input_image": data["image"],
-            "height": data["image"].size[1],
-            "width": data["image"].size[0],
+            "input_image": data[self.result_image_field_name],
+            "height": data[self.result_image_field_name].size[1],
+            "width": data[self.result_image_field_name].size[0],
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
             "cfg_scale": 1,
@@ -86,7 +146,43 @@ def qwen_image_parser():
     parser = add_general_config(parser)
     parser = add_image_size_config(parser)
     parser.add_argument("--tokenizer_path", type=str, default=None, help="Path to tokenizer.")
-    parser.add_argument("--processor_path", type=str, default=None, help="Path to the processor. If provided, the processor will be used for image editing.")
+    parser.add_argument("--processor_path", type=str, default=None, help="Path to the processor.")
+
+    # 和 SimpleTuner 对齐的量化参数
+    parser.add_argument(
+        "--base_model_precision",
+        type=str,
+        default="no_change",
+        choices=[
+            "no_change",
+            "fp32",
+            "fp16",
+            "bf16",
+            "int2-quanto",
+            "int4-quanto",
+            "int8-quanto",
+            "fp8-quanto",
+            "fp8uz-quanto",
+        ],
+        help="Precision for DiT / main diffusion model. Use '*-quanto' to enable optimum.quanto.",
+    )
+    parser.add_argument(
+        "--text_encoder_1_precision",
+        type=str,
+        default="no_change",
+        help="Precision for the first text encoder. Defaults to no_change (i.e. bf16), like SimpleTuner configs.",
+    )
+    parser.add_argument(
+        "--quantize_activations",
+        action="store_true",
+        help="When using quanto, also quantize activations in addition to weights.",
+    )
+    parser.add_argument(
+        "--result_image_field_name",
+        type=str,
+        default="result_image",
+        help="The field name of the image generated by the model in the dataset JSON.",
+    )
     return parser
 
 
@@ -130,6 +226,10 @@ if __name__ == "__main__":
         offload_models=args.offload_models,
         task=args.task,
         device=accelerator.device,
+        base_model_precision=args.base_model_precision,
+        text_encoder_1_precision=args.text_encoder_1_precision,
+        quantize_activations=args.quantize_activations,
+        result_image_field_name=args.result_image_field_name,
     )
     model_logger = ModelLogger(
         args.output_path,

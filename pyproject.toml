@@ -25,6 +25,7 @@ dependencies = [
     "accelerate",
     "peft",
     "datasets",
+    "optimum[quanto]",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
