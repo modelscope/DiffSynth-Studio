@@ -5,10 +5,11 @@ from diffsynth.core import load_state_dict
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
 
+from diffsynth.utils.device import get_device_type
 
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
-    device="cuda",
+    device=get_device_type(),
     model_configs=[
         ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-1.3B-Control", origin_file_pattern="diffusion_pytorch_model*.safetensors"),
         ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-1.3B-Control", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
