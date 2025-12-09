@@ -7,10 +7,11 @@ from diffsynth.utils.data import VideoData, save_video_with_audio
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
 
+from diffsynth.utils.device import get_device_type
 
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
-    device="cuda",
+    device=get_device_type(),
     model_configs=[
         ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="diffusion_pytorch_model*.safetensors"),
         ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/model.safetensors"),
