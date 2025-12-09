@@ -36,8 +36,8 @@ class QwenImagePipeline(BasePipeline):
         self.tokenizer: Qwen2Tokenizer = None
         self.siglip2_image_encoder: Siglip2ImageEncoder = None
         self.dinov3_image_encoder: DINOv3ImageEncoder = None
-        self.image2lora_style: DINOv3ImageEncoder = None
-        self.image2lora_coarse: DINOv3ImageEncoder = None
+        self.image2lora_style: QwenImageImage2LoRAModel = None
+        self.image2lora_coarse: QwenImageImage2LoRAModel = None
         self.image2lora_fine: QwenImageImage2LoRAModel = None
         self.processor: Qwen2VLProcessor = None
         self.in_iteration_models = ("dit", "blockwise_controlnet")
