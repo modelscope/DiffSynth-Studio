@@ -17,7 +17,7 @@ vram_config = {
     "preparing_dtype": torch.bfloat16,
     "preparing_device": get_device_type(),
     "computation_dtype": torch.bfloat16,
-    "computation_device": get_device_type(),
+    "computation_device": get_device_name(),
 }
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

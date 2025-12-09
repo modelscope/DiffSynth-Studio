@@ -3,6 +3,7 @@ from PIL import Image
 from diffsynth.core import load_state_dict
 from diffsynth.utils.data import save_video, VideoData
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
+from diffsynth.utils.device import get_torch_device, get_device_type, get_device_name
 from modelscope import dataset_snapshot_download, snapshot_download
 
 
@@ -12,13 +13,13 @@ vram_config = {
     "onload_dtype": torch.bfloat16,
     "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
+    "preparing_device": get_device_type(),
     "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
+    "computation_device": get_device_name(),
 }
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
-    device="cuda",
+    device=get_device_type(),
     model_configs=[
         ModelConfig(model_id="Wan-AI/Wan2.2-Animate-14B", origin_file_pattern="diffusion_pytorch_model*.safetensors", **vram_config),
         ModelConfig(model_id="Wan-AI/Wan2.2-Animate-14B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth", **vram_config),
@@ -26,7 +27,7 @@ pipe = WanVideoPipeline.from_pretrained(
         ModelConfig(model_id="Wan-AI/Wan2.2-Animate-14B", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth", **vram_config),
     ],
     tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
+    vram_limit=get_torch_device().mem_get_info(get_device_name())[1] / (1024 ** 3) - 2,
 )
 
 dataset_snapshot_download(
@@ -52,7 +53,7 @@ save_video(video, "video_1_Wan2.2-Animate-14B.mp4", fps=15, quality=5)
 
 # Replace
 snapshot_download("Wan-AI/Wan2.2-Animate-14B", allow_file_pattern="relighting_lora.ckpt", local_dir="models/Wan-AI/Wan2.2-Animate-14B")
-lora_state_dict = load_state_dict("models/Wan-AI/Wan2.2-Animate-14B/relighting_lora.ckpt", torch_dtype=torch.bfloat16, device="cuda")["state_dict"]
+lora_state_dict = load_state_dict("models/Wan-AI/Wan2.2-Animate-14B/relighting_lora.ckpt", torch_dtype=torch.bfloat16, device=get_device_type())["state_dict"]
 lora_state_dict = {i: lora_state_dict[i].to(torch.bfloat16) for i in lora_state_dict}
 pipe.load_lora(pipe.dit, state_dict=lora_state_dict)
 input_image = Image.open("data/examples/wan/animate/replace_input_image.png")

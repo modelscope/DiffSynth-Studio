@@ -3,7 +3,7 @@ from PIL import Image
 from diffsynth.utils.data import save_video, VideoData
 from diffsynth.core import load_state_dict
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
-from diffsynth.utils.device import get_device_type
+from diffsynth.utils.device import get_device_type, get_device_name
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -13,7 +13,7 @@ vram_config = {
     "preparing_dtype": torch.bfloat16,
     "preparing_device": get_device_type(),
     "computation_dtype": torch.bfloat16,
-    "computation_device": get_device_type(),
+    "computation_device": get_device_name(),
 }
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
