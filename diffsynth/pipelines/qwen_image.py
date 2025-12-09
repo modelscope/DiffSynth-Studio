@@ -8,11 +8,15 @@ import numpy as np
 from ..diffusion import FlowMatchScheduler
 from ..core import ModelConfig, gradient_checkpoint_forward
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit, ControlNetInput
+from ..utils.lora.merge import merge_lora
 
 from ..models.qwen_image_dit import QwenImageDiT
 from ..models.qwen_image_text_encoder import QwenImageTextEncoder
 from ..models.qwen_image_vae import QwenImageVAE
 from ..models.qwen_image_controlnet import QwenImageBlockWiseControlNet
+from ..models.siglip2_image_encoder import Siglip2ImageEncoder
+from ..models.dinov3_image_encoder import DINOv3ImageEncoder
+from ..models.qwen_image_image2lora import QwenImageImage2LoRAModel
 
 
 class QwenImagePipeline(BasePipeline):
@@ -30,6 +34,11 @@ class QwenImagePipeline(BasePipeline):
         self.vae: QwenImageVAE = None
         self.blockwise_controlnet: QwenImageBlockwiseMultiControlNet = None
         self.tokenizer: Qwen2Tokenizer = None
+        self.siglip2_image_encoder: Siglip2ImageEncoder = None
+        self.dinov3_image_encoder: DINOv3ImageEncoder = None
+        self.image2lora_style: DINOv3ImageEncoder = None
+        self.image2lora_coarse: DINOv3ImageEncoder = None
+        self.image2lora_fine: QwenImageImage2LoRAModel = None
         self.processor: Qwen2VLProcessor = None
         self.in_iteration_models = ("dit", "blockwise_controlnet")
         self.units = [
@@ -72,6 +81,11 @@ class QwenImagePipeline(BasePipeline):
             processor_config.download_if_necessary()
             from transformers import Qwen2VLProcessor
             pipe.processor = Qwen2VLProcessor.from_pretrained(processor_config.path)
+        pipe.siglip2_image_encoder = model_pool.fetch_model("siglip2_image_encoder")
+        pipe.dinov3_image_encoder = model_pool.fetch_model("dinov3_image_encoder")
+        pipe.image2lora_style = model_pool.fetch_model("qwen_image_image2lora_style")
+        pipe.image2lora_coarse = model_pool.fetch_model("qwen_image_image2lora_coarse")
+        pipe.image2lora_fine = model_pool.fetch_model("qwen_image_image2lora_fine")
         
         # VRAM Management
         pipe.vram_management_enabled = pipe.check_vram_management_state()
@@ -513,6 +527,116 @@ class QwenImageUnit_EditImageEmbedder(PipelineUnit):
                 latents = pipe.vae.encode(image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
                 edit_latents.append(latents)
         return {"edit_latents": edit_latents, "edit_image": resized_edit_image}
+
+
+class QwenImageUnit_Image2LoRAEncode(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("image2lora_images",),
+            output_params=("image2lora_x", "image2lora_residual", "image2lora_residual_highres"),
+            onload_model_names=("siglip2_image_encoder", "dinov3_image_encoder", "text_encoder"),
+        )
+        from ..core.data.operators import ImageCropAndResize
+        self.processor_lowres = ImageCropAndResize(height=28*8, width=28*8)
+        self.processor_highres = ImageCropAndResize(height=1024, width=1024)
+
+    def extract_masked_hidden(self, hidden_states: torch.Tensor, mask: torch.Tensor):
+        bool_mask = mask.bool()
+        valid_lengths = bool_mask.sum(dim=1)
+        selected = hidden_states[bool_mask]
+        split_result = torch.split(selected, valid_lengths.tolist(), dim=0)
+        return split_result
+
+    def encode_prompt_edit(self, pipe: QwenImagePipeline, prompt, edit_image):
+        prompt = [prompt]
+        template =  "<|im_start|>system\nDescribe the key features of the input image (color, shape, size, texture, objects, background), then explain how the user's text instruction should alter or modify the image. Generate a new image that meets the user's requirements while maintaining consistency with the original input where appropriate.<|im_end|>\n<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>{}<|im_end|>\n<|im_start|>assistant\n"
+        drop_idx = 64
+        txt = [template.format(e) for e in prompt]
+        model_inputs = pipe.processor(text=txt, images=edit_image, padding=True, return_tensors="pt").to(pipe.device)
+        hidden_states = pipe.text_encoder(input_ids=model_inputs.input_ids, attention_mask=model_inputs.attention_mask, pixel_values=model_inputs.pixel_values, image_grid_thw=model_inputs.image_grid_thw, output_hidden_states=True,)[-1]
+        split_hidden_states = self.extract_masked_hidden(hidden_states, model_inputs.attention_mask)
+        split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
+        max_seq_len = max([e.size(0) for e in split_hidden_states])
+        prompt_embeds = torch.stack([torch.cat([u, u.new_zeros(max_seq_len - u.size(0), u.size(1))]) for u in split_hidden_states])
+        prompt_embeds = prompt_embeds.to(dtype=pipe.torch_dtype, device=pipe.device)
+        return prompt_embeds.view(1, -1)
+    
+    def encode_images_using_siglip2(self, pipe: QwenImagePipeline, images: list[Image.Image]):
+        pipe.load_models_to_device(["siglip2_image_encoder"])
+        embs = []
+        for image in images:
+            image = self.processor_highres(image)
+            embs.append(pipe.siglip2_image_encoder(image).to(pipe.torch_dtype))
+        embs = torch.stack(embs)
+        return embs
+    
+    def encode_images_using_dinov3(self, pipe: QwenImagePipeline, images: list[Image.Image]):
+        pipe.load_models_to_device(["dinov3_image_encoder"])
+        embs = []
+        for image in images:
+            image = self.processor_highres(image)
+            embs.append(pipe.dinov3_image_encoder(image).to(pipe.torch_dtype))
+        embs = torch.stack(embs)
+        return embs
+    
+    def encode_images_using_qwenvl(self, pipe: QwenImagePipeline, images: list[Image.Image], highres=False):
+        pipe.load_models_to_device(["text_encoder"])
+        embs = []
+        for image in images:
+            image = self.processor_highres(image) if highres else self.processor_lowres(image)
+            embs.append(self.encode_prompt_edit(pipe, prompt="", edit_image=image))
+        embs = torch.stack(embs)
+        return embs
+
+    def encode_images(self, pipe: QwenImagePipeline, images: list[Image.Image]):
+        if images is None:
+            return {}
+        if not isinstance(images, list):
+            images = [images]
+        embs_siglip2 = self.encode_images_using_siglip2(pipe, images)
+        embs_dinov3 = self.encode_images_using_dinov3(pipe, images)
+        x = torch.concat([embs_siglip2, embs_dinov3], dim=-1)
+        residual = None
+        residual_highres = None
+        if pipe.image2lora_coarse is not None:
+            residual = self.encode_images_using_qwenvl(pipe, images, highres=False)
+        if pipe.image2lora_fine is not None:
+            residual_highres = self.encode_images_using_qwenvl(pipe, images, highres=True)
+        return x, residual, residual_highres
+
+    def process(self, pipe: QwenImagePipeline, image2lora_images):
+        if image2lora_images is None:
+            return {}
+        x, residual, residual_highres = self.encode_images(pipe, image2lora_images)
+        return {"image2lora_x": x, "image2lora_residual": residual, "image2lora_residual_highres": residual_highres}
+
+
+class QwenImageUnit_Image2LoRADecode(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("image2lora_x", "image2lora_residual", "image2lora_residual_highres"),
+            output_params=("lora",),
+            onload_model_names=("image2lora_coarse", "image2lora_fine", "image2lora_style"),
+        )
+    
+    def process(self, pipe: QwenImagePipeline, image2lora_x, image2lora_residual, image2lora_residual_highres):
+        if image2lora_x is None:
+            return {}
+        loras = []
+        if pipe.image2lora_style is not None:
+            pipe.load_models_to_device(["image2lora_style"])
+            for x in image2lora_x:
+                loras.append(pipe.image2lora_style(x=x, residual=None))
+        if pipe.image2lora_coarse is not None:
+            pipe.load_models_to_device(["image2lora_coarse"])
+            for x, residual in zip(image2lora_x, image2lora_residual):
+                loras.append(pipe.image2lora_coarse(x=x, residual=residual))
+        if pipe.image2lora_fine is not None:
+            pipe.load_models_to_device(["image2lora_fine"])
+            for x, residual in zip(image2lora_x, image2lora_residual_highres):
+                loras.append(pipe.image2lora_fine(x=x, residual=residual))
+        lora = merge_lora(loras, alpha=1 / len(image2lora_x))
+        return {"lora": lora}
 
 
 class QwenImageUnit_ContextImageEmbedder(PipelineUnit):
