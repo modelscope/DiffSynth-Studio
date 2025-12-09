@@ -31,6 +31,38 @@ qwen_image_series = [
         "model_class": "diffsynth.models.qwen_image_controlnet.QwenImageBlockWiseControlNet",
         "extra_kwargs": {"additional_in_dim": 4},
     },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="SigLIP2-G384/model.safetensors")
+        "model_hash": "469c78b61e3e31bc9eec0d0af3d3f2f8",
+        "model_name": "siglip2_image_encoder",
+        "model_class": "diffsynth.models.siglip2_image_encoder.Siglip2ImageEncoder",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="DINOv3-7B/model.safetensors")
+        "model_hash": "5722b5c873720009de96422993b15682",
+        "model_name": "dinov3_image_encoder",
+        "model_class": "diffsynth.models.dinov3_image_encoder.DINOv3ImageEncoder",
+    },
+    {
+        # Example: 
+        "model_hash": "a166c33455cdbd89c0888a3645ca5c0f",
+        "model_name": "qwen_image_image2lora_coarse",
+        "model_class": "diffsynth.models.qwen_image_image2lora.QwenImageImage2LoRAModel",
+    },
+    {
+        # Example: 
+        "model_hash": "a5476e691767a4da6d3a6634a10f7408",
+        "model_name": "qwen_image_image2lora_fine",
+        "model_class": "diffsynth.models.qwen_image_image2lora.QwenImageImage2LoRAModel",
+        "extra_kwargs": {"residual_length": 37*37+7, "residual_mid_dim": 64}
+    },
+    {
+        # Example: 
+        "model_hash": "0aad514690602ecaff932c701cb4b0bb",
+        "model_name": "qwen_image_image2lora_style",
+        "model_class": "diffsynth.models.qwen_image_image2lora.QwenImageImage2LoRAModel",
+        "extra_kwargs": {"compress_dim": 64, "use_residual": False}
+    },
 ]
 
 wan_series = [
