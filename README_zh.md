@@ -194,7 +194,7 @@ pip install -e .
 为了确保安装适用于 ROCm 的正确 PyTorch 版本，请使用专用的依赖文件：
 
 ```
-git clone [https://github.com/modelscope/DiffSynth-Studio.git](https://github.com/modelscope/DiffSynth-Studio.git)  
+git clone https://github.com/modelscope/DiffSynth-Studio.git
 cd DiffSynth-Studio
 pip install -r requirements-amd.txt
 ```
