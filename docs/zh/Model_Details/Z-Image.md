@@ -138,4 +138,4 @@ modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir
     * 差分 LoRA 训练（[code](/examples/z_image/model_training/special/differential_training/)） + 加速配置推理
         * 差分 LoRA 训练中需加载一个额外的 LoRA，例如 [ostris/zimage_turbo_training_adapter](https://www.modelscope.cn/models/ostris/zimage_turbo_training_adapter)
     * 标准 SFT 训练（[code](/examples/z_image/model_training/lora/Z-Image-Turbo.sh)）+ 轨迹模仿蒸馏训练（[code](/examples/z_image/model_training/special/trajectory_imitation/)）+ 加速配置推理
-    * 标准 SFT 训练（[code](/examples/z_image/model_training/lora/Z-Image-Turbo.sh)）+ 推理时加载蒸馏加速 LoRA（[model](https://www.modelscope.cn/models/DiffSynth-Studio/Z-Image-Turbo-DistillFix)） + 加速配置推理
+    * 标准 SFT 训练（[code](/examples/z_image/model_training/lora/Z-Image-Turbo.sh)）+ 推理时加载蒸馏加速 LoRA（[model](https://www.modelscope.cn/models/DiffSynth-Studio/Z-Image-Turbo-DistillPatch)） + 加速配置推理
