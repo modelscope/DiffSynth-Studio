@@ -189,6 +189,15 @@ cd DiffSynth-Studio
 pip install -e .
 ```
 
+**AMD ROCm Users：**
+
+To ensure the correct PyTorch version for ROCm is installed, please use the dedicated requirements file:
+
+```
+git clone https://github.com/modelscope/DiffSynth-Studio.git  
+cd DiffSynth-Studio
+pip install -r requirements-amd.txt
+```
 <details>
 <summary>Other installation methods</summary>
 
