@@ -1,10 +1,11 @@
 from diffsynth.pipelines.z_image import ZImagePipeline, ModelConfig
 import torch
+from diffsynth.utils.device import get_device_type
 
 
 pipe = ZImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
-    device="cuda",
+    device=get_device_type(),
     model_configs=[
         ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="transformer/*.safetensors"),
         ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="text_encoder/*.safetensors"),
@@ -13,5 +14,5 @@ pipe = ZImagePipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"),
 )
 prompt = "Young Chinese woman in red Hanfu, intricate embroidery. Impeccable makeup, red floral forehead pattern. Elaborate high bun, golden phoenix headdress, red flowers, beads. Holds round folding fan with lady, trees, bird. Neon lightning-bolt lamp (⚡️), bright yellow glow, above extended left palm. Soft-lit outdoor night background, silhouetted tiered pagoda (西安大雁塔), blurred colorful distant lights."
-image = pipe(prompt=prompt, seed=42, rand_device="cuda")
+image = pipe(prompt=prompt, seed=42, rand_device=get_device_type())
 image.save("image_Z-Image-Turbo.jpg")
