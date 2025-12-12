@@ -1,5 +1,6 @@
 from diffsynth.pipelines.z_image import ZImagePipeline, ModelConfig
 import torch
+from diffsynth.utils.device import get_device_type, get_torch_device, get_device_name
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -7,9 +8,9 @@ vram_config = {
     "onload_dtype": torch.bfloat16,
     "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
+    "preparing_device": get_device_type(),
     "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
+    "computation_device": get_device_name(),
 }
 pipe = ZImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
