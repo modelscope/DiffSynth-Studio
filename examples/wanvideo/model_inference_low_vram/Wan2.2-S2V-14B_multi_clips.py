@@ -68,7 +68,7 @@ def speech_to_video(
             motion_video = torch.cat((motion_video[:,:,overlap_frames_num:,:,:], current_clip_tensor[:,:,-overlap_frames_num:,:,:]), dim=2)
         current_clip_quantized = pipe.vae_output_to_video(current_clip_tensor)
         video.extend(current_clip_quantized)
-        save_video_with_audio(video, save_path, audio_path, fps=16, quality=10)
+        save_video_with_audio(video, save_path, audio_path, fps=16, quality=5)
         print(f"processed the {r+1}th clip of total {num_repeat} clips.")
     return video
 
