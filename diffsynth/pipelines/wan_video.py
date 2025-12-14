@@ -241,6 +241,7 @@ class WanVideoPipeline(BasePipeline):
         tea_cache_model_id: Optional[str] = "",
         # progress_bar
         progress_bar_cmd=tqdm,
+        output_type: Optional[Literal["quantized", "floatpoint"]] = "quantized",
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
@@ -320,9 +321,11 @@ class WanVideoPipeline(BasePipeline):
         # Decode
         self.load_models_to_device(['vae'])
         video = self.vae.decode(inputs_shared["latents"], device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
-        video = self.vae_output_to_video(video)
+        if output_type == "quantized":
+            video = self.vae_output_to_video(video)
+        elif output_type == "floatpoint":
+            pass
         self.load_models_to_device([])
-
         return video
 
 
@@ -823,9 +826,9 @@ class WanVideoUnit_S2V(PipelineUnit):
         pipe.load_models_to_device(["vae"])
         motion_frames = 73
         kwargs = {}
-        if motion_video is not None and len(motion_video) > 0:
-            assert len(motion_video) == motion_frames, f"motion video must have {motion_frames} frames, but got {len(motion_video)}"
-            motion_latents = pipe.preprocess_video(motion_video)
+        if motion_video is not None:
+            assert motion_video.shape[2] == motion_frames, f"motion video must have {motion_frames} frames, but got {motion_video.shape[2]}"
+            motion_latents = motion_video
             kwargs["drop_motion_frames"] = False
         else:
             motion_latents = torch.zeros([1, 3, motion_frames, height, width], dtype=pipe.torch_dtype, device=pipe.device)
