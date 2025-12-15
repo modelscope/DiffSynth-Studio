@@ -31,6 +31,7 @@ graph LR;
 * [显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)
 * [模型训练](/docs/zh/Pipeline_Usage/Model_Training.md)
 * [环境变量](/docs/zh/Pipeline_Usage/Environment_Variables.md)
+* [GPU/NPU 支持](/docs/zh/Pipeline_Usage/GPU_support.md)
 
 ## Section 2: 模型详解
 
