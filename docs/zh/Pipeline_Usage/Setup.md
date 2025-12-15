@@ -36,6 +36,8 @@ Ascend NPU 通过 `torch-npu` 包提供支持，以 `2.1.0.post17` 版本（本�
 pip install torch-npu==2.1.0.post17
 ```
 
+使用 Ascend NPU 时，请将 Python 代码中的 `"cuda"` 改为 `"npu"`，详见[NPU 支持](/docs/zh/Pipeline_Usage/GPU_support.md#ascend-npu)。
+
 ## 其他安装问题
 
 如果在安装过程中遇到问题，可能是由上游依赖包导致的，请参考这些包的文档：

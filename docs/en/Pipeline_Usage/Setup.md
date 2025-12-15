@@ -36,6 +36,8 @@ Ascend NPU support is provided via the `torch-npu` package. Taking version `2.1.
 pip install torch-npu==2.1.0.post17
 ```
 
+When using Ascend NPU, please replace `"cuda"` with `"npu"` in your Python code. For details, see [NPU Support](/docs/en/Pipeline_Usage/GPU_support.md#ascend-npu).
+
 ## Other Installation Issues
 
 If you encounter issues during installation, they may be caused by upstream dependencies. Please refer to the documentation for these packages:

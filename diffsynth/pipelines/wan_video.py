@@ -126,7 +126,7 @@ class WanVideoPipeline(BasePipeline):
         pipe = WanVideoPipeline(device=device, torch_dtype=torch_dtype)
         if use_usp:
             from ..utils.xfuser import initialize_usp
-            initialize_usp()
+            initialize_usp(device)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
         
         # Fetch models
