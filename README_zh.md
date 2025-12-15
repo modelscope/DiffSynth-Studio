@@ -189,21 +189,7 @@ cd DiffSynth-Studio
 pip install -e .
 ```
 
-<details>
-<summary>其他安装方式</summary>
-
-从 pypi 安装（存在版本更新延迟，如需使用最新功能，请从源码安装）
-
-```
-pip install diffsynth
-```
-
-如果在安装过程中遇到问题，可能是由上游依赖包导致的，请参考这些包的文档：
-
-* [torch](https://pytorch.org/get-started/locally/)
-* [sentencepiece](https://github.com/google/sentencepiece)
-* [cmake](https://cmake.org)
-* [cupy](https://docs.cupy.dev/en/stable/install.html)
+更多安装方式，以及非 NVIDIA GPU 的安装，请参考[安装文档](/docs/zh/Pipeline_Usage/Setup.md)。
 
 </details>
 

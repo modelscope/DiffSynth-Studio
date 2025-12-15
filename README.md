@@ -189,21 +189,7 @@ cd DiffSynth-Studio
 pip install -e .
 ```
 
-<details>
-<summary>Other installation methods</summary>
-
-Install from PyPI (version updates may be delayed; for latest features, install from source)
-
-```
-pip install diffsynth
-```
-
-If you meet problems during installation, they might be caused by upstream dependencies. Please check the docs of these packages:
-
-* [torch](https://pytorch.org/get-started/locally/)
-* [sentencepiece](https://github.com/google/sentencepiece)
-* [cmake](https://cmake.org)
-* [cupy](https://docs.cupy.dev/en/stable/install.html)
+For more installation methods and instructions for non-NVIDIA GPUs, please refer to the [Installation Guide](/docs/en/Pipeline_Usage/Setup.md).
 
 </details>
 
