@@ -14,8 +14,33 @@ pip install -e .
 pip install diffsynth
 ```
 
+## GPU/NPU 支持
+
+* NVIDIA GPU
+
+按照以上方式安装即可。
+
+* AMD GPU
+
+需安装支持 ROCm 的 `torch` 包，以 ROCm 6.4（本文更新于 2025 年 12 月 15 日）、Linux 系统为例，请运行以下命令
+
+```shell
+pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6.4
+```
+
+* Ascend NPU
+
+Ascend NPU 通过 `torch-npu` 包提供支持，以 `2.1.0.post17` 版本（本文更新于 2025 年 12 月 15 日）为例，请运行以下命令
+
+```shell
+pip install torch-npu==2.1.0.post17
+```
+
+## 其他安装问题
+
 如果在安装过程中遇到问题，可能是由上游依赖包导致的，请参考这些包的文档：
 
 * [torch](https://pytorch.org/get-started/locally/)
+* [Ascend/pytorch](https://github.com/Ascend/pytorch)
 * [sentencepiece](https://github.com/google/sentencepiece)
 * [cmake](https://cmake.org)
