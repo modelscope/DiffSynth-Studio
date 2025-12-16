@@ -46,7 +46,7 @@ pipe = WanVideoPipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
 -   vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
-+   vram_limit=torch.npu.mem_get_info("npu")[1] / (1024 ** 3) - 2,
++   vram_limit=torch.npu.mem_get_info("npu:0")[1] / (1024 ** 3) - 2,
 )
 
 video = pipe(
