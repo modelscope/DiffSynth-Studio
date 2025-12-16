@@ -177,7 +177,8 @@ class BasePipeline(torch.nn.Module):
 
         
     def get_vram(self):
-        return getattr(torch, self.device_type).mem_get_info(self.device)[1] / (1024 ** 3)
+        device = self.device if self.device != "npu" else "npu:0"
+        return getattr(torch, self.device_type).mem_get_info(device)[1] / (1024 ** 3)
     
     def get_module(self, model, name):
         if "." in name:
