@@ -20,6 +20,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         offload_models=None,
         device="cpu",
         task="sft",
+        zero_cond_t=False,
     ):
         super().__init__()
         # Load models
@@ -43,6 +44,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         self.extra_inputs = extra_inputs.split(",") if extra_inputs is not None else []
         self.fp8_models = fp8_models
         self.task = task
+        self.zero_cond_t = zero_cond_t
         self.task_to_loss = {
             "sft:data_process": lambda pipe, *args: args,
             "direct_distill:data_process": lambda pipe, *args: args,
@@ -68,6 +70,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
             "edit_image_auto_resize": True,
+            "zero_cond_t": self.zero_cond_t,
         }
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
         return inputs_shared, inputs_posi, inputs_nega
@@ -87,6 +90,7 @@ def qwen_image_parser():
     parser = add_image_size_config(parser)
     parser.add_argument("--tokenizer_path", type=str, default=None, help="Path to tokenizer.")
     parser.add_argument("--processor_path", type=str, default=None, help="Path to the processor. If provided, the processor will be used for image editing.")
+    parser.add_argument("--zero_cond_t", default=False, action="store_true", help="A special parameter introduced by Qwen-Image-Edit-2511. Please enable it for this model.")
     return parser
 
 
@@ -130,6 +134,7 @@ if __name__ == "__main__":
         offload_models=args.offload_models,
         task=args.task,
         device=accelerator.device,
+        zero_cond_t=args.zero_cond_t,
     )
     model_logger = ModelLogger(
         args.output_path,
