@@ -63,6 +63,20 @@ qwen_image_series = [
         "model_class": "diffsynth.models.qwen_image_image2lora.QwenImageImage2LoRAModel",
         "extra_kwargs": {"compress_dim": 64, "use_residual": False}
     },
+    {
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image-Layered", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        "model_hash": "8dc8cda05de16c73afa755e2c1ce2839",
+        "model_name": "qwen_image_dit",
+        "model_class": "diffsynth.models.qwen_image_dit.QwenImageDiT",
+        "extra_kwargs": {"use_layer3d_rope": True, "use_additional_t_cond": True}
+    },
+    {
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image-Layered", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "44b39ddc499e027cfb24f7878d7416b9",
+        "model_name": "qwen_image_vae",
+        "model_class": "diffsynth.models.qwen_image_vae.QwenImageVAE",
+        "extra_kwargs": {"image_channels": 4}
+    },
 ]
 
 wan_series = [

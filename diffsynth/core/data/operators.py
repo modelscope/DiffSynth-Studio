@@ -53,12 +53,14 @@ class ToStr(DataProcessingOperator):
 
 
 class LoadImage(DataProcessingOperator):
-    def __init__(self, convert_RGB=True):
+    def __init__(self, convert_RGB=True, convert_RGBA=False):
         self.convert_RGB = convert_RGB
+        self.convert_RGBA = convert_RGBA
     
     def __call__(self, data: str):
         image = Image.open(data)
         if self.convert_RGB: image = image.convert("RGB")
+        if self.convert_RGBA: image = image.convert("RGBA")
         return image
 
 

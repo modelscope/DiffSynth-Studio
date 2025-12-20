@@ -2,6 +2,7 @@ import torch, os, argparse, accelerate
 from diffsynth.core import UnifiedDataset
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 from diffsynth.diffusion import *
+from diffsynth.core.data.operators import *
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -58,11 +59,6 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         inputs_posi = {"prompt": data["prompt"]}
         inputs_nega = {"negative_prompt": ""}
         inputs_shared = {
-            # Assume you are using this pipeline for inference,
-            # please fill in the input parameters.
-            "input_image": data["image"],
-            "height": data["image"].size[1],
-            "width": data["image"].size[0],
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
             "cfg_scale": 1,
@@ -72,6 +68,20 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
             "edit_image_auto_resize": True,
             "zero_cond_t": self.zero_cond_t,
         }
+        # Assume you are using this pipeline for inference,
+        # please fill in the input parameters.
+        if isinstance(data["image"], list):
+            inputs_shared.update({
+                "input_image": data["image"],
+                "height": data["image"][0].size[1],
+                "width": data["image"][0].size[0],
+            })
+        else:
+            inputs_shared.update({
+                "input_image": data["image"],
+                "height": data["image"].size[1],
+                "width": data["image"].size[0],
+            })
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
         return inputs_shared, inputs_posi, inputs_nega
     
@@ -113,7 +123,15 @@ if __name__ == "__main__":
             width=args.width,
             height_division_factor=16,
             width_division_factor=16,
-        )
+        ),
+        special_operator_map={
+            # Qwen-Image-Layered
+            "layer_input_image": ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16),
+            "image": RouteByType(operator_map=[
+                (str, ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16)),
+                (list, SequencialProcess(ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16))),
+            ])
+        }
     )
     model = QwenImageTrainingModule(
         model_paths=args.model_paths,
