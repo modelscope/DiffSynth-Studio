@@ -762,7 +762,7 @@ def model_fn_qwen_image(
     conditioning = dit.time_text_embed(
         timestep,
         image.dtype,
-        addition_t_cond=None if layer_num is None else torch.tensor([0]).to(device=image.device, dtype=torch.long)
+        addition_t_cond=None if not dit.time_text_embed.use_additional_t_cond else torch.tensor([0]).to(device=image.device, dtype=torch.long)
     )
 
     if entity_prompt_emb is not None:

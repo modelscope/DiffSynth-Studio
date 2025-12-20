@@ -18,9 +18,11 @@ state_dict = load_state_dict("models/train/Qwen-Image-Layered_full/epoch-1.safet
 pipe.dit.load_state_dict(state_dict)
 prompt = "a poster"
 input_image = Image.open("data/example_image_dataset/layer/image.png").convert("RGBA").resize((864, 480))
-image = pipe(
+images = pipe(
     prompt, seed=0,
     height=480, width=864,
     layer_input_image=input_image, layer_num=3,
 )
-image.save("image.jpg")
+for i, image in enumerate(images):
+    if i == 0: continue # The first image is the input image.
+    image.save(f"image_{i}.png")

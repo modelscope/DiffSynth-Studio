@@ -87,6 +87,7 @@ class TimestepEmbeddings(torch.nn.Module):
             self.timestep_embedder = torch.nn.Sequential(
                 torch.nn.Linear(dim_in, dim_out), torch.nn.SiLU(), torch.nn.Linear(dim_out, dim_out)
             )
+        self.use_additional_t_cond = use_additional_t_cond
         if use_additional_t_cond:
             self.addition_t_embedding = torch.nn.Embedding(2, dim_out)
 
