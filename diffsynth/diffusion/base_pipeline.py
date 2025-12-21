@@ -155,7 +155,10 @@ class BasePipeline(torch.nn.Module):
                             for module in model.modules():
                                 if hasattr(module, "offload"):
                                     module.offload()
-            getattr(torch, self.device_type).empty_cache()
+            # Clear cache if available (only CUDA has empty_cache)
+            device_module = getattr(torch, self.device_type, None)
+            if device_module is not None and hasattr(device_module, "empty_cache"):
+                device_module.empty_cache()
             # onload models
             for name, model in self.named_children():
                 if name in model_names:
