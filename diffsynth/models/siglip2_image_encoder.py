@@ -47,7 +47,10 @@ class Siglip2ImageEncoder(SiglipVisionTransformer):
             }
         )
         
-    def forward(self, image, torch_dtype=torch.bfloat16, device="cuda"):
+    def forward(self, image, torch_dtype=torch.bfloat16, device=None):
+        # Use model's device if not specified
+        if device is None:
+            device = next(self.parameters()).device
         pixel_values = self.processor(images=[image], return_tensors="pt")["pixel_values"]
         pixel_values = pixel_values.to(device=device, dtype=torch_dtype)
         output_attentions = False

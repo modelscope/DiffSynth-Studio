@@ -70,7 +70,10 @@ class DINOv3ImageEncoder(DINOv3ViTModel):
             }
         )
         
-    def forward(self, image, torch_dtype=torch.bfloat16, device="cuda"):
+    def forward(self, image, torch_dtype=torch.bfloat16, device=None):
+        # Use model's device if not specified
+        if device is None:
+            device = next(self.parameters()).device
         inputs = self.processor(images=image, return_tensors="pt")
         pixel_values = inputs["pixel_values"].to(dtype=torch_dtype, device=device)
         bool_masked_pos = None
