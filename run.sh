@@ -1,0 +1,14 @@
+accelerate launch train.py \
+  --dataset_base_path "" \
+  --dataset_metadata_path data/metadata_sampled_110w.csv \
+  --model_paths "models/train/Z-Image-i2L_v12/model.safetensors" \
+  --max_pixels 1048576 \
+  --dataset_repeat 100 \
+  --learning_rate 1e-5 \
+  --num_epochs 10000 \
+  --remove_prefix_in_ckpt "pipe.image2lora_style." \
+  --output_path "./models/train/Z-Image-i2L_v13" \
+  --trainable_models "image2lora_style" \
+  --dataset_num_workers 2 \
+  --use_gradient_checkpointing \
+  --save_steps 1000

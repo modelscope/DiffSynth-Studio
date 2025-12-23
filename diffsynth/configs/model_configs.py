@@ -513,6 +513,26 @@ z_image_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_vae.FluxVAEDecoderStateDictConverterDiffusers",
         "extra_kwargs": {"use_conv_attention": False},
     },
+    {
+        # Example: ???
+        "model_hash": "4f04fa4db33673882c675f426bf42602",
+        "model_name": "z_image_image2lora_style",
+        "model_class": "diffsynth.models.z_image_image2lora.ZImageImage2LoRAModel",
+    },
+    {
+        # Example: ???
+        "model_hash": "9510cb8cd1dd34ee0e4f111c24905510",
+        "model_name": "z_image_image2lora_style",
+        "model_class": "diffsynth.models.z_image_image2lora.ZImageImage2LoRAModel",
+        "extra_kwargs": {"compress_dim": 128},
+    },
+    {
+        # Example: ???
+        "model_hash": "cd7427f65cd4cc8092c00c373e2e0a23",
+        "model_name": "z_image_image2lora_style",
+        "model_class": "diffsynth.models.z_image_image2lora.ZImageImage2LoRAModel",
+        "extra_kwargs": {"compress_dim": 256},
+    },
 ]
 
 MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series
