@@ -10,6 +10,8 @@ authors = [{name = "ModelScope Team"}]
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
 dependencies = [
+    "torch>=2.0.0",
+    "torchvision",
     "transformers",
     "imageio",
     "imageio[ffmpeg]",
@@ -31,10 +33,6 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-gpu = [
-    "torch>=2.0.0",
-    "torchvision"
-]
 npu_aarch64 = [
     "torch==2.7.1",
     "torch-npu==2.7.1",
