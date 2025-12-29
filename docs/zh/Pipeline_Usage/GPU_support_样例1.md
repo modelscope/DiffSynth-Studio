@@ -61,7 +61,7 @@ save_video(video, "video.mp4", fps=15, quality=5)
 ### 训练
 当前已为每类模型添加NPU的启动脚本样例，例如 `examples/wanvideo/model_training/full/Wan2.2-I2V-A14B-NPU.sh`
 
-NPU训练脚本中添加了优化性能的环境变量，针对特定模型，还添加一些参数
+NPU训练脚本中添加了优化性能的环境变量，针对特定模型，还需添加必要参数
 
 #### 环境变量
 ```

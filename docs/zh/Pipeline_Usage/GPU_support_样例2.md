@@ -59,7 +59,7 @@ save_video(video, "video.mp4", fps=15, quality=5)
 ```
 
 ### 训练
-使用 Ascend NPU 时，可以添加优化性能的环境变量，针对特定模型，还需添加参数
+使用 Ascend NPU 时，可以添加优化性能的环境变量，针对特定模型，还需添加必要参数
 
 例如，Wan2.2-I2V-A14B 的训练代码：
 ```diff
