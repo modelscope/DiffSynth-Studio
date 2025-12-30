@@ -7,6 +7,7 @@ from ..core import AutoTorchModule, AutoWrappedLinear, load_state_dict, ModelCon
 from ..utils.lora import GeneralLoRALoader
 from ..models.model_loader import ModelPool
 from ..utils.controlnet import ControlNetInput
+from ..core.device import get_device_name, IS_NPU_AVAILABLE
 
 
 class PipelineUnit:
@@ -177,7 +178,7 @@ class BasePipeline(torch.nn.Module):
 
         
     def get_vram(self):
-        device = self.device if self.device != "npu" else "npu:0"
+        device = self.device if not IS_NPU_AVAILABLE else get_device_name()
         return getattr(torch, self.device_type).mem_get_info(device)[1] / (1024 ** 3)
     
     def get_module(self, model, name):
