@@ -34,5 +34,17 @@ classifiers = [
 
 [tool.setuptools.packages.find]
 
+[project.optional-dependencies]
+npu_aarch64 = [
+    "torch==2.7.1",
+    "torch-npu==2.7.1",
+    "torchvision==0.22.1"
+]
+npu = [
+    "torch==2.7.1+cpu",
+    "torch-npu==2.7.1",
+    "torchvision==0.22.1+cpu"
+]
+
 [tool.setuptools]
 include-package-data = true
