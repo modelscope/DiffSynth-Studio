@@ -1,4 +1,3 @@
-# This example is tested on 8*A100
 export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
 export CPU_AFFINITY_CONF=1
 

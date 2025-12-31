@@ -59,7 +59,7 @@ save_video(video, "video.mp4", fps=15, quality=5)
 ```
 
 ### Training
-NPU startup script samples have been added for each type of model,the scripts are stored in the `examples/xxx/special/npu_scripts`, for examples `examples/wanvideo/model_training/special/npu_scripts/Wan2.2-T2V-A14B-NPU.sh`.
+NPU startup script samples have been added for each type of model,the scripts are stored in the `examples/xxx/special/npu_scripts`, for example `examples/wanvideo/model_training/special/npu_scripts/Wan2.2-T2V-A14B-NPU.sh`.
 
 In the NPU training scripts, NPU specific environment variables that can optimize performance have been added, and relevant parameters have been enabled for specific models.
 
@@ -79,6 +79,6 @@ Set 0 or not set: indicates not enabling the binding function
 2: Indicates enabling fine-grained kernel binding
 
 #### Parameters for specific models
-| Model     | Parameter                 | Note              |
-|-----------|---------------------------|-------------------|
-| Wan 14B系列 | --initialize_model_on_cpu | The 14B model needs to be initialized on the CPU |
+| Model          | Parameter                 | Note              |
+|----------------|---------------------------|-------------------|
+| Wan 14B series | --initialize_model_on_cpu | The 14B model needs to be initialized on the CPU |

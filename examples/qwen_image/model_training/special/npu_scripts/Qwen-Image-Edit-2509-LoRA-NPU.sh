@@ -21,7 +21,7 @@ accelerate launch examples/qwen_image/model_training/train.py \
   --task "sft:data_process"
 
 accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path "./models/train/Qwen-Image-LoRA-splited-cache" \
+  --dataset_base_path "./models/train/Qwen-Image-Edit-2509-LoRA-splited-cache" \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
   --model_id_with_origin_paths "Qwen/Qwen-Image-Edit-2509:transformer/diffusion_pytorch_model*.safetensors" \
