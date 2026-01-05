@@ -90,12 +90,10 @@ class Siglip2ImageEncoder428M(Siglip2VisionModel):
         super().__init__(config)
         self.processor = Siglip2ImageProcessorFast(
             **{
-                "crop_size": None,
                 "data_format": "channels_first",
                 "default_to_square": True,
                 "device": None,
                 "disable_grouping": None,
-                "do_center_crop": None,
                 "do_convert_rgb": None,
                 "do_normalize": True,
                 "do_pad": None,
@@ -120,7 +118,6 @@ class Siglip2ImageEncoder428M(Siglip2VisionModel):
                 "resample": 2,
                 "rescale_factor": 0.00392156862745098,
                 "return_tensors": None,
-                "size": None
             }
         )
         

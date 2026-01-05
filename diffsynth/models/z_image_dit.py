@@ -626,7 +626,7 @@ class ZImageDiT(nn.Module):
 
         # Pad token
         feats_cat = torch.cat(feats, dim=0)
-        feats_cat[torch.cat(inner_pad_mask)] = pad_token
+        feats_cat[torch.cat(inner_pad_mask)] = pad_token.to(dtype=feats_cat.dtype, device=feats_cat.device)
         feats = list(feats_cat.split(item_seqlens, dim=0))
 
         # RoPE
