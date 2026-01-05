@@ -318,6 +318,13 @@ flux_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
     },
     {
+        # Supported due to historical reasons.
+        "model_hash": "605c56eab23e9e2af863ad8f0813a25d",
+        "model_name": "flux_dit",
+        "model_class": "diffsynth.models.flux_dit.FluxDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverterFromDiffusers",
+    },
+    {
         # Example: ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors")
         "model_hash": "94eefa3dac9cec93cb1ebaf1747d7b78",
         "model_name": "flux_text_encoder_clip",
