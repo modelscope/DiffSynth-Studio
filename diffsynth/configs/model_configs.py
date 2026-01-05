@@ -527,6 +527,19 @@ z_image_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_vae.FluxVAEDecoderStateDictConverterDiffusers",
         "extra_kwargs": {"use_conv_attention": False},
     },
+    {
+        # Example: ModelConfig(model_id="Tongyi-MAI/Z-Image-Omni-Base", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "aa3563718e5c3ecde3dfbb020ca61180",
+        "model_name": "z_image_dit",
+        "model_class": "diffsynth.models.z_image_dit.ZImageDiT",
+        "extra_kwargs": {"siglip_feat_dim": 1152},
+    },
+    {
+        # Example: ModelConfig(model_id="Tongyi-MAI/Z-Image-Omni-Base", origin_file_pattern="siglip/model.safetensors")
+        "model_hash": "89d48e420f45cff95115a9f3e698d44a",
+        "model_name": "siglip_vision_model_428m",
+        "model_class": "diffsynth.models.siglip2_image_encoder.Siglip2ImageEncoder428M",
+    },
 ]
 
 MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series
