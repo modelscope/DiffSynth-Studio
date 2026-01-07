@@ -540,6 +540,12 @@ z_image_series = [
         "model_name": "siglip_vision_model_428m",
         "model_class": "diffsynth.models.siglip2_image_encoder.Siglip2ImageEncoder428M",
     },
+    {
+        # ModelConfig(model_id="PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1", origin_file_pattern="Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.safetensors")
+        "model_hash": "1677708d40029ab380a95f6c731a57d7",
+        "model_name": "z_image_controlnet",
+        "model_class": "diffsynth.models.z_image_controlnet.ZImageControlNet",
+    }
 ]
 
 MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series

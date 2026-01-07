@@ -195,4 +195,8 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "diffsynth.models.z_image_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.z_image_controlnet.ZImageControlNet": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "diffsynth.models.z_image_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
 }
