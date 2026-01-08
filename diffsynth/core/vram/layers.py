@@ -64,7 +64,11 @@ class AutoTorchModule(torch.nn.Module):
 
     def check_free_vram(self):
         device = self.computation_device if self.computation_device != "npu" else "npu:0"
-        gpu_mem_state = getattr(torch, self.computation_device_type).mem_get_info(device)
+        device_module = getattr(torch, self.computation_device_type, None)
+        # Only CUDA and NPU have mem_get_info, for MPS/CPU assume enough memory
+        if device_module is None or not hasattr(device_module, "mem_get_info"):
+            return True
+        gpu_mem_state = device_module.mem_get_info(device)
         used_memory = (gpu_mem_state[1] - gpu_mem_state[0]) / (1024**3)
         return used_memory < self.vram_limit
 
