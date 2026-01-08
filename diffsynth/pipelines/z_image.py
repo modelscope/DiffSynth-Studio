@@ -601,7 +601,9 @@ def model_fn_z_image_turbo(
     if control_context is not None:
         kwargs = dict(attn_mask=None, freqs_cis=x_freqs_cis, adaln_input=t_noisy)
         refiner_hints, control_context, control_context_item_seqlens = controlnet.forward_refiner(
-            dit, x, [cap_feats], control_context, kwargs, t=t_noisy, patch_size=2, f_patch_size=1)
+            dit, x, [cap_feats], control_context, kwargs, t=t_noisy, patch_size=2, f_patch_size=1,
+            use_gradient_checkpointing=use_gradient_checkpointing, use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+        )
     
     for layer_id, layer in enumerate(dit.noise_refiner):
         x = gradient_checkpoint_forward(
@@ -640,7 +642,9 @@ def model_fn_z_image_turbo(
     if control_context is not None:
         kwargs = dict(attn_mask=None, freqs_cis=unified_freqs_cis, adaln_input=t_noisy)
         hints = controlnet.forward_layers(
-            unified, cap_feats, control_context, control_context_item_seqlens, kwargs)
+            unified, cap_feats, control_context, control_context_item_seqlens, kwargs,
+            use_gradient_checkpointing=use_gradient_checkpointing, use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+        )
 
     for layer_id, layer in enumerate(dit.layers):
         unified = gradient_checkpoint_forward(

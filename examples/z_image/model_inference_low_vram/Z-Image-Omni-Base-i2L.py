@@ -37,11 +37,11 @@ pipe = ZImagePipeline.from_pretrained(
 
 # Load images
 snapshot_download(
-    model_id="DiffSynth-Studio/Qwen-Image-i2L",
+    model_id="DiffSynth-Studio/Z-Image-Omni-Base-i2L",
     allow_file_pattern="assets/style/*",
-    local_dir="data/examples"
+    local_dir="data/style_input"
 )
-images = [Image.open(f"data/style/1/{i}.jpg") for i in range(5)]
+images = [Image.open(f"data/style_input/assets/style/1/{i}.jpg") for i in range(6)]
 
 # Image to LoRA
 with torch.no_grad():
