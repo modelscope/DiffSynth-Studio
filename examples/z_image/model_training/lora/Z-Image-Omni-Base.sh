@@ -13,6 +13,7 @@ accelerate launch examples/z_image/model_training/train.py \
   --lora_target_modules "to_q,to_k,to_v,to_out.0,w1,w2,w3" \
   --lora_rank 32 \
   --use_gradient_checkpointing \
+  --find_unused_parameters \
   --dataset_num_workers 8
 
 # Image(s) to image training
@@ -32,4 +33,5 @@ accelerate launch examples/z_image/model_training/train.py \
 #   --lora_target_modules "to_q,to_k,to_v,to_out.0,w1,w2,w3" \
 #   --lora_rank 32 \
 #   --use_gradient_checkpointing \
+#   --find_unused_parameters \
 #   --dataset_num_workers 8

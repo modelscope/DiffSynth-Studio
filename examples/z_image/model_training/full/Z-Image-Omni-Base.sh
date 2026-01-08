@@ -12,6 +12,7 @@ accelerate launch --config_file examples/z_image/model_training/full/accelerate_
   --output_path "./models/train/Z-Image-Omni-Base_full" \
   --trainable_models "dit" \
   --use_gradient_checkpointing \
+  --find_unused_parameters \
   --dataset_num_workers 8
 
 # Image(s) to image training
@@ -29,4 +30,5 @@ accelerate launch --config_file examples/z_image/model_training/full/accelerate_
 #   --output_path "./models/train/Z-Image-Omni-Base_full_edit" \
 #   --trainable_models "dit" \
 #   --use_gradient_checkpointing \
+#   --find_unused_parameters \
 #   --dataset_num_workers 8
