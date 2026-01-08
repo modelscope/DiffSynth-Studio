@@ -534,6 +534,32 @@ z_image_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_vae.FluxVAEDecoderStateDictConverterDiffusers",
         "extra_kwargs": {"use_conv_attention": False},
     },
+    {
+        # Example: ModelConfig(model_id="Tongyi-MAI/Z-Image-Omni-Base", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "aa3563718e5c3ecde3dfbb020ca61180",
+        "model_name": "z_image_dit",
+        "model_class": "diffsynth.models.z_image_dit.ZImageDiT",
+        "extra_kwargs": {"siglip_feat_dim": 1152},
+    },
+    {
+        # Example: ModelConfig(model_id="Tongyi-MAI/Z-Image-Omni-Base", origin_file_pattern="siglip/model.safetensors")
+        "model_hash": "89d48e420f45cff95115a9f3e698d44a",
+        "model_name": "siglip_vision_model_428m",
+        "model_class": "diffsynth.models.siglip2_image_encoder.Siglip2ImageEncoder428M",
+    },
+    {
+        # Example: ModelConfig(model_id="PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1", origin_file_pattern="Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.safetensors")
+        "model_hash": "1677708d40029ab380a95f6c731a57d7",
+        "model_name": "z_image_controlnet",
+        "model_class": "diffsynth.models.z_image_controlnet.ZImageControlNet",
+    },
+    {
+        # Example: ???
+        "model_hash": "9510cb8cd1dd34ee0e4f111c24905510",
+        "model_name": "z_image_image2lora_style",
+        "model_class": "diffsynth.models.z_image_image2lora.ZImageImage2LoRAModel",
+        "extra_kwargs": {"compress_dim": 128},
+    },
 ]
 
 MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series

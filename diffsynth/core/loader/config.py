@@ -97,6 +97,7 @@ class ModelConfig:
         self.reset_local_model_path()
         if self.require_downloading():
             self.download()
+        if self.path is None:
             if self.origin_file_pattern is None or self.origin_file_pattern == "":
                 self.path = os.path.join(self.local_model_path, self.model_id)
             else:
