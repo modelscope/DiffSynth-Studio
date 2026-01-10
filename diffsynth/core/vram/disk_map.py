@@ -30,6 +30,9 @@ class DiskMap:
     def __init__(self, path, device, torch_dtype=None, state_dict_converter=None, buffer_size=10**9):
         self.path = path if isinstance(path, list) else [path]
         self.device = device
+        import torch.distributed as dist
+        if dist.is_available() and dist.is_initialized() and str(self.device).strip() == "cuda":
+            self.device = f"cuda:{torch.cuda.current_device()}"
         self.torch_dtype = torch_dtype
         if os.environ.get('DIFFSYNTH_DISK_MAP_BUFFER_SIZE') is not None:
             self.buffer_size = int(os.environ.get('DIFFSYNTH_DISK_MAP_BUFFER_SIZE'))
@@ -44,9 +47,6 @@ class DiskMap:
         self.rename_dict = self.fetch_rename_dict(state_dict_converter)
         
     def flush_files(self):
-        import torch.distributed as dist
-        if dist.is_available() and dist.is_initialized() and str(self.device).strip() == "cuda":
-            self.device = f"cuda:{torch.cuda.current_device()}"
         if len(self.files) == 0:
             for path in self.path:
                 if path.endswith(".safetensors"):
