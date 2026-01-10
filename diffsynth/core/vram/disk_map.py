@@ -44,6 +44,9 @@ class DiskMap:
         self.rename_dict = self.fetch_rename_dict(state_dict_converter)
         
     def flush_files(self):
+        import torch.distributed as dist
+        if dist.is_available() and dist.is_initialized() and str(self.device).strip() == "cuda":
+            self.device = f"cuda:{torch.cuda.current_device()}"
         if len(self.files) == 0:
             for path in self.path:
                 if path.endswith(".safetensors"):
