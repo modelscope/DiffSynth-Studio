@@ -34,7 +34,7 @@ classifiers = [
 
 [tool.setuptools.packages.find]
 where = ["./"]
-include = ["diffsynth"]
+include = ["diffsynth*"]
 
 [tool.setuptools]
 include-package-data = true
