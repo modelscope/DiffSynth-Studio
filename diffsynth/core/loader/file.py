@@ -15,6 +15,10 @@ def load_state_dict(file_path, torch_dtype=None, device="cpu"):
 
 
 def load_state_dict_from_safetensors(file_path, torch_dtype=None, device="cpu"):
+    import torch.distributed as dist
+    from diffsynth.core.device.npu_compatible_device import get_device_name, IS_NPU_AVAILABLE, IS_CUDA_AVAILABLE
+    if dist.is_available() and dist.is_initialized() and (IS_CUDA_AVAILABLE or IS_NPU_AVAILABLE):
+        device = get_device_name()
     state_dict = {}
     with safe_open(file_path, framework="pt", device=str(device)) as f:
         for k in f.keys():

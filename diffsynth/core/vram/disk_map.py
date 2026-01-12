@@ -28,11 +28,12 @@ class SafetensorsCompatibleBinaryLoader:
 class DiskMap:
 
     def __init__(self, path, device, torch_dtype=None, state_dict_converter=None, buffer_size=10**9):
+        import torch.distributed as dist
+        from diffsynth.core.device.npu_compatible_device import get_device_name, IS_NPU_AVAILABLE, IS_CUDA_AVAILABLE
+        if dist.is_available() and dist.is_initialized() and (IS_CUDA_AVAILABLE or IS_NPU_AVAILABLE):
+            device = get_device_name()
         self.path = path if isinstance(path, list) else [path]
         self.device = device
-        import torch.distributed as dist
-        if dist.is_available() and dist.is_initialized() and str(self.device).strip() == "cuda":
-            self.device = f"cuda:{torch.cuda.current_device()}"
         self.torch_dtype = torch_dtype
         if os.environ.get('DIFFSYNTH_DISK_MAP_BUFFER_SIZE') is not None:
             self.buffer_size = int(os.environ.get('DIFFSYNTH_DISK_MAP_BUFFER_SIZE'))
