@@ -34,7 +34,7 @@ classifiers = [
 
 [tool.setuptools.packages.find]
 where = ["./"]
-include = ["diffsynth"]
+include = ["diffsynth", "diffsynth.*"]
 
 [project.optional-dependencies]
 npu_aarch64 = [
