@@ -30,11 +30,16 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6
 
 * **Ascend NPU**
 
-Ascend NPU support is provided via the `torch-npu` package. Taking version `2.1.0.post17` (as of the article update date: December 15, 2025) as an example, run the following command:
+1. Install [CANN](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/softwareinst/instg/instg_quick.html?Mode=PmIns&InstallType=local&OS=openEuler&Software=cannToolKit) through official documentation.
 
-```shell
-pip install torch-npu==2.1.0.post17
-```
+2. Install from source
+   ```shell
+   git clone https://github.com/modelscope/DiffSynth-Studio.git
+   cd DiffSynth-Studio
+   # aarch64/ARM
+   pip install -e .[npu_aarch64] --extra-index-url "https://download.pytorch.org/whl/cpu"
+   # x86
+   pip install -e .[npu]
 
 When using Ascend NPU, please replace `"cuda"` with `"npu"` in your Python code. For details, see [NPU Support](/docs/en/Pipeline_Usage/GPU_support.md#ascend-npu).
 
