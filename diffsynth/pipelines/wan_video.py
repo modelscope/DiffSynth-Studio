@@ -126,8 +126,8 @@ class WanVideoPipeline(BasePipeline):
             from ..utils.xfuser import initialize_usp
             initialize_usp(device)
             import torch.distributed as dist
-            from ..core.device.npu_compatible_device import get_device_name, IS_NPU_AVAILABLE, IS_CUDA_AVAILABLE
-            if dist.is_available() and dist.is_initialized() and (IS_CUDA_AVAILABLE or IS_NPU_AVAILABLE):
+            from ..core.device.npu_compatible_device import get_device_name
+            if dist.is_available() and dist.is_initialized():
                 device = get_device_name()
         # Initialize pipeline
         pipe = WanVideoPipeline(device=device, torch_dtype=torch_dtype)
