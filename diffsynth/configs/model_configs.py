@@ -481,6 +481,13 @@ flux_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
         "extra_kwargs": {"disable_guidance_embedder": True},
     },
+    {
+        # Example: ModelConfig(model_id="MAILAND/majicflus_v1", origin_file_pattern="majicflus_v134.safetensors")
+        "model_hash": "3394f306c4cbf04334b712bf5aaed95f",
+        "model_name": "flux_dit",
+        "model_class": "diffsynth.models.flux_dit.FluxDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
+    },
 ]
 
 flux2_series = [
