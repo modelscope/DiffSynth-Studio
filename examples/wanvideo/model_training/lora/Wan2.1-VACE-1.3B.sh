@@ -1,10 +1,10 @@
 accelerate launch examples/wanvideo/model_training/train.py \
-  --dataset_base_path data/example_video_dataset \
-  --dataset_metadata_path data/example_video_dataset/metadata_vace.csv \
-  --data_file_keys "video,vace_video,vace_reference_image" \
+  --dataset_base_path /mnt/bucket/dawy/video_generation/two_stage_dataset \
+  --dataset_metadata_path /mnt/bucket/dawy/video_generation/two_stage_dataset/metadata_vanilla_stage1.csv \
+  --data_file_keys "video,vace_video,vace_reference_image,vace_video_mask" \
   --height 480 \
   --width 832 \
-  --dataset_repeat 100 \
+  --dataset_repeat 1 \
   --model_id_with_origin_paths "Wan-AI/Wan2.1-VACE-1.3B:diffusion_pytorch_model*.safetensors,Wan-AI/Wan2.1-VACE-1.3B:models_t5_umt5-xxl-enc-bf16.pth,Wan-AI/Wan2.1-VACE-1.3B:Wan2.1_VAE.pth" \
   --learning_rate 1e-4 \
   --batch_size 2 \
@@ -16,3 +16,6 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --lora_rank 32 \
   --extra_inputs "vace_video,vace_reference_image" \
   --use_gradient_checkpointing_offload
+
+
+
