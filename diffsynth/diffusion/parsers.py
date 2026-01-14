@@ -32,6 +32,7 @@ def add_model_config(parser: argparse.ArgumentParser):
 
 def add_training_config(parser: argparse.ArgumentParser):
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate.")
+    parser.add_argument("--batch_size", type=int, default=1, help="Batch size for training.")
     parser.add_argument("--num_epochs", type=int, default=1, help="Number of epochs.")
     parser.add_argument("--trainable_models", type=str, default=None, help="Models to train, e.g., dit, vae, text_encoder.")
     parser.add_argument("--find_unused_parameters", default=False, action="store_true", help="Whether to find unused parameters in DDP.")

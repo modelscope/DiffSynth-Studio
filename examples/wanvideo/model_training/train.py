@@ -63,13 +63,39 @@ class WanTrainingModule(DiffusionTrainingModule):
         self.min_timestep_boundary = min_timestep_boundary
         
     def parse_extra_inputs(self, data, extra_inputs, inputs_shared):
+        def pick_first_frame(value):
+            if isinstance(value, torch.Tensor):
+                if value.dim() == 5:
+                    return value[:, :, 0]
+                if value.dim() == 4:
+                    if value.shape[0] in (1, 3) and value.shape[1] not in (1, 3):
+                        return value[:, 0]
+                    return value
+                return value
+            if isinstance(value, list):
+                return value[0]
+            return value
+
+        def pick_last_frame(value):
+            if isinstance(value, torch.Tensor):
+                if value.dim() == 5:
+                    return value[:, :, -1]
+                if value.dim() == 4:
+                    if value.shape[0] in (1, 3) and value.shape[1] not in (1, 3):
+                        return value[:, -1]
+                    return value
+                return value
+            if isinstance(value, list):
+                return value[-1]
+            return value
+
         for extra_input in extra_inputs:
             if extra_input == "input_image":
-                inputs_shared["input_image"] = data["video"][0]
+                inputs_shared["input_image"] = pick_first_frame(data["video"])
             elif extra_input == "end_image":
-                inputs_shared["end_image"] = data["video"][-1]
+                inputs_shared["end_image"] = pick_last_frame(data["video"])
             elif extra_input == "reference_image" or extra_input == "vace_reference_image":
-                inputs_shared[extra_input] = data[extra_input][0]
+                inputs_shared[extra_input] = pick_first_frame(data[extra_input])
             else:
                 inputs_shared[extra_input] = data[extra_input]
         return inputs_shared
@@ -77,13 +103,33 @@ class WanTrainingModule(DiffusionTrainingModule):
     def get_pipeline_inputs(self, data):
         inputs_posi = {"prompt": data["prompt"]}
         inputs_nega = {}
+        input_video = data["video"]
+        if isinstance(input_video, torch.Tensor):
+            if input_video.dim() == 5:
+                batch_size = input_video.shape[0]
+                num_frames = input_video.shape[2]
+                height = input_video.shape[3]
+                width = input_video.shape[4]
+            elif input_video.dim() == 4:
+                batch_size = 1
+                num_frames = input_video.shape[1]
+                height = input_video.shape[2]
+                width = input_video.shape[3]
+            else:
+                raise ValueError(f"Unsupported input_video tensor shape: {input_video.shape}")
+        else:
+            batch_size = 1
+            num_frames = len(input_video)
+            height = input_video[0].size[1]
+            width = input_video[0].size[0]
         inputs_shared = {
             # Assume you are using this pipeline for inference,
             # please fill in the input parameters.
-            "input_video": data["video"],
-            "height": data["video"][0].size[1],
-            "width": data["video"][0].size[0],
-            "num_frames": len(data["video"]),
+            "input_video": input_video,
+            "height": height,
+            "width": width,
+            "num_frames": num_frames,
+            "batch_size": batch_size,
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
             "cfg_scale": 1,
