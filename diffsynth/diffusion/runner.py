@@ -174,6 +174,7 @@ def launch_training_task(
     
     model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
     
+    best_val_loss = None
     for epoch_id in range(num_epochs):
         epoch_loss_sum = None
         epoch_steps = 0
@@ -207,7 +208,7 @@ def launch_training_task(
         if save_steps is None:
             model_logger.on_epoch_end(accelerator, model, epoch_id)
         if val_dataset is not None and eval_every_n_epochs > 0 and (epoch_id + 1) % eval_every_n_epochs == 0:
-            run_validation(
+            val_loss = run_validation(
                 accelerator,
                 val_dataset,
                 model,
@@ -217,6 +218,11 @@ def launch_training_task(
                 num_frames,
                 max_batches=eval_max_batches,
             )
+            if val_loss is not None and (best_val_loss is None or val_loss < best_val_loss):
+                best_val_loss = val_loss
+                if accelerator.is_main_process:
+                    print(f"New best eval loss: {best_val_loss:.6f}. Saving best checkpoint.")
+                model_logger.save_model(accelerator, model, "best.safetensors")
     model_logger.on_training_end(accelerator, model, save_steps)
 
 
