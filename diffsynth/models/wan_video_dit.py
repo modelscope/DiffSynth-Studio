@@ -5,7 +5,6 @@ import math
 from typing import Tuple, Optional
 from einops import rearrange
 from .wan_video_camera_controller import SimpleAdapter
-from ..core.device.npu_compatible_device import IS_NPU_AVAILABLE
 
 try:
     import flash_attn_interface
