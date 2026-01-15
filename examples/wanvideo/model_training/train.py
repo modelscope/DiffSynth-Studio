@@ -173,6 +173,31 @@ if __name__ == "__main__":
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         kwargs_handlers=[accelerate.DistributedDataParallelKwargs(find_unused_parameters=args.find_unused_parameters)],
     )
+    val_dataset = None
+    if args.val_dataset_metadata_path is not None:
+        val_base_path = args.val_dataset_base_path or args.dataset_base_path
+        val_data_file_keys = (args.val_data_file_keys or args.data_file_keys).split(",")
+        val_dataset = UnifiedDataset(
+            base_path=val_base_path,
+            metadata_path=args.val_dataset_metadata_path,
+            repeat=args.val_dataset_repeat,
+            data_file_keys=val_data_file_keys,
+            main_data_operator=UnifiedDataset.default_video_operator(
+                base_path=val_base_path,
+                max_pixels=args.max_pixels,
+                height=args.height,
+                width=args.width,
+                height_division_factor=16,
+                width_division_factor=16,
+                num_frames=args.num_frames,
+                time_division_factor=4,
+                time_division_remainder=1,
+            ),
+            special_operator_map={
+                "animate_face_video": ToAbsolutePath(val_base_path) >> LoadVideo(args.num_frames, 4, 1, frame_processor=ImageCropAndResize(512, 512, None, 16, 16)),
+                "input_audio": ToAbsolutePath(val_base_path) >> LoadAudio(sr=16000),
+            }
+        )
     dataset = UnifiedDataset(
         base_path=args.dataset_base_path,
         metadata_path=args.dataset_metadata_path,
@@ -228,4 +253,4 @@ if __name__ == "__main__":
         "direct_distill": launch_training_task,
         "direct_distill:train": launch_training_task,
     }
-    launcher_map[args.task](accelerator, dataset, model, model_logger, args=args)
+    launcher_map[args.task](accelerator, dataset, model, model_logger, args=args, val_dataset=val_dataset)
