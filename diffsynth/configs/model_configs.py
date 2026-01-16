@@ -510,6 +510,13 @@ flux2_series = [
         "model_name": "flux2_vae",
         "model_class": "diffsynth.models.flux2_vae.Flux2VAE",
     },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "3bde7b817fec8143028b6825a63180df",
+        "model_name": "flux2_dit",
+        "model_class": "diffsynth.models.flux2_dit.Flux2DiT",
+        "extra_kwargs": {"guidance_embeds": False, "joint_attention_dim": 7680, "num_attention_heads": 24, "num_layers": 5, "num_single_layers": 20}
+    },
 ]
 
 z_image_series = [

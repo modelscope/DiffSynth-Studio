@@ -10,7 +10,7 @@ from ..diffusion import FlowMatchScheduler
 from ..core import ModelConfig, gradient_checkpoint_forward
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit, ControlNetInput
 
-from transformers import AutoProcessor
+from transformers import AutoProcessor, AutoTokenizer
 from ..models.flux2_text_encoder import Flux2TextEncoder
 from ..models.flux2_dit import Flux2DiT
 from ..models.flux2_vae import Flux2VAE
@@ -53,11 +53,12 @@ class Flux2ImagePipeline(BasePipeline):
         
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("flux2_text_encoder")
+        pipe.text_encoder_qwen3 = model_pool.fetch_model("z_image_text_encoder")
         pipe.dit = model_pool.fetch_model("flux2_dit")
         pipe.vae = model_pool.fetch_model("flux2_vae")
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
-            pipe.tokenizer = AutoProcessor.from_pretrained(tokenizer_config.path)
+            pipe.tokenizer = AutoTokenizer.from_pretrained(tokenizer_config.path)
         
         # VRAM Management
         pipe.vram_management_enabled = pipe.check_vram_management_state()
