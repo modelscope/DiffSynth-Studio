@@ -2,6 +2,8 @@ from transformers import DINOv3ViTModel, DINOv3ViTImageProcessorFast
 from transformers.models.dinov3_vit.modeling_dinov3_vit import DINOv3ViTConfig
 import torch
 
+from ..core.device.npu_compatible_device import get_device_type
+
 
 class DINOv3ImageEncoder(DINOv3ViTModel):
     def __init__(self):
@@ -70,7 +72,7 @@ class DINOv3ImageEncoder(DINOv3ViTModel):
             }
         )
         
-    def forward(self, image, torch_dtype=torch.bfloat16, device="cuda"):
+    def forward(self, image, torch_dtype=torch.bfloat16, device=get_device_type()):
         inputs = self.processor(images=image, return_tensors="pt")
         pixel_values = inputs["pixel_values"].to(dtype=torch_dtype, device=device)
         bool_masked_pos = None

@@ -1,12 +1,13 @@
 from typing_extensions import Literal, TypeAlias
 
+from diffsynth.core.device.npu_compatible_device import get_device_type
 
 Processor_id: TypeAlias = Literal[
     "canny", "depth", "softedge", "lineart", "lineart_anime", "openpose", "normal", "tile", "none", "inpaint"
 ]
 
 class Annotator:
-    def __init__(self, processor_id: Processor_id, model_path="models/Annotators", detect_resolution=None, device='cuda', skip_processor=False):
+    def __init__(self, processor_id: Processor_id, model_path="models/Annotators", detect_resolution=None, device=get_device_type(), skip_processor=False):
         if not skip_processor:
             if processor_id == "canny":
                 from controlnet_aux.processor import CannyDetector
