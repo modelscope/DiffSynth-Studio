@@ -6,7 +6,7 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --width 832 \
   --dataset_repeat 100 \
   --model_id_with_origin_paths "Wan-AI/Wan2.1-VACE-1.3B:diffusion_pytorch_model*.safetensors,Wan-AI/Wan2.1-VACE-1.3B:models_t5_umt5-xxl-enc-bf16.pth,Wan-AI/Wan2.1-VACE-1.3B:Wan2.1_VAE.pth" \
-  --learning_rate 1e-4 \
+  --learning_rate 5e-5 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.vace." \
   --output_path "./models/train/Wan2.1-VACE-1.3B_lora" \
@@ -15,3 +15,4 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --lora_rank 32 \
   --extra_inputs "vace_video,vace_reference_image" \
   --use_gradient_checkpointing_offload
+# The learning rate is kept consistent with the settings in the original paper
