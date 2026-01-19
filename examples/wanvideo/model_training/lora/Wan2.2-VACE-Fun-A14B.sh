@@ -7,7 +7,7 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --num_frames 17 \
   --dataset_repeat 100 \
   --model_id_with_origin_paths "PAI/Wan2.2-VACE-Fun-A14B:high_noise_model/diffusion_pytorch_model*.safetensors,PAI/Wan2.2-VACE-Fun-A14B:models_t5_umt5-xxl-enc-bf16.pth,PAI/Wan2.2-VACE-Fun-A14B:Wan2.1_VAE.pth" \
-  --learning_rate 1e-4 \
+  --learning_rate 5e-5 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.vace." \
   --output_path "./models/train/Wan2.2-VACE-Fun-A14B_high_noise_lora" \
@@ -19,6 +19,7 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --max_timestep_boundary 0.358 \
   --min_timestep_boundary 0
 # boundary corresponds to timesteps [900, 1000]
+# The learning rate is kept consistent with the settings in the original paper
 
 accelerate launch examples/wanvideo/model_training/train.py \
   --dataset_base_path data/example_video_dataset \
@@ -29,7 +30,7 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --num_frames 17 \
   --dataset_repeat 100 \
   --model_id_with_origin_paths "PAI/Wan2.2-VACE-Fun-A14B:low_noise_model/diffusion_pytorch_model*.safetensors,PAI/Wan2.2-VACE-Fun-A14B:models_t5_umt5-xxl-enc-bf16.pth,PAI/Wan2.2-VACE-Fun-A14B:Wan2.1_VAE.pth" \
-  --learning_rate 1e-4 \
+  --learning_rate 5e-5 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.vace." \
   --output_path "./models/train/Wan2.2-VACE-Fun-A14B_low_noise_lora" \
@@ -41,3 +42,4 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --max_timestep_boundary 1 \
   --min_timestep_boundary 0.358
 # boundary corresponds to timesteps [0, 900]
+# The learning rate is kept consistent with the settings in the original paper
