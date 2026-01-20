@@ -15,3 +15,7 @@ pipe = Flux2ImagePipeline.from_pretrained(
 prompt = "Masterpiece, best quality. Anime-style portrait of a woman in a blue dress, underwater, surrounded by colorful bubbles."
 image = pipe(prompt, seed=0, rand_device="cuda", num_inference_steps=50, cfg_scale=4)
 image.save("image_FLUX.2-klein-base-4B.jpg")
+
+prompt = "change the color of the clothes to red"
+image = pipe(prompt, edit_image=[image], seed=1, rand_device="cuda", num_inference_steps=50, cfg_scale=4)
+image.save("image_edit_FLUX.2-klein-base-4B.jpg")
