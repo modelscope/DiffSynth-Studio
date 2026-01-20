@@ -143,6 +143,8 @@ def FluxDiTStateDictConverterFromDiffusers(state_dict):
             suffix = ".weight" if name.endswith(".weight") else ".bias"
             prefix = name[:-len(suffix)]
             if prefix in global_rename_dict:
+                if global_rename_dict[prefix] == "final_norm_out.linear":
+                    param = torch.concat([param[3072:], param[:3072]], dim=0)
                 state_dict_[global_rename_dict[prefix] + suffix] = param
             elif prefix.startswith("transformer_blocks."):
                 names = prefix.split(".")

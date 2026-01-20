@@ -59,7 +59,7 @@ save_video(video, "video.mp4", fps=15, quality=5)
 ```
 
 ### 训练
-当前已为每类模型添加NPU的启动脚本样例，脚本存放在`examples/xxx/special/npu_scripts`目录下，例如 `examples/wanvideo/model_training/special/npu_scripts/Wan2.2-T2V-A14B-NPU.sh`。
+当前已为每类模型添加NPU的启动脚本样例，脚本存放在`examples/xxx/special/npu_training`目录下，例如 `examples/wanvideo/model_training/special/npu_training/Wan2.2-T2V-A14B-NPU.sh`。
 
 在NPU训练脚本中，添加了可以优化性能的NPU特有环境变量，并针对特定模型开启了相关参数。
 
