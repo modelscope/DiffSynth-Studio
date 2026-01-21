@@ -481,6 +481,13 @@ flux_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
         "extra_kwargs": {"disable_guidance_embedder": True},
     },
+    {
+        # Example: ModelConfig(model_id="MAILAND/majicflus_v1", origin_file_pattern="majicflus_v134.safetensors")
+        "model_hash": "3394f306c4cbf04334b712bf5aaed95f",
+        "model_name": "flux_dit",
+        "model_class": "diffsynth.models.flux_dit.FluxDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
+    },
 ]
 
 flux2_series = [
@@ -502,6 +509,28 @@ flux2_series = [
         "model_hash": "c54288e3ee12ca215898840682337b95",
         "model_name": "flux2_vae",
         "model_class": "diffsynth.models.flux2_vae.Flux2VAE",
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "3bde7b817fec8143028b6825a63180df",
+        "model_name": "flux2_dit",
+        "model_class": "diffsynth.models.flux2_dit.Flux2DiT",
+        "extra_kwargs": {"guidance_embeds": False, "joint_attention_dim": 7680, "num_attention_heads": 24, "num_layers": 5, "num_single_layers": 20}
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.2-klein-9B", origin_file_pattern="text_encoder/*.safetensors")
+        "model_hash": "9195f3ea256fcd0ae6d929c203470754",
+        "model_name": "z_image_text_encoder",
+        "model_class": "diffsynth.models.z_image_text_encoder.ZImageTextEncoder",
+        "extra_kwargs": {"model_size": "8B"},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.z_image_text_encoder.ZImageTextEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.2-klein-9B", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "39c6fc48f07bebecedbbaa971ff466c8",
+        "model_name": "flux2_dit",
+        "model_class": "diffsynth.models.flux2_dit.Flux2DiT",
+        "extra_kwargs": {"guidance_embeds": False, "joint_attention_dim": 12288, "num_attention_heads": 32, "num_layers": 8, "num_single_layers": 24}
     },
 ]
 

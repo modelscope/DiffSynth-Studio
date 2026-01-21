@@ -11,10 +11,11 @@ from ..diffusion import FlowMatchScheduler
 from ..core import ModelConfig, gradient_checkpoint_forward
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit, ControlNetInput
 
-from transformers import AutoProcessor
+from transformers import AutoProcessor, AutoTokenizer
 from ..models.flux2_text_encoder import Flux2TextEncoder
 from ..models.flux2_dit import Flux2DiT
 from ..models.flux2_vae import Flux2VAE
+from ..models.z_image_text_encoder import ZImageTextEncoder
 
 
 class Flux2ImagePipeline(BasePipeline):
@@ -26,6 +27,7 @@ class Flux2ImagePipeline(BasePipeline):
         )
         self.scheduler = FlowMatchScheduler("FLUX.2")
         self.text_encoder: Flux2TextEncoder = None
+        self.text_encoder_qwen3: ZImageTextEncoder = None
         self.dit: Flux2DiT = None
         self.vae: Flux2VAE = None
         self.tokenizer: AutoProcessor = None
@@ -33,8 +35,10 @@ class Flux2ImagePipeline(BasePipeline):
         self.units = [
             Flux2Unit_ShapeChecker(),
             Flux2Unit_PromptEmbedder(),
+            Flux2Unit_Qwen3PromptEmbedder(),
             Flux2Unit_NoiseInitializer(),
             Flux2Unit_InputImageEmbedder(),
+            Flux2Unit_EditImageEmbedder(),
             Flux2Unit_ImageIDs(),
         ]
         self.model_fn = model_fn_flux2
@@ -54,11 +58,12 @@ class Flux2ImagePipeline(BasePipeline):
         
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("flux2_text_encoder")
+        pipe.text_encoder_qwen3 = model_pool.fetch_model("z_image_text_encoder")
         pipe.dit = model_pool.fetch_model("flux2_dit")
         pipe.vae = model_pool.fetch_model("flux2_vae")
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
-            pipe.tokenizer = AutoProcessor.from_pretrained(tokenizer_config.path)
+            pipe.tokenizer = AutoTokenizer.from_pretrained(tokenizer_config.path)
         
         # VRAM Management
         pipe.vram_management_enabled = pipe.check_vram_management_state()
@@ -76,6 +81,9 @@ class Flux2ImagePipeline(BasePipeline):
         # Image
         input_image: Image.Image = None,
         denoising_strength: float = 1.0,
+        # Edit
+        edit_image: Union[Image.Image, List[Image.Image]] = None,
+        edit_image_auto_resize: bool = True,
         # Shape
         height: int = 1024,
         width: int = 1024,
@@ -99,6 +107,7 @@ class Flux2ImagePipeline(BasePipeline):
         inputs_shared = {
             "cfg_scale": cfg_scale, "embedded_guidance": embedded_guidance,
             "input_image": input_image, "denoising_strength": denoising_strength,
+            "edit_image": edit_image, "edit_image_auto_resize": edit_image_auto_resize,
             "height": height, "width": width,
             "seed": seed, "rand_device": rand_device,
             "num_inference_steps": num_inference_steps,
@@ -276,9 +285,143 @@ class Flux2Unit_PromptEmbedder(PipelineUnit):
         return prompt_embeds, text_ids
 
     def process(self, pipe: Flux2ImagePipeline, prompt):
+        # Skip if Qwen3 text encoder is available (handled by Qwen3PromptEmbedder)
+        if pipe.text_encoder_qwen3 is not None:
+            return {}
+        
         pipe.load_models_to_device(self.onload_model_names)
         prompt_embeds, text_ids = self.encode_prompt(
             pipe.text_encoder, pipe.tokenizer, prompt,
+            dtype=pipe.torch_dtype, device=pipe.device,
+        )
+        return {"prompt_embeds": prompt_embeds, "text_ids": text_ids}
+
+
+class Flux2Unit_Qwen3PromptEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            seperate_cfg=True,
+            input_params_posi={"prompt": "prompt"},
+            input_params_nega={"prompt": "negative_prompt"},
+            output_params=("prompt_emb", "prompt_emb_mask"),
+            onload_model_names=("text_encoder_qwen3",)
+        )
+        self.hidden_states_layers = (9, 18, 27)  # Qwen3 layers
+
+    def get_qwen3_prompt_embeds(
+        self,
+        text_encoder: ZImageTextEncoder,
+        tokenizer: AutoTokenizer,
+        prompt: Union[str, List[str]],
+        dtype: Optional[torch.dtype] = None,
+        device: Optional[torch.device] = None,
+        max_sequence_length: int = 512,
+    ):
+        dtype = text_encoder.dtype if dtype is None else dtype
+        device = text_encoder.device if device is None else device
+
+        prompt = [prompt] if isinstance(prompt, str) else prompt
+
+        all_input_ids = []
+        all_attention_masks = []
+
+        for single_prompt in prompt:
+            messages = [{"role": "user", "content": single_prompt}]
+            text = tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
+            )
+            inputs = tokenizer(
+                text,
+                return_tensors="pt",
+                padding="max_length",
+                truncation=True,
+                max_length=max_sequence_length,
+            )
+
+            all_input_ids.append(inputs["input_ids"])
+            all_attention_masks.append(inputs["attention_mask"])
+
+        input_ids = torch.cat(all_input_ids, dim=0).to(device)
+        attention_mask = torch.cat(all_attention_masks, dim=0).to(device)
+
+        # Forward pass through the model
+        with torch.inference_mode():
+            output = text_encoder(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                output_hidden_states=True,
+                use_cache=False,
+            )
+
+        # Only use outputs from intermediate layers and stack them
+        out = torch.stack([output.hidden_states[k] for k in self.hidden_states_layers], dim=1)
+        out = out.to(dtype=dtype, device=device)
+
+        batch_size, num_channels, seq_len, hidden_dim = out.shape
+        prompt_embeds = out.permute(0, 2, 1, 3).reshape(batch_size, seq_len, num_channels * hidden_dim)
+        return prompt_embeds
+
+    def prepare_text_ids(
+        self,
+        x: torch.Tensor,  # (B, L, D) or (L, D)
+        t_coord: Optional[torch.Tensor] = None,
+    ):
+        B, L, _ = x.shape
+        out_ids = []
+
+        for i in range(B):
+            t = torch.arange(1) if t_coord is None else t_coord[i]
+            h = torch.arange(1)
+            w = torch.arange(1)
+            l = torch.arange(L)
+
+            coords = torch.cartesian_prod(t, h, w, l)
+            out_ids.append(coords)
+
+        return torch.stack(out_ids)
+
+    def encode_prompt(
+        self,
+        text_encoder: ZImageTextEncoder,
+        tokenizer: AutoTokenizer,
+        prompt: Union[str, List[str]],
+        dtype = None,
+        device: Optional[torch.device] = None,
+        num_images_per_prompt: int = 1,
+        prompt_embeds: Optional[torch.Tensor] = None,
+        max_sequence_length: int = 512,
+    ):
+        prompt = [prompt] if isinstance(prompt, str) else prompt
+
+        if prompt_embeds is None:
+            prompt_embeds = self.get_qwen3_prompt_embeds(
+                text_encoder=text_encoder,
+                tokenizer=tokenizer,
+                prompt=prompt,
+                dtype=dtype,
+                device=device,
+                max_sequence_length=max_sequence_length,
+            )
+
+        batch_size, seq_len, _ = prompt_embeds.shape
+        prompt_embeds = prompt_embeds.repeat(1, num_images_per_prompt, 1)
+        prompt_embeds = prompt_embeds.view(batch_size * num_images_per_prompt, seq_len, -1)
+
+        text_ids = self.prepare_text_ids(prompt_embeds)
+        text_ids = text_ids.to(device)
+        return prompt_embeds, text_ids
+
+    def process(self, pipe: Flux2ImagePipeline, prompt):
+        # Check if Qwen3 text encoder is available
+        if pipe.text_encoder_qwen3 is None:
+            return {}
+        
+        pipe.load_models_to_device(self.onload_model_names)
+        prompt_embeds, text_ids = self.encode_prompt(
+            pipe.text_encoder_qwen3, pipe.tokenizer, prompt,
             dtype=pipe.torch_dtype, device=pipe.device,
         )
         return {"prompt_embeds": prompt_embeds, "text_ids": text_ids}
@@ -319,6 +462,64 @@ class Flux2Unit_InputImageEmbedder(PipelineUnit):
             return {"latents": latents, "input_latents": input_latents}
 
 
+class Flux2Unit_EditImageEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("edit_image", "edit_image_auto_resize"),
+            output_params=("edit_latents", "edit_image_ids"),
+            onload_model_names=("vae",)
+        )
+
+    def calculate_dimensions(self, target_area, ratio):
+        import math
+        width = math.sqrt(target_area * ratio)
+        height = width / ratio
+        width = round(width / 32) * 32
+        height = round(height / 32) * 32
+        return width, height
+
+    def edit_image_auto_resize(self, edit_image):
+        calculated_width, calculated_height = self.calculate_dimensions(1024 * 1024, edit_image.size[0] / edit_image.size[1])
+        return edit_image.resize((calculated_width, calculated_height))
+    
+    def process_image_ids(self, image_latents, scale=10):
+        t_coords = [scale + scale * t for t in torch.arange(0, len(image_latents))]
+        t_coords = [t.view(-1) for t in t_coords]
+
+        image_latent_ids = []
+        for x, t in zip(image_latents, t_coords):
+            x = x.squeeze(0)
+            _, height, width = x.shape
+
+            x_ids = torch.cartesian_prod(t, torch.arange(height), torch.arange(width), torch.arange(1))
+            image_latent_ids.append(x_ids)
+
+        image_latent_ids = torch.cat(image_latent_ids, dim=0)
+        image_latent_ids = image_latent_ids.unsqueeze(0)
+
+        return image_latent_ids
+
+    def process(self, pipe: Flux2ImagePipeline, edit_image, edit_image_auto_resize):
+        if edit_image is None:
+            return {}
+        pipe.load_models_to_device(self.onload_model_names)
+        if isinstance(edit_image, Image.Image):
+            edit_image = [edit_image]
+        resized_edit_image, edit_latents = [], []
+        for image in edit_image:
+            # Preprocess
+            if edit_image_auto_resize is None or edit_image_auto_resize:
+                image = self.edit_image_auto_resize(image)
+            resized_edit_image.append(image)
+            # Encode
+            image = pipe.preprocess_image(image)
+            latents = pipe.vae.encode(image)
+            edit_latents.append(latents)
+        edit_image_ids = self.process_image_ids(edit_latents).to(pipe.device)
+        edit_latents = torch.concat([rearrange(latents, "B C H W -> B (H W) C") for latents in edit_latents], dim=1)
+        return {"edit_latents": edit_latents, "edit_image_ids": edit_image_ids}
+
+
 class Flux2Unit_ImageIDs(PipelineUnit):
     def __init__(self):
         super().__init__(
@@ -353,10 +554,17 @@ def model_fn_flux2(
     prompt_embeds=None,
     text_ids=None,
     image_ids=None,
+    edit_latents=None,
+    edit_image_ids=None,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     **kwargs,
 ):
+    image_seq_len = latents.shape[1]
+    if edit_latents is not None:
+        image_seq_len = latents.shape[1]
+        latents = torch.concat([latents, edit_latents], dim=1)
+        image_ids = torch.concat([image_ids, edit_image_ids], dim=1)
     embedded_guidance = torch.tensor([embedded_guidance], device=latents.device)
     model_output = dit(
         hidden_states=latents,
@@ -368,4 +576,5 @@ def model_fn_flux2(
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
+    model_output = model_output[:, :image_seq_len]
     return model_output

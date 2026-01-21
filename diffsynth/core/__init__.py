@@ -4,4 +4,3 @@ from .gradient import *
 from .loader import *
 from .vram import *
 from .device import *
-from .npu_patch import *
