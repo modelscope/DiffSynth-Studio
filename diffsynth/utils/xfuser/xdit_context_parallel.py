@@ -6,7 +6,9 @@ from xfuser.core.distributed import (get_sequence_parallel_rank,
                                      get_sp_group)
 from xfuser.core.long_ctx_attention import xFuserLongContextAttention
 from ...core.device import parse_nccl_backend, parse_device_type
+import logging
 
+logger = logging.getLogger(__name__)
 
 def initialize_usp(device_type, sp_size):
     import torch.distributed as dist
@@ -32,11 +34,11 @@ def initialize_usp(device_type, sp_size):
         ring_degree=1,
         ulysses_degree=sp_degree,
     )
-    print(f"[init usp] rank: {dist.get_rank()}, world_size: {dist.get_world_size()}, "
-          f"sp world size: {get_sequence_parallel_world_size()}, "
-          f"sp rank: {get_sequence_parallel_rank()}, "
-          f"dp world size: {get_data_parallel_world_size()}, "
-          f"dp rank: {get_data_parallel_rank()}")
+    logger.info(f"[init usp] rank: {dist.get_rank()}, world_size: {dist.get_world_size()}, "
+                f"sp world size: {get_sequence_parallel_world_size()}, "
+                f"sp rank: {get_sequence_parallel_rank()}, "
+                f"dp world size: {get_data_parallel_world_size()}, "
+                f"dp rank: {get_data_parallel_rank()}")
 
 def sinusoidal_embedding_1d(dim, position):
     sinusoid = torch.outer(position.type(torch.float64), torch.pow(

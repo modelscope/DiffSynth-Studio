@@ -4,18 +4,15 @@ from accelerate import Accelerator
 from .training_module import DiffusionTrainingModule
 from .logger import ModelLogger
 import time
+import logging
 
-def inspect_batch_info(accelerator: Accelerator, batch, step):
-    batch_type = type(batch)
-    batch_len = len(batch) if isinstance(batch, (list, dict)) else batch.size(0)
-    print(f"[train] id{accelerator.process_index}, step{step}, prompt: {batch['prompt']}")
+logger = logging.getLogger(__name__)
 
 def build_dataloader(
     accelerator: Accelerator,
     dataset: torch.utils.data.Dataset,
     num_workers: int = 1,
     sp_size: int = 1,
-    seed: int = 0,
 ):
     if sp_size > 1:
         # When using sequence parallel, it is necessary to ensure that when the sampler uses iter to
@@ -34,29 +31,23 @@ def build_dataloader(
 
         dp_rank = rank // sp_size
         sp_rank = rank % sp_size
-        print(f"accelerator.processid={rank}, accelerator.num_processes={world_size}, "
-              f"sp_size={sp_size}, dp_size={dp_size}, dp_rank={dp_rank}")
+        logger.info(f"accelerator.processid={rank}, accelerator.num_processes={world_size}, "
+                    f"sp_size={sp_size}, dp_size={dp_size}, dp_rank={dp_rank}")
     else:
         if accelerator is not None:
             dp_size = accelerator.num_processes
             dp_rank = accelerator.process_index
         else:
             raise ValueError(f"Accelerator is None.")
-        print(f"dp_size={dp_size}, dp_rank={dp_rank}")
+        logger.info(f"dp_size={dp_size}, dp_rank={dp_rank}")
 
     sampler = torch.utils.data.DistributedSampler(dataset=dataset, num_replicas=dp_size, rank=dp_rank)
-
-    def worker_seed_init(seed):
-        random.seed(seed)
-        np.random.seed(seed)
-        torch.manual_seed(seed)
 
     dataloader_kwargs = dict(
         dataset=dataset,
         sampler=sampler,
         num_workers=num_workers,
         pin_memory=True,
-        worker_init_fn=worker_seed_init,
         collate_fn=lambda x: x[0],
     )
     dataloader = torch.utils.data.DataLoader(**dataloader_kwargs)
@@ -99,7 +90,7 @@ def launch_training_task(
         )
 
         for data in progress:
-            inspect_batch_info(accelerator, data, train_step)
+            logger.info(f"[train] id{accelerator.process_index}, step{train_step}, prompt: {data['prompt']}")
 
             iter_start = time.time()
             timing = {}

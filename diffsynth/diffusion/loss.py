@@ -34,9 +34,6 @@ def FlowMatchSFTLoss(pipe: BasePipeline, **inputs):
             noise = torch.zeros(input_shape, dtype=input_dtype, device=input_device)
         sp_group.broadcast(noise, src=0)
     else:
-        max_timestep_boundary = int(inputs.get("max_timestep_boundary", 1) * len(pipe.scheduler.timesteps))
-        min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
-
         timestep_id = torch.randint(min_timestep_boundary, max_timestep_boundary, (1,))
         timestep = pipe.scheduler.timesteps[timestep_id].to(dtype=pipe.torch_dtype, device=pipe.device)
         noise = torch.randn(input_shape, dtype=input_dtype, device=input_device)
