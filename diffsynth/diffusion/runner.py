@@ -127,7 +127,7 @@ def launch_training_task(
                 torch.cuda.synchronize()
                 timing["optimizer"] = time.time() - optim_start
 
-                model_logger.on_step_end(accelerator, model, save_steps)
+                model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
                 scheduler.step()
 
             torch.cuda.synchronize()
