@@ -351,16 +351,18 @@ class WanVideoUnit_ShapeChecker(PipelineUnit):
 class WanVideoUnit_NoiseInitializer(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("height", "width", "num_frames", "seed", "rand_device", "vace_reference_image"),
+            input_params=("height", "width", "num_frames", "seed", "rand_device", "vace_reference_image", "batch_size"),
             output_params=("noise",)
         )
 
-    def process(self, pipe: WanVideoPipeline, height, width, num_frames, seed, rand_device, vace_reference_image):
+    def process(self, pipe: WanVideoPipeline, height, width, num_frames, seed, rand_device, vace_reference_image, batch_size):
+        if batch_size is None:
+            batch_size = 1
         length = (num_frames - 1) // 4 + 1
         if vace_reference_image is not None:
             f = len(vace_reference_image) if isinstance(vace_reference_image, list) else 1
             length += f
-        shape = (1, pipe.vae.model.z_dim, length, height // pipe.vae.upsampling_factor, width // pipe.vae.upsampling_factor)
+        shape = (batch_size, pipe.vae.model.z_dim, length, height // pipe.vae.upsampling_factor, width // pipe.vae.upsampling_factor)
         noise = pipe.generate_noise(shape, seed=seed, rand_device=rand_device)
         if vace_reference_image is not None:
             noise = torch.concat((noise[:, :, -f:], noise[:, :, :-f]), dim=2)
@@ -651,7 +653,7 @@ class WanVideoUnit_VACE(PipelineUnit):
             reactive = pipe.vae.encode(reactive, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
             vace_video_latents = torch.concat((inactive, reactive), dim=1)
             
-            vace_mask_latents = rearrange(vace_video_mask[0,0], "T (H P) (W Q) -> 1 (P Q) T H W", P=8, Q=8)
+            vace_mask_latents = rearrange(vace_video_mask[:, 0], "B T (H P) (W Q) -> B (P Q) T H W", P=8, Q=8)
             vace_mask_latents = torch.nn.functional.interpolate(vace_mask_latents, size=((vace_mask_latents.shape[2] + 3) // 4, vace_mask_latents.shape[3], vace_mask_latents.shape[4]), mode='nearest-exact')
             
             if vace_reference_image is None:
@@ -662,15 +664,15 @@ class WanVideoUnit_VACE(PipelineUnit):
 
                 vace_reference_image = pipe.preprocess_video(vace_reference_image)
 
+                if vace_reference_image.dim() == 4:
+                    vace_reference_image = vace_reference_image.unsqueeze(2)
                 bs, c, f, h, w = vace_reference_image.shape
-                new_vace_ref_images = []
+                vace_reference_latents = []
                 for j in range(f):
-                    new_vace_ref_images.append(vace_reference_image[0, :, j:j+1])
-                vace_reference_image = new_vace_ref_images
-                
-                vace_reference_latents = pipe.vae.encode(vace_reference_image, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
-                vace_reference_latents = torch.concat((vace_reference_latents, torch.zeros_like(vace_reference_latents)), dim=1)
-                vace_reference_latents = [u.unsqueeze(0) for u in vace_reference_latents]
+                    frame = vace_reference_image[:, :, j:j+1]
+                    frame_latents = pipe.vae.encode(frame, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
+                    frame_latents = torch.concat((frame_latents, torch.zeros_like(frame_latents)), dim=1)
+                    vace_reference_latents.append(frame_latents)
 
                 vace_video_latents = torch.concat((*vace_reference_latents, vace_video_latents), dim=2)
                 vace_mask_latents = torch.concat((torch.zeros_like(vace_mask_latents[:, :, :f]), vace_mask_latents), dim=2)

@@ -1216,6 +1216,14 @@ class WanVideoVAE(nn.Module):
 
 
     def encode(self, videos, device, tiled=False, tile_size=(34, 34), tile_stride=(18, 16)):
+        if isinstance(videos, torch.Tensor):
+            if tiled:
+                if videos.shape[0] != 1:
+                    raise ValueError("tiled encode does not support batch size > 1")
+                tile_size = (tile_size[0] * self.upsampling_factor, tile_size[1] * self.upsampling_factor)
+                tile_stride = (tile_stride[0] * self.upsampling_factor, tile_stride[1] * self.upsampling_factor)
+                return self.tiled_encode(videos, device, tile_size, tile_stride)
+            return self.single_encode(videos, device)
         videos = [video.to("cpu") for video in videos]
         hidden_states = []
         for video in videos:
@@ -1233,6 +1241,12 @@ class WanVideoVAE(nn.Module):
 
 
     def decode(self, hidden_states, device, tiled=False, tile_size=(34, 34), tile_stride=(18, 16)):
+        if isinstance(hidden_states, torch.Tensor):
+            if tiled:
+                if hidden_states.shape[0] != 1:
+                    raise ValueError("tiled decode does not support batch size > 1")
+                return self.tiled_decode(hidden_states, device, tile_size, tile_stride)
+            return self.single_decode(hidden_states, device)
         hidden_states = [hidden_state.to("cpu") for hidden_state in hidden_states]
         videos = []
         for hidden_state in hidden_states:
