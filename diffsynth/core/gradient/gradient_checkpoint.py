@@ -21,6 +21,7 @@ def gradient_checkpoint_forward(
                 *args,
                 **kwargs,
                 use_reentrant=False,
+                determinism_check="none"
             )
     elif use_gradient_checkpointing:
         model_output = torch.utils.checkpoint.checkpoint(
@@ -28,6 +29,7 @@ def gradient_checkpoint_forward(
             *args,
             **kwargs,
             use_reentrant=False,
+            determinism_check="none"
         )
     else:
         model_output = model(*args, **kwargs)

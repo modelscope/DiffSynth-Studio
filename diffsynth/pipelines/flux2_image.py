@@ -348,7 +348,7 @@ class Flux2Unit_Qwen3PromptEmbedder(PipelineUnit):
         attention_mask = torch.cat(all_attention_masks, dim=0).to(device)
 
         # Forward pass through the model
-        with torch.inference_mode():
+        with torch.no_grad():
             output = text_encoder(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
