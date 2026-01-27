@@ -23,6 +23,7 @@ class WanTrainingModule(DiffusionTrainingModule):
         task="sft",
         max_timestep_boundary=1.0,
         min_timestep_boundary=0.0,
+        sp_size = 1,
     ):
         super().__init__()
         # Warning
@@ -34,9 +35,14 @@ class WanTrainingModule(DiffusionTrainingModule):
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
         tokenizer_config = ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/") if tokenizer_path is None else ModelConfig(tokenizer_path)
         audio_processor_config = ModelConfig(model_id="Wan-AI/Wan2.2-S2V-14B", origin_file_pattern="wav2vec2-large-xlsr-53-english/") if audio_processor_path is None else ModelConfig(audio_processor_path)
-        self.pipe = WanVideoPipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config, audio_processor_config=audio_processor_config)
+        use_usp = True if sp_size > 1 else False
+        self.pipe = WanVideoPipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device,
+                                                     model_configs=model_configs,
+                                                     tokenizer_config=tokenizer_config,
+                                                     audio_processor_config=audio_processor_config,
+                                                     use_usp=use_usp, sp_size = sp_size)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
-        
+
         # Training mode
         self.switch_pipe_to_training_mode(
             self.pipe, trainable_models,
@@ -127,6 +133,20 @@ if __name__ == "__main__":
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         kwargs_handlers=[accelerate.DistributedDataParallelKwargs(find_unused_parameters=args.find_unused_parameters)],
     )
+
+    if accelerator is not None:
+        num_replicas = accelerator.num_processes
+        rank = accelerator.process_index
+        print(f"accelerator.processid={rank}, accelerator.num_processes={num_replicas}")
+    else:
+        raise ValueError(f"Failed to init accelerator.")
+
+    if accelerator.is_main_process:
+        print("\n=== accelerator state ===")
+        print(accelerator.state)
+        print(f"DeepSpeed plugin: {accelerator.state.deepspeed_plugin}")
+        print(f"Parallelism config: {accelerator.state.parallelism_config}")
+
     dataset = UnifiedDataset(
         base_path=args.dataset_base_path,
         metadata_path=args.dataset_metadata_path,
@@ -148,6 +168,7 @@ if __name__ == "__main__":
             "input_audio": ToAbsolutePath(args.dataset_base_path) >> LoadAudio(sr=16000),
         }
     )
+
     model = WanTrainingModule(
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
@@ -169,6 +190,7 @@ if __name__ == "__main__":
         device="cpu" if args.initialize_model_on_cpu else accelerator.device,
         max_timestep_boundary=args.max_timestep_boundary,
         min_timestep_boundary=args.min_timestep_boundary,
+        sp_size = args.sp_size,
     )
     model_logger = ModelLogger(
         args.output_path,
