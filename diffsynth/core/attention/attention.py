@@ -52,7 +52,7 @@ def rearrange_qkv(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="
     if k_pattern != required_in_pattern:
         k = rearrange(k, f"{k_pattern} -> {required_in_pattern}", **dims)
     if v_pattern != required_in_pattern:
-        v = rearrange(v, f"{q_pattern} -> {required_in_pattern}", **dims)
+        v = rearrange(v, f"{v_pattern} -> {required_in_pattern}", **dims)
     return q, k, v
 
 

@@ -591,4 +591,28 @@ z_image_series = [
     },
 ]
 
-MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series
+ltx2_series = [
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors")
+        "model_hash": "aca7b0bbf8415e9c98360750268915fc",
+        "model_name": "ltx2_dit",
+        "model_class": "diffsynth.models.ltx2_dit.LTXModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_dit.LTXModelStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors")
+        "model_hash": "aca7b0bbf8415e9c98360750268915fc",
+        "model_name": "ltx2_video_vae_encoder",
+        "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors")
+        "model_hash": "aca7b0bbf8415e9c98360750268915fc",
+        "model_name": "ltx2_video_vae_decoder",
+        "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoDecoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoDecoderStateDictConverter",
+    },
+]
+
+MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series + ltx2_series
