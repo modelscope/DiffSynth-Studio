@@ -38,9 +38,9 @@ pipe = ZImagePipeline.from_pretrained(
 snapshot_download(
     model_id="DiffSynth-Studio/Z-Image-i2L",
     allow_file_pattern="assets/style/*",
-    local_dir="data/style_input"
+    local_dir="data/Z-Image-i2L_style_input"
 )
-images = [Image.open(f"data/style_input/assets/style/1/{i}.jpg") for i in range(6)]
+images = [Image.open(f"data/Z-Image-i2L_style_input/assets/style/1/{i}.jpg") for i in range(4)]
 
 # Image to LoRA
 with torch.no_grad():
@@ -54,7 +54,7 @@ negative_prompt = "泛黄，发绿，模糊，低分辨率，低质量图像，�
 image = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,
-    seed=0, cfg_scale=7, num_inference_steps=50,
+    seed=0, cfg_scale=4, num_inference_steps=50,
     positive_only_lora=lora,
     sigma_shift=8
 )
