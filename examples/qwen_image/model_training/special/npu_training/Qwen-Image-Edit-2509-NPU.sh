@@ -1,4 +1,7 @@
 # This script was tested using zero3 and on 8*910B(NPU)
+export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
+export CPU_AFFINITY_CONF=1
+
 accelerate launch --config_file examples/qwen_image/model_training/full/accelerate_config_zero3.yaml examples/qwen_image/model_training/train.py \
   --dataset_base_path data/example_image_dataset \
   --dataset_metadata_path data/example_image_dataset/metadata_qwen_imgae_edit_multi.json \
