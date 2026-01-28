@@ -1,7 +1,9 @@
 from dataclasses import dataclass
-from typing import NamedTuple
+from typing import NamedTuple, Protocol, Tuple
 import torch
 from torch import nn
+from enum import Enum
+
 
 class VideoPixelShape(NamedTuple):
     """
@@ -180,6 +182,13 @@ class LatentState:
         )
 
 
+class NormType(Enum):
+    """Normalization layer types: GROUP (GroupNorm) or PIXEL (per-location RMS norm)."""
+
+    GROUP = "group"
+    PIXEL = "pixel"
+
+
 class PixelNorm(nn.Module):
     """
     Per-pixel (per-location) RMS normalization layer.
@@ -207,6 +216,25 @@ class PixelNorm(nn.Module):
         # Normalize by the root-mean-square (RMS).
         rms = torch.sqrt(mean_sq + self.eps)
         return x / rms
+
+
+def build_normalization_layer(
+    in_channels: int, *, num_groups: int = 32, normtype: NormType = NormType.GROUP
+) -> nn.Module:
+    """
+    Create a normalization layer based on the normalization type.
+    Args:
+        in_channels: Number of input channels
+        num_groups: Number of groups for group normalization
+        normtype: Type of normalization: "group" or "pixel"
+    Returns:
+        A normalization layer
+    """
+    if normtype == NormType.GROUP:
+        return torch.nn.GroupNorm(num_groups=num_groups, num_channels=in_channels, eps=1e-6, affine=True)
+    if normtype == NormType.PIXEL:
+        return PixelNorm(dim=1, eps=1e-6)
+    raise ValueError(f"Invalid normalization type: {normtype}")
 
 
 def rms_norm(x: torch.Tensor, weight: torch.Tensor | None = None, eps: float = 1e-6) -> torch.Tensor:
@@ -251,3 +279,61 @@ def to_denoised(
     if isinstance(sigma, torch.Tensor):
         sigma = sigma.to(calc_dtype)
     return (sample.to(calc_dtype) - velocity.to(calc_dtype) * sigma).to(sample.dtype)
+
+
+
+class Patchifier(Protocol):
+    """
+    Protocol for patchifiers that convert latent tensors into patches and assemble them back.
+    """
+
+    def patchify(
+        self,
+        latents: torch.Tensor,
+    ) -> torch.Tensor:
+        ...
+        """
+        Convert latent tensors into flattened patch tokens.
+        Args:
+            latents: Latent tensor to patchify.
+        Returns:
+            Flattened patch tokens tensor.
+        """
+
+    def unpatchify(
+        self,
+        latents: torch.Tensor,
+        output_shape: AudioLatentShape | VideoLatentShape,
+    ) -> torch.Tensor:
+        """
+        Converts latent tensors between spatio-temporal formats and flattened sequence representations.
+        Args:
+            latents: Patch tokens that must be rearranged back into the latent grid constructed by `patchify`.
+            output_shape: Shape of the output tensor. Note that output_shape is either AudioLatentShape or
+            VideoLatentShape.
+        Returns:
+            Dense latent tensor restored from the flattened representation.
+        """
+
+    @property
+    def patch_size(self) -> Tuple[int, int, int]:
+        ...
+        """
+        Returns the patch size as a tuple of (temporal, height, width) dimensions
+        """
+
+    def get_patch_grid_bounds(
+        self,
+        output_shape: AudioLatentShape | VideoLatentShape,
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        ...
+        """
+        Compute metadata describing where each latent patch resides within the
+        grid specified by `output_shape`.
+        Args:
+            output_shape: Target grid layout for the patches.
+            device: Target device for the returned tensor.
+        Returns:
+            Tensor containing patch coordinate metadata such as spatial or temporal intervals.
+        """

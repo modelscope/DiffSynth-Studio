@@ -613,6 +613,46 @@ ltx2_series = [
         "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoDecoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoDecoderStateDictConverter",
     },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors")
+        "model_hash": "aca7b0bbf8415e9c98360750268915fc",
+        "model_name": "ltx2_audio_vae_decoder",
+        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2AudioDecoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2AudioDecoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors")
+        "model_hash": "aca7b0bbf8415e9c98360750268915fc",
+        "model_name": "ltx2_audio_vocoder",
+        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2Vocoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2VocoderStateDictConverter",
+    },
+    # { # not used currently
+    #     # Example: ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors")
+    #     "model_hash": "aca7b0bbf8415e9c98360750268915fc",
+    #     "model_name": "ltx2_audio_vae_encoder",
+    #     "model_class": "diffsynth.models.ltx2_audio_vae.LTX2AudioEncoder",
+    #     "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2AudioEncoderStateDictConverter",
+    # },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors")
+        "model_hash": "aca7b0bbf8415e9c98360750268915fc",
+        "model_name": "ltx2_text_encoder_post_modules",
+        "model_class": "diffsynth.models.ltx2_text_encoder.LTX2TextEncoderPostModules",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_text_encoder.LTX2TextEncoderPostModulesStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized", origin_file_pattern="model-*.safetensors")
+        "model_hash": "33917f31c4a79196171154cca39f165e",
+        "model_name": "ltx2_text_encoder",
+        "model_class": "diffsynth.models.ltx2_text_encoder.LTX2TextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_text_encoder.LTX2TextEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors")
+        "model_hash": "c79c458c6e99e0e14d47e676761732d2",
+        "model_name": "ltx2_latent_upsampler",
+        "model_class": "diffsynth.models.ltx2_upsampler.LTX2LatentUpsampler",
+    },
 ]
-
 MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series + ltx2_series
