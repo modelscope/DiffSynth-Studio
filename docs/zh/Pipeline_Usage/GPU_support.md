@@ -58,6 +58,13 @@ video = pipe(
 save_video(video, "video.mp4", fps=15, quality=5)
 ```
 
+#### USP(Unified Sequence Parallel)
+如果想要在NPU上使用该特性，请通过如下方式安装额外的第三方库：
+```shell
+pip install git+https://github.com/feifeibear/long-context-attention.git
+pip install git+https://github.com/xdit-project/xDiT.git
+```
+
 ### 训练
 当前已为每类模型添加NPU的启动脚本样例，脚本存放在`examples/xxx/special/npu_training`目录下，例如 `examples/wanvideo/model_training/special/npu_training/Wan2.2-T2V-A14B-NPU.sh`。
 
