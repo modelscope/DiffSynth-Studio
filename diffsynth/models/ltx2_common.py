@@ -337,3 +337,35 @@ class Patchifier(Protocol):
         Returns:
             Tensor containing patch coordinate metadata such as spatial or temporal intervals.
         """
+
+
+def get_pixel_coords(
+    latent_coords: torch.Tensor,
+    scale_factors: SpatioTemporalScaleFactors,
+    causal_fix: bool = False,
+) -> torch.Tensor:
+    """
+    Map latent-space `[start, end)` coordinates to their pixel-space equivalents by scaling
+    each axis (frame/time, height, width) with the corresponding VAE downsampling factors.
+    Optionally compensate for causal encoding that keeps the first frame at unit temporal scale.
+    Args:
+        latent_coords: Tensor of latent bounds shaped `(batch, 3, num_patches, 2)`.
+        scale_factors: SpatioTemporalScaleFactors tuple `(temporal, height, width)` with integer scale factors applied
+        per axis.
+        causal_fix: When True, rewrites the temporal axis of the first frame so causal VAEs
+            that treat frame zero differently still yield non-negative timestamps.
+    """
+    # Broadcast the VAE scale factors so they align with the `(batch, axis, patch, bound)` layout.
+    broadcast_shape = [1] * latent_coords.ndim
+    broadcast_shape[1] = -1  # axis dimension corresponds to (frame/time, height, width)
+    scale_tensor = torch.tensor(scale_factors, device=latent_coords.device).view(*broadcast_shape)
+
+    # Apply per-axis scaling to convert latent bounds into pixel-space coordinates.
+    pixel_coords = latent_coords * scale_tensor
+
+    if causal_fix:
+        # VAE temporal stride for the very first frame is 1 instead of `scale_factors[0]`.
+        # Shift and clamp to keep the first-frame timestamps causal and non-negative.
+        pixel_coords[:, 0, ...] = (pixel_coords[:, 0, ...] + 1 - scale_factors[0]).clamp(min=0)
+
+    return pixel_coords

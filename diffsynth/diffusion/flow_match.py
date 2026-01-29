@@ -4,13 +4,14 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
             "Qwen-Image": FlowMatchScheduler.set_timesteps_qwen_image,
             "FLUX.2": FlowMatchScheduler.set_timesteps_flux2,
             "Z-Image": FlowMatchScheduler.set_timesteps_z_image,
+            "LTX-2": FlowMatchScheduler.set_timesteps_ltx2,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -121,7 +122,30 @@ class FlowMatchScheduler():
                 timestep_id = torch.argmin((timesteps - timestep).abs())
                 timesteps[timestep_id] = timestep
         return sigmas, timesteps
-    
+
+    @staticmethod
+    def set_timesteps_ltx2(num_inference_steps=100, denoising_strength=1.0, dynamic_shift_len=None, stretch=True, terminal=0.1):
+        dynamic_shift_len = dynamic_shift_len or 4096
+        sigma_shift = FlowMatchScheduler._calculate_shift_qwen_image(
+            image_seq_len=dynamic_shift_len,
+            base_seq_len=1024,
+            max_seq_len=4096,
+            base_shift=0.95,
+            max_shift=2.05,
+        )
+        num_train_timesteps = 1000
+        sigma_min = 0.0
+        sigma_max = 1.0
+        sigma_start = sigma_min + (sigma_max - sigma_min) * denoising_strength
+        sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps + 1)[:-1]
+        sigmas = math.exp(sigma_shift) / (math.exp(sigma_shift) + (1 / sigmas - 1))
+        # Shift terminal
+        one_minus_z = 1.0 - sigmas
+        scale_factor = one_minus_z[-1] / (1 - terminal)
+        sigmas = 1.0 - (one_minus_z / scale_factor)
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
     def set_training_weight(self):
         steps = 1000
         x = self.timesteps
