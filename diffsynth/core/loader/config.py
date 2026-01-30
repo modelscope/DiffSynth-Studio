@@ -1,5 +1,5 @@
 import torch, glob, os
-from typing import Optional, Union
+from typing import Optional, Union, Dict
 from dataclasses import dataclass
 from modelscope import snapshot_download
 from huggingface_hub import snapshot_download as hf_snapshot_download
@@ -23,6 +23,7 @@ class ModelConfig:
     computation_device: Optional[Union[str, torch.device]] = None
     computation_dtype: Optional[torch.dtype] = None
     clear_parameters: bool = False
+    state_dict: Dict[str, torch.Tensor] = None
     
     def check_input(self):
         if self.path is None and self.model_id is None:
