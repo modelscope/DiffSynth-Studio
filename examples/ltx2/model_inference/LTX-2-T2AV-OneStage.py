@@ -21,17 +21,13 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
 )
-prompt = """
-INT. OVEN – DAY. Static camera from inside the oven, looking outward through the slightly fogged glass door. Warm golden light glows around freshly baked cookies. The baker’s face fills the frame, eyes wide with focus, his breath fogging the glass as he leans in. Subtle reflections move across the glass as steam rises.
-Baker (whispering dramatically): “Today… I achieve perfection.”
-He leans even closer, nose nearly touching the glass.
-"""
+prompt = "A girl is speaking: “I enjoy working with Diffsynth-Studio, it's a great tool.”"
 negative_prompt = "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, wrong hand count, artifacts around text, inconsistent perspective, camera shake, incorrect depth of field, background too sharp, background clutter, distracting reflections, harsh shadows, inconsistent lighting direction, color banding, cartoonish rendering, 3D CGI look, unrealistic materials, uncanny valley effect, incorrect ethnicity, wrong gender, exaggerated expressions, wrong gaze direction, mismatched lip sync, silent or muted audio, distorted voice, robotic voice, echo, background noise, off-sync audio, incorrect dialogue, added dialogue, repetitive speech, jittery movement, awkward pauses, incorrect timing, unnatural transitions, inconsistent framing, tilted camera, flat lighting, inconsistent tone, cinematic oversaturation, stylized filters, or AI artifacts."
 height, width, num_frames = 512, 768, 121
 video, audio = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,
-    seed=10,
+    seed=43,
     height=height,
     width=width,
     num_frames=num_frames,
@@ -40,7 +36,7 @@ video, audio = pipe(
 write_video_audio_ltx2(
     video=video,
     audio=audio,
-    output_path='ltx2_onestage_oven.mp4',
+    output_path='ltx2_onestage.mp4',
     fps=24,
     audio_sample_rate=24000,
 )

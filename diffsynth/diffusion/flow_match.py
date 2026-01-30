@@ -129,7 +129,7 @@ class FlowMatchScheduler():
         if special_case == "stage2":
             sigmas = torch.Tensor([0.909375, 0.725, 0.421875])
         elif special_case == "ditilled_stage1":
-            sigmas = torch.Tensor([0.95, 0.8, 0.5, 0.2])
+            sigmas = torch.Tensor([1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875])
         else:
             dynamic_shift_len = dynamic_shift_len or 4096
             sigma_shift = FlowMatchScheduler._calculate_shift_qwen_image(
