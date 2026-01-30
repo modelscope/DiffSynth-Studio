@@ -124,25 +124,30 @@ class FlowMatchScheduler():
         return sigmas, timesteps
 
     @staticmethod
-    def set_timesteps_ltx2(num_inference_steps=100, denoising_strength=1.0, dynamic_shift_len=None, stretch=True, terminal=0.1):
-        dynamic_shift_len = dynamic_shift_len or 4096
-        sigma_shift = FlowMatchScheduler._calculate_shift_qwen_image(
-            image_seq_len=dynamic_shift_len,
-            base_seq_len=1024,
-            max_seq_len=4096,
-            base_shift=0.95,
-            max_shift=2.05,
-        )
+    def set_timesteps_ltx2(num_inference_steps=100, denoising_strength=1.0, dynamic_shift_len=None, terminal=0.1, special_case=None):
         num_train_timesteps = 1000
-        sigma_min = 0.0
-        sigma_max = 1.0
-        sigma_start = sigma_min + (sigma_max - sigma_min) * denoising_strength
-        sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps + 1)[:-1]
-        sigmas = math.exp(sigma_shift) / (math.exp(sigma_shift) + (1 / sigmas - 1))
-        # Shift terminal
-        one_minus_z = 1.0 - sigmas
-        scale_factor = one_minus_z[-1] / (1 - terminal)
-        sigmas = 1.0 - (one_minus_z / scale_factor)
+        if special_case == "stage2":
+            sigmas = torch.Tensor([0.909375, 0.725, 0.421875])
+        elif special_case == "ditilled_stage1":
+            sigmas = torch.Tensor([0.95, 0.8, 0.5, 0.2])
+        else:
+            dynamic_shift_len = dynamic_shift_len or 4096
+            sigma_shift = FlowMatchScheduler._calculate_shift_qwen_image(
+                image_seq_len=dynamic_shift_len,
+                base_seq_len=1024,
+                max_seq_len=4096,
+                base_shift=0.95,
+                max_shift=2.05,
+            )
+            sigma_min = 0.0
+            sigma_max = 1.0
+            sigma_start = sigma_min + (sigma_max - sigma_min) * denoising_strength
+            sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps + 1)[:-1]
+            sigmas = math.exp(sigma_shift) / (math.exp(sigma_shift) + (1 / sigmas - 1))
+            # Shift terminal
+            one_minus_z = 1.0 - sigmas
+            scale_factor = one_minus_z[-1] / (1 - terminal)
+            sigmas = 1.0 - (one_minus_z / scale_factor)
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
 

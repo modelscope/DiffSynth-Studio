@@ -210,4 +210,37 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
     },
+    "diffsynth.models.ltx2_dit.LTXModel": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.ltx2_upsampler.LTX2LatentUpsampler": {
+        "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.GroupNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.ltx2_video_vae.LTX2VideoEncoder": {
+        "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.ltx2_video_vae.LTX2VideoDecoder": {
+        "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.ltx2_audio_vae.LTX2AudioDecoder": {
+        "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.ltx2_audio_vae.LTX2Vocoder": {
+        "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.ConvTranspose1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.ltx2_text_encoder.LTX2TextEncoderPostModules": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_text_encoder.Embeddings1DConnector": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.ltx2_text_encoder.LTX2TextEncoder": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "transformers.models.gemma3.modeling_gemma3.Gemma3MultiModalProjector": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.gemma3.modeling_gemma3.Gemma3RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",   
+        "transformers.models.gemma3.modeling_gemma3.Gemma3TextScaledWordEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
 }

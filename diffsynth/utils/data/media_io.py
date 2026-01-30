@@ -3,6 +3,7 @@ from fractions import Fraction
 import torch
 import av
 from tqdm import tqdm
+from PIL import Image
 
 
 def _resample_audio(
