@@ -6,7 +6,7 @@ accelerate launch --mixed_precision="bf16" --num_processes=1 --num_machines=1  e
   --width 832 \
   --num_frames 81 \
   --dataset_repeat 1 \
-  --model_paths '["models/Wan-AI/Wan2.1-VACE-1.3B/diffusion_pytorch_model.safetensors","models/Wan-AI/Wan2.1-VACE-1.3B/models_t5_umt5-xxl-enc-b-enc-bf16.pth","models/Wan-AI/Wan2.1-VACE-1.3B/Wan2.1_VAE.pth"]' \
+  --model_paths '["models/Wan-AI/Wan2.1-VACE-1.3B/diffusion_pytorch_model.safetensors","models/Wan-AI/Wan2.1-VACE-1.3B/models_t5_umt5-xxl-enc-bf16.pth","models/Wan-AI/Wan2.1-VACE-1.3B/Wan2.1_VAE.pth"]' \
   --learning_rate 1e-4 \
   --fp8_models "./models/Wan-AI/Wan2.1-VACE-1.3B" \
   --offload_models "./models/Wan-AI/Wan2.1-VACE-1.3B" \
