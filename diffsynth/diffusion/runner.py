@@ -30,8 +30,12 @@ def launch_training_task(
     
     model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
     
+    global_step = model_logger.num_steps
     for epoch_id in range(num_epochs):
-        for data in tqdm(dataloader):
+        for batch_id, data in enumerate(tqdm(dataloader)):
+            # Skip batches if resuming from a checkpoint
+            if batch_id < global_step:
+                continue
             with accelerator.accumulate(model):
                 optimizer.zero_grad()
                 if dataset.load_from_cache:
@@ -42,6 +46,7 @@ def launch_training_task(
                 optimizer.step()
                 model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
                 scheduler.step()
+            global_step += 1
         if save_steps is None:
             model_logger.on_epoch_end(accelerator, model, epoch_id)
     model_logger.on_training_end(accelerator, model, save_steps)
