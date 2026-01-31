@@ -6,6 +6,7 @@ from xfuser.core.distributed import (get_sequence_parallel_rank,
                                      get_sp_group)
 from xfuser.core.long_ctx_attention import xFuserLongContextAttention
 from ...core.device import parse_nccl_backend, parse_device_type
+from ...core.gradient import gradient_checkpoint_forward
 
 
 def initialize_usp(device_type):
@@ -81,11 +82,6 @@ def usp_dit_forward(self,
         self.freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
         self.freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
     ], dim=-1).reshape(f * h * w, 1, -1).to(x.device)
-    
-    def create_custom_forward(module):
-        def custom_forward(*inputs):
-            return module(*inputs)
-        return custom_forward
 
     # Context Parallel
     chunks = torch.chunk(x, get_sequence_parallel_world_size(), dim=1)
@@ -94,20 +90,13 @@ def usp_dit_forward(self,
     x = chunks[get_sequence_parallel_rank()]
 
     for block in self.blocks:
-        if self.training and use_gradient_checkpointing:
-            if use_gradient_checkpointing_offload:
-                with torch.autograd.graph.save_on_cpu():
-                    x = torch.utils.checkpoint.checkpoint(
-                        create_custom_forward(block),
-                        x, context, t_mod, freqs,
-                        use_reentrant=False,
-                    )
-            else:
-                x = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(block),
-                    x, context, t_mod, freqs,
-                    use_reentrant=False,
-                )
+        if self.training:
+            x = gradient_checkpoint_forward(
+                block,
+                use_gradient_checkpointing,
+                use_gradient_checkpointing_offload,
+                x, context, t_mod, freqs
+            )
         else:
             x = block(x, context, t_mod, freqs)
 
