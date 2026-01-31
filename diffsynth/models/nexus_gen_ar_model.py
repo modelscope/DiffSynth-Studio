@@ -583,7 +583,7 @@ class Qwen2_5_VLForConditionalGeneration(Qwen2_5_VLPreTrainedModel, GenerationMi
             is_compileable = model_kwargs["past_key_values"].is_compileable and self._supports_static_cache
             is_compileable = is_compileable and not self.generation_config.disable_compile
             if is_compileable and (
-                self.device.type == "cuda" or generation_config.compile_config._compile_all_devices
+                self.device.type in ["cuda", "npu"] or generation_config.compile_config._compile_all_devices
             ):
                 os.environ["TOKENIZERS_PARALLELISM"] = "0"
                 model_forward = self.get_compiled_call(generation_config.compile_config)

@@ -4,7 +4,9 @@ from typing import Union
 from tqdm import tqdm
 from einops import rearrange
 import numpy as np
+from math import prod
 
+from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
 from ..core import ModelConfig, gradient_checkpoint_forward
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit, ControlNetInput
@@ -21,7 +23,7 @@ from ..models.qwen_image_image2lora import QwenImageImage2LoRAModel
 
 class QwenImagePipeline(BasePipeline):
 
-    def __init__(self, device="cuda", torch_dtype=torch.bfloat16):
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
             device=device, torch_dtype=torch_dtype,
             height_division_factor=16, width_division_factor=16,
@@ -47,6 +49,7 @@ class QwenImagePipeline(BasePipeline):
             QwenImageUnit_InputImageEmbedder(),
             QwenImageUnit_Inpaint(),
             QwenImageUnit_EditImageEmbedder(),
+            QwenImageUnit_LayerInputImageEmbedder(),
             QwenImageUnit_ContextImageEmbedder(),
             QwenImageUnit_PromptEmbedder(),
             QwenImageUnit_EntityControl(),
@@ -58,7 +61,7 @@ class QwenImagePipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: Union[str, torch.device] = "cuda",
+        device: Union[str, torch.device] = get_device_type(),
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
         processor_config: ModelConfig = None,
@@ -125,6 +128,11 @@ class QwenImagePipeline(BasePipeline):
         edit_image: Image.Image = None,
         edit_image_auto_resize: bool = True,
         edit_rope_interpolation: bool = False,
+        # Qwen-Image-Edit-2511
+        zero_cond_t: bool = False,
+        # Qwen-Image-Layered
+        layer_input_image: Image.Image = None,
+        layer_num: int = None,
         # In-context control
         context_image: Image.Image = None,
         # Tile
@@ -156,6 +164,9 @@ class QwenImagePipeline(BasePipeline):
             "eligen_entity_prompts": eligen_entity_prompts, "eligen_entity_masks": eligen_entity_masks, "eligen_enable_on_negative": eligen_enable_on_negative,
             "edit_image": edit_image, "edit_image_auto_resize": edit_image_auto_resize, "edit_rope_interpolation": edit_rope_interpolation, 
             "context_image": context_image,
+            "zero_cond_t": zero_cond_t,
+            "layer_input_image": layer_input_image,
+            "layer_num": layer_num,
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
@@ -175,7 +186,10 @@ class QwenImagePipeline(BasePipeline):
         # Decode
         self.load_models_to_device(['vae'])
         image = self.vae.decode(inputs_shared["latents"], device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
-        image = self.vae_output_to_image(image)
+        if layer_num is None:
+            image = self.vae_output_to_image(image)
+        else:
+            image = [self.vae_output_to_image(i, pattern="C H W") for i in image]
         self.load_models_to_device([])
 
         return image
@@ -226,12 +240,15 @@ class QwenImageUnit_ShapeChecker(PipelineUnit):
 class QwenImageUnit_NoiseInitializer(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("height", "width", "seed", "rand_device"),
+            input_params=("height", "width", "seed", "rand_device", "layer_num"),
             output_params=("noise",),
         )
 
-    def process(self, pipe: QwenImagePipeline, height, width, seed, rand_device):
-        noise = pipe.generate_noise((1, 16, height//8, width//8), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype)
+    def process(self, pipe: QwenImagePipeline, height, width, seed, rand_device, layer_num):
+        if layer_num is None:
+            noise = pipe.generate_noise((1, 16, height//8, width//8), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype)
+        else:
+            noise = pipe.generate_noise((layer_num + 1, 16, height//8, width//8), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype)
         return {"noise": noise}
 
 
@@ -248,14 +265,37 @@ class QwenImageUnit_InputImageEmbedder(PipelineUnit):
         if input_image is None:
             return {"latents": noise, "input_latents": None}
         pipe.load_models_to_device(['vae'])
-        image = pipe.preprocess_image(input_image).to(device=pipe.device, dtype=pipe.torch_dtype)
-        input_latents = pipe.vae.encode(image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+        if isinstance(input_image, list):
+            input_latents = []
+            for image in input_image:
+                image = pipe.preprocess_image(image).to(device=pipe.device, dtype=pipe.torch_dtype)
+                input_latents.append(pipe.vae.encode(image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride))
+            input_latents = torch.concat(input_latents, dim=0)
+        else:
+            image = pipe.preprocess_image(input_image).to(device=pipe.device, dtype=pipe.torch_dtype)
+            input_latents = pipe.vae.encode(image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
         else:
             latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
             return {"latents": latents, "input_latents": input_latents}
 
+
+class QwenImageUnit_LayerInputImageEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("layer_input_image", "tiled", "tile_size", "tile_stride"),
+            output_params=("layer_input_latents",),
+            onload_model_names=("vae",)
+        )
+
+    def process(self, pipe: QwenImagePipeline, layer_input_image, tiled, tile_size, tile_stride):
+        if layer_input_image is None:
+            return {}
+        pipe.load_models_to_device(['vae'])
+        image = pipe.preprocess_image(layer_input_image).to(device=pipe.device, dtype=pipe.torch_dtype)
+        latents = pipe.vae.encode(image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+        return {"layer_input_latents": latents}
 
 
 class QwenImageUnit_Inpaint(PipelineUnit):
@@ -673,18 +713,26 @@ def model_fn_qwen_image(
     entity_prompt_emb_mask=None,
     entity_masks=None,
     edit_latents=None,
+    layer_input_latents=None,
+    layer_num=None,
     context_latents=None,
     enable_fp8_attention=False,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     edit_rope_interpolation=False,
+    zero_cond_t=False,
     **kwargs
 ):
-    img_shapes = [(latents.shape[0], latents.shape[2]//2, latents.shape[3]//2)]
+    if layer_num is None:
+        layer_num = 1
+        img_shapes = [(1, latents.shape[2]//2, latents.shape[3]//2)]
+    else:
+        layer_num = layer_num + 1
+        img_shapes = [(1, latents.shape[2]//2, latents.shape[3]//2)] * layer_num
     txt_seq_lens = prompt_emb_mask.sum(dim=1).tolist()
     timestep = timestep / 1000
     
-    image = rearrange(latents, "B C (H P) (W Q) -> B (H W) (C P Q)", H=height//16, W=width//16, P=2, Q=2)
+    image = rearrange(latents, "(B N) C (H P) (W Q) -> B (N H W) (C P Q)", H=height//16, W=width//16, P=2, Q=2, N=layer_num)
     image_seq_len = image.shape[1]
 
     if context_latents is not None:
@@ -696,9 +744,27 @@ def model_fn_qwen_image(
         img_shapes += [(e.shape[0], e.shape[2]//2, e.shape[3]//2) for e in edit_latents_list]
         edit_image = [rearrange(e, "B C (H P) (W Q) -> B (H W) (C P Q)", H=e.shape[2]//2, W=e.shape[3]//2, P=2, Q=2) for e in edit_latents_list]
         image = torch.cat([image] + edit_image, dim=1)
+    if layer_input_latents is not None:
+        layer_num = layer_num + 1
+        img_shapes += [(layer_input_latents.shape[0], layer_input_latents.shape[2]//2, layer_input_latents.shape[3]//2)]
+        layer_input_latents = rearrange(layer_input_latents, "B C (H P) (W Q) -> B (H W) (C P Q)", P=2, Q=2)
+        image = torch.cat([image, layer_input_latents], dim=1)
 
     image = dit.img_in(image)
-    conditioning = dit.time_text_embed(timestep, image.dtype)
+    if zero_cond_t:
+        timestep = torch.cat([timestep, timestep * 0], dim=0)
+        modulate_index = torch.tensor(
+            [[0] * prod(sample[0]) + [1] * sum([prod(s) for s in sample[1:]]) for sample in [img_shapes]],
+            device=timestep.device,
+            dtype=torch.int,
+        )
+    else:
+        modulate_index = None
+    conditioning = dit.time_text_embed(
+        timestep,
+        image.dtype,
+        addition_t_cond=None if not dit.time_text_embed.use_additional_t_cond else torch.tensor([0]).to(device=image.device, dtype=torch.long)
+    )
 
     if entity_prompt_emb is not None:
         text, image_rotary_emb, attention_mask = dit.process_entity_masks(
@@ -728,6 +794,7 @@ def model_fn_qwen_image(
             image_rotary_emb=image_rotary_emb,
             attention_mask=attention_mask,
             enable_fp8_attention=enable_fp8_attention,
+            modulate_index=modulate_index,
         )
         if blockwise_controlnet_conditioning is not None:
             image_slice = image[:, :image_seq_len].clone()
@@ -738,9 +805,11 @@ def model_fn_qwen_image(
             )
             image[:, :image_seq_len] = image_slice + controlnet_output
     
+    if zero_cond_t:
+        conditioning = conditioning.chunk(2, dim=0)[0]
     image = dit.norm_out(image, conditioning)
     image = dit.proj_out(image)
     image = image[:, :image_seq_len]
     
-    latents = rearrange(image, "B (H W) (C P Q) -> B C (H P) (W Q)", H=height//16, W=width//16, P=2, Q=2)
+    latents = rearrange(image, "B (N H W) (C P Q) -> (B N) C (H P) (W Q)", H=height//16, W=width//16, P=2, Q=2, B=1)
     return latents

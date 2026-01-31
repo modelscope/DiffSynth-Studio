@@ -31,6 +31,7 @@ This section introduces the basic usage of `DiffSynth-Studio`, including how to 
 * [VRAM Management](/docs/en/Pipeline_Usage/VRAM_management.md)
 * [Model Training](/docs/en/Pipeline_Usage/Model_Training.md)
 * [Environment Variables](/docs/en/Pipeline_Usage/Environment_Variables.md)
+* [GPU/NPU Support](/docs/en/Pipeline_Usage/GPU_support.md)
 
 ## Section 2: Model Details
 

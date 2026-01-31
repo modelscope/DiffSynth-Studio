@@ -3,10 +3,12 @@ import torch
 import numpy as np
 from einops import repeat, reduce
 from typing import Union
-from ..core import AutoTorchModule, AutoWrappedLinear, load_state_dict, ModelConfig
+from ..core import AutoTorchModule, AutoWrappedLinear, load_state_dict, ModelConfig, parse_device_type
+from ..core.device.npu_compatible_device import get_device_type
 from ..utils.lora import GeneralLoRALoader
 from ..models.model_loader import ModelPool
 from ..utils.controlnet import ControlNetInput
+from ..core.device import get_device_name, IS_NPU_AVAILABLE
 
 
 class PipelineUnit:
@@ -60,7 +62,7 @@ class BasePipeline(torch.nn.Module):
 
     def __init__(
         self,
-        device="cuda", torch_dtype=torch.float16,
+        device=get_device_type(), torch_dtype=torch.float16,
         height_division_factor=64, width_division_factor=64,
         time_division_factor=None, time_division_remainder=None,
     ):
@@ -68,6 +70,7 @@ class BasePipeline(torch.nn.Module):
         # The device and torch_dtype is used for the storage of intermediate variables, not models.
         self.device = device
         self.torch_dtype = torch_dtype
+        self.device_type = parse_device_type(device)
         # The following parameters are used for shape check.
         self.height_division_factor = height_division_factor
         self.width_division_factor = width_division_factor
@@ -154,7 +157,7 @@ class BasePipeline(torch.nn.Module):
                             for module in model.modules():
                                 if hasattr(module, "offload"):
                                     module.offload()
-            torch.cuda.empty_cache()
+            getattr(torch, self.device_type).empty_cache()
             # onload models
             for name, model in self.named_children():
                 if name in model_names:
@@ -176,7 +179,8 @@ class BasePipeline(torch.nn.Module):
 
         
     def get_vram(self):
-        return torch.cuda.mem_get_info(self.device)[1] / (1024 ** 3)
+        device = self.device if not IS_NPU_AVAILABLE else get_device_name()
+        return getattr(torch, self.device_type).mem_get_info(device)[1] / (1024 ** 3)
     
     def get_module(self, model, name):
         if "." in name:
@@ -233,6 +237,7 @@ class BasePipeline(torch.nn.Module):
         alpha=1,
         hotload=None,
         state_dict=None,
+        verbose=1,
     ):
         if state_dict is None:
             if isinstance(lora_config, str):
@@ -259,12 +264,13 @@ class BasePipeline(torch.nn.Module):
                         updated_num += 1
                         module.lora_A_weights.append(lora[lora_a_name] * alpha)
                         module.lora_B_weights.append(lora[lora_b_name])
-            print(f"{updated_num} tensors are patched by LoRA. You can use `pipe.clear_lora()` to clear all LoRA layers.")
+            if verbose >= 1:
+                print(f"{updated_num} tensors are patched by LoRA. You can use `pipe.clear_lora()` to clear all LoRA layers.")
         else:
             lora_loader.fuse_lora_to_base_model(module, lora, alpha=alpha)
             
             
-    def clear_lora(self):
+    def clear_lora(self, verbose=1):
         cleared_num = 0
         for name, module in self.named_modules():
             if isinstance(module, AutoWrappedLinear):
@@ -274,7 +280,8 @@ class BasePipeline(torch.nn.Module):
                     module.lora_A_weights.clear()
                 if hasattr(module, "lora_B_weights"):
                     module.lora_B_weights.clear()
-        print(f"{cleared_num} LoRA layers are cleared.")
+        if verbose >= 1:
+            print(f"{cleared_num} LoRA layers are cleared.")
         
     
     def download_and_load_models(self, model_configs: list[ModelConfig] = [], vram_limit: float = None):
@@ -289,6 +296,7 @@ class BasePipeline(torch.nn.Module):
                 vram_config=vram_config,
                 vram_limit=vram_limit,
                 clear_parameters=model_config.clear_parameters,
+                state_dict=model_config.state_dict,
             )
         return model_pool
     
@@ -302,8 +310,13 @@ class BasePipeline(torch.nn.Module):
     
     
     def cfg_guided_model_fn(self, model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, **inputs_others):
+        if inputs_shared.get("positive_only_lora", None) is not None:
+            self.clear_lora(verbose=0)
+            self.load_lora(self.dit, state_dict=inputs_shared["positive_only_lora"], verbose=0)
         noise_pred_posi = model_fn(**inputs_posi, **inputs_shared, **inputs_others)
         if cfg_scale != 1.0:
+            if inputs_shared.get("positive_only_lora", None) is not None:
+                self.clear_lora(verbose=0)
             noise_pred_nega = model_fn(**inputs_nega, **inputs_shared, **inputs_others)
             noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
         else:

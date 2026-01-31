@@ -108,7 +108,14 @@ def test_flux():
     run_inference("examples/flux/model_training/validate_lora")
 
 
+def test_z_image():
+    run_inference("examples/z_image/model_inference")
+    run_inference("examples/z_image/model_inference_low_vram")
+    run_train_multi_GPU("examples/z_image/model_training/full")
+    run_inference("examples/z_image/model_training/validate_full")
+    run_train_single_GPU("examples/z_image/model_training/lora")
+    run_inference("examples/z_image/model_training/validate_lora")
+
+
 if __name__ == "__main__":
-    test_qwen_image()
-    test_flux()
-    test_wan()
+    test_z_image()

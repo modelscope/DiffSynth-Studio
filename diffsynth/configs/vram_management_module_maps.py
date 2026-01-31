@@ -13,6 +13,7 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
     "diffsynth.models.qwen_image_dit.QwenImageDiT": {
         "diffsynth.models.qwen_image_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.qwen_image_text_encoder.QwenImageTextEncoder": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
@@ -193,5 +194,20 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
     "diffsynth.models.z_image_dit.ZImageDiT": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "diffsynth.models.z_image_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.z_image_controlnet.ZImageControlNet": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "diffsynth.models.z_image_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.z_image_image2lora.ZImageImage2LoRAModel": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+    },
+    "diffsynth.models.siglip2_image_encoder.Siglip2ImageEncoder428M": {
+        "transformers.models.siglip2.modeling_siglip2.Siglip2VisionEmbeddings": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.siglip2.modeling_siglip2.Siglip2MultiheadAttentionPoolingHead": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
     },
 }

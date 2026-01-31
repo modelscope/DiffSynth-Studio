@@ -2,6 +2,7 @@ import torch, copy
 from typing import Union
 from .initialization import skip_model_initialization
 from .disk_map import DiskMap
+from ..device import parse_device_type, get_device_name, IS_NPU_AVAILABLE
 
 
 class AutoTorchModule(torch.nn.Module):
@@ -32,6 +33,7 @@ class AutoTorchModule(torch.nn.Module):
         )
         self.state = 0
         self.name = ""
+        self.computation_device_type = parse_device_type(self.computation_device)
 
     def set_dtype_and_device(
         self,
@@ -61,7 +63,8 @@ class AutoTorchModule(torch.nn.Module):
         return r
 
     def check_free_vram(self):
-        gpu_mem_state = torch.cuda.mem_get_info(self.computation_device)
+        device = self.computation_device if not IS_NPU_AVAILABLE else get_device_name()
+        gpu_mem_state = getattr(torch, self.computation_device_type).mem_get_info(device)
         used_memory = (gpu_mem_state[1] - gpu_mem_state[0]) / (1024**3)
         return used_memory < self.vram_limit
 
@@ -307,6 +310,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         self.lora_B_weights = []
         self.lora_merger = None
         self.enable_fp8 = computation_dtype in [torch.float8_e4m3fn, torch.float8_e4m3fnuz]
+        self.computation_device_type = parse_device_type(self.computation_device)
         
         if offload_dtype == "disk":
             self.disk_map = disk_map

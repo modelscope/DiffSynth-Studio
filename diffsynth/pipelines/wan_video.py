@@ -11,6 +11,7 @@ from typing import Optional
 from typing_extensions import Literal
 from transformers import Wav2Vec2Processor
 
+from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
 from ..core import ModelConfig, gradient_checkpoint_forward
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
@@ -30,7 +31,7 @@ from ..models.longcat_video_dit import LongCatVideoTransformer3DModel
 
 class WanVideoPipeline(BasePipeline):
 
-    def __init__(self, device="cuda", torch_dtype=torch.bfloat16):
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
             device=device, torch_dtype=torch_dtype,
             height_division_factor=16, width_division_factor=16, time_division_factor=4, time_division_remainder=1
@@ -98,7 +99,7 @@ class WanVideoPipeline(BasePipeline):
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
-        device: Union[str, torch.device] = "cuda",
+        device: Union[str, torch.device] = get_device_type(),
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
         audio_processor_config: ModelConfig = None,
@@ -122,11 +123,15 @@ class WanVideoPipeline(BasePipeline):
                     model_config.model_id = redirect_dict[model_config.origin_file_pattern][0]
                     model_config.origin_file_pattern = redirect_dict[model_config.origin_file_pattern][1]
         
-        # Initialize pipeline
-        pipe = WanVideoPipeline(device=device, torch_dtype=torch_dtype)
         if use_usp:
             from ..utils.xfuser import initialize_usp
-            initialize_usp()
+            initialize_usp(device)
+            import torch.distributed as dist
+            from ..core.device.npu_compatible_device import get_device_name
+            if dist.is_available() and dist.is_initialized():
+                device = get_device_name()
+        # Initialize pipeline
+        pipe = WanVideoPipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
         
         # Fetch models
@@ -241,6 +246,7 @@ class WanVideoPipeline(BasePipeline):
         tea_cache_model_id: Optional[str] = "",
         # progress_bar
         progress_bar_cmd=tqdm,
+        output_type: Optional[Literal["quantized", "floatpoint"]] = "quantized",
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
@@ -320,9 +326,11 @@ class WanVideoPipeline(BasePipeline):
         # Decode
         self.load_models_to_device(['vae'])
         video = self.vae.decode(inputs_shared["latents"], device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
-        video = self.vae_output_to_video(video)
+        if output_type == "quantized":
+            video = self.vae_output_to_video(video)
+        elif output_type == "floatpoint":
+            pass
         self.load_models_to_device([])
-
         return video
 
 
@@ -823,9 +831,9 @@ class WanVideoUnit_S2V(PipelineUnit):
         pipe.load_models_to_device(["vae"])
         motion_frames = 73
         kwargs = {}
-        if motion_video is not None and len(motion_video) > 0:
-            assert len(motion_video) == motion_frames, f"motion video must have {motion_frames} frames, but got {len(motion_video)}"
-            motion_latents = pipe.preprocess_video(motion_video)
+        if motion_video is not None:
+            assert motion_video.shape[2] == motion_frames, f"motion video must have {motion_frames} frames, but got {motion_video.shape[2]}"
+            motion_latents = motion_video
             kwargs["drop_motion_frames"] = False
         else:
             motion_latents = torch.zeros([1, 3, motion_frames, height, width], dtype=pipe.torch_dtype, device=pipe.device)
@@ -957,7 +965,7 @@ class WanVideoUnit_AnimateInpaint(PipelineUnit):
             onload_model_names=("vae",)
         )
         
-    def get_i2v_mask(self, lat_t, lat_h, lat_w, mask_len=1, mask_pixel_values=None, device="cuda"):
+    def get_i2v_mask(self, lat_t, lat_h, lat_w, mask_len=1, mask_pixel_values=None, device=get_device_type()):
         if mask_pixel_values is None:
             msk = torch.zeros(1, (lat_t-1) * 4 + 1, lat_h, lat_w, device=device)
         else:

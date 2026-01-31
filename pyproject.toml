@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "diffsynth"
-version = "2.0.0"
+version = "2.0.4"
 description = "Enjoy the magic of Diffusion models!"
 authors = [{name = "ModelScope Team"}]
 license = {text = "Apache-2.0"}
-requires-python = ">=3.10"
+requires-python = ">=3.10.1"
 dependencies = [
     "torch>=2.0.0",
     "torchvision",
@@ -33,6 +33,20 @@ classifiers = [
 ]
 
 [tool.setuptools.packages.find]
+where = ["./"]
+include = ["diffsynth", "diffsynth.*"]
+
+[project.optional-dependencies]
+npu_aarch64 = [
+    "torch==2.7.1",
+    "torch-npu==2.7.1",
+    "torchvision==0.22.1"
+]
+npu = [
+    "torch==2.7.1+cpu",
+    "torch-npu==2.7.1",
+    "torchvision==0.22.1+cpu"
+]
 
 [tool.setuptools]
 include-package-data = true

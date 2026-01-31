@@ -2,6 +2,7 @@ import torch, os, argparse, accelerate
 from diffsynth.core import UnifiedDataset
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 from diffsynth.diffusion import *
+from diffsynth.core.data.operators import *
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -20,6 +21,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         offload_models=None,
         device="cpu",
         task="sft",
+        zero_cond_t=False,
     ):
         super().__init__()
         # Load models
@@ -43,6 +45,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         self.extra_inputs = extra_inputs.split(",") if extra_inputs is not None else []
         self.fp8_models = fp8_models
         self.task = task
+        self.zero_cond_t = zero_cond_t
         self.task_to_loss = {
             "sft:data_process": lambda pipe, *args: args,
             "direct_distill:data_process": lambda pipe, *args: args,
@@ -56,11 +59,6 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         inputs_posi = {"prompt": data["prompt"]}
         inputs_nega = {"negative_prompt": ""}
         inputs_shared = {
-            # Assume you are using this pipeline for inference,
-            # please fill in the input parameters.
-            "input_image": data["image"],
-            "height": data["image"].size[1],
-            "width": data["image"].size[0],
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
             "cfg_scale": 1,
@@ -68,7 +66,22 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
             "edit_image_auto_resize": True,
+            "zero_cond_t": self.zero_cond_t,
         }
+        # Assume you are using this pipeline for inference,
+        # please fill in the input parameters.
+        if isinstance(data["image"], list):
+            inputs_shared.update({
+                "input_image": data["image"],
+                "height": data["image"][0].size[1],
+                "width": data["image"][0].size[0],
+            })
+        else:
+            inputs_shared.update({
+                "input_image": data["image"],
+                "height": data["image"].size[1],
+                "width": data["image"].size[0],
+            })
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
         return inputs_shared, inputs_posi, inputs_nega
     
@@ -87,6 +100,7 @@ def qwen_image_parser():
     parser = add_image_size_config(parser)
     parser.add_argument("--tokenizer_path", type=str, default=None, help="Path to tokenizer.")
     parser.add_argument("--processor_path", type=str, default=None, help="Path to the processor. If provided, the processor will be used for image editing.")
+    parser.add_argument("--zero_cond_t", default=False, action="store_true", help="A special parameter introduced by Qwen-Image-Edit-2511. Please enable it for this model.")
     return parser
 
 
@@ -109,7 +123,15 @@ if __name__ == "__main__":
             width=args.width,
             height_division_factor=16,
             width_division_factor=16,
-        )
+        ),
+        special_operator_map={
+            # Qwen-Image-Layered
+            "layer_input_image": ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16),
+            "image": RouteByType(operator_map=[
+                (str, ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16)),
+                (list, SequencialProcess(ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16))),
+            ])
+        }
     )
     model = QwenImageTrainingModule(
         model_paths=args.model_paths,
@@ -130,6 +152,7 @@ if __name__ == "__main__":
         offload_models=args.offload_models,
         task=args.task,
         device=accelerator.device,
+        zero_cond_t=args.zero_cond_t,
     )
     model_logger = ModelLogger(
         args.output_path,

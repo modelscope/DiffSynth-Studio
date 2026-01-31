@@ -63,6 +63,20 @@ qwen_image_series = [
         "model_class": "diffsynth.models.qwen_image_image2lora.QwenImageImage2LoRAModel",
         "extra_kwargs": {"compress_dim": 64, "use_residual": False}
     },
+    {
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image-Layered", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        "model_hash": "8dc8cda05de16c73afa755e2c1ce2839",
+        "model_name": "qwen_image_dit",
+        "model_class": "diffsynth.models.qwen_image_dit.QwenImageDiT",
+        "extra_kwargs": {"use_layer3d_rope": True, "use_additional_t_cond": True}
+    },
+    {
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image-Layered", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "44b39ddc499e027cfb24f7878d7416b9",
+        "model_name": "qwen_image_vae",
+        "model_class": "diffsynth.models.qwen_image_vae.QwenImageVAE",
+        "extra_kwargs": {"image_channels": 4}
+    },
 ]
 
 wan_series = [
@@ -304,6 +318,13 @@ flux_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
     },
     {
+        # Supported due to historical reasons.
+        "model_hash": "605c56eab23e9e2af863ad8f0813a25d",
+        "model_name": "flux_dit",
+        "model_class": "diffsynth.models.flux_dit.FluxDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverterFromDiffusers",
+    },
+    {
         # Example: ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors")
         "model_hash": "94eefa3dac9cec93cb1ebaf1747d7b78",
         "model_name": "flux_text_encoder_clip",
@@ -460,6 +481,13 @@ flux_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
         "extra_kwargs": {"disable_guidance_embedder": True},
     },
+    {
+        # Example: ModelConfig(model_id="MAILAND/majicflus_v1", origin_file_pattern="majicflus_v134.safetensors")
+        "model_hash": "3394f306c4cbf04334b712bf5aaed95f",
+        "model_name": "flux_dit",
+        "model_class": "diffsynth.models.flux_dit.FluxDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
+    },
 ]
 
 flux2_series = [
@@ -481,6 +509,28 @@ flux2_series = [
         "model_hash": "c54288e3ee12ca215898840682337b95",
         "model_name": "flux2_vae",
         "model_class": "diffsynth.models.flux2_vae.Flux2VAE",
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "3bde7b817fec8143028b6825a63180df",
+        "model_name": "flux2_dit",
+        "model_class": "diffsynth.models.flux2_dit.Flux2DiT",
+        "extra_kwargs": {"guidance_embeds": False, "joint_attention_dim": 7680, "num_attention_heads": 24, "num_layers": 5, "num_single_layers": 20}
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.2-klein-9B", origin_file_pattern="text_encoder/*.safetensors")
+        "model_hash": "9195f3ea256fcd0ae6d929c203470754",
+        "model_name": "z_image_text_encoder",
+        "model_class": "diffsynth.models.z_image_text_encoder.ZImageTextEncoder",
+        "extra_kwargs": {"model_size": "8B"},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.z_image_text_encoder.ZImageTextEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.2-klein-9B", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "39c6fc48f07bebecedbbaa971ff466c8",
+        "model_name": "flux2_dit",
+        "model_class": "diffsynth.models.flux2_dit.Flux2DiT",
+        "extra_kwargs": {"guidance_embeds": False, "joint_attention_dim": 12288, "num_attention_heads": 32, "num_layers": 8, "num_single_layers": 24}
     },
 ]
 
@@ -512,6 +562,32 @@ z_image_series = [
         "model_class": "diffsynth.models.flux_vae.FluxVAEDecoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_vae.FluxVAEDecoderStateDictConverterDiffusers",
         "extra_kwargs": {"use_conv_attention": False},
+    },
+    {
+        # Example: ModelConfig(model_id="Tongyi-MAI/Z-Image-Omni-Base", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "aa3563718e5c3ecde3dfbb020ca61180",
+        "model_name": "z_image_dit",
+        "model_class": "diffsynth.models.z_image_dit.ZImageDiT",
+        "extra_kwargs": {"siglip_feat_dim": 1152},
+    },
+    {
+        # Example: ModelConfig(model_id="Tongyi-MAI/Z-Image-Omni-Base", origin_file_pattern="siglip/model.safetensors")
+        "model_hash": "89d48e420f45cff95115a9f3e698d44a",
+        "model_name": "siglip_vision_model_428m",
+        "model_class": "diffsynth.models.siglip2_image_encoder.Siglip2ImageEncoder428M",
+    },
+    {
+        # Example: ModelConfig(model_id="PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1", origin_file_pattern="Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.safetensors")
+        "model_hash": "1677708d40029ab380a95f6c731a57d7",
+        "model_name": "z_image_controlnet",
+        "model_class": "diffsynth.models.z_image_controlnet.ZImageControlNet",
+    },
+    {
+        # Example: ???
+        "model_hash": "9510cb8cd1dd34ee0e4f111c24905510",
+        "model_name": "z_image_image2lora_style",
+        "model_class": "diffsynth.models.z_image_image2lora.ZImageImage2LoRAModel",
+        "extra_kwargs": {"compress_dim": 128},
     },
 ]
 
