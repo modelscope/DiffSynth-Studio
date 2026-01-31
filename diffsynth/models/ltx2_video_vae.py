@@ -68,6 +68,24 @@ class VideoLatentPatchifier(Patchifier):
 
         return latents
 
+    def unpatchify_video(
+        self,
+        latents: torch.Tensor,
+        frames: int,
+        height: int,
+        width: int,
+    ) -> torch.Tensor:
+        latents = einops.rearrange(
+            latents,
+            "b (f h w) (c p q) -> b c f (h p) (w q)",
+            f=frames,
+            h=height // self._patch_size[1],
+            w=width // self._patch_size[2],
+            p=self._patch_size[1],
+            q=self._patch_size[2],
+        )
+        return latents
+
     def get_patch_grid_bounds(
         self,
         output_shape: AudioLatentShape | VideoLatentShape,

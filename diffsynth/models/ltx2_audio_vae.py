@@ -167,6 +167,20 @@ class AudioPatchifier(Patchifier):
 
         return audio_latents
 
+    def unpatchify_audio(
+        self,
+        audio_latents: torch.Tensor,
+        channels: int,
+        mel_bins: int
+    ) -> torch.Tensor:
+        audio_latents = einops.rearrange(
+            audio_latents,
+            "b t (c f) -> b c t f",
+            c=channels,
+            f=mel_bins,
+        )
+        return audio_latents
+
     def get_patch_grid_bounds(
         self,
         output_shape: AudioLatentShape | VideoLatentShape,
