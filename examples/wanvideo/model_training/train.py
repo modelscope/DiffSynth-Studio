@@ -170,9 +170,11 @@ if __name__ == "__main__":
         max_timestep_boundary=args.max_timestep_boundary,
         min_timestep_boundary=args.min_timestep_boundary,
     )
+    initial_step = model.extract_step_from_checkpoint(args.lora_checkpoint)
     model_logger = ModelLogger(
-        args.output_path,
+        output_path=args.output_path,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
+        initial_step=initial_step,
     )
     launcher_map = {
         "sft:data_process": launch_data_process_task,

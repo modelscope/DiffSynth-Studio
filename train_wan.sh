@@ -1,0 +1,22 @@
+accelerate launch --mixed_precision="bf16" --num_processes=1 --num_machines=1  examples/wanvideo/model_training/train.py \
+  --dataset_base_path data \
+  --dataset_metadata_path data/metadata_vace.csv \
+  --data_file_keys "video,vace_video,vace_ref_img" \
+  --height 480 \
+  --width 832 \
+  --num_frames 81 \
+  --dataset_repeat 1 \
+  --model_paths '["models/Wan-AI/Wan2.1-VACE-1.3B/diffusion_pytorch_model.safetensors","models/Wan-AI/Wan2.1-VACE-1.3B/models_t5_umt5-xxl-enc-b-enc-bf16.pth","models/Wan-AI/Wan2.1-VACE-1.3B/Wan2.1_VAE.pth"]' \
+  --learning_rate 1e-4 \
+  --fp8_models "./models/Wan-AI/Wan2.1-VACE-1.3B" \
+  --offload_models "./models/Wan-AI/Wan2.1-VACE-1.3B" \
+  --num_epochs 5 \
+  --save_steps 100 \
+  --remove_prefix_in_ckpt "pipe.vace." \
+  --output_path "./models/train/Wan2.1-VACE-1.3B_lora" \
+  --lora_checkpoint "./models/train/Wan2.1-VACE-1.3B_lora/step-500.safetensors" \
+  --lora_base_model "vace" \
+  --lora_target_modules "q,k,v,o,ffn.0,ffn.2" \
+  --lora_rank 32 \
+  --extra_inputs "vace_video,vace_ref_img" \
+  --use_gradient_checkpointing_offload

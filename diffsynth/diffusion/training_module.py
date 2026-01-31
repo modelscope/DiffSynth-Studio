@@ -1,4 +1,4 @@
-import torch, json, os
+import torch, json, os, re
 from ..core import ModelConfig, load_state_dict
 from ..utils.controlnet import ControlNetInput
 from peft import LoraConfig, inject_adapter_in_model
@@ -261,3 +261,31 @@ class DiffusionTrainingModule(torch.nn.Module):
         for name, params in controlnet_inputs.items():
             inputs_shared[name] = [ControlNetInput(**params)]
         return inputs_shared
+
+    def extract_step_from_checkpoint(self, lora_checkpoint):
+        """Extract step number from checkpoint filename like 'step-500.safetensors' or 'epoch-2.safetensors'"""
+        if lora_checkpoint is None:
+            return 0
+
+        # Extract filename from path
+        filename = os.path.basename(lora_checkpoint)
+
+        # Try to match step-XXX pattern
+        step_match = re.search(r"step[-_](\d+)", filename, re.IGNORECASE)
+        if step_match:
+            step_num = int(step_match.group(1))
+            print(f"Resuming from step {step_num} (checkpoint: {filename})")
+            return step_num
+
+        # Try to match epoch-XXX pattern (return 0 as we can't determine exact step)
+        epoch_match = re.search(r"epoch[-_](\d+)", filename, re.IGNORECASE)
+        if epoch_match:
+            print(
+                f"Checkpoint is epoch-based ({filename}), starting step counter from 0"
+            )
+            return 0
+
+        print(
+            f"Could not extract step number from checkpoint filename: {filename}, starting from 0"
+        )
+        return 0
