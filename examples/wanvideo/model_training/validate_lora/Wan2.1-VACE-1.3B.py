@@ -8,9 +8,9 @@ pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Wan-AI/Wan2.1-VACE-1.3B", origin_file_pattern="diffusion_pytorch_model*.safetensors"),
-        ModelConfig(model_id="Wan-AI/Wan2.1-VACE-1.3B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
-        ModelConfig(model_id="Wan-AI/Wan2.1-VACE-1.3B", origin_file_pattern="Wan2.1_VAE.pth"),
+        ModelConfig(path="models/Wan-AI/Wan2.1-VACE-1.3B/diffusion_pytorch_model.safetensors"),
+        ModelConfig(path="models/Wan-AI/Wan2.1-VACE-1.3B/models_t5_umt5-xxl-enc-bf16.pth"),
+        ModelConfig(path="models/Wan-AI/Wan2.1-VACE-1.3B/Wan2.1_VAE.pth"),
     ],
 )
 pipe.load_lora(pipe.vace, "models/train/Wan2.1-VACE-1.3B_lora/step-2800.safetensors", alpha=1)
