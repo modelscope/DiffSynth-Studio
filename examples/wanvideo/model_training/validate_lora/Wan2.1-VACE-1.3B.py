@@ -13,16 +13,16 @@ pipe = WanVideoPipeline.from_pretrained(
         ModelConfig(model_id="Wan-AI/Wan2.1-VACE-1.3B", origin_file_pattern="Wan2.1_VAE.pth"),
     ],
 )
-pipe.load_lora(pipe.vace, "models/train/Wan2.1-VACE-1.3B_lora/epoch-4.safetensors", alpha=1)
+pipe.load_lora(pipe.vace, "models/train/Wan2.1-VACE-1.3B_lora/step-2800.safetensors", alpha=1)
 
-video = VideoData("data/example_video_dataset/video1_softedge.mp4", height=480, width=832)
+video = VideoData("data_infer/processed/pose/dance-1_1_pose.mp4", height=480, width=832)
 video = [video[i] for i in range(49)]
-reference_image = VideoData("data/example_video_dataset/video1.mp4", height=480, width=832)[0]
+reference_image = VideoData("data_infer/ref_img.jpg", height=480, width=832)[0]
 
 video = pipe(
-    prompt="from sunset to night, a small town, light, house, river",
+    prompt="Person is dancing by following the video pose exactly. Dance is natural and smooth. Maintain the exact facial features, hair, clothing, and background from the reference images. Keep the background consistent with the reference images.",
     negative_prompt="色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
     vace_video=video, vace_reference_image=reference_image, num_frames=49,
     seed=1, tiled=True
 )
-save_video(video, "video_Wan2.1-VACE-1.3B.mp4", fps=15, quality=5)
+save_video(video, "results/lora_dance_1.mp4", fps=15, quality=5)
