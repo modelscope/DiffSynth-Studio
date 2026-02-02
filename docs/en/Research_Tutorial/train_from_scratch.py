@@ -295,7 +295,7 @@ class AAATrainingModule(DiffusionTrainingModule):
                 ModelConfig(model_id="Qwen/Qwen3-0.6B", origin_file_pattern="model.safetensors"),
                 ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
             ],
-            tokenizer_config=ModelConfig(model_id="Qwen/Qwen3-0.6B", origin_file_pattern=""),
+            tokenizer_config=ModelConfig(model_id="Qwen/Qwen3-0.6B", origin_file_pattern="./"),
         )
         self.pipe.dit = AAADiT().to(dtype=torch.bfloat16, device=device)
         self.pipe.freeze_except(["dit"])
