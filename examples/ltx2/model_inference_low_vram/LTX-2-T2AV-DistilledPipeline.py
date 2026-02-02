@@ -3,11 +3,11 @@ from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelCo
 from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
 
 vram_config = {
-    "offload_dtype": torch.bfloat16,
+    "offload_dtype": torch.float8_e5m2,
     "offload_device": "cpu",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cuda",
-    "preparing_dtype": torch.bfloat16,
+    "onload_dtype": torch.float8_e5m2,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float8_e5m2,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
@@ -21,6 +21,7 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
         ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-spatial-upscaler-x2-1.0.safetensors", **vram_config),
     ],
     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
 prompt = "A girl is very happy, she is speaking: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"

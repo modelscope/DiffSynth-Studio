@@ -1,6 +1,6 @@
 import torch
 from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
-from diffsynth.utils.data.media_io import write_video_audio_ltx2
+from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -24,7 +24,7 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"),
 )
 
-prompt = "A girl is speaking: “I enjoy working with Diffsynth-Studio, it's a great tool.”"
+prompt = "A girl is very happy, she is speaking: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
 negative_prompt = (
     "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, "
     "grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, "

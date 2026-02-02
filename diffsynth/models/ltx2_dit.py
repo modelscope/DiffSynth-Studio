@@ -1442,6 +1442,10 @@ class LTXModel(torch.nn.Module):
         return vx, ax
 
     def forward(self, video_latents, video_positions, video_context, video_timesteps, audio_latents, audio_positions, audio_context, audio_timesteps):
+        cross_pe_max_pos = None
+        if self.model_type.is_video_enabled() and self.model_type.is_audio_enabled():
+            cross_pe_max_pos = max(self.positional_embedding_max_pos[0], self.audio_positional_embedding_max_pos[0])
+        self._init_preprocessors(cross_pe_max_pos)
         video = Modality(video_latents, video_timesteps, video_positions, video_context)
         audio = Modality(audio_latents, audio_timesteps, audio_positions, audio_context)
         vx, ax = self._forward(video=video, audio=audio, perturbations=None)

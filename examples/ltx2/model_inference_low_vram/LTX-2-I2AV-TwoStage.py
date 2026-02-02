@@ -1,13 +1,15 @@
 import torch
 from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
 from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
+from PIL import Image
+from modelscope import dataset_snapshot_download
 
 vram_config = {
-    "offload_dtype": torch.bfloat16,
+    "offload_dtype": torch.float8_e5m2,
     "offload_device": "cpu",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cuda",
-    "preparing_dtype": torch.bfloat16,
+    "onload_dtype": torch.float8_e5m2,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float8_e5m2,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
@@ -17,10 +19,12 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     device="cuda",
     model_configs=[
         ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized", origin_file_pattern="model-*.safetensors", **vram_config),
-        ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled.safetensors", **vram_config),
+        ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors", **vram_config),
         ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-spatial-upscaler-x2-1.0.safetensors", **vram_config),
     ],
     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
+    stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
 prompt = "A girl is very happy, she is speaking: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
@@ -38,20 +42,31 @@ negative_prompt = (
     "inconsistent tone, cinematic oversaturation, stylized filters, or AI artifacts."
 )
 height, width, num_frames = 512 * 2, 768 * 2, 121
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/examples_in_diffsynth",
+    local_dir="./",
+    allow_file_pattern=["data/examples/ltx-2/first_frame.jpg"]
+)
+image = Image.open("data/examples/ltx-2/first_frame.jpg").convert("RGB").resize((width, height))
+# first frame
 video, audio = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,
-    seed=43,
+    seed=42,
     height=height,
     width=width,
     num_frames=num_frames,
     tiled=True,
-    use_distilled_pipeline=True,
+    use_two_stage_pipeline=True,
+    num_inference_steps=40,
+    input_images=[image],
+    input_images_indexes=[0],
+    input_images_strength=1.0,
 )
 write_video_audio_ltx2(
     video=video,
     audio=audio,
-    output_path='ltx2_distilled.mp4',
+    output_path='ltx2_twostage_i2av_first.mp4',
     fps=24,
     audio_sample_rate=24000,
 )

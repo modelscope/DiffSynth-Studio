@@ -1648,11 +1648,8 @@ class LTX2VideoEncoder(nn.Module):
         tile_overlap_in_pixels: Optional[int] = 128,
         **kwargs,
     ) -> torch.Tensor:
-        device = next(self.parameters()).device
-        vae_dtype = next(self.parameters()).dtype
         if video.ndim == 4:
             video = video.unsqueeze(0)  # [C, F, H, W] -> [B, C, F, H, W]
-        video = video.to(device=device, dtype=vae_dtype)
         # Choose encoding method based on tiling flag
         if tiled:
             latents = self.tiled_encode_video(
