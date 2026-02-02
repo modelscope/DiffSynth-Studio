@@ -16,7 +16,7 @@ pipe = WanVideoPipeline.from_pretrained(
 pipe.load_lora(pipe.vace, "models/train/Wan2.1-VACE-1.3B_lora/step-1100.safetensors", alpha=0.3)
 
 video = VideoData("data_infer/processed/pose/dance-4_1_pose.mp4", height=480, width=832)
-video = [video[i] for i in range(49)]
+video = [video[i] for i in range(81)]
 reference_image = VideoData("data_infer/ref_img.jpg", height=480, width=832)[0]
 
 video = pipe(

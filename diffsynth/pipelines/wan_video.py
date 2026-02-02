@@ -225,7 +225,7 @@ class WanVideoPipeline(BasePipeline):
         width: Optional[int] = 832,
         num_frames=81,
         # Classifier-free guidance
-        cfg_scale: Optional[float] = 5.0,
+        cfg_scale: Optional[float] = 6.0,
         cfg_merge: Optional[bool] = False,
         # Boundary
         switch_DiT_boundary: Optional[float] = 0.875,
