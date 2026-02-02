@@ -297,13 +297,20 @@ class WanVideoPipeline(BasePipeline):
                 models["vace"] = self.vace2
             
             # Adaptive VACE guidance: increase scale as denoising progresses for stronger feature retention
+            # ONLY applies to reference image frames, NOT to pose video frames
             if inputs_shared.get("vace_adaptive_guidance", False) and inputs_shared.get("vace_context") is not None:
-                progress_ratio = progress_id / len(self.scheduler.timesteps)
-                vace_scale_start = inputs_shared["vace_scale"]
-                vace_scale_end = inputs_shared.get("vace_scale_end", vace_scale_start)
-                # Quadratic scaling: stronger influence in later steps when details matter most
-                current_vace_scale = vace_scale_start + (vace_scale_end - vace_scale_start) * (progress_ratio ** 2)
-                inputs_shared["vace_scale"] = current_vace_scale
+                vace_ref_count = inputs_shared.get("vace_reference_frame_count", 0)
+                if vace_ref_count > 0:  # Only apply adaptive guidance if reference image exists
+                    progress_ratio = progress_id / len(self.scheduler.timesteps)
+                    vace_scale_start = inputs_shared["vace_scale"]
+                    vace_scale_end = inputs_shared.get("vace_scale_end", vace_scale_start)
+                    # Quadratic scaling: stronger influence in later steps when details matter most
+                    current_vace_scale = vace_scale_start + (vace_scale_end - vace_scale_start) * (progress_ratio ** 2)
+                    inputs_shared["vace_scale"] = current_vace_scale
+                    inputs_shared["vace_reference_frame_count"] = vace_ref_count  # Track reference frames for selective masking
+                else:
+                    # No reference image: use base scale without adaptation
+                    inputs_shared["vace_scale"] = inputs_shared["vace_scale"]
                 
             # Timestep
             timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
@@ -633,7 +640,7 @@ class WanVideoUnit_VACE(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("vace_video", "vace_video_mask", "vace_reference_image", "vace_scale", "vace_scale_end", "vace_adaptive_guidance", "height", "width", "num_frames", "tiled", "tile_size", "tile_stride"),
-            output_params=("vace_context", "vace_scale", "vace_scale_end", "vace_adaptive_guidance"),
+            output_params=("vace_context", "vace_scale", "vace_scale_end", "vace_adaptive_guidance", "vace_reference_frame_count"),
             onload_model_names=("vae",)
         )
 
@@ -644,6 +651,7 @@ class WanVideoUnit_VACE(PipelineUnit):
         height, width, num_frames,
         tiled, tile_size, tile_stride
     ):
+        vace_reference_frame_count = 0
         if vace_video is not None or vace_video_mask is not None or vace_reference_image is not None:
             pipe.load_models_to_device(["vae"])
             if vace_video is None:
@@ -674,6 +682,7 @@ class WanVideoUnit_VACE(PipelineUnit):
                 vace_reference_image = pipe.preprocess_video(vace_reference_image)
 
                 bs, c, f, h, w = vace_reference_image.shape
+                vace_reference_frame_count = f
                 new_vace_ref_images = []
                 for j in range(f):
                     new_vace_ref_images.append(vace_reference_image[0, :, j:j+1])
@@ -687,9 +696,9 @@ class WanVideoUnit_VACE(PipelineUnit):
                 vace_mask_latents = torch.concat((torch.zeros_like(vace_mask_latents[:, :, :f]), vace_mask_latents), dim=2)
             
             vace_context = torch.concat((vace_video_latents, vace_mask_latents), dim=1)
-            return {"vace_context": vace_context, "vace_scale": vace_scale, "vace_scale_end": vace_scale_end, "vace_adaptive_guidance": vace_adaptive_guidance}
+            return {"vace_context": vace_context, "vace_scale": vace_scale, "vace_scale_end": vace_scale_end, "vace_adaptive_guidance": vace_adaptive_guidance, "vace_reference_frame_count": vace_reference_frame_count}
         else:
-            return {"vace_context": None, "vace_scale": vace_scale}
+            return {"vace_context": None, "vace_scale": vace_scale, "vace_reference_frame_count": 0}
 
 
 class WanVideoUnit_VAP(PipelineUnit):
