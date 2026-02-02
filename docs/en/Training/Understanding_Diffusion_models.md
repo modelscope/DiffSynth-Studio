@@ -6,7 +6,7 @@ This document introduces the basic principles of Diffusion models to help you un
 
 Diffusion models generate clear images or video content through iterative denoising. We start by explaining the generation process of a data sample $x_0$. Intuitively, in a complete round of denoising, we start from random Gaussian noise $x_T$ and iteratively obtain $x_{T-1}$, $x_{T-2}$, $x_{T-3}$, $\cdots$, gradually reducing the noise content at each step until we finally obtain the noise-free data sample $x_0$.
 
-(Figure)
+![Image](https://github.com/user-attachments/assets/6471ae4c-a635-4924-8b36-b0bd4d42043d)
 
 This process is intuitive, but to understand the details, we need to answer several questions:
 
@@ -28,7 +28,7 @@ As for the intermediate values $\sigma_{T-1}$, $\sigma_{T-2}$, $\cdots$, $\sigma
 
 At an intermediate step, we can directly synthesize noisy data samples $x_t=(1-\sigma_t)x_0+\sigma_t x_T$.
 
-(Figure)
+![Image](https://github.com/user-attachments/assets/e25a2f71-123c-4e18-8b34-3a066af15667)
 
 ## How is the iterative denoising computation performed?
 
@@ -39,8 +39,6 @@ Before understanding the iterative denoising computation, we need to clarify wha
 * Guidance condition $c$, the model needs to understand what kind of data sample to generate through denoising
 
 Among these, the guidance condition $c$ is a newly introduced parameter that is input by the user. It can be text describing the image content or a sketch outlining the image structure.
-
-(Figure)
 
 The model's output $\hat \epsilon(x_t,c,t)$ approximately equals $x_T-x_0$, which is the direction of the entire diffusion process (the reverse process of denoising).
 
@@ -91,8 +89,6 @@ After understanding the iterative denoising process, we next consider how to tra
 
 The training process differs from the generation process. If we retain multi-step iterations during training, the gradient would need to backpropagate through multiple steps, bringing catastrophic time and space complexity. To improve computational efficiency, we randomly select a time step $t$ for training.
 
-(Figure)
-
 The following is pseudocode for the training process:
 
 > Obtain data sample $x_0$ and guidance condition $c$ from the dataset
@@ -113,7 +109,7 @@ The following is pseudocode for the training process:
 
 From theory to practice, more details need to be filled in. Modern Diffusion model architectures have matured, with mainstream architectures following the "three-stage" architecture proposed by Latent Diffusion, including data encoder-decoder, guidance condition encoder, and denoising model.
 
-(Figure)
+![Image](https://github.com/user-attachments/assets/43855430-6427-4aca-83a0-f684e01438b1)
 
 ### Data Encoder-Decoder
 
