@@ -205,7 +205,9 @@ class WanVideoPipeline(BasePipeline):
         vace_video: Optional[list[Image.Image]] = None,
         vace_video_mask: Optional[Image.Image] = None,
         vace_reference_image: Optional[Image.Image] = None,
-        vace_scale: Optional[float] = 1.0,
+        vace_scale: Optional[float] = 1.5,
+        vace_scale_end: Optional[float] = 2.5,
+        vace_adaptive_guidance: Optional[bool] = True,
         # Animate
         animate_pose_video: Optional[list[Image.Image]] = None,
         animate_face_video: Optional[list[Image.Image]] = None,
@@ -268,7 +270,7 @@ class WanVideoPipeline(BasePipeline):
             "input_video": input_video, "denoising_strength": denoising_strength,
             "control_video": control_video, "reference_image": reference_image,
             "camera_control_direction": camera_control_direction, "camera_control_speed": camera_control_speed, "camera_control_origin": camera_control_origin,
-            "vace_video": vace_video, "vace_video_mask": vace_video_mask, "vace_reference_image": vace_reference_image, "vace_scale": vace_scale,
+            "vace_video": vace_video, "vace_video_mask": vace_video_mask, "vace_reference_image": vace_reference_image, "vace_scale": vace_scale, "vace_scale_end": vace_scale_end, "vace_adaptive_guidance": vace_adaptive_guidance,
             "seed": seed, "rand_device": rand_device,
             "height": height, "width": width, "num_frames": num_frames,
             "cfg_scale": cfg_scale, "cfg_merge": cfg_merge,
@@ -293,6 +295,15 @@ class WanVideoPipeline(BasePipeline):
                 self.load_models_to_device(self.in_iteration_models_2)
                 models["dit"] = self.dit2
                 models["vace"] = self.vace2
+            
+            # Adaptive VACE guidance: increase scale as denoising progresses for stronger feature retention
+            if inputs_shared.get("vace_adaptive_guidance", False) and inputs_shared.get("vace_context") is not None:
+                progress_ratio = progress_id / len(self.scheduler.timesteps)
+                vace_scale_start = inputs_shared["vace_scale"]
+                vace_scale_end = inputs_shared.get("vace_scale_end", vace_scale_start)
+                # Quadratic scaling: stronger influence in later steps when details matter most
+                current_vace_scale = vace_scale_start + (vace_scale_end - vace_scale_start) * (progress_ratio ** 2)
+                inputs_shared["vace_scale"] = current_vace_scale
                 
             # Timestep
             timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
@@ -621,15 +632,15 @@ class WanVideoUnit_SpeedControl(PipelineUnit):
 class WanVideoUnit_VACE(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("vace_video", "vace_video_mask", "vace_reference_image", "vace_scale", "height", "width", "num_frames", "tiled", "tile_size", "tile_stride"),
-            output_params=("vace_context", "vace_scale"),
+            input_params=("vace_video", "vace_video_mask", "vace_reference_image", "vace_scale", "vace_scale_end", "vace_adaptive_guidance", "height", "width", "num_frames", "tiled", "tile_size", "tile_stride"),
+            output_params=("vace_context", "vace_scale", "vace_scale_end", "vace_adaptive_guidance"),
             onload_model_names=("vae",)
         )
 
     def process(
         self,
         pipe: WanVideoPipeline,
-        vace_video, vace_video_mask, vace_reference_image, vace_scale,
+        vace_video, vace_video_mask, vace_reference_image, vace_scale, vace_scale_end, vace_adaptive_guidance,
         height, width, num_frames,
         tiled, tile_size, tile_stride
     ):
@@ -676,7 +687,7 @@ class WanVideoUnit_VACE(PipelineUnit):
                 vace_mask_latents = torch.concat((torch.zeros_like(vace_mask_latents[:, :, :f]), vace_mask_latents), dim=2)
             
             vace_context = torch.concat((vace_video_latents, vace_mask_latents), dim=1)
-            return {"vace_context": vace_context, "vace_scale": vace_scale}
+            return {"vace_context": vace_context, "vace_scale": vace_scale, "vace_scale_end": vace_scale_end, "vace_adaptive_guidance": vace_adaptive_guidance}
         else:
             return {"vace_context": None, "vace_scale": vace_scale}
 

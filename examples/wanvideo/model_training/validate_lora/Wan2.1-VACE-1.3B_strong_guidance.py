@@ -22,7 +22,19 @@ reference_image = VideoData("data_infer/ref_img.jpg", height=480, width=832)[0]
 video = pipe(
     prompt="Person is dancing by following the video pose exactly. Dance is natural and smooth. Maintain the exact facial features, hair, clothing, and background from the reference images. Keep the background consistent with the reference images.",
     negative_prompt="色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
-    vace_video=video, vace_reference_image=reference_image, num_frames=49,
-    seed=1, tiled=True
+    vace_video=video, 
+    vace_reference_image=reference_image, 
+    num_frames=49,
+    # Enhanced VACE guidance parameters for stronger feature retention
+    vace_scale=1.8,              # Stronger initial guidance (default was 1.0, now 1.5)
+    vace_scale_end=3.0,          # Even stronger guidance in later steps for detail preservation
+    vace_adaptive_guidance=True, # Progressive scaling: gradually increases influence during denoising
+    seed=1, 
+    tiled=True
 )
-save_video(video, "results/lora_dance_1.mp4", fps=15, quality=5)
+save_video(video, "results/lora_dance_1_strong_guidance.mp4", fps=15, quality=5)
+
+print("Video generated with enhanced reference image guidance!")
+print("- vace_scale: 1.8 (start)")
+print("- vace_scale_end: 3.0 (end)")
+print("- Adaptive guidance: Enabled (quadratic scaling)")
