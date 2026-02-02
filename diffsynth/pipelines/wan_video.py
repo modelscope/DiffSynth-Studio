@@ -31,7 +31,7 @@ from ..models.longcat_video_dit import LongCatVideoTransformer3DModel
 
 class WanVideoPipeline(BasePipeline):
 
-    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
+    def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16, sp_size=1):
         super().__init__(
             device=device, torch_dtype=torch_dtype,
             height_division_factor=16, width_division_factor=16, time_division_factor=4, time_division_remainder=1
@@ -80,6 +80,7 @@ class WanVideoPipeline(BasePipeline):
             WanVideoPostUnit_S2V(),
         ]
         self.model_fn = model_fn_wan_video
+        self.sp_size = sp_size
 
 
     def enable_usp(self):
@@ -92,7 +93,6 @@ class WanVideoPipeline(BasePipeline):
             for block in self.dit2.blocks:
                 block.self_attn.forward = types.MethodType(usp_attn_forward, block.self_attn)
             self.dit2.forward = types.MethodType(usp_dit_forward, self.dit2)
-        self.sp_size = get_sequence_parallel_world_size()
         self.use_unified_sequence_parallel = True
 
 
@@ -105,6 +105,7 @@ class WanVideoPipeline(BasePipeline):
         audio_processor_config: ModelConfig = None,
         redirect_common_files: bool = True,
         use_usp: bool = False,
+        sp_size: int = 1,
         vram_limit: float = None,
     ):
         # Redirect model path
@@ -122,16 +123,17 @@ class WanVideoPipeline(BasePipeline):
                     print(f"To avoid repeatedly downloading model files, ({model_config.model_id}, {model_config.origin_file_pattern}) is redirected to {redirect_dict[model_config.origin_file_pattern]}. You can use `redirect_common_files=False` to disable file redirection.")
                     model_config.model_id = redirect_dict[model_config.origin_file_pattern][0]
                     model_config.origin_file_pattern = redirect_dict[model_config.origin_file_pattern][1]
-        
+
         if use_usp:
             from ..utils.xfuser import initialize_usp
-            initialize_usp(device)
+            initialize_usp(device, sp_size)
             import torch.distributed as dist
             from ..core.device.npu_compatible_device import get_device_name
             if dist.is_available() and dist.is_initialized():
                 device = get_device_name()
+
         # Initialize pipeline
-        pipe = WanVideoPipeline(device=device, torch_dtype=torch_dtype)
+        pipe = WanVideoPipeline(device=device, torch_dtype=torch_dtype, sp_size=sp_size)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
         
         # Fetch models
@@ -1379,7 +1381,20 @@ def model_fn_wan_video(
                 x = animate_adapter.after_transformer_block(block_id, x, motion_vec)
         if tea_cache is not None:
             tea_cache.store(x)
-            
+
+    '''
+    The all_gather interface in xDit utilizes torch’s all_gather_into_tensor interface. As of the torch 2.9 release version, this interface still does not provide a backward method and cannot support automatic autograd. The commit in the torch community (https://github.com/pytorch/pytorch/pull/168140) has not yet been merged. Therefore, a simple replacement of all_gather_into_tensor in xdit with torch.distributed.nn.functional.all_gather is applied here to enable autograd support.
+
+        def all_reduce(self, input_: torch.Tensor, op=torch._C._distributed_c10d.ReduceOp.SUM) -> torch.Tensor:
+            ...
+            # All-gather.
+            # torch.distributed.all_gather_into_tensor(
+            #     output_tensor, input_, group=self.device_group
+            # )
+            gathered_list = torch.distributed.nn.functional.all_gather(input_, group=self.device_group)
+            output_tensor = torch.cat(gathered_list, dim=0)
+            ...
+    '''
     x = dit.head(x, t)
     if use_unified_sequence_parallel:
         if dist.is_initialized() and dist.get_world_size() > 1:

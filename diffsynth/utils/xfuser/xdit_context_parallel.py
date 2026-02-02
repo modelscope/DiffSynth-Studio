@@ -6,20 +6,39 @@ from xfuser.core.distributed import (get_sequence_parallel_rank,
                                      get_sp_group)
 from xfuser.core.long_ctx_attention import xFuserLongContextAttention
 from ...core.device import parse_nccl_backend, parse_device_type
+import logging
 
+logger = logging.getLogger(__name__)
 
-def initialize_usp(device_type):
+def initialize_usp(device_type, sp_size):
     import torch.distributed as dist
-    from xfuser.core.distributed import initialize_model_parallel, init_distributed_environment
-    dist.init_process_group(backend=parse_nccl_backend(device_type), init_method="env://")
-    init_distributed_environment(rank=dist.get_rank(), world_size=dist.get_world_size())
-    initialize_model_parallel(
-        sequence_parallel_degree=dist.get_world_size(),
-        ring_degree=1,
-        ulysses_degree=dist.get_world_size(),
+    from xfuser.core.distributed import (
+        initialize_model_parallel,
+        init_distributed_environment,
+        get_sequence_parallel_world_size,
+        get_sequence_parallel_rank,
+        get_data_parallel_world_size,
+        get_data_parallel_rank,
     )
-    getattr(torch, device_type).set_device(dist.get_rank())
 
+    if not dist.is_initialized():
+        dist.init_process_group(backend=parse_nccl_backend(device_type), init_method="env://")
+
+    init_distributed_environment(rank=dist.get_rank(), world_size=dist.get_world_size())
+
+    sp_degree = sp_size
+    dp_degree = int(dist.get_world_size() / sp_degree)
+    initialize_model_parallel(
+        data_parallel_degree=dp_degree,
+        sequence_parallel_degree=sp_degree,
+        ring_degree=1,
+        ulysses_degree=sp_degree,
+    )
+    logger.info(f"[init usp] rank: {dist.get_rank()}, world_size: {dist.get_world_size()}, "
+                f"sp world size: {get_sequence_parallel_world_size()}, "
+                f"sp rank: {get_sequence_parallel_rank()}, "
+                f"dp world size: {get_data_parallel_world_size()}, "
+                f"dp rank: {get_data_parallel_rank()}")
 
 def sinusoidal_embedding_1d(dim, position):
     sinusoid = torch.outer(position.type(torch.float64), torch.pow(
@@ -133,6 +152,13 @@ def usp_attn_forward(self, x, freqs):
     k = rearrange(k, "b s (n d) -> b s n d", n=self.num_heads)
     v = rearrange(v, "b s (n d) -> b s n d", n=self.num_heads)
 
+    '''
+    Refer to commit https://github.com/xdit-project/xDiT/pull/598 for the xfuser backward error.
+    xFuserRingFlashAttnFunc has 17 inputs (including ctx), but it inherits the backward() method from RingFlashAttnFunc which only returns 16 values (3 gradients + 13 Nones)!
+
+The Math
+Parent class (RingFlashAttnFunc): 14 forward inputs → backward returns 3 gradients + 11 Nones = 14 returns xFuser class (xFuserRingFlashAttnFunc): 17 forward inputs → backward should return 3 gradients + 14 Nones = 17 returns Actual: backward only returns 14 returns (inherited from parent without override) Error: PyTorch expects 17 gradients but gets only 14 → expected 17, got 13 (13 = 14 - 1 for ctx)
+    '''
     x = xFuserLongContextAttention()(
         None,
         query=q,
