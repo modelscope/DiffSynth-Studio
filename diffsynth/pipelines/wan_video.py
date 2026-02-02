@@ -205,8 +205,8 @@ class WanVideoPipeline(BasePipeline):
         vace_video: Optional[list[Image.Image]] = None,
         vace_video_mask: Optional[Image.Image] = None,
         vace_reference_image: Optional[Union[Image.Image, list[Image.Image]]] = None,
-        vace_scale: Optional[float] = 1.5,
-        vace_scale_end: Optional[float] = 2.5,
+        vace_scale: Optional[float] = 1.8,
+        vace_scale_end: Optional[float] = 3.0,
         vace_adaptive_guidance: Optional[bool] = True,
         # Animate
         animate_pose_video: Optional[list[Image.Image]] = None,
