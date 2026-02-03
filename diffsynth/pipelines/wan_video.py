@@ -1334,15 +1334,13 @@ def model_fn_wan_video(
                         x, x_vap = torch.utils.checkpoint.checkpoint(
                             create_custom_forward_vap(block, vap),
                             x, context, t_mod, freqs, x_vap, context_vap, t_mod_vap, freqs_vap, block_id,
-                            use_reentrant=False,
-                            determinism_check="none"
+                            use_reentrant=False
                         )
                 elif use_gradient_checkpointing:
                     x, x_vap = torch.utils.checkpoint.checkpoint(
                         create_custom_forward_vap(block, vap),
                         x, context, t_mod, freqs, x_vap, context_vap, t_mod_vap, freqs_vap, block_id,
-                        use_reentrant=False,
-                        determinism_check="none"
+                        use_reentrant=False
                     )
                 else:
                     x, x_vap = vap(block, x, context, t_mod, freqs, x_vap, context_vap, t_mod_vap, freqs_vap, block_id)

@@ -607,7 +607,7 @@ class Generator(nn.Module):
 
     def get_motion(self, img):
         #motion_feat = self.enc.enc_motion(img)
-        motion_feat = torch.utils.checkpoint.checkpoint((self.enc.enc_motion), img, use_reentrant=True, determinism_check="none")
+        motion_feat = torch.utils.checkpoint.checkpoint((self.enc.enc_motion), img, use_reentrant=True)
         motion = self.dec.direction(motion_feat)
         return motion
 
