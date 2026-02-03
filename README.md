@@ -532,6 +532,95 @@ Example code for FLUX.1 is available at: [/examples/flux/](/examples/flux/)
 
 https://github.com/user-attachments/assets/1d66ae74-3b02-40a9-acc3-ea95fc039314
 
+#### LTX-2: [/docs/en/Model_Details/LTX-2.md](/docs/en/Model_Details/LTX-2.md)
+
+<details>
+
+<summary>Quick Start</summary>
+
+Running the following code will quickly load the [Lightricks/LTX-2](https://www.modelscope.cn/models/Lightricks/LTX-2) model for inference. VRAM management is enabled, and the framework automatically adjusts model parameter loading based on available GPU memory. The model can run with as little as 8GB of VRAM.
+
+```python
+import torch
+from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
+from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
+
+vram_config = {
+    "offload_dtype": torch.float8_e5m2,
+    "offload_device": "cpu",
+    "onload_dtype": torch.float8_e5m2,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float8_e5m2,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+pipe = LTX2AudioVideoPipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized", origin_file_pattern="model-*.safetensors", **vram_config),
+        ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors", **vram_config),
+        ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-spatial-upscaler-x2-1.0.safetensors", **vram_config),
+    ],
+    tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
+    stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+)
+
+prompt = "A girl is very happy, she is speaking: \"I enjoy working with Diffsynth-Studio, it's a perfect framework.\""
+negative_prompt = (
+    "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, "
+    "grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, "
+    "deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, "
+    "wrong hand count, artifacts around text, inconsistent perspective, camera shake, incorrect depth of "
+    "field, background too sharp, background clutter, distracting reflections, harsh shadows, inconsistent "
+    "lighting direction, color banding, cartoonish rendering, 3D CGI look, unrealistic materials, uncanny "
+    "valley effect, incorrect ethnicity, wrong gender, exaggerated expressions, wrong gaze direction, "
+    "mismatched lip sync, silent or muted audio, distorted voice, robotic voice, echo, background noise, "
+    "off-sync audio, incorrect dialogue, added dialogue, repetitive speech, jittery movement, awkward "
+    "pauses, incorrect timing, unnatural transitions, inconsistent framing, tilted camera, flat lighting, "
+    "inconsistent tone, cinematic oversaturation, stylized filters, or AI artifacts."
+)
+height, width, num_frames = 512 * 2, 768 * 2, 121
+video, audio = pipe(
+    prompt=prompt,
+    negative_prompt=negative_prompt,
+    seed=43,
+    height=height,
+    width=width,
+    num_frames=num_frames,
+    tiled=True,
+    use_two_stage_pipeline=True,
+)
+write_video_audio_ltx2(
+    video=video,
+    audio=audio,
+    output_path='ltx2_twostage.mp4',
+    fps=24,
+    audio_sample_rate=24000,
+)
+```
+
+</details>
+
+<details>
+
+<summary>Examples</summary>
+
+Example code for LTX-2 is available at: [/examples/ltx2/](/examples/ltx2/)
+
+| Model ID | Extra Args | Inference | Low-VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
+|-|-|-|-|-|-|-|-|
+|[Lightricks/LTX-2: OneStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-OneStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-OneStage.py)|-|-|-|-|
+|[Lightricks/LTX-2: TwoStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-TwoStage.py)|-|-|-|-|
+|[Lightricks/LTX-2: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-DistilledPipeline.py)|-|-|-|-|
+|[Lightricks/LTX-2: OneStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2)|`input_images`|[code](/examples/ltx2/model_inference/LTX-2-I2AV-OneStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-I2AV-OneStage.py)|-|-|-|-|
+|[Lightricks/LTX-2: TwoStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2)|`input_images`|[code](/examples/ltx2/model_inference/LTX-2-I2AV-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-I2AV-TwoStage.py)|-|-|-|-|
+|[Lightricks/LTX-2: DistilledPipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2)|`input_images`|[code](/examples/ltx2/model_inference/LTX-2-I2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-I2AV-DistilledPipeline.py)|-|-|-|-|
+
+</details>
+
 #### Wan: [/docs/en/Model_Details/Wan.md](/docs/en/Model_Details/Wan.md)
 
 <details>
