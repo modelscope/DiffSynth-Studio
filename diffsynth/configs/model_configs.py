@@ -589,6 +589,14 @@ z_image_series = [
         "model_class": "diffsynth.models.z_image_image2lora.ZImageImage2LoRAModel",
         "extra_kwargs": {"compress_dim": 128},
     },
+    {
+        # Example: ModelConfig(model_id="Qwen/Qwen3-0.6B", origin_file_pattern="model.safetensors")
+        "model_hash": "1392adecee344136041e70553f875f31",
+        "model_name": "z_image_text_encoder",
+        "model_class": "diffsynth.models.z_image_text_encoder.ZImageTextEncoder",
+        "extra_kwargs": {"model_size": "0.6B"},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.z_image_text_encoder.ZImageTextEncoderStateDictConverter",
+    },
 ]
 
 ltx2_series = [

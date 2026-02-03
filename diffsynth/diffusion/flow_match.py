@@ -4,7 +4,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -12,6 +12,7 @@ class FlowMatchScheduler():
             "FLUX.2": FlowMatchScheduler.set_timesteps_flux2,
             "Z-Image": FlowMatchScheduler.set_timesteps_z_image,
             "LTX-2": FlowMatchScheduler.set_timesteps_ltx2,
+            "Qwen-Image-Lightning": FlowMatchScheduler.set_timesteps_qwen_image_lightning,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -67,6 +68,28 @@ class FlowMatchScheduler():
         one_minus_z = 1 - sigmas
         scale_factor = one_minus_z[-1] / (1 - shift_terminal)
         sigmas = 1 - (one_minus_z / scale_factor)
+        # Timesteps
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+    
+    @staticmethod
+    def set_timesteps_qwen_image_lightning(num_inference_steps=100, denoising_strength=1.0, exponential_shift_mu=None, dynamic_shift_len=None):
+        sigma_min = 0.0
+        sigma_max = 1.0
+        num_train_timesteps = 1000
+        base_shift = math.log(3)
+        max_shift = math.log(3)
+        # Sigmas
+        sigma_start = sigma_min + (sigma_max - sigma_min) * denoising_strength
+        sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps + 1)[:-1]
+        # Mu
+        if exponential_shift_mu is not None:
+            mu = exponential_shift_mu
+        elif dynamic_shift_len is not None:
+            mu = FlowMatchScheduler._calculate_shift_qwen_image(dynamic_shift_len, base_shift=base_shift, max_shift=max_shift)
+        else:
+            mu = 0.8
+        sigmas = math.exp(mu) / (math.exp(mu) + (1 / sigmas - 1))
         # Timesteps
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps

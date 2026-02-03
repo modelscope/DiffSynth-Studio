@@ -29,7 +29,7 @@ class ModelPool:
             module_map = None
         return module_map
     
-    def load_model_file(self, config, path, vram_config, vram_limit=None):
+    def load_model_file(self, config, path, vram_config, vram_limit=None, state_dict=None):
         model_class = self.import_model_class(config["model_class"])
         model_config = config.get("extra_kwargs", {})
         if "state_dict_converter" in config:
@@ -43,6 +43,7 @@ class ModelPool:
             state_dict_converter,
             use_disk_map=True,
             vram_config=vram_config, module_map=module_map, vram_limit=vram_limit,
+            state_dict=state_dict,
         )
         return model
     
@@ -59,7 +60,7 @@ class ModelPool:
         }
         return vram_config
     
-    def auto_load_model(self, path, vram_config=None, vram_limit=None, clear_parameters=False):
+    def auto_load_model(self, path, vram_config=None, vram_limit=None, clear_parameters=False, state_dict=None):
         print(f"Loading models from: {json.dumps(path, indent=4)}")
         if vram_config is None:
             vram_config = self.default_vram_config()
@@ -67,7 +68,7 @@ class ModelPool:
         loaded = False
         for config in MODEL_CONFIGS:
             if config["model_hash"] == model_hash:
-                model = self.load_model_file(config, path, vram_config, vram_limit=vram_limit)
+                model = self.load_model_file(config, path, vram_config, vram_limit=vram_limit, state_dict=state_dict)
                 if clear_parameters: self.clear_parameters(model)
                 self.model.append(model)
                 model_name = config["model_name"]
