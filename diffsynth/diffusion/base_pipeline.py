@@ -318,11 +318,11 @@ class BasePipeline(torch.nn.Module):
                 self.clear_lora(verbose=0)
             noise_pred_nega = model_fn(**inputs_nega, **inputs_shared, **inputs_others)
             if isinstance(noise_pred_posi, tuple):
+                # Separately handling different output types of latents, eg. video and audio latents.
                 noise_pred = tuple(
                     n_nega + cfg_scale * (n_posi - n_nega)
                     for n_posi, n_nega in zip(noise_pred_posi, noise_pred_nega)
                 )
-                # Separate handling for dif
             else:
                 noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
         else:
