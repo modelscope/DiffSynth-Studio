@@ -32,6 +32,7 @@ def add_model_config(parser: argparse.ArgumentParser):
 
 def add_training_config(parser: argparse.ArgumentParser):
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate.")
+    parser.add_argument("--batch_size", type=int, default=1, help="Batch size for training.")
     parser.add_argument("--num_epochs", type=int, default=1, help="Number of epochs.")
     parser.add_argument("--trainable_models", type=str, default=None, help="Models to train, e.g., dit, vae, text_encoder.")
     parser.add_argument("--find_unused_parameters", default=False, action="store_true", help="Whether to find unused parameters in DDP.")
@@ -60,6 +61,17 @@ def add_gradient_config(parser: argparse.ArgumentParser):
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help="Gradient accumulation steps.")
     return parser
 
+def add_eval_config(parser: argparse.ArgumentParser):
+    parser.add_argument("--val_dataset_base_path", type=str, default=None, help="Base path of the validation dataset.")
+    parser.add_argument("--val_dataset_metadata_path", type=str, default=None, help="Path to the metadata file of the validation dataset.")
+    parser.add_argument("--val_dataset_repeat", type=int, default=1, help="Number of times to repeat the validation dataset per epoch.")
+    parser.add_argument("--val_dataset_num_workers", type=int, default=0, help="Number of workers for validation data loading.")
+    parser.add_argument("--val_data_file_keys", type=str, default=None, help="Data file keys for validation metadata. Comma-separated.")
+    parser.add_argument("--val_batch_size", type=int, default=None, help="Batch size for validation. Defaults to --batch_size when unset.")
+    parser.add_argument("--eval_every_n_epochs", type=int, default=1, help="Run evaluation every N epochs when validation data is provided.")
+    parser.add_argument("--eval_max_batches", type=int, default=None, help="Maximum validation batches per eval pass.")
+    return parser
+
 def add_general_config(parser: argparse.ArgumentParser):
     parser = add_dataset_base_config(parser)
     parser = add_model_config(parser)
@@ -67,4 +79,5 @@ def add_general_config(parser: argparse.ArgumentParser):
     parser = add_output_config(parser)
     parser = add_lora_config(parser)
     parser = add_gradient_config(parser)
+    parser = add_eval_config(parser)
     return parser
