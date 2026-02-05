@@ -16,4 +16,5 @@ accelerate launch --config_file examples/qwen_image/model_training/full/accelera
   --output_path "./models/train/Qwen-Image-Edit-2509_full" \
   --trainable_models "dit" \
   --use_gradient_checkpointing \
-  --find_unused_parameters
+  --find_unused_parameters \
+  --initialize_model_on_cpu

@@ -82,3 +82,4 @@ export CPU_AFFINITY_CONF=1
 | 模型        | 参数 | 备注                |
 |-----------|------|-------------------|
 | Wan 14B系列 | --initialize_model_on_cpu | 14B模型需要在cpu上进行初始化 |
+| Qwen-Image系列 | --initialize_model_on_cpu | 模型需要在cpu上进行初始化 |
