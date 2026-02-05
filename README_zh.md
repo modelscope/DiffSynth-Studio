@@ -768,7 +768,7 @@ DiffSynth-Studio 不仅仅是一个工程化的模型框架，更是创新成果
 ](https://arxiv.org/abs/2602.03208)
 - 代码样例：[]()
 
-|FLUX|FLUX + SES|Qwen-Image|Qwen-Image + SES|
+|FLUX.1-dev|FLUX.1-dev + SES|Qwen-Image|Qwen-Image + SES|
 |-|-|-|-|
 |![Image](https://github.com/user-attachments/assets/5be15dc6-2805-4822-b04c-2573fc0f45f0)|![Image](https://github.com/user-attachments/assets/e71b8c20-1629-41d9-b0ff-185805c1da4e)|![Image](https://github.com/user-attachments/assets/7a73c968-133a-4545-9aa2-205533861cd4)|![Image](https://github.com/user-attachments/assets/c8390b22-14fe-48a0-a6e6-d6556d31235e)|
 

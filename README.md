@@ -781,7 +781,7 @@ DiffSynth-Studio is not just an engineered model framework, but also an incubato
 
 - Paper: [VIRAL: Visual In-Context Reasoning via Analogy in Diffusion Transformers
 ](https://arxiv.org/abs/2602.03210)
-- Sample code: [/examples/flux/model_inference/FLUX.1-dev-LoRA-Fusion.py](/examples/flux/model_inference/FLUX.1-dev-LoRA-Fusion.py)
+- Sample code: [/examples/qwen_image/model_inference/Qwen-Image-Edit-2511-ICEdit.py](/examples/qwen_image/model_inference/Qwen-Image-Edit-2511-ICEdit.py)
 - Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Edit-2511-ICEdit-LoRA)
 
 |Example 1|Example 2|Query|Output|
