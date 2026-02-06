@@ -107,6 +107,11 @@ graph LR;
 * 两阶段拆分训练：[doc](/docs/zh/Training/Split_Training.md)、[code](/examples/qwen_image/model_training/special/split_training/)
 * 端到端直接蒸馏：[doc](/docs/zh/Training/Direct_Distill.md)、[code](/examples/qwen_image/model_training/lora/Qwen-Image-Distill-LoRA.sh)
 
+DeepSpeed ZeRO 3 训练：Qwen-Image 系列模型支持 DeepSpeed ZeRO 3 训练，将模型拆分到多个 GPU 上，以 Qwen-Image 模型的全量训练为例，需修改：
+
+* `--config_file examples/qwen_image/model_training/full/accelerate_config_zero3.yaml`
+* `--initialize_model_on_cpu`
+
 ## 模型推理
 
 模型通过 `QwenImagePipeline.from_pretrained` 加载，详见[加载模型](/docs/zh/Pipeline_Usage/Model_Inference.md#加载模型)。

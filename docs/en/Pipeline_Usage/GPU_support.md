@@ -90,3 +90,4 @@ Set 0 or not set: indicates not enabling the binding function
 | Model          | Parameter                 | Note              |
 |----------------|---------------------------|-------------------|
 | Wan 14B series | --initialize_model_on_cpu | The 14B model needs to be initialized on the CPU |
+| Qwen-Image series | --initialize_model_on_cpu | The model needs to be initialized on the CPU |
