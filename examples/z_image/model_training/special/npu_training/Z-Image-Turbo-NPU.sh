@@ -13,4 +13,5 @@ accelerate launch --config_file examples/z_image/model_training/full/accelerate_
   --output_path "./models/train/Z-Image-Turbo_full" \
   --trainable_models "dit" \
   --use_gradient_checkpointing \
-  --dataset_num_workers 8
+  --dataset_num_workers 8 \
+  --enable_npu_patch
