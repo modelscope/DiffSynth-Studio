@@ -20,6 +20,7 @@ from ..models.siglip2_image_encoder import Siglip2ImageEncoder
 from ..models.dinov3_image_encoder import DINOv3ImageEncoder
 from ..models.qwen_image_image2lora import QwenImageImage2LoRAModel
 
+from ..utils.inference_time_scaling.ses import run_ses_cem, SESRewardScorer
 
 class QwenImagePipeline(BasePipeline):
 
@@ -141,6 +142,11 @@ class QwenImagePipeline(BasePipeline):
         tile_stride: int = 64,
         # Progress bar
         progress_bar_cmd = tqdm,
+        # SES
+        enable_ses: bool = False,
+        ses_reward_model: str = "pick",
+        ses_eval_budget: int = 50,
+        ses_inference_steps: int = 10,
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, dynamic_shift_len=(height // 16) * (width // 16), exponential_shift_mu=exponential_shift_mu)
@@ -171,6 +177,51 @@ class QwenImagePipeline(BasePipeline):
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
 
+        # Inference-Time Scaling (SES)
+        if enable_ses:
+            print(f"[SES] Starting optimization with budget={ses_eval_budget}, steps={ses_inference_steps}")
+            scorer = SESRewardScorer(ses_reward_model, device=self.device, dtype=self.torch_dtype)
+
+            self.load_models_to_device(list(self.in_iteration_models) + ['vae'])
+            models = {name: getattr(self, name) for name in self.in_iteration_models}
+            
+            def ses_generate_callback(trial_latents):
+                trial_inputs = inputs_shared.copy()                
+                self.scheduler.set_timesteps(ses_inference_steps, denoising_strength=denoising_strength, dynamic_shift_len=(height // 16) * (width // 16), exponential_shift_mu=exponential_shift_mu)
+                eval_timesteps = self.scheduler.timesteps
+                curr_latents = trial_latents
+                
+                for progress_id, timestep in enumerate(eval_timesteps):
+                    timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
+                    
+                    trial_inputs["latents"] = curr_latents
+                    
+                    noise_pred = self.cfg_guided_model_fn(
+                        self.model_fn, cfg_scale,
+                        trial_inputs, inputs_posi, inputs_nega,
+                        **models, timestep=timestep, progress_id=progress_id
+                    )                   
+                    curr_latents = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **trial_inputs)
+                
+                decoded_img = self.vae.decode(curr_latents, device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+                return self.vae_output_to_image(decoded_img)
+
+            initial_noise = inputs_shared["latents"]
+            
+            optimized_latents = run_ses_cem(
+                base_latents=initial_noise,
+                pipeline_callback=ses_generate_callback,
+                prompt=prompt,
+                scorer=scorer,
+                total_eval_budget=ses_eval_budget,
+                popsize=10,
+                k_elites=5
+            )
+            inputs_shared["latents"] = optimized_latents
+            self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, dynamic_shift_len=(height // 16) * (width // 16), exponential_shift_mu=exponential_shift_mu)
+            del scorer
+            torch.cuda.empty_cache()
+
         # Denoise
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
@@ -182,7 +233,7 @@ class QwenImagePipeline(BasePipeline):
                 **models, timestep=timestep, progress_id=progress_id
             )
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
-        
+
         # Decode
         self.load_models_to_device(['vae'])
         image = self.vae.decode(inputs_shared["latents"], device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
