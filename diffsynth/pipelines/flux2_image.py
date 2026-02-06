@@ -17,6 +17,7 @@ from ..models.flux2_dit import Flux2DiT
 from ..models.flux2_vae import Flux2VAE
 from ..models.z_image_text_encoder import ZImageTextEncoder
 
+from ..utils.inference_time_scaling.ses import run_ses_cem, SESRewardScorer
 
 class Flux2ImagePipeline(BasePipeline):
 
@@ -94,6 +95,11 @@ class Flux2ImagePipeline(BasePipeline):
         num_inference_steps: int = 30,
         # Progress bar
         progress_bar_cmd = tqdm,
+        # SES
+        enable_ses: bool = False,
+        ses_reward_model: str = "pick",
+        ses_eval_budget: int = 50,
+        ses_inference_steps: int = 10,
     ):
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, dynamic_shift_len=height//16*width//16)
 
@@ -114,6 +120,58 @@ class Flux2ImagePipeline(BasePipeline):
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
+
+        # Inference-Time Scaling (SES)
+        if enable_ses:
+            print(f"[SES] Starting optimization with budget={ses_eval_budget}, steps={ses_inference_steps}")
+            scorer = SESRewardScorer(ses_reward_model, device=self.device, dtype=self.torch_dtype)
+            self.load_models_to_device(list(self.in_iteration_models) + ['vae'])
+            models = {name: getattr(self, name) for name in self.in_iteration_models}
+
+            h_latent = height // 16
+            w_latent = width // 16
+            
+            def ses_generate_callback(trial_latents_spatial):
+                trial_inputs = inputs_shared.copy()
+                
+                self.scheduler.set_timesteps(ses_inference_steps, denoising_strength=denoising_strength, dynamic_shift_len=h_latent*w_latent)
+                eval_timesteps = self.scheduler.timesteps
+                
+                curr_latents_seq = rearrange(trial_latents_spatial, "b c h w -> b (h w) c")
+                
+                for progress_id, timestep in enumerate(eval_timesteps):
+                    timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
+                    
+                    trial_inputs["latents"] = curr_latents_seq
+                    
+                    noise_pred = self.cfg_guided_model_fn(
+                        self.model_fn, cfg_scale,
+                        trial_inputs, inputs_posi, inputs_nega,
+                        **models, timestep=timestep, progress_id=progress_id
+                    )
+                    curr_latents_seq = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **trial_inputs)
+                
+                curr_latents_spatial = rearrange(curr_latents_seq, "b (h w) c -> b c h w", h=h_latent, w=w_latent)
+                
+                decoded_img = self.vae.decode(curr_latents_spatial)
+                return self.vae_output_to_image(decoded_img)
+            initial_noise_seq = inputs_shared["latents"]
+            initial_noise_spatial = rearrange(initial_noise_seq, "b (h w) c -> b c h w", h=h_latent, w=w_latent)
+            
+            optimized_latents_spatial = run_ses_cem(
+                base_latents=initial_noise_spatial,
+                pipeline_callback=ses_generate_callback,
+                prompt=prompt,
+                scorer=scorer,
+                total_eval_budget=ses_eval_budget,
+                popsize=10,
+                k_elites=5
+            )
+            optimized_latents_seq = rearrange(optimized_latents_spatial, "b c h w -> b (h w) c")
+            inputs_shared["latents"] = optimized_latents_seq
+            self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, dynamic_shift_len=h_latent*w_latent)
+            del scorer
+            torch.cuda.empty_cache()
 
         # Denoise
         self.load_models_to_device(self.in_iteration_models)

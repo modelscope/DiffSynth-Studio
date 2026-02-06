@@ -20,6 +20,8 @@ from ..models.flux_value_control import MultiValueEncoder
 from ..models.step1x_text_encoder import Step1xEditEmbedder
 from ..core.vram.layers import AutoWrappedLinear
 
+from ..utils.inference_time_scaling.ses import run_ses_cem, SESRewardScorer
+
 class MultiControlNet(torch.nn.Module):
     def __init__(self, models: list[torch.nn.Module]):
         super().__init__()
@@ -240,6 +242,11 @@ class FluxImagePipeline(BasePipeline):
         tile_stride: int = 64,
         # Progress bar
         progress_bar_cmd = tqdm,
+        # SES
+        enable_ses: bool = False,
+        ses_reward_model: str = "pick",
+        ses_eval_budget: int = 50,
+        ses_inference_steps: int = 10,
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
@@ -273,6 +280,49 @@ class FluxImagePipeline(BasePipeline):
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
+
+        # Inference-Time Scaling (SES)
+        if enable_ses:
+            print(f"[SES] Starting optimization with budget={ses_eval_budget}, steps={ses_inference_steps}")
+            scorer = SESRewardScorer(ses_reward_model, device=self.device, dtype=self.torch_dtype)
+            self.load_models_to_device(list(self.in_iteration_models) + ['vae_decoder'])
+            models = {name: getattr(self, name) for name in self.in_iteration_models}
+            
+            def ses_generate_callback(trial_latents):
+                trial_inputs = inputs_shared.copy()
+                
+                self.scheduler.set_timesteps(ses_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
+                eval_timesteps = self.scheduler.timesteps                
+                curr_latents = trial_latents
+                
+                for progress_id, timestep in enumerate(eval_timesteps):
+                    timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
+                    
+                    trial_inputs["latents"] = curr_latents
+                    noise_pred = self.cfg_guided_model_fn(
+                        self.model_fn, cfg_scale,
+                        trial_inputs, inputs_posi, inputs_nega,
+                        **models, timestep=timestep, progress_id=progress_id
+                    )
+                    curr_latents = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **trial_inputs)
+                
+                decoded_img = self.vae_decoder(curr_latents, device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+                return self.vae_output_to_image(decoded_img)
+
+            initial_noise = inputs_shared["latents"]            
+            optimized_latents = run_ses_cem(
+                base_latents=initial_noise,
+                pipeline_callback=ses_generate_callback,
+                prompt=prompt,
+                scorer=scorer,
+                total_eval_budget=ses_eval_budget,
+                popsize=10,
+                k_elites=5
+            )
+            inputs_shared["latents"] = optimized_latents            
+            self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)            
+            del scorer
+            torch.cuda.empty_cache()
 
         # Denoise
         self.load_models_to_device(self.in_iteration_models)
