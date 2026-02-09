@@ -1,4 +1,4 @@
-import torch, math
+import torch, math, warnings
 from PIL import Image
 from typing import Union
 from tqdm import tqdm
@@ -682,7 +682,7 @@ def apply_npu_patch(enable_npu_patch: bool=True):
             rms_norm_forward_transformers_npu,
             rotary_emb_Zimage_npu
         )
-
+        warnings.warn("Replacing RMSNorm and Rope with NPU fusion operators to improve the performance of the model on NPU.Set enable_npu_patch=False to disable this feature.")
         RMSNorm.forward = rms_norm_forward_npu
         Qwen3RMSNorm.forward = rms_norm_forward_transformers_npu
         Attention.apply_rotary_emb = rotary_emb_Zimage_npu
