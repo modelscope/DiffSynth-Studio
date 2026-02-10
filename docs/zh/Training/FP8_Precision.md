@@ -6,7 +6,7 @@ FP8 精度是唯一可在训练过程中启用的显存管理策略，但本框�
 
 ## 启用 FP8
 
-在我们提供的训练脚本中，通过参数 `--fp8_models` 即可快速设置以 FP8 精度存储的模型。以 Qwen-Image 的 LoRA 训练为例，我们提供了启用 FP8 训练的脚本，位于 [`/examples/qwen_image/model_training/special/fp8_training/Qwen-Image-LoRA.sh`](/examples/qwen_image/model_training/special/fp8_training/Qwen-Image-LoRA.sh)。训练完成后，可通过脚本 [`/examples/qwen_image/model_training/special/fp8_training/validate.py`](/examples/qwen_image/model_training/special/fp8_training/validate.py) 验证训练效果。
+在我们提供的训练脚本中，通过参数 `--fp8_models` 即可快速设置以 FP8 精度存储的模型。以 Qwen-Image 的 LoRA 训练为例，我们提供了启用 FP8 训练的脚本，位于 [`/examples/qwen_image/model_training/special/fp8_training/Qwen-Image-LoRA.sh`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_training/special/fp8_training/Qwen-Image-LoRA.sh)。训练完成后，可通过脚本 [`/examples/qwen_image/model_training/special/fp8_training/validate.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_training/special/fp8_training/validate.py) 验证训练效果。
 
 请注意，这种 FP8 显存管理策略不支持梯度更新，当某个模型被设置为可训练时，不能为这个模型开启 FP8 精度，支持开启 FP8 的模型包括两类：
 
