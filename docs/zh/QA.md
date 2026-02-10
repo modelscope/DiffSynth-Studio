@@ -26,3 +26,10 @@
 * 此外，使用原生 FP8 精度训练的模型，在推理时若没有 Hopper 架构 GPU，则只能以 BF16 精度进行计算，理论上其生成效果反而不如 FP8。
 
 因此，原生 FP8 精度训练技术是极不成熟的，我们静观开源社区的技术发展。
+
+## 如何在推理时动态加载 LoRA 模型？
+
+我们支持 LoRA 模型的两种加载方式，详见[LoRA 加载](/docs/zh/Pipeline_Usage/Model_Inference.md#加载-lora)：
+
+* 冷加载：当基础模型未开启[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)时，LoRA 会融合进基础模型权重，此时推理速度没有变化，LoRA 加载后无法卸载。
+* 热加载：当基础模型开启[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)时，LoRA 不会融合进基础模型权重，此时推理速度会变慢，LoRA 加载后可通过 `pipe.clear_lora()` 卸载。
