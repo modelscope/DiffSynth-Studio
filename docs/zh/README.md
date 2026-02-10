@@ -26,7 +26,7 @@ graph LR;
 
 本节介绍 `DiffSynth-Studio` 的基本使用方式，包括如何启用显存管理从而在极低显存的 GPU 上进行推理，以及如何训练任意基础模型、LoRA、ControlNet 等模型。
 
-* [安装依赖](/docs/zh/Pipeline_Usage/Setup.md)
+* [安装依赖](./Pipeline_Usage/Setup.md)
 * [模型推理](/docs/zh/Pipeline_Usage/Model_Inference.md)
 * [显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)
 * [模型训练](/docs/zh/Pipeline_Usage/Model_Training.md)

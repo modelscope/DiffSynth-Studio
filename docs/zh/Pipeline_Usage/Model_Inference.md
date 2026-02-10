@@ -22,7 +22,7 @@ pipe = QwenImagePipeline.from_pretrained(
 )
 ```
 
-其中 `torch_dtype` 和 `device` 是计算精度和计算设备（不是模型的精度和设备）。`model_configs` 可通过多种方式配置模型路径，关于本项目内部是如何加载模型的，请参考 [`diffsynth.core.loader`](/docs/zh/API_Reference/core/loader.md)。
+其中 `torch_dtype` 和 `device` 是计算精度和计算设备（不是模型的精度和设备）。`model_configs` 可通过多种方式配置模型路径，关于本项目内部是如何加载模型的，请参考 [`diffsynth.core.loader`](../API_Reference/core/loader.md)。
 
 <details>
 

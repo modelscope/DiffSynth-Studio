@@ -121,7 +121,3 @@ myst_enable_extensions = [
     'dollarmath',
     'colon_fence',
 ]
-
-linkcheck_ignore = [
-    r'/docs/en/.*',
-]
