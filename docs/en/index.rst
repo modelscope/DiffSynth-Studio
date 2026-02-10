@@ -1,15 +1,15 @@
-欢迎来到 DiffSynth-Studio 的文档
-=====================
+Welcome to DiffSynth-Studio's Documentation
+==========================================
 
 .. toctree::
    :maxdepth: 2
-   :caption: 文档介绍
+   :caption: Documentation Introduction
 
    README
 
 .. toctree::
    :maxdepth: 2
-   :caption: 上手使用
+   :caption: Getting Started
 
    Pipeline_Usage/Setup
    Pipeline_Usage/Model_Inference
@@ -20,7 +20,7 @@
 
 .. toctree::
    :maxdepth: 2
-   :caption: 模型详解
+   :caption: Model Details
 
    Model_Details/FLUX
    Model_Details/Wan
@@ -30,7 +30,7 @@
 
 .. toctree::
    :maxdepth: 2
-   :caption: 训练框架
+   :caption: Training Framework
 
    Training/Understanding_Diffusion_models
    Training/Supervised_Fine_Tuning
@@ -41,7 +41,7 @@
 
 .. toctree::
    :maxdepth: 2
-   :caption: 模型接入
+   :caption: Model Integration
 
    Developer_Guide/Integrating_Your_Model
    Developer_Guide/Building_a_Pipeline
@@ -50,7 +50,7 @@
 
 .. toctree::
    :maxdepth: 2
-   :caption: API 参考
+   :caption: API Reference
 
    API_Reference/core/attention
    API_Reference/core/data
@@ -60,13 +60,13 @@
 
 .. toctree::
    :maxdepth: 2
-   :caption: 学术导引
+   :caption: Research Guide
 
    Research_Tutorial/train_from_scratch
 
 .. toctree::
    :maxdepth: 2
-   :caption: 常见问题
+   :caption: FAQ
 
    QA
 
