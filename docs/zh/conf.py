@@ -85,7 +85,7 @@ root_doc = 'index'
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['build', 'source/.ipynb_checkpoints', 'source/api/generated', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['build']
 # A list of glob-style patterns [1] that are used to find source files.
 # They are matched against the source file names relative to the source directory,
 # using slashes as directory separators on all platforms.
@@ -121,3 +121,8 @@ myst_enable_extensions = [
     'dollarmath',
     'colon_fence',
 ]
+
+myst_heading_anchors = 2
+myst_footnote_transition = True
+
+html_use_opensearch = '/docs/zh/'
