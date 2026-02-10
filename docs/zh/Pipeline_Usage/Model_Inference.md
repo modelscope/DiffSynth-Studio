@@ -103,3 +103,64 @@ image.save("image.jpg")
 每个模型 `Pipeline` 的输入参数不同，请参考各模型的文档。
 
 如果模型参数量太大，导致显存不足，请开启[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)。
+
+## 加载 LoRA
+
+LoRA 是一种轻量化的模型训练方式，产生少量参数，扩展模型的能力。DiffSynth-Studio 的 LoRA 加载有两种方式：冷加载和热加载。
+
+* 冷加载：当基础模型未开启[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)时，LoRA 会融合进基础模型权重，此时推理速度没有变化，LoRA 加载后无法卸载。
+
+```python
+from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
+import torch
+
+pipe = QwenImagePipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
+        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors"),
+        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+    ],
+    tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
+)
+lora = ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-LoRA-ArtAug-v1", origin_file_pattern="model.safetensors")
+pipe.load_lora(pipe.dit, lora, alpha=1)
+prompt = "精致肖像，水下少女，蓝裙飘逸，发丝轻扬，光影透澈，气泡环绕，面容恬静，细节精致，梦幻唯美。"
+image = pipe(prompt, seed=0, num_inference_steps=40)
+image.save("image.jpg")
+```
+
+* 热加载：当基础模型开启[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)时，LoRA 不会融合进基础模型权重，此时推理速度会变慢，LoRA 加载后可通过 `pipe.clear_lora()` 卸载。
+
+```python
+from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
+import torch
+
+vram_config = {
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cuda",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cuda",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+pipe = QwenImagePipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors"),
+        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+    ],
+    tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
+)
+lora = ModelConfig(model_id="DiffSynth-Studio/Qwen-Image-LoRA-ArtAug-v1", origin_file_pattern="model.safetensors")
+pipe.load_lora(pipe.dit, lora, alpha=1)
+prompt = "精致肖像，水下少女，蓝裙飘逸，发丝轻扬，光影透澈，气泡环绕，面容恬静，细节精致，梦幻唯美。"
+image = pipe(prompt, seed=0, num_inference_steps=40)
+image.save("image.jpg")
+pipe.clear_lora()
+```
