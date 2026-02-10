@@ -29,7 +29,7 @@
 
 ## 如何在推理时动态加载 LoRA 模型？
 
-我们支持 LoRA 模型的两种加载方式，详见[LoRA 加载](/docs/zh/Pipeline_Usage/Model_Inference.md#加载-lora)：
+我们支持 LoRA 模型的两种加载方式，详见[LoRA 加载](./Pipeline_Usage/Model_Inference.md#加载-lora)：
 
-* 冷加载：当基础模型未开启[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)时，LoRA 会融合进基础模型权重，此时推理速度没有变化，LoRA 加载后无法卸载。
-* 热加载：当基础模型开启[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)时，LoRA 不会融合进基础模型权重，此时推理速度会变慢，LoRA 加载后可通过 `pipe.clear_lora()` 卸载。
+* 冷加载：当基础模型未开启[显存管理](./Pipeline_Usage/VRAM_management.md)时，LoRA 会融合进基础模型权重，此时推理速度没有变化，LoRA 加载后无法卸载。
+* 热加载：当基础模型开启[显存管理](./Pipeline_Usage/VRAM_management.md)时，LoRA 不会融合进基础模型权重，此时推理速度会变慢，LoRA 加载后可通过 `pipe.clear_lora()` 卸载。

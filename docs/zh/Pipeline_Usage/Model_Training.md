@@ -65,7 +65,7 @@ image_1.jpg,"a dog"
 image_2.jpg,"a cat"
 ```
 
-我们构建了样例数据集，以方便您进行测试。了解通用数据集架构是如何实现的，请参考 [`diffsynth.core.data`](/docs/zh/API_Reference/core/data.md)。
+我们构建了样例数据集，以方便您进行测试。了解通用数据集架构是如何实现的，请参考 [`diffsynth.core.data`](../API_Reference/core/data.md)。
 
 <details>
 
@@ -93,7 +93,7 @@ image_2.jpg,"a cat"
 
 ## 加载模型
 
-类似于[推理时的模型加载](/docs/zh/Pipeline_Usage/Model_Inference.md#加载模型)，我们支持多种方式配置模型路径，两种方式是可以混用的。
+类似于[推理时的模型加载](../Pipeline_Usage/Model_Inference.md#加载模型)，我们支持多种方式配置模型路径，两种方式是可以混用的。
 
 <details>
 
@@ -115,9 +115,9 @@ image_2.jpg,"a cat"
 > --model_id_with_origin_paths "Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors,Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors"
 > ```
 > 
-> 模型文件默认下载到 `./models` 路径，该路径可通过[环境变量 DIFFSYNTH_MODEL_BASE_PATH](/docs/zh/Pipeline_Usage/Environment_Variables.md#diffsynth_model_base_path) 修改。
+> 模型文件默认下载到 `./models` 路径，该路径可通过[环境变量 DIFFSYNTH_MODEL_BASE_PATH](../Pipeline_Usage/Environment_Variables.md#diffsynth_model_base_path) 修改。
 > 
-> 默认情况下，即使模型已经下载完毕，程序仍会向远程查询是否有遗漏文件，如果要完全关闭远程请求，请将[环境变量 DIFFSYNTH_SKIP_DOWNLOAD](/docs/zh/Pipeline_Usage/Environment_Variables.md#diffsynth_skip_download) 设置为 `True`。
+> 默认情况下，即使模型已经下载完毕，程序仍会向远程查询是否有遗漏文件，如果要完全关闭远程请求，请将[环境变量 DIFFSYNTH_SKIP_DOWNLOAD](../Pipeline_Usage/Environment_Variables.md#diffsynth_skip_download) 设置为 `True`。
 
 </details>
 
@@ -235,11 +235,11 @@ accelerate launch --config_file examples/qwen_image/model_training/full/accelera
 
 ## 训练注意事项
 
-* 数据集的元数据除 `csv` 格式外，还支持 `json`、`jsonl` 格式，关于如何选择最佳的元数据格式，请参考[](/docs/zh/API_Reference/core/data.md#元数据)
+* 数据集的元数据除 `csv` 格式外，还支持 `json`、`jsonl` 格式，关于如何选择最佳的元数据格式，请参考[](../API_Reference/core/data.md#元数据)
 * 通常训练效果与训练步数强相关，与 epoch 数量弱相关，因此我们更推荐使用参数 `--save_steps` 按训练步数间隔来保存模型文件。
 * 当数据量 * `dataset_repeat` 超过 $10^9$ 时，我们观测到数据集的速度明显变慢，这似乎是 `PyTorch` 的 bug，我们尚不确定新版本的 `PyTorch` 是否已经修复了这一问题。
 * 学习率 `--learning_rate` 在 LoRA 训练中建议设置为 `1e-4`，在全量训练中建议设置为 `1e-5`。
-* 训练框架不支持 batch size > 1，原因是复杂的，详见 [Q&A: 为什么训练框架不支持 batch size > 1？](/docs/zh/QA.md#为什么训练框架不支持-batch-size--1)
+* 训练框架不支持 batch size > 1，原因是复杂的，详见 [Q&A: 为什么训练框架不支持 batch size > 1？](../QA.md#为什么训练框架不支持-batch-size--1)
 * 少数模型包含冗余参数，例如 Qwen-Image 的 DiT 部分最后一层的文本编码部分，在训练这些模型时，需设置 `--find_unused_parameters` 避免在多 GPU 训练中报错。出于对开源社区模型兼容性的考虑，我们不打算删除这些冗余参数。
 * Diffusion 模型的损失函数值与实际效果的关系不大，因此我们在训练过程中不会记录损失函数值。我们建议把 `--num_epochs` 设置为足够大的数值，边训边测，直至效果收敛后手动关闭训练程序。
-* `--use_gradient_checkpointing` 通常是开启的，除非 GPU 显存足够；`--use_gradient_checkpointing_offload` 则按需开启，详见 [`diffsynth.core.gradient`](/docs/zh/API_Reference/core/gradient.md)。
+* `--use_gradient_checkpointing` 通常是开启的，除非 GPU 显存足够；`--use_gradient_checkpointing_offload` 则按需开启，详见 [`diffsynth.core.gradient`](../API_Reference/core/gradient.md)。

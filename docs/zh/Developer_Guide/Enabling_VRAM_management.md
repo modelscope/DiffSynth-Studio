@@ -1,6 +1,6 @@
 # 细粒度显存管理方案
 
-本文档介绍如何为模型编写合理的细粒度显存管理方案，以及如何将 `DiffSynth-Studio` 中的显存管理功能用于外部的其他代码库，在阅读本文档前，请先阅读文档[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)。
+本文档介绍如何为模型编写合理的细粒度显存管理方案，以及如何将 `DiffSynth-Studio` 中的显存管理功能用于外部的其他代码库，在阅读本文档前，请先阅读文档[显存管理](../Pipeline_Usage/VRAM_management.md)。
 
 ## 20B 模型需要多少显存？
 
@@ -124,7 +124,7 @@ module_map={
 }
 ```
 
-此外，还需要提供 `vram_config` 与 `vram_limit`，这两个参数在[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md#更多使用方式)中已有介绍。
+此外，还需要提供 `vram_config` 与 `vram_limit`，这两个参数在[显存管理](../Pipeline_Usage/VRAM_management.md#更多使用方式)中已有介绍。
 
 调用 `enable_vram_management` 即可启用显存管理，注意此时模型加载时的 `device` 为 `cpu`，与 `offload_device` 一致：
 
@@ -171,7 +171,7 @@ with torch.no_grad():
 
 ## Disk Offload
 
-[Disk Offload](/docs/zh/Pipeline_Usage/VRAM_management.md#disk-offload) 是特殊的显存管理方案，需在模型加载过程中启用，而非模型加载完毕后。通常，在以上代码能够顺利运行的前提下，Disk Offload 可以直接启用：
+[Disk Offload](../Pipeline_Usage/VRAM_management.md#disk-offload) 是特殊的显存管理方案，需在模型加载过程中启用，而非模型加载完毕后。通常，在以上代码能够顺利运行的前提下，Disk Offload 可以直接启用：
 
 ```python
 from diffsynth.core import load_model, enable_vram_management, AutoWrappedLinear, AutoWrappedModule
@@ -212,7 +212,7 @@ with torch.no_grad():
     output = model(**inputs)
 ```
 
-Disk Offload 是极为特殊的显存管理方案，只支持 `.safetensors` 格式文件，不支持 `.bin`、`.pth`、`.ckpt` 等二进制文件，不支持带 Tensor reshape 的 [state dict converter](/docs/zh/Developer_Guide/Integrating_Your_Model.md#step-2-模型文件格式转换)。
+Disk Offload 是极为特殊的显存管理方案，只支持 `.safetensors` 格式文件，不支持 `.bin`、`.pth`、`.ckpt` 等二进制文件，不支持带 Tensor reshape 的 [state dict converter](../Developer_Guide/Integrating_Your_Model.md#step-2-模型文件格式转换)。
 
 如果出现非 Disk Offload 能正常运行但 Disk Offload 不能正常运行的情况，请在 GitHub 上给我们提 issue。
 

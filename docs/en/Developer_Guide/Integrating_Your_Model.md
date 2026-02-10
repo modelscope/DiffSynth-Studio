@@ -183,4 +183,4 @@ Loaded model: {
 
 ## Step 5: Writing Model VRAM Management Scheme
 
-`DiffSynth-Studio` supports complex VRAM management. See [Enabling VRAM Management](/docs/en/Developer_Guide/Enabling_VRAM_management.md) for details.
+`DiffSynth-Studio` supports complex VRAM management. See [Enabling VRAM Management](../Developer_Guide/Enabling_VRAM_management.md) for details.

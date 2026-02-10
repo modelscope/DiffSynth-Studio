@@ -1,10 +1,10 @@
 # 标准监督训练
 
-在理解 [Diffusion 模型基本原理](/docs/zh/Training/Understanding_Diffusion_models.md)之后，本文档介绍框架如何实现 Diffusion 模型的训练。本文档介绍框架的原理，帮助开发者编写新的训练代码，如需使用我们提供的默认训练功能，请参考[模型训练](/docs/zh/Pipeline_Usage/Model_Training.md)。
+在理解 [Diffusion 模型基本原理](../Training/Understanding_Diffusion_models.md)之后，本文档介绍框架如何实现 Diffusion 模型的训练。本文档介绍框架的原理，帮助开发者编写新的训练代码，如需使用我们提供的默认训练功能，请参考[模型训练](../Pipeline_Usage/Model_Training.md)。
 
 回顾前文中的模型训练伪代码，当我们实际编写代码时，情况会变得极为复杂。部分模型需要输入额外的引导条件并进行预处理，例如 ControlNet；部分模型需要与去噪模型进行交叉式的计算，例如 VACE；部分模型因显存需求过大，需要开启 Gradient Checkpointing，例如 Qwen-Image 的 DiT。
 
-为了实现严格的推理和训练一致性，我们对 `Pipeline` 等组件进行了抽象封装，在训练过程中大量复用推理代码。请参考[接入 Pipeline](/docs/zh/Developer_Guide/Building_a_Pipeline.md) 了解 `Pipeline` 组件的设计。接下来我们介绍训练框架如何利用 `Pipeline` 组件构建训练算法。
+为了实现严格的推理和训练一致性，我们对 `Pipeline` 等组件进行了抽象封装，在训练过程中大量复用推理代码。请参考[接入 Pipeline](../Developer_Guide/Building_a_Pipeline.md) 了解 `Pipeline` 组件的设计。接下来我们介绍训练框架如何利用 `Pipeline` 组件构建训练算法。
 
 ## 框架设计思路
 
@@ -48,13 +48,13 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
         )
 ```
 
-加载模型的逻辑与推理时基本一致，支持从远程和本地路径加载模型，详见[模型推理](/docs/zh/Pipeline_Usage/Model_Inference.md)，但请注意不要启用[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)。
+加载模型的逻辑与推理时基本一致，支持从远程和本地路径加载模型，详见[模型推理](../Pipeline_Usage/Model_Inference.md)，但请注意不要启用[显存管理](../Pipeline_Usage/VRAM_management.md)。
 
 `switch_pipe_to_training_mode` 可以将模型切换到训练模式，详见 `switch_pipe_to_training_mode`。
 
 ### `forward`
 
-在 `forward` 中需计算损失函数值，先进行前处理，然后经过 `Pipeline` 的 [`model_fn`](/docs/zh/Developer_Guide/Building_a_Pipeline.md#model_fn) 计算损失函数。
+在 `forward` 中需计算损失函数值，先进行前处理，然后经过 `Pipeline` 的 [`model_fn`](../Developer_Guide/Building_a_Pipeline.md#model_fn) 计算损失函数。
 
 ```python
     def forward(self, data):
@@ -90,7 +90,7 @@ class QwenImageTrainingModule(DiffusionTrainingModule):
 训练框架还需其他模块，包括：
 
 * accelerator: `accelerate` 提供的训练启动器，详见 [`accelerate`](https://huggingface.co/docs/accelerate/index)
-* dataset: 通用数据集，详见 [`diffsynth.core.data`](/docs/zh/API_Reference/core/data.md)
+* dataset: 通用数据集，详见 [`diffsynth.core.data`](../API_Reference/core/data.md)
 * model_logger: 模型记录器，详见 `diffsynth.diffusion.logger`
 
 ```python

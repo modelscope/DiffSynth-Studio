@@ -138,4 +138,4 @@ The denoising model is the true essence of Diffusion models, with diverse model 
 
 ## How does this project encapsulate and implement model training?
 
-Please read the next document: [Standard Supervised Training](/docs/en/Training/Supervised_Fine_Tuning.md)
+Please read the next document: [Standard Supervised Training](../Training/Supervised_Fine_Tuning.md)

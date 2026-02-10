@@ -2,7 +2,7 @@
 
 ## Qwen-Image
 
-Documentation: [./Qwen-Image.md](/docs/en/Model_Details/Qwen-Image.md)
+Documentation: [./Qwen-Image.md](../Model_Details/Qwen-Image.md)
 
 <details>
 
@@ -85,7 +85,7 @@ graph LR;
 
 ## FLUX Series
 
-Documentation: [./FLUX.md](/docs/en/Model_Details/FLUX.md)
+Documentation: [./FLUX.md](../Model_Details/FLUX.md)
 
 <details>
 
@@ -166,7 +166,7 @@ graph LR;
 
 ## Wan Series
 
-Documentation: [./Wan.md](/docs/en/Model_Details/Wan.md)
+Documentation: [./Wan.md](../Model_Details/Wan.md)
 
 <details>
 
@@ -286,6 +286,6 @@ graph LR;
 | [PAI/Wan2.2-Fun-A14B-Control](https://modelscope.cn/models/PAI/Wan2.2-Fun-A14B-Control) | `control_video`, `reference_image` | [code](/examples/wanvideo/model_inference/Wan2.2-Fun-A14B-Control.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-Fun-A14B-Control.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-Fun-A14B-Control.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-Fun-A14B-Control.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Fun-A14B-Control.py) |
 | [PAI/Wan2.2-Fun-A14B-Control-Camera](https://modelscope.cn/models/PAI/Wan2.2-Fun-A14B-Control-Camera) | `control_camera_video`, `input_image` | [code](/examples/wanvideo/model_inference/Wan2.2-Fun-A14B-Control-Camera.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-Fun-A14B-Control-Camera.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-Fun-A14B-Control-Camera.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-Fun-A14B-Control-Camera.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Fun-A14B-Control-Camera.py) |
 
-* FP8 Precision Training: [doc](/docs/en/Training/FP8_Precision.md), [code](/examples/wanvideo/model_training/special/fp8_training/)
-* Two-stage Split Training: [doc](/docs/en/Training/Split_Training.md), [code](/examples/wanvideo/model_training/special/split_training/)
-* End-to-end Direct Distillation: [doc](/docs/en/Training/Direct_Distill.md), [code](/examples/wanvideo/model_training/special/direct_distill/)
+* FP8 Precision Training: [doc](../Training/FP8_Precision.md), [code](/examples/wanvideo/model_training/special/fp8_training/)
+* Two-stage Split Training: [doc](../Training/Split_Training.md), [code](/examples/wanvideo/model_training/special/split_training/)
+* End-to-end Direct Distillation: [doc](../Training/Direct_Distill.md), [code](/examples/wanvideo/model_training/special/direct_distill/)

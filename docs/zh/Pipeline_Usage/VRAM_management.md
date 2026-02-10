@@ -140,7 +140,7 @@ image.save("image.jpg")
 
 在更为极端的情况下，当内存也不足以存储整个模型时，Disk Offload 功能可以让模型参数惰性加载，即，模型中的每个 Layer 仅在调用 forward 时才会从硬盘中读取相应的参数。启用这一功能时，我们建议使用高速的 SSD 硬盘。
 
-Disk Offload 是极为特殊的显存管理方案，只支持 `.safetensors` 格式文件，不支持 `.bin`、`.pth`、`.ckpt` 等二进制文件，不支持带 Tensor reshape 的 [state dict converter](/docs/zh/Developer_Guide/Integrating_Your_Model.md#step-2-模型文件格式转换)。
+Disk Offload 是极为特殊的显存管理方案，只支持 `.safetensors` 格式文件，不支持 `.bin`、`.pth`、`.ckpt` 等二进制文件，不支持带 Tensor reshape 的 [state dict converter](../Developer_Guide/Integrating_Your_Model.md#step-2-模型文件格式转换)。
 
 ```python
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
@@ -196,7 +196,7 @@ vram_config = {
 * Preparing：Onload 和 Computation 的中间状态，在显存允许的前提下的暂存状态，这个状态由显存管理机制控制切换，当且仅当【vram_limit 设置为无限制】或【vram_limit 已设置且有空余显存】时会进入这一状态
 * Computation：模型正在计算过程中，这个状态由显存管理机制控制切换，仅在 `forward` 中临时进入
 
-如果你是模型开发者，希望自行控制某个模型的显存管理粒度，请参考[../Developer_Guide/Enabling_VRAM_management.md](/docs/zh/Developer_Guide/Enabling_VRAM_management.md)。
+如果你是模型开发者，希望自行控制某个模型的显存管理粒度，请参考[../Developer_Guide/Enabling_VRAM_management.md](../Developer_Guide/Enabling_VRAM_management.md)。
 
 ## 最佳实践
 

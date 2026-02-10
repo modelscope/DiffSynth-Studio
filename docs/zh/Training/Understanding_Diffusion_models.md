@@ -136,4 +136,4 @@ $$
 
 ## 本项目如何封装和实现模型训练？
 
-请阅读下一文档：[标准监督训练](/docs/zh/Training/Supervised_Fine_Tuning.md)
+请阅读下一文档：[标准监督训练](../Training/Supervised_Fine_Tuning.md)

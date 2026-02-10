@@ -22,7 +22,7 @@ pipe = QwenImagePipeline.from_pretrained(
 )
 ```
 
-Where `torch_dtype` and `device` are computation precision and computation device (not model precision and device). `model_configs` can be configured in multiple ways for model paths. For how models are loaded internally in this project, please refer to [`diffsynth.core.loader`](/docs/en/API_Reference/core/loader.md).
+Where `torch_dtype` and `device` are computation precision and computation device (not model precision and device). `model_configs` can be configured in multiple ways for model paths. For how models are loaded internally in this project, please refer to [`diffsynth.core.loader`](../API_Reference/core/loader.md).
 
 <details>
 
@@ -34,7 +34,7 @@ Where `torch_dtype` and `device` are computation precision and computation devic
 > ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
 > ```
 > 
-> Model files are downloaded to the `./models` path by default, which can be modified through [environment variable DIFFSYNTH_MODEL_BASE_PATH](/docs/en/Pipeline_Usage/Environment_Variables.md#diffsynth_model_base_path).
+> Model files are downloaded to the `./models` path by default, which can be modified through [environment variable DIFFSYNTH_MODEL_BASE_PATH](../Pipeline_Usage/Environment_Variables.md#diffsynth_model_base_path).
 
 </details>
 
@@ -61,7 +61,7 @@ Where `torch_dtype` and `device` are computation precision and computation devic
 
 </details>
 
-By default, even after models have been downloaded, the program will still query remotely for missing files. To completely disable remote requests, set [environment variable DIFFSYNTH_SKIP_DOWNLOAD](/docs/en/Pipeline_Usage/Environment_Variables.md#diffsynth_skip_download) to `True`.
+By default, even after models have been downloaded, the program will still query remotely for missing files. To completely disable remote requests, set [environment variable DIFFSYNTH_SKIP_DOWNLOAD](../Pipeline_Usage/Environment_Variables.md#diffsynth_skip_download) to `True`.
 
 ```shell
 import os
@@ -69,7 +69,7 @@ os.environ["DIFFSYNTH_SKIP_DOWNLOAD"] = "True"
 import diffsynth
 ```
 
-To download models from [HuggingFace](https://huggingface.co/), set [environment variable DIFFSYNTH_DOWNLOAD_SOURCE](/docs/en/Pipeline_Usage/Environment_Variables.md#diffsynth_download_source) to `huggingface`.
+To download models from [HuggingFace](https://huggingface.co/), set [environment variable DIFFSYNTH_DOWNLOAD_SOURCE](../Pipeline_Usage/Environment_Variables.md#diffsynth_download_source) to `huggingface`.
 
 ```shell
 import os
@@ -102,13 +102,13 @@ image.save("image.jpg")
 
 Each model `Pipeline` has different input parameters. Please refer to the documentation for each model.
 
-If the model parameters are too large, causing insufficient VRAM, please enable [VRAM management](/docs/en/Pipeline_Usage/VRAM_management.md).
+If the model parameters are too large, causing insufficient VRAM, please enable [VRAM management](../Pipeline_Usage/VRAM_management.md).
 
 ## Loading LoRA
 
 LoRA is a lightweight model training method that produces a small number of parameters to extend model capabilities. DiffSynth-Studio supports two ways to load LoRA: cold loading and hot loading.
 
-* Cold loading: When the base model does not have [VRAM management](/docs/en/Pipeline_Usage/VRAM_management.md) enabled, LoRA will be fused into the base model weights. In this case, inference speed remains unchanged, but LoRA cannot be unloaded after loading.
+* Cold loading: When the base model does not have [VRAM management](../Pipeline_Usage/VRAM_management.md) enabled, LoRA will be fused into the base model weights. In this case, inference speed remains unchanged, but LoRA cannot be unloaded after loading.
 
 ```python
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
@@ -131,7 +131,7 @@ image = pipe(prompt, seed=0, num_inference_steps=40)
 image.save("image.jpg")
 ```
 
-* Hot loading: When the base model has [VRAM management](/docs/en/Pipeline_Usage/VRAM_management.md) enabled, LoRA will not be fused into the base model weights. In this case, inference speed will be slower, but LoRA can be unloaded through `pipe.clear_lora()` after loading.
+* Hot loading: When the base model has [VRAM management](../Pipeline_Usage/VRAM_management.md) enabled, LoRA will not be fused into the base model weights. In this case, inference speed will be slower, but LoRA can be unloaded through `pipe.clear_lora()` after loading.
 
 ```python
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
