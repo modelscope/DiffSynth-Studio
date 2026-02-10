@@ -137,7 +137,7 @@ class AAADiT(torch.nn.Module):
 * 文本编码器：用于将文本编码为张量。我们采用 [Qwen/Qwen3-0.6B](https://modelscope.cn/models/Qwen/Qwen3-0.6B) 模型。
 * VAE 编解码器：编码器部分用于将图像编码为张量，解码器部分用于将图像张量解码为图像。我们采用 [black-forest-labs/FLUX.2-klein-4B](https://modelscope.cn/models/black-forest-labs/FLUX.2-klein-4B) 中的 VAE 模型。
 
-这两个模型的结构都已集成在 DiffSynth-Studio 中，分别位于 [/diffsynth/models/z_image_text_encoder.py](/diffsynth/models/z_image_text_encoder.py) 和 [/diffsynth/models/flux2_vae.py](/diffsynth/models/flux2_vae.py)，因此我们不需要修改任何代码。
+这两个模型的结构都已集成在 DiffSynth-Studio 中，分别位于 [/diffsynth/models/z_image_text_encoder.py](https://github.com/modelscope/DiffSynth-Studio/blob/main/diffsynth/models/z_image_text_encoder.py) 和 [/diffsynth/models/flux2_vae.py](https://github.com/modelscope/DiffSynth-Studio/blob/main/diffsynth/models/flux2_vae.py)，因此我们不需要修改任何代码。
 
 ## 2. 构建 Pipeline
 
@@ -336,7 +336,7 @@ modelscope download --dataset DiffSynth-Studio/pokemon-gen1 --local_dir ./data
 
 ### 4. 开始训练
 
-训练过程可使用 Pipeline 快速实现，我们已将完整的代码放在 [../Research_Tutorial/train_from_scratch.py](../Research_Tutorial/train_from_scratch.py)，可直接通过 `python docs/zh/Research_Tutorial/train_from_scratch.py` 开始单 GPU 训练。
+训练过程可使用 Pipeline 快速实现，我们已将完整的代码放在 [../Research_Tutorial/train_from_scratch.py](https://github.com/modelscope/DiffSynth-Studio/blob/main/docs/zh/Research_Tutorial/train_from_scratch.py)，可直接通过 `python docs/zh/Research_Tutorial/train_from_scratch.py` 开始单 GPU 训练。
 
 如需开启多 GPU 并行训练，请运行 `accelerate config` 设置相关参数，然后使用命令 `accelerate launch docs/zh/Research_Tutorial/train_from_scratch.py` 开始训练。
 
