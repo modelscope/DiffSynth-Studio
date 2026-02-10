@@ -122,7 +122,6 @@ myst_enable_extensions = [
     'colon_fence',
 ]
 
-myst_heading_anchors = 2
-myst_footnote_transition = True
-
-html_use_opensearch = '/docs/zh/'
+linkcheck_ignore = [
+    r'/docs/zh/.*',
+]
