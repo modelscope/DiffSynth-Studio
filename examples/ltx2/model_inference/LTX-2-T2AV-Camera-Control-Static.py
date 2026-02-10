@@ -1,7 +1,6 @@
 import torch
 from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
 from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
-from modelscope import snapshot_download
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -24,12 +23,10 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
     stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"),
 )
-snapshot_download(
-    "Lightricks/LTX-2-19b-LoRA-Camera-Control-Static",
-    local_dir="models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Static",
-    allow_file_pattern="ltx-2-19b-lora-camera-control-static.safetensors",
+pipe.load_lora(
+    pipe.dit,
+    ModelConfig(model_id="Lightricks/LTX-2-19b-LoRA-Camera-Control-Static", origin_file_pattern="ltx-2-19b-lora-camera-control-static.safetensors"),
 )
-pipe.load_lora(pipe.dit, "models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Static/ltx-2-19b-lora-camera-control-static.safetensors", alpha=1.0, hotload=True)
 prompt = "A beautiful sunset over the ocean."
 negative_prompt = (
     "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, "

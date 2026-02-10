@@ -1,7 +1,6 @@
 import torch
 from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
 from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
-from modelscope import snapshot_download
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -24,12 +23,10 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
     stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"),
 )
-snapshot_download(
-    "Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Down",
-    local_dir="models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Down",
-    allow_file_pattern="ltx-2-19b-lora-camera-control-jib-down.safetensors",
+pipe.load_lora(
+    pipe.dit,
+    ModelConfig(model_id="Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Down", origin_file_pattern="ltx-2-19b-lora-camera-control-jib-down.safetensors"),
 )
-pipe.load_lora(pipe.dit, "models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Down/ltx-2-19b-lora-camera-control-jib-down.safetensors", alpha=1.0, hotload=True)
 prompt = (
     "A girl is very happy, standing on a clean studio floor with soft ambient lighting. "
     "She is speaking directly to the camera: “I enjoy working with Diffsynth-Studio, it's a perfect framework.” "

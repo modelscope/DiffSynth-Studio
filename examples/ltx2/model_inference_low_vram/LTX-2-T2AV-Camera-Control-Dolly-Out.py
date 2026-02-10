@@ -1,7 +1,6 @@
 import torch
 from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
 from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
-from modelscope import snapshot_download
 
 vram_config = {
     "offload_dtype": torch.float8_e5m2,
@@ -24,12 +23,10 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
     stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"),
 )
-snapshot_download(
-    "Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Out",
-    local_dir="models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Out",
-    allow_file_pattern="ltx-2-19b-lora-camera-control-dolly-out.safetensors",
+pipe.load_lora(
+    pipe.dit,
+    ModelConfig(model_id="Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Out", origin_file_pattern="ltx-2-19b-lora-camera-control-dolly-out.safetensors"),
 )
-pipe.load_lora(pipe.dit, "models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Out/ltx-2-19b-lora-camera-control-dolly-out.safetensors", alpha=1.0, hotload=True)
 
 prompt = "Dolly-out shot: A joyful young woman smiles warmly and says: 'I enjoy working with Diffsynth-Studio, it's a perfect framework.' As she speaks, the camera slowly dollies out, revealing a bright, modern creative studio filled with plants, whiteboards full of diagrams, and soft natural light from large windows."
 

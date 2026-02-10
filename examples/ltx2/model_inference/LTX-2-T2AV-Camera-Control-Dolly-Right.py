@@ -1,7 +1,6 @@
 import torch
 from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
 from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
-from modelscope import snapshot_download
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -24,12 +23,10 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
     stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"),
 )
-snapshot_download(
-    "Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Right",
-    local_dir="models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Right",
-    allow_file_pattern="ltx-2-19b-lora-camera-control-dolly-right.safetensors",
+pipe.load_lora(
+    pipe.dit,
+    ModelConfig(model_id="Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Right", origin_file_pattern="ltx-2-19b-lora-camera-control-dolly-right.safetensors"),
 )
-pipe.load_lora(pipe.dit, "models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Right/ltx-2-19b-lora-camera-control-dolly-right.safetensors", alpha=1.0, hotload=True)
 
 prompt = "Dolly-right shot: A happy girl looks up and says happily, 'I enjoy working with Diffsynth-Studio, it's a perfect framework.' She sits before a sunlit café table, her open laptop displaying the Github interface. The camera glides right to show a barista crafting coffee in the background, shelves of artisan beans, and a chalkboard menu softly blurred in the bokeh."
 negative_prompt = (
