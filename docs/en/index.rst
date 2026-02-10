@@ -1,4 +1,4 @@
-Welcome to DiffSynth-Studio's Documentation 
+Welcome to DiffSynth-Studio's Documentation
 ==========================================
 
 .. toctree::
