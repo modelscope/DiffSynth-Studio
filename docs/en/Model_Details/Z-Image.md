@@ -12,7 +12,7 @@ cd DiffSynth-Studio
 pip install -e .
 ```
 
-For more information about installation, please refer to [Install Dependencies](/docs/en/Pipeline_Usage/Setup.md).
+For more information about installation, please refer to [Install Dependencies](../Pipeline_Usage/Setup.md).
 
 ## Quick Start
 
@@ -61,12 +61,12 @@ image.save("image.jpg")
 
 Special Training Scripts:
 
-* Differential LoRA Training: [doc](/docs/en/Training/Differential_LoRA.md), [code](/examples/z_image/model_training/special/differential_training/)
+* Differential LoRA Training: [doc](../Training/Differential_LoRA.md), [code](/examples/z_image/model_training/special/differential_training/)
 * Trajectory Imitation Distillation Training (Experimental Feature): [code](/examples/z_image/model_training/special/trajectory_imitation/)
 
 ## Model Inference
 
-Models are loaded via `ZImagePipeline.from_pretrained`, see [Loading Models](/docs/en/Pipeline_Usage/Model_Inference.md#loading-models).
+Models are loaded via `ZImagePipeline.from_pretrained`, see [Loading Models](../Pipeline_Usage/Model_Inference.md#loading-models).
 
 Input parameters for `ZImagePipeline` inference include:
 
@@ -84,7 +84,7 @@ Input parameters for `ZImagePipeline` inference include:
 * `edit_image`: Edit images for image editing models, supporting multiple images.
 * `positive_only_lora`: LoRA weights used only in positive prompts.
 
-If VRAM is insufficient, please enable [VRAM Management](/docs/en/Pipeline_Usage/VRAM_management.md). We provide recommended low VRAM configurations for each model in the example code, see the table in the "Model Overview" section above.
+If VRAM is insufficient, please enable [VRAM Management](../Pipeline_Usage/VRAM_management.md). We provide recommended low VRAM configurations for each model in the example code, see the table in the "Model Overview" section above.
 
 ## Model Training
 
@@ -137,7 +137,7 @@ We have built a sample image dataset for your testing. You can download this dat
 modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir ./data/example_image_dataset
 ```
 
-We have written recommended training scripts for each model, please refer to the table in the "Model Overview" section above. For how to write model training scripts, please refer to [Model Training](/docs/en/Pipeline_Usage/Model_Training.md); for more advanced training algorithms, please refer to [Training Framework Detailed Explanation](/docs/Training/).
+We have written recommended training scripts for each model, please refer to the table in the "Model Overview" section above. For how to write model training scripts, please refer to [Model Training](../Pipeline_Usage/Model_Training.md); for more advanced training algorithms, please refer to [Training Framework Detailed Explanation](/docs/Training/).
 
 Training Tips:
 

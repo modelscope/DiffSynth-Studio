@@ -12,7 +12,7 @@ cd DiffSynth-Studio
 pip install -e .
 ```
 
-更多关于安装的信息，请参考[安装依赖](/docs/zh/Pipeline_Usage/Setup.md)。
+更多关于安装的信息，请参考[安装依赖](../Pipeline_Usage/Setup.md)。
 
 ## 快速开始
 
@@ -83,7 +83,7 @@ write_video_audio_ltx2(
 
 ## 模型推理
 
-模型通过 `LTX2AudioVideoPipeline.from_pretrained` 加载，详见[加载模型](/docs/zh/Pipeline_Usage/Model_Inference.md#加载模型)。
+模型通过 `LTX2AudioVideoPipeline.from_pretrained` 加载，详见[加载模型](../Pipeline_Usage/Model_Inference.md#加载模型)。
 
 `LTX2AudioVideoPipeline` 推理的输入参数包括：
 
@@ -109,7 +109,7 @@ write_video_audio_ltx2(
 * `use_distilled_pipeline`: 是否使用蒸馏管道，默认为 `False`。
 * `progress_bar_cmd`: 进度条，默认为 `tqdm.tqdm`。可通过设置为 `lambda x:x` 来屏蔽进度条。
 
-如果显存不足，请开启[显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)，我们在示例代码中提供了每个模型推荐的低显存配置，详见前文"支持的推理脚本"中的表格。
+如果显存不足，请开启[显存管理](../Pipeline_Usage/VRAM_management.md)，我们在示例代码中提供了每个模型推荐的低显存配置，详见前文"支持的推理脚本"中的表格。
 
 ## 模型训练
 

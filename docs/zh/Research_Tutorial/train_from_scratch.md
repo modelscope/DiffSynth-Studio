@@ -12,7 +12,7 @@ DiffSynth-Studio 的训练引擎支持从零开始训练基础模型，本文介
 * 文本张量（`prompt_embeds`）：文本的编码，由文本编码器产生
 * 时间步（`timestep`）：标量，用于标记当前处于 Diffusion 过程的哪个阶段
 
-模型的输出是与图像张量形状相同的张量，表示模型预测的去噪方向，关于 Diffusion 模型理论的细节，请参考 [Diffusion 模型基本原理](/docs/zh/Training/Understanding_Diffusion_models.md)。在本文中，我们构建一个仅含 0.1B 参数的 DiT 模型：`AAADiT`。
+模型的输出是与图像张量形状相同的张量，表示模型预测的去噪方向，关于 Diffusion 模型理论的细节，请参考 [Diffusion 模型基本原理](../Training/Understanding_Diffusion_models.md)。在本文中，我们构建一个仅含 0.1B 参数的 DiT 模型：`AAADiT`。
 
 <details>
 <summary>模型结构代码</summary>
@@ -141,7 +141,7 @@ class AAADiT(torch.nn.Module):
 
 ## 2. 构建 Pipeline
 
-我们在文档 [接入 Pipeline](/docs/zh/Developer_Guide/Building_a_Pipeline.md) 中介绍了如何构建一个模型 Pipeline，对于本文中的模型，我们也需要构建一个 Pipeline，连接文本编码器、Diffusion 模型、VAE 编解码器。
+我们在文档 [接入 Pipeline](../Developer_Guide/Building_a_Pipeline.md) 中介绍了如何构建一个模型 Pipeline，对于本文中的模型，我们也需要构建一个 Pipeline，连接文本编码器、Diffusion 模型、VAE 编解码器。
 
 <details>
 <summary>Pipeline 代码</summary>
@@ -328,7 +328,7 @@ def model_fn_aaa(
 
 ## 3. 准备数据集
 
-为了快速验证训练效果，我们使用数据集 [宝可梦-第一世代](https://modelscope.cn/datasets/DiffSynth-Studio/pokemon-gen1)，这个数据集转载自开源项目 [pokemon-dataset-zh](https://github.com/42arch/pokemon-dataset-zh)，包含从妙蛙种子到梦幻的 151 个第一世代宝可梦。如果你想使用其他数据集，请参考文档 [准备数据集](/docs/zh/Pipeline_Usage/Model_Training.md#准备数据集) 和 [`diffsynth.core.data`](/docs/zh/API_Reference/core/data.md)。
+为了快速验证训练效果，我们使用数据集 [宝可梦-第一世代](https://modelscope.cn/datasets/DiffSynth-Studio/pokemon-gen1)，这个数据集转载自开源项目 [pokemon-dataset-zh](https://github.com/42arch/pokemon-dataset-zh)，包含从妙蛙种子到梦幻的 151 个第一世代宝可梦。如果你想使用其他数据集，请参考文档 [准备数据集](../Pipeline_Usage/Model_Training.md#准备数据集) 和 [`diffsynth.core.data`](../API_Reference/core/data.md)。
 
 ```shell
 modelscope download --dataset DiffSynth-Studio/pokemon-gen1 --local_dir ./data
@@ -336,7 +336,7 @@ modelscope download --dataset DiffSynth-Studio/pokemon-gen1 --local_dir ./data
 
 ### 4. 开始训练
 
-训练过程可使用 Pipeline 快速实现，我们已将完整的代码放在 [/docs/zh/Research_Tutorial/train_from_scratch.py](/docs/zh/Research_Tutorial/train_from_scratch.py)，可直接通过 `python docs/zh/Research_Tutorial/train_from_scratch.py` 开始单 GPU 训练。
+训练过程可使用 Pipeline 快速实现，我们已将完整的代码放在 [../Research_Tutorial/train_from_scratch.py](../Research_Tutorial/train_from_scratch.py)，可直接通过 `python docs/zh/Research_Tutorial/train_from_scratch.py` 开始单 GPU 训练。
 
 如需开启多 GPU 并行训练，请运行 `accelerate config` 设置相关参数，然后使用命令 `accelerate launch docs/zh/Research_Tutorial/train_from_scratch.py` 开始训练。
 

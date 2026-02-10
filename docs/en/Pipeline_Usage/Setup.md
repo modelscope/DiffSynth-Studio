@@ -41,7 +41,7 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6
    # x86
    pip install -e .[npu]
 
-When using Ascend NPU, please replace `"cuda"` with `"npu"` in your Python code. For details, see [NPU Support](/docs/en/Pipeline_Usage/GPU_support.md#ascend-npu).
+When using Ascend NPU, please replace `"cuda"` with `"npu"` in your Python code. For details, see [NPU Support](../Pipeline_Usage/GPU_support.md#ascend-npu).
 
 ## Other Installation Issues
 

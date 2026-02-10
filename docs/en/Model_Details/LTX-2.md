@@ -12,7 +12,7 @@ cd DiffSynth-Studio
 pip install -e .
 ```
 
-For more information about installation, please refer to [Installation Dependencies](/docs/en/Pipeline_Usage/Setup.md).
+For more information about installation, please refer to [Installation Dependencies](../Pipeline_Usage/Setup.md).
 
 ## Quick Start
 
@@ -83,7 +83,7 @@ write_video_audio_ltx2(
 
 ## Model Inference
 
-Models are loaded through `LTX2AudioVideoPipeline.from_pretrained`, see [Loading Models](/docs/en/Pipeline_Usage/Model_Inference.md#loading-models) for details.
+Models are loaded through `LTX2AudioVideoPipeline.from_pretrained`, see [Loading Models](../Pipeline_Usage/Model_Inference.md#loading-models) for details.
 
 Input parameters for `LTX2AudioVideoPipeline` inference include:
 
@@ -109,7 +109,7 @@ Input parameters for `LTX2AudioVideoPipeline` inference include:
 * `use_distilled_pipeline`: Whether to use distilled pipeline, default is `False`.
 * `progress_bar_cmd`: Progress bar, default is `tqdm.tqdm`. Can be set to `lambda x:x` to hide the progress bar.
 
-If VRAM is insufficient, please enable [VRAM Management](/docs/en/Pipeline_Usage/VRAM_management.md). We provide recommended low VRAM configurations for each model in the example code, see the table in the previous "Supported Inference Scripts" section.
+If VRAM is insufficient, please enable [VRAM Management](../Pipeline_Usage/VRAM_management.md). We provide recommended low VRAM configurations for each model in the example code, see the table in the previous "Supported Inference Scripts" section.
 
 ## Model Training
 

@@ -1,6 +1,6 @@
 # 接入 Pipeline
 
-在[将 Pipeline 所需的模型接入](/docs/zh/Developer_Guide/Integrating_Your_Model.md)之后，还需构建 `Pipeline` 用于模型推理，本文档提供 `Pipeline` 构建的标准化流程，开发者也可参考现有的 `Pipeline` 进行构建。
+在[将 Pipeline 所需的模型接入](../Developer_Guide/Integrating_Your_Model.md)之后，还需构建 `Pipeline` 用于模型推理，本文档提供 `Pipeline` 构建的标准化流程，开发者也可参考现有的 `Pipeline` 进行构建。
 
 `Pipeline` 的实现位于 `diffsynth/pipelines`，每个 `Pipeline` 包含以下必要的关键组件：
 
@@ -79,7 +79,7 @@ class NewDiffSynthPipeline(BasePipeline):
         return pipe
 ```
 
-开发者需要实现其中获取模型的逻辑，对应的模型名称即为[模型接入时填写的模型 Config](/docs/zh/Developer_Guide/Integrating_Your_Model.md#step-3-编写模型-config) 中的 `"model_name"`。
+开发者需要实现其中获取模型的逻辑，对应的模型名称即为[模型接入时填写的模型 Config](../Developer_Guide/Integrating_Your_Model.md#step-3-编写模型-config) 中的 `"model_name"`。
 
 部分模型还需要加载 `tokenizer`，可根据需要在 `from_pretrained` 上添加额外的 `tokenizer_config` 参数并在获取模型后实现这部分。
 

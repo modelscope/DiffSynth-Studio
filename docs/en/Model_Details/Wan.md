@@ -14,7 +14,7 @@ cd DiffSynth-Studio
 pip install -e .
 ```
 
-For more information about installation, please refer to [Install Dependencies](/docs/en/Pipeline_Usage/Setup.md).
+For more information about installation, please refer to [Install Dependencies](../Pipeline_Usage/Setup.md).
 
 ## Quick Start
 
@@ -138,9 +138,9 @@ graph LR;
 | [PAI/Wan2.2-Fun-A14B-Control](https://modelscope.cn/models/PAI/Wan2.2-Fun-A14B-Control) | `control_video`, `reference_image` | [code](/examples/wanvideo/model_inference/Wan2.2-Fun-A14B-Control.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-Fun-A14B-Control.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-Fun-A14B-Control.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-Fun-A14B-Control.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Fun-A14B-Control.py) |
 | [PAI/Wan2.2-Fun-A14B-Control-Camera](https://modelscope.cn/models/PAI/Wan2.2-Fun-A14B-Control-Camera) | `control_camera_video`, `input_image` | [code](/examples/wanvideo/model_inference/Wan2.2-Fun-A14B-Control-Camera.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-Fun-A14B-Control-Camera.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-Fun-A14B-Control-Camera.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-Fun-A14B-Control-Camera.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Fun-A14B-Control-Camera.py) |
 
-* FP8 Precision Training: [doc](/docs/en/Training/FP8_Precision.md), [code](/examples/wanvideo/model_training/special/fp8_training/)
-* Two-stage Split Training: [doc](/docs/en/Training/Split_Training.md), [code](/examples/wanvideo/model_training/special/split_training/)
-* End-to-end Direct Distillation: [doc](/docs/en/Training/Direct_Distill.md), [code](/examples/wanvideo/model_training/special/direct_distill/)
+* FP8 Precision Training: [doc](../Training/FP8_Precision.md), [code](/examples/wanvideo/model_training/special/fp8_training/)
+* Two-stage Split Training: [doc](../Training/Split_Training.md), [code](/examples/wanvideo/model_training/special/split_training/)
+* End-to-end Direct Distillation: [doc](../Training/Direct_Distill.md), [code](/examples/wanvideo/model_training/special/direct_distill/)
 
 DeepSpeed ZeRO Stage 3 Training: The Wan series models support DeepSpeed ZeRO Stage 3 training, which partitions the model across multiple GPUs. Taking full parameter training of the Wan2.1-T2V-14B model as an example, the following modifications are required:
 
@@ -149,7 +149,7 @@ DeepSpeed ZeRO Stage 3 Training: The Wan series models support DeepSpeed ZeRO St
 
 ## Model Inference
 
-Models are loaded via `WanVideoPipeline.from_pretrained`, see [Loading Models](/docs/en/Pipeline_Usage/Model_Inference.md#loading-models).
+Models are loaded via `WanVideoPipeline.from_pretrained`, see [Loading Models](../Pipeline_Usage/Model_Inference.md#loading-models).
 
 Input parameters for `WanVideoPipeline` inference include:
 
@@ -199,7 +199,7 @@ Input parameters for `WanVideoPipeline` inference include:
 * `tea_cache_model_id`: Model ID used by TeaCache.
 * `progress_bar_cmd`: Progress bar, default is `tqdm.tqdm`. Can be disabled by setting to `lambda x:x`.
 
-If VRAM is insufficient, please enable [VRAM Management](/docs/en/Pipeline_Usage/VRAM_management.md). We provide recommended low VRAM configurations for each model in the example code, see the table in the "Model Overview" section above.
+If VRAM is insufficient, please enable [VRAM Management](../Pipeline_Usage/VRAM_management.md). We provide recommended low VRAM configurations for each model in the example code, see the table in the "Model Overview" section above.
 
 ## Model Training
 
@@ -254,4 +254,4 @@ We have built a sample video dataset for your testing. You can download this dat
 modelscope download --dataset DiffSynth-Studio/example_video_dataset --local_dir ./data/example_video_dataset
 ```
 
-We have written recommended training scripts for each model, please refer to the table in the "Model Overview" section above. For how to write model training scripts, please refer to [Model Training](/docs/en/Pipeline_Usage/Model_Training.md); for more advanced training algorithms, please refer to [Training Framework Detailed Explanation](/docs/Training/).
+We have written recommended training scripts for each model, please refer to the table in the "Model Overview" section above. For how to write model training scripts, please refer to [Model Training](../Pipeline_Usage/Model_Training.md); for more advanced training algorithms, please refer to [Training Framework Detailed Explanation](/docs/Training/).

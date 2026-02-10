@@ -2,7 +2,7 @@
 
 ## Qwen-Image
 
-文档：[./Qwen-Image.md](/docs/zh/Model_Details/Qwen-Image.md)
+文档：[./Qwen-Image.md](../Model_Details/Qwen-Image.md)
 
 <details>
 
@@ -85,7 +85,7 @@ graph LR;
 
 ## FLUX 系列
 
-文档：[./FLUX.md](/docs/zh/Model_Details/FLUX.md)
+文档：[./FLUX.md](../Model_Details/FLUX.md)
 
 <details>
 
@@ -166,7 +166,7 @@ graph LR;
 
 ## Wan 系列
 
-文档：[./Wan.md](/docs/zh/Model_Details/Wan.md)
+文档：[./Wan.md](../Model_Details/Wan.md)
 
 <details>
 
