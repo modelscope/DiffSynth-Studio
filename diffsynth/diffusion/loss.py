@@ -91,7 +91,7 @@ class TrajectoryImitationLoss(torch.nn.Module):
                 progress_id_teacher = torch.argmin((timesteps_teacher - pipe.scheduler.timesteps[progress_id + 1]).abs())
                 latents_ = trajectory_teacher[progress_id_teacher]
             
-            target = (latents_ - inputs_shared["latents"]) / (sigma_ - sigma)
+            target = (latents_ - inputs_shared["latents"]) / (sigma_ - sigma).clamp(min=1e-6)
             loss = loss + torch.nn.functional.mse_loss(noise_pred.float(), target.float()) * pipe.scheduler.training_weight(timestep)
         return loss
     
