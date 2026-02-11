@@ -4,6 +4,8 @@ recommonmark
 sphinx>=5.3.0
 sphinx-book-theme
 sphinx-copybutton
+sphinx-autobuild
 sphinx-rtd-theme
 sphinx_markdown_tables
 sphinxcontrib-mermaid
+pymdown-extensions
