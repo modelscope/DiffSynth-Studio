@@ -43,6 +43,7 @@ Diffusion 模型通过多步迭代式地去噪（denoise）生成清晰的图像
 而模型的输出 $\hat \epsilon(x_t,c,t)$，则近似地等于 $x_T-x_0$，也就是整个扩散过程（去噪过程的反向过程）的方向。
 
 接下来我们分析一步迭代中发生的计算，在时间步 $t$，模型通过计算得到近似的 $x_T-x_0$ 后，我们计算下一步的 $x_{t-1}$：
+
 $$
 \begin{aligned}
 x_{t-1}&=x_t + (\sigma_{t-1} - \sigma_t) \cdot \hat \epsilon(x_t,c,t)\\
@@ -51,6 +52,7 @@ x_{t-1}&=x_t + (\sigma_{t-1} - \sigma_t) \cdot \hat \epsilon(x_t,c,t)\\
 &=(1-\sigma_{t-1})x_0+\sigma_{t-1}x_T
 \end{aligned}
 $$
+
 完美！与时间步 $t-1$ 时的噪声含量定义完美契合。
 
 > （这部分可能有点难懂，请不必担心，首次阅读本文时建议跳过这部分，不影响后文的阅读。）

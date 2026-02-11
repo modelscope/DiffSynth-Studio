@@ -48,9 +48,10 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx_markdown_tables',
     'sphinx_copybutton',
+    "sphinx_rtd_theme",
+    'sphinx.ext.mathjax',
     'myst_parser',
 ]
-
 # build the templated autosummary files
 autosummary_generate = True
 numpydoc_show_class_members = False
