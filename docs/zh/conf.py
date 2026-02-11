@@ -49,8 +49,8 @@ extensions = [
     'sphinx_markdown_tables',
     'sphinx_copybutton',
     "sphinx_rtd_theme",
-    'sphinx.ext.mathjax', # 启用 Sphinx 自带的 MathJax 支持
-    'myst_parser'         # 启用 Markdown 解析
+    'sphinx.ext.mathjax',
+    'myst_parser',
 ]
 # build the templated autosummary files
 autosummary_generate = True
