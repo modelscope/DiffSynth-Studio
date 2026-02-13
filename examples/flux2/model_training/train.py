@@ -85,6 +85,7 @@ def flux2_parser():
     parser = add_general_config(parser)
     parser = add_image_size_config(parser)
     parser.add_argument("--tokenizer_path", type=str, default=None, help="Path to tokenizer.")
+    parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
     return parser
 
 
@@ -126,7 +127,7 @@ if __name__ == "__main__":
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
         task=args.task,
-        device=accelerator.device,
+        device="cpu" if args.initialize_model_on_cpu else accelerator.device,
     )
     model_logger = ModelLogger(
         args.output_path,

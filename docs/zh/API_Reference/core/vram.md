@@ -31,7 +31,7 @@ state_dict = load_state_dict(path, device="cpu")
 model.load_state_dict(state_dict, assign=True)
 ```
 
-在 `DiffSynth-Studio` 中，所有预训练模型都遵循这一加载逻辑。开发者在[接入模型](/docs/zh/Developer_Guide/Integrating_Your_Model.md)完毕后即可直接以这种方式快速加载模型。
+在 `DiffSynth-Studio` 中，所有预训练模型都遵循这一加载逻辑。开发者在[接入模型](../../Developer_Guide/Integrating_Your_Model.md)完毕后即可直接以这种方式快速加载模型。
 
 ## State Dict 硬盘映射
 
@@ -57,10 +57,10 @@ state_dict = DiskMap(path, device="cpu") # Fast
 print(state_dict["img_in.weight"])
 ```
 
-`DiskMap` 是 `DiffSynth-Studio` 中 Disk Offload 的基本组件，开发者在[配置细粒度显存管理方案](/docs/zh/Developer_Guide/Enabling_VRAM_management.md)后即可直接启用 Disk Offload。
+`DiskMap` 是 `DiffSynth-Studio` 中 Disk Offload 的基本组件，开发者在[配置细粒度显存管理方案](../../Developer_Guide/Enabling_VRAM_management.md)后即可直接启用 Disk Offload。
 
 `DiskMap` 是利用 `.safetensors` 文件的特性实现的功能，因此在使用 `.bin`、`.pth`、`.ckpt` 等二进制文件时，模型的参数是全量加载的，这也导致 Disk Offload 不支持这些格式的文件。**我们不建议开发者继续使用这些格式的文件。**
 
 ## 显存管理可替换模块
 
-在启用 `DiffSynth-Studio` 的显存管理后，模型内部的模块会被替换为 `diffsynth.core.vram.layers` 中的可替换模块，其使用方式详见[细粒度显存管理方案](/docs/zh/Developer_Guide/Enabling_VRAM_management.md#编写细粒度显存管理方案)。
+在启用 `DiffSynth-Studio` 的显存管理后，模型内部的模块会被替换为 `diffsynth.core.vram.layers` 中的可替换模块，其使用方式详见[细粒度显存管理方案](../../Developer_Guide/Enabling_VRAM_management.md#编写细粒度显存管理方案)。

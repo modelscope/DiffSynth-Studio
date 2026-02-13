@@ -44,7 +44,7 @@ Click on the model links to go to the model pages and view the model effects.
 
 ## Using Distillation Accelerated Training in the Training Framework
 
-First, you need to generate training data. Please refer to the [Model Inference](/docs/en/Pipeline_Usage/Model_Inference.md) section to write inference code and generate training data with a sufficient number of inference steps.
+First, you need to generate training data. Please refer to the [Model Inference](../Pipeline_Usage/Model_Inference.md) section to write inference code and generate training data with a sufficient number of inference steps.
 
 Taking Qwen-Image as an example, the following code can generate an image:
 
@@ -67,7 +67,7 @@ image = pipe(prompt, seed=0, num_inference_steps=40)
 image.save("image.jpg")
 ```
 
-Then, we compile the necessary information into [metadata files](/docs/en/API_Reference/core/data.md#metadata):
+Then, we compile the necessary information into [metadata files](../API_Reference/core/data.md#metadata):
 
 ```csv
 image,prompt,seed,rand_device,num_inference_steps,cfg_scale
@@ -86,11 +86,11 @@ Then start LoRA distillation accelerated training:
 bash examples/qwen_image/model_training/lora/Qwen-Image-Distill-LoRA.sh
 ```
 
-Please note that in the [training script parameters](/docs/en/Pipeline_Usage/Model_Training.md#script-parameters), the image resolution setting for the dataset should avoid triggering scaling processing. When setting `--height` and `--width` to enable fixed resolution, all training data must be generated with exactly the same width and height. When setting `--max_pixels` to enable dynamic resolution, the value of `--max_pixels` must be greater than or equal to the pixel area of any training image.
+Please note that in the [training script parameters](../Pipeline_Usage/Model_Training.md#script-parameters), the image resolution setting for the dataset should avoid triggering scaling processing. When setting `--height` and `--width` to enable fixed resolution, all training data must be generated with exactly the same width and height. When setting `--max_pixels` to enable dynamic resolution, the value of `--max_pixels` must be greater than or equal to the pixel area of any training image.
 
 ## Framework Design Concept
 
-Compared to [Standard Supervised Training](/docs/en/Training/Supervised_Fine_Tuning.md), Direct Distillation only differs in the training loss function. The loss function for Direct Distillation is `DirectDistillLoss` in `diffsynth.diffusion.loss`.
+Compared to [Standard Supervised Training](../Training/Supervised_Fine_Tuning.md), Direct Distillation only differs in the training loss function. The loss function for Direct Distillation is `DirectDistillLoss` in `diffsynth.diffusion.loss`.
 
 ## Future Work
 

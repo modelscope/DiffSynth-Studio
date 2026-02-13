@@ -348,13 +348,12 @@ class Flux2Unit_Qwen3PromptEmbedder(PipelineUnit):
         attention_mask = torch.cat(all_attention_masks, dim=0).to(device)
 
         # Forward pass through the model
-        with torch.inference_mode():
-            output = text_encoder(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                output_hidden_states=True,
-                use_cache=False,
-            )
+        output = text_encoder(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            output_hidden_states=True,
+            use_cache=False,
+        )
 
         # Only use outputs from intermediate layers and stack them
         out = torch.stack([output.hidden_states[k] for k in self.hidden_states_layers], dim=1)

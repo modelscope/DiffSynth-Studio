@@ -101,6 +101,7 @@ def qwen_image_parser():
     parser.add_argument("--tokenizer_path", type=str, default=None, help="Path to tokenizer.")
     parser.add_argument("--processor_path", type=str, default=None, help="Path to the processor. If provided, the processor will be used for image editing.")
     parser.add_argument("--zero_cond_t", default=False, action="store_true", help="A special parameter introduced by Qwen-Image-Edit-2511. Please enable it for this model.")
+    parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
     return parser
 
 
@@ -151,7 +152,7 @@ if __name__ == "__main__":
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
         task=args.task,
-        device=accelerator.device,
+        device="cpu" if args.initialize_model_on_cpu else accelerator.device,
         zero_cond_t=args.zero_cond_t,
     )
     model_logger = ModelLogger(

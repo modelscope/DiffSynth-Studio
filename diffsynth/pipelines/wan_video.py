@@ -1321,11 +1321,6 @@ def model_fn_wan_video(
     if tea_cache_update:
         x = tea_cache.update(x)
     else:
-        def create_custom_forward(module):
-            def custom_forward(*inputs):
-                return module(*inputs)
-            return custom_forward
-        
         def create_custom_forward_vap(block, vap):
             def custom_forward(*inputs):
                 return vap(block, *inputs)
@@ -1339,32 +1334,24 @@ def model_fn_wan_video(
                         x, x_vap = torch.utils.checkpoint.checkpoint(
                             create_custom_forward_vap(block, vap),
                             x, context, t_mod, freqs, x_vap, context_vap, t_mod_vap, freqs_vap, block_id,
-                            use_reentrant=False,
+                            use_reentrant=False
                         )
                 elif use_gradient_checkpointing:
                     x, x_vap = torch.utils.checkpoint.checkpoint(
                         create_custom_forward_vap(block, vap),
                         x, context, t_mod, freqs, x_vap, context_vap, t_mod_vap, freqs_vap, block_id,
-                        use_reentrant=False,
+                        use_reentrant=False
                     )
                 else:
                     x, x_vap = vap(block, x, context, t_mod, freqs, x_vap, context_vap, t_mod_vap, freqs_vap, block_id)
             else:
-                if use_gradient_checkpointing_offload:
-                    with torch.autograd.graph.save_on_cpu():
-                        x = torch.utils.checkpoint.checkpoint(
-                            create_custom_forward(block),
-                            x, context, t_mod, freqs,
-                            use_reentrant=False,
-                        )
-                elif use_gradient_checkpointing:
-                    x = torch.utils.checkpoint.checkpoint(
-                        create_custom_forward(block),
-                        x, context, t_mod, freqs,
-                        use_reentrant=False,
-                    )
-                else:
-                    x = block(x, context, t_mod, freqs)
+                x = gradient_checkpoint_forward(
+                    block,
+                    use_gradient_checkpointing,
+                    use_gradient_checkpointing_offload,
+                    x, context, t_mod, freqs
+                )
+              
             
             # VACE
             if vace_context is not None and block_id in vace.vace_layers_mapping:
@@ -1487,32 +1474,18 @@ def model_fn_wans2v(
         return custom_forward
 
     for block_id, block in enumerate(dit.blocks):
-        if use_gradient_checkpointing_offload:
-            with torch.autograd.graph.save_on_cpu():
-                x = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(block),
-                    x, context, t_mod, seq_len_x, pre_compute_freqs[0],
-                    use_reentrant=False,
-                )
-                x = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(lambda x: dit.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x)),
-                    x,
-                    use_reentrant=False,
-                )
-        elif use_gradient_checkpointing:
-            x = torch.utils.checkpoint.checkpoint(
-                create_custom_forward(block),
-                x, context, t_mod, seq_len_x, pre_compute_freqs[0],
-                use_reentrant=False,
+        x = gradient_checkpoint_forward(
+                block,
+                use_gradient_checkpointing,
+                use_gradient_checkpointing_offload,
+                x, context, t_mod, seq_len_x, pre_compute_freqs[0]
             )
-            x = torch.utils.checkpoint.checkpoint(
-                create_custom_forward(lambda x: dit.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x)),
-                x,
-                use_reentrant=False,
-            )
-        else:
-            x = block(x, context, t_mod, seq_len_x, pre_compute_freqs[0])
-            x = dit.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x_global, use_unified_sequence_parallel)
+        x = gradient_checkpoint_forward(
+            lambda x: dit.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x),
+            use_gradient_checkpointing,
+            use_gradient_checkpointing_offload,
+            x
+        )
 
     if use_unified_sequence_parallel and dist.is_initialized() and dist.get_world_size() > 1:
         x = get_sp_group().all_gather(x, dim=1)

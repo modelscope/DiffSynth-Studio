@@ -1,6 +1,6 @@
 # 接入模型训练
 
-在[接入模型](/docs/zh/Developer_Guide/Integrating_Your_Model.md)并[实现 Pipeline](/docs/zh/Developer_Guide/Building_a_Pipeline.md)后，接下来接入模型训练功能。
+在[接入模型](../Developer_Guide/Integrating_Your_Model.md)并[实现 Pipeline](../Developer_Guide/Building_a_Pipeline.md)后，接下来接入模型训练功能。
 
 ## 训推一致的 Pipeline 改造
 

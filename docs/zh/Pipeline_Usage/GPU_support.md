@@ -2,7 +2,7 @@
 
 `DiffSynth-Studio` 支持多种 GPU/NPU，本文介绍如何在这些设备上运行模型推理和训练。
 
-在开始前，请参考[安装依赖](/docs/zh/Pipeline_Usage/Setup.md)安装好 GPU/NPU 相关的依赖包。
+在开始前，请参考[安装依赖](../Pipeline_Usage/Setup.md)安装好 GPU/NPU 相关的依赖包。
 
 ## NVIDIA GPU
 
@@ -58,6 +58,13 @@ video = pipe(
 save_video(video, "video.mp4", fps=15, quality=5)
 ```
 
+#### USP(Unified Sequence Parallel)
+如果想要在NPU上使用该特性，请通过如下方式安装额外的第三方库：
+```shell
+pip install git+https://github.com/feifeibear/long-context-attention.git
+pip install git+https://github.com/xdit-project/xDiT.git
+```
+
 ### 训练
 当前已为每类模型添加NPU的启动脚本样例，脚本存放在`examples/xxx/special/npu_training`目录下，例如 `examples/wanvideo/model_training/special/npu_training/Wan2.2-T2V-A14B-NPU.sh`。
 
@@ -82,4 +89,5 @@ export CPU_AFFINITY_CONF=1
 | 模型        | 参数 | 备注                |
 |-----------|------|-------------------|
 | Wan 14B系列 | --initialize_model_on_cpu | 14B模型需要在cpu上进行初始化 |
+| Qwen-Image系列 | --initialize_model_on_cpu | 模型需要在cpu上进行初始化 |
 | Z-Image 系列 | --enable_npu_patch | 使用NPU融合算子来替换Z-image模型中的对应算子以提升模型在NPU上的性能 |

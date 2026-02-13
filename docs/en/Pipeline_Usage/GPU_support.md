@@ -2,7 +2,7 @@
 
 `DiffSynth-Studio` supports various GPUs and NPUs. This document explains how to run model inference and training on these devices.
 
-Before you begin, please follow the [Installation Guide](/docs/en/Pipeline_Usage/Setup.md) to install the required GPU/NPU dependencies.
+Before you begin, please follow the [Installation Guide](../Pipeline_Usage/Setup.md) to install the required GPU/NPU dependencies.
 
 ## NVIDIA GPU
 
@@ -58,6 +58,14 @@ video = pipe(
 save_video(video, "video.mp4", fps=15, quality=5)
 ```
 
+#### USP(Unified Sequence Parallel)
+If you want to use this feature on NPU, please install additional third-party libraries as follows:
+```shell
+pip install git+https://github.com/feifeibear/long-context-attention.git
+pip install git+https://github.com/xdit-project/xDiT.git
+```
+
+
 ### Training
 NPU startup script samples have been added for each type of model,the scripts are stored in the `examples/xxx/special/npu_training`, for example `examples/wanvideo/model_training/special/npu_training/Wan2.2-T2V-A14B-NPU.sh`.
 
@@ -82,4 +90,5 @@ Set 0 or not set: indicates not enabling the binding function
 | Model          | Parameter                 | Note              |
 |----------------|---------------------------|-------------------|
 | Wan 14B series | --initialize_model_on_cpu | The 14B model needs to be initialized on the CPU |
+| Qwen-Image series | --initialize_model_on_cpu | The model needs to be initialized on the CPU |
 | Z-Image series | --enable_npu_patch | Using NPU fusion operator to replace the corresponding operator in Z-image model to improve the performance of the model on NPU |

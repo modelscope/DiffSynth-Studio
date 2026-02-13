@@ -1,6 +1,6 @@
 # `diffsynth.core.attention`: 注意力机制实现
 
-`diffsynth.core.attention` 提供了注意力机制实现的路由机制，根据 `Python` 环境中的可用包和[环境变量](/docs/zh/Pipeline_Usage/Environment_Variables.md#diffsynth_attention_implementation)自动选择高效的注意力机制实现。
+`diffsynth.core.attention` 提供了注意力机制实现的路由机制，根据 `Python` 环境中的可用包和[环境变量](../../Pipeline_Usage/Environment_Variables.md#diffsynth_attention_implementation)自动选择高效的注意力机制实现。
 
 ## 注意力机制
 
@@ -46,7 +46,7 @@ output_1 = attention(query, key, value)
 * xFormers：[GitHub](https://github.com/facebookresearch/xformers)、[文档](https://facebookresearch.github.io/xformers/components/ops.html#module-xformers.ops)
 * PyTorch：[GitHub](https://github.com/pytorch/pytorch)、[文档](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html)
 
-如需调用除 `PyTorch` 外的其他注意力实现，请按照其 GitHub 页面的指引安装对应的包。`DiffSynth-Studio` 会自动根据 Python 环境中的可用包路由到对应的实现上，也可通过[环境变量](/docs/zh/Pipeline_Usage/Environment_Variables.md#diffsynth_attention_implementation)控制。
+如需调用除 `PyTorch` 外的其他注意力实现，请按照其 GitHub 页面的指引安装对应的包。`DiffSynth-Studio` 会自动根据 Python 环境中的可用包路由到对应的实现上，也可通过[环境变量](../../Pipeline_Usage/Environment_Variables.md#diffsynth_attention_implementation)控制。
 
 ```python
 from diffsynth.core.attention import attention_forward
