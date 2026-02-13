@@ -1336,7 +1336,6 @@ class VideoVAE38_(VideoVAE_):
         x = self.conv2(z)
         for i in range(iter_):
             self._conv_idx = [0]
-            # breakpoint()
             if i == 0:
                 out, self._feat_map, self._conv_idx = self.decoder(x[:, :, i:i + 1, :, :],
                                    feat_cache=self._feat_map,
