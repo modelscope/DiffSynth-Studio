@@ -37,9 +37,9 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6
    git clone https://github.com/modelscope/DiffSynth-Studio.git
    cd DiffSynth-Studio
    # aarch64/ARM
-   pip install -e .[npu_aarch64] --extra-index-url "https://download.pytorch.org/whl/cpu"
+   pip install -e .[npu_aarch64] 
    # x86
-   pip install -e .[npu]
+   pip install -e .[npu] --extra-index-url "https://download.pytorch.org/whl/cpu"
 
 使用 Ascend NPU 时，请将 Python 代码中的 `"cuda"` 改为 `"npu"`，详见[NPU 支持](/docs/zh/Pipeline_Usage/GPU_support.md#ascend-npu)。
 

@@ -82,3 +82,4 @@ export CPU_AFFINITY_CONF=1
 | 模型        | 参数 | 备注                |
 |-----------|------|-------------------|
 | Wan 14B系列 | --initialize_model_on_cpu | 14B模型需要在cpu上进行初始化 |
+| Z-Image 系列 | --enable_npu_patch | 使用NPU融合算子来替换Z-image模型中的对应算子以提升模型在NPU上的性能 |

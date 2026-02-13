@@ -82,3 +82,4 @@ Set 0 or not set: indicates not enabling the binding function
 | Model          | Parameter                 | Note              |
 |----------------|---------------------------|-------------------|
 | Wan 14B series | --initialize_model_on_cpu | The 14B model needs to be initialized on the CPU |
+| Z-Image series | --enable_npu_patch | Using NPU fusion operator to replace the corresponding operator in Z-image model to improve the performance of the model on NPU |
