@@ -1,0 +1,20 @@
+{
+    "gradient_accumulation_steps": 1,
+    "gradient_clipping": 1.0,
+    "zero_optimization": {
+        "stage": 2,
+        "offload_optimizer": {
+            "device": "cpu"
+        },
+        "offload_param": {
+            "device": "cpu"
+        }
+    },
+    "zero3_init_flag": false,
+    "zero3_save_16bit_model": false,
+    "bf16": {
+        "enabled": true
+    },
+    "train_micro_batch_size_per_gpu": 1,
+    "train_batch_size": "auto"
+}
