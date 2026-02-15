@@ -44,7 +44,7 @@ loss = torch.nn.functional.mse_loss(image_1, image_2)
 
 ## 在训练框架中使用蒸馏加速训练
 
-首先，需要生成训练数据，请参考[模型推理](/docs/zh/Pipeline_Usage/Model_Inference.md)部分编写推理代码，以足够多的推理步数生成训练数据。
+首先，需要生成训练数据，请参考[模型推理](../Pipeline_Usage/Model_Inference.md)部分编写推理代码，以足够多的推理步数生成训练数据。
 
 以 Qwen-Image 为例，以下代码可以生成一张图片：
 
@@ -67,7 +67,7 @@ image = pipe(prompt, seed=0, num_inference_steps=40)
 image.save("image.jpg")
 ```
 
-然后，我们把必要的信息编写成[元数据文件](/docs/zh/API_Reference/core/data.md#元数据)：
+然后，我们把必要的信息编写成[元数据文件](../API_Reference/core/data.md#元数据)：
 
 ```csv
 image,prompt,seed,rand_device,num_inference_steps,cfg_scale
@@ -86,11 +86,11 @@ modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir
 bash examples/qwen_image/model_training/lora/Qwen-Image-Distill-LoRA.sh
 ```
 
-请注意，在[训练脚本参数](/docs/zh/Pipeline_Usage/Model_Training.md#脚本参数)中，数据集的图像分辨率设置要避免触发缩放处理。当设定 `--height` 和 `--width` 以启用固定分辨率时，所有训练数据必须是以完全一致的宽高生成的；当设定 `--max_pixels` 以启用动态分辨率时，`--max_pixels` 的数值必须大于或等于任一训练图像的像素面积。
+请注意，在[训练脚本参数](../Pipeline_Usage/Model_Training.md#脚本参数)中，数据集的图像分辨率设置要避免触发缩放处理。当设定 `--height` 和 `--width` 以启用固定分辨率时，所有训练数据必须是以完全一致的宽高生成的；当设定 `--max_pixels` 以启用动态分辨率时，`--max_pixels` 的数值必须大于或等于任一训练图像的像素面积。
 
 ## 训练框架设计思路
 
-直接蒸馏与[标准监督训练](/docs/zh/Training/Supervised_Fine_Tuning.md)相比，仅训练的损失函数不同，直接蒸馏的损失函数是 `diffsynth.diffusion.loss` 中的 `DirectDistillLoss`。
+直接蒸馏与[标准监督训练](../Training/Supervised_Fine_Tuning.md)相比，仅训练的损失函数不同，直接蒸馏的损失函数是 `diffsynth.diffusion.loss` 中的 `DirectDistillLoss`。
 
 ## 未来工作
 

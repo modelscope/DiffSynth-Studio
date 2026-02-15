@@ -2,7 +2,7 @@
 
 `DiffSynth-Studio` 支持多种 GPU/NPU，本文介绍如何在这些设备上运行模型推理和训练。
 
-在开始前，请参考[安装依赖](/docs/zh/Pipeline_Usage/Setup.md)安装好 GPU/NPU 相关的依赖包。
+在开始前，请参考[安装依赖](../Pipeline_Usage/Setup.md)安装好 GPU/NPU 相关的依赖包。
 
 ## NVIDIA GPU
 

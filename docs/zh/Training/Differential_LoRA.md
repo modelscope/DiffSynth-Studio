@@ -8,8 +8,8 @@
 
 假设我们有两张内容相似的图像：图 1 和图 2。例如两张图中分别有一辆车，但图 1 中画面细节更少，图 2 中画面细节更多。在差分 LoRA 训练中，我们进行两步训练：
 
-* 以图 1 为训练数据，以[标准监督训练](/docs/zh/Training/Supervised_Fine_Tuning.md)的方式，训练 LoRA 1
-* 以图 2 为训练数据，将 LoRA 1 融入基础模型后，以[标准监督训练](/docs/zh/Training/Supervised_Fine_Tuning.md)的方式，训练 LoRA 2
+* 以图 1 为训练数据，以[标准监督训练](../Training/Supervised_Fine_Tuning.md)的方式，训练 LoRA 1
+* 以图 2 为训练数据，将 LoRA 1 融入基础模型后，以[标准监督训练](../Training/Supervised_Fine_Tuning.md)的方式，训练 LoRA 2
 
 在第一步训练中，由于训练数据仅有一张图，LoRA 模型很容易过拟合，因此训练完成后，LoRA 1 会让模型毫不犹豫地生成图 1，无论随机种子是什么。在第二步训练中，LoRA 模型再次过拟合，因此训练完成后，在 LoRA 1 和 LoRA 2 的共同作用下，模型会毫不犹豫地生成图 2。简言之：
 

@@ -1,10 +1,10 @@
 # Standard Supervised Training
 
-After understanding the [Basic Principles of Diffusion Models](/docs/en/Training/Understanding_Diffusion_models.md), this document introduces how the framework implements Diffusion model training. This document explains the framework's principles to help developers write new training code. If you want to use our provided default training functions, please refer to [Model Training](/docs/en/Pipeline_Usage/Model_Training.md).
+After understanding the [Basic Principles of Diffusion Models](../Training/Understanding_Diffusion_models.md), this document introduces how the framework implements Diffusion model training. This document explains the framework's principles to help developers write new training code. If you want to use our provided default training functions, please refer to [Model Training](../Pipeline_Usage/Model_Training.md).
 
 Recalling the model training pseudocode from earlier, when we actually write code, the situation becomes extremely complex. Some models require additional guidance conditions and preprocessing, such as ControlNet; some models require cross-computation with the denoising model, such as VACE; some models require Gradient Checkpointing due to excessive VRAM demands, such as Qwen-Image's DiT.
 
-To achieve strict consistency between inference and training, we abstractly encapsulate components like `Pipeline`, reusing inference code extensively during training. Please refer to [Integrating Pipeline](/docs/en/Developer_Guide/Building_a_Pipeline.md) to understand the design of `Pipeline` components. Next, we'll introduce how the training framework utilizes `Pipeline` components to build training algorithms.
+To achieve strict consistency between inference and training, we abstractly encapsulate components like `Pipeline`, reusing inference code extensively during training. Please refer to [Integrating Pipeline](../Developer_Guide/Building_a_Pipeline.md) to understand the design of `Pipeline` components. Next, we'll introduce how the training framework utilizes `Pipeline` components to build training algorithms.
 
 ## Framework Design Concept
 
@@ -48,13 +48,13 @@ In `__init__`, model initialization is required. First load the model, then swit
         )
 ```
 
-The logic for loading models is basically consistent with inference, supporting loading models from remote and local paths. See [Model Inference](/docs/en/Pipeline_Usage/Model_Inference.md) for details, but please note not to enable [VRAM Management](/docs/en/Pipeline_Usage/VRAM_management.md).
+The logic for loading models is basically consistent with inference, supporting loading models from remote and local paths. See [Model Inference](../Pipeline_Usage/Model_Inference.md) for details, but please note not to enable [VRAM Management](../Pipeline_Usage/VRAM_management.md).
 
 `switch_pipe_to_training_mode` can switch the model to training mode. See `switch_pipe_to_training_mode` for details.
 
 ### `forward`
 
-In `forward`, the loss function value needs to be calculated. First perform preprocessing, then compute the loss function through the `Pipeline`'s [`model_fn`](/docs/en/Developer_Guide/Building_a_Pipeline.md#model_fn).
+In `forward`, the loss function value needs to be calculated. First perform preprocessing, then compute the loss function through the `Pipeline`'s [`model_fn`](../Developer_Guide/Building_a_Pipeline.md#model_fn).
 
 ```python
     def forward(self, data):
@@ -90,7 +90,7 @@ The loss function calculation reuses `FlowMatchSFTLoss` from `diffsynth.diffusio
 The training framework requires other modules, including:
 
 * accelerator: Training launcher provided by `accelerate`, see [`accelerate`](https://huggingface.co/docs/accelerate/index) for details
-* dataset: Generic dataset, see [`diffsynth.core.data`](/docs/en/API_Reference/core/data.md) for details
+* dataset: Generic dataset, see [`diffsynth.core.data`](../API_Reference/core/data.md) for details
 * model_logger: Model logger, see `diffsynth.diffusion.logger` for details
 
 ```python

@@ -41,7 +41,7 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6
    # x86
    pip install -e .[npu]
 
-使用 Ascend NPU 时，请将 Python 代码中的 `"cuda"` 改为 `"npu"`，详见[NPU 支持](/docs/zh/Pipeline_Usage/GPU_support.md#ascend-npu)。
+使用 Ascend NPU 时，请将 Python 代码中的 `"cuda"` 改为 `"npu"`，详见[NPU 支持](../Pipeline_Usage/GPU_support.md#ascend-npu)。
 
 ## 其他安装问题
 

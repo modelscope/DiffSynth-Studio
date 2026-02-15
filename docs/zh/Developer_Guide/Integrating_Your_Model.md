@@ -183,4 +183,4 @@ Loaded model: {
 
 ## Step 5: 编写模型显存管理方案
 
-`DiffSynth-Studio` 支持复杂的显存管理，详见[启用显存管理](/docs/zh/Developer_Guide/Enabling_VRAM_management.md)。
+`DiffSynth-Studio` 支持复杂的显存管理，详见[启用显存管理](../Developer_Guide/Enabling_VRAM_management.md)。

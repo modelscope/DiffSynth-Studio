@@ -2,7 +2,7 @@
 
 `DiffSynth-Studio` supports various GPUs and NPUs. This document explains how to run model inference and training on these devices.
 
-Before you begin, please follow the [Installation Guide](/docs/en/Pipeline_Usage/Setup.md) to install the required GPU/NPU dependencies.
+Before you begin, please follow the [Installation Guide](../Pipeline_Usage/Setup.md) to install the required GPU/NPU dependencies.
 
 ## NVIDIA GPU
 

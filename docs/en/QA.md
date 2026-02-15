@@ -29,7 +29,7 @@ Therefore, native FP8 precision training technology is extremely immature. We wi
 
 ## How to dynamically load LoRA models during inference?
 
-We support two loading methods for LoRA models. See [LoRA Loading](/docs/en/Pipeline_Usage/Model_Inference.md#loading-lora) for details:
+We support two loading methods for LoRA models. See [LoRA Loading](./Pipeline_Usage/Model_Inference.md#loading-lora) for details:
 
-* Cold Loading: When [VRAM Management](/docs/en/Pipeline_Usage/VRAM_management.md) is not enabled for the base model, LoRA will be fused into the base model weights. In this case, inference speed remains unchanged, and LoRA cannot be unloaded after loading.
-* Hot Loading: When [VRAM Management](/docs/en/Pipeline_Usage/VRAM_management.md) is enabled for the base model, LoRA will not be fused into the base model weights. In this case, inference speed will slow down, and LoRA can be unloaded after loading via `pipe.clear_lora()`.
+* Cold Loading: When [VRAM Management](./Pipeline_Usage/VRAM_management.md) is not enabled for the base model, LoRA will be fused into the base model weights. In this case, inference speed remains unchanged, and LoRA cannot be unloaded after loading.
+* Hot Loading: When [VRAM Management](./Pipeline_Usage/VRAM_management.md) is enabled for the base model, LoRA will not be fused into the base model weights. In this case, inference speed will slow down, and LoRA can be unloaded after loading via `pipe.clear_lora()`.
