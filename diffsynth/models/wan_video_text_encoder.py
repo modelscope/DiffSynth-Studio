@@ -70,7 +70,7 @@ class T5Attention(nn.Module):
         k = self.k(context).view(b, -1, n, c)
         v = self.v(context).view(b, -1, n, c)
 
-        # For caculate flops
+        # For calculate flops
         self.q_shape = q.shape
         self.k_shape = k.shape
         self.v_shape = v.shape

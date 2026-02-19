@@ -48,7 +48,6 @@ def launch_training_task(
 
         for data in progress:
             iter_start = time.time()
-            timing = {}
             if data is None:
                 continue
 
@@ -68,23 +67,18 @@ def launch_training_task(
                 scheduler.step()
 
             torch.cuda.synchronize()
-            iter_end = time.time()
-            timing["step"] = iter_end - iter_start
+            time_step = time.time() - iter_start
             train_step += 1
 
             total_flops = t5_Tflops + wan_Tflops + vae_Tflops
-            TFLOPS = total_flops * 3 / timing["step"]
+            TFLOPS = total_flops * 3 / time_step
 
             if accelerator.is_main_process:
-                def format_time(key: str) -> str:
-                    value = timing.get(key, 0.0)
-                    return f"{value:.3f}s"
-
                 postfix_dict = {
                     "Rank": f"{accelerator.process_index}",
                     "loss": f"{loss.item():.5f}",
                     "lr": f"{optimizer.param_groups[0]['lr']:.5e}",
-                    "step/t": format_time("step"),
+                    "step/t": f"{time_step:.3f}",
                     "[t5] Tflops": f"{t5_Tflops:.3f}",
                     "[dit] Tflops": f"{wan_Tflops:.3f}",
                     "[vae] Tflops": f"{vae_Tflops:.3f}",

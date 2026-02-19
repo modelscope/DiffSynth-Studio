@@ -2,27 +2,7 @@ import torch
 import torch.nn as nn
 from functools import wraps
 import time
-from collections import defaultdict
-import flash_attn
-from einops import rearrange
 from torch.utils.flop_counter import conv_flop_count
-
-def get_dit_flops(model):
-    def get_dit_flops(dit_block_model):
-        total_flops = 0
-        for sub_model in dit_block_model.modules():
-            total_flops += getattr(sub_model, '__flops__', 0)
-        return total_flops
-
-    total_flops = 0
-    total_duration = 0
-    for sub_module in model.modules():
-        if sub_module.__class__.__name__ == 'DiTBlock':
-            total_flops += get_dit_flops(sub_module)
-            total_duration += getattr(sub_module, '__duration__', 0)
-
-    Tflops = total_flops / 1e12
-    return Tflops
 
 def get_flops(model):
     def get_module_flops(module):
@@ -96,7 +76,7 @@ def print_model_profile(model):
     print(model)
     model.apply(del_extra_repr)
 
-def get_module_flops(module, *args, result=None, **kwargs):
+def calculate_module_flops(module, *args, result=None, **kwargs):
     module_type = module.__class__.__name__
     module_original_fwd = module._original_forward.__name__
 
@@ -193,6 +173,8 @@ def get_module_flops(module, *args, result=None, **kwargs):
         x = args[0]
         return x.numel() * 4
 
+    # The 10x factor is an estimate of the computational coefficient for torch.log.
+    # The search and move operations in position encoding do not involve flop operations.
     elif module_type == 'T5RelativeEmbedding':
         lq = args[0]
         lk = args[1]
@@ -201,7 +183,7 @@ def get_module_flops(module, *args, result=None, **kwargs):
     else:
         return 0
 
-def flops_counter(flops_func=None):
+def flops_counter():
     def decorator(forward_func):
         @wraps(forward_func)
         def wrapper(self, *args, **kwargs):
@@ -209,7 +191,7 @@ def flops_counter(flops_func=None):
 
             result = forward_func(self, *args, **kwargs)
 
-            self.__flops__ = get_module_flops(self, *args, result=result, **kwargs)
+            self.__flops__ = calculate_module_flops(self, *args, result=result, **kwargs)
 
             end_time = time.perf_counter()
             self.__duration__ = (end_time - start_time)
@@ -218,22 +200,20 @@ def flops_counter(flops_func=None):
         return wrapper
     return decorator
 
-
-def wrap_existing_module(module, verbose_profiling=False):
+def wrap_existing_module(module):
     # save original fwd
-    module.verbose_profiling = verbose_profiling
     module._original_forward = module.forward
 
     @flops_counter()
-    def profiled_forward(self, x, *args, **kwargs):
-        return module._original_forward(x, *args, **kwargs)
+    def profiled_forward(self, *args, **kwargs):
+        return module._original_forward(*args, **kwargs)
 
     module.forward = profiled_forward.__get__(module, type(module))
     return module
 
-def profile_entire_model(model, verbose_profiling=True):
+def profile_entire_model(model):
     for name, module in model.named_modules():
-        wrap_existing_module(module, verbose_profiling)
+        wrap_existing_module(module)
     return model
 
 def unwrap_existing_module(module):
@@ -241,8 +221,6 @@ def unwrap_existing_module(module):
         module.forward = module._original_forward
         del module._original_forward
 
-    if hasattr(module, "verbose_profiling"):
-        del module.verbose_profiling
     return module
 
 def unprofile_entire_model(model):
