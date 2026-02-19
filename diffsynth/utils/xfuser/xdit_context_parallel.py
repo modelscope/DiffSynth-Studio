@@ -128,6 +128,11 @@ def usp_attn_forward(self, x, freqs):
     k = rearrange(k, "b s (n d) -> b s n d", n=self.num_heads)
     v = rearrange(v, "b s (n d) -> b s n d", n=self.num_heads)
 
+    # For caculate flops
+    self.q_shape = q.shape
+    self.k_shape = k.shape
+    self.v_shape = v.shape
+
     attn_type = AttnType.FA
     ring_impl_type = "basic"
     if IS_NPU_AVAILABLE:
