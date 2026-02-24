@@ -131,6 +131,10 @@ if __name__ == "__main__":
             "image": RouteByType(operator_map=[
                 (str, ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16)),
                 (list, SequencialProcess(ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16))),
+            ]),
+            "context_image": RouteByType(operator_map=[
+                (str, ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16)),
+                (None, lambda x: None),
             ])
         }
     )
@@ -152,7 +156,7 @@ if __name__ == "__main__":
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
         task=args.task,
-        device="cpu" if args.initialize_model_on_cpu else accelerator.device,
+        device=accelerator.device,
         zero_cond_t=args.zero_cond_t,
     )
     model_logger = ModelLogger(
