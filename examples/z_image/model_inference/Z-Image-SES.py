@@ -12,7 +12,7 @@ pipe = ZImagePipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"),
 )
-prompt = "Chinese woman in red Hanfu holding a fan, with a bright yellow neon lightning bolt floating above her palm. Soft-lit outdoor night background, silhouetted tiered pagoda (西安大雁塔), blurred colorful distant lights."
+prompt = "A cyberpunk girl with neon glowing eyes"
 
 image = pipe(
     prompt=prompt, 
@@ -26,5 +26,3 @@ image = pipe(
     ses_inference_steps=10
 )
 image.save("image_Z-Image_ses.jpg")
-
-

@@ -12,7 +12,7 @@ pipe = QwenImagePipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
 )
 
-prompt = "水下少女，身穿蓝裙，周围有气泡。"
+prompt = "一把精致的汉服折扇，上面绘有山水"
 
 image = pipe(
     prompt, 
@@ -20,7 +20,7 @@ image = pipe(
     num_inference_steps=40,
     enable_ses=True,
     ses_reward_model="pick",
-    ses_eval_budget=20,
+    ses_eval_budget=30,
     ses_inference_steps=10
 )
 

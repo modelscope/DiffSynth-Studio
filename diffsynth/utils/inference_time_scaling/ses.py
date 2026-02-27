@@ -68,10 +68,9 @@ class SESRewardScorer:
 
     def get_score(self, image_pil, text_prompt):
         try:
-            with torch.no_grad():
+            with torch.no_grad(), torch.autocast(device_type="cuda", dtype=torch.float32):
                 if self.reward_name == "pick":
                     inputs = self.processor(text=[text_prompt], images=[image_pil], return_tensors="pt", padding="max_length", truncation=True, max_length=77).to(self.device)
-                    inputs['pixel_values'] = inputs['pixel_values'].to(self.dtype)
                     outputs = self.model(**inputs)
                     return outputs.logits_per_image[0, 0].item()
         
@@ -99,14 +98,13 @@ def run_ses_cem(
     popsize=10,
     k_elites=5,
     wavelet_name="db1",
-    dwt_level=5,
-    lambda_prior=1e-3
+    dwt_level=4,
 ):
     latent_h, latent_w = base_latents.shape[-2], base_latents.shape[-1]
     c_low_init, c_high_fixed_batch = split_dwt(base_latents, wavelet_name, dwt_level)
     c_high_fixed = c_high_fixed_batch[0]    
-    c_low_shape = c_low_init.shape[1:]     
-    mu = c_low_init.view(-1).cpu() 
+    c_low_shape = c_low_init.shape[1:]
+    mu = torch.zeros_like(c_low_init.view(-1).cpu()) 
     sigma_sq = torch.ones_like(mu) * 1.0 
     
     best_overall = {"fitness": -float('inf'), "score": -float('inf'), "c_low": c_low_init[0]}
@@ -135,16 +133,12 @@ def run_ses_cem(
             img = pipeline_callback(z_recon)
 
             score = scorer.get_score(img, prompt)
-            penalty = lambda_prior * (torch.norm(c_low_sample.float())**2).item()
-            fitness = score - penalty
-            
             res = {
-                "fitness": fitness, 
                 "score": score, 
                 "c_low": c_low_sample.cpu()
             }
             batch_results.append(res)
-            if fitness > best_overall['fitness']:
+            if score > best_overall['score']:
                 best_overall = res
                 
             eval_count += 1
@@ -156,7 +150,7 @@ def run_ses_cem(
             
         if not batch_results: break
         elite_db.extend(batch_results)        
-        elite_db.sort(key=lambda x: x['fitness'], reverse=True)        
+        elite_db.sort(key=lambda x: x['score'], reverse=True)        
         elite_db = elite_db[:k_elites]        
         elites_flat = torch.stack([x['c_low'].view(-1) for x in elite_db])
         mu_new = torch.mean(elites_flat, dim=0)

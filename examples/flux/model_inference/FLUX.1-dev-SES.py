@@ -12,7 +12,7 @@ pipe = FluxImagePipeline.from_pretrained(
     ],
 )
 
-prompt = "A solo girl with silver wavy hair and blue eyes, wearing a blue dress, underwater, air bubbles, floating hair."
+prompt = "A magical forest where trees are made of candy"
 negative_prompt = "nsfw, low quality"
 
 image = pipe(

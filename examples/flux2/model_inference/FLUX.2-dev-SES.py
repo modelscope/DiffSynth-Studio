@@ -21,7 +21,7 @@ pipe = Flux2ImagePipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="tokenizer/"),
 )
-prompt = "A hermit crab using a soda can as its shell on the beach. The can has the text 'BFL Diffusers' on it."
+prompt = "A magical forest where trees are made of candy"
 
 image = pipe(
     prompt, 
@@ -31,7 +31,7 @@ image = pipe(
     enable_ses=True,
     ses_reward_model="pick",
     ses_eval_budget=20,
-    ses_inference_steps=10
+    ses_inference_steps=20
 )
 
 image.save("image_FLUX.2-dev_ses.jpg")
