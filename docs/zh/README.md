@@ -42,6 +42,8 @@ graph LR;
 * [Qwen-Image](./Model_Details/Qwen-Image.md)
 * [FLUX.2](./Model_Details/FLUX2.md)
 * [Z-Image](./Model_Details/Z-Image.md)
+* [Anima](./Model_Details/Anima.md)
+* [LTX-2](./Model_Details/LTX-2.md)
 
 ## Section 3: 训练框架
 
