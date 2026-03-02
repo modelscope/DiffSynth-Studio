@@ -18,7 +18,7 @@ from ..models.z_image_text_encoder import ZImageTextEncoder
 from ..models.wan_video_vae import WanVideoVAE
 
 
-class AnimaPipeline(BasePipeline):
+class AnimaImagePipeline(BasePipeline):
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
@@ -30,6 +30,7 @@ class AnimaPipeline(BasePipeline):
         self.dit: AnimaDiT = None
         self.vae: WanVideoVAE = None
         self.tokenizer: AutoTokenizer = None
+        self.tokenizer_t5xxl: AutoTokenizer = None
         self.in_iteration_models = ("dit",)
         self.units = [
             AnimaUnit_ShapeChecker(),
@@ -46,11 +47,11 @@ class AnimaPipeline(BasePipeline):
         device: Union[str, torch.device] = get_device_type(),
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen3-0.6B", origin_file_pattern="./"),
-        t5xxl_tokenizer_config: ModelConfig = ModelConfig(model_id="stabilityai/stable-diffusion-3.5-large", origin_file_pattern="tokenizer_3/"),
+        tokenizer_t5xxl_config: ModelConfig = ModelConfig(model_id="stabilityai/stable-diffusion-3.5-large", origin_file_pattern="tokenizer_3/"),
         vram_limit: float = None,
     ):
         # Initialize pipeline
-        pipe = AnimaPipeline(device=device, torch_dtype=torch_dtype)
+        pipe = AnimaImagePipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
         
         # Fetch models
@@ -59,12 +60,10 @@ class AnimaPipeline(BasePipeline):
         pipe.vae = model_pool.fetch_model("wan_video_vae")
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
-            from transformers import Qwen2Tokenizer
-            pipe.tokenizer = Qwen2Tokenizer.from_pretrained(tokenizer_config.path)
-        if t5xxl_tokenizer_config is not None:
-            t5xxl_tokenizer_config.download_if_necessary()
-            from transformers import T5TokenizerFast
-            pipe.t5xxl_tokenizer = T5TokenizerFast.from_pretrained(t5xxl_tokenizer_config.path)
+            pipe.tokenizer = AutoTokenizer.from_pretrained(tokenizer_config.path)
+        if tokenizer_t5xxl_config is not None:
+            tokenizer_t5xxl_config.download_if_necessary()
+            pipe.tokenizer_t5xxl = AutoTokenizer.from_pretrained(tokenizer_t5xxl_config.path)
         # VRAM Management
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
@@ -88,11 +87,12 @@ class AnimaPipeline(BasePipeline):
         rand_device: str = "cpu",
         # Steps
         num_inference_steps: int = 30,
+        sigma_shift: float = None,
         # Progress bar
         progress_bar_cmd = tqdm,
     ):
         # Scheduler
-        self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength)
+        self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
         
         # Parameters
         inputs_posi = {
@@ -139,7 +139,7 @@ class AnimaUnit_ShapeChecker(PipelineUnit):
             output_params=("height", "width"),
         )
 
-    def process(self, pipe: AnimaPipeline, height, width):
+    def process(self, pipe: AnimaImagePipeline, height, width):
         height, width = pipe.check_resize_height_width(height, width)
         return {"height": height, "width": width}
 
@@ -152,7 +152,7 @@ class AnimaUnit_NoiseInitializer(PipelineUnit):
             output_params=("noise",),
         )
 
-    def process(self, pipe: AnimaPipeline, height, width, seed, rand_device):
+    def process(self, pipe: AnimaImagePipeline, height, width, seed, rand_device):
         noise = pipe.generate_noise((1, 16, height//8, width//8), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype)
         return {"noise": noise}
 
@@ -166,7 +166,7 @@ class AnimaUnit_InputImageEmbedder(PipelineUnit):
             onload_model_names=("vae",)
         )
 
-    def process(self, pipe: AnimaPipeline, input_image, noise):
+    def process(self, pipe: AnimaImagePipeline, input_image, noise):
         if input_image is None:
             return {"latents": noise, "input_latents": None}
         pipe.load_models_to_device(['vae'])
@@ -178,7 +178,7 @@ class AnimaUnit_InputImageEmbedder(PipelineUnit):
             input_latents = torch.concat(input_latents, dim=0)
         else:
             image = pipe.preprocess_image(input_image).to(device=pipe.device, dtype=pipe.torch_dtype)
-            input_latents = pipe.vae.encode(image)
+            input_latents = pipe.vae.encode(image.unsqueeze(2), device=pipe.device).squeeze(2)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
         else:
@@ -198,12 +198,11 @@ class AnimaUnit_PromptEmbedder(PipelineUnit):
 
     def encode_prompt(
         self,
-        pipe: AnimaPipeline,
+        pipe: AnimaImagePipeline,
         prompt,
         device = None,
         max_sequence_length: int = 512,
     ):
-        # TODO
         if isinstance(prompt, str):
             prompt = [prompt]
 
@@ -224,7 +223,7 @@ class AnimaUnit_PromptEmbedder(PipelineUnit):
             output_hidden_states=True,
         ).hidden_states[-1]
         
-        t5xxl_text_inputs = pipe.t5xxl_tokenizer(
+        t5xxl_text_inputs = pipe.tokenizer_t5xxl(
             prompt,
             max_length=max_sequence_length,
             truncation=True,
@@ -232,9 +231,9 @@ class AnimaUnit_PromptEmbedder(PipelineUnit):
         )
         t5xxl_ids = t5xxl_text_inputs.input_ids.to(device)
 
-        return prompt_embeds.to(pipe.torch_dtype), t5xxl_ids.to(pipe.torch_dtype)
+        return prompt_embeds.to(pipe.torch_dtype), t5xxl_ids
 
-    def process(self, pipe: AnimaPipeline, prompt):
+    def process(self, pipe: AnimaImagePipeline, prompt):
         pipe.load_models_to_device(self.onload_model_names)
         prompt_embeds, t5xxl_ids = self.encode_prompt(pipe, prompt, pipe.device)
         return {"prompt_emb": prompt_embeds, "t5xxl_ids": t5xxl_ids}
@@ -256,6 +255,7 @@ def model_fn_anima(
         x=latents,
         timesteps=timestep,
         context=prompt_emb,
+        t5xxl_ids=t5xxl_ids,
     )
     model_output = model_output.squeeze(2)
     return model_output

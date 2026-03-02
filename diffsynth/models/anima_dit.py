@@ -9,6 +9,7 @@ from typing import Callable, Optional, Tuple, List
 import math
 from torchvision import transforms
 from ..core.attention import attention_forward
+from ..core.gradient import gradient_checkpoint_forward
 
 
 class VideoPositionEmb(nn.Module):
@@ -1014,6 +1015,8 @@ class MiniTrainDIT(nn.Module):
         context: torch.Tensor,
         fps: Optional[torch.Tensor] = None,
         padding_mask: Optional[torch.Tensor] = None,
+        use_gradient_checkpointing=False,
+        use_gradient_checkpointing_offload=False,
         **kwargs,
     ):
         orig_shape = list(x.shape)
@@ -1065,10 +1068,13 @@ class MiniTrainDIT(nn.Module):
             x_B_T_H_W_D = x_B_T_H_W_D.float()
 
         for block in self.blocks:
-            x_B_T_H_W_D = block(
-                x_B_T_H_W_D,
-                t_embedding_B_T_D,
-                crossattn_emb,
+            x_B_T_H_W_D = gradient_checkpoint_forward(
+                block,
+                use_gradient_checkpointing=use_gradient_checkpointing,
+                use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+                x_B_T_H_W_D=x_B_T_H_W_D,
+                emb_B_T_D=t_embedding_B_T_D,
+                crossattn_emb=crossattn_emb,
                 **block_kwargs,
             )
 
@@ -1253,7 +1259,7 @@ class LLMAdapter(nn.Module):
                 source_attention_mask = source_attention_mask.unsqueeze(1).unsqueeze(1)
 
         context = source_hidden_states
-        x = self.in_proj(self.embed(target_input_ids, out_dtype=context.dtype))
+        x = self.in_proj(self.embed(target_input_ids).to(context.dtype))
         position_ids = torch.arange(x.shape[1], device=x.device).unsqueeze(0)
         position_ids_context = torch.arange(context.shape[1], device=x.device).unsqueeze(0)
         position_embeddings = self.rotary_emb(x, position_ids)
@@ -1281,8 +1287,18 @@ class AnimaDiT(MiniTrainDIT):
         else:
             return text_embeds
 
-    def forward(self, x, timesteps, context, **kwargs):
+    def forward(
+        self,
+        x, timesteps, context,
+        use_gradient_checkpointing=False,
+        use_gradient_checkpointing_offload=False,
+        **kwargs
+    ):
         t5xxl_ids = kwargs.pop("t5xxl_ids", None)
         if t5xxl_ids is not None:
             context = self.preprocess_text_embeds(context, t5xxl_ids, t5xxl_weights=kwargs.pop("t5xxl_weights", None))
-        return super().forward(x, timesteps, context, **kwargs)
+        return super().forward(
+            x, timesteps, context,
+            use_gradient_checkpointing=use_gradient_checkpointing, use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+            **kwargs
+        )

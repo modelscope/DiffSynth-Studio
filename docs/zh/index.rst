@@ -27,6 +27,7 @@
    Model_Details/Qwen-Image
    Model_Details/FLUX2
    Model_Details/Z-Image
+   Model_Details/Anima
 
 .. toctree::
    :maxdepth: 2
