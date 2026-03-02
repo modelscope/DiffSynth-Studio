@@ -27,6 +27,7 @@
    Model_Details/Qwen-Image
    Model_Details/FLUX2
    Model_Details/Z-Image
+   Model_Details/Anima
    Model_Details/LTX-2
 
 .. toctree::

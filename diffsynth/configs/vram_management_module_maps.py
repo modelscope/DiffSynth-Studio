@@ -243,4 +243,10 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "transformers.models.gemma3.modeling_gemma3.Gemma3RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.gemma3.modeling_gemma3.Gemma3TextScaledWordEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.anima_dit.AnimaDiT": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
 }

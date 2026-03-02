@@ -1,0 +1,14 @@
+accelerate launch examples/anima/model_training/train.py \
+  --dataset_base_path data/example_image_dataset \
+  --dataset_metadata_path data/example_image_dataset/metadata.csv \
+  --max_pixels 1048576 \
+  --dataset_repeat 50 \
+  --model_id_with_origin_paths "circlestone-labs/Anima:split_files/diffusion_models/anima-preview.safetensors,circlestone-labs/Anima:split_files/text_encoders/qwen_3_06b_base.safetensors,circlestone-labs/Anima:split_files/vae/qwen_image_vae.safetensors" \
+  --tokenizer_path "Qwen/Qwen3-0.6B:./" \
+  --tokenizer_t5xxl_path "stabilityai/stable-diffusion-3.5-large:tokenizer_3/" \
+  --learning_rate 1e-5 \
+  --num_epochs 2 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/anima-preview_full" \
+  --trainable_models "dit" \
+  --use_gradient_checkpointing
