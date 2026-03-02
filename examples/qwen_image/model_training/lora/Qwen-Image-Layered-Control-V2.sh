@@ -6,7 +6,7 @@ accelerate launch examples/qwen_image/model_training/train.py \
   --data_file_keys "image,layer_input_image,context_image" \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
-  --model_id_with_origin_paths "Qwen/Qwen-Image-Layered:transformer/diffusion_pytorch_model*.safetensors,Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image-Layered:vae/diffusion_pytorch_model.safetensors" \
+  --model_id_with_origin_paths "DiffSynth-Studio/Qwen-Image-Layered-Control:transformer/diffusion_pytorch_model*.safetensors,Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image-Layered:vae/diffusion_pytorch_model.safetensors" \
   --learning_rate 1e-4 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \
