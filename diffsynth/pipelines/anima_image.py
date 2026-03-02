@@ -46,6 +46,7 @@ class AnimaPipeline(BasePipeline):
         device: Union[str, torch.device] = get_device_type(),
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen3-0.6B", origin_file_pattern="./"),
+        t5xxl_tokenizer_config: ModelConfig = ModelConfig(model_id="stabilityai/stable-diffusion-3.5-large", origin_file_pattern="tokenizer_3/"),
         vram_limit: float = None,
     ):
         # Initialize pipeline
@@ -60,7 +61,10 @@ class AnimaPipeline(BasePipeline):
             tokenizer_config.download_if_necessary()
             from transformers import Qwen2Tokenizer
             pipe.tokenizer = Qwen2Tokenizer.from_pretrained(tokenizer_config.path)
-        
+        if t5xxl_tokenizer_config is not None:
+            t5xxl_tokenizer_config.download_if_necessary()
+            from transformers import T5TokenizerFast
+            pipe.t5xxl_tokenizer = T5TokenizerFast.from_pretrained(t5xxl_tokenizer_config.path)
         # VRAM Management
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
@@ -203,18 +207,6 @@ class AnimaUnit_PromptEmbedder(PipelineUnit):
         if isinstance(prompt, str):
             prompt = [prompt]
 
-        for i, prompt_item in enumerate(prompt):
-            messages = [
-                {"role": "user", "content": prompt_item},
-            ]
-            prompt_item = pipe.tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True,
-                enable_thinking=True,
-            )
-            prompt[i] = prompt_item
-
         text_inputs = pipe.tokenizer(
             prompt,
             padding="max_length",
@@ -231,13 +223,21 @@ class AnimaUnit_PromptEmbedder(PipelineUnit):
             attention_mask=prompt_masks,
             output_hidden_states=True,
         ).hidden_states[-1]
+        
+        t5xxl_text_inputs = pipe.t5xxl_tokenizer(
+            prompt,
+            max_length=max_sequence_length,
+            truncation=True,
+            return_tensors="pt",
+        )
+        t5xxl_ids = t5xxl_text_inputs.input_ids.to(device)
 
-        return prompt_embeds.to(pipe.torch_dtype)
+        return prompt_embeds.to(pipe.torch_dtype), t5xxl_ids.to(pipe.torch_dtype)
 
     def process(self, pipe: AnimaPipeline, prompt):
         pipe.load_models_to_device(self.onload_model_names)
-        prompt_embeds = self.encode_prompt(pipe, prompt, pipe.device)
-        return {"prompt_emb": prompt_embeds}
+        prompt_embeds, t5xxl_ids = self.encode_prompt(pipe, prompt, pipe.device)
+        return {"prompt_emb": prompt_embeds, "t5xxl_ids": t5xxl_ids}
 
 
 def model_fn_anima(
@@ -245,6 +245,7 @@ def model_fn_anima(
     latents=None,
     timestep=None,
     prompt_emb=None,
+    t5xxl_ids=None,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     **kwargs
