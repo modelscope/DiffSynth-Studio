@@ -256,6 +256,8 @@ def model_fn_anima(
         timesteps=timestep,
         context=prompt_emb,
         t5xxl_ids=t5xxl_ids,
+        use_gradient_checkpointing=use_gradient_checkpointing,
+        use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
     model_output = model_output.squeeze(2)
     return model_output
