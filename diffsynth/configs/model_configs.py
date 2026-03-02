@@ -719,4 +719,20 @@ ltx2_series = [
         "model_class": "diffsynth.models.ltx2_upsampler.LTX2LatentUpsampler",
     },
 ]
-MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series + ltx2_series
+anima_series = [
+    {
+        # Example: ModelConfig(model_id="circlestone-labs/Anima", origin_file_pattern="split_files/vae/qwen_image_vae.safetensors")
+        "model_hash": "a9995952c2d8e63cf82e115005eb61b9",
+        "model_name": "z_image_text_encoder",
+        "model_class": "diffsynth.models.z_image_text_encoder.ZImageTextEncoder",
+        "extra_kwargs": {"model_size": "0.6B"},
+    },
+    {
+        # Example: ModelConfig(model_id="circlestone-labs/Anima", origin_file_pattern="split_files/diffusion_models/anima-preview.safetensors")
+        "model_hash": "417673936471e79e31ed4d186d7a3f4a",
+        "model_name": "anima_dit",
+        "model_class": "diffsynth.models.anima_dit.AnimaDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.anima_dit.AnimaDiTStateDictConverter",
+    }
+]
+MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series + ltx2_series + anima_series
