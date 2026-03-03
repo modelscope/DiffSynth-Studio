@@ -1,6 +1,6 @@
 from ..core.loader import load_model, hash_model_file
 from ..core.vram import AutoWrappedModule
-from ..configs import MODEL_CONFIGS, VRAM_MANAGEMENT_MODULE_MAPS
+from ..configs import MODEL_CONFIGS, VRAM_MANAGEMENT_MODULE_MAPS, VERSION_CHECKER_MAPS
 import importlib, json, torch
 
 
@@ -22,7 +22,8 @@ class ModelPool:
     def fetch_module_map(self, model_class, vram_config):
         if self.need_to_enable_vram_management(vram_config):
             if model_class in VRAM_MANAGEMENT_MODULE_MAPS:
-                module_map = {self.import_model_class(source): self.import_model_class(target) for source, target in VRAM_MANAGEMENT_MODULE_MAPS[model_class].items()}
+                vram_module_map = VRAM_MANAGEMENT_MODULE_MAPS[model_class] if model_class not in VERSION_CHECKER_MAPS else VERSION_CHECKER_MAPS[model_class]()
+                module_map = {self.import_model_class(source): self.import_model_class(target) for source, target in vram_module_map.items()}
             else:
                 module_map = {self.import_model_class(model_class): AutoWrappedModule}
         else:
