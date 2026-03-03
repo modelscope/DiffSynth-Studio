@@ -28,7 +28,7 @@ lora = ModelConfig(
     model_id="lightx2v/Qwen-Image-Edit-2511-Lightning",
     origin_file_pattern="Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors"
 )
-pipe.load_lora(pipe.dit, lora, alpha=8/64)
+pipe.load_lora(pipe.dit, lora, alpha=1)
 pipe.scheduler = FlowMatchScheduler("Qwen-Image-Lightning")
 
 

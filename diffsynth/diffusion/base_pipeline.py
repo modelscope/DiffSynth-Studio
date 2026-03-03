@@ -94,20 +94,23 @@ class BasePipeline(torch.nn.Module):
         return self
 
 
-    def check_resize_height_width(self, height, width, num_frames=None):
+    def check_resize_height_width(self, height, width, num_frames=None, verbose=1):
         # Shape check
         if height % self.height_division_factor != 0:
             height = (height + self.height_division_factor - 1) // self.height_division_factor * self.height_division_factor
-            print(f"height % {self.height_division_factor} != 0. We round it up to {height}.")
+            if verbose > 0:
+                print(f"height % {self.height_division_factor} != 0. We round it up to {height}.")
         if width % self.width_division_factor != 0:
             width = (width + self.width_division_factor - 1) // self.width_division_factor * self.width_division_factor
-            print(f"width % {self.width_division_factor} != 0. We round it up to {width}.")
+            if verbose > 0:
+                print(f"width % {self.width_division_factor} != 0. We round it up to {width}.")
         if num_frames is None:
             return height, width
         else:
             if num_frames % self.time_division_factor != self.time_division_remainder:
                 num_frames = (num_frames + self.time_division_factor - 1) // self.time_division_factor * self.time_division_factor + self.time_division_remainder
-                print(f"num_frames % {self.time_division_factor} != {self.time_division_remainder}. We round it up to {num_frames}.")
+                if verbose > 0:
+                    print(f"num_frames % {self.time_division_factor} != {self.time_division_remainder}. We round it up to {num_frames}.")
             return height, width, num_frames
 
 

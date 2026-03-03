@@ -299,7 +299,7 @@ class ZImageUnit_PromptEmbedder(PipelineUnit):
 
     def process(self, pipe: ZImagePipeline, prompt, edit_image):
         pipe.load_models_to_device(self.onload_model_names)
-        if hasattr(pipe, "dit") and pipe.dit.siglip_embedder is not None:
+        if hasattr(pipe, "dit") and pipe.dit is not None and pipe.dit.siglip_embedder is not None:
             # Z-Image-Turbo and Z-Image-Omni-Base use different prompt encoding methods.
             # We determine which encoding method to use based on the model architecture.
             # If you are using two-stage split training,

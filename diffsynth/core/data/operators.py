@@ -218,3 +218,20 @@ class LoadAudio(DataProcessingOperator):
         import librosa
         input_audio, sample_rate = librosa.load(data, sr=self.sr)
         return input_audio
+
+
+class LoadAudioWithTorchaudio(DataProcessingOperator):
+    def __init__(self, duration=5):
+        self.duration = duration
+
+    def __call__(self, data: str):
+        import torchaudio
+        waveform, sample_rate = torchaudio.load(data)
+        target_samples = int(self.duration * sample_rate)
+        current_samples = waveform.shape[-1]
+        if current_samples > target_samples:
+            waveform = waveform[..., :target_samples]
+        elif current_samples < target_samples:
+            padding = target_samples - current_samples
+            waveform = torch.nn.functional.pad(waveform, (0, padding))
+        return waveform, sample_rate

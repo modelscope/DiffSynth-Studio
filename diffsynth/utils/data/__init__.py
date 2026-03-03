@@ -116,7 +116,7 @@ class VideoData:
         if self.height is not None and self.width is not None:
             return self.height, self.width
         else:
-            height, width, _ = self.__getitem__(0).shape
+            width, height = self.__getitem__(0).size
             return height, width
 
     def __getitem__(self, item):
