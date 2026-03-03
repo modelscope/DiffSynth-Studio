@@ -3,7 +3,13 @@ from tqdm import tqdm
 from accelerate import Accelerator
 from .training_module import DiffusionTrainingModule
 from .logger import ModelLogger
-
+import time
+from ..utils.profiling.flops_profiler import (
+    print_model_profile,
+    get_flops,
+    profile_entire_model,
+    unprofile_entire_model,
+)
 
 def launch_training_task(
     accelerator: Accelerator,
@@ -29,21 +35,63 @@ def launch_training_task(
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
     model.to(device=accelerator.device)
     model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
-    
+
+    train_step = 0
+    profile_entire_model(model)
+
     for epoch_id in range(num_epochs):
-        for data in tqdm(dataloader):
+        progress = tqdm(
+            dataloader,
+            disable=not accelerator.is_main_process,
+            desc=f"Epoch {epoch_id + 1}/{num_epochs}",
+        )
+
+        for data in progress:
+            iter_start = time.time()
+            if data is None:
+                continue
+
             with accelerator.accumulate(model):
                 optimizer.zero_grad()
+
                 if dataset.load_from_cache:
                     loss = model({}, inputs=data)
                 else:
                     loss = model(data)
+
+                t5_Tflops, wan_Tflops, vae_Tflops = get_flops(model)
                 accelerator.backward(loss)
                 optimizer.step()
+
                 model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
                 scheduler.step()
+
+            torch.cuda.synchronize()
+            time_step = time.time() - iter_start
+            train_step += 1
+
+            total_flops = t5_Tflops + wan_Tflops + vae_Tflops
+            TFLOPS = total_flops * 3 / time_step
+
+            if accelerator.is_main_process:
+                postfix_dict = {
+                    "Rank": f"{accelerator.process_index}",
+                    "loss": f"{loss.item():.5f}",
+                    "lr": f"{optimizer.param_groups[0]['lr']:.5e}",
+                    "step/t": f"{time_step:.3f}",
+                    "[t5] Tflops": f"{t5_Tflops:.3f}",
+                    "[dit] Tflops": f"{wan_Tflops:.3f}",
+                    "[vae] Tflops": f"{vae_Tflops:.3f}",
+                    "TFLOPS": f"{TFLOPS:.3f}",
+                }
+                progress.set_postfix(postfix_dict)
+                log_msg = f"[Step {train_step:6d}] | " + " | ".join(f"{k}: {v}" for k, v in postfix_dict.items())
+                progress.write(log_msg)
+
         if save_steps is None:
             model_logger.on_epoch_end(accelerator, model, epoch_id)
+
+    unprofile_entire_model(model)
     model_logger.on_training_end(accelerator, model, save_steps)
 
 

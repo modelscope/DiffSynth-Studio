@@ -70,6 +70,11 @@ class T5Attention(nn.Module):
         k = self.k(context).view(b, -1, n, c)
         v = self.v(context).view(b, -1, n, c)
 
+        # For calculate flops
+        self.q_shape = q.shape
+        self.k_shape = k.shape
+        self.v_shape = v.shape
+
         # attention bias
         attn_bias = x.new_zeros(b, n, q.size(1), k.size(1))
         if pos_bias is not None:
