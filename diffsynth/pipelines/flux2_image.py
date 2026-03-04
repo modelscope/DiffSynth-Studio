@@ -90,6 +90,7 @@ class Flux2ImagePipeline(BasePipeline):
         # Randomness
         seed: int = None,
         rand_device: str = "cpu",
+        initial_noise: torch.Tensor = None,
         # Steps
         num_inference_steps: int = 30,
         # Progress bar
@@ -109,7 +110,7 @@ class Flux2ImagePipeline(BasePipeline):
             "input_image": input_image, "denoising_strength": denoising_strength,
             "edit_image": edit_image, "edit_image_auto_resize": edit_image_auto_resize,
             "height": height, "width": width,
-            "seed": seed, "rand_device": rand_device,
+            "seed": seed, "rand_device": rand_device, "initial_noise": initial_noise,
             "num_inference_steps": num_inference_steps,
         }
         for unit in self.units:
@@ -429,12 +430,15 @@ class Flux2Unit_Qwen3PromptEmbedder(PipelineUnit):
 class Flux2Unit_NoiseInitializer(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("height", "width", "seed", "rand_device"),
+            input_params=("height", "width", "seed", "rand_device", "initial_noise"),
             output_params=("noise",),
         )
 
-    def process(self, pipe: Flux2ImagePipeline, height, width, seed, rand_device):
-        noise = pipe.generate_noise((1, 128, height//16, width//16), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype)
+    def process(self, pipe: Flux2ImagePipeline, height, width, seed, rand_device, initial_noise):
+        if initial_noise is not None:
+            noise = initial_noise.clone()
+        else:
+            noise = pipe.generate_noise((1, 128, height//16, width//16), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype)
         noise = noise.reshape(1, 128, height//16 * width//16).permute(0, 2, 1)
         return {"noise": noise}
 
