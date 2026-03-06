@@ -406,36 +406,36 @@ class Embeddings1DConnector(nn.Module):
 class LTX2TextEncoderPostModules(nn.Module):
     def __init__(
         self,
-        seperated_audio_video: bool = False,
+        separated_audio_video: bool = False,
         embedding_dim_gemma: int = 3840,
         num_layers_gemma: int = 49,
-        video_attetion_heads: int = 32,
+        video_attention_heads: int = 32,
         video_attention_head_dim: int = 128,
         audio_attention_heads: int = 32,
         audio_attention_head_dim: int = 64,
-        num_connetor_layers: int = 2,
+        num_connector_layers: int = 2,
         apply_gated_attention: bool = False,
     ):
         super().__init__()
-        if not seperated_audio_video:
+        if not separated_audio_video:
             self.feature_extractor_linear = GemmaFeaturesExtractorProjLinear()
             self.embeddings_connector = Embeddings1DConnector()
             self.audio_embeddings_connector = Embeddings1DConnector()
         else:
             # LTX-2.3
             self.feature_extractor_linear = GemmaSeperatedFeaturesExtractorProjLinear(
-                num_layers_gemma, embedding_dim_gemma, video_attetion_heads * video_attention_head_dim,
+                num_layers_gemma, embedding_dim_gemma, video_attention_heads * video_attention_head_dim,
                 audio_attention_heads * audio_attention_head_dim)
             self.embeddings_connector = Embeddings1DConnector(
                 attention_head_dim=video_attention_head_dim,
-                num_attention_heads=video_attetion_heads,
-                num_layers=num_connetor_layers,
+                num_attention_heads=video_attention_heads,
+                num_layers=num_connector_layers,
                 apply_gated_attention=apply_gated_attention,
             )
             self.audio_embeddings_connector = Embeddings1DConnector(
                 attention_head_dim=audio_attention_head_dim,
                 num_attention_heads=audio_attention_heads,
-                num_layers=num_connetor_layers,
+                num_layers=num_connector_layers,
                 apply_gated_attention=apply_gated_attention,
             )
 

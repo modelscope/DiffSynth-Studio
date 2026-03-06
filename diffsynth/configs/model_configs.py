@@ -768,7 +768,7 @@ ltx2_series = [
         "model_hash": "f3a83ecf3995dcc4fae2d27e08ad5767",
         "model_name": "ltx2_text_encoder_post_modules",
         "model_class": "diffsynth.models.ltx2_text_encoder.LTX2TextEncoderPostModules",
-        "extra_kwargs": {"seperated_audio_video": True, "embedding_dim_gemma": 3840, "num_layers_gemma": 49, "video_attetion_heads": 32, "video_attention_head_dim": 128, "audio_attention_heads": 32, "audio_attention_head_dim": 64, "num_connetor_layers": 8, "apply_gated_attention": True},
+        "extra_kwargs": {"separated_audio_video": True, "embedding_dim_gemma": 3840, "num_layers_gemma": 49, "video_attention_heads": 32, "video_attention_head_dim": 128, "audio_attention_heads": 32, "audio_attention_head_dim": 64, "num_connector_layers": 8, "apply_gated_attention": True},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_text_encoder.LTX2TextEncoderPostModulesStateDictConverter",
     },
     {
