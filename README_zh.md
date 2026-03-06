@@ -867,7 +867,7 @@ DiffSynth-Studio 不仅仅是一个工程化的模型框架，更是创新成果
 
 - 论文：[Spectral Evolution Search: Efficient Inference-Time Scaling for Reward-Aligned Image Generation
 ](https://arxiv.org/abs/2602.03208)
-- 代码样例：coming soon
+- 代码样例：[/docs/en/Research_Tutorial/inference_time_scaling.md](/docs/en/Research_Tutorial/inference_time_scaling.md)
 
 |FLUX.1-dev|FLUX.1-dev + SES|Qwen-Image|Qwen-Image + SES|
 |-|-|-|-|

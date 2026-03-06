@@ -80,7 +80,7 @@ graph LR;
 本节介绍如何利用 `DiffSynth-Studio` 训练新的模型，帮助科研工作者探索新的模型技术。
 
 * [从零开始训练模型](./Research_Tutorial/train_from_scratch.md)
-* 推理改进优化技术【coming soon】
+* [推理改进优化技术](./Research_Tutorial/inference_time_scaling.md)
 * 设计可控生成模型【coming soon】
 * 创建新的训练范式【coming soon】
 

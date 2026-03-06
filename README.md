@@ -867,7 +867,7 @@ DiffSynth-Studio is not just an engineered model framework, but also an incubato
 
 - Paper: [Spectral Evolution Search: Efficient Inference-Time Scaling for Reward-Aligned Image Generation
 ](https://arxiv.org/abs/2602.03208)
-- Sample Code: coming soon
+- Sample Code: [/docs/en/Research_Tutorial/inference_time_scaling.md](/docs/en/Research_Tutorial/inference_time_scaling.md)
 
 |FLUX.1-dev|FLUX.1-dev + SES|Qwen-Image|Qwen-Image + SES|
 |-|-|-|-|
