@@ -778,6 +778,59 @@ ltx2_series = [
         "model_class": "diffsynth.models.ltx2_upsampler.LTX2LatentUpsampler",
         "extra_kwargs": {"rational_resampler": False},
     },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="transformer.safetensors")
+        "model_hash": "1c55afad76ed33c112a2978550b524d1",
+        "model_name": "ltx2_dit",
+        "model_class": "diffsynth.models.ltx2_dit.LTXModel",
+        "extra_kwargs": {"apply_gated_attention": True, "cross_attention_adaln": True, "caption_channels": None},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_dit.LTXModelStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="video_vae_encoder.safetensors")
+        "model_hash": "eecdc07c2ec30863b8a2b8b2134036cf",
+        "model_name": "ltx2_video_vae_encoder",
+        "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoEncoder",
+        "extra_kwargs": {"encoder_version": "ltx-2.3"},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="video_vae_decoder.safetensors")
+        "model_hash": "deda2f542e17ee25bc8c38fd605316ea",
+        "model_name": "ltx2_video_vae_decoder",
+        "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoDecoder",
+        "extra_kwargs": {"decoder_version": "ltx-2.3"},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoDecoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="audio_vocoder.safetensors")
+        "model_hash": "7d7823dde8f1ea0b50fb07ac329dd4cb",
+        "model_name": "ltx2_audio_vae_decoder",
+        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2AudioDecoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2AudioDecoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="audio_vae_encoder.safetensors")
+        "model_hash": "29338f3b95e7e312a3460a482e4f4554",
+        "model_name": "ltx2_audio_vae_encoder",
+        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2AudioEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2AudioEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="audio_vocoder.safetensors")
+        "model_hash": "cd436c99e69ec5c80f050f0944f02a15",
+        "model_name": "ltx2_audio_vocoder",
+        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2VocoderWithBWE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2VocoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="text_encoder_post_modules.safetensors")
+        "model_hash": "05da2aab1c4b061f72c426311c165a43",
+        "model_name": "ltx2_text_encoder_post_modules",
+        "model_class": "diffsynth.models.ltx2_text_encoder.LTX2TextEncoderPostModules",
+        "extra_kwargs": {"separated_audio_video": True, "embedding_dim_gemma": 3840, "num_layers_gemma": 49, "video_attention_heads": 32, "video_attention_head_dim": 128, "audio_attention_heads": 32, "audio_attention_head_dim": 64, "num_connector_layers": 8, "apply_gated_attention": True},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_text_encoder.LTX2TextEncoderPostModulesStateDictConverter",
+    },
 ]
 anima_series = [
     {
