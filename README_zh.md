@@ -705,7 +705,7 @@ LTX-2 的示例代码位于：[/examples/ltx2/](/examples/ltx2/)
 
 |模型 ID|额外参数|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|-|
-|[Lightricks/LTX-2.3: OneStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3)|`input_images`|[code](/examples/ltx2/model_inference/LTX-2.3-I2AV-OneStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-I2AV-OneStage.py)|-|-|-|-|
+|[Lightricks/LTX-2.3: OneStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3)|`input_images`|[code](examples/ltx2/model_inference/LTX-2.3-I2AV-OneStage.py)|[code](examples/ltx2/model_inference_low_vram/LTX-2.3-I2AV-OneStage.py)|[code](examples/ltx2/model_training/full/LTX-2.3-T2AV-splited.sh)|[code](examples/ltx2/model_training/validate_full/LTX-2.3-T2AV.py)|[code](examples/ltx2/model_training/lora/LTX-2.3-T2AV-splited.sh)|[code](examples/ltx2/model_training/validate_lora/LTX-2.3-T2AV.py)|
 |[Lightricks/LTX-2.3: TwoStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3)|`input_images`|[code](/examples/ltx2/model_inference/LTX-2.3-I2AV-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-I2AV-TwoStage.py)|-|-|-|-|
 |[Lightricks/LTX-2.3: DistilledPipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3)|`input_images`|[code](/examples/ltx2/model_inference/LTX-2.3-I2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-I2AV-DistilledPipeline.py)|-|-|-|-|
 |[Lightricks/LTX-2.3: OneStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3)||[code](/examples/ltx2/model_inference/LTX-2.3-T2AV-OneStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-OneStage.py)|-|-|-|-|
