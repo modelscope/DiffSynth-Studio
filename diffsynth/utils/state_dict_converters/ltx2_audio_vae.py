@@ -27,6 +27,7 @@ def LTX2VocoderStateDictConverter(state_dict):
     state_dict_ = {}
     for name in state_dict:
         if name.startswith("vocoder."):
-            new_name = name.replace("vocoder.", "")
+            # new_name = name.replace("vocoder.", "")
+            new_name = name[len("vocoder."):]
             state_dict_[new_name] = state_dict[name]
     return state_dict_

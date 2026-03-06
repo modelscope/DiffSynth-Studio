@@ -718,6 +718,66 @@ ltx2_series = [
         "model_name": "ltx2_latent_upsampler",
         "model_class": "diffsynth.models.ltx2_upsampler.LTX2LatentUpsampler",
     },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.3", origin_file_pattern="ltx-2.3-22b-dev.safetensors")
+        "model_hash": "f3a83ecf3995dcc4fae2d27e08ad5767",
+        "model_name": "ltx2_dit",
+        "model_class": "diffsynth.models.ltx2_dit.LTXModel",
+        "extra_kwargs": {"apply_gated_attention": True, "cross_attention_adaln": True, "caption_channels": None},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_dit.LTXModelStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.3", origin_file_pattern="ltx-2.3-22b-dev.safetensors")
+        "model_hash": "f3a83ecf3995dcc4fae2d27e08ad5767",
+        "model_name": "ltx2_video_vae_encoder",
+        "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoEncoder",
+        "extra_kwargs": {"encoder_version": "ltx-2.3"},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.3", origin_file_pattern="ltx-2.3-22b-dev.safetensors")
+        "model_hash": "f3a83ecf3995dcc4fae2d27e08ad5767",
+        "model_name": "ltx2_video_vae_decoder",
+        "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoDecoder",
+        "extra_kwargs": {"decoder_version": "ltx-2.3"},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoDecoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.3", origin_file_pattern="ltx-2.3-22b-dev.safetensors")
+        "model_hash": "f3a83ecf3995dcc4fae2d27e08ad5767",
+        "model_name": "ltx2_audio_vae_decoder",
+        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2AudioDecoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2AudioDecoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.3", origin_file_pattern="ltx-2.3-22b-dev.safetensors")
+        "model_hash": "f3a83ecf3995dcc4fae2d27e08ad5767",
+        "model_name": "ltx2_audio_vocoder",
+        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2VocoderWithBWE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2VocoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.3", origin_file_pattern="ltx-2.3-22b-dev.safetensors")
+        "model_hash": "f3a83ecf3995dcc4fae2d27e08ad5767",
+        "model_name": "ltx2_audio_vae_encoder",
+        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2AudioEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2AudioEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.3", origin_file_pattern="ltx-2.3-22b-dev.safetensors")
+        "model_hash": "f3a83ecf3995dcc4fae2d27e08ad5767",
+        "model_name": "ltx2_text_encoder_post_modules",
+        "model_class": "diffsynth.models.ltx2_text_encoder.LTX2TextEncoderPostModules",
+        "extra_kwargs": {"seperated_audio_video": True, "embedding_dim_gemma": 3840, "num_layers_gemma": 49, "video_attetion_heads": 32, "video_attention_head_dim": 128, "audio_attention_heads": 32, "audio_attention_head_dim": 64, "num_connetor_layers": 8, "apply_gated_attention": True},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_text_encoder.LTX2TextEncoderPostModulesStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.3", origin_file_pattern="ltx-2.3-spatial-upscaler-x2-1.0.safetensors")
+        "model_hash": "aed408774d694a2452f69936c32febb5",
+        "model_name": "ltx2_latent_upsampler",
+        "model_class": "diffsynth.models.ltx2_upsampler.LTX2LatentUpsampler",
+        "extra_kwargs": {"rational_resampler": False},
+    },
 ]
 anima_series = [
     {
