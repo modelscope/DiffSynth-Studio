@@ -6,6 +6,7 @@ from xfuser.core.distributed import (get_sequence_parallel_rank,
                                      get_sequence_parallel_world_size,
                                      get_sp_group)
 from xfuser.core.long_ctx_attention import xFuserLongContextAttention
+import torch.distributed as dist
 
 from ... import IS_NPU_AVAILABLE
 from ...core.device import parse_nccl_backend, parse_device_type
@@ -144,3 +145,30 @@ def usp_attn_forward(self, x, freqs):
     del q, k, v
     getattr(torch, parse_device_type(x.device)).empty_cache()
     return self.o(x)
+
+
+def get_current_chunk(x, dim=1):
+    chunks = torch.chunk(x, get_sequence_parallel_world_size(), dim=dim)
+    ndims = len(chunks[0].shape)
+    pad_list = [0] * (2 * ndims)
+    pad_end_index = 2 * (ndims - 1 - dim) + 1
+    max_size = chunks[0].size(dim)
+    chunks = [
+        torch.nn.functional.pad(
+            chunk, 
+            tuple(pad_list[:pad_end_index] + [max_size - chunk.size(dim)] + pad_list[pad_end_index+1:]), 
+            value=0
+        ) 
+        for chunk in chunks
+    ]
+    x = chunks[get_sequence_parallel_rank()]
+    return x
+
+
+def gather_all_chunks(x, seq_len=None, dim=1):
+    x = get_sp_group().all_gather(x, dim=dim)
+    if seq_len is not None:
+        slices = [slice(None)] * x.ndim
+        slices[dim] = slice(0, seq_len)
+        x = x[tuple(slices)]
+    return x

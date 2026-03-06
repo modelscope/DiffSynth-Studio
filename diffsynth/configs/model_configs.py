@@ -735,4 +735,26 @@ anima_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.anima_dit.AnimaDiTStateDictConverter",
     }
 ]
-MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series + ltx2_series + anima_series
+
+mova_series = [
+    # Example: ModelConfig(model_id="openmoss/MOVA-720p", origin_file_pattern="audio_dit/diffusion_pytorch_model.safetensors")
+    {
+        "model_hash": "8c57e12790e2c45a64817e0ce28cde2f",
+        "model_name": "mova_audio_dit",
+        "model_class": "diffsynth.models.mova_audio_dit.MovaAudioDit",
+        "extra_kwargs": {'has_image_input': False, 'patch_size': [1], 'in_dim': 128, 'dim': 1536, 'ffn_dim': 8960, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 128, 'num_heads': 12, 'num_layers': 30, 'eps': 1e-06}
+    },
+    # Example: ModelConfig(model_id="openmoss/MOVA-720p", origin_file_pattern="audio_vae/diffusion_pytorch_model.safetensors")
+    {
+        "model_hash": "418517fb2b4e919d2cac8f314fcf82ac",
+        "model_name": "mova_audio_vae",
+        "model_class": "diffsynth.models.mova_audio_vae.DacVAE",
+    },
+    # Example: ModelConfig(model_id="openmoss/MOVA-720p", origin_file_pattern="dual_tower_bridge/diffusion_pytorch_model.safetensors")
+    {
+        "model_hash": "d1139dbbc8b4ab53cf4b4243d57bbceb",
+        "model_name": "mova_dual_tower_bridge",
+        "model_class": "diffsynth.models.mova_dual_tower_bridge.DualTowerConditionalBridge",
+    },
+]
+MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series + ltx2_series + anima_series + mova_series
