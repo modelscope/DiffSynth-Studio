@@ -18,15 +18,15 @@ pipe = WanVideoPipeline.from_pretrained(
 pipe.load_lora(pipe.dit, "models/train/Wan2.2-Animate-14B_lora/epoch-4.safetensors", alpha=1)
 
 input_image = VideoData("data/example_video_dataset/animate/animate_output.mp4", height=480, width=832)[0]
-animate_pose_video = VideoData("data/examples/wan/animate/animate_pose_video.mp4", height=480, width=832).raw_data()[:77]
-animate_face_video = VideoData("data/examples/wan/animate/animate_face_video.mp4", height=512, width=512).raw_data()[:77]
+animate_pose_video = VideoData("data/examples/wan/animate/animate_pose_video.mp4", height=480, width=832).raw_data()[:81-4]
+animate_face_video = VideoData("data/examples/wan/animate/animate_face_video.mp4", height=512, width=512).raw_data()[:81-4]
 video = pipe(
-    prompt="视频中的人在做动�?,
+    prompt="视频中的人在做动作",
     seed=0, tiled=True,
     input_image=input_image,
     animate_pose_video=animate_pose_video,
     animate_face_video=animate_face_video,
-    num_frames=77, height=480, width=832,
+    num_frames=81, height=480, width=832,
     num_inference_steps=20, cfg_scale=1,
 )
 save_video(video, "video_Wan2.2-Animate-14B.mp4", fps=15, quality=5)
