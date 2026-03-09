@@ -271,5 +271,4 @@ class LoadAudioWithTorchaudio(DataProcessingOperator, FrameSamplerByRateMixin):
         elif current_samples < target_samples:
             padding = target_samples - current_samples
             waveform = torch.nn.functional.pad(waveform, (0, padding))
-        print(f"audio_num_frames: {num_frames}, duration: {duration}, sample_rate: {sample_rate}")
         return waveform, sample_rate
