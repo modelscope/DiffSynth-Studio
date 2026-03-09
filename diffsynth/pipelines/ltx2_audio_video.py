@@ -236,7 +236,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
         decoded_audio = self.audio_vocoder(decoded_audio).squeeze(0).float()
         return video, decoded_audio
 
-    def apply_input_images_to_latents(self, latents, input_latents=None, input_indexes=None, input_strength=None, initial_latents=None, denoise_mask_video=None):
+    def apply_input_images_to_latents(self, latents, input_latents, input_indexes, input_strength=1.0, initial_latents=None, denoise_mask_video=None):
         b, _, f, h, w = latents.shape
         denoise_mask = torch.ones((b, 1, f, h, w), dtype=latents.dtype, device=latents.device) if denoise_mask_video is None else denoise_mask_video
         initial_latents = torch.zeros_like(latents) if initial_latents is None else initial_latents
@@ -245,7 +245,6 @@ class LTX2AudioVideoPipeline(BasePipeline):
             input_latent = input_latent.to(dtype=latents.dtype, device=latents.device)
             initial_latents[:, :, idx:idx + input_latent.shape[2], :, :] = input_latent
             denoise_mask[:, :, idx:idx + input_latent.shape[2], :, :] = 1.0 - input_strength
-        # latents = latents * denoise_mask + initial_latents * (1.0 - denoise_mask)
         return initial_latents, denoise_mask
 
 
