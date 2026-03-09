@@ -107,15 +107,16 @@ class ToList(DataProcessingOperator):
         return [data]
     
 
-class LoadVideo(DataProcessingOperator):
-    def __init__(self, num_frames=81, time_division_factor=4, time_division_remainder=1, frame_processor=lambda x: x, frame_rate=24, fix_frame_rate=False):
+class FrameSamplerByRateMixin:
+    def __init__(self, num_frames=81, time_division_factor=4, time_division_remainder=1, frame_rate=24, fix_frame_rate=False):
         self.num_frames = num_frames
         self.time_division_factor = time_division_factor
         self.time_division_remainder = time_division_remainder
         self.frame_rate = frame_rate
         self.fix_frame_rate = fix_frame_rate
-        # frame_processor is build in the video loader for high efficiency.
-        self.frame_processor = frame_processor
+
+    def get_reader(self, data: str):
+        return imageio.get_reader(data)
 
     def get_available_num_frames(self, reader):
         if not self.fix_frame_rate:
@@ -135,23 +136,30 @@ class LoadVideo(DataProcessingOperator):
                 num_frames -= 1
         return num_frames
 
-    def map_single_frame_id(self, new_sequence_id: int, raw_frame_rate: float, target_frame_rate: float, total_raw_frames: int) -> int:
+    def map_single_frame_id(self, new_sequence_id: int, raw_frame_rate: float, total_raw_frames: int) -> int:
         if not self.fix_frame_rate:
             return new_sequence_id
-        target_time_in_seconds = new_sequence_id / target_frame_rate
+        target_time_in_seconds = new_sequence_id / self.frame_rate
         raw_frame_index_float = target_time_in_seconds * raw_frame_rate
         frame_id = int(round(raw_frame_index_float))        
         frame_id = min(frame_id, total_raw_frames - 1)
         return frame_id
-        
+
+
+class LoadVideo(DataProcessingOperator, FrameSamplerByRateMixin):
+    def __init__(self, num_frames=81, time_division_factor=4, time_division_remainder=1, frame_processor=lambda x: x, frame_rate=24, fix_frame_rate=False):
+        FrameSamplerByRateMixin.__init__(self, num_frames, time_division_factor, time_division_remainder, frame_rate, fix_frame_rate)
+        # frame_processor is build in the video loader for high efficiency.
+        self.frame_processor = frame_processor
+
     def __call__(self, data: str):
-        reader = imageio.get_reader(data)
+        reader = self.get_reader(data)
         raw_frame_rate = reader.get_meta_data()['fps']
         num_frames = self.get_num_frames(reader)
         total_raw_frames = reader.count_frames()
         frames = []
         for frame_id in range(num_frames):
-            frame_id = self.map_single_frame_id(frame_id, raw_frame_rate, self.frame_rate, total_raw_frames)
+            frame_id = self.map_single_frame_id(frame_id, raw_frame_rate, total_raw_frames)
             frame = reader.get_data(frame_id)
             frame = Image.fromarray(frame)
             frame = self.frame_processor(frame)
@@ -246,32 +254,13 @@ class LoadAudio(DataProcessingOperator):
         return input_audio
 
 
-class LoadAudioWithTorchaudio(DataProcessingOperator):
+class LoadAudioWithTorchaudio(DataProcessingOperator, FrameSamplerByRateMixin):
 
-    def __init__(self, num_frames=121, time_division_factor=8, time_division_remainder=1, frame_rate=24):
-        self.num_frames = num_frames
-        self.time_division_factor = time_division_factor
-        self.time_division_remainder = time_division_remainder
-        self.frame_rate = frame_rate
-
-    def get_available_num_frames(self, reader):
-        meta_data = reader.get_meta_data()
-        total_original_frames = int(reader.count_frames())
-        duration = meta_data["duration"] if "duration" in meta_data else total_original_frames / meta_data['fps']
-        total_available_frames = math.floor(duration * self.frame_rate)
-        return int(total_available_frames)
-
-    def get_num_frames(self, reader):
-        num_frames = self.num_frames
-        total_frames = self.get_available_num_frames(reader)
-        if int(total_frames) < num_frames:
-            num_frames = total_frames
-            while num_frames > 1 and num_frames % self.time_division_factor != self.time_division_remainder:
-                num_frames -= 1
-        return num_frames
+    def __init__(self, num_frames=121, time_division_factor=8, time_division_remainder=1, frame_rate=24, fix_frame_rate=True):
+        FrameSamplerByRateMixin.__init__(self, num_frames, time_division_factor, time_division_remainder, frame_rate, fix_frame_rate)
 
     def __call__(self, data: str):
-        reader = imageio.get_reader(data)
+        reader = self.get_reader(data)
         num_frames = self.get_num_frames(reader)
         duration = num_frames / self.frame_rate
         waveform, sample_rate = torchaudio.load(data)
@@ -282,4 +271,5 @@ class LoadAudioWithTorchaudio(DataProcessingOperator):
         elif current_samples < target_samples:
             padding = target_samples - current_samples
             waveform = torch.nn.functional.pad(waveform, (0, padding))
+        print(f"audio_num_frames: {num_frames}, duration: {duration}, sample_rate: {sample_rate}")
         return waveform, sample_rate

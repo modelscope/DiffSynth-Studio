@@ -22,7 +22,7 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="video_vae_decoder.safetensors", **vram_config),
         ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="audio_vae_decoder.safetensors", **vram_config),
         ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="audio_vocoder.safetensors", **vram_config),
-        ModelConfig(path="./models/train/LTX2.3-T2AV-full/epoch-4.safetensors", **vram_config),
+        ModelConfig(path="./models/train/LTX2.3-I2AV-full/epoch-4.safetensors", **vram_config),
     ],
     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
 )
