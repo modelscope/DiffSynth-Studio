@@ -80,7 +80,7 @@ This section introduces the independent core module `diffsynth.core` in `DiffSyn
 This section introduces how to use `DiffSynth-Studio` to train new models, helping researchers explore new model technologies.
 
 * [Training models from scratch](./Research_Tutorial/train_from_scratch.md)
-* Inference improvement techniques 【coming soon】
+* [Inference improvement techniques](./Research_Tutorial/inference_time_scaling.md)
 * Designing controllable generation models 【coming soon】
 * Creating new training paradigms 【coming soon】
 
