@@ -128,6 +128,8 @@ if __name__ == "__main__":
             num_frames=args.num_frames,
             time_division_factor=8,
             time_division_remainder=1,
+            frame_rate=args.frame_rate,
+            fix_frame_rate=True,
         )
     dataset = UnifiedDataset(
         base_path=args.dataset_base_path,
@@ -136,7 +138,7 @@ if __name__ == "__main__":
         data_file_keys=args.data_file_keys.split(","),
         main_data_operator=video_processor,
         special_operator_map={
-            "input_audio": ToAbsolutePath(args.dataset_base_path) >> LoadAudioWithTorchaudio(duration=float(args.num_frames) / float(args.frame_rate)),
+            "input_audio": ToAbsolutePath(args.dataset_base_path) >> LoadAudioWithTorchaudio(num_frames=args.num_frames, time_division_factor=8, time_division_remainder=1, frame_rate=args.frame_rate),
             "in_context_videos": RouteByType(operator_map=[
                 (str, video_processor),
                 (list, SequencialProcess(video_processor)),
