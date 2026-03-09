@@ -413,7 +413,7 @@ class LTX2AudioVideoUnit_InputAudioEmbedder(PipelineUnit):
 class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("input_images", "input_images_indexes", "input_images_strength", "video_latents", "height", "width", "tiled", "tile_size_in_pixels", "tile_overlap_in_pixels", "use_two_stage_pipeline"),
+            input_params=("input_images", "input_images_indexes", "input_images_strength", "video_latents", "height", "width", "tiled", "tile_size_in_pixels", "tile_overlap_in_pixels", "use_two_stage_pipeline", "denoise_mask_video"),
             output_params=("video_latents", "denoise_mask_video", "input_latents_video", "stage2_input_latents"),
             onload_model_names=("video_vae_encoder")
         )
@@ -426,7 +426,10 @@ class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
         latent = pipe.video_vae_encoder.encode(image, tiled, tile_size_in_pixels, tile_overlap_in_pixels).to(pipe.device)
         return latent
 
-    def process(self, pipe: LTX2AudioVideoPipeline, input_images, input_images_indexes, input_images_strength, video_latents, height, width, tiled, tile_size_in_pixels, tile_overlap_in_pixels, use_two_stage_pipeline=False):
+
+    def get_frame_conditions(self, pipe: LTX2AudioVideoPipeline, input_images, input_images_indexes, input_images_strength, height, width, tiled, tile_size_in_pixels, tile_overlap_in_pixels, denoise_mask_video):
+        return
+    def process(self, pipe: LTX2AudioVideoPipeline, input_images, input_images_indexes, input_images_strength, video_latents, height, width, tiled, tile_size_in_pixels, tile_overlap_in_pixels, use_two_stage_pipeline=False, denoise_mask_video=None):
         if input_images is None or len(input_images) == 0:
             return {"video_latents": video_latents}
         else:
@@ -434,6 +437,7 @@ class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
             output_dicts = {}
             stage1_height = height // 2 if use_two_stage_pipeline else height
             stage1_width = width // 2 if use_two_stage_pipeline else width
+            # stage_1_frame_conditions = self.get_frame_conditions(pipe, input_images, input_images_indexes, input_images_strength, stage1_height, stage1_width, tiled, tile_size_in_pixels, tile_overlap_in_pixels)
             stage1_latents = [
                 self.get_image_latent(pipe, img, stage1_height, stage1_width, tiled, tile_size_in_pixels,
                                       tile_overlap_in_pixels) for img in input_images
