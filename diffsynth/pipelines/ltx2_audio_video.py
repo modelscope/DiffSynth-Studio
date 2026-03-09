@@ -157,7 +157,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
         denoising_strength: float = 1.0,
         # Image-to-video
         input_images: Optional[list[Image.Image]] = None,
-        input_images_indexes: Optional[list[int]] = None,
+        input_images_indexes: Optional[list[int]] = [0],
         input_images_strength: Optional[float] = 1.0,
         # In-Context Video Control
         in_context_videos: Optional[list[list[Image.Image]]] = None,
