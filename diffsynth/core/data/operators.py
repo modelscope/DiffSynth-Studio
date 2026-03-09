@@ -136,6 +136,8 @@ class LoadVideo(DataProcessingOperator):
         return num_frames
 
     def map_single_frame_id(self, new_sequence_id: int, raw_frame_rate: float, target_frame_rate: float, total_raw_frames: int) -> int:
+        if not self.fix_frame_rate:
+            return new_sequence_id
         target_time_in_seconds = new_sequence_id / target_frame_rate
         raw_frame_index_float = target_time_in_seconds * raw_frame_rate
         frame_id = int(round(raw_frame_index_float))        
