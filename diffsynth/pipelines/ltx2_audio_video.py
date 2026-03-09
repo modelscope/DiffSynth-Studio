@@ -436,7 +436,7 @@ class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
                     frame_conditions.update({"input_latents_video": input_latents_video, "denoise_mask_video": denoise_mask_video})
         return frame_conditions
 
-    def process(self, pipe: LTX2AudioVideoPipeline, input_images, input_images_indexes, input_images_strength, video_latents, height, width, tiled, tile_size_in_pixels, tile_overlap_in_pixels, use_two_stage_pipeline=False):
+    def process(self, pipe: LTX2AudioVideoPipeline, input_images, video_latents, height, width, tiled, tile_size_in_pixels, tile_overlap_in_pixels, input_images_indexes=[0], input_images_strength=1.0, use_two_stage_pipeline=False):
         if input_images is None or len(input_images) == 0:
             return {}
         else:
