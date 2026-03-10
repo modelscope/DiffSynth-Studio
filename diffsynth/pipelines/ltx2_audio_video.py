@@ -173,8 +173,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
         progress_bar_cmd=tqdm,
     ):
         # Scheduler
-        self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength,
-                                     special_case="ditilled_stage1" if use_distilled_pipeline else None)
+        self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, special_case="ditilled_stage1" if use_distilled_pipeline else None)
         # Inputs
         inputs_posi = {
             "prompt": prompt,
@@ -196,7 +195,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
         # Stage 1
         inputs_shared, inputs_posi, inputs_nega = self.denoise_stage(inputs_shared, inputs_posi, inputs_nega, self.units, cfg_scale, progress_bar_cmd)
         # Stage 2
-        inputs_shared, inputs_posi, inputs_nega = self.denoise_stage(inputs_shared, inputs_posi, inputs_nega, self.stage2_units, 1.0, progress_bar_cmd, not use_two_stage_pipeline)
+        inputs_shared, inputs_posi, inputs_nega = self.denoise_stage(inputs_shared, inputs_posi, inputs_nega, self.stage2_units, 1.0, progress_bar_cmd, not inputs_shared["use_two_stage_pipeline"])
         # Decode
         self.load_models_to_device(['video_vae_decoder'])
         video = self.video_vae_decoder.decode(inputs_shared["video_latents"], tiled, tile_size_in_pixels, tile_overlap_in_pixels, tile_size_in_frames, tile_overlap_in_frames)
@@ -464,7 +463,7 @@ class LTX2AudioVideoUnit_SwitchStage2(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("stage_2_height", "stage_2_width", "clear_lora_before_state_two", "use_distilled_pipeline"),
-            output_params=("height", "width"),
+            output_params=("height", "width", "in_context_video_latents", "in_context_video_positions"),
         )
 
     def process(self, pipe: LTX2AudioVideoPipeline, stage_2_height, stage_2_width, clear_lora_before_state_two, use_distilled_pipeline):
