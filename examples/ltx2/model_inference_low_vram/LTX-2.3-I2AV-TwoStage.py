@@ -58,7 +58,6 @@ video, audio = pipe(
     num_frames=num_frames,
     tiled=True,
     use_two_stage_pipeline=True,
-    num_inference_steps=40,
     input_images=[image],
     input_images_indexes=[0],
     input_images_strength=1.0,
