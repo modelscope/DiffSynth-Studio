@@ -65,6 +65,35 @@ class LTX2AudioVideoPipeline(BasePipeline):
         ]
         self.model_fn = model_fn_ltx2
 
+        self.default_negative_prompt = {
+            "LTX-2": (
+                "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, "
+                "grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, "
+                "deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, "
+                "wrong hand count, artifacts around text, inconsistent perspective, camera shake, incorrect depth of "
+                "field, background too sharp, background clutter, distracting reflections, harsh shadows, inconsistent "
+                "lighting direction, color banding, cartoonish rendering, 3D CGI look, unrealistic materials, uncanny "
+                "valley effect, incorrect ethnicity, wrong gender, exaggerated expressions, wrong gaze direction, "
+                "mismatched lip sync, silent or muted audio, distorted voice, robotic voice, echo, background noise, "
+                "off-sync audio, incorrect dialogue, added dialogue, repetitive speech, jittery movement, awkward "
+                "pauses, incorrect timing, unnatural transitions, inconsistent framing, tilted camera, flat lighting, "
+                "inconsistent tone, cinematic oversaturation, stylized filters, or AI artifacts."
+            ),
+            "LTX-2.3": (
+                "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, "
+                "grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, "
+                "deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, "
+                "wrong hand count, artifacts around text, inconsistent perspective, camera shake, incorrect depth of "
+                "field, background too sharp, background clutter, distracting reflections, harsh shadows, inconsistent "
+                "lighting direction, color banding, cartoonish rendering, 3D CGI look, unrealistic materials, uncanny "
+                "valley effect, incorrect ethnicity, wrong gender, exaggerated expressions, wrong gaze direction, "
+                "mismatched lip sync, silent or muted audio, distorted voice, robotic voice, echo, background noise, "
+                "off-sync audio, incorrect dialogue, added dialogue, repetitive speech, jittery movement, awkward "
+                "pauses, incorrect timing, unnatural transitions, inconsistent framing, tilted camera, flat lighting, "
+                "inconsistent tone, cinematic oversaturation, stylized filters, or AI artifacts."
+            ),
+        }
+
     @staticmethod
     def from_pretrained(
         torch_dtype: torch.dtype = torch.bfloat16,
