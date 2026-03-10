@@ -26,7 +26,7 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2.3", origin_file_pattern="ltx-2.3-22b-distilled-lora-384.safetensors"),
 )
 
-prompt = "A girl is very happy, she is speaking: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
+prompt = "Two cute orange cats, wearing boxing gloves, stand in a boxing ring and fight each other. They are punching each other fast and yelling: 'I will win!'"
 negative_prompt = (
     "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, "
     "grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, "
@@ -41,12 +41,9 @@ negative_prompt = (
     "inconsistent tone, cinematic oversaturation, stylized filters, or AI artifacts."
 )
 height, width, num_frames = 512 * 2, 768 * 2, 121
-dataset_snapshot_download(
-    dataset_id="DiffSynth-Studio/examples_in_diffsynth",
-    local_dir="./",
-    allow_file_pattern=["data/examples/ltx-2/first_frame.jpg"]
-)
-image = Image.open("data/examples/ltx-2/first_frame.jpg").convert("RGB").resize((width, height))
+dataset_snapshot_download("DiffSynth-Studio/example_video_dataset", allow_file_pattern="ltx2/*", local_dir="data/example_video_dataset")
+first_frame = Image.open("data/example_video_dataset/ltx2/first_frame.png").convert("RGB").resize((width, height))
+last_frame = Image.open("data/example_video_dataset/ltx2/last_frame.png").convert("RGB").resize((width, height))
 # first frame
 video, audio = pipe(
     prompt=prompt,
@@ -57,7 +54,7 @@ video, audio = pipe(
     num_frames=num_frames,
     tiled=True,
     use_two_stage_pipeline=True,
-    input_images=[image],
+    input_images=[first_frame],
     input_images_indexes=[0],
     input_images_strength=1.0,
 )
@@ -66,5 +63,26 @@ write_video_audio_ltx2(
     audio=audio,
     output_path='ltx2.3_twostage_i2av_first.mp4',
     fps=24,
-    audio_sample_rate=pipe.audio_vocoder.output_sampling_rate,
+)
+pipe.clear_lora()
+
+# This example uses the first and last frames for demonstration. However, you can use any frames by setting input_images and input_indexes. Note that input_indexes must be within the range of num_frames.
+video, audio = pipe(
+    prompt=prompt,
+    negative_prompt=negative_prompt,
+    seed=42,
+    height=height,
+    width=width,
+    num_frames=num_frames,
+    tiled=True,
+    use_two_stage_pipeline=True,
+    input_images=[first_frame, last_frame],
+    input_images_indexes=[0, num_frames-1],
+    input_images_strength=1.0,
+)
+write_video_audio_ltx2(
+    video=video,
+    audio=audio,
+    output_path='ltx2.3_twostage_i2av_first_last.mp4',
+    fps=24,
 )
