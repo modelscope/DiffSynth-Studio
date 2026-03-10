@@ -365,7 +365,7 @@ class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("input_images", "input_images_indexes", "input_images_strength", "video_latents", "height", "width", "frame_rate", "tiled", "tile_size_in_pixels", "tile_overlap_in_pixels", "initial_latents"),
-            output_params=("denoise_mask_video", "input_latents_video"),
+            output_params=("denoise_mask_video", "input_latents_video", "ref_frames_latents", "ref_frames_positions"),
             onload_model_names=("video_vae_encoder")
         )
 
@@ -561,7 +561,7 @@ def model_fn_ltx2(
     total_ref_latents = ref_frames_latents if ref_frames_latents is not None else []
     total_ref_positions = ref_frames_positions if ref_frames_positions is not None else []
     total_ref_latents += [in_context_video_latents] if in_context_video_latents is not None else []
-    total_ref_positions += [in_context_video_positions] if ref_frames_positions is not None else []
+    total_ref_positions += [in_context_video_positions] if in_context_video_positions is not None else []
     if len(total_ref_latents) > 0:
         for ref_frames_latent, ref_frames_position in zip(total_ref_latents, total_ref_positions):
             ref_frames_latent = video_patchifier.patchify(ref_frames_latent)
