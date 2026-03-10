@@ -99,7 +99,6 @@ def write_video_audio_ltx2(
             The shape is typically (channels, samples). If no audio is required, pass None.
             channels can be 1 or 2. 1 for mono, 2 for stereo.
         output_path (str): The file path (including extension) where the output video will be saved.
-            The container format (e.g., MP4, MKV) is usually determined by the file extension.
         fps (int, optional): The frame rate (frames per second) for the video. Defaults to 24.
         audio_sample_rate (int | None, optional): The sample rate (e.g., 44100, 48000) for the audio.
             If the audio tensor is provided and this is None, the function attempts to infer the rate 
