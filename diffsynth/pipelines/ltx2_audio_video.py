@@ -432,7 +432,7 @@ class LTX2AudioVideoUnit_AudioRetakeEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("retake_audio", "seed", "rand_device", "retake_audio_regions"),
-            output_params=("input_latents_audio", "audio_noise", "audio_positions", "audio_latent_shape", "denoise_mask_audio", "audio_latents"),
+            output_params=("input_latents_audio", "audio_noise", "audio_positions", "audio_latent_shape", "denoise_mask_audio"),
             onload_model_names=("audio_vae_encoder",)
         )
 

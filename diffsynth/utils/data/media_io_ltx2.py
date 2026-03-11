@@ -78,6 +78,7 @@ def _prepare_audio_stream(container: av.container.Container, audio_sample_rate: 
     audio_stream.codec_context.time_base = Fraction(1, best_rate)
     return audio_stream
 
+
 def write_video_audio_ltx2(
     video: list[Image.Image],
     audio: torch.Tensor | None,
@@ -144,7 +145,13 @@ def resample_waveform(waveform: torch.Tensor, source_rate: int, target_rate: int
     return resampled.to(dtype=waveform.dtype)
 
 
-def read_audio_with_torchaudio(path: str, start_time: float = 0, duration: float | None = None, resample: bool = False, resample_rate: int = 48000) -> torch.Tensor:
+def read_audio_with_torchaudio(
+    path: str,
+    start_time: float = 0,
+    duration: float | None = None,
+    resample: bool = False,
+    resample_rate: int = 48000,
+) -> tuple[torch.Tensor, int]:
     waveform, sample_rate = torchaudio.load(path, channels_first=True)
     if resample:
         waveform = resample_waveform(waveform, sample_rate, resample_rate)
