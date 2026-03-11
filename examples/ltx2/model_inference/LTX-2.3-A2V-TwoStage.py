@@ -1,8 +1,7 @@
 import torch
 from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
 from diffsynth.utils.data.media_io_ltx2 import read_audio_with_torchaudio, write_video_audio_ltx2
-
-audio = read_audio_with_torchaudio("data/example_video_dataset/ltx2/sing.MP3")
+from modelscope import dataset_snapshot_download
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -25,7 +24,9 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
     stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2.3", origin_file_pattern="ltx-2.3-22b-distilled-lora-384.safetensors"),
 )
-prompt = "A girl is very happy, she is speaking: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
+
+dataset_snapshot_download("DiffSynth-Studio/example_video_dataset", allow_file_pattern="ltx2/*", local_dir="data/example_video_dataset")
+prompt = "A beautiful woman with a flower crown is singing happily under a blooming cherry tree."
 negative_prompt = (
     "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, "
     "grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, "
@@ -39,21 +40,26 @@ negative_prompt = (
     "pauses, incorrect timing, unnatural transitions, inconsistent framing, tilted camera, flat lighting, "
     "inconsistent tone, cinematic oversaturation, stylized filters, or AI artifacts."
 )
-height, width, num_frames = 512 * 2, 768 * 2, 121
+height, width, num_frames, frame_rate = 512 * 2, 768 * 2, 121, 24
+duration = num_frames / frame_rate
+audio, audio_sample_rate = read_audio_with_torchaudio("data/example_video_dataset/ltx2/sing.MP3", start_time=1, duration=duration)
 video, audio = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,
+    input_audio=audio,
+    audio_sample_rate=audio_sample_rate,
     seed=43,
     height=height,
     width=width,
     num_frames=num_frames,
+    frame_rate=frame_rate,
     tiled=True,
     use_two_stage_pipeline=True,
 )
 write_video_audio_ltx2(
     video=video,
     audio=audio,
-    output_path='ltx2.3_twostage.mp4',
-    fps=24,
+    output_path='ltx2.3_twostage_a2v.mp4',
+    fps=frame_rate,
     audio_sample_rate=pipe.audio_vocoder.output_sampling_rate,
 )
