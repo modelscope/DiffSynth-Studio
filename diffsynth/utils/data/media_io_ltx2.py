@@ -7,6 +7,7 @@ from PIL import Image
 import numpy as np
 from io import BytesIO
 from collections.abc import Generator, Iterator
+import torchaudio
 
 
 def _resample_audio(
@@ -135,6 +136,15 @@ def write_video_audio_ltx2(
         _write_audio(container, audio_stream, audio, audio_sample_rate)
 
     container.close()
+
+
+def read_audio_with_torchaudio(path: str, start_time: float = 0, duration: float | None = None) -> torch.Tensor:
+    waveform, sample_rate = torchaudio.load(path, channels_first=True)
+    start_frame = int(start_time * sample_rate)
+    if start_frame > waveform.shape[-1]:
+        raise ValueError(f"start_time of {start_time} exceeds max duration of {waveform.shape[-1] / sample_rate:.2f}")
+    end_frame = -1 if duration is None else int(duration * sample_rate)
+    return waveform[..., start_frame:end_frame]
 
 
 def encode_single_frame(output_file: str, image_array: np.ndarray, crf: float) -> None:
