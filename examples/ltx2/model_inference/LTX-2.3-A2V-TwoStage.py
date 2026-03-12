@@ -1,6 +1,7 @@
 import torch
 from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
-from diffsynth.utils.data.media_io_ltx2 import read_audio_with_torchaudio, write_video_audio_ltx2
+from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
+from diffsynth.utils.data.audio import read_audio
 from modelscope import dataset_snapshot_download
 
 vram_config = {
@@ -42,7 +43,7 @@ negative_prompt = (
 )
 height, width, num_frames, frame_rate = 512 * 2, 768 * 2, 121, 24
 duration = num_frames / frame_rate
-audio, audio_sample_rate = read_audio_with_torchaudio("data/example_video_dataset/ltx2/sing.MP3", start_time=1, duration=duration)
+audio, audio_sample_rate = read_audio("data/example_video_dataset/ltx2/sing.MP3", start_time=1, duration=duration)
 video, audio = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,

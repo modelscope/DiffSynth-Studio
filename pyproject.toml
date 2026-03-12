@@ -12,7 +12,6 @@ requires-python = ">=3.10.1"
 dependencies = [
     "torch>=2.0.0",
     "torchvision",
-    "torchaudio",
     "transformers",
     "imageio",
     "imageio[ffmpeg]",
@@ -47,6 +46,10 @@ npu = [
     "torch==2.7.1+cpu",
     "torch-npu==2.7.1",
     "torchvision==0.22.1+cpu"
+]
+audio = [
+    "torchaudio",
+    "torchcodec"
 ]
 
 [tool.setuptools]

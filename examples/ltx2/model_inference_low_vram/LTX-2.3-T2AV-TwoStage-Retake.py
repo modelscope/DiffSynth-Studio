@@ -1,6 +1,7 @@
 import torch
 from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
-from diffsynth.utils.data.media_io_ltx2 import read_audio_with_torchaudio, write_video_audio_ltx2
+from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
+from diffsynth.utils.data.audio import read_audio
 from modelscope import dataset_snapshot_download
 from diffsynth.utils.data import VideoData
 
@@ -48,7 +49,7 @@ path = "data/example_video_dataset/ltx2/video2.mp4"
 video = VideoData(path, height=height, width=width).raw_data()[:num_frames]
 assert len(video) == num_frames, f"Input video has {len(video)} frames, but expected {num_frames} frames based on the specified num_frames argument."
 duration = num_frames / frame_rate
-audio, audio_sample_rate = read_audio_with_torchaudio(path)
+audio, audio_sample_rate = read_audio(path)
 
 # Regenerate the video within time regions. You can specify different time regions for video frames and audio retake.
 # retake regions are in seconds, and the example below retakes video frames in the time regions of [1s, 2s] and [3s, 4s], and retakes audio in the time regions of [0s, 1s] and [4s, 5s].

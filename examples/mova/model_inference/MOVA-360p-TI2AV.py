@@ -1,7 +1,7 @@
 import torch
 from PIL import Image
 from diffsynth.pipelines.mova_audio_video import ModelConfig, MovaAudioVideoPipeline
-from diffsynth.utils.data.media_io_mova import save_video_with_audio
+from diffsynth.utils.data.audio_video import write_video_audio
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -49,4 +49,4 @@ video, audio = pipe(
     tiled=True,
     frame_rate=frame_rate,
 )
-save_video_with_audio(video, audio, "MOVA-360p-cat_singlegpu_49.mp4", fps=24, sample_rate=pipe.audio_vae.sample_rate)
+write_video_audio(video, audio, "MOVA-360p-cat.mp4", fps=24, audio_sample_rate=pipe.audio_vae.sample_rate)

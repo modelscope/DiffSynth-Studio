@@ -22,6 +22,7 @@ from ..models.ltx2_audio_vae import LTX2AudioEncoder, LTX2AudioDecoder, LTX2Voco
 from ..models.ltx2_upsampler import LTX2LatentUpsampler
 from ..models.ltx2_common import VideoLatentShape, AudioLatentShape, VideoPixelShape, get_pixel_coords, VIDEO_SCALE_FACTORS
 from ..utils.data.media_io_ltx2 import ltx2_preprocess
+from ..utils.data.audio import convert_to_stereo
 
 
 class LTX2AudioVideoPipeline(BasePipeline):
@@ -389,6 +390,7 @@ class LTX2AudioVideoUnit_InputAudioEmbedder(PipelineUnit):
             return {"audio_latents": audio_noise}
         else:
             input_audio, sample_rate = input_audio
+            input_audio = convert_to_stereo(input_audio)
             pipe.load_models_to_device(self.onload_model_names)
             input_audio = pipe.audio_processor.waveform_to_mel(input_audio.unsqueeze(0), waveform_sample_rate=sample_rate).to(dtype=pipe.torch_dtype)
             audio_input_latents = pipe.audio_vae_encoder(input_audio)
@@ -441,6 +443,7 @@ class LTX2AudioVideoUnit_AudioRetakeEmbedder(PipelineUnit):
             return {}
         else:
             input_audio, sample_rate = retake_audio
+            input_audio = convert_to_stereo(input_audio)
             pipe.load_models_to_device(self.onload_model_names)
             input_audio = pipe.audio_processor.waveform_to_mel(input_audio.unsqueeze(0), waveform_sample_rate=sample_rate).to(dtype=pipe.torch_dtype, device=pipe.device)
             input_latents_audio = pipe.audio_vae_encoder(input_audio)
