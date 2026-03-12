@@ -262,8 +262,8 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.wan_video_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
-    "diffsynth.models.mova_audo_vae.DacVAE": {
-        "diffsynth.models.mova_audo_vae.Snake1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+    "diffsynth.models.mova_audio_vae.DacVAE": {
+        "diffsynth.models.mova_audio_vae.Snake1d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.ConvTranspose1d": "diffsynth.core.vram.layers.AutoWrappedModule",
     },

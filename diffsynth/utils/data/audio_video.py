@@ -39,7 +39,7 @@ def _write_audio(
     container: av.container.Container, audio_stream: av.audio.AudioStream, samples: torch.Tensor, audio_sample_rate: int
 ) -> None:
     if samples.ndim == 1:
-        samples = samples[:, None]
+        samples = samples.unsqueeze(0)
     samples = convert_to_stereo(samples)
     assert samples.ndim == 2 and samples.shape[0] == 2, "audio samples must be [C, S] or [S], C must be 1 or 2"
     samples = samples.T

@@ -6,7 +6,6 @@ from xfuser.core.distributed import (get_sequence_parallel_rank,
                                      get_sequence_parallel_world_size,
                                      get_sp_group)
 from xfuser.core.long_ctx_attention import xFuserLongContextAttention
-import torch.distributed as dist
 
 from ... import IS_NPU_AVAILABLE
 from ...core.device import parse_nccl_backend, parse_device_type

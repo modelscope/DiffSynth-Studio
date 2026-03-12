@@ -230,7 +230,7 @@ class MovaAudioVideoUnit_InputVideoEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("input_video", "video_noise", "tiled", "tile_size", "tile_stride"),
-            output_params=("latents", "input_latents"),
+            output_params=("video_latents", "input_latents"),
             onload_model_names=("video_vae",)
         )
 
@@ -256,6 +256,7 @@ class MovaAudioVideoUnit_InputAudioEmbedder(PipelineUnit):
         if input_audio is None or not pipe.scheduler.training:
             return {"audio_latents": audio_noise}
         else:
+            pipe.load_models_to_device(self.onload_model_names)
             input_audio, sample_rate = input_audio
             input_audio = convert_to_mono(input_audio)
             input_audio = resample_waveform(input_audio, sample_rate, pipe.audio_vae.sample_rate)
