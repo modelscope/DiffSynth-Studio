@@ -65,6 +65,7 @@
    :caption: 学术导引
 
    Research_Tutorial/train_from_scratch
+   Research_Tutorial/inference_time_scaling
 
 .. toctree::
    :maxdepth: 2
