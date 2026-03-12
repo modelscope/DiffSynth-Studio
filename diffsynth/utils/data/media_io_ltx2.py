@@ -159,7 +159,7 @@ def read_audio_with_torchaudio(
     start_frame = int(start_time * sample_rate)
     if start_frame > waveform.shape[-1]:
         raise ValueError(f"start_time of {start_time} exceeds max duration of {waveform.shape[-1] / sample_rate:.2f}")
-    end_frame = -1 if duration is None else int(duration * sample_rate + start_frame)
+    end_frame = None if duration is None else int(duration * sample_rate + start_frame)
     return waveform[..., start_frame:end_frame], sample_rate
 
 
