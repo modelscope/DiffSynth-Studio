@@ -19,6 +19,7 @@ from ..models.wan_video_vae import WanVideoVAE
 from ..models.mova_audio_dit import MovaAudioDit
 from ..models.mova_audio_vae import DacVAE
 from ..models.mova_dual_tower_bridge import DualTowerConditionalBridge
+from ..utils.data.audio import convert_to_mono, resample_waveform
 
 
 class MovaAudioVideoPipeline(BasePipeline):
@@ -81,12 +82,16 @@ class MovaAudioVideoPipeline(BasePipeline):
 
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("wan_video_text_encoder")
-        pipe.video_dit, pipe.video_dit2 = model_pool.fetch_model("wan_video_dit", index=2)
+        dit = model_pool.fetch_model("wan_video_dit", index=2)
+        if isinstance(dit, list):
+            pipe.video_dit, pipe.video_dit2 = dit
+        else:
+            pipe.video_dit = dit
         pipe.audio_dit = model_pool.fetch_model("mova_audio_dit")
         pipe.dual_tower_bridge = model_pool.fetch_model("mova_dual_tower_bridge")
         pipe.video_vae = model_pool.fetch_model("wan_video_vae")
         pipe.audio_vae = model_pool.fetch_model("mova_audio_vae")
-        set_to_torch_norm([pipe.video_dit, pipe.video_dit2, pipe.audio_dit, pipe.dual_tower_bridge])
+        set_to_torch_norm([pipe.video_dit, pipe.audio_dit, pipe.dual_tower_bridge] + ([pipe.video_dit2] if pipe.video_dit2 is not None else []))
 
         # Size division factor
         if pipe.video_vae is not None:
@@ -185,7 +190,8 @@ class MovaAudioVideoPipeline(BasePipeline):
         video = self.video_vae.decode(inputs_shared["video_latents"], device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         video = self.vae_output_to_video(video)
         self.load_models_to_device(["audio_vae"])
-        audio = self.audio_vae.decode(inputs_shared["audio_latents"]).to(dtype=torch.float32, device='cpu').squeeze()
+        audio = self.audio_vae.decode(inputs_shared["audio_latents"])
+        audio = self.output_audio_format_check(audio)
         self.load_models_to_device([])
         return video, audio
 
@@ -229,17 +235,13 @@ class MovaAudioVideoUnit_InputVideoEmbedder(PipelineUnit):
         )
 
     def process(self, pipe: MovaAudioVideoPipeline, input_video, video_noise, tiled, tile_size, tile_stride):
-        if input_video is None:
+        if input_video is None or not pipe.scheduler.training:
             return {"video_latents": video_noise}
-        # TODO: check for train
-        pipe.load_models_to_device(self.onload_model_names)
-        input_video = pipe.preprocess_video(input_video)
-        input_latents = pipe.video_vae.encode(input_video, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
-        if pipe.scheduler.training:
-            return {"latents": video_noise, "input_latents": input_latents}
         else:
-            latents = pipe.scheduler.add_noise(input_latents, video_noise, timestep=pipe.scheduler.timesteps[0])
-            return {"latents": latents}
+            pipe.load_models_to_device(self.onload_model_names)
+            input_video = pipe.preprocess_video(input_video)
+            input_latents = pipe.video_vae.encode(input_video, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
+            return {"input_latents": input_latents}
 
 
 class MovaAudioVideoUnit_InputAudioEmbedder(PipelineUnit):
@@ -247,18 +249,19 @@ class MovaAudioVideoUnit_InputAudioEmbedder(PipelineUnit):
         super().__init__(
             input_params=("input_audio", "audio_noise"),
             output_params=("audio_latents", "audio_input_latents"),
-            onload_model_names=("audio_vae_encoder",)
+            onload_model_names=("audio_vae",)
         )
 
     def process(self, pipe: MovaAudioVideoPipeline, input_audio, audio_noise):
-        if input_audio is None:
+        if input_audio is None or not pipe.scheduler.training:
             return {"audio_latents": audio_noise}
         else:
-            # TODO: support audio training
-            if pipe.scheduler.training:
-                return {"audio_latents": audio_noise, "audio_input_latents": audio_noise}
-            else:
-                raise NotImplementedError("Audio-to-video not supported.")
+            input_audio, sample_rate = input_audio
+            input_audio = convert_to_mono(input_audio)
+            input_audio = resample_waveform(input_audio, sample_rate, pipe.audio_vae.sample_rate)
+            input_audio = pipe.audio_vae.preprocess(input_audio.unsqueeze(0), pipe.audio_vae.sample_rate)
+            z, _, _, _, _ = pipe.audio_vae.encode(input_audio)
+            return {"audio_input_latents": z.mode()}
 
 
 class MovaAudioVideoUnit_PromptEmbedder(PipelineUnit):
@@ -329,15 +332,16 @@ class MovaAudioVideoUnit_ImageEmbedderVAE(PipelineUnit):
         y = y.to(dtype=pipe.torch_dtype, device=pipe.device)
         return {"y": y}
 
+
 class MovaAudioVideoUnit_UnifiedSequenceParallel(PipelineUnit):
     def __init__(self):
         super().__init__(input_params=(), output_params=("use_unified_sequence_parallel",))
 
     def process(self, pipe: MovaAudioVideoPipeline):
-        if hasattr(pipe, "use_unified_sequence_parallel"):
-            if pipe.use_unified_sequence_parallel:
-                return {"use_unified_sequence_parallel": True}
-        return {}
+        if hasattr(pipe, "use_unified_sequence_parallel") and pipe.use_unified_sequence_parallel:
+            return {"use_unified_sequence_parallel": True}
+        return {"use_unified_sequence_parallel": False}
+
 
 def model_fn_mova_audio_video(
     video_dit: WanModel,
