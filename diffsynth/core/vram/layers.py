@@ -306,8 +306,8 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         self.bias = module.bias
         self.state = 0
         self.name = name
-        self.lora_A_weights = []
-        self.lora_B_weights = []
+        self.lora_A_weights = torch.nn.ParameterList()
+        self.lora_B_weights = torch.nn.ParameterList()
         self.lora_merger = None
         self.enable_fp8 = computation_dtype in [torch.float8_e4m3fn, torch.float8_e4m3fnuz]
         self.computation_device_type = parse_device_type(self.computation_device)

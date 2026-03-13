@@ -286,9 +286,9 @@ class BasePipeline(torch.nn.Module):
                 if hasattr(module, "lora_A_weights"):
                     if len(module.lora_A_weights) > 0:
                         cleared_num += 1
-                    module.lora_A_weights.clear()
+                    module.lora_A_weights = torch.nn.ParameterList()
                 if hasattr(module, "lora_B_weights"):
-                    module.lora_B_weights.clear()
+                    module.lora_B_weights = torch.nn.ParameterList()
         if verbose >= 1:
             print(f"{cleared_num} LoRA layers are cleared.")
         
