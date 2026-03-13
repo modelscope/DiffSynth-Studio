@@ -1,7 +1,5 @@
 import torch
 import torchaudio
-from torchcodec.decoders import AudioDecoder
-from torchcodec.encoders import AudioEncoder
 
 
 def convert_to_mono(audio_tensor: torch.Tensor) -> torch.Tensor:
@@ -47,6 +45,7 @@ def read_audio_with_torchcodec(
         tuple[torch.Tensor, int]: A tuple containing the audio tensor and the sample rate.
             The audio tensor shape is [C, T] where C is the number of channels and T is the number of audio frames.
     """
+    from torchcodec.decoders import AudioDecoder
     decoder = AudioDecoder(path)
     stop_seconds = None if duration is None else start_time + duration
     waveform = decoder.get_samples_played_in_range(start_seconds=start_time, stop_seconds=stop_seconds).data
@@ -102,6 +101,7 @@ def save_audio(waveform: torch.Tensor, sample_rate: int, save_path: str, backend
         waveform = waveform[0]
 
     if backend == "torchcodec":
+        from torchcodec.encoders import AudioEncoder
         encoder = AudioEncoder(waveform, sample_rate=sample_rate)
         encoder.to_file(dest=save_path)
     else:
