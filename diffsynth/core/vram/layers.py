@@ -306,8 +306,8 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         self.bias = module.bias
         self.state = 0
         self.name = name
-        self.lora_A_weights = torch.nn.ParameterList()
-        self.lora_B_weights = torch.nn.ParameterList()
+        self.lora_A_weights = []
+        self.lora_B_weights = []
         self.lora_merger = None
         self.enable_fp8 = computation_dtype in [torch.float8_e4m3fn, torch.float8_e4m3fnuz]
         self.computation_device_type = parse_device_type(self.computation_device)
@@ -417,7 +417,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
     def lora_forward(self, x, out):
         if self.lora_merger is None:
             for lora_A, lora_B in zip(self.lora_A_weights, self.lora_B_weights):
-                out = out + x @ lora_A.T @ lora_B.T
+                out = out + x @ lora_A.T.to(x.device) @ lora_B.T.to(x.device)
         else:
             lora_output = []
             for lora_A, lora_B in zip(self.lora_A_weights, self.lora_B_weights):
