@@ -203,6 +203,12 @@ Input parameters for `WanVideoPipeline` inference include:
 
 If VRAM is insufficient, please enable [VRAM Management](../Pipeline_Usage/VRAM_management.md). We provide recommended low VRAM configurations for each model in the example code, see the table in the "Model Overview" section above.
 
+### Prior-Based Step Skip
+
+For fixed identity/scene with varying motion (e.g. lip-sync, different actions), early diffusion steps are largely redundant. You can run full inference once, save latents at each step, then resume from a saved latent to run only the remaining steps — ~70% fewer steps, same quality.
+
+See [prior-based step skip example](https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/wanvideo/prior_based_step_skip) for `generate_prior.py` and `infer_from_prior.py`.
+
 ## Model Training
 
 Wan series models are uniformly trained through [`examples/wanvideo/model_training/train.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/train.py), and the script parameters include:

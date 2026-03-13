@@ -2,7 +2,7 @@ import torch, types
 import numpy as np
 from PIL import Image
 from einops import repeat
-from typing import Optional, Union
+from typing import Callable, Optional, Union
 from einops import rearrange
 import numpy as np
 from PIL import Image
@@ -247,9 +247,22 @@ class WanVideoPipeline(BasePipeline):
         # progress_bar
         progress_bar_cmd=tqdm,
         output_type: Optional[Literal["quantized", "floatpoint"]] = "quantized",
+        # Prior-based step skip: optional callback after each denoising step
+        step_callback: Optional[Callable[[int, torch.Tensor, torch.Tensor], None]] = None,
+        # Prior-based step skip: resume from saved latent (requires prior_latents + prior_timesteps)
+        prior_latents: Optional[torch.Tensor] = None,
+        prior_timesteps: Optional[torch.Tensor] = None,
+        prior_sigmas: Optional[torch.Tensor] = None,
+        start_from_step: Optional[int] = None,
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
+
+        # Prior-based step skip: override latents, timesteps, and sigmas when resuming from prior
+        if prior_latents is not None and prior_timesteps is not None and start_from_step is not None:
+            self.scheduler.timesteps = prior_timesteps.to(self.scheduler.timesteps.device)
+            if prior_sigmas is not None:
+                self.scheduler.sigmas = prior_sigmas.to(self.scheduler.sigmas.device)
         
         # Inputs
         inputs_posi = {
@@ -284,10 +297,18 @@ class WanVideoPipeline(BasePipeline):
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
 
+        # Prior-based step skip: replace latents with loaded prior
+        if prior_latents is not None and start_from_step is not None:
+            inputs_shared["latents"] = prior_latents.to(dtype=self.torch_dtype, device=self.device)
+
         # Denoise
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
-        for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
+        timesteps = self.scheduler.timesteps
+        start_idx = (start_from_step + 1) if start_from_step is not None else 0
+        for progress_id, timestep in enumerate(progress_bar_cmd(timesteps)):
+            if progress_id < start_idx:
+                continue
             # Switch DiT if necessary
             if timestep.item() < switch_DiT_boundary * 1000 and self.dit2 is not None and not models["dit"] is self.dit2:
                 self.load_models_to_device(self.in_iteration_models_2)
@@ -312,6 +333,10 @@ class WanVideoPipeline(BasePipeline):
             inputs_shared["latents"] = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], inputs_shared["latents"])
             if "first_frame_latents" in inputs_shared:
                 inputs_shared["latents"][:, :, 0:1] = inputs_shared["first_frame_latents"]
+
+            # Prior-based step skip: call optional callback after each step
+            if step_callback is not None:
+                step_callback(progress_id, inputs_shared["latents"].clone(), timestep)
         
         # VACE (TODO: remove it)
         if vace_reference_image is not None or (animate_pose_video is not None and animate_face_video is not None):
