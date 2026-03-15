@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "diffsynth"
-version = "2.0.5"
+version = "2.0.6"
 description = "Enjoy the magic of Diffusion models!"
 authors = [{name = "ModelScope Team"}]
 license = {text = "Apache-2.0"}
@@ -46,6 +46,10 @@ npu = [
     "torch==2.7.1+cpu",
     "torch-npu==2.7.1",
     "torchvision==0.22.1+cpu"
+]
+audio = [
+    "torchaudio",
+    "torchcodec"
 ]
 
 [tool.setuptools]
