@@ -83,7 +83,7 @@ class WanVideoPipeline(BasePipeline):
 
 
     def enable_usp(self):
-        from ..utils.xfuser import get_sequence_parallel_world_size, usp_attn_forward, usp_dit_forward
+        from ..utils.xfuser import get_sequence_parallel_world_size, usp_attn_forward, usp_dit_forward, usp_vace_forward
 
         for block in self.dit.blocks:
             block.self_attn.forward = types.MethodType(usp_attn_forward, block.self_attn)
@@ -92,6 +92,14 @@ class WanVideoPipeline(BasePipeline):
             for block in self.dit2.blocks:
                 block.self_attn.forward = types.MethodType(usp_attn_forward, block.self_attn)
             self.dit2.forward = types.MethodType(usp_dit_forward, self.dit2)
+        if self.vace is not None:
+            for block in self.vace.vace_blocks:
+                block.self_attn.forward = types.MethodType(usp_attn_forward, block.self_attn)
+            self.vace.forward = types.MethodType(usp_vace_forward, self.vace)
+        if self.vace2 is not None:
+            for block in self.vace2.vace_blocks:
+                block.self_attn.forward = types.MethodType(usp_attn_forward, block.self_attn)
+            self.vace2.forward = types.MethodType(usp_vace_forward, self.vace2)
         self.sp_size = get_sequence_parallel_world_size()
         self.use_unified_sequence_parallel = True
 
@@ -1303,14 +1311,7 @@ def model_fn_wan_video(
         tea_cache_update = tea_cache.check(dit, x, t_mod)
     else:
         tea_cache_update = False
-        
-    if vace_context is not None:
-        vace_hints = vace(
-            x, vace_context, context, t_mod, freqs,
-            use_gradient_checkpointing=use_gradient_checkpointing,
-            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload
-        )
-    
+
     # blocks
     if use_unified_sequence_parallel:
         if dist.is_initialized() and dist.get_world_size() > 1:
@@ -1318,6 +1319,13 @@ def model_fn_wan_video(
             pad_shape = chunks[0].shape[1] - chunks[-1].shape[1]
             chunks = [torch.nn.functional.pad(chunk, (0, 0, 0, chunks[0].shape[1]-chunk.shape[1]), value=0) for chunk in chunks]
             x = chunks[get_sequence_parallel_rank()]
+
+    if vace_context is not None:
+        vace_hints = vace(
+            x, vace_context, context, t_mod, freqs,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload
+        )
     if tea_cache_update:
         x = tea_cache.update(x)
     else:
@@ -1356,9 +1364,6 @@ def model_fn_wan_video(
             # VACE
             if vace_context is not None and block_id in vace.vace_layers_mapping:
                 current_vace_hint = vace_hints[vace.vace_layers_mapping[block_id]]
-                if use_unified_sequence_parallel and dist.is_initialized() and dist.get_world_size() > 1:
-                    current_vace_hint = torch.chunk(current_vace_hint, get_sequence_parallel_world_size(), dim=1)[get_sequence_parallel_rank()]
-                    current_vace_hint = torch.nn.functional.pad(current_vace_hint, (0, 0, 0, chunks[0].shape[1] - current_vace_hint.shape[1]), value=0)
                 x = x + current_vace_hint * vace_scale
             
             # Animate
