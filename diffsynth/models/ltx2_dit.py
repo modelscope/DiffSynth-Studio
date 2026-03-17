@@ -578,7 +578,7 @@ class PixArtAlphaTextProjection(torch.nn.Module):
         hidden_states = self.linear_2(hidden_states)
         return hidden_states
 
-@dataclass(frozen=True)
+@dataclass
 class TransformerArgs:
     x: torch.Tensor
     context: torch.Tensor
@@ -828,13 +828,11 @@ class MultiModalTransformerArgsPreprocessor:
             batch_size=transformer_args.x.shape[0],
             hidden_dtype=modality.latent.dtype,
         )
+        transformer_args.cross_positional_embeddings = cross_pe
+        transformer_args.cross_scale_shift_timestep = cross_scale_shift_timestep
+        transformer_args.cross_gate_timestep = cross_gate_timestep
 
-        return replace(
-            transformer_args,
-            cross_positional_embeddings=cross_pe,
-            cross_scale_shift_timestep=cross_scale_shift_timestep,
-            cross_gate_timestep=cross_gate_timestep,
-        )
+        return transformer_args
 
     def _prepare_cross_attention_timestep(
         self,
@@ -1030,6 +1028,7 @@ class BasicAVTransformerBlock(torch.nn.Module):
 
     def forward(  # noqa: PLR0915
         self,
+        vx, ax,
         video: TransformerArgs | None,
         audio: TransformerArgs | None,
         perturbations: BatchedPerturbationConfig | None = None,
@@ -1037,13 +1036,10 @@ class BasicAVTransformerBlock(torch.nn.Module):
         if video is None and audio is None:
             raise ValueError("At least one of video or audio must be provided")
 
-        batch_size = (video or audio).x.shape[0]
+        batch_size = vx.shape[0]
 
         if perturbations is None:
             perturbations = BatchedPerturbationConfig.empty(batch_size)
-
-        vx = video.x if video is not None else None
-        ax = audio.x if audio is not None else None
 
         run_vx = video is not None and video.enabled and vx.numel() > 0
         run_ax = audio is not None and audio.enabled and ax.numel() > 0
@@ -1217,7 +1213,7 @@ class BasicAVTransformerBlock(torch.nn.Module):
 
             del ashift_mlp, ascale_mlp, agate_mlp, ax_scaled
 
-        return replace(video, x=vx) if video is not None else None, replace(audio, x=ax) if audio is not None else None
+        return vx, ax
 
 
 def apply_cross_attention_adaln(
@@ -1589,16 +1585,22 @@ class LTXModel(torch.nn.Module):
         """Process transformer blocks for LTXAV."""
 
         # Process transformer blocks
+        vx = video.x
+        ax = audio.x
+        video.x = None
+        audio.x = None
         for block in self.transformer_blocks:
-            video, audio = gradient_checkpoint_forward(
+            vx, ax = gradient_checkpoint_forward(
                 block,
                 use_gradient_checkpointing,
                 use_gradient_checkpointing_offload,
+                vx, ax,
                 video=video,
                 audio=audio,
                 perturbations=perturbations,
             )
-
+        video.x = vx
+        audio.x = ax
         return video, audio
 
     def _process_output(
