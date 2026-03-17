@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux/Nexus-Gen/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/flux/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_nexusgen_edit.csv \
+  --dataset_base_path data/diffsynth_example_dataset/flux/Nexus-Gen \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux/Nexus-Gen/metadata.csv \
   --data_file_keys "image,nexus_gen_reference_image" \
   --max_pixels 1048576 \
   --dataset_repeat 400 \

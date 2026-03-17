@@ -4,9 +4,11 @@
 # This issue can be mitigated by using a pre-trained LoRA model to assist the training process.
 # https://www.modelscope.cn/models/ostris/zimage_turbo_training_adapter
 
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "z_image/Z-Image-Turbo/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/z_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/z_image/Z-Image-Turbo \
+  --dataset_metadata_path data/diffsynth_example_dataset/z_image/Z-Image-Turbo/metadata.csv \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
   --model_id_with_origin_paths "Tongyi-MAI/Z-Image-Turbo:transformer/*.safetensors,Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors,Tongyi-MAI/Z-Image-Turbo:vae/diffusion_pytorch_model.safetensors" \

@@ -1,7 +1,9 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "ltx2/LTX-2.3-T2AV-IC-LoRA-splited/*" --local_dir ./data/diffsynth_example_dataset
+
 # Splited Training
 accelerate launch examples/ltx2/model_training/train.py \
-  --dataset_base_path data/example_video_dataset/ltx2 \
-  --dataset_metadata_path data/example_video_dataset/ltx2_t2av_iclora.json \
+  --dataset_base_path data/diffsynth_example_dataset/ltx2/LTX-2.3-T2AV-IC-LoRA-splited \
+  --dataset_metadata_path data/diffsynth_example_dataset/ltx2/LTX-2.3-T2AV-IC-LoRA-splited/metadata.json \
   --data_file_keys "video,input_audio,in_context_videos" \
   --extra_inputs "input_audio,in_context_videos,in_context_downsample_factor,frame_rate" \
   --height 512 \

@@ -1,7 +1,9 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux2/FLUX.2-klein-base-9B/*" --local_dir ./data/diffsynth_example_dataset
+
 # This script is tested on 8*A100
 accelerate launch --config_file examples/flux2/model_training/full/accelerate_config.yaml examples/flux2/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/flux2/FLUX.2-klein-base-9B \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux2/FLUX.2-klein-base-9B/metadata.csv \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
   --model_id_with_origin_paths "black-forest-labs/FLUX.2-klein-9B:text_encoder/*.safetensors,black-forest-labs/FLUX.2-klein-base-9B:transformer/*.safetensors,black-forest-labs/FLUX.2-klein-9B:vae/diffusion_pytorch_model.safetensors" \

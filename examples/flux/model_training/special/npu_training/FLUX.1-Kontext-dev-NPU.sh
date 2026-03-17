@@ -1,9 +1,11 @@
 export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
 export CPU_AFFINITY_CONF=1
 
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux/FLUX.1-Kontext-dev/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch --config_file examples/flux/model_training/full/accelerate_config_zero2offload.yaml examples/flux/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_kontext.csv \
+  --dataset_base_path data/diffsynth_example_dataset/flux/FLUX.1-Kontext-dev \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux/FLUX.1-Kontext-dev/metadata.csv \
   --data_file_keys "image,kontext_images" \
   --max_pixels 1048576 \
   --dataset_repeat 400 \

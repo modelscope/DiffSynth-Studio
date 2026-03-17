@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux2/FLUX.2-dev/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/flux2/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/flux2/FLUX.2-dev \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux2/FLUX.2-dev/metadata.csv \
   --max_pixels 1048576 \
   --dataset_repeat 1 \
   --model_id_with_origin_paths "black-forest-labs/FLUX.2-dev:text_encoder/*.safetensors,black-forest-labs/FLUX.2-dev:vae/diffusion_pytorch_model.safetensors" \

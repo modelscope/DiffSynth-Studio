@@ -1,8 +1,8 @@
-# Example Dataset: https://modelscope.cn/datasets/DiffSynth-Studio/example_image_dataset/tree/master/layer
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "qwen_image/Qwen-Image-Layered/*" --local_dir ./data/diffsynth_example_dataset
 
 accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset/layer \
-  --dataset_metadata_path data/example_image_dataset/layer/metadata_layered.json \
+  --dataset_base_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Layered \
+  --dataset_metadata_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Layered/metadata.json \
   --data_file_keys "image,layer_input_image" \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
