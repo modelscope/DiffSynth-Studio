@@ -1,0 +1,16 @@
+accelerate launch examples/flux2/model_training/train.py \
+  --dataset_base_path /mnt/nas1/duanzhongjie.dzj/dataset/ImagePulseV2 \
+  --dataset_metadata_path /mnt/nas1/duanzhongjie.dzj/dataset/ImagePulseV2/metadata_example_ti2ti.jsonl \
+  --extra_inputs "skill_inputs" \
+  --max_pixels 1048576 \
+  --dataset_repeat 1 \
+  --model_id_with_origin_paths "black-forest-labs/FLUX.2-klein-4B:text_encoder/*.safetensors,black-forest-labs/FLUX.2-klein-base-4B:transformer/*.safetensors,black-forest-labs/FLUX.2-klein-4B:vae/diffusion_pytorch_model.safetensors" \
+  --skill_model_id_or_path "models/base" \
+  --tokenizer_path "black-forest-labs/FLUX.2-klein-4B:tokenizer/" \
+  --learning_rate 1e-4 \
+  --num_epochs 999 \
+  --remove_prefix_in_ckpt "pipe.skill_model." \
+  --output_path "./models/train/FLUX.2-klein-base-4B-skills_full" \
+  --trainable_models "skill_model" \
+  --use_gradient_checkpointing \
+  --save_steps 200

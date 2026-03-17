@@ -9,6 +9,7 @@ from ..utils.lora import GeneralLoRALoader
 from ..models.model_loader import ModelPool
 from ..utils.controlnet import ControlNetInput
 from ..core.device import get_device_name, IS_NPU_AVAILABLE
+from .skills import load_skill_model, load_skill_data_processor
 
 
 class PipelineUnit:
@@ -338,6 +339,14 @@ class BasePipeline(torch.nn.Module):
         else:
             noise_pred = noise_pred_posi
         return noise_pred
+    
+
+    def load_training_skill_model(self, model_config: ModelConfig = None):
+        if model_config is not None:
+            model_config.download_if_necessary()
+            self.skill_model = load_skill_model(model_config.path, torch_dtype=self.torch_dtype, device=self.device)
+            self.skill_data_processor = load_skill_data_processor(model_config.path)()
+
 
 
 class PipelineUnitGraph:

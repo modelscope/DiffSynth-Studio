@@ -18,6 +18,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         extra_inputs=None,
         fp8_models=None,
         offload_models=None,
+        skill_model_id_or_path=None,
         device="cpu",
         task="sft",
     ):
@@ -26,6 +27,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
         tokenizer_config = self.parse_path_or_model_id(tokenizer_path, default_value=ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="tokenizer/"))
         self.pipe = Flux2ImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config)
+        self.pipe = self.load_training_skill_model(self.pipe, skill_model_id_or_path)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
 
         # Training mode
@@ -126,6 +128,7 @@ if __name__ == "__main__":
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
+        skill_model_id_or_path=args.skill_model_id_or_path,
         task=args.task,
         device="cpu" if args.initialize_model_on_cpu else accelerator.device,
     )
