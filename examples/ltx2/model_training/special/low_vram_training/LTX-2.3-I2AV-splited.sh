@@ -16,10 +16,9 @@ accelerate launch examples/ltx2/model_training/train.py \
   --lora_target_modules "to_k,to_q,to_v,to_out.0" \
   --lora_rank 32 \
   --use_gradient_checkpointing \
-  --task "sft:data_process" \
-  --initialize_model_on_cpu
+  --task "sft:data_process"
 
-accelerate launch --config_file examples/low_vram_training/deepspeed_zero3_cpuoffload.yaml examples/ltx2/model_training/train.py \
+accelerate launch --config_file examples/ltx2/model_training/special/low_vram_training/deepspeed_zero3_cpuoffload.yaml examples/ltx2/model_training/train.py \
   --dataset_base_path ./models/train/LTX2.3-I2AV_lora-splited-cache \
   --data_file_keys "video,input_audio" \
   --extra_inputs "input_audio,input_image" \

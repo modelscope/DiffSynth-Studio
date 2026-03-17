@@ -4,35 +4,32 @@ accelerate launch examples/qwen_image/model_training/train.py \
   --max_pixels 1048576 \
   --dataset_repeat 1 \
   --model_id_with_origin_paths "Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors" \
-  --fp8_models "Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors" \
   --learning_rate 1e-4 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/Qwen-Image-LoRA-lowvram-cache" \
+  --output_path "./models/train/Qwen-Image_lora-splited-cache" \
   --lora_base_model "dit" \
   --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_out.0,to_add_out,img_mlp.net.2,img_mod.1,txt_mlp.net.2,txt_mod.1" \
   --lora_rank 32 \
+  --task "sft:data_process" \
   --use_gradient_checkpointing \
-  --use_gradient_checkpointing_offload \
   --dataset_num_workers 8 \
-  --find_unused_parameters \
-  --task "sft:data_process"
+  --find_unused_parameters
 
-accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path "./models/train/Qwen-Image-LoRA-lowvram-cache" \
+accelerate launch --config_file examples/qwen_image/model_training/special/low_vram_training/deepspeed_zero3_cpuoffload.yaml examples/qwen_image/model_training/train.py \
+  --dataset_base_path "./models/train/Qwen-Image_lora-splited-cache" \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
   --model_id_with_origin_paths "Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors" \
-  --fp8_models "Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors" \
   --learning_rate 1e-4 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/Qwen-Image-LoRA-lowvram" \
+  --output_path "./models/train/Qwen-Image_lora" \
   --lora_base_model "dit" \
   --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_out.0,to_add_out,img_mlp.net.2,img_mod.1,txt_mlp.net.2,txt_mod.1" \
   --lora_rank 32 \
+  --task "sft:train" \
   --use_gradient_checkpointing \
-  --use_gradient_checkpointing_offload \
   --dataset_num_workers 8 \
   --find_unused_parameters \
-  --task "sft:train"
+  --initialize_model_on_cpu
