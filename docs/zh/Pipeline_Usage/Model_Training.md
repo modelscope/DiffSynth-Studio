@@ -69,25 +69,13 @@ image_2.jpg,"a cat"
 
 <details>
 
-<summary>样例图像数据集</summary>
+<summary>样例数据集</summary>
 
 > ```shell
-> modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir ./data/example_image_dataset
+> modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --local_dir ./data/diffsynth_example_dataset
 > ```
 > 
 > 适用于 Qwen-Image、FLUX 等图像生成模型的训练。
-
-</details>
-
-<details>
-
-<summary>样例视频数据集</summary>
-
-> ```shell
-> modelscope download --dataset DiffSynth-Studio/example_video_dataset --local_dir ./data/example_video_dataset
-> ```
-> 
-> 适用于 Wan 等视频生成模型的训练。
 
 </details>
 

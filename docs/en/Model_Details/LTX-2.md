@@ -217,7 +217,7 @@ LTX-2 series models are uniformly trained through [`examples/ltx2/model_training
 We have built a sample video dataset for your testing. You can download this dataset with the following command:
 
 ```shell
-modelscope download --dataset DiffSynth-Studio/example_video_dataset --local_dir ./data/example_video_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --local_dir ./data/diffsynth_example_dataset
 ```
 
 We have written recommended training scripts for each model, please refer to the table in the "Model Overview" section above. For how to write model training scripts, please refer to [Model Training](../Pipeline_Usage/Model_Training.md); for more advanced training algorithms, please refer to [Training Framework Detailed Explanation](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/en/Training/).

@@ -217,7 +217,7 @@ LTX-2 系列模型统一通过 [`examples/ltx2/model_training/train.py`](https:/
 我们构建了一个样例视频数据集，以方便您进行测试，通过以下命令可以下载这个数据集：
 
 ```shell
-modelscope download --dataset DiffSynth-Studio/example_video_dataset --local_dir ./data/example_video_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --local_dir ./data/diffsynth_example_dataset
 ```
 
 我们为每个模型编写了推荐的训练脚本，请参考前文"模型总览"中的表格。关于如何编写模型训练脚本，请参考[模型训练](../Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/zh/Training/)。

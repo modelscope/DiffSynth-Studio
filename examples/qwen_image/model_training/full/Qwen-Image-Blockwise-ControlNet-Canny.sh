@@ -23,8 +23,8 @@ accelerate launch examples/qwen_image/model_training/train.py \
 # python examples/qwen_image/model_training/scripts/Qwen-Image-Blockwise-ControlNet-Initialize.py
 
 # accelerate launch examples/qwen_image/model_training/train.py \
-#   --dataset_base_path data/example_image_dataset \
-#   --dataset_metadata_path data/example_image_dataset/metadata_blockwise_controlnet_canny.csv \
+#   --dataset_base_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Blockwise-ControlNet-Canny \
+#   --dataset_metadata_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Blockwise-ControlNet-Canny/metadata.csv \
 #   --data_file_keys "image,blockwise_controlnet_image" \
 #   --max_pixels 1048576 \
 #   --dataset_repeat 50 \

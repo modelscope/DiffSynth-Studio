@@ -17,9 +17,12 @@ accelerate launch examples/flux2/model_training/train.py \
   --use_gradient_checkpointing
 
 # Edit
+
+# modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "qwen_image/Qwen-Image-Edit-2511/*" --local_dir ./data/diffsynth_example_dataset
+
 # accelerate launch examples/flux2/model_training/train.py \
-#   --dataset_base_path data/example_image_dataset \
-#   --dataset_metadata_path data/example_image_dataset/metadata_qwen_imgae_edit_multi.json \
+#   --dataset_base_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Edit-2511 \
+#   --dataset_metadata_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Edit-2511/metadata.json \
 #   --data_file_keys "image,edit_image" \
 #   --extra_inputs "edit_image" \
 #   --max_pixels 1048576 \
