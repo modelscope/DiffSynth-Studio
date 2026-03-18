@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux/FLUX.1-dev-AttriCtrl/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/flux/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_attrictrl.csv \
+  --dataset_base_path data/diffsynth_example_dataset/flux/FLUX.1-dev-AttriCtrl \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux/FLUX.1-dev-AttriCtrl/metadata.csv \
   --data_file_keys "image" \
   --max_pixels 1048576 \
   --dataset_repeat 100 \

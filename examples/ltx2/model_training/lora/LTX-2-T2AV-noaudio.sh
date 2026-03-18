@@ -1,7 +1,9 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "ltx2/LTX-2-T2AV-noaudio/*" --local_dir ./data/diffsynth_example_dataset
+
 # single stage training
 # accelerate launch examples/ltx2/model_training/train.py \
-#   --dataset_base_path data/example_video_dataset/ltx2 \
-#   --dataset_metadata_path data/example_video_dataset/ltx2_t2v.csv \
+#   --dataset_base_path data/diffsynth_example_dataset/ltx2/LTX-2-T2AV-noaudio \
+#   --dataset_metadata_path data/diffsynth_example_dataset/ltx2/LTX-2-T2AV-noaudio/metadata.csv \
 #   --height 256 \
 #   --width 384 \
 #   --num_frames 25\
@@ -20,8 +22,8 @@
 
 # Splited Training
 accelerate launch examples/ltx2/model_training/train.py \
-  --dataset_base_path data/example_video_dataset/ltx2 \
-  --dataset_metadata_path data/example_video_dataset/ltx2_t2av.csv \
+  --dataset_base_path data/diffsynth_example_dataset/ltx2/LTX-2-T2AV-noaudio \
+  --dataset_metadata_path data/diffsynth_example_dataset/ltx2/LTX-2-T2AV-noaudio/metadata.csv \
   --height 512 \
   --width 768 \
   --num_frames 121\

@@ -69,25 +69,11 @@ We have built sample datasets for your testing. To understand how the universal 
 
 <details>
 
-<summary>Sample Image Dataset</summary>
+<summary>Sample Dataset</summary>
 
 > ```shell
-> modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir ./data/example_image_dataset
+> modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --local_dir ./data/diffsynth_example_dataset
 > ```
-> 
-> Applicable to training of image generation models such as Qwen-Image and FLUX.
-
-</details>
-
-<details>
-
-<summary>Sample Video Dataset</summary>
-
-> ```shell
-> modelscope download --dataset DiffSynth-Studio/example_video_dataset --local_dir ./data/example_video_dataset
-> ```
-> 
-> Applicable to training of video generation models such as Wan.
 
 </details>
 
