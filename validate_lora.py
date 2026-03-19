@@ -28,8 +28,10 @@ def main():
     parser.add_argument("--width", type=int, default=512, help="Output width (match training resolution)")
     parser.add_argument("--controlnet_scale", type=float, default=1.0, help="ControlNet conditioning scale")
     parser.add_argument("--processor_id", type=str, default="gray", help="ControlNet processor id for SPAD inputs")
+    parser.add_argument("--controlnet_fp8", action="store_true", help="Load ControlNet in FP8 (may degrade fused LoRA quality)")
     parser.add_argument("--max_samples", type=int, default=None, help="Max samples (None=all)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing outputs instead of skipping")
     
     args = parser.parse_args()
     
@@ -75,12 +77,13 @@ def main():
     }
     
     vram_limit = torch.cuda.mem_get_info()[1] / (1024 ** 3) - 0.5
+    controlnet_vram_config = vram_config if args.controlnet_fp8 else {}
     model_configs = [
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors", **vram_config),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", **vram_config),
-        ModelConfig(model_id="InstantX/FLUX.1-dev-Controlnet-Union-alpha", origin_file_pattern="diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="InstantX/FLUX.1-dev-Controlnet-Union-alpha", origin_file_pattern="diffusion_pytorch_model.safetensors", **controlnet_vram_config),
     ]
     
     pipe = FluxImagePipeline.from_pretrained(
@@ -114,6 +117,9 @@ def main():
     csv_base = Path(args.metadata_csv).parent
     
     for idx, sample in enumerate(tqdm(samples, desc="Generating")):
+        output_path = output_dir / "output" / f"output_{idx:04d}.png"
+        if output_path.exists() and not args.overwrite:
+            continue
         # Load SPAD input and ground truth
         controlnet_key = "controlnet_image" if "controlnet_image" in sample else "input_image"
         if controlnet_key not in sample:
@@ -146,7 +152,7 @@ def main():
         
         # Save
         control_img.save(output_dir / "input" / f"input_{idx:04d}.png")
-        result.save(output_dir / "output" / f"output_{idx:04d}.png")
+        result.save(output_path)
         gt_img.save(output_dir / "ground_truth" / f"gt_{idx:04d}.png")
     
     print()

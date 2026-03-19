@@ -19,12 +19,16 @@ class GeneralLoRALoader:
             if lora_B_key not in key:
                 continue
             keys = key.split(".")
-            if len(keys) > keys.index(lora_B_key) + 2:
-                keys.pop(keys.index(lora_B_key) + 1)
+            # Drop any token immediately after lora_B/lora_up (e.g., "default")
+            while len(keys) > keys.index(lora_B_key) + 1:
+                if keys[keys.index(lora_B_key) + 1] in ("default", "weight", "bias"):
+                    keys.pop(keys.index(lora_B_key) + 1)
+                else:
+                    break
             keys.pop(keys.index(lora_B_key))
             if keys[0] == "diffusion_model":
                 keys.pop(0)
-            keys.pop(-1)
+            # Do not drop the parameter name; keep it so we include the leaf module (e.g., attn.a_to_qkv)
             target_name = ".".join(keys)
             lora_name_dict[target_name] = (key, key.replace(lora_B_key, lora_A_key))
         return lora_name_dict

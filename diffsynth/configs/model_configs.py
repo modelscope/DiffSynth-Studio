@@ -354,6 +354,15 @@ flux_series = [
         "extra_kwargs": {"num_joint_blocks": 6, "num_single_blocks": 0, "additional_input_dim": 4},
     },
     {
+        # Randomly initialized ControlNet for training from scratch (created by init_controlnet.py)
+        # Smaller version: 4 joint blocks, 6 single blocks
+        "model_hash": "ed97cf6799077468673f5b2b115b9b16",
+        "model_name": "flux_controlnet",
+        "model_class": "diffsynth.models.flux_controlnet.FluxControlNet",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_controlnet.FluxControlNetStateDictConverter",
+        "extra_kwargs": {"num_joint_blocks": 4, "num_single_blocks": 6, "additional_input_dim": 0},
+    },
+    {
         # Example: ModelConfig(model_id="InstantX/FLUX.1-dev-Controlnet-Union-alpha", origin_file_pattern="diffusion_pytorch_model.safetensors")
         "model_hash": "78d18b9101345ff695f312e7e62538c0",
         "model_name": "flux_controlnet",

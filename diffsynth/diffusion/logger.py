@@ -24,7 +24,9 @@ class ModelLogger:
             state_dict = self.state_dict_converter(state_dict)
             os.makedirs(self.output_path, exist_ok=True)
             path = os.path.join(self.output_path, f"epoch-{epoch_id}.safetensors")
+            print(f"[Checkpoint] Saving to: {os.path.abspath(path)}")
             accelerator.save(state_dict, path, safe_serialization=True)
+            print(f"[Checkpoint] ✓ Saved epoch {epoch_id} checkpoint ({len(state_dict)} parameters)")
 
 
     def on_training_end(self, accelerator: Accelerator, model: torch.nn.Module, save_steps=None):
@@ -40,4 +42,6 @@ class ModelLogger:
             state_dict = self.state_dict_converter(state_dict)
             os.makedirs(self.output_path, exist_ok=True)
             path = os.path.join(self.output_path, file_name)
+            print(f"[Checkpoint] Saving to: {os.path.abspath(path)}")
             accelerator.save(state_dict, path, safe_serialization=True)
+            print(f"[Checkpoint] ✓ Saved {file_name} ({len(state_dict)} parameters)")

@@ -106,7 +106,8 @@ def generate_metadata_csv(
         metadata.append({
             'image': rgb_rel,
             'prompt': prompt,
-            'input_image': spad_rel,  # SPAD as input conditioning (not controlnet!)
+            # FLUX ControlNet expects `controlnet_image`
+            'controlnet_image': spad_rel,
         })
     
     # Use sklearn train_test_split - EXACTLY like SD1.5 ControlNet setup
@@ -120,7 +121,7 @@ def generate_metadata_csv(
     print(f"[Split] Val:   {len(metadata_val)} samples")
     
     # Write CSVs
-    fieldnames = ['image', 'prompt', 'input_image']  # Use input_image for FLUX conditioning
+    fieldnames = ['image', 'prompt', 'controlnet_image']
     
     # Training CSV
     train_csv = output_csv.parent / f"{output_csv.stem}_train.csv"
@@ -152,11 +153,10 @@ def generate_metadata_csv(
     print(f"     - {val_csv} (validation)")
     print(f"\nNext steps:")
     print(f"1. The 16-bit grayscale SPAD images will be converted to RGB on-the-fly during training")
-    print(f"2. Update train_spad_controlnet.sh:")
-    print(f"   DATASET_PATH=\"{output_csv.parent.absolute()}\"")
-    print(f"   In the training command, set:")
-    print(f"   --dataset_metadata_path \"{output_csv.name}\"")
-    print(f"3. Run: bash train_spad_controlnet.sh")
+    print(f"2. Point your training script (e.g., train_lora.sh) to:")
+    print(f"   --dataset_base_path \"{output_csv.parent.absolute()}\"")
+    print(f"   --dataset_metadata_path \"{train_csv.name}\"")
+    print(f"3. Use metadata_val.csv for validation scripts")
 
 
 def main():

@@ -107,7 +107,8 @@ class FluxLoRALoader(GeneralLoRALoader):
         
         model_resource = guess_resource(state_dict)
         if model_resource is None:
-            return state_dict
+            # Fall back to general LoRA naming (handles PEFT default tokens)
+            return super().convert_state_dict(state_dict)
 
         rename_dict = self.diffusers_rename_dict if model_resource == 'diffusers' else self.civitai_rename_dict
         def guess_alpha(state_dict):

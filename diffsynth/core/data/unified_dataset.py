@@ -80,7 +80,14 @@ class UnifiedDataset(torch.utils.data.Dataset):
             self.data = metadata
         else:
             metadata = pandas.read_csv(metadata_path)
-            self.data = [metadata.iloc[i].to_dict() for i in range(len(metadata))]
+            # Convert NaN to empty string for prompt field (SPAD fix)
+            self.data = []
+            for i in range(len(metadata)):
+                row_dict = metadata.iloc[i].to_dict()
+                # Ensure prompt is always a string (handle NaN from empty CSV cells)
+                if 'prompt' in row_dict and pandas.isna(row_dict['prompt']):
+                    row_dict['prompt'] = ""
+                self.data.append(row_dict)
 
     def __getitem__(self, data_id):
         if self.load_from_cache:
