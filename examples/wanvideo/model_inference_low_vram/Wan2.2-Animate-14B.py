@@ -37,15 +37,15 @@ dataset_snapshot_download(
 
 # Animate
 input_image = Image.open("data/examples/wan/animate/animate_input_image.png")
-animate_pose_video = VideoData("data/examples/wan/animate/animate_pose_video.mp4").raw_data()[:81-4]
-animate_face_video = VideoData("data/examples/wan/animate/animate_face_video.mp4").raw_data()[:81-4]
+animate_pose_video = VideoData("data/examples/wan/animate/animate_pose_video.mp4").raw_data()[:77]
+animate_face_video = VideoData("data/examples/wan/animate/animate_face_video.mp4").raw_data()[:77]
 video = pipe(
     prompt="视频中的人在做动作",
     seed=0, tiled=True,
     input_image=input_image,
     animate_pose_video=animate_pose_video,
     animate_face_video=animate_face_video,
-    num_frames=81, height=720, width=1280,
+    num_frames=77, height=720, width=1280,
     num_inference_steps=20, cfg_scale=1,
 )
 save_video(video, "video_1_Wan2.2-Animate-14B.mp4", fps=15, quality=5)
@@ -56,10 +56,10 @@ lora_state_dict = load_state_dict("models/Wan-AI/Wan2.2-Animate-14B/relighting_l
 lora_state_dict = {i: lora_state_dict[i].to(torch.bfloat16) for i in lora_state_dict}
 pipe.load_lora(pipe.dit, state_dict=lora_state_dict)
 input_image = Image.open("data/examples/wan/animate/replace_input_image.png")
-animate_pose_video = VideoData("data/examples/wan/animate/replace_pose_video.mp4").raw_data()[:81-4]
-animate_face_video = VideoData("data/examples/wan/animate/replace_face_video.mp4").raw_data()[:81-4]
-animate_inpaint_video = VideoData("data/examples/wan/animate/replace_inpaint_video.mp4").raw_data()[:81-4]
-animate_mask_video = VideoData("data/examples/wan/animate/replace_mask_video.mp4").raw_data()[:81-4]
+animate_pose_video = VideoData("data/examples/wan/animate/replace_pose_video.mp4").raw_data()[:77]
+animate_face_video = VideoData("data/examples/wan/animate/replace_face_video.mp4").raw_data()[:77]
+animate_inpaint_video = VideoData("data/examples/wan/animate/replace_inpaint_video.mp4").raw_data()[:77]
+animate_mask_video = VideoData("data/examples/wan/animate/replace_mask_video.mp4").raw_data()[:77]
 video = pipe(
     prompt="视频中的人在做动作",
     seed=0, tiled=True,
@@ -68,7 +68,8 @@ video = pipe(
     animate_face_video=animate_face_video,
     animate_inpaint_video=animate_inpaint_video,
     animate_mask_video=animate_mask_video,
-    num_frames=81, height=720, width=1280,
+    num_frames=77, height=720, width=1280,
     num_inference_steps=20, cfg_scale=1,
 )
 save_video(video, "video_2_Wan2.2-Animate-14B.mp4", fps=15, quality=5)
+

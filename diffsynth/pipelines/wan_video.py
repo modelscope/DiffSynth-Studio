@@ -66,7 +66,6 @@ class WanVideoPipeline(BasePipeline):
             WanVideoUnit_FunCameraControl(),
             WanVideoUnit_SpeedControl(),
             WanVideoUnit_VACE(),
-            WanVideoUnit_AnimateVideoSplit(),
             WanVideoUnit_AnimatePoseLatents(),
             WanVideoUnit_AnimateFacePixelValues(),
             WanVideoUnit_AnimateInpaint(),
@@ -351,12 +350,15 @@ class WanVideoUnit_ShapeChecker(PipelineUnit):
 class WanVideoUnit_NoiseInitializer(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("height", "width", "num_frames", "seed", "rand_device", "vace_reference_image"),
+            input_params=("height", "width", "num_frames", "seed", "rand_device", "vace_reference_image", "input_image", "animate_pose_video"),
             output_params=("noise",)
         )
 
-    def process(self, pipe: WanVideoPipeline, height, width, num_frames, seed, rand_device, vace_reference_image):
+    def process(self, pipe: WanVideoPipeline, height, width, num_frames, seed, rand_device, vace_reference_image, input_image, animate_pose_video):
         length = (num_frames - 1) // 4 + 1
+        # For wan-animate, input_image is a single reference frame; align time dimension.
+        if input_image is not None and animate_pose_video is not None:
+            length += 1
         if vace_reference_image is not None:
             f = len(vace_reference_image) if isinstance(vace_reference_image, list) else 1
             length += f
@@ -371,12 +373,12 @@ class WanVideoUnit_NoiseInitializer(PipelineUnit):
 class WanVideoUnit_InputVideoEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("input_video", "noise", "tiled", "tile_size", "tile_stride", "vace_reference_image"),
+            input_params=("input_video", "noise", "tiled", "tile_size", "tile_stride", "vace_reference_image", "input_image", "animate_pose_video"),
             output_params=("latents", "input_latents"),
             onload_model_names=("vae",)
         )
 
-    def process(self, pipe: WanVideoPipeline, input_video, noise, tiled, tile_size, tile_stride, vace_reference_image):
+    def process(self, pipe: WanVideoPipeline, input_video, noise, tiled, tile_size, tile_stride, vace_reference_image, input_image, animate_pose_video):
         if input_video is None:
             return {"latents": noise}
         pipe.load_models_to_device(self.onload_model_names)
@@ -388,6 +390,11 @@ class WanVideoUnit_InputVideoEmbedder(PipelineUnit):
             vace_reference_image = pipe.preprocess_video(vace_reference_image)
             vace_reference_latents = pipe.vae.encode(vace_reference_image, device=pipe.device).to(dtype=pipe.torch_dtype, device=pipe.device)
             input_latents = torch.concat([vace_reference_latents, input_latents], dim=2)
+        # For wan-animate, prepend the single reference frame latent
+        if input_image is not None and animate_pose_video is not None:
+            input_image = pipe.preprocess_video([input_image])
+            input_image_latents = pipe.vae.encode(input_image, device=pipe.device).to(dtype=pipe.torch_dtype, device=pipe.device)
+            input_latents = torch.concat([input_image_latents, input_latents], dim=2)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
         else:
@@ -901,27 +908,6 @@ class WanVideoPostUnit_S2V(PipelineUnit):
             return {}
         latents = torch.cat([motion_latents, latents[:,:,1:]], dim=2)
         return {"latents": latents}
-
-
-class WanVideoUnit_AnimateVideoSplit(PipelineUnit):
-    def __init__(self):
-        super().__init__(
-            input_params=("input_video", "animate_pose_video", "animate_face_video", "animate_inpaint_video", "animate_mask_video"),
-            output_params=("animate_pose_video", "animate_face_video", "animate_inpaint_video", "animate_mask_video")
-        )
-
-    def process(self, pipe: WanVideoPipeline, input_video, animate_pose_video, animate_face_video, animate_inpaint_video, animate_mask_video):
-        if input_video is None:
-            return {}
-        if animate_pose_video is not None:
-            animate_pose_video = animate_pose_video[:len(input_video) - 4]
-        if animate_face_video is not None:
-            animate_face_video = animate_face_video[:len(input_video) - 4]
-        if animate_inpaint_video is not None:
-            animate_inpaint_video = animate_inpaint_video[:len(input_video) - 4]
-        if animate_mask_video is not None:
-            animate_mask_video = animate_mask_video[:len(input_video) - 4]
-        return {"animate_pose_video": animate_pose_video, "animate_face_video": animate_face_video, "animate_inpaint_video": animate_inpaint_video, "animate_mask_video": animate_mask_video}
 
 
 class WanVideoUnit_AnimatePoseLatents(PipelineUnit):
