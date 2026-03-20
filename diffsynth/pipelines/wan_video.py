@@ -1399,7 +1399,7 @@ def model_fn_wan_video(
         context = torch.cat([clip_embdding, context], dim=1)
         
     # Camera control
-    if dit.wantodance_enable_global and int(wantodance_fps + 0.5) != 30:
+    if hasattr(dit, "wantodance_enable_global") and dit.wantodance_enable_global and int(wantodance_fps + 0.5) != 30:
         x = dit.patchify(x, control_camera_latents_input, enable_wantodance_global=True)
     else:
         x = dit.patchify(x, control_camera_latents_input)
