@@ -133,7 +133,7 @@ Anima models are trained through [`examples/anima/model_training/train.py`](http
 We provide a sample image dataset for testing:
 
 ```shell
-modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir ./data/example_image_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --local_dir ./data/diffsynth_example_dataset
 ```
 
 For training script details, refer to [Model Training](../Pipeline_Usage/Model_Training.md). For advanced training techniques, see [Training Framework Documentation](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/zh/Training/).

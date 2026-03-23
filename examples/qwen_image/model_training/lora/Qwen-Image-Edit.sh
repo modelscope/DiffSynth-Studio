@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "qwen_image/Qwen-Image-Edit/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_edit.csv \
+  --dataset_base_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Edit \
+  --dataset_metadata_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Edit/metadata.csv \
   --data_file_keys "image,edit_image" \
   --extra_inputs "edit_image" \
   --max_pixels 1048576 \

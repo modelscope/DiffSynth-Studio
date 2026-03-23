@@ -307,6 +307,13 @@ wan_series = [
         "model_class": "diffsynth.models.wav2vec.WanS2VAudioEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.wans2v_audio_encoder.WanS2VAudioEncoderStateDictConverter",
     },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/WanToDance-14B", origin_file_pattern="global_model.safetensors")
+        "model_hash": "eb18873fc0ba77b541eb7b62dbcd2059",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 36, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06, 'wantodance_enable_music_inject': True, 'wantodance_music_inject_layers': [0, 4, 8, 12, 16, 20, 24, 27], 'wantodance_enable_refimage': True, 'has_ref_conv': True, 'wantodance_enable_refface': False, 'wantodance_enable_global': True, 'wantodance_enable_dynamicfps': True, 'wantodance_enable_unimodel': True}
+    },
 ]
 
 flux_series = [
@@ -596,6 +603,13 @@ z_image_series = [
         "model_class": "diffsynth.models.z_image_text_encoder.ZImageTextEncoder",
         "extra_kwargs": {"model_size": "0.6B"},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.z_image_text_encoder.ZImageTextEncoderStateDictConverter",
+    },
+    {
+        # To ensure compatibility with the `model.diffusion_model` prefix introduced by other frameworks.
+        "model_hash": "8cf241a0d32f93d5de368502a086852f",
+        "model_name": "z_image_dit",
+        "model_class": "diffsynth.models.z_image_dit.ZImageDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.z_image_dit.ZImageDiTStateDictConverter",
     },
 ]
 """

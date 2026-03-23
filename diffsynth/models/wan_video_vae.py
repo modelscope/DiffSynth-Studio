@@ -1247,6 +1247,22 @@ class WanVideoVAE(nn.Module):
         return videos
 
 
+    def encode_framewise(self, videos, device):
+        hidden_states = []
+        for i in range(videos.shape[2]):
+            hidden_states.append(self.single_encode(videos[:, :, i:i+1], device))
+        hidden_states = torch.concat(hidden_states, dim=2)
+        return hidden_states
+    
+
+    def decode_framewise(self, hidden_states, device):
+        video = []
+        for i in range(hidden_states.shape[2]):
+            video.append(self.single_decode(hidden_states[:, :, i:i+1], device))
+        video = torch.concat(video, dim=2)
+        return video
+
+
     @staticmethod
     def state_dict_converter():
         return WanVideoVAEStateDictConverter()

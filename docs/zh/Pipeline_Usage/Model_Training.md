@@ -69,25 +69,13 @@ image_2.jpg,"a cat"
 
 <details>
 
-<summary>样例图像数据集</summary>
+<summary>样例数据集</summary>
 
 > ```shell
-> modelscope download --dataset DiffSynth-Studio/example_image_dataset --local_dir ./data/example_image_dataset
+> modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --local_dir ./data/diffsynth_example_dataset
 > ```
 > 
 > 适用于 Qwen-Image、FLUX 等图像生成模型的训练。
-
-</details>
-
-<details>
-
-<summary>样例视频数据集</summary>
-
-> ```shell
-> modelscope download --dataset DiffSynth-Studio/example_video_dataset --local_dir ./data/example_video_dataset
-> ```
-> 
-> 适用于 Wan 等视频生成模型的训练。
 
 </details>
 
@@ -243,3 +231,116 @@ accelerate launch --config_file examples/qwen_image/model_training/full/accelera
 * 少数模型包含冗余参数，例如 Qwen-Image 的 DiT 部分最后一层的文本编码部分，在训练这些模型时，需设置 `--find_unused_parameters` 避免在多 GPU 训练中报错。出于对开源社区模型兼容性的考虑，我们不打算删除这些冗余参数。
 * Diffusion 模型的损失函数值与实际效果的关系不大，因此我们在训练过程中不会记录损失函数值。我们建议把 `--num_epochs` 设置为足够大的数值，边训边测，直至效果收敛后手动关闭训练程序。
 * `--use_gradient_checkpointing` 通常是开启的，除非 GPU 显存足够；`--use_gradient_checkpointing_offload` 则按需开启，详见 [`diffsynth.core.gradient`](../API_Reference/core/gradient.md)。
+
+## 低显存训练
+如果想在低显存显卡上完成 LoRA 模型训练，可以同时采用 [两阶段拆分训练](../Training/Split_Training.md) 和 `deepspeed_zero3_offload` 训练。 首先，将前处理过程拆分到第一阶段，将计算结果存储到硬盘中。其次，在第二阶段从硬盘中读取这些结果并进行去噪模型的训练，训练通过采用 `deepspeed_zero3_offload`，将训练参数和优化器状态 offload 到 cpu 或者 disk 上。我们为部分模型提供了样例，主要是通过 `--config_file` 指定 `deepspeed` 配置。
+
+需要注意的是，`deepspeed_zero3_offload` 模式与 `pytorch` 原生的梯度检查点机制不兼容，我们为此对 `deepspeed` 的`checkpointing` 接口做了适配。用户需要在 `deepspeed` 配置中填写 `activation_checkpointing` 字段以启用梯度检查点。
+
+以下为 Qwen-Image 模型的低显存模型训练脚本：
+```shell
+accelerate launch examples/qwen_image/model_training/train.py \
+  --dataset_base_path data/example_image_dataset \
+  --dataset_metadata_path data/example_image_dataset/metadata.csv \
+  --max_pixels 1048576 \
+  --dataset_repeat 1 \
+  --model_id_with_origin_paths "Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors" \
+  --learning_rate 1e-4 \
+  --num_epochs 5 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/Qwen-Image_lora-splited-cache" \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_out.0,to_add_out,img_mlp.net.2,img_mod.1,txt_mlp.net.2,txt_mod.1" \
+  --lora_rank 32 \
+  --task "sft:data_process" \
+  --use_gradient_checkpointing \
+  --dataset_num_workers 8 \
+  --find_unused_parameters
+
+accelerate launch --config_file examples/qwen_image/model_training/special/low_vram_training/deepspeed_zero3_cpuoffload.yaml examples/qwen_image/model_training/train.py \
+  --dataset_base_path "./models/train/Qwen-Image_lora-splited-cache" \
+  --max_pixels 1048576 \
+  --dataset_repeat 50 \
+  --model_id_with_origin_paths "Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors" \
+  --learning_rate 1e-4 \
+  --num_epochs 5 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/Qwen-Image_lora" \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_out.0,to_add_out,img_mlp.net.2,img_mod.1,txt_mlp.net.2,txt_mod.1" \
+  --lora_rank 32 \
+  --task "sft:train" \
+  --use_gradient_checkpointing \
+  --dataset_num_workers 8 \
+  --find_unused_parameters \
+  --initialize_model_on_cpu
+```
+
+其中，`accelerate` 和 `deepspeed` 的配置文件如下：
+
+```yaml
+compute_environment: LOCAL_MACHINE
+debug: true
+deepspeed_config:
+  deepspeed_config_file: examples/qwen_image/model_training/special/low_vram_training/ds_z3_cpuoffload.json
+  zero3_init_flag: true
+distributed_type: DEEPSPEED
+downcast_bf16: 'no'
+enable_cpu_affinity: false
+machine_rank: 0
+main_training_function: main
+num_machines: 1
+num_processes: 1
+rdzv_backend: static
+same_network: true
+tpu_env: []
+tpu_use_cluster: false
+tpu_use_sudo: false
+use_cpu: false
+```
+
+```json
+{
+    "fp16": {
+        "enabled": "auto",
+        "loss_scale": 0,
+        "loss_scale_window": 1000,
+        "initial_scale_power": 16,
+        "hysteresis": 2,
+        "min_loss_scale": 1
+    },
+    "bf16": {
+        "enabled": "auto"
+    },
+    "zero_optimization": {
+        "stage": 3,
+        "offload_optimizer": {
+            "device": "cpu",
+            "pin_memory": true
+        },
+        "offload_param": {
+            "device": "cpu",
+            "pin_memory": true
+        },
+        "overlap_comm": false,
+        "contiguous_gradients": true,
+        "sub_group_size": 1e9,
+        "reduce_bucket_size": 5e7,
+        "stage3_prefetch_bucket_size": 5e7,
+        "stage3_param_persistence_threshold": 1e5,
+        "stage3_max_live_parameters": 1e8,
+        "stage3_max_reuse_distance": 1e8,
+        "stage3_gather_16bit_weights_on_model_save": true
+    },
+    "activation_checkpointing": {
+        "partition_activations": false,
+        "cpu_checkpointing": false,
+        "contiguous_memory_optimization": false
+    },
+    "gradient_accumulation_steps": "auto",
+    "gradient_clipping": "auto",
+    "train_batch_size": "auto",
+    "train_micro_batch_size_per_gpu": "auto",
+    "wall_clock_breakdown": false
+}
+```

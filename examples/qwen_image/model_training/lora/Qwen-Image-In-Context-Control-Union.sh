@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "qwen_image/Qwen-Image-In-Context-Control-Union/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path "data/example_image_dataset" \
-  --dataset_metadata_path data/example_image_dataset/metadata_qwenimage_context.csv \
+  --dataset_base_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-In-Context-Control-Union \
+  --dataset_metadata_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-In-Context-Control-Union/metadata.csv \
   --data_file_keys "image,context_image" \
   --max_pixels 1048576 \
   --dataset_repeat 50 \

@@ -1,7 +1,9 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "ltx2/LTX-2-T2AV-splited/*" --local_dir ./data/diffsynth_example_dataset
+
 # Splited Training
 accelerate launch examples/ltx2/model_training/train.py \
-  --dataset_base_path data/example_video_dataset/ltx2 \
-  --dataset_metadata_path data/example_video_dataset/ltx2_t2av.csv \
+  --dataset_base_path data/diffsynth_example_dataset/ltx2/LTX-2-T2AV-splited \
+  --dataset_metadata_path data/diffsynth_example_dataset/ltx2/LTX-2-T2AV-splited/metadata.csv \
   --data_file_keys "video,input_audio" \
   --extra_inputs "input_audio" \
   --height 512 \

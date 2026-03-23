@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "wanvideo/Video-As-Prompt-Wan2.1-14B/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/wanvideo/model_training/train.py \
-  --dataset_base_path data/example_video_dataset \
-  --dataset_metadata_path data/example_video_dataset/metadata_vap.csv \
+  --dataset_base_path data/diffsynth_example_dataset/wanvideo/Video-As-Prompt-Wan2.1-14B \
+  --dataset_metadata_path data/diffsynth_example_dataset/wanvideo/Video-As-Prompt-Wan2.1-14B/metadata.csv \
   --data_file_keys "video,vap_video" \
   --height 480 \
   --width 832 \
