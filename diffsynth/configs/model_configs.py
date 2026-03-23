@@ -604,6 +604,13 @@ z_image_series = [
         "extra_kwargs": {"model_size": "0.6B"},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.z_image_text_encoder.ZImageTextEncoderStateDictConverter",
     },
+    {
+        # To ensure compatibility with the `model.diffusion_model` prefix introduced by other frameworks.
+        "model_hash": "8cf241a0d32f93d5de368502a086852f",
+        "model_name": "z_image_dit",
+        "model_class": "diffsynth.models.z_image_dit.ZImageDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.z_image_dit.ZImageDiTStateDictConverter",
+    },
 ]
 """
 Offical model repo: https://www.modelscope.cn/models/Lightricks/LTX-2
