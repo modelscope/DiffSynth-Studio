@@ -2,6 +2,7 @@
 /models
 /scripts
 /diffusers
+/.vscode
 *.pkl
 *.safetensors
 *.pth

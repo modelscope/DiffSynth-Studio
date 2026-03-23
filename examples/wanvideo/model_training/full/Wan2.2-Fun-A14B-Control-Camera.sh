@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "wanvideo/Wan2.2-Fun-A14B-Control-Camera/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/wanvideo/model_training/train.py \
-  --dataset_base_path data/example_video_dataset \
-  --dataset_metadata_path data/example_video_dataset/metadata_camera_control.csv \
+  --dataset_base_path data/diffsynth_example_dataset/wanvideo/Wan2.2-Fun-A14B-Control-Camera \
+  --dataset_metadata_path data/diffsynth_example_dataset/wanvideo/Wan2.2-Fun-A14B-Control-Camera/metadata.csv \
   --data_file_keys "video,control_video,reference_image" \
   --height 480 \
   --width 832 \
@@ -17,8 +19,8 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
 # boundary corresponds to timesteps [900, 1000]
 
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/wanvideo/model_training/train.py \
-  --dataset_base_path data/example_video_dataset \
-  --dataset_metadata_path data/example_video_dataset/metadata_camera_control.csv \
+  --dataset_base_path data/diffsynth_example_dataset/wanvideo/Wan2.2-Fun-A14B-Control-Camera \
+  --dataset_metadata_path data/diffsynth_example_dataset/wanvideo/Wan2.2-Fun-A14B-Control-Camera/metadata.csv \
   --data_file_keys "video,control_video,reference_image" \
   --height 480 \
   --width 832 \

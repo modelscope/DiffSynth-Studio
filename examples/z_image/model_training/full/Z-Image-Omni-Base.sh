@@ -1,8 +1,10 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "z_image/Z-Image-Omni-Base/*" --local_dir ./data/diffsynth_example_dataset
+
 # This example is tested on 8*A100
 # Text to image training
 accelerate launch --config_file examples/z_image/model_training/full/accelerate_config.yaml examples/z_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/z_image/Z-Image-Omni-Base \
+  --dataset_metadata_path data/diffsynth_example_dataset/z_image/Z-Image-Omni-Base/metadata.csv \
   --max_pixels 1048576 \
   --dataset_repeat 400 \
   --model_id_with_origin_paths "Tongyi-MAI/Z-Image-Omni-Base:transformer/*.safetensors,Tongyi-MAI/Z-Image-Omni-Base:siglip/model.safetensors,Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors,Tongyi-MAI/Z-Image-Turbo:vae/diffusion_pytorch_model.safetensors" \
@@ -17,8 +19,8 @@ accelerate launch --config_file examples/z_image/model_training/full/accelerate_
 
 # Image(s) to image training
 # accelerate launch --config_file examples/z_image/model_training/full/accelerate_config.yaml examples/z_image/model_training/train.py \
-#   --dataset_base_path data/example_image_dataset \
-#   --dataset_metadata_path data/example_image_dataset/metadata_qwen_imgae_edit_multi.json \
+#   --dataset_base_path data/diffsynth_example_dataset/z_image/Z-Image-Omni-Base \
+#   --dataset_metadata_path data/diffsynth_example_dataset/z_image/Z-Image-Omni-Base/metadata.csv \
 #   --data_file_keys "image,edit_image" \
 #   --extra_inputs "edit_image" \
 #   --max_pixels 1048576 \

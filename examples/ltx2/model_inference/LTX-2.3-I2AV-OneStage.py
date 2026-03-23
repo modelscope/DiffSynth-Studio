@@ -45,7 +45,6 @@ video, audio = pipe(
     input_images=[image],
     input_images_indexes=[0],
     input_images_strength=1.0,
-    num_inference_steps=40,
 )
 write_video_audio_ltx2(
     video=video,

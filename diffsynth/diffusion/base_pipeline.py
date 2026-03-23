@@ -147,6 +147,12 @@ class BasePipeline(torch.nn.Module):
         video = [self.vae_output_to_image(image, pattern="H W C", min_value=min_value, max_value=max_value) for image in vae_output]
         return video
 
+    def output_audio_format_check(self, audio_output):
+        # output standard foramt: [C, T], output dtype: float()
+        # remove batch dim
+        if audio_output.ndim == 3:
+            audio_output = audio_output.squeeze(0)
+        return audio_output.float()
 
     def load_models_to_device(self, model_names):
         if self.vram_management_enabled:

@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux/FLEX.2-preview/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/flux/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/flux/FLEX.2-preview \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux/FLEX.2-preview/metadata.csv \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
   --model_id_with_origin_paths "ostris/Flex.2-preview:Flex.2-preview.safetensors,black-forest-labs/FLUX.1-dev:text_encoder/model.safetensors,black-forest-labs/FLUX.1-dev:text_encoder_2/*.safetensors,black-forest-labs/FLUX.1-dev:ae.safetensors" \

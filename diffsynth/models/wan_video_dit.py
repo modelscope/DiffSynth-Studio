@@ -6,6 +6,7 @@ from typing import Tuple, Optional
 from einops import rearrange
 from .wan_video_camera_controller import SimpleAdapter
 from ..core.gradient import gradient_checkpoint_forward
+from .wantodance import WanToDanceRotaryEmbedding, WanToDanceMusicEncoderLayer
 
 try:
     import flash_attn_interface
@@ -99,18 +100,30 @@ def rope_apply(x, freqs, num_heads):
     return x_out.to(x.dtype)
 
 
+def set_to_torch_norm(models):
+    for model in models:
+        for module in model.modules():
+            if isinstance(module, RMSNorm):
+                module.use_torch_norm = True
+
+
 class RMSNorm(nn.Module):
     def __init__(self, dim, eps=1e-5):
         super().__init__()
         self.eps = eps
         self.weight = nn.Parameter(torch.ones(dim))
+        self.use_torch_norm = False
+        self.normalized_shape = (dim,)
 
     def norm(self, x):
         return x * torch.rsqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
 
     def forward(self, x):
         dtype = x.dtype
-        return self.norm(x.float()).to(dtype) * self.weight
+        if self.use_torch_norm:
+            return F.rms_norm(x, self.normalized_shape, self.weight, self.eps)
+        else:        
+            return self.norm(x.float()).to(dtype) * self.weight
 
 
 class AttentionModule(nn.Module):
@@ -271,6 +284,57 @@ class Head(nn.Module):
         return x
 
 
+def wantodance_torch_dfs(model: nn.Module, parent_name='root'):
+    module_names, modules = [], []
+    current_name = parent_name if parent_name else 'root'
+    module_names.append(current_name)
+    modules.append(model)
+    for name, child in model.named_children():
+        if parent_name:
+            child_name = f'{parent_name}.{name}'
+        else:
+            child_name = name
+        child_modules, child_names = wantodance_torch_dfs(child, child_name)
+        module_names += child_names
+        modules += child_modules
+    return modules, module_names
+
+
+class WanToDanceInjector(nn.Module):
+    def __init__(self, all_modules, all_modules_names, dim=2048, num_heads=32, inject_layer=[0, 27]):
+        super().__init__()
+        self.injected_block_id = {}
+        injector_id = 0
+        for mod_name, mod in zip(all_modules_names, all_modules):
+            if isinstance(mod, DiTBlock):
+                for inject_id in inject_layer:
+                    if f'root.transformer_blocks.{inject_id}' == mod_name:
+                        self.injected_block_id[inject_id] = injector_id
+                        injector_id += 1
+
+        self.injector = nn.ModuleList(
+            [
+                CrossAttention(
+                    dim=dim,
+                    num_heads=num_heads,
+                )
+                for _ in range(injector_id)
+            ]
+        )
+        self.injector_pre_norm_feat = nn.ModuleList(
+            [
+                nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6,)
+                for _ in range(injector_id)
+            ]
+        )
+        self.injector_pre_norm_vec = nn.ModuleList(
+            [
+                nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6,)
+                for _ in range(injector_id)
+            ]
+        )
+
+
 class WanModel(torch.nn.Module):
     def __init__(
         self,
@@ -293,6 +357,13 @@ class WanModel(torch.nn.Module):
         require_vae_embedding: bool = True,
         require_clip_embedding: bool = True,
         fuse_vae_embedding_in_latents: bool = False,
+        wantodance_enable_music_inject: bool = False,
+        wantodance_music_inject_layers = [0, 4, 8, 12, 16, 20, 24, 27],
+        wantodance_enable_refimage: bool = False,
+        wantodance_enable_refface: bool = False,
+        wantodance_enable_global: bool = False,
+        wantodance_enable_dynamicfps: bool = False,
+        wantodance_enable_unimodel: bool = False,
     ):
         super().__init__()
         self.dim = dim
@@ -325,7 +396,12 @@ class WanModel(torch.nn.Module):
         ])
         self.head = Head(dim, out_dim, patch_size, eps)
         head_dim = dim // num_heads
-        self.freqs = precompute_freqs_cis_3d(head_dim)
+
+        if wantodance_enable_dynamicfps or wantodance_enable_unimodel:
+            end = int(22350 / 8 + 0.5) # 149f * 30fps * 5s = 22350
+            self.freqs = precompute_freqs_cis_3d(head_dim, end=end)
+        else:
+            self.freqs = precompute_freqs_cis_3d(head_dim)
 
         if has_image_input:
             self.img_emb = MLP(1280, dim, has_pos_emb=has_image_pos_emb)  # clip_feature_dim = 1280
@@ -338,8 +414,83 @@ class WanModel(torch.nn.Module):
         else:
             self.control_adapter = None
 
-    def patchify(self, x: torch.Tensor, control_camera_latents_input: Optional[torch.Tensor] = None):
-        x = self.patch_embedding(x)
+        self.prepare_wantodance(in_dim, dim, num_heads, has_image_pos_emb, out_dim, patch_size, eps,
+                                wantodance_enable_music_inject, wantodance_music_inject_layers, wantodance_enable_refimage, wantodance_enable_refface,
+                                wantodance_enable_global, wantodance_enable_dynamicfps, wantodance_enable_unimodel)
+
+    def prepare_wantodance(
+        self,
+        in_dim, dim, num_heads, has_image_pos_emb, out_dim, patch_size, eps,
+        wantodance_enable_music_inject: bool = False,
+        wantodance_music_inject_layers = [0, 4, 8, 12, 16, 20, 24, 27],
+        wantodance_enable_refimage: bool = False,
+        wantodance_enable_refface: bool = False,
+        wantodance_enable_global: bool = False,
+        wantodance_enable_dynamicfps: bool = False,
+        wantodance_enable_unimodel: bool = False,
+    ):
+        if wantodance_enable_music_inject:
+            all_modules, all_modules_names = wantodance_torch_dfs(self.blocks, parent_name="root.transformer_blocks")
+            self.music_injector = WanToDanceInjector(all_modules, all_modules_names, dim=dim, num_heads=num_heads, inject_layer=wantodance_music_inject_layers)
+        if wantodance_enable_refimage:
+            self.img_emb_refimage = MLP(1280, dim, has_pos_emb=has_image_pos_emb)  # clip_feature_dim = 1280
+        if wantodance_enable_refface:
+            self.img_emb_refface = MLP(1280, dim, has_pos_emb=has_image_pos_emb)  # clip_feature_dim = 1280
+        if wantodance_enable_global or wantodance_enable_dynamicfps or wantodance_enable_unimodel:
+            music_feature_dim = 35
+            ff_size = 1024
+            dropout = 0.1
+            latent_dim = 256
+            nhead = 4
+            activation = F.gelu
+            rotary = WanToDanceRotaryEmbedding(dim=latent_dim)
+            self.music_projection = nn.Linear(music_feature_dim, latent_dim)
+            self.music_encoder = nn.Sequential()
+            for _ in range(2):
+                self.music_encoder.append(
+                    WanToDanceMusicEncoderLayer(
+                        d_model=latent_dim,
+                        nhead=nhead,
+                        dim_feedforward=ff_size,
+                        dropout=dropout,
+                        activation=activation,
+                        batch_first=True,
+                        rotary=rotary,
+                        device='cuda',
+                    )
+                )
+        if wantodance_enable_unimodel:
+            self.patch_embedding_global = nn.Conv3d(in_dim, dim, kernel_size=patch_size, stride=patch_size)
+        if wantodance_enable_unimodel:
+            self.head_global = Head(dim, out_dim, patch_size, eps)
+        self.wantodance_enable_music_inject = wantodance_enable_music_inject
+        self.wantodance_enable_refimage = wantodance_enable_refimage
+        self.wantodance_enable_refface = wantodance_enable_refface
+        self.wantodance_enable_global = wantodance_enable_global
+        self.wantodance_enable_dynamicfps = wantodance_enable_dynamicfps
+        self.wantodance_enable_unimodel = wantodance_enable_unimodel
+
+    def wantodance_after_transformer_block(self, block_idx, hidden_states):
+        if self.wantodance_enable_music_inject:
+            if block_idx in self.music_injector.injected_block_id.keys():
+                audio_attn_id = self.music_injector.injected_block_id[block_idx]
+                audio_emb = self.merged_audio_emb  # b f n c
+                num_frames = audio_emb.shape[1]
+                input_hidden_states = hidden_states.clone()  # b (f h w) c
+                input_hidden_states = rearrange(input_hidden_states, "b (t n) c -> (b t) n c", t=num_frames)
+                attn_hidden_states = self.music_injector.injector_pre_norm_feat[audio_attn_id](input_hidden_states)
+                audio_emb = rearrange(audio_emb, "b t c -> (b t) 1 c", t=num_frames)
+                attn_audio_emb = audio_emb
+                residual_out = self.music_injector.injector[audio_attn_id](attn_hidden_states, attn_audio_emb)
+                residual_out = rearrange(residual_out, "(b t) n c -> b (t n) c", t=num_frames)
+                hidden_states = hidden_states + residual_out
+        return hidden_states
+
+    def patchify(self, x: torch.Tensor, control_camera_latents_input: Optional[torch.Tensor] = None, enable_wantodance_global=False):
+        if enable_wantodance_global:
+            x = self.patch_embedding_global(x)
+        else:
+            x = self.patch_embedding(x)
         if self.control_adapter is not None and control_camera_latents_input is not None:
             y_camera = self.control_adapter(control_camera_latents_input)
             x = [u + v for u, v in zip(x, y_camera)]

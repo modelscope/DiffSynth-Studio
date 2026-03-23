@@ -32,7 +32,12 @@ class LTX2TrainingModule(DiffusionTrainingModule):
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
         tokenizer_config = ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized") if tokenizer_path is None else ModelConfig(tokenizer_path)
         self.pipe = LTX2AudioVideoPipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config)
-        self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
+        self.pipe = self.split_pipeline_units(
+            task, self.pipe, trainable_models, lora_base_model,
+            remove_unnecessary_params=True,
+            force_remove_params_shared=("audio_latents", "video_latents"),
+            force_remove_params_nega=("audio_context", "video_context")
+        )
         # Training mode
         self.switch_pipe_to_training_mode(
             self.pipe, trainable_models,
@@ -55,7 +60,12 @@ class LTX2TrainingModule(DiffusionTrainingModule):
         
     def parse_extra_inputs(self, data, extra_inputs, inputs_shared):
         for extra_input in extra_inputs:
-            inputs_shared[extra_input] = data[extra_input]
+            if extra_input == "input_image":
+                inputs_shared["input_images"] = [data["video"][0]]
+                inputs_shared["input_images_indexes"] = [0]
+                inputs_shared["input_images_strength"] = 1.0
+            else:
+                inputs_shared[extra_input] = data[extra_input]
         return inputs_shared
     
     def get_pipeline_inputs(self, data):
@@ -118,6 +128,8 @@ if __name__ == "__main__":
             num_frames=args.num_frames,
             time_division_factor=8,
             time_division_remainder=1,
+            frame_rate=args.frame_rate,
+            fix_frame_rate=True,
         )
     dataset = UnifiedDataset(
         base_path=args.dataset_base_path,
@@ -126,7 +138,7 @@ if __name__ == "__main__":
         data_file_keys=args.data_file_keys.split(","),
         main_data_operator=video_processor,
         special_operator_map={
-            "input_audio": ToAbsolutePath(args.dataset_base_path) >> LoadAudioWithTorchaudio(duration=float(args.num_frames) / float(args.frame_rate)),
+            "input_audio": ToAbsolutePath(args.dataset_base_path) >> LoadAudioWithTorchaudio(num_frames=args.num_frames, time_division_factor=8, time_division_remainder=1, frame_rate=args.frame_rate),
             "in_context_videos": RouteByType(operator_map=[
                 (str, video_processor),
                 (list, SequencialProcess(video_processor)),

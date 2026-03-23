@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux/FLUX.1-dev-Controlnet-Inpainting-Beta/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch --config_file examples/flux/model_training/full/accelerate_config.yaml examples/flux/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_controlnet_inpaint.csv \
+  --dataset_base_path data/diffsynth_example_dataset/flux/FLUX.1-dev-Controlnet-Inpainting-Beta \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux/FLUX.1-dev-Controlnet-Inpainting-Beta/metadata.csv \
   --data_file_keys "image,controlnet_image,controlnet_inpaint_mask" \
   --max_pixels 1048576 \
   --dataset_repeat 400 \

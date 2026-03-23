@@ -307,6 +307,13 @@ wan_series = [
         "model_class": "diffsynth.models.wav2vec.WanS2VAudioEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.wans2v_audio_encoder.WanS2VAudioEncoderStateDictConverter",
     },
+    {
+        # Example: ModelConfig(model_id="Wan-AI/WanToDance-14B", origin_file_pattern="global_model.safetensors")
+        "model_hash": "eb18873fc0ba77b541eb7b62dbcd2059",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_video_dit.WanModel",
+        "extra_kwargs": {'has_image_input': True, 'patch_size': [1, 2, 2], 'in_dim': 36, 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 16, 'num_heads': 40, 'num_layers': 40, 'eps': 1e-06, 'wantodance_enable_music_inject': True, 'wantodance_music_inject_layers': [0, 4, 8, 12, 16, 20, 24, 27], 'wantodance_enable_refimage': True, 'has_ref_conv': True, 'wantodance_enable_refface': False, 'wantodance_enable_global': True, 'wantodance_enable_dynamicfps': True, 'wantodance_enable_unimodel': True}
+    },
 ]
 
 flux_series = [
@@ -597,6 +604,13 @@ z_image_series = [
         "extra_kwargs": {"model_size": "0.6B"},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.z_image_text_encoder.ZImageTextEncoderStateDictConverter",
     },
+    {
+        # To ensure compatibility with the `model.diffusion_model` prefix introduced by other frameworks.
+        "model_hash": "8cf241a0d32f93d5de368502a086852f",
+        "model_name": "z_image_dit",
+        "model_class": "diffsynth.models.z_image_dit.ZImageDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.z_image_dit.ZImageDiTStateDictConverter",
+    },
 ]
 """
 Offical model repo: https://www.modelscope.cn/models/Lightricks/LTX-2
@@ -848,4 +862,26 @@ anima_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.anima_dit.AnimaDiTStateDictConverter",
     }
 ]
-MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series + ltx2_series + anima_series
+
+mova_series = [
+    # Example: ModelConfig(model_id="openmoss/MOVA-720p", origin_file_pattern="audio_dit/diffusion_pytorch_model.safetensors")
+    {
+        "model_hash": "8c57e12790e2c45a64817e0ce28cde2f",
+        "model_name": "mova_audio_dit",
+        "model_class": "diffsynth.models.mova_audio_dit.MovaAudioDit",
+        "extra_kwargs": {'has_image_input': False, 'patch_size': [1], 'in_dim': 128, 'dim': 1536, 'ffn_dim': 8960, 'freq_dim': 256, 'text_dim': 4096, 'out_dim': 128, 'num_heads': 12, 'num_layers': 30, 'eps': 1e-06}
+    },
+    # Example: ModelConfig(model_id="openmoss/MOVA-720p", origin_file_pattern="audio_vae/diffusion_pytorch_model.safetensors")
+    {
+        "model_hash": "418517fb2b4e919d2cac8f314fcf82ac",
+        "model_name": "mova_audio_vae",
+        "model_class": "diffsynth.models.mova_audio_vae.DacVAE",
+    },
+    # Example: ModelConfig(model_id="openmoss/MOVA-720p", origin_file_pattern="dual_tower_bridge/diffusion_pytorch_model.safetensors")
+    {
+        "model_hash": "d1139dbbc8b4ab53cf4b4243d57bbceb",
+        "model_name": "mova_dual_tower_bridge",
+        "model_class": "diffsynth.models.mova_dual_tower_bridge.DualTowerConditionalBridge",
+    },
+]
+MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series + ltx2_series + anima_series + mova_series

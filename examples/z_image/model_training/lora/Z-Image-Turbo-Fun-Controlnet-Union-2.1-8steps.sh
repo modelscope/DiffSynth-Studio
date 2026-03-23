@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "z_image/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/z_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_controlnet_canny.csv \
+  --dataset_base_path data/diffsynth_example_dataset/z_image/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps \
+  --dataset_metadata_path data/diffsynth_example_dataset/z_image/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps/metadata.csv \
   --data_file_keys "image,controlnet_image" \
   --max_pixels 1048576 \
   --dataset_repeat 100 \
