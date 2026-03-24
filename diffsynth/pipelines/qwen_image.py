@@ -56,6 +56,7 @@ class QwenImagePipeline(BasePipeline):
             QwenImageUnit_BlockwiseControlNet(),
         ]
         self.model_fn = model_fn_qwen_image
+        self.compilable_models = ["dit"]
     
     
     @staticmethod

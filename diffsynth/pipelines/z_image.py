@@ -54,6 +54,7 @@ class ZImagePipeline(BasePipeline):
             ZImageUnit_PAIControlNet(),
         ]
         self.model_fn = model_fn_z_image
+        self.compilable_models = ["dit"]
     
     
     @staticmethod

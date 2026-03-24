@@ -83,6 +83,7 @@ class WanVideoPipeline(BasePipeline):
             WanVideoPostUnit_S2V(),
         ]
         self.model_fn = model_fn_wan_video
+        self.compilable_models = ["dit", "dit2"]
 
 
     def enable_usp(self):

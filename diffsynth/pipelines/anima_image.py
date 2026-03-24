@@ -39,6 +39,7 @@ class AnimaImagePipeline(BasePipeline):
             AnimaUnit_PromptEmbedder(),
         ]
         self.model_fn = model_fn_anima
+        self.compilable_models = ["dit"]
     
     
     @staticmethod

@@ -76,6 +76,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
             LTX2AudioVideoUnit_SetScheduleStage2(),
         ]
         self.model_fn = model_fn_ltx2
+        self.compilable_models = ["dit"]
 
         self.default_negative_prompt = {
             "LTX-2": (
