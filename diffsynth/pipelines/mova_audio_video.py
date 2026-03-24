@@ -52,6 +52,7 @@ class MovaAudioVideoPipeline(BasePipeline):
             MovaAudioVideoUnit_UnifiedSequenceParallel(),
         ]
         self.model_fn = model_fn_mova_audio_video
+        self.compilable_models = ["video_dit", "video_dit2", "audio_dit"]
 
     def enable_usp(self):
         from ..utils.xfuser import get_sequence_parallel_world_size, usp_attn_forward

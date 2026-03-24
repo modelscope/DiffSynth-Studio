@@ -1280,6 +1280,7 @@ class LTXModel(torch.nn.Module):
     LTX model transformer implementation.
     This class implements the transformer blocks for the LTX model.
     """
+    _repeated_blocks = ["BasicAVTransformerBlock"]
 
     def __init__(  # noqa: PLR0913
         self,

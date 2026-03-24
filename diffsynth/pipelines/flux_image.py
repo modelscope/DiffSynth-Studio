@@ -103,6 +103,7 @@ class FluxImagePipeline(BasePipeline):
             FluxImageUnit_LoRAEncode(),
         ]
         self.model_fn = model_fn_flux_image
+        self.compilable_models = ["dit"]
         self.lora_loader = FluxLoRALoader
 
     def enable_lora_merger(self):

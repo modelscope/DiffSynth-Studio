@@ -42,6 +42,7 @@ class Flux2ImagePipeline(BasePipeline):
             Flux2Unit_ImageIDs(),
         ]
         self.model_fn = model_fn_flux2
+        self.compilable_models = ["dit"]
     
     
     @staticmethod

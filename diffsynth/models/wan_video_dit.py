@@ -284,6 +284,9 @@ class Head(nn.Module):
 
 
 class WanModel(torch.nn.Module):
+
+    _repeated_blocks = ["DiTBlock"]
+
     def __init__(
         self,
         dim: int,
