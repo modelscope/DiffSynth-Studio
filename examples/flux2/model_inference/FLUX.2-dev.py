@@ -25,3 +25,8 @@ pipe = Flux2ImagePipeline.from_pretrained(
 prompt = "Realistic macro photograph of a hermit crab using a soda can as its shell, partially emerging from the can, captured with sharp detail and natural colors, on a sunlit beach with soft shadows and a shallow depth of field, with blurred ocean waves in the background. The can has the text `BFL Diffusers` on it and it has a color gradient that start with #FF5733 at the top and transitions to #33FF57 at the bottom."
 image = pipe(prompt, seed=42, rand_device="cuda", num_inference_steps=50)
 image.save("image_FLUX.2-dev.jpg")
+
+prompt  = "Transform the image into Japanese anime style"
+edit_image = [Image.open("image_FLUX.2-dev.jpg")]
+image = pipe(prompt, seed=42, rand_device="cuda", edit_image=edit_image, num_inference_steps=50, embedded_guidance=2.5)
+image.save("image_FLUX.2-dev-1.jpg")
