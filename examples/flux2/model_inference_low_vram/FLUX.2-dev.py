@@ -1,5 +1,6 @@
 from diffsynth.pipelines.flux2_image import Flux2ImagePipeline, ModelConfig
 import torch
+from PIL import Image
 
 vram_config = {
     "offload_dtype": "disk",
