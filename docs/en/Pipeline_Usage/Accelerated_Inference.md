@@ -6,13 +6,13 @@ Currently, most diffusion models are built on Diffusion Transformers (DiT), and 
 
 ## Efficient Attention Mechanisms
 
-For details on the acceleration of attention mechanisms, please refer to [Attention Mechanism Implementation](https://www.google.com/search?q=../API_Reference/core/attention.md).
+For details on the acceleration of attention mechanisms, please refer to [Attention Mechanism Implementation](../API_Reference/core/attention.md).
 
 ## Multi-GPU Parallel Inference
 
 DiffSynth-Studio adopts a multi-GPU inference solution using Unified Sequence Parallel (USP). It splits the token sequence in the DiT across multiple GPUs for parallel processing. The underlying implementation is based on [xDiT](https://github.com/xdit-project/xDiT). Please note that unified sequence parallelism introduces additional communication overhead, so the actual speedup ratio is usually lower than the number of GPUs.
 
-Currently, DiffSynth-Studio supports unified sequence parallel acceleration for the [Wan](https://www.google.com/search?q=../Model_Details/Wan.md) and [MOVA](https://www.google.com/search?q=../Model_Details/Wan.md) models.
+Currently, DiffSynth-Studio supports unified sequence parallel acceleration for the [Wan](../Model_Details/Wan.md) and [MOVA](../Model_Details/Wan.md) models.
 
 First, install the `xDiT` dependency.
 
@@ -31,7 +31,7 @@ When building the pipeline, simply configure `use_usp=True` to enable USP parall
 ```python
 import torch
 from PIL import Image
-from diffsynth.utils.data import save_video, VideoData
+from diffsynth.utils.data import save_video
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 import torch.distributed as dist
 
