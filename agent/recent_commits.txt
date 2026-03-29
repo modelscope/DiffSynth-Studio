@@ -1,0 +1,30 @@
+edf6f1d Got FLUX LoRA on ControlNet, fixed an adapter and fusion of FP8 bug to get LoRA on ControlNet working. Added functionality such as frame consistency loss, spad foward modeling. Added analysis script. Added metrics script. Added linear probing functionalities. Added various training scripts. Added multi seed experiements.
+10740eb controlnet + patch
+6fd4691 controlnet script lora attempt v0
+f2d0241 Update Z-Image.md
+7b5d7f4 Update Z-Image.md
+421c6a5 Merge pull request #1109 from modelscope/bugfix1
+864080d fix typo
+ba372dd Merge pull request #1108 from modelscope/i2L
+1ceb02f update README
+30f9316 support i2L
+3ee3cc3 Merge pull request #1093 from modelscope/diffsynth-2.0-patch
+c2218f5 DiffSynth-Studio 2.0 major update
+72af712 DiffSynth-Studio 2.0 major update
+afd101f Merge pull request #1058 from modelscope/download
+1313f4d support downloading resource
+8332ece Merge pull request #1034 from modelscope/video_as_prompt
+401d7d7 Merge pull request #1025 from krahets/patch-1
+b8d7d55 Fix dtype issue in time embedding calculation
+a30ed90 Merge pull request #1018 from modelscope/longcat
+b73e713 support LongCat-Video
+e0eabaa Krea realtime video (#1011)
+5380171 Merge pull request #1006 from lzws/main
+30292d9 update wan2.2-S2V training
+b168d7a update wans2v training
+8ea45b0 update wans2v training
+0a1c172 Merge pull request #984 from modelscope/animate-bugfix
+77fac2a bugfix
+084bc2f Merge pull request #969 from modelscope/bugfix953
+c63d474 fix bug in issue 953
+7540568 support wan2.2-animate-14b (#968)

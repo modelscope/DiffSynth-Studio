@@ -1,0 +1,471 @@
+Loading 100 activation files …
+load:   0%|          | 0/100 [00:00<?, ?it/s]load:  39%|███▉      | 39/100 [00:00<00:00, 384.74it/s]load:  80%|████████  | 80/100 [00:00<00:00, 395.63it/s]load: 100%|██████████| 100/100 [00:00<00:00, 393.86it/s]
+Probing 70 (block, timestep) pairs | train=80  test=20
+Active targets: ['bit_density', 'depth', 'variance']
+bit_density:   0%|          | 0/70 [00:00<?, ?it/s]bit_density:   4%|▍         | 3/70 [00:00<00:02, 22.99it/s]bit_density:   9%|▊         | 6/70 [00:00<00:02, 24.89it/s]bit_density:  13%|█▎        | 9/70 [00:00<00:02, 25.66it/s]bit_density:  17%|█▋        | 12/70 [00:00<00:02, 26.05it/s]bit_density:  21%|██▏       | 15/70 [00:00<00:02, 26.52it/s]bit_density:  26%|██▌       | 18/70 [00:00<00:01, 26.73it/s]bit_density:  30%|███       | 21/70 [00:00<00:01, 26.93it/s]bit_density:  34%|███▍      | 24/70 [00:00<00:01, 27.19it/s]bit_density:  39%|███▊      | 27/70 [00:01<00:01, 26.64it/s]bit_density:  43%|████▎     | 30/70 [00:01<00:01, 26.67it/s]bit_density:  47%|████▋     | 33/70 [00:01<00:01, 26.67it/s]bit_density:  51%|█████▏    | 36/70 [00:01<00:01, 26.68it/s]bit_density:  56%|█████▌    | 39/70 [00:01<00:01, 26.74it/s]bit_density:  60%|██████    | 42/70 [00:01<00:01, 26.76it/s]bit_density:  64%|██████▍   | 45/70 [00:01<00:00, 26.80it/s]bit_density:  69%|██████▊   | 48/70 [00:01<00:00, 26.86it/s]bit_density:  73%|███████▎  | 51/70 [00:01<00:00, 26.86it/s]bit_density:  77%|███████▋  | 54/70 [00:02<00:00, 26.82it/s]bit_density:  81%|████████▏ | 57/70 [00:02<00:00, 26.82it/s]bit_density:  86%|████████▌ | 60/70 [00:02<00:00, 26.89it/s]bit_density:  90%|█████████ | 63/70 [00:02<00:00, 26.90it/s]bit_density:  94%|█████████▍| 66/70 [00:02<00:00, 26.88it/s]bit_density:  99%|█████████▊| 69/70 [00:02<00:00, 26.91it/s]bit_density: 100%|██████████| 70/70 [00:02<00:00, 26.66it/s]
+depth:   0%|          | 0/70 [00:00<?, ?it/s]depth:   4%|▍         | 3/70 [00:00<00:02, 26.93it/s]depth:   9%|▊         | 6/70 [00:00<00:02, 26.83it/s]depth:  13%|█▎        | 9/70 [00:00<00:02, 26.66it/s]depth:  17%|█▋        | 12/70 [00:00<00:02, 26.51it/s]depth:  21%|██▏       | 15/70 [00:00<00:02, 26.63it/s]depth:  26%|██▌       | 18/70 [00:00<00:01, 26.66it/s]depth:  30%|███       | 21/70 [00:00<00:01, 26.73it/s]depth:  34%|███▍      | 24/70 [00:00<00:01, 26.74it/s]depth:  39%|███▊      | 27/70 [00:01<00:01, 26.76it/s]depth:  43%|████▎     | 30/70 [00:01<00:01, 26.76it/s]depth:  47%|████▋     | 33/70 [00:01<00:01, 26.79it/s]depth:  51%|█████▏    | 36/70 [00:01<00:01, 26.79it/s]depth:  56%|█████▌    | 39/70 [00:01<00:01, 26.75it/s]depth:  60%|██████    | 42/70 [00:01<00:01, 26.75it/s]depth:  64%|██████▍   | 45/70 [00:01<00:00, 26.77it/s]depth:  69%|██████▊   | 48/70 [00:01<00:00, 26.75it/s]depth:  73%|███████▎  | 51/70 [00:01<00:00, 26.75it/s]depth:  77%|███████▋  | 54/70 [00:02<00:00, 26.74it/s]depth:  81%|████████▏ | 57/70 [00:02<00:00, 26.75it/s]depth:  86%|████████▌ | 60/70 [00:02<00:00, 26.69it/s]depth:  90%|█████████ | 63/70 [00:02<00:00, 26.70it/s]depth:  94%|█████████▍| 66/70 [00:02<00:00, 26.61it/s]depth:  99%|█████████▊| 69/70 [00:02<00:00, 26.20it/s]depth: 100%|██████████| 70/70 [00:02<00:00, 26.65it/s]
+variance:   0%|          | 0/70 [00:00<?, ?it/s]variance:   4%|▍         | 3/70 [00:00<00:02, 26.88it/s]variance:   9%|▊         | 6/70 [00:00<00:02, 26.84it/s]variance:  13%|█▎        | 9/70 [00:00<00:02, 26.30it/s]variance:  17%|█▋        | 12/70 [00:00<00:02, 26.53it/s]variance:  21%|██▏       | 15/70 [00:00<00:02, 26.27it/s]variance:  26%|██▌       | 18/70 [00:00<00:01, 26.59it/s]variance:  30%|███       | 21/70 [00:00<00:01, 26.67it/s]variance:  34%|███▍      | 24/70 [00:00<00:01, 26.86it/s]variance:  39%|███▊      | 27/70 [00:01<00:01, 26.98it/s]variance:  43%|████▎     | 30/70 [00:01<00:01, 27.12it/s]variance:  47%|████▋     | 33/70 [00:01<00:01, 27.21it/s]variance:  51%|█████▏    | 36/70 [00:01<00:01, 27.20it/s]variance:  56%|█████▌    | 39/70 [00:01<00:01, 27.20it/s]variance:  60%|██████    | 42/70 [00:01<00:01, 27.19it/s]variance:  64%|██████▍   | 45/70 [00:01<00:00, 27.18it/s]variance:  69%|██████▊   | 48/70 [00:01<00:00, 27.10it/s]variance:  73%|███████▎  | 51/70 [00:01<00:00, 26.88it/s]variance:  77%|███████▋  | 54/70 [00:02<00:00, 26.89it/s]variance:  81%|████████▏ | 57/70 [00:02<00:00, 26.93it/s]variance:  86%|████████▌ | 60/70 [00:02<00:00, 27.00it/s]variance:  90%|█████████ | 63/70 [00:02<00:00, 26.98it/s]variance:  94%|█████████▍| 66/70 [00:02<00:00, 27.00it/s]variance:  99%|█████████▊| 69/70 [00:02<00:00, 27.02it/s]variance: 100%|██████████| 70/70 [00:02<00:00, 26.94it/s]
+
+Spatial probing with 100 files (streaming) …
+spatial bit_density accumulate:   0%|          | 0/80 [00:00<?, ?it/s]spatial bit_density accumulate:   1%|▏         | 1/80 [00:01<01:25,  1.08s/it]spatial bit_density accumulate:   2%|▎         | 2/80 [00:02<01:20,  1.03s/it]spatial bit_density accumulate:   4%|▍         | 3/80 [00:03<01:18,  1.02s/it]spatial bit_density accumulate:   5%|▌         | 4/80 [00:04<01:16,  1.01s/it]spatial bit_density accumulate:   6%|▋         | 5/80 [00:05<01:15,  1.00s/it]spatial bit_density accumulate:   8%|▊         | 6/80 [00:06<01:14,  1.00s/it]spatial bit_density accumulate:   9%|▉         | 7/80 [00:07<01:12,  1.00it/s]spatial bit_density accumulate:  10%|█         | 8/80 [00:08<01:11,  1.00it/s]spatial bit_density accumulate:  11%|█▏        | 9/80 [00:09<01:13,  1.04s/it]spatial bit_density accumulate:  12%|█▎        | 10/80 [00:10<01:11,  1.03s/it]spatial bit_density accumulate:  14%|█▍        | 11/80 [00:11<01:10,  1.02s/it]spatial bit_density accumulate:  15%|█▌        | 12/80 [00:12<01:09,  1.02s/it]spatial bit_density accumulate:  16%|█▋        | 13/80 [00:13<01:07,  1.00s/it]spatial bit_density accumulate:  18%|█▊        | 14/80 [00:14<01:05,  1.00it/s]spatial bit_density accumulate:  19%|█▉        | 15/80 [00:15<01:04,  1.00it/s]spatial bit_density accumulate:  20%|██        | 16/80 [00:16<01:03,  1.01it/s]spatial bit_density accumulate:  21%|██▏       | 17/80 [00:17<01:02,  1.01it/s]spatial bit_density accumulate:  22%|██▎       | 18/80 [00:18<01:01,  1.01it/s]spatial bit_density accumulate:  24%|██▍       | 19/80 [00:19<01:00,  1.01it/s]spatial bit_density accumulate:  25%|██▌       | 20/80 [00:20<00:59,  1.01it/s]spatial bit_density accumulate:  26%|██▋       | 21/80 [00:21<00:58,  1.01it/s]spatial bit_density accumulate:  28%|██▊       | 22/80 [00:22<00:57,  1.01it/s]spatial bit_density accumulate:  29%|██▉       | 23/80 [00:23<00:56,  1.01it/s]spatial bit_density accumulate:  30%|███       | 24/80 [00:24<00:55,  1.01it/s]spatial bit_density accumulate:  31%|███▏      | 25/80 [00:24<00:53,  1.02it/s]spatial bit_density accumulate:  32%|███▎      | 26/80 [00:25<00:53,  1.01it/s]spatial bit_density accumulate:  34%|███▍      | 27/80 [00:26<00:52,  1.01it/s]spatial bit_density accumulate:  35%|███▌      | 28/80 [00:27<00:51,  1.01it/s]spatial bit_density accumulate:  36%|███▋      | 29/80 [00:28<00:50,  1.01it/s]spatial bit_density accumulate:  38%|███▊      | 30/80 [00:29<00:49,  1.00it/s]spatial bit_density accumulate:  39%|███▉      | 31/80 [00:30<00:48,  1.01it/s]spatial bit_density accumulate:  40%|████      | 32/80 [00:31<00:47,  1.01it/s]spatial bit_density accumulate:  41%|████▏     | 33/80 [00:32<00:46,  1.01it/s]spatial bit_density accumulate:  42%|████▎     | 34/80 [00:33<00:45,  1.01it/s]spatial bit_density accumulate:  44%|████▍     | 35/80 [00:34<00:44,  1.01it/s]spatial bit_density accumulate:  45%|████▌     | 36/80 [00:35<00:43,  1.01it/s]spatial bit_density accumulate:  46%|████▋     | 37/80 [00:36<00:42,  1.01it/s]spatial bit_density accumulate:  48%|████▊     | 38/80 [00:37<00:41,  1.01it/s]spatial bit_density accumulate:  49%|████▉     | 39/80 [00:38<00:40,  1.01it/s]spatial bit_density accumulate:  50%|█████     | 40/80 [00:39<00:39,  1.00it/s]spatial bit_density accumulate:  51%|█████▏    | 41/80 [00:40<00:39,  1.00s/it]spatial bit_density accumulate:  52%|█████▎    | 42/80 [00:41<00:37,  1.00it/s]spatial bit_density accumulate:  54%|█████▍    | 43/80 [00:42<00:36,  1.00it/s]spatial bit_density accumulate:  55%|█████▌    | 44/80 [00:43<00:36,  1.01s/it]spatial bit_density accumulate:  56%|█████▋    | 45/80 [00:44<00:35,  1.01s/it]spatial bit_density accumulate:  57%|█████▊    | 46/80 [00:45<00:34,  1.00s/it]spatial bit_density accumulate:  59%|█████▉    | 47/80 [00:46<00:32,  1.00it/s]spatial bit_density accumulate:  60%|██████    | 48/80 [00:47<00:31,  1.00it/s]spatial bit_density accumulate:  61%|██████▏   | 49/80 [00:48<00:30,  1.01it/s]spatial bit_density accumulate:  62%|██████▎   | 50/80 [00:49<00:29,  1.01it/s]spatial bit_density accumulate:  64%|██████▍   | 51/80 [00:50<00:28,  1.01it/s]spatial bit_density accumulate:  65%|██████▌   | 52/80 [00:51<00:27,  1.01it/s]spatial bit_density accumulate:  66%|██████▋   | 53/80 [00:52<00:26,  1.00it/s]spatial bit_density accumulate:  68%|██████▊   | 54/80 [00:53<00:25,  1.01it/s]spatial bit_density accumulate:  69%|██████▉   | 55/80 [00:54<00:24,  1.01it/s]spatial bit_density accumulate:  70%|███████   | 56/80 [00:55<00:23,  1.01it/s]spatial bit_density accumulate:  71%|███████▏  | 57/80 [00:56<00:22,  1.01it/s]spatial bit_density accumulate:  72%|███████▎  | 58/80 [00:57<00:21,  1.01it/s]spatial bit_density accumulate:  74%|███████▍  | 59/80 [00:58<00:20,  1.01it/s]spatial bit_density accumulate:  75%|███████▌  | 60/80 [00:59<00:19,  1.01it/s]spatial bit_density accumulate:  76%|███████▋  | 61/80 [01:00<00:18,  1.01it/s]spatial bit_density accumulate:  78%|███████▊  | 62/80 [01:01<00:17,  1.01it/s]spatial bit_density accumulate:  79%|███████▉  | 63/80 [01:02<00:16,  1.01it/s]spatial bit_density accumulate:  80%|████████  | 64/80 [01:03<00:15,  1.01it/s]spatial bit_density accumulate:  81%|████████▏ | 65/80 [01:04<00:14,  1.01it/s]spatial bit_density accumulate:  82%|████████▎ | 66/80 [01:05<00:14,  1.01s/it]spatial bit_density accumulate:  84%|████████▍ | 67/80 [01:06<00:13,  1.01s/it]spatial bit_density accumulate:  85%|████████▌ | 68/80 [01:07<00:12,  1.01s/it]spatial bit_density accumulate:  86%|████████▋ | 69/80 [01:08<00:11,  1.00s/it]spatial bit_density accumulate:  88%|████████▊ | 70/80 [01:09<00:09,  1.00it/s]spatial bit_density accumulate:  89%|████████▉ | 71/80 [01:10<00:08,  1.00it/s]spatial bit_density accumulate:  90%|█████████ | 72/80 [01:11<00:07,  1.01it/s]spatial bit_density accumulate:  91%|█████████▏| 73/80 [01:12<00:06,  1.01it/s]spatial bit_density accumulate:  92%|█████████▎| 74/80 [01:13<00:05,  1.01it/s]spatial bit_density accumulate:  94%|█████████▍| 75/80 [01:14<00:04,  1.01it/s]spatial bit_density accumulate:  95%|█████████▌| 76/80 [01:15<00:03,  1.01it/s]spatial bit_density accumulate:  96%|█████████▋| 77/80 [01:16<00:02,  1.01it/s]spatial bit_density accumulate:  98%|█████████▊| 78/80 [01:17<00:01,  1.01it/s]spatial bit_density accumulate:  99%|█████████▉| 79/80 [01:18<00:01,  1.01s/it]spatial bit_density accumulate: 100%|██████████| 80/80 [01:19<00:00,  1.00s/it]spatial bit_density accumulate: 100%|██████████| 80/80 [01:19<00:00,  1.00it/s]
+spatial bit_density evaluate:   0%|          | 0/20 [00:00<?, ?it/s]spatial bit_density evaluate:   5%|▌         | 1/20 [00:00<00:03,  5.96it/s]spatial bit_density evaluate:  10%|█         | 2/20 [00:00<00:02,  6.12it/s]spatial bit_density evaluate:  15%|█▌        | 3/20 [00:00<00:02,  6.17it/s]spatial bit_density evaluate:  20%|██        | 4/20 [00:00<00:02,  6.16it/s]spatial bit_density evaluate:  25%|██▌       | 5/20 [00:00<00:02,  6.17it/s]spatial bit_density evaluate:  30%|███       | 6/20 [00:00<00:02,  6.21it/s]spatial bit_density evaluate:  35%|███▌      | 7/20 [00:01<00:02,  6.20it/s]spatial bit_density evaluate:  40%|████      | 8/20 [00:01<00:01,  6.22it/s]spatial bit_density evaluate:  45%|████▌     | 9/20 [00:01<00:01,  6.21it/s]spatial bit_density evaluate:  50%|█████     | 10/20 [00:01<00:01,  6.17it/s]spatial bit_density evaluate:  55%|█████▌    | 11/20 [00:01<00:01,  6.15it/s]spatial bit_density evaluate:  60%|██████    | 12/20 [00:01<00:01,  6.08it/s]spatial bit_density evaluate:  65%|██████▌   | 13/20 [00:02<00:01,  6.02it/s]spatial bit_density evaluate:  70%|███████   | 14/20 [00:02<00:00,  6.03it/s]spatial bit_density evaluate:  75%|███████▌  | 15/20 [00:02<00:00,  6.07it/s]spatial bit_density evaluate:  80%|████████  | 16/20 [00:02<00:00,  6.07it/s]spatial bit_density evaluate:  85%|████████▌ | 17/20 [00:02<00:00,  6.04it/s]spatial bit_density evaluate:  90%|█████████ | 18/20 [00:02<00:00,  6.07it/s]spatial bit_density evaluate:  95%|█████████▌| 19/20 [00:03<00:00,  6.06it/s]spatial bit_density evaluate: 100%|██████████| 20/20 [00:03<00:00,  6.04it/s]spatial bit_density evaluate: 100%|██████████| 20/20 [00:03<00:00,  6.10it/s]
+spatial depth accumulate:   0%|          | 0/80 [00:00<?, ?it/s]spatial depth accumulate:   1%|▏         | 1/80 [00:00<01:12,  1.09it/s]spatial depth accumulate:   2%|▎         | 2/80 [00:01<01:16,  1.02it/s]spatial depth accumulate:   4%|▍         | 3/80 [00:02<01:12,  1.06it/s]spatial depth accumulate:   5%|▌         | 4/80 [00:03<01:10,  1.08it/s]spatial depth accumulate:   6%|▋         | 5/80 [00:04<01:08,  1.09it/s]spatial depth accumulate:   8%|▊         | 6/80 [00:05<01:07,  1.10it/s]spatial depth accumulate:   9%|▉         | 7/80 [00:06<01:05,  1.11it/s]spatial depth accumulate:  10%|█         | 8/80 [00:07<01:04,  1.11it/s]spatial depth accumulate:  11%|█▏        | 9/80 [00:08<01:03,  1.11it/s]spatial depth accumulate:  12%|█▎        | 10/80 [00:09<01:05,  1.06it/s]spatial depth accumulate:  14%|█▍        | 11/80 [00:10<01:04,  1.08it/s]spatial depth accumulate:  15%|█▌        | 12/80 [00:11<01:02,  1.08it/s]spatial depth accumulate:  16%|█▋        | 13/80 [00:11<01:01,  1.10it/s]spatial depth accumulate:  18%|█▊        | 14/80 [00:12<00:59,  1.11it/s]spatial depth accumulate:  19%|█▉        | 15/80 [00:13<00:58,  1.11it/s]spatial depth accumulate:  20%|██        | 16/80 [00:14<00:57,  1.11it/s]spatial depth accumulate:  21%|██▏       | 17/80 [00:15<00:56,  1.11it/s]spatial depth accumulate:  22%|██▎       | 18/80 [00:16<00:58,  1.07it/s]spatial depth accumulate:  24%|██▍       | 19/80 [00:17<00:56,  1.08it/s]spatial depth accumulate:  25%|██▌       | 20/80 [00:18<00:54,  1.10it/s]spatial depth accumulate:  26%|██▋       | 21/80 [00:19<00:52,  1.11it/s]spatial depth accumulate:  28%|██▊       | 22/80 [00:20<00:52,  1.11it/s]spatial depth accumulate:  29%|██▉       | 23/80 [00:21<00:53,  1.06it/s]spatial depth accumulate:  30%|███       | 24/80 [00:22<00:54,  1.03it/s]spatial depth accumulate:  31%|███▏      | 25/80 [00:23<00:54,  1.01it/s]spatial depth accumulate:  32%|███▎      | 26/80 [00:24<00:54,  1.00s/it]spatial depth accumulate:  34%|███▍      | 27/80 [00:25<00:51,  1.03it/s]spatial depth accumulate:  35%|███▌      | 28/80 [00:25<00:49,  1.06it/s]spatial depth accumulate:  36%|███▋      | 29/80 [00:26<00:47,  1.08it/s]spatial depth accumulate:  38%|███▊      | 30/80 [00:27<00:45,  1.09it/s]spatial depth accumulate:  39%|███▉      | 31/80 [00:28<00:44,  1.10it/s]spatial depth accumulate:  40%|████      | 32/80 [00:29<00:43,  1.11it/s]spatial depth accumulate:  41%|████▏     | 33/80 [00:30<00:42,  1.12it/s]spatial depth accumulate:  42%|████▎     | 34/80 [00:31<00:41,  1.12it/s]spatial depth accumulate:  44%|████▍     | 35/80 [00:32<00:42,  1.06it/s]spatial depth accumulate:  45%|████▌     | 36/80 [00:33<00:40,  1.08it/s]spatial depth accumulate:  46%|████▋     | 37/80 [00:34<00:39,  1.09it/s]spatial depth accumulate:  48%|████▊     | 38/80 [00:35<00:38,  1.10it/s]spatial depth accumulate:  49%|████▉     | 39/80 [00:35<00:37,  1.11it/s]spatial depth accumulate:  50%|█████     | 40/80 [00:36<00:36,  1.11it/s]spatial depth accumulate:  51%|█████▏    | 41/80 [00:37<00:35,  1.11it/s]spatial depth accumulate:  52%|█████▎    | 42/80 [00:38<00:34,  1.11it/s]spatial depth accumulate:  54%|█████▍    | 43/80 [00:39<00:33,  1.11it/s]spatial depth accumulate:  55%|█████▌    | 44/80 [00:40<00:33,  1.06it/s]spatial depth accumulate:  56%|█████▋    | 45/80 [00:41<00:32,  1.08it/s]spatial depth accumulate:  57%|█████▊    | 46/80 [00:42<00:32,  1.04it/s]spatial depth accumulate:  59%|█████▉    | 47/80 [00:43<00:31,  1.05it/s]spatial depth accumulate:  60%|██████    | 48/80 [00:44<00:29,  1.07it/s]spatial depth accumulate:  61%|██████▏   | 49/80 [00:45<00:29,  1.04it/s]spatial depth accumulate:  62%|██████▎   | 50/80 [00:46<00:28,  1.06it/s]spatial depth accumulate:  64%|██████▍   | 51/80 [00:47<00:26,  1.08it/s]spatial depth accumulate:  65%|██████▌   | 52/80 [00:48<00:25,  1.08it/s]spatial depth accumulate:  66%|██████▋   | 53/80 [00:48<00:24,  1.09it/s]spatial depth accumulate:  68%|██████▊   | 54/80 [00:49<00:23,  1.10it/s]spatial depth accumulate:  69%|██████▉   | 55/80 [00:50<00:22,  1.10it/s]spatial depth accumulate:  70%|███████   | 56/80 [00:51<00:21,  1.11it/s]spatial depth accumulate:  71%|███████▏  | 57/80 [00:52<00:20,  1.11it/s]spatial depth accumulate:  72%|███████▎  | 58/80 [00:53<00:20,  1.06it/s]spatial depth accumulate:  74%|███████▍  | 59/80 [00:54<00:19,  1.08it/s]spatial depth accumulate:  75%|███████▌  | 60/80 [00:55<00:18,  1.09it/s]spatial depth accumulate:  76%|███████▋  | 61/80 [00:56<00:18,  1.05it/s]spatial depth accumulate:  78%|███████▊  | 62/80 [00:57<00:16,  1.07it/s]spatial depth accumulate:  79%|███████▉  | 63/80 [00:58<00:15,  1.08it/s]spatial depth accumulate:  80%|████████  | 64/80 [00:59<00:14,  1.09it/s]spatial depth accumulate:  81%|████████▏ | 65/80 [01:00<00:13,  1.09it/s]spatial depth accumulate:  82%|████████▎ | 66/80 [01:00<00:12,  1.10it/s]spatial depth accumulate:  84%|████████▍ | 67/80 [01:01<00:11,  1.10it/s]spatial depth accumulate:  85%|████████▌ | 68/80 [01:02<00:10,  1.10it/s]spatial depth accumulate:  86%|████████▋ | 69/80 [01:03<00:09,  1.11it/s]spatial depth accumulate:  88%|████████▊ | 70/80 [01:04<00:08,  1.11it/s]spatial depth accumulate:  89%|████████▉ | 71/80 [01:05<00:08,  1.11it/s]spatial depth accumulate:  90%|█████████ | 72/80 [01:06<00:07,  1.12it/s]spatial depth accumulate:  91%|█████████▏| 73/80 [01:07<00:06,  1.12it/s]spatial depth accumulate:  92%|█████████▎| 74/80 [01:08<00:05,  1.12it/s]spatial depth accumulate:  94%|█████████▍| 75/80 [01:08<00:04,  1.12it/s]spatial depth accumulate:  95%|█████████▌| 76/80 [01:09<00:03,  1.12it/s]spatial depth accumulate:  96%|█████████▋| 77/80 [01:10<00:02,  1.12it/s]spatial depth accumulate:  98%|█████████▊| 78/80 [01:11<00:01,  1.12it/s]spatial depth accumulate:  99%|█████████▉| 79/80 [01:12<00:00,  1.12it/s]spatial depth accumulate: 100%|██████████| 80/80 [01:13<00:00,  1.12it/s]spatial depth accumulate: 100%|██████████| 80/80 [01:13<00:00,  1.09it/s]
+spatial depth evaluate:   0%|          | 0/20 [00:00<?, ?it/s]spatial depth evaluate:  10%|█         | 2/20 [00:00<00:01, 15.81it/s]spatial depth evaluate:  20%|██        | 4/20 [00:00<00:01, 15.78it/s]spatial depth evaluate:  30%|███       | 6/20 [00:00<00:00, 15.77it/s]spatial depth evaluate:  40%|████      | 8/20 [00:00<00:00, 15.78it/s]spatial depth evaluate:  50%|█████     | 10/20 [00:00<00:00, 15.45it/s]spatial depth evaluate:  60%|██████    | 12/20 [00:00<00:00, 15.87it/s]spatial depth evaluate:  70%|███████   | 14/20 [00:00<00:00, 15.70it/s]spatial depth evaluate:  80%|████████  | 16/20 [00:01<00:00, 15.72it/s]spatial depth evaluate:  90%|█████████ | 18/20 [00:01<00:00, 15.74it/s]spatial depth evaluate: 100%|██████████| 20/20 [00:01<00:00, 15.77it/s]spatial depth evaluate: 100%|██████████| 20/20 [00:01<00:00, 15.74it/s]
+spatial variance accumulate:   0%|          | 0/80 [00:00<?, ?it/s]spatial variance accumulate:   1%|▏         | 1/80 [00:00<01:11,  1.11it/s]spatial variance accumulate:   2%|▎         | 2/80 [00:01<01:09,  1.12it/s]spatial variance accumulate:   4%|▍         | 3/80 [00:02<01:08,  1.12it/s]spatial variance accumulate:   5%|▌         | 4/80 [00:03<01:07,  1.12it/s]spatial variance accumulate:   6%|▋         | 5/80 [00:04<01:06,  1.12it/s]spatial variance accumulate:   8%|▊         | 6/80 [00:05<01:05,  1.12it/s]spatial variance accumulate:   9%|▉         | 7/80 [00:06<01:05,  1.12it/s]spatial variance accumulate:  10%|█         | 8/80 [00:07<01:04,  1.12it/s]spatial variance accumulate:  11%|█▏        | 9/80 [00:08<01:03,  1.12it/s]spatial variance accumulate:  12%|█▎        | 10/80 [00:08<01:02,  1.12it/s]spatial variance accumulate:  14%|█▍        | 11/80 [00:09<01:01,  1.12it/s]spatial variance accumulate:  15%|█▌        | 12/80 [00:10<01:00,  1.12it/s]spatial variance accumulate:  16%|█▋        | 13/80 [00:11<01:00,  1.12it/s]spatial variance accumulate:  18%|█▊        | 14/80 [00:12<00:59,  1.12it/s]spatial variance accumulate:  19%|█▉        | 15/80 [00:13<00:58,  1.12it/s]spatial variance accumulate:  20%|██        | 16/80 [00:14<00:57,  1.11it/s]spatial variance accumulate:  21%|██▏       | 17/80 [00:15<00:56,  1.12it/s]spatial variance accumulate:  22%|██▎       | 18/80 [00:16<00:55,  1.12it/s]spatial variance accumulate:  24%|██▍       | 19/80 [00:16<00:54,  1.11it/s]spatial variance accumulate:  25%|██▌       | 20/80 [00:17<00:53,  1.11it/s]spatial variance accumulate:  26%|██▋       | 21/80 [00:18<00:53,  1.11it/s]spatial variance accumulate:  28%|██▊       | 22/80 [00:19<00:52,  1.11it/s]spatial variance accumulate:  29%|██▉       | 23/80 [00:20<00:51,  1.11it/s]spatial variance accumulate:  30%|███       | 24/80 [00:21<00:50,  1.11it/s]spatial variance accumulate:  31%|███▏      | 25/80 [00:22<00:49,  1.11it/s]spatial variance accumulate:  32%|███▎      | 26/80 [00:23<00:48,  1.12it/s]spatial variance accumulate:  34%|███▍      | 27/80 [00:24<00:47,  1.12it/s]spatial variance accumulate:  35%|███▌      | 28/80 [00:25<00:46,  1.12it/s]spatial variance accumulate:  36%|███▋      | 29/80 [00:25<00:45,  1.12it/s]spatial variance accumulate:  38%|███▊      | 30/80 [00:26<00:44,  1.12it/s]spatial variance accumulate:  39%|███▉      | 31/80 [00:27<00:43,  1.13it/s]spatial variance accumulate:  40%|████      | 32/80 [00:28<00:42,  1.12it/s]spatial variance accumulate:  41%|████▏     | 33/80 [00:29<00:41,  1.13it/s]spatial variance accumulate:  42%|████▎     | 34/80 [00:30<00:40,  1.13it/s]spatial variance accumulate:  44%|████▍     | 35/80 [00:31<00:39,  1.13it/s]spatial variance accumulate:  45%|████▌     | 36/80 [00:32<00:38,  1.13it/s]spatial variance accumulate:  46%|████▋     | 37/80 [00:33<00:39,  1.09it/s]spatial variance accumulate:  48%|████▊     | 38/80 [00:34<00:39,  1.06it/s]spatial variance accumulate:  49%|████▉     | 39/80 [00:35<00:39,  1.03it/s]spatial variance accumulate:  50%|█████     | 40/80 [00:36<00:37,  1.07it/s]spatial variance accumulate:  51%|█████▏    | 41/80 [00:36<00:35,  1.09it/s]spatial variance accumulate:  52%|█████▎    | 42/80 [00:37<00:34,  1.10it/s]spatial variance accumulate:  54%|█████▍    | 43/80 [00:38<00:33,  1.12it/s]spatial variance accumulate:  55%|█████▌    | 44/80 [00:39<00:31,  1.13it/s]spatial variance accumulate:  56%|█████▋    | 45/80 [00:40<00:30,  1.13it/s]spatial variance accumulate:  57%|█████▊    | 46/80 [00:41<00:30,  1.13it/s]spatial variance accumulate:  59%|█████▉    | 47/80 [00:42<00:29,  1.13it/s]spatial variance accumulate:  60%|██████    | 48/80 [00:43<00:28,  1.13it/s]spatial variance accumulate:  61%|██████▏   | 49/80 [00:43<00:27,  1.12it/s]spatial variance accumulate:  62%|██████▎   | 50/80 [00:44<00:26,  1.12it/s]spatial variance accumulate:  64%|██████▍   | 51/80 [00:45<00:25,  1.12it/s]spatial variance accumulate:  65%|██████▌   | 52/80 [00:46<00:24,  1.12it/s]spatial variance accumulate:  66%|██████▋   | 53/80 [00:47<00:24,  1.12it/s]spatial variance accumulate:  68%|██████▊   | 54/80 [00:48<00:23,  1.13it/s]spatial variance accumulate:  69%|██████▉   | 55/80 [00:49<00:22,  1.13it/s]spatial variance accumulate:  70%|███████   | 56/80 [00:50<00:21,  1.13it/s]spatial variance accumulate:  71%|███████▏  | 57/80 [00:51<00:20,  1.13it/s]spatial variance accumulate:  72%|███████▎  | 58/80 [00:52<00:20,  1.08it/s]spatial variance accumulate:  74%|███████▍  | 59/80 [00:52<00:19,  1.09it/s]spatial variance accumulate:  75%|███████▌  | 60/80 [00:53<00:18,  1.10it/s]spatial variance accumulate:  76%|███████▋  | 61/80 [00:54<00:17,  1.11it/s]spatial variance accumulate:  78%|███████▊  | 62/80 [00:55<00:16,  1.12it/s]spatial variance accumulate:  79%|███████▉  | 63/80 [00:56<00:15,  1.12it/s]spatial variance accumulate:  80%|████████  | 64/80 [00:57<00:14,  1.12it/s]spatial variance accumulate:  81%|████████▏ | 65/80 [00:58<00:13,  1.13it/s]spatial variance accumulate:  82%|████████▎ | 66/80 [00:59<00:12,  1.13it/s]spatial variance accumulate:  84%|████████▍ | 67/80 [01:00<00:11,  1.13it/s]spatial variance accumulate:  85%|████████▌ | 68/80 [01:01<00:11,  1.08it/s]spatial variance accumulate:  86%|████████▋ | 69/80 [01:01<00:10,  1.09it/s]spatial variance accumulate:  88%|████████▊ | 70/80 [01:02<00:09,  1.10it/s]spatial variance accumulate:  89%|████████▉ | 71/80 [01:03<00:08,  1.06it/s]spatial variance accumulate:  90%|█████████ | 72/80 [01:04<00:07,  1.08it/s]spatial variance accumulate:  91%|█████████▏| 73/80 [01:05<00:06,  1.04it/s]spatial variance accumulate:  92%|█████████▎| 74/80 [01:06<00:05,  1.06it/s]spatial variance accumulate:  94%|█████████▍| 75/80 [01:07<00:04,  1.08it/s]spatial variance accumulate:  95%|█████████▌| 76/80 [01:08<00:03,  1.09it/s]spatial variance accumulate:  96%|█████████▋| 77/80 [01:09<00:02,  1.10it/s]spatial variance accumulate:  98%|█████████▊| 78/80 [01:10<00:01,  1.06it/s]spatial variance accumulate:  99%|█████████▉| 79/80 [01:11<00:00,  1.08it/s]spatial variance accumulate: 100%|██████████| 80/80 [01:12<00:00,  1.09it/s]spatial variance accumulate: 100%|██████████| 80/80 [01:12<00:00,  1.11it/s]
+spatial variance evaluate:   0%|          | 0/20 [00:00<?, ?it/s]spatial variance evaluate:  10%|█         | 2/20 [00:00<00:01, 15.74it/s]spatial variance evaluate:  20%|██        | 4/20 [00:00<00:01, 15.66it/s]spatial variance evaluate:  30%|███       | 6/20 [00:00<00:00, 15.80it/s]spatial variance evaluate:  40%|████      | 8/20 [00:00<00:00, 15.83it/s]spatial variance evaluate:  50%|█████     | 10/20 [00:00<00:00, 15.70it/s]spatial variance evaluate:  60%|██████    | 12/20 [00:00<00:00, 15.77it/s]spatial variance evaluate:  70%|███████   | 14/20 [00:00<00:00, 15.82it/s]spatial variance evaluate:  80%|████████  | 16/20 [00:01<00:00, 15.85it/s]spatial variance evaluate:  90%|█████████ | 18/20 [00:01<00:00, 15.64it/s]spatial variance evaluate: 100%|██████████| 20/20 [00:01<00:00, 15.48it/s]spatial variance evaluate: 100%|██████████| 20/20 [00:01<00:00, 15.67it/s]
+
+================================================================================
+LINEAR PROBING RESULTS
+================================================================================
+
+─── BIT_DENSITY ───
+                        key |       R² |  Pearson r
+  ──────────────────────────────────────────────────
+                 joint_0_t0 | -24.5928 |    -0.0873
+                joint_0_t14 | -27.5225 |    -0.0235
+                joint_0_t19 | -22.7074 |     0.0498
+                joint_0_t24 | -18.4572 |     0.1504
+                joint_0_t27 | -17.6837 |    -0.0052
+                 joint_0_t4 | -28.5171 |    -0.0917
+                 joint_0_t9 | -34.1984 |    -0.1076
+                joint_14_t0 | -11.3591 |     0.6165
+               joint_14_t14 | -12.4822 |     0.4419
+               joint_14_t19 | -12.0011 |     0.2429
+               joint_14_t24 |  -7.4733 |     0.5448
+               joint_14_t27 | -19.7495 |     0.4739
+                joint_14_t4 | -19.2114 |     0.1287
+                joint_14_t9 | -12.7218 |     0.8169
+                joint_18_t0 | -14.7461 |     0.2492
+               joint_18_t14 | -18.8348 |    -0.0181
+               joint_18_t19 | -11.4581 |     0.5209
+               joint_18_t24 | -12.8269 |     0.5305
+               joint_18_t27 | -14.4144 |     0.4350
+                joint_18_t4 | -16.7519 |     0.4158
+                joint_18_t9 |  -9.5126 |     0.5303
+                 joint_4_t0 | -13.8492 |     0.3967
+                joint_4_t14 | -20.1237 |     0.5993
+                joint_4_t19 | -26.7937 |     0.1013
+                joint_4_t24 | -13.0549 |     0.2288
+                joint_4_t27 | -13.6976 |     0.6418
+                 joint_4_t4 | -30.8918 |    -0.0949
+                 joint_4_t9 |  -9.8003 |     0.1999
+                 joint_9_t0 | -14.0513 |     0.6161
+                joint_9_t14 | -13.8346 |     0.2648
+                joint_9_t19 | -17.6153 |     0.2068
+                joint_9_t24 | -10.7804 |     0.4259
+                joint_9_t27 | -13.0598 |     0.2007
+                 joint_9_t4 | -19.9206 |     0.3327
+                 joint_9_t9 | -16.3938 |     0.5036
+                single_0_t0 | -15.9212 |     0.4431
+               single_0_t14 | -12.1442 |     0.5055
+               single_0_t19 | -11.3922 |     0.3737
+               single_0_t24 | -15.5069 |    -0.2767
+               single_0_t27 | -15.5069 |     0.4295
+                single_0_t4 | -18.0527 |     0.3283
+                single_0_t9 | -13.6339 |     0.6152
+               single_19_t0 | -19.9843 |     0.2087
+              single_19_t14 | -21.6376 |     0.4261
+              single_19_t19 | -15.9444 |     0.3940
+              single_19_t24 |  -8.8175 |     0.3747
+              single_19_t27 | -16.5725 |     0.0162
+               single_19_t4 | -16.6052 |     0.4076
+               single_19_t9 | -12.1593 |     0.4189
+               single_28_t0 | -11.0899 |     0.2375
+              single_28_t14 | -16.2799 |     0.1569
+              single_28_t19 | -12.5428 |     0.2596
+              single_28_t24 | -22.2702 |    -0.1313
+              single_28_t27 | -33.1119 |    -0.1089
+               single_28_t4 | -18.9460 |     0.1427
+               single_28_t9 | -13.5041 |     0.4251
+               single_37_t0 | -14.2145 |     0.6235
+              single_37_t14 | -20.5358 |     0.6075
+              single_37_t19 | -11.4591 |     0.3438
+              single_37_t24 | -13.0919 |     0.0067
+              single_37_t27 | -24.0644 |     0.2790
+               single_37_t4 | -26.3507 |     0.3653
+               single_37_t9 | -31.3619 |     0.0092
+                single_9_t0 | -15.1342 |     0.2272
+               single_9_t14 | -10.5314 |     0.4614
+               single_9_t19 | -11.2452 |     0.2709
+               single_9_t24 |  -8.5475 |     0.6067
+               single_9_t27 | -12.6397 |    -0.2495
+                single_9_t4 | -12.2559 |     0.5168
+                single_9_t9 | -19.3167 |     0.6045
+  ** best: joint_14_t24  R²=-7.4733
+
+─── DEPTH ───
+                        key |       R² |  Pearson r
+  ──────────────────────────────────────────────────
+                 joint_0_t0 | -52.0272 |     0.0770
+                joint_0_t14 | -36.7973 |    -0.0538
+                joint_0_t19 | -26.1495 |     0.0879
+                joint_0_t24 | -37.6078 |     0.1946
+                joint_0_t27 | -30.9093 |     0.3031
+                 joint_0_t4 | -28.6776 |     0.3925
+                 joint_0_t9 | -42.6038 |     0.3406
+                joint_14_t0 | -24.3322 |     0.0316
+               joint_14_t14 | -41.0135 |    -0.1641
+               joint_14_t19 | -30.6421 |     0.1408
+               joint_14_t24 | -19.3771 |     0.0948
+               joint_14_t27 | -62.8178 |     0.4205
+                joint_14_t4 | -51.6207 |    -0.2241
+                joint_14_t9 | -32.6856 |     0.4544
+                joint_18_t0 | -36.6219 |     0.2262
+               joint_18_t14 | -51.5733 |    -0.1432
+               joint_18_t19 | -29.0300 |    -0.1755
+               joint_18_t24 | -34.2274 |    -0.0904
+               joint_18_t27 | -38.1487 |     0.5719
+                joint_18_t4 | -46.0903 |     0.3277
+                joint_18_t9 | -29.9384 |     0.2086
+                 joint_4_t0 | -35.1864 |    -0.1845
+                joint_4_t14 | -51.3537 |     0.4928
+                joint_4_t19 | -74.1777 |    -0.4215
+                joint_4_t24 | -41.9153 |     0.2109
+                joint_4_t27 | -35.0295 |     0.1916
+                 joint_4_t4 | -95.8625 |     0.0044
+                 joint_4_t9 | -21.3768 |     0.1054
+                 joint_9_t0 | -37.2537 |    -0.1035
+                joint_9_t14 | -31.9571 |     0.0979
+                joint_9_t19 | -37.4642 |    -0.1268
+                joint_9_t24 | -29.5880 |     0.4656
+                joint_9_t27 | -36.4082 |     0.3262
+                 joint_9_t4 | -45.6900 |     0.2297
+                 joint_9_t9 | -47.5497 |    -0.1736
+                single_0_t0 | -45.9505 |    -0.0909
+               single_0_t14 | -34.7326 |     0.0426
+               single_0_t19 | -29.8441 |     0.2270
+               single_0_t24 | -39.4156 |    -0.0901
+               single_0_t27 | -49.0209 |     0.1138
+                single_0_t4 | -42.2016 |     0.4046
+                single_0_t9 | -38.6048 |     0.0872
+               single_19_t0 | -58.3559 |    -0.0758
+              single_19_t14 | -59.2180 |     0.4671
+              single_19_t19 | -38.0579 |     0.1945
+              single_19_t24 | -20.1953 |     0.5696
+              single_19_t27 | -30.2284 |     0.3655
+               single_19_t4 | -38.9035 |     0.2270
+               single_19_t9 | -31.5921 |     0.3842
+               single_28_t0 | -30.9721 |    -0.3080
+              single_28_t14 | -42.2198 |    -0.1323
+              single_28_t19 | -34.5499 |    -0.3814
+              single_28_t24 | -55.5431 |     0.5364
+              single_28_t27 | -73.4824 |     0.1150
+               single_28_t4 | -44.5845 |     0.4327
+               single_28_t9 | -33.5798 |     0.0080
+               single_37_t0 | -31.8702 |     0.0302
+              single_37_t14 | -53.0878 |     0.2274
+              single_37_t19 | -29.3857 |    -0.1921
+              single_37_t24 | -29.6654 |    -0.0938
+              single_37_t27 | -71.7329 |     0.3045
+               single_37_t4 | -69.9927 |    -0.0863
+               single_37_t9 | -84.6079 |     0.2957
+                single_9_t0 | -41.8309 |    -0.0382
+               single_9_t14 | -27.2713 |     0.3390
+               single_9_t19 | -33.0124 |    -0.1904
+               single_9_t24 | -25.5104 |     0.3762
+               single_9_t27 | -35.5098 |    -0.0068
+                single_9_t4 | -36.5558 |     0.4136
+                single_9_t9 | -48.3266 |     0.3952
+  ** best: joint_14_t24  R²=-19.3771
+
+─── VARIANCE ───
+                        key |       R² |  Pearson r
+  ──────────────────────────────────────────────────
+                 joint_0_t0 | -39.4591 |    -0.1359
+                joint_0_t14 | -35.1075 |    -0.2270
+                joint_0_t19 | -38.8422 |    -0.2141
+                joint_0_t24 | -51.7003 |    -0.0573
+                joint_0_t27 | -53.5202 |    -0.1083
+                 joint_0_t4 | -32.0522 |    -0.1923
+                 joint_0_t9 | -42.6178 |    -0.3132
+                joint_14_t0 | -23.3099 |     0.0590
+               joint_14_t14 | -36.5500 |    -0.0027
+               joint_14_t19 | -39.9940 |    -0.0114
+               joint_14_t24 | -27.9613 |    -0.2438
+               joint_14_t27 | -58.0148 |     0.0800
+                joint_14_t4 | -43.8016 |    -0.3078
+                joint_14_t9 | -33.8869 |     0.0526
+                joint_18_t0 | -41.1585 |    -0.1673
+               joint_18_t14 | -48.6920 |    -0.0128
+               joint_18_t19 | -46.2418 |    -0.2166
+               joint_18_t24 | -41.0641 |     0.0197
+               joint_18_t27 | -42.6683 |     0.0431
+                joint_18_t4 | -44.5671 |     0.4436
+                joint_18_t9 | -32.7174 |     0.2312
+                 joint_4_t0 | -33.0443 |    -0.1450
+                joint_4_t14 | -50.3579 |     0.1235
+                joint_4_t19 | -58.1266 |    -0.2477
+                joint_4_t24 | -41.1587 |     0.1061
+                joint_4_t27 | -43.9702 |     0.3719
+                 joint_4_t4 | -55.1326 |    -0.0102
+                 joint_4_t9 | -24.6055 |     0.1228
+                 joint_9_t0 | -30.3359 |    -0.0208
+                joint_9_t14 | -40.3856 |    -0.1498
+                joint_9_t19 | -44.0368 |    -0.0354
+                joint_9_t24 | -29.8711 |     0.3991
+                joint_9_t27 | -42.5578 |    -0.0469
+                 joint_9_t4 | -46.7121 |     0.0518
+                 joint_9_t9 | -42.5828 |    -0.3255
+                single_0_t0 | -40.5909 |    -0.0454
+               single_0_t14 | -42.0477 |    -0.1498
+               single_0_t19 | -35.5343 |     0.6386
+               single_0_t24 | -47.4325 |    -0.1306
+               single_0_t27 | -46.6605 |     0.2745
+                single_0_t4 | -39.9372 |     0.3072
+                single_0_t9 | -37.4516 |     0.5593
+               single_19_t0 | -48.6191 |     0.0841
+              single_19_t14 | -54.3283 |     0.1457
+              single_19_t19 | -33.4241 |     0.2001
+              single_19_t24 | -24.2288 |     0.0223
+              single_19_t27 | -33.4676 |     0.3842
+               single_19_t4 | -41.2613 |     0.0230
+               single_19_t9 | -32.1499 |    -0.0001
+               single_28_t0 | -30.1223 |     0.0045
+              single_28_t14 | -39.4202 |     0.1263
+              single_28_t19 | -34.1477 |    -0.4746
+              single_28_t24 | -43.2663 |     0.6166
+              single_28_t27 | -55.8855 |    -0.0111
+               single_28_t4 | -46.1078 |     0.0880
+               single_28_t9 | -43.1244 |    -0.2936
+               single_37_t0 | -38.0980 |    -0.0988
+              single_37_t14 | -54.1275 |    -0.0170
+              single_37_t19 | -34.7818 |    -0.1394
+              single_37_t24 | -29.3741 |    -0.1485
+              single_37_t27 | -58.0268 |     0.2045
+               single_37_t4 | -57.3549 |     0.1165
+               single_37_t9 | -81.2563 |    -0.0084
+                single_9_t0 | -40.1631 |     0.0118
+               single_9_t14 | -37.6671 |     0.2357
+               single_9_t19 | -37.1688 |    -0.2720
+               single_9_t24 | -32.8289 |     0.1151
+               single_9_t27 | -39.3040 |    -0.4999
+                single_9_t4 | -41.0456 |    -0.1126
+                single_9_t9 | -53.1538 |    -0.1765
+  ** best: joint_14_t0  R²=-23.3099
+
+─── SPATIAL_BIT_DENSITY ───
+                        key |       R² |  Pearson r
+  ──────────────────────────────────────────────────
+                 joint_0_t0 |  -0.0042 |     0.1402
+                joint_0_t14 |   0.4419 |     0.6841
+                joint_0_t19 |   0.6509 |     0.8204
+                joint_0_t24 |   0.6841 |     0.8480
+                joint_0_t27 |   0.6788 |     0.8466
+                 joint_0_t4 |   0.0071 |     0.1982
+                 joint_0_t9 |   0.1493 |     0.4315
+                joint_14_t0 |   0.9911 |     0.9957
+               joint_14_t14 |   0.9785 |     0.9897
+               joint_14_t19 |   0.9643 |     0.9829
+               joint_14_t24 |   0.9366 |     0.9700
+               joint_14_t27 |   0.9027 |     0.9532
+                joint_14_t4 |   0.9885 |     0.9945
+                joint_14_t9 |   0.9860 |     0.9933
+                joint_18_t0 |   0.9885 |     0.9944
+               joint_18_t14 |   0.9678 |     0.9850
+               joint_18_t19 |   0.9506 |     0.9769
+               joint_18_t24 |   0.9151 |     0.9601
+               joint_18_t27 |   0.8799 |     0.9425
+                joint_18_t4 |   0.9824 |     0.9914
+                joint_18_t9 |   0.9772 |     0.9893
+                 joint_4_t0 |   0.9520 |     0.9768
+                joint_4_t14 |   0.9297 |     0.9643
+                joint_4_t19 |   0.9224 |     0.9607
+                joint_4_t24 |   0.9011 |     0.9508
+                joint_4_t27 |   0.8760 |     0.9382
+                 joint_4_t4 |   0.9432 |     0.9726
+                 joint_4_t9 |   0.9353 |     0.9675
+                 joint_9_t0 |   0.9875 |     0.9942
+                joint_9_t14 |   0.9786 |     0.9893
+                joint_9_t19 |   0.9694 |     0.9850
+                joint_9_t24 |   0.9427 |     0.9725
+                joint_9_t27 |   0.9077 |     0.9551
+                 joint_9_t4 |   0.9884 |     0.9945
+                 joint_9_t9 |   0.9852 |     0.9928
+                single_0_t0 |   0.9882 |     0.9942
+               single_0_t14 |   0.9640 |     0.9835
+               single_0_t19 |   0.9469 |     0.9753
+               single_0_t24 |   0.9113 |     0.9586
+               single_0_t27 |   0.8756 |     0.9409
+                single_0_t4 |   0.9816 |     0.9910
+                single_0_t9 |   0.9748 |     0.9883
+               single_19_t0 |   0.9776 |     0.9895
+              single_19_t14 |   0.9484 |     0.9758
+              single_19_t19 |   0.9247 |     0.9642
+              single_19_t24 |   0.8769 |     0.9407
+              single_19_t27 |   0.8320 |     0.9195
+               single_19_t4 |   0.9713 |     0.9863
+               single_19_t9 |   0.9620 |     0.9817
+               single_28_t0 |   0.9805 |     0.9910
+              single_28_t14 |   0.9467 |     0.9750
+              single_28_t19 |   0.9203 |     0.9626
+              single_28_t24 |   0.8603 |     0.9330
+              single_28_t27 |   0.8128 |     0.9099
+               single_28_t4 |   0.9706 |     0.9854
+               single_28_t9 |   0.9601 |     0.9806
+               single_37_t0 |   0.9870 |     0.9939
+              single_37_t14 |   0.9590 |     0.9804
+              single_37_t19 |   0.9368 |     0.9702
+              single_37_t24 |   0.8849 |     0.9437
+              single_37_t27 |   0.8082 |     0.9079
+               single_37_t4 |   0.9748 |     0.9878
+               single_37_t9 |   0.9697 |     0.9852
+                single_9_t0 |   0.9793 |     0.9902
+               single_9_t14 |   0.9513 |     0.9784
+               single_9_t19 |   0.9334 |     0.9696
+               single_9_t24 |   0.8947 |     0.9501
+               single_9_t27 |   0.8520 |     0.9290
+                single_9_t4 |   0.9756 |     0.9881
+                single_9_t9 |   0.9627 |     0.9830
+  ** best: joint_14_t0  R²=0.9911
+
+─── SPATIAL_DEPTH ───
+                        key |       R² |  Pearson r
+  ──────────────────────────────────────────────────
+                 joint_0_t0 |  -0.0327 |     0.2759
+                joint_0_t14 |   0.0405 |     0.3431
+                joint_0_t19 |   0.0897 |     0.3919
+                joint_0_t24 |   0.0966 |     0.4143
+                joint_0_t27 |   0.0963 |     0.4384
+                 joint_0_t4 |  -0.0514 |     0.2597
+                 joint_0_t9 |  -0.0150 |     0.2920
+                joint_14_t0 |   0.1717 |     0.5239
+               joint_14_t14 |   0.5363 |     0.7662
+               joint_14_t19 |   0.5669 |     0.7984
+               joint_14_t24 |   0.5179 |     0.7782
+               joint_14_t27 |   0.4014 |     0.6838
+                joint_14_t4 |   0.3370 |     0.6454
+                joint_14_t9 |   0.4571 |     0.7179
+                joint_18_t0 |   0.1708 |     0.5420
+               joint_18_t14 |   0.6042 |     0.8055
+               joint_18_t19 |   0.6041 |     0.8171
+               joint_18_t24 |   0.5808 |     0.8050
+               joint_18_t27 |   0.4701 |     0.7243
+                joint_18_t4 |   0.3890 |     0.7037
+                joint_18_t9 |   0.5201 |     0.7651
+                 joint_4_t0 |   0.1649 |     0.4978
+                joint_4_t14 |   0.2535 |     0.5490
+                joint_4_t19 |   0.2865 |     0.5790
+                joint_4_t24 |   0.2848 |     0.5788
+                joint_4_t27 |   0.2720 |     0.5611
+                 joint_4_t4 |   0.2274 |     0.5281
+                 joint_4_t9 |   0.2229 |     0.5223
+                 joint_9_t0 |   0.1819 |     0.5232
+                joint_9_t14 |   0.3837 |     0.6594
+                joint_9_t19 |   0.4486 |     0.7200
+                joint_9_t24 |   0.4233 |     0.6912
+                joint_9_t27 |   0.3258 |     0.6183
+                 joint_9_t4 |   0.2707 |     0.5631
+                 joint_9_t9 |   0.2676 |     0.5629
+                single_0_t0 |   0.1832 |     0.5526
+               single_0_t14 |   0.6051 |     0.8091
+               single_0_t19 |   0.6037 |     0.8201
+               single_0_t24 |   0.5803 |     0.8023
+               single_0_t27 |   0.4689 |     0.7224
+                single_0_t4 |   0.4497 |     0.7285
+                single_0_t9 |   0.5492 |     0.7770
+               single_19_t0 |   0.3375 |     0.6569
+              single_19_t14 |   0.5945 |     0.8189
+              single_19_t19 |   0.5678 |     0.8082
+              single_19_t24 |   0.5436 |     0.7835
+              single_19_t27 |   0.4357 |     0.7048
+               single_19_t4 |   0.5562 |     0.8106
+               single_19_t9 |   0.5981 |     0.8243
+               single_28_t0 |   0.3427 |     0.6693
+              single_28_t14 |   0.5765 |     0.8040
+              single_28_t19 |   0.5313 |     0.7784
+              single_28_t24 |   0.4979 |     0.7475
+              single_28_t27 |   0.3677 |     0.6584
+               single_28_t4 |   0.5757 |     0.8068
+               single_28_t9 |   0.5850 |     0.8141
+               single_37_t0 |   0.3634 |     0.6610
+              single_37_t14 |   0.5301 |     0.7899
+              single_37_t19 |   0.5144 |     0.7711
+              single_37_t24 |   0.4770 |     0.7373
+              single_37_t27 |   0.3419 |     0.6335
+               single_37_t4 |   0.5402 |     0.7910
+               single_37_t9 |   0.5458 |     0.7951
+                single_9_t0 |   0.3325 |     0.6370
+               single_9_t14 |   0.6409 |     0.8324
+               single_9_t19 |   0.6077 |     0.8210
+               single_9_t24 |   0.5939 |     0.8059
+               single_9_t27 |   0.5178 |     0.7513
+                single_9_t4 |   0.5564 |     0.7883
+                single_9_t9 |   0.6245 |     0.8211
+  ** best: single_9_t14  R²=0.6409
+
+─── SPATIAL_VARIANCE ───
+                        key |       R² |  Pearson r
+  ──────────────────────────────────────────────────
+                 joint_0_t0 |  -0.2683 |     0.0393
+                joint_0_t14 |   0.0509 |     0.3430
+                joint_0_t19 |   0.1690 |     0.4664
+                joint_0_t24 |   0.2146 |     0.5277
+                joint_0_t27 |   0.2185 |     0.5437
+                 joint_0_t4 |  -0.1970 |     0.0752
+                 joint_0_t9 |  -0.0780 |     0.2006
+                joint_14_t0 |   0.1108 |     0.4518
+               joint_14_t14 |   0.3497 |     0.6790
+               joint_14_t19 |   0.3410 |     0.6790
+               joint_14_t24 |   0.2892 |     0.6169
+               joint_14_t27 |   0.2956 |     0.6281
+                joint_14_t4 |   0.2040 |     0.5668
+                joint_14_t9 |   0.2867 |     0.6069
+                joint_18_t0 |   0.0423 |     0.4707
+               joint_18_t14 |   0.3628 |     0.6929
+               joint_18_t19 |   0.3384 |     0.6742
+               joint_18_t24 |   0.3524 |     0.6597
+               joint_18_t27 |   0.3364 |     0.6413
+                joint_18_t4 |   0.2736 |     0.6083
+                joint_18_t9 |   0.3107 |     0.6510
+                 joint_4_t0 |   0.0414 |     0.3439
+                joint_4_t14 |   0.2244 |     0.5472
+                joint_4_t19 |   0.2893 |     0.6016
+                joint_4_t24 |   0.3182 |     0.6201
+                joint_4_t27 |   0.3434 |     0.6311
+                 joint_4_t4 |   0.0156 |     0.3793
+                 joint_4_t9 |   0.1425 |     0.4724
+                 joint_9_t0 |   0.0371 |     0.3836
+                joint_9_t14 |   0.3290 |     0.6418
+                joint_9_t19 |   0.3720 |     0.6693
+                joint_9_t24 |   0.3170 |     0.6342
+                joint_9_t27 |   0.2913 |     0.6277
+                 joint_9_t4 |   0.1398 |     0.4867
+                 joint_9_t9 |   0.2388 |     0.5657
+                single_0_t0 |  -0.0116 |     0.4645
+               single_0_t14 |   0.3460 |     0.6808
+               single_0_t19 |   0.3257 |     0.6660
+               single_0_t24 |   0.3618 |     0.6601
+               single_0_t27 |   0.3437 |     0.6464
+                single_0_t4 |   0.2848 |     0.6101
+                single_0_t9 |   0.2898 |     0.6359
+               single_19_t0 |   0.1543 |     0.5562
+              single_19_t14 |   0.3828 |     0.6692
+              single_19_t19 |   0.3854 |     0.6631
+              single_19_t24 |   0.3585 |     0.6444
+              single_19_t27 |   0.3511 |     0.6464
+               single_19_t4 |   0.3322 |     0.6235
+               single_19_t9 |   0.3907 |     0.6644
+               single_28_t0 |   0.1065 |     0.5201
+              single_28_t14 |   0.3596 |     0.6573
+              single_28_t19 |   0.3876 |     0.6682
+              single_28_t24 |   0.3447 |     0.6334
+              single_28_t27 |   0.3365 |     0.6314
+               single_28_t4 |   0.3331 |     0.6312
+               single_28_t9 |   0.3528 |     0.6541
+               single_37_t0 |   0.1299 |     0.4988
+              single_37_t14 |   0.3390 |     0.6546
+              single_37_t19 |   0.3440 |     0.6529
+              single_37_t24 |   0.3284 |     0.6357
+              single_37_t27 |   0.3355 |     0.6303
+               single_37_t4 |   0.3057 |     0.6342
+               single_37_t9 |   0.3461 |     0.6606
+                single_9_t0 |   0.0219 |     0.4981
+               single_9_t14 |   0.4108 |     0.6950
+               single_9_t19 |   0.3634 |     0.6688
+               single_9_t24 |   0.3619 |     0.6582
+               single_9_t27 |   0.3867 |     0.6658
+                single_9_t4 |   0.2991 |     0.6318
+                single_9_t9 |   0.3867 |     0.6747
+  ** best: single_9_t14  R²=0.4108
+
+Figures & results → probing_results/probes

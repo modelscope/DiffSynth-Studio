@@ -1,0 +1,2136 @@
+diff --git a/aggregate_metrics.py b/aggregate_metrics.py
+index 06cc8c9..5ace982 100644
+--- a/aggregate_metrics.py
++++ b/aggregate_metrics.py
+@@ -37,7 +37,7 @@ def parse_metrics_txt(path: Path) -> dict[str, float]:
+     with open(path) as f:
+         for line in f:
+             line = line.strip()
+-            for name in ["MSE", "PSNR", "SSIM", "LPIPS", "FID"]:
++            for name in ["MSE", "PSNR", "SSIM", "LPIPS", "FID", "CFID"]:
+                 pattern = rf"{name}:\s+([\d.]+)"
+                 m = re.search(pattern, line, re.IGNORECASE)
+                 if m:
+@@ -182,7 +182,7 @@ def main():
+     if args.compare:
+         print(f"\n--- Comparison Table ---")
+         compare_rows = []
+-        paper_metrics = ["psnr", "ssim", "lpips", "fid"]
++        paper_metrics = ["psnr", "ssim", "lpips", "fid", "cfid"]
+         comp_headers = ["Method"] + [m.upper() for m in paper_metrics]
+ 
+         primary_row = [args.run_label]
+@@ -212,7 +212,7 @@ def main():
+ 
+     # Paper table (mean +/- std)
+     if args.latex:
+-        paper_metrics = ["psnr", "ssim", "lpips", "fid"]
++        paper_metrics = ["psnr", "ssim", "lpips", "fid", "cfid"]
+         paper_headers = ["Method"] + [m.upper() for m in paper_metrics]
+         paper_row = [args.run_label]
+         for m in paper_metrics:
+diff --git a/diffsynth/core/data/operators.py b/diffsynth/core/data/operators.py
+index c14944e..3a6807b 100644
+--- a/diffsynth/core/data/operators.py
++++ b/diffsynth/core/data/operators.py
+@@ -1,5 +1,6 @@
+ import torch, torchvision, imageio, os
+ import imageio.v3 as iio
++import numpy as np
+ from PIL import Image
+ 
+ 
+@@ -58,6 +59,9 @@ class LoadImage(DataProcessingOperator):
+     
+     def __call__(self, data: str):
+         image = Image.open(data)
++        if image.mode == "I;16":
++            arr = np.array(image, dtype=np.float32) * (255.0 / 65535.0)
++            image = Image.fromarray(arr.clip(0, 255).astype(np.uint8))
+         if self.convert_RGB: image = image.convert("RGB")
+         return image
+ 
+diff --git a/diffsynth/diffusion/consistency_loss.py b/diffsynth/diffusion/consistency_loss.py
+index 2f8745e..4cb40ce 100644
+--- a/diffsynth/diffusion/consistency_loss.py
++++ b/diffsynth/diffusion/consistency_loss.py
+@@ -1,5 +1,5 @@
+ """
+-Phase 3c: Per-Frame Consistency Loss (IC-Light inspired)
++Per-Frame Consistency Loss (IC-Light inspired)
+ 
+ Given two different binary SPAD frames F1 and F2 of the same scene,
+ and the same noisy latent z_t, the predicted velocities should be identical
+@@ -28,9 +28,9 @@ def FlowMatchSFTWithConsistencyLoss(
+       - input_latents: VAE-encoded ground truth
+       - controlnet_conditionings: list with conditioning from F1
+       - controlnet_conditionings_f2: list with conditioning from F2
+-      - All other standard inputs
++      - All other standard inputs (prompt_emb, etc.)
+ 
+-    The loss is: L = L_flow_match + lambda * ||v_F1 - v_F2||^2
++    Returns: L = L_flow_match + lambda * ||v_F1 - v_F2||^2
+     """
+     max_timestep_boundary = int(inputs.get("max_timestep_boundary", 1) * len(pipe.scheduler.timesteps))
+     min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
+@@ -46,21 +46,22 @@ def FlowMatchSFTWithConsistencyLoss(
+ 
+     models = {name: getattr(pipe, name) for name in pipe.in_iteration_models}
+ 
+-    # Forward pass with frame F1 (standard controlnet conditioning)
+     noise_pred_f1 = pipe.model_fn(**models, **inputs, timestep=timestep)
+ 
+-    # Standard flow-matching loss
+     loss_sft = F.mse_loss(noise_pred_f1.float(), training_target.float())
+     loss_sft = loss_sft * pipe.scheduler.training_weight(timestep)
+ 
+-    # Forward pass with frame F2 (swapped controlnet conditioning)
+     conditionings_f2 = inputs.get("controlnet_conditionings_f2")
+     if conditionings_f2 is not None:
+         inputs_f2 = dict(inputs)
+         inputs_f2["controlnet_conditionings"] = conditionings_f2
+-        inputs_f2["latents"] = noisy_latents  # Same noisy input
++        inputs_f2["latents"] = noisy_latents
+ 
+-        noise_pred_f2 = pipe.model_fn(**models, **inputs_f2, timestep=timestep)
++        # Stop-gradient on F2: no activations stored, F2 prediction is a fixed
++        # target. This halves memory and avoids a degenerate collapse solution.
++        # Over training, F1/F2 are randomly assigned so both directions are covered.
++        with torch.no_grad():
++            noise_pred_f2 = pipe.model_fn(**models, **inputs_f2, timestep=timestep)
+ 
+         loss_consistency = F.mse_loss(noise_pred_f1.float(), noise_pred_f2.float())
+         loss = loss_sft + consistency_weight * loss_consistency
+diff --git a/diffsynth/diffusion/flow_dps.py b/diffsynth/diffusion/flow_dps.py
+index a6a5d3b..e7ad19a 100644
+--- a/diffsynth/diffusion/flow_dps.py
++++ b/diffsynth/diffusion/flow_dps.py
+@@ -79,9 +79,9 @@ def compute_dps_correction(
+     use_l2: bool = True,
+     use_nll: bool = True,
+     device: str = "cuda",
+-    tiled: bool = False,
+-    tile_size: int = 128,
+-    tile_stride: int = 64,
++    tiled: bool = True,
++    tile_size: int = 64,
++    tile_stride: int = 32,
+ ) -> torch.Tensor:
+     """Compute the DPS gradient correction for one denoising step.
+ 
+@@ -91,35 +91,27 @@ def compute_dps_correction(
+ 
+     We decode x_0_hat through the VAE, compute the measurement loss,
+     and return the gradient w.r.t. the latents.
+-
+-    Args:
+-        latents: Current noisy latents [B, C, H, W].
+-        noise_pred: Predicted velocity [B, C, H, W].
+-        sigma: Current noise level.
+-        vae_decoder: VAE decoder callable.
+-        spad_measurement: SPAD observation [B, C, H, W] in [0, 1].
+-        spad_model: Differentiable SPAD forward model.
+-        guidance_scale: Step size for gradient correction.
+-        gradient_clamp: Max gradient magnitude.
+-        use_l2: Include L2 measurement loss.
+-        use_nll: Include Bernoulli NLL loss.
+-
+-    Returns:
+-        Gradient correction to add to noise_pred.
+     """
+-    latents_detached = latents.detach().requires_grad_(True)
++    latents_detached = latents.detach().float().requires_grad_(True)
++    noise_pred_f = noise_pred.detach().float()
+ 
+-    x0_hat = latents_detached - sigma * noise_pred.detach()
++    x0_hat = latents_detached - sigma * noise_pred_f
+ 
+-    decoded = vae_decoder(x0_hat, device=device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+-    decoded_01 = (decoded + 1.0) / 2.0
++    with torch.autocast("cuda", enabled=False):
++        decoded = vae_decoder(
++            x0_hat.to(dtype=torch.bfloat16),
++            device=device, tiled=tiled,
++            tile_size=tile_size, tile_stride=tile_stride,
++        )
++    decoded_01 = (decoded.float() + 1.0) / 2.0
+ 
+     intensity = decoded_01.mean(dim=1, keepdim=True)
+     spad_meas = spad_measurement
+     if spad_meas.shape[1] == 3:
+         spad_meas = spad_meas.mean(dim=1, keepdim=True)
++    spad_meas = spad_meas.float()
+ 
+-    loss = torch.tensor(0.0, device=device, dtype=latents.dtype)
++    loss = torch.tensor(0.0, device=device, dtype=torch.float32)
+ 
+     if use_nll:
+         nll = spad_model.negative_log_likelihood(intensity, spad_meas)
+@@ -131,11 +123,13 @@ def compute_dps_correction(
+         loss = loss + l2
+ 
+     grad = torch.autograd.grad(loss, latents_detached, create_graph=False)[0]
++    del decoded, decoded_01, intensity, x0_hat, noise_pred_f, loss
++    torch.cuda.empty_cache()
+ 
+     if gradient_clamp > 0:
+         grad = grad.clamp(-gradient_clamp, gradient_clamp)
+ 
+-    correction = -guidance_scale * grad
++    correction = -guidance_scale * grad.to(dtype=latents.dtype)
+     return correction
+ 
+ 
+@@ -284,6 +278,8 @@ def flux_dps_inference(
+         if weight > 0 and spad_meas is not None:
+             sigma = pipe.scheduler.sigmas[progress_id].item()
+             if sigma > 0.01:
++                pipe.load_models_to_device([])
++                torch.cuda.empty_cache()
+                 pipe.load_models_to_device(["vae_decoder"])
+                 correction = compute_dps_correction(
+                     latents=inputs_shared["latents"],
+@@ -297,11 +293,14 @@ def flux_dps_inference(
+                     use_l2=dps_config.use_l2_loss,
+                     use_nll=dps_config.use_nll_loss,
+                     device=pipe.device,
+-                    tiled=tiled,
+-                    tile_size=tile_size,
+-                    tile_stride=tile_stride,
++                    tiled=True,
++                    tile_size=64,
++                    tile_stride=32,
+                 )
+                 noise_pred = noise_pred + correction
++                del correction
++                pipe.load_models_to_device([])
++                torch.cuda.empty_cache()
+                 pipe.load_models_to_device(pipe.in_iteration_models)
+ 
+         inputs_shared["latents"] = pipe.step(
+diff --git a/inference_lora.py b/inference_lora.py
+index bf721ce..290a60e 100755
+--- a/inference_lora.py
++++ b/inference_lora.py
+@@ -3,11 +3,22 @@ FLUX ControlNet LoRA Inference for SPAD→RGB
+ Based on official low-VRAM inference examples
+ """
+ import torch, argparse
++import numpy as np
+ from pathlib import Path
+ from PIL import Image
+ from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
+ from diffsynth.utils.controlnet import ControlNetInput
+ 
++
++def load_spad_image(path) -> Image.Image:
++    """Load a SPAD image, handling 16-bit grayscale correctly."""
++    img = Image.open(path)
++    if img.mode == "I;16":
++        arr = np.array(img, dtype=np.float32) * (255.0 / 65535.0)
++        img = Image.fromarray(arr.clip(0, 255).astype(np.uint8))
++    return img.convert("RGB")
++
++
+ def main():
+     parser = argparse.ArgumentParser(description="FLUX ControlNet LoRA Inference")
+     parser.add_argument("--lora_checkpoint", type=str, required=True, help="Path to LoRA checkpoint")
+@@ -75,7 +86,7 @@ def main():
+     
+     # Load SPAD image
+     print(f"[4/4] Loading SPAD image: {args.control_image}")
+-    control_img = Image.open(args.control_image).convert("RGB")
++    control_img = load_spad_image(args.control_image)
+     
+     # Create ControlNet input
+     controlnet_inputs = [ControlNetInput(image=control_img, processor_id="gray", scale=args.controlnet_scale)]
+diff --git a/linear_probing.py b/linear_probing.py
+index 817153f..f617f5e 100644
+--- a/linear_probing.py
++++ b/linear_probing.py
+@@ -2,342 +2,720 @@
+ """
+ Phase 2d: Linear Probing of FLUX DiT Activations (AC3D-inspired)
+ 
+-Registers hooks on DiT blocks to extract intermediate activations
+-during inference, then trains linear probes to predict:
+-  - Depth (from ml-depth-pro predictions on GT)
+-  - Segmentation (from SAM3 predictions on GT)
+-  - Bit density (from SPAD control image)
++Three-phase pipeline producing the key paper figure (analogous to AC3D Figure 5):
++  1. --prepare-targets:  Compute depth maps + variance + bit density
++  2. --extract:          Hook DiT joint & single blocks, save global features
++  3. --train:            Ridge regression probes → R² heatmap & line plots
+ 
+-This reveals what information the diffusion model encodes at each layer
+-and timestep, producing a figure analogous to AC3D Figure 5.
++The core question: "What does the diffusion model *know* internally when
++conditioned on a single-photon measurement?"
++
++Probing targets:
++  - Bit density: does the model encode how much info the input carries?
++  - Depth: does it encode 3D geometry without depth supervision?
++  - Variance: can it predict its own uncertainty from a single pass?
+ 
+ Usage:
+-  python linear_probing.py \
+-    --lora_checkpoint /path/to/lora.safetensors \
+-    --metadata_csv /path/to/metadata_val.csv \
+-    --output-dir probing_results/
+-    --extract   # first pass: extract activations
+-    --train     # second pass: train probes
++  python linear_probing.py --all \
++      --lora_checkpoint models/train/FLUX-SPAD-LoRA-SceneAware-RAW/epoch-15.safetensors \
++      --max_samples 100
+ """
+ 
+ import argparse
+-import torch
+-import torch.nn as nn
+-import torch.nn.functional as F
+-from pathlib import Path
+-from tqdm import tqdm
+-from PIL import Image
+ import csv
+ import json
++from pathlib import Path
++
++import matplotlib
++matplotlib.use("Agg")
++import matplotlib.pyplot as plt
+ import numpy as np
++import torch
++import torch.nn.functional as F
++from PIL import Image
++from tqdm import tqdm
+ 
+-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
+-from diffsynth.utils.controlnet import ControlNetInput
+-from diffsynth.utils.lora.flux import FluxLoRALoader
+-from diffsynth.core import load_state_dict
++# ──────────────────────────────────────────────────────────────────────
++# Constants
++# ──────────────────────────────────────────────────────────────────────
++JOINT_BLOCK_IDS = [0, 4, 9, 14, 18]       # 5 out of 19 joint blocks
++SINGLE_BLOCK_IDS = [0, 9, 19, 28, 37]     # 5 out of 38 single blocks
++TIMESTEP_INDICES = [0, 4, 9, 14, 19, 24, 27]  # 7 out of 28 denoising steps
++HIDDEN_DIM = 3072
++PATCH_H, PATCH_W = 32, 32                 # 512px input → 64 latent → 32 patches
+ 
+ 
+-class ActivationExtractor:
+-    """Hooks into DiT blocks to capture activations at specified timesteps."""
+-
+-    def __init__(self, dit_model, target_block_ids=None, target_timestep_ids=None):
+-        """
+-        Args:
+-            dit_model: The FluxDiT model.
+-            target_block_ids: Which joint blocks to probe (default: every 4th).
+-            target_timestep_ids: Which timestep indices to collect (default: [0, 4, 9, 14, 19, 24, 27]).
+-        """
+-        self.activations = {}
+-        self.hooks = []
+-        self.current_timestep_id = None
++def load_spad_image(path) -> Image.Image:
++    img = Image.open(path)
++    if img.mode == "I;16":
++        arr = np.array(img, dtype=np.float32) * (255.0 / 65535.0)
++        img = Image.fromarray(arr.clip(0, 255).astype(np.uint8))
++    return img.convert("RGB")
+ 
+-        if target_block_ids is None:
+-            n_blocks = len(dit_model.blocks)
+-            target_block_ids = list(range(0, n_blocks, max(1, n_blocks // 5)))
+ 
+-        if target_timestep_ids is None:
+-            target_timestep_ids = [0, 4, 9, 14, 19, 24, 27]
++# ──────────────────────────────────────────────────────────────────────
++# Activation Extractor — hooks into both joint and single blocks
++# ──────────────────────────────────────────────────────────────────────
++class ActivationExtractor:
++    """Register forward hooks on DiT blocks to capture image-token features.
+ 
+-        self.target_block_ids = target_block_ids
+-        self.target_timestep_ids = target_timestep_ids
++    Joint blocks output (img_tokens, txt_tokens) — we take img_tokens.
++    Single blocks output (concat_tokens, prompt_emb) — we slice off text.
++    """
+ 
+-        for block_id in target_block_ids:
+-            if block_id < len(dit_model.blocks):
+-                hook = dit_model.blocks[block_id].register_forward_hook(
+-                    self._make_hook(f"block_{block_id}")
+-                )
+-                self.hooks.append(hook)
++    def __init__(self, dit, joint_ids, single_ids, timestep_ids):
++        self.activations = {}
++        self._hooks = []
++        self._current_step = None
++        self._target_steps = set(timestep_ids)
++
++        for bid in joint_ids:
++            if bid < len(dit.blocks):
++                h = dit.blocks[bid].register_forward_hook(self._joint_hook(bid))
++                self._hooks.append(h)
++
++        for bid in single_ids:
++            if bid < len(dit.single_blocks):
++                h = dit.single_blocks[bid].register_forward_hook(self._single_hook(bid))
++                self._hooks.append(h)
++
++    def _joint_hook(self, bid):
++        def fn(module, inp, out):
++            if self._current_step not in self._target_steps:
++                return
++            # out = (image_tokens [B, img_len, D], text_tokens [B, txt_len, D])
++            self.activations[f"joint_{bid}_t{self._current_step}"] = (
++                out[0].detach().float().cpu()
++            )
++        return fn
+ 
+-    def _make_hook(self, name):
+-        def hook_fn(module, input, output):
+-            if self.current_timestep_id in self.target_timestep_ids:
+-                key = f"{name}_t{self.current_timestep_id}"
+-                if isinstance(output, tuple):
+-                    hidden = output[0]
+-                else:
+-                    hidden = output
+-                self.activations[key] = hidden.detach().cpu()
+-        return hook_fn
++    def _single_hook(self, bid):
++        def fn(module, inp, out):
++            if self._current_step not in self._target_steps:
++                return
++            # out = (concat [B, txt+img, D], prompt_emb [B, txt, D])
++            txt_len = out[1].shape[1]
++            img = out[0][:, txt_len:].detach().float().cpu()
++            self.activations[f"single_{bid}_t{self._current_step}"] = img
++        return fn
+ 
+-    def set_timestep(self, timestep_id):
+-        self.current_timestep_id = timestep_id
++    def set_step(self, step_id):
++        self._current_step = step_id
+ 
+-    def get_activations(self):
+-        return dict(self.activations)
++    def global_features(self):
++        """Mean-pool over image tokens → {key: [D]}."""
++        return {k: v.mean(dim=1).squeeze(0) for k, v in self.activations.items()}
++
++    def spatial_features(self):
++        """Per-token features → {key: [img_len, D]}."""
++        return {k: v.squeeze(0) for k, v in self.activations.items()}
+ 
+     def clear(self):
+-        self.activations = {}
++        self.activations.clear()
+ 
+-    def remove_hooks(self):
+-        for h in self.hooks:
++    def remove(self):
++        for h in self._hooks:
+             h.remove()
+-        self.hooks = []
+-
+-
+-class LinearProbe(nn.Module):
+-    """Simple linear probe: flatten patch tokens -> predict spatial map."""
+-
+-    def __init__(self, input_dim, output_dim=1, spatial_size=32):
+-        super().__init__()
+-        self.spatial_size = spatial_size
+-        self.proj = nn.Linear(input_dim, output_dim)
+-
+-    def forward(self, x):
+-        # x: [B, seq_len, D] -> take image tokens, reshape to spatial
+-        out = self.proj(x)  # [B, seq_len, output_dim]
+-        B, S, C = out.shape
+-        H = W = int(S ** 0.5)
+-        if H * W != S:
+-            H = self.spatial_size
+-            W = S // H
+-        out = out.permute(0, 2, 1).reshape(B, C, H, W)
+-        return out
++        self._hooks.clear()
+ 
+ 
++# ══════════════════════════════════════════════════════════════════════
++#  PHASE 1: Target Preparation
++# ══════════════════════════════════════════════════════════════════════
++def prepare_targets(args):
++    csv_path, dbase = Path(args.metadata_csv), Path(args.dataset_base)
++    with open(csv_path) as f:
++        samples = list(csv.DictReader(f))
++    if args.max_samples:
++        samples = samples[: args.max_samples]
++
++    out_dir = Path(args.output_dir)
++    out_dir.mkdir(parents=True, exist_ok=True)
++
++    targets = {
++        "bit_density": [],
++        "depth": [],
++        "variance": [],
++        "spatial_bit_density": [],
++        "spatial_depth": [],
++        "spatial_variance": [],
++    }
++
++    # ── Bit density ──────────────────────────────────────────────────
++    print("Computing bit density targets …")
++    for s in tqdm(samples, desc="bit density"):
++        ck = "controlnet_image" if "controlnet_image" in s else "input_image"
++        arr = np.array(Image.open(str(dbase / s[ck])).convert("L"), dtype=np.float32)
++        if arr.max() > 1:
++            arr /= 255.0
++        targets["bit_density"].append(float(arr.mean()))
++        spatial = np.array(
++            Image.fromarray((arr * 255).astype(np.uint8)).resize(
++                (PATCH_W, PATCH_H), Image.BILINEAR
++            ),
++            dtype=np.float32,
++        ) / 255.0
++        targets["spatial_bit_density"].append(spatial.tolist())
++
++    # ── Depth (DPT-Hybrid via transformers) ──────────────────────────
++    print("Computing depth targets …")
++    try:
++        from transformers import DPTForDepthEstimation, DPTImageProcessor
++
++        dm = DPTForDepthEstimation.from_pretrained("Intel/dpt-hybrid-midas").cuda().eval()
++        dp = DPTImageProcessor.from_pretrained("Intel/dpt-hybrid-midas")
++        for s in tqdm(samples, desc="depth"):
++            gk = "target_image" if "target_image" in s else "image"
++            gt = Image.open(str(dbase / s[gk])).convert("RGB")
++            inp = dp(images=gt, return_tensors="pt").to("cuda")
++            with torch.no_grad():
++                d = dm(**inp).predicted_depth.squeeze().cpu().numpy()
++            d = (d - d.min()) / (d.max() - d.min() + 1e-8)
++            targets["depth"].append(float(d.mean()))
++            spatial_d = np.array(
++                Image.fromarray((d * 255).astype(np.uint8)).resize(
++                    (PATCH_W, PATCH_H), Image.BILINEAR
++                ),
++                dtype=np.float32,
++            ) / 255.0
++            targets["spatial_depth"].append(spatial_d.tolist())
++        del dm, dp
++        torch.cuda.empty_cache()
++    except Exception as e:
++        print(f"  Depth estimation failed ({e}); using luminance proxy")
++        for s in tqdm(samples, desc="luminance"):
++            gk = "target_image" if "target_image" in s else "image"
++            gt = np.array(
++                Image.open(str(dbase / s[gk])).convert("L"), dtype=np.float32
++            )
++            gt /= 255.0
++            targets["depth"].append(float(gt.mean()))
++            spatial_d = np.array(
++                Image.fromarray((gt * 255).astype(np.uint8)).resize(
++                    (PATCH_W, PATCH_H), Image.BILINEAR
++                ),
++                dtype=np.float32,
++            ) / 255.0
++            targets["spatial_depth"].append(spatial_d.tolist())
++
++    # ── Variance from multi-seed outputs ─────────────────────────────
++    ms = Path(args.multiseed_dir)
++    seed_dirs = sorted([d for d in ms.iterdir() if d.is_dir() and d.name.startswith("seed_")]) if ms.exists() else []
++    if len(seed_dirs) >= 2:
++        print(f"Computing variance from {len(seed_dirs)} seeds …")
++        for idx in tqdm(range(len(samples)), desc="variance"):
++            fname = f"output_{idx:04d}.png"
++            arrs = []
++            for sd in seed_dirs:
++                fp = sd / "output" / fname
++                if fp.exists():
++                    arrs.append(np.array(Image.open(str(fp)).convert("RGB"), dtype=np.float32) / 255.0)
++            if len(arrs) >= 2:
++                stacked = np.stack(arrs, axis=0)
++                var_map = stacked.var(axis=0).mean(axis=-1)  # [H, W]
++                targets["variance"].append(float(var_map.mean()))
++                spatial_v = np.array(
++                    Image.fromarray(
++                        (np.clip(var_map / (var_map.max() + 1e-8), 0, 1) * 255).astype(np.uint8)
++                    ).resize((PATCH_W, PATCH_H), Image.BILINEAR),
++                    dtype=np.float32,
++                ) / 255.0
++                targets["spatial_variance"].append(spatial_v.tolist())
++            else:
++                targets["variance"].append(0.0)
++                targets["spatial_variance"].append(np.zeros((PATCH_H, PATCH_W)).tolist())
++    else:
++        print("  No multi-seed data; skipping variance targets.")
++        targets["variance"] = [0.0] * len(samples)
++        targets["spatial_variance"] = [np.zeros((PATCH_H, PATCH_W)).tolist()] * len(samples)
++
++    tf = out_dir / "targets.json"
++    with open(tf, "w") as f:
++        json.dump(targets, f)
++
++    for k in ["bit_density", "depth", "variance"]:
++        vals = targets[k]
++        nz = [v for v in vals if v > 0]
++        rng = f"[{min(nz):.4f}, {max(nz):.4f}]" if nz else "all zero"
++        print(f"  {k:>15s}: {rng}")
++    print(f"Targets → {tf}")
++
++
++# ══════════════════════════════════════════════════════════════════════
++#  PHASE 2: Activation Extraction
++# ══════════════════════════════════════════════════════════════════════
+ def extract_activations(args):
+-    """Extract DiT activations for all val images."""
+-    print("Loading pipeline...")
++    from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
++    from diffsynth.utils.controlnet import ControlNetInput
++    from diffsynth.utils.lora.flux import FluxLoRALoader
++    from diffsynth.core import load_state_dict
++
++    print("Loading FLUX pipeline …")
++    vc = dict(
++        offload_dtype=torch.float8_e4m3fn, offload_device="cpu",
++        onload_dtype=torch.float8_e4m3fn, onload_device="cpu",
++        preparing_dtype=torch.float8_e4m3fn, preparing_device="cuda",
++        computation_dtype=torch.bfloat16, computation_device="cuda",
++    )
++    vram = torch.cuda.mem_get_info()[1] / (1024**3) - 0.5
++    mc = [
++        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors", **vc),
++        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", **vc),
++        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vc),
++        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", **vc),
++        ModelConfig(model_id="InstantX/FLUX.1-dev-Controlnet-Union-alpha",
++                    origin_file_pattern="diffusion_pytorch_model.safetensors"),
++    ]
+     pipe = FluxImagePipeline.from_pretrained(
+-        [
+-            ModelConfig("black-forest-labs/FLUX.1-dev", "flux1-dev.safetensors"),
+-            ModelConfig("black-forest-labs/FLUX.1-dev", "text_encoder/model.safetensors"),
+-            ModelConfig("black-forest-labs/FLUX.1-dev", "text_encoder_2/*.safetensors"),
+-            ModelConfig("black-forest-labs/FLUX.1-dev", "ae.safetensors"),
+-            ModelConfig("InstantX/FLUX.1-dev-Controlnet-Union-alpha", "diffusion_pytorch_model.safetensors"),
+-        ],
+-        device="cuda",
+-        torch_dtype=torch.bfloat16,
++        torch_dtype=torch.bfloat16, device="cuda",
++        model_configs=mc, vram_limit=vram,
+     )
+ 
+     if args.lora_checkpoint:
+-        lora_loader = FluxLoRALoader(torch_dtype=torch.bfloat16, device="cuda")
+-        lora_sd = load_state_dict(args.lora_checkpoint, torch_dtype=torch.bfloat16, device="cuda")
+-        lora_sd = lora_loader.convert_state_dict(lora_sd)
+-        lora_loader.fuse_lora(pipe.controlnet, lora_sd, alpha=1.0)
+-
+-    target_blocks = [0, 4, 9, 14, 18]
+-    target_timesteps = [0, 4, 9, 14, 19, 24, 27]
++        print(f"Loading LoRA: {args.lora_checkpoint}")
++        sd = load_state_dict(args.lora_checkpoint, torch_dtype=pipe.torch_dtype, device=pipe.device)
++        FluxLoRALoader(torch_dtype=pipe.torch_dtype, device=pipe.device).fuse_lora_to_base_model(
++            pipe.controlnet, sd, alpha=1.0
++        )
+ 
+     extractor = ActivationExtractor(
+-        pipe.dit,
+-        target_block_ids=target_blocks,
+-        target_timestep_ids=target_timesteps,
++        pipe.dit, JOINT_BLOCK_IDS, SINGLE_BLOCK_IDS, TIMESTEP_INDICES,
+     )
+ 
+-    csv_path = Path(args.metadata_csv)
++    csv_path, dbase = Path(args.metadata_csv), Path(args.dataset_base)
+     with open(csv_path) as f:
+         samples = list(csv.DictReader(f))
+     if args.max_samples:
+-        samples = samples[:args.max_samples]
+-
+-    out = Path(args.output_dir) / "activations"
+-    out.mkdir(parents=True, exist_ok=True)
++        samples = samples[: args.max_samples]
+ 
+-    # Monkey-patch the denoising loop to set timestep IDs
+-    original_call = pipe.__class__.__call__
+-
+-    def patched_call(self_pipe, *call_args, **call_kwargs):
+-        self_pipe.scheduler.set_timesteps(
+-            call_kwargs.get("num_inference_steps", 28),
+-            denoising_strength=call_kwargs.get("denoising_strength", 1.0),
+-            shift=call_kwargs.get("sigma_shift"),
+-        )
+-        # We can't easily patch into the call, so use the standard call
+-        # and the hooks will capture activations
+-        return original_call(self_pipe, *call_args, **call_kwargs)
++    act_dir = Path(args.output_dir) / "activations"
++    act_dir.mkdir(parents=True, exist_ok=True)
+ 
+     for idx, sample in enumerate(tqdm(samples, desc="Extracting activations")):
+-        save_path = out / f"activations_{idx:04d}.pt"
+-        if save_path.exists():
++        gpath = act_dir / f"global_{idx:04d}.pt"
++        if gpath.exists():
+             continue
+ 
+-        control_key = "controlnet_image" if "controlnet_image" in sample else "input_image"
+-        control_path = csv_path.parent / sample[control_key]
+-        control_img = Image.open(control_path).convert("RGB")
+-
+-        controlnet_input = ControlNetInput(image=control_img, processor_id="gray", scale=1.0)
+-
++        ck = "controlnet_image" if "controlnet_image" in sample else "input_image"
++        ctrl_img = load_spad_image(str(dbase / sample[ck]))
++        cn_input = ControlNetInput(image=ctrl_img, processor_id="gray", scale=1.0)
+         extractor.clear()
+ 
+-        # Run inference with hooks active
+-        # The hooks capture activations at each timestep
+-        # We need to set the timestep ID for each step
+         pipe.scheduler.set_timesteps(args.steps, denoising_strength=1.0)
+-        inputs_posi = {"prompt": ""}
+-        inputs_nega = {"negative_prompt": ""}
+-        inputs_shared = {
++        inp_shared = {
+             "cfg_scale": 1.0, "embedded_guidance": 3.5, "t5_sequence_length": 512,
+             "input_image": None, "denoising_strength": 1.0,
+             "height": args.height, "width": args.width,
+             "seed": args.seed + idx, "rand_device": "cpu",
+             "sigma_shift": None, "num_inference_steps": args.steps,
+-            "multidiffusion_prompts": (), "multidiffusion_masks": (), "multidiffusion_scales": (),
+-            "kontext_images": None, "controlnet_inputs": [controlnet_input],
++            "multidiffusion_prompts": (), "multidiffusion_masks": (),
++            "multidiffusion_scales": (),
++            "kontext_images": None, "controlnet_inputs": [cn_input],
+             "ipadapter_images": None, "ipadapter_scale": 1.0,
+             "eligen_entity_prompts": None, "eligen_entity_masks": None,
+             "eligen_enable_on_negative": False, "eligen_enable_inpaint": False,
+             "infinityou_id_image": None, "infinityou_guidance": 1.0,
+             "flex_inpaint_image": None, "flex_inpaint_mask": None,
+-            "flex_control_image": None, "flex_control_strength": 0.5, "flex_control_stop": 0.5,
+-            "value_controller_inputs": None,
++            "flex_control_image": None, "flex_control_strength": 0.5,
++            "flex_control_stop": 0.5, "value_controller_inputs": None,
+             "step1x_reference_image": None, "nexus_gen_reference_image": None,
+             "lora_encoder_inputs": None, "lora_encoder_scale": 1.0,
+             "tea_cache_l1_thresh": None,
+             "tiled": False, "tile_size": 128, "tile_stride": 64,
+             "progress_bar_cmd": lambda x: x,
+         }
++        inp_posi = {"prompt": ""}
++        inp_nega = {"negative_prompt": ""}
+ 
+         for unit in pipe.units:
+-            inputs_shared, inputs_posi, inputs_nega = pipe.unit_runner(
+-                unit, pipe, inputs_shared, inputs_posi, inputs_nega
++            inp_shared, inp_posi, inp_nega = pipe.unit_runner(
++                unit, pipe, inp_shared, inp_posi, inp_nega
+             )
+-
+         pipe.load_models_to_device(pipe.in_iteration_models)
+-        models = {name: getattr(pipe, name) for name in pipe.in_iteration_models}
++        models = {n: getattr(pipe, n) for n in pipe.in_iteration_models}
+ 
+         with torch.no_grad():
+-            for progress_id, timestep in enumerate(pipe.scheduler.timesteps):
+-                extractor.set_timestep(progress_id)
+-                timestep_t = timestep.unsqueeze(0).to(dtype=pipe.torch_dtype, device=pipe.device)
+-                noise_pred = pipe.cfg_guided_model_fn(
++            for pid, ts in enumerate(pipe.scheduler.timesteps):
++                extractor.set_step(pid)
++                ts_t = ts.unsqueeze(0).to(dtype=pipe.torch_dtype, device=pipe.device)
++                np_ = pipe.cfg_guided_model_fn(
+                     pipe.model_fn, 1.0,
+-                    inputs_shared, inputs_posi, inputs_nega,
+-                    **models, timestep=timestep_t, progress_id=progress_id,
++                    inp_shared, inp_posi, inp_nega,
++                    **models, timestep=ts_t, progress_id=pid,
+                 )
+-                inputs_shared["latents"] = pipe.step(
+-                    pipe.scheduler, progress_id=progress_id,
+-                    noise_pred=noise_pred, **inputs_shared,
++                inp_shared["latents"] = pipe.step(
++                    pipe.scheduler, progress_id=pid,
++                    noise_pred=np_, **inp_shared,
+                 )
+ 
+-        activations = extractor.get_activations()
+-        torch.save(activations, save_path)
+-
+-    extractor.remove_hooks()
+-    print(f"Activations saved to {out}")
++        torch.save(extractor.global_features(), gpath)
+ 
++        if args.save_spatial:
++            spath = act_dir / f"spatial_{idx:04d}.pt"
++            if not spath.exists():
++                sf = {k: v.half() for k, v in extractor.spatial_features().items()}
++                torch.save(sf, spath)
+ 
+-def train_probes(args):
+-    """Train linear probes on extracted activations."""
+-    act_dir = Path(args.output_dir) / "activations"
+-    probe_dir = Path(args.output_dir) / "probes"
+-    probe_dir.mkdir(parents=True, exist_ok=True)
++    extractor.remove()
++    print(f"Activations → {act_dir}")
+ 
+-    act_files = sorted(act_dir.glob("activations_*.pt"))
+-    if not act_files:
+-        print("No activation files found. Run with --extract first.")
+-        return
+ 
+-    sample_acts = torch.load(act_files[0], map_location="cpu", weights_only=True)
+-    layer_keys = sorted(sample_acts.keys())
+-    print(f"Found {len(act_files)} samples, {len(layer_keys)} layer-timestep combinations")
+-    print(f"  Keys: {layer_keys[:5]}...")
++# ══════════════════════════════════════════════════════════════════════
++#  PHASE 3: Probe Training + Figure Generation
++# ══════════════════════════════════════════════════════════════════════
++def _ridge_regression(X_train, y_train, X_test, y_test, lam=1e-3):
++    """Closed-form ridge regression with adaptive regularization.
++    Lambda is scaled by trace(XTX)/D to handle n << D regimes."""
++    mu, sd = X_train.mean(0), X_train.std(0).clamp(min=1e-8)
++    Xn = (X_train - mu) / sd
++    Xt = (X_test - mu) / sd
+ 
+-    # For each layer-timestep, train a linear probe to predict bit density
+-    csv_path = Path(args.metadata_csv)
+-    with open(csv_path) as f:
+-        samples = list(csv.DictReader(f))
++    D = Xn.shape[1]
++    XtX = Xn.T @ Xn
++    lam_scaled = lam * XtX.trace() / D
++    w = torch.linalg.solve(XtX + lam_scaled * torch.eye(D), Xn.T @ y_train.unsqueeze(1))
++    yp = (Xt @ w).squeeze()
+ 
+-    results = {}
++    ss_res = ((y_test - yp) ** 2).sum()
++    ss_tot = ((y_test - y_test.mean()) ** 2).sum().clamp(min=1e-8)
++    r2 = 1.0 - ss_res / ss_tot
+ 
+-    for key in tqdm(layer_keys, desc="Training probes"):
+-        X_list = []
+-        y_list = []
++    yc = y_test - y_test.mean()
++    pc = yp - yp.mean()
++    pr = (yc * pc).sum() / (yc.norm() * pc.norm() + 1e-8)
+ 
+-        for i, act_file in enumerate(act_files):
+-            if i >= len(samples):
+-                break
+-            acts = torch.load(act_file, map_location="cpu", weights_only=True)
+-            if key not in acts:
+-                continue
++    return float(r2.item()), float(pr.item())
+ 
+-            activation = acts[key]  # [1, seq_len, D]
+-            mean_act = activation.mean(dim=1)  # [1, D]
+-            X_list.append(mean_act.squeeze(0))
+ 
+-            # Target: mean bit density of control image
+-            control_key = "controlnet_image" if "controlnet_image" in samples[i] else "input_image"
+-            ctrl_path = csv_path.parent / samples[i][control_key]
+-            ctrl_img = np.array(Image.open(ctrl_path).convert("L")).astype(np.float32) / 255.0
+-            y_list.append(ctrl_img.mean())
++def train_probes(args):
++    out_dir = Path(args.output_dir)
++    probe_dir = out_dir / "probes"
++    probe_dir.mkdir(parents=True, exist_ok=True)
+ 
+-        if len(X_list) < 10:
+-            continue
++    tf = out_dir / "targets.json"
++    if not tf.exists():
++        print("No targets.json — run --prepare-targets first.")
++        return
++    with open(tf) as f:
++        tgt = json.load(f)
+ 
+-        X = torch.stack(X_list).float()
+-        y = torch.tensor(y_list).float().unsqueeze(1)
++    gfiles = sorted((out_dir / "activations").glob("global_*.pt"))
++    if not gfiles:
++        print("No activation files — run --extract first.")
++        return
+ 
+-        # Simple linear regression with ridge
+-        n = X.shape[0]
+-        n_train = int(0.8 * n)
+-        X_train, X_test = X[:n_train], X[n_train:]
+-        y_train, y_test = y[:n_train], y[n_train:]
++    n = len(gfiles)
++    print(f"Loading {n} activation files …")
++    all_feats = {}
++    for fp in tqdm(gfiles, desc="load"):
++        d = torch.load(fp, map_location="cpu", weights_only=True)
++        for k, v in d.items():
++            all_feats.setdefault(k, []).append(v)
+ 
+-        # Ridge regression: w = (X^T X + lambda I)^-1 X^T y
+-        lam = 1e-3
+-        XtX = X_train.T @ X_train + lam * torch.eye(X_train.shape[1])
+-        Xty = X_train.T @ y_train
+-        w = torch.linalg.solve(XtX, Xty)
++    keys = sorted(all_feats.keys())
++    for k in keys:
++        all_feats[k] = torch.stack(all_feats[k])
+ 
+-        y_pred_test = X_test @ w
+-        mse = F.mse_loss(y_pred_test, y_test).item()
+-        r2 = 1 - mse / max(y_test.var().item(), 1e-8)
++    n_train = int(0.8 * n)
++    print(f"Probing {len(keys)} (block, timestep) pairs | train={n_train}  test={n - n_train}")
+ 
+-        results[key] = {"mse": mse, "r2": r2, "n_train": n_train, "n_test": n - n_train}
++    scalar_targets = {}
++    for tn in ["bit_density", "depth", "variance"]:
++        vals = tgt.get(tn, [])
++        if len(vals) >= n and max(vals[:n]) - min(vals[:n]) > 1e-8:
++            scalar_targets[tn] = torch.tensor(vals[:n], dtype=torch.float32)
+ 
+-    print(f"\n--- Linear Probing Results (bit density prediction) ---")
+-    print(f"{'Layer-Timestep':>30s} | {'R²':>8s} | {'MSE':>10s}")
+-    print("-" * 55)
+-    for key in sorted(results.keys()):
+-        r = results[key]
+-        print(f"{key:>30s} | {r['r2']:>8.4f} | {r['mse']:>10.6f}")
++    print(f"Active targets: {list(scalar_targets.keys())}")
+ 
++    results = {}
++    for tn, y in scalar_targets.items():
++        y_tr, y_te = y[:n_train], y[n_train:]
++        if y_tr.std() < 1e-8:
++            continue
++        results[tn] = {}
++        for k in tqdm(keys, desc=tn):
++            X = all_feats[k]
++            r2, pr = _ridge_regression(X[:n_train], y_tr, X[n_train:], y_te)
++            results[tn][k] = {"r2": r2, "pearson_r": pr}
++
++    # ── Spatial probing (bit density, depth, variance) ───────────────
++    # Uses streaming approach: accumulate XTX/XTy one file at a time
++    sfiles = sorted((out_dir / "activations").glob("spatial_*.pt"))
++    if sfiles:
++        print(f"\nSpatial probing with {len(sfiles)} files (streaming) …")
++        spatial_targets = {}
++        for tn in ["spatial_bit_density", "spatial_depth", "spatial_variance"]:
++            vals = tgt.get(tn, [])
++            if len(vals) >= n:
++                arr = np.array(vals[:n])  # [n, H, W]
++                if arr.max() - arr.min() > 1e-8:
++                    spatial_targets[tn.replace("spatial_", "")] = torch.from_numpy(
++                        arr.reshape(n, -1)
++                    ).float()  # [n, 1024]
++
++        if spatial_targets:
++            sample_d = torch.load(sfiles[0], map_location="cpu", weights_only=True)
++            spatial_keys = sorted(sample_d.keys())
++            D = next(iter(sample_d.values())).shape[-1]
++            del sample_d
++
++            for tn, y_spatial in spatial_targets.items():
++                rkey = f"spatial_{tn}"
++                results[rkey] = {}
++
++                # Pass 1: accumulate XTX and XTy for training set
++                accum = {k: {"XTX": torch.zeros(D, D), "XTy": torch.zeros(D, 1)} for k in spatial_keys}
++                for i in tqdm(range(min(n_train, len(sfiles))), desc=f"spatial {tn} accumulate"):
++                    d = torch.load(sfiles[i], map_location="cpu", weights_only=True)
++                    y_i = y_spatial[i].reshape(-1, 1)  # [1024, 1]
++                    for k in spatial_keys:
++                        x = d[k].float()  # [1024, D]
++                        accum[k]["XTX"] += x.T @ x
++                        accum[k]["XTy"] += x.T @ y_i
++
++                # Solve ridge for each key
++                weights = {}
++                for k in spatial_keys:
++                    xtx = accum[k]["XTX"].double()
++                    xty = accum[k]["XTy"].double()
++                    lam_s = 1e-3 * xtx.trace() / D
++                    weights[k] = torch.linalg.solve(
++                        xtx + lam_s * torch.eye(D, dtype=torch.float64), xty
++                    ).float()
++                del accum
++
++                # Pass 2: evaluate on test set
++                eval_stats = {k: {"ss_res": 0.0, "sy": 0.0, "sy2": 0.0, "syp": 0.0,
++                                  "sp": 0.0, "sp2": 0.0, "cnt": 0} for k in spatial_keys}
++                n_test_files = min(n - n_train, len(sfiles) - n_train)
++                for j in tqdm(range(n_test_files), desc=f"spatial {tn} evaluate"):
++                    i = n_train + j
++                    d = torch.load(sfiles[i], map_location="cpu", weights_only=True)
++                    y_i = y_spatial[i].reshape(-1)
++                    for k in spatial_keys:
++                        x = d[k].float()
++                        yp = (x @ weights[k]).squeeze()
++                        s = eval_stats[k]
++                        s["ss_res"] += ((y_i - yp) ** 2).sum().item()
++                        s["sy"] += y_i.sum().item()
++                        s["sy2"] += (y_i ** 2).sum().item()
++                        s["sp"] += yp.sum().item()
++                        s["sp2"] += (yp ** 2).sum().item()
++                        s["syp"] += (y_i * yp).sum().item()
++                        s["cnt"] += y_i.shape[0]
++                del weights
++
++                for k in spatial_keys:
++                    s = eval_stats[k]
++                    if s["cnt"] == 0:
++                        continue
++                    my = s["sy"] / s["cnt"]
++                    ss_tot = s["sy2"] - s["cnt"] * my * my
++                    r2 = 1.0 - s["ss_res"] / max(ss_tot, 1e-8)
++                    # Pearson r
++                    mp = s["sp"] / s["cnt"]
++                    cov = s["syp"] / s["cnt"] - my * mp
++                    std_y = max((s["sy2"] / s["cnt"] - my * my) ** 0.5, 1e-8)
++                    std_p = max((s["sp2"] / s["cnt"] - mp * mp) ** 0.5, 1e-8)
++                    pr = cov / (std_y * std_p)
++                    results[rkey][k] = {"r2": float(r2), "pearson_r": float(pr)}
++
++    # ── Save & print ─────────────────────────────────────────────────
+     with open(probe_dir / "probing_results.json", "w") as f:
+         json.dump(results, f, indent=2)
+ 
+-    print(f"\nResults saved to {probe_dir}")
+-
++    print("\n" + "=" * 80)
++    print("LINEAR PROBING RESULTS")
++    print("=" * 80)
++    for tn, data in results.items():
++        print(f"\n─── {tn.upper()} ───")
++        print(f"  {'key':>25s} | {'R²':>8s} | {'Pearson r':>10s}")
++        print("  " + "─" * 50)
++        best_key, best_r2 = None, -999
++        for k in sorted(data.keys()):
++            r = data[k]
++            tag = ""
++            if r["r2"] > best_r2:
++                best_r2, best_key = r["r2"], k
++            print(f"  {k:>25s} | {r['r2']:>8.4f} | {r['pearson_r']:>10.4f}")
++        if best_key:
++            print(f"  ** best: {best_key}  R²={best_r2:.4f}")
++
++    _plot_figures(results, probe_dir)
++    print(f"\nFigures & results → {probe_dir}")
++
++
++# ──────────────────────────────────────────────────────────────────────
++# Figure Generation
++# ──────────────────────────────────────────────────────────────────────
++def _parse_key(key):
++    parts = key.split("_")
++    btype = parts[0]
++    bid = int(parts[1])
++    tid = int(parts[2][1:])
++    return btype, bid, tid
++
++
++def _plot_figures(results, probe_dir):
++    # Filter to only global (non-spatial) results for the main figures
++    global_results = {k: v for k, v in results.items() if not k.startswith("spatial_")}
++    spatial_results = {k: v for k, v in results.items() if k.startswith("spatial_")}
++
++    if not global_results:
++        return
+ 
++    ref = next(iter(global_results.values()))
++    all_keys = list(ref.keys())
++    parsed = [_parse_key(k) for k in all_keys]
++    joint = sorted({(bt, bi) for bt, bi, _ in parsed if bt == "joint"}, key=lambda x: x[1])
++    single = sorted({(bt, bi) for bt, bi, _ in parsed if bt == "single"}, key=lambda x: x[1])
++    border = joint + single
++    blabels = [f"J{bi}" for _, bi in joint] + [f"S{bi}" for _, bi in single]
++    tsteps = sorted({t for _, _, t in parsed})
++
++    for tname, data in global_results.items():
++        _plot_heatmap(data, border, blabels, tsteps, len(joint), tname, probe_dir)
++        _plot_lines(data, border, blabels, tsteps, len(joint), tname, probe_dir)
++
++    if len(global_results) > 1:
++        _plot_comparison(results, border, blabels, tsteps, len(joint), probe_dir)
++
++    for tname, data in spatial_results.items():
++        _plot_heatmap(data, border, blabels, tsteps, len(joint), tname, probe_dir)
++        _plot_lines(data, border, blabels, tsteps, len(joint), tname, probe_dir)
++
++
++def _plot_heatmap(data, border, blabels, tsteps, n_joint, tname, outdir):
++    mat = np.zeros((len(border), len(tsteps)))
++    for i, (bt, bi) in enumerate(border):
++        for j, t in enumerate(tsteps):
++            k = f"{bt}_{bi}_t{t}"
++            mat[i, j] = data.get(k, {}).get("r2", 0)
++
++    fig, ax = plt.subplots(figsize=(10, 6))
++    vmax = max(mat.max(), 0.1)
++    im = ax.imshow(mat, cmap="viridis", aspect="auto", vmin=0, vmax=vmax)
++    ax.set_xticks(range(len(tsteps)))
++    ax.set_xticklabels([f"t={t}" for t in tsteps], fontsize=9)
++    ax.set_yticks(range(len(border)))
++    ax.set_yticklabels(blabels, fontsize=9)
++    ax.set_xlabel("Denoising Step Index", fontsize=11)
++    ax.set_ylabel("DiT Block", fontsize=11)
++    nice = tname.replace("_", " ").title()
++    ax.set_title(f"Linear Probe R² — {nice}", fontsize=13)
++    plt.colorbar(im, label="R²")
++    if n_joint > 0 and n_joint < len(border):
++        ax.axhline(y=n_joint - 0.5, color="white", linewidth=1.5, linestyle="--")
++        ax.text(len(tsteps) - 0.3, n_joint - 0.7, "Joint↑", color="white", fontsize=8, ha="right", va="bottom")
++        ax.text(len(tsteps) - 0.3, n_joint - 0.3, "Single↓", color="white", fontsize=8, ha="right", va="top")
++    for i in range(mat.shape[0]):
++        for j in range(mat.shape[1]):
++            v = mat[i, j]
++            c = "white" if v < vmax * 0.6 else "black"
++            ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=7, color=c)
++    plt.tight_layout()
++    fig.savefig(outdir / f"heatmap_{tname}.png", dpi=150)
++    fig.savefig(outdir / f"heatmap_{tname}.pdf")
++    plt.close(fig)
++
++
++def _plot_lines(data, border, blabels, tsteps, n_joint, tname, outdir):
++    fig, ax = plt.subplots(figsize=(10, 5))
++    cmap = plt.cm.coolwarm(np.linspace(0, 1, len(tsteps)))
++    for j, t in enumerate(tsteps):
++        vals = [data.get(f"{bt}_{bi}_t{t}", {}).get("r2", 0) for bt, bi in border]
++        ax.plot(range(len(border)), vals, "-o", color=cmap[j],
++                label=f"step {t}", markersize=4, linewidth=1.5)
++    if 0 < n_joint < len(border):
++        ax.axvline(x=n_joint - 0.5, color="gray", ls="--", alpha=0.5, label="Joint → Single")
++    ax.set_xticks(range(len(border)))
++    ax.set_xticklabels(blabels, rotation=45, fontsize=9)
++    ax.set_xlabel("DiT Block")
++    ax.set_ylabel("R²")
++    nice = tname.replace("_", " ").title()
++    ax.set_title(f"Linear Probe Accuracy — {nice}", fontsize=13)
++    ax.legend(fontsize=8, ncol=2)
++    ax.grid(True, alpha=0.3)
++    plt.tight_layout()
++    fig.savefig(outdir / f"lineplot_{tname}.png", dpi=150)
++    fig.savefig(outdir / f"lineplot_{tname}.pdf")
++    plt.close(fig)
++
++
++def _plot_comparison(results, border, blabels, tsteps, n_joint, outdir):
++    # Prefer spatial results for the comparison figure
++    spatial_results = {k.replace("spatial_", ""): v for k, v in results.items()
++                       if k.startswith("spatial_")}
++    plot_data = spatial_results if spatial_results else results
++    palette = {"bit_density": "#e41a1c", "depth": "#377eb8", "variance": "#4daf4a"}
++    nice_names = {"bit_density": "Bit Density", "depth": "Depth", "variance": "Uncertainty"}
++    fig, ax = plt.subplots(figsize=(10, 5))
++    for tname, data in plot_data.items():
++        best_t = max(tsteps, key=lambda t: np.mean([
++            data.get(f"{bt}_{bi}_t{t}", {}).get("r2", 0) for bt, bi in border
++        ]))
++        vals = [data.get(f"{bt}_{bi}_t{best_t}", {}).get("r2", 0) for bt, bi in border]
++        ax.plot(range(len(border)), vals, "-o", color=palette.get(tname, "gray"),
++                label=f"{nice_names.get(tname, tname)} (step {best_t})",
++                markersize=5, linewidth=2)
++    if 0 < n_joint < len(border):
++        ax.axvline(x=n_joint - 0.5, color="gray", ls="--", alpha=0.5,
++                   label="Joint → Single")
++    ax.set_xticks(range(len(border)))
++    ax.set_xticklabels(blabels, rotation=45, fontsize=10)
++    ax.set_xlabel("DiT Block", fontsize=11)
++    ax.set_ylabel("R²", fontsize=11)
++    subtitle = "(Spatial Per-Token Probing)" if spatial_results else "(Global Mean-Pooled)"
++    ax.set_title(f"What Does the Model Know? {subtitle}", fontsize=13)
++    ax.legend(fontsize=10)
++    ax.set_ylim(bottom=-0.05)
++    ax.grid(True, alpha=0.3)
++    plt.tight_layout()
++    fig.savefig(outdir / "comparison_best_timestep.png", dpi=150)
++    fig.savefig(outdir / "comparison_best_timestep.pdf")
++    plt.close(fig)
++
++
++# ══════════════════════════════════════════════════════════════════════
++#  CLI
++# ══════════════════════════════════════════════════════════════════════
+ def main():
+-    parser = argparse.ArgumentParser(description="Linear probing of FLUX DiT activations")
+-    parser.add_argument("--lora_checkpoint", type=str, default=None)
+-    parser.add_argument("--metadata_csv", type=str, default="/home/jw/engsci/thesis/spad/spad_dataset/metadata_val.csv")
+-    parser.add_argument("--output-dir", type=str, default="./probing_results")
+-    parser.add_argument("--steps", type=int, default=28)
+-    parser.add_argument("--height", type=int, default=512)
+-    parser.add_argument("--width", type=int, default=512)
+-    parser.add_argument("--seed", type=int, default=42)
+-    parser.add_argument("--max_samples", type=int, default=100)
+-    parser.add_argument("--extract", action="store_true", help="Extract activations")
+-    parser.add_argument("--train", action="store_true", help="Train linear probes")
+-
+-    args = parser.parse_args()
++    p = argparse.ArgumentParser(description="AC3D-inspired linear probing of FLUX DiT")
++    p.add_argument("--lora_checkpoint", type=str, default=None)
++    p.add_argument("--metadata_csv", type=str,
++                   default="/home/jw/engsci/thesis/spad/spad_dataset/metadata_val.csv")
++    p.add_argument("--dataset_base", type=str,
++                   default="/home/jw/engsci/thesis/spad/spad_dataset")
++    p.add_argument("--output-dir", type=str, default="./probing_results")
++    p.add_argument("--multiseed-dir", type=str,
++                   default="./validation_outputs_multiseed")
++    p.add_argument("--steps", type=int, default=28)
++    p.add_argument("--height", type=int, default=512)
++    p.add_argument("--width", type=int, default=512)
++    p.add_argument("--seed", type=int, default=42)
++    p.add_argument("--max_samples", type=int, default=100)
++    p.add_argument("--save-spatial", action="store_true",
++                   help="Save per-token spatial features (needs ~180 MB/image)")
++
++    g = p.add_argument_group("phases")
++    g.add_argument("--prepare-targets", action="store_true")
++    g.add_argument("--extract", action="store_true")
++    g.add_argument("--train", action="store_true")
++    g.add_argument("--all", action="store_true")
++
++    args = p.parse_args()
++    if args.all:
++        args.prepare_targets = args.extract = args.train = True
++    if not any([args.prepare_targets, args.extract, args.train]):
++        p.print_help()
++        return
+ 
++    if args.prepare_targets:
++        prepare_targets(args)
+     if args.extract:
+         extract_activations(args)
+     if args.train:
+         train_probes(args)
+-    if not args.extract and not args.train:
+-        print("Specify --extract and/or --train")
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/metrics.py b/metrics.py
+index db5c5be..6e49e31 100644
+--- a/metrics.py
++++ b/metrics.py
+@@ -7,12 +7,19 @@ Computes various metrics to evaluate image quality:
+ - SSIM (Structural Similarity Index)
+ - LPIPS (Learned Perceptual Image Patch Similarity)
+ - FID (Fréchet Inception Distance)
++- CFID (Conditional Fréchet Inception Distance)
++
++CFID reference: Soloveitchik et al., "Conditional Frechet Inception Distance",
++arXiv:2103.11521. Measures distance between conditional distributions P(y|x)
++vs P(ŷ|x), which is strictly more informative than FID for conditional
++generation tasks like SPAD→RGB.
+ """
+ 
+ import torch
+ import torch.nn.functional as F
+ import numpy as np
+ import cv2
++from scipy import linalg
+ from torchmetrics.image import StructuralSimilarityIndexMeasure
+ from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+ from torchmetrics.image.fid import FrechetInceptionDistance
+@@ -282,6 +289,155 @@ class MetricsTracker:
+         self.counts = {}
+ 
+ 
++class InceptionFeatureExtractor:
++    """Extract pool3 (2048-d) features from InceptionV3 for FID/CFID."""
++
++    def __init__(self, device="cuda"):
++        from torchvision.models import inception_v3, Inception_V3_Weights
++        self.device = device
++        model = inception_v3(weights=Inception_V3_Weights.DEFAULT)
++        model.eval()
++        model.fc = torch.nn.Identity()
++        self.model = model.to(device)
++
++    @torch.no_grad()
++    def __call__(self, images: torch.Tensor) -> torch.Tensor:
++        """Extract 2048-d features. Input: [B,3,H,W] uint8 or float [0,1]."""
++        if images.dtype == torch.uint8:
++            images = images.float() / 255.0
++        if images.shape[-1] != 299 or images.shape[-2] != 299:
++            images = F.interpolate(images, size=(299, 299), mode="bilinear", align_corners=False)
++        images = images.to(self.device)
++        return self.model(images)
++
++
++def _symmetric_matrix_sqrt(mat: np.ndarray, eps: float = 1e-10) -> np.ndarray:
++    """Compute M' such that M' @ M' = mat for symmetric PSD mat."""
++    s, u = np.linalg.eigh(mat)
++    s = np.maximum(s, eps)
++    return (u * np.sqrt(s)) @ u.T
++
++
++def _trace_sqrt_product(sigma: np.ndarray, sigma_v: np.ndarray) -> float:
++    """Tr(sqrt(sigma @ sigma_v)) for symmetric PSD matrices."""
++    sqrt_sigma = _symmetric_matrix_sqrt(sigma)
++    product = sqrt_sigma @ sigma_v @ sqrt_sigma
++    s = np.linalg.eigvalsh(product)
++    s = np.maximum(s, 0)
++    return float(np.sum(np.sqrt(s)))
++
++
++def compute_cfid(
++    feats_x: np.ndarray,
++    feats_y: np.ndarray,
++    feats_y_hat: np.ndarray,
++    reg: float = 1e-6,
++) -> float:
++    """Compute Conditional Fréchet Inception Distance.
++
++    Args:
++        feats_x:     [N, d] Inception features of conditioning inputs  (SPAD)
++        feats_y:     [N, d] Inception features of ground truth outputs (RGB GT)
++        feats_y_hat: [N, d] Inception features of generated outputs    (RGB pred)
++        reg:         Ridge regularization for C_xx inversion (for N < d stability)
++
++    Returns:
++        CFID score (lower is better, non-negative for well-conditioned data).
++
++    Reference: arXiv:2103.11521 Eq. 4
++        CFID = ||m_y - m_ŷ||²
++             + Tr( (C_yx - C_ŷx) C_xx⁻¹ (C_xy - C_xŷ) )
++             + Tr(C_{y|x}) + Tr(C_{ŷ|x}) - 2 Tr(sqrt(C_{ŷ|x} C_{y|x}))
++    """
++    assert feats_x.shape[0] == feats_y.shape[0] == feats_y_hat.shape[0]
++    N, d = feats_x.shape
++
++    # Use float64 internally for numerical stability (2048x2048 matmuls)
++    feats_x = feats_x.astype(np.float64)
++    feats_y = feats_y.astype(np.float64)
++    feats_y_hat = feats_y_hat.astype(np.float64)
++
++    m_x = feats_x.mean(axis=0)
++    m_y = feats_y.mean(axis=0)
++    m_yh = feats_y_hat.mean(axis=0)
++
++    x_c = feats_x - m_x
++    y_c = feats_y - m_y
++    yh_c = feats_y_hat - m_yh
++
++    C_xx = (x_c.T @ x_c) / N + reg * np.eye(d)
++    C_yy = (y_c.T @ y_c) / N
++    C_yhyh = (yh_c.T @ yh_c) / N
++    C_yx = (y_c.T @ x_c) / N
++    C_xy = (x_c.T @ y_c) / N
++    C_yhx = (yh_c.T @ x_c) / N
++    C_xyh = (x_c.T @ yh_c) / N
++
++    inv_C_xx = np.linalg.inv(C_xx)
++
++    C_y_given_x = C_yy - C_yx @ inv_C_xx @ C_xy
++    C_yh_given_x = C_yhyh - C_yhx @ inv_C_xx @ C_xyh
++
++    C_y_given_x = (C_y_given_x + C_y_given_x.T) / 2
++    C_yh_given_x = (C_yh_given_x + C_yh_given_x.T) / 2
++
++    # Clip negative eigenvalues to zero (numerical stability when N < d)
++    def _clamp_psd(M):
++        eigvals, eigvecs = np.linalg.eigh(M)
++        eigvals = np.maximum(eigvals, 0)
++        return (eigvecs * eigvals) @ eigvecs.T
++
++    C_y_given_x = _clamp_psd(C_y_given_x)
++    C_yh_given_x = _clamp_psd(C_yh_given_x)
++
++    term_mean = float(np.sum((m_y - m_yh) ** 2))
++
++    diff_yx = C_yx - C_yhx
++    diff_xy = C_xy - C_xyh
++    term_cross = float(np.trace(diff_yx @ inv_C_xx @ diff_xy))
++
++    term_cov = (
++        float(np.trace(C_y_given_x))
++        + float(np.trace(C_yh_given_x))
++        - 2.0 * _trace_sqrt_product(C_yh_given_x, C_y_given_x)
++    )
++
++    return term_mean + term_cross + term_cov
++
++
++class CFIDAccumulator:
++    """Accumulates Inception features for CFID computation."""
++
++    def __init__(self, device="cuda"):
++        self.extractor = InceptionFeatureExtractor(device)
++        self.feats_x = []
++        self.feats_y = []
++        self.feats_y_hat = []
++
++    def update(
++        self,
++        x_batch: torch.Tensor,
++        y_batch: torch.Tensor,
++        y_hat_batch: torch.Tensor,
++    ):
++        """Accumulate features for a batch. All inputs: [B,3,H,W] in [0,1] or uint8."""
++        self.feats_x.append(self.extractor(x_batch).cpu().numpy())
++        self.feats_y.append(self.extractor(y_batch).cpu().numpy())
++        self.feats_y_hat.append(self.extractor(y_hat_batch).cpu().numpy())
++
++    def compute(self) -> float:
++        """Compute CFID from all accumulated features."""
++        feats_x = np.concatenate(self.feats_x, axis=0)
++        feats_y = np.concatenate(self.feats_y, axis=0)
++        feats_y_hat = np.concatenate(self.feats_y_hat, axis=0)
++        return compute_cfid(feats_x, feats_y, feats_y_hat)
++
++    def reset(self):
++        self.feats_x.clear()
++        self.feats_y.clear()
++        self.feats_y_hat.clear()
++
++
+ def compute_validation_metrics(model, dataloader, device='cuda', max_batches=None):
+     """
+     Compute metrics on a validation dataset.
+diff --git a/run_frame_ablation.sh b/run_frame_ablation.sh
+index 7720061..07d4fd1 100644
+--- a/run_frame_ablation.sh
++++ b/run_frame_ablation.sh
+@@ -15,7 +15,6 @@ DATASET_BASE="/home/jw/engsci/thesis/spad/spad_dataset"
+ OUTPUT_BASE="./validation_outputs_frame_ablation"
+ 
+ FRAME_FOLDERS=(
+-    "bits"
+     "bits_multi_4"
+     "bits_multi_16"
+     "bits_multi_64"
+@@ -23,6 +22,16 @@ FRAME_FOLDERS=(
+     "bits_multi_1000"
+ )
+ 
++# Reuse existing baseline (seed 42, same checkpoint) via symlink
++BASELINE_DIR="./validation_outputs_scene_aware/seed_42"
++BASELINE_LINK="${OUTPUT_BASE}/bits"
++if [ -d "${BASELINE_DIR}" ] && [ ! -e "${BASELINE_LINK}" ]; then
++    echo "[symlink] bits -> existing baseline at ${BASELINE_DIR}"
++    ln -s "../validation_outputs_scene_aware/seed_42" "${BASELINE_LINK}"
++elif [ -L "${BASELINE_LINK}" ]; then
++    echo "[reuse]  bits -> $(readlink ${BASELINE_LINK})"
++fi
++
+ echo "=========================================="
+ echo "Frame-Count Ablation (Inference Only)"
+ echo "=========================================="
+@@ -50,6 +59,7 @@ for FOLDER in "${FRAME_FOLDERS[@]}"; do
+         --lora_checkpoint "${LORA_CHECKPOINT}" \
+         --lora_target controlnet \
+         --metadata_csv "${VAL_CSV}" \
++        --dataset_base "${DATASET_BASE}" \
+         --output_dir "${OUTPUT_DIR}" \
+         --seed 42 \
+         --steps 28
+diff --git a/run_metrics.py b/run_metrics.py
+index 85423c0..ebbfc79 100644
+--- a/run_metrics.py
++++ b/run_metrics.py
+@@ -6,24 +6,15 @@ This script evaluates a directory of generated images by computing:
+ - SSIM (Structural Similarity Index)
+ - LPIPS (Learned Perceptual Image Patch Similarity)
+ - FID (Fréchet Inception Distance)
++- CFID (Conditional Fréchet Inception Distance) -- uses the input/conditioning
++  images to measure whether generated outputs are faithful to their specific
++  inputs, not just realistic in general.
+ 
+-Expected directory structure:
++Expected directory structure (nested):
+   output_dir/
+-    gt_*.png         (ground truth images)
+-    output_*.png     (generated images)
+-
+-Or with subdirectories:
+-  output_dir/
+-    gt/
+-      image_0.png
+-      image_1.png
+-      ...
+-    output/
+-      image_0.png
+-      image_1.png
+-      ...
+-
+-Note: Control/conditioning images are not needed for metrics.
++    input/        (conditioning SPAD images)
++    output/       (generated images)
++    ground_truth/ (ground truth RGB images)
+ """
+ 
+ import os
+@@ -34,7 +25,7 @@ from PIL import Image
+ import torchvision.transforms as transforms
+ import numpy as np
+ from tqdm import tqdm
+-from metrics import ImageMetrics, MetricsTracker
++from metrics import ImageMetrics, MetricsTracker, CFIDAccumulator
+ 
+ 
+ def load_image(image_path, transform=None):
+@@ -89,142 +80,141 @@ def find_images(directory, prefix=None, extensions=None):
+     return sorted(images)
+ 
+ 
+-def load_image_pairs(output_dir, batch_size=8, device='cuda'):
++def _extract_id(filename_stem, prefix):
++    """Extract numeric ID from filename by removing prefix and suffix."""
++    import re
++    name = filename_stem.replace(f'{prefix}_', '').replace(prefix, '')
++    match = re.match(r'(\d+)', name)
++    return match.group(1) if match else name
++
++
++def load_image_triplets(output_dir, batch_size=8, device='cuda'):
+     """
+-    Load image pairs from directory structure for metric computation.
+-    Only loads output and ground truth images (control images not needed for metrics).
+-    
+-    Supports two directory structures:
+-    1. Flat: gt_*.png, output_*.png
+-    2. Nested: gt/, output/ subdirectories
+-    
++    Load image triplets (input, output, gt) from directory structure.
++    If input/ subdirectory exists, yields (output, gt, input) batches for CFID.
++    Otherwise yields (output, gt, None).
++
+     Args:
+         output_dir: Root directory containing images
+         batch_size: Number of images to load per batch
+         device: Device to load tensors to
+-    
++
+     Yields:
+-        Batches of (output, gt) image tensors
++        Batches of (output_tensor, gt_tensor, input_tensor_or_None)
+     """
+     output_dir = Path(output_dir)
+-    
+-    # Detect directory structure
++
+     if (output_dir / 'output').exists() and (output_dir / 'ground_truth').exists():
+-        # Nested structure
+         output_images = find_images(output_dir / 'output')
+         gt_images = find_images(output_dir / 'ground_truth')
++        input_dir = output_dir / 'input'
++        input_images = find_images(input_dir) if input_dir.exists() else []
+     else:
+-        # Flat structure with prefixes
+         output_images = find_images(output_dir, prefix='output_')
+         gt_images = find_images(output_dir, prefix='gt_')
++        input_images = find_images(output_dir, prefix='input_')
+ 
+-    if len(output_images) == 0:
++    if not output_images:
+         raise ValueError(f"No output images found in {output_dir}")
+-    if len(gt_images) == 0:
++    if not gt_images:
+         raise ValueError(f"No ground truth images found in {output_dir}")
+-    
+-    # Match images by filename - extract numeric IDs
+-    def extract_id(filename_stem, prefix):
+-        """Extract numeric ID from filename by removing prefix and suffix."""
+-        # Remove prefix
+-        name = filename_stem.replace(f'{prefix}_', '').replace(prefix, '')
+-        # Remove common suffixes like _0, _1, etc.
+-        import re
+-        # Match patterns like: 000123_0 -> 000123 or 000123 -> 000123
+-        match = re.match(r'(\d+)', name)
+-        if match:
+-            return match.group(1)
+-        return name
+-    
+-    output_names = {extract_id(img.stem, 'output'): img for img in output_images}
+-    gt_names = {extract_id(img.stem, 'gt'): img for img in gt_images}
+-    
+-    # Find common image names
++
++    output_names = {_extract_id(img.stem, 'output'): img for img in output_images}
++    gt_names = {_extract_id(img.stem, 'gt'): img for img in gt_images}
++    input_names = {_extract_id(img.stem, 'input'): img for img in input_images}
++
+     common_names = sorted(set(output_names.keys()) & set(gt_names.keys()))
+-    
+-    if len(common_names) == 0:
++    if not common_names:
+         raise ValueError(f"No matching output/gt pairs found in {output_dir}")
+-    
+-    print(f"Found {len(common_names)} image pairs")
+-    
+-    # Load images in batches
+-    batch_outputs = []
+-    batch_gts = []
+-    
++
++    has_inputs = bool(input_names)
++    if has_inputs:
++        common_names = [n for n in common_names if n in input_names]
++        print(f"Found {len(common_names)} image triplets (input + output + gt) → CFID enabled")
++    else:
++        print(f"Found {len(common_names)} image pairs (output + gt) — no input/ dir, CFID skipped")
++
++    batch_out, batch_gt, batch_inp = [], [], []
++
+     for name in tqdm(common_names, desc="Loading images"):
+         try:
+-            output_img = load_image(output_names[name])
+-            gt_img = load_image(gt_names[name])
+-            
+-            batch_outputs.append(output_img)
+-            batch_gts.append(gt_img)
+-            
+-            # Yield batch when full
+-            if len(batch_outputs) == batch_size:
+-                output_batch = torch.stack(batch_outputs).to(device)
+-                gt_batch = torch.stack(batch_gts).to(device)
+-                yield output_batch, gt_batch
+-                
+-                batch_outputs = []
+-                batch_gts = []
+-        
++            batch_out.append(load_image(output_names[name]))
++            batch_gt.append(load_image(gt_names[name]))
++            if has_inputs:
++                batch_inp.append(load_image(input_names[name]))
++
++            if len(batch_out) == batch_size:
++                out_t = torch.stack(batch_out).to(device)
++                gt_t = torch.stack(batch_gt).to(device)
++                inp_t = torch.stack(batch_inp).to(device) if has_inputs else None
++                yield out_t, gt_t, inp_t
++                batch_out, batch_gt, batch_inp = [], [], []
+         except Exception as e:
+             print(f"Error loading image {name}: {e}")
+             continue
+-    
+-    # Yield remaining images
+-    if batch_outputs:
+-        output_batch = torch.stack(batch_outputs).to(device)
+-        gt_batch = torch.stack(batch_gts).to(device)
+-        yield output_batch, gt_batch
++
++    if batch_out:
++        out_t = torch.stack(batch_out).to(device)
++        gt_t = torch.stack(batch_gt).to(device)
++        inp_t = torch.stack(batch_inp).to(device) if has_inputs else None
++        yield out_t, gt_t, inp_t
+ 
+ 
+ def compute_metrics_on_directory(output_dir, batch_size=8, device='cuda', compute_fid=True, grayscale=True):
+     """
+     Compute all metrics on a directory of generated images.
++    Automatically computes CFID when an input/ subdirectory is present.
+     
+     Args:
+-        output_dir: Directory containing output, gt, and optionally control images
++        output_dir: Directory containing output, gt, and optionally input images
+         batch_size: Batch size for processing
+         device: Device to run computations on
+         compute_fid: Whether to compute FID (requires all images)
+         grayscale: Whether to convert images to grayscale before computing metrics
+-                   (useful when control images are monochrome, e.g., SPAD sensors)
+     
+     Returns:
+         Dictionary with average metrics
+     """
+-    # Initialize metrics
+     metrics_calc = ImageMetrics(device=device, compute_fid=compute_fid, grayscale=grayscale)
+     tracker = MetricsTracker()
+-    
++    cfid_acc = None
++
+     print(f"\nComputing metrics on: {output_dir}")
+     print(f"Device: {device}")
+     print(f"Batch size: {batch_size}")
+     print(f"Computing FID: {compute_fid}")
+     print(f"Grayscale mode: {grayscale}")
+     print("-" * 80)
+-    
+-    # Process all image pairs (output and ground truth only)
++
+     with torch.no_grad():
+-        for output_batch, gt_batch in load_image_pairs(output_dir, batch_size, device):
+-            # Compute per-image metrics (PSNR, SSIM, LPIPS)
++        for output_batch, gt_batch, input_batch in load_image_triplets(output_dir, batch_size, device):
+             metrics = metrics_calc.compute_all_metrics(output_batch, gt_batch)
+             tracker.update(metrics)
+-            
+-            # Update FID (accumulates features)
++
+             if compute_fid:
+                 metrics_calc.update_fid(output_batch, gt_batch)
+-    
+-    # Get average metrics
++
++            if input_batch is not None:
++                if cfid_acc is None:
++                    cfid_acc = CFIDAccumulator(device=device)
++
++                def _to_01(t):
++                    return (t + 1) / 2 if t.min() < 0 else t
++
++                cfid_acc.update(
++                    _to_01(input_batch),
++                    _to_01(gt_batch),
++                    _to_01(output_batch),
++                )
++
+     avg_metrics = tracker.compute()
+-    
+-    # Compute FID
++
+     if compute_fid:
+-        fid_score = metrics_calc.compute_fid()
+-        avg_metrics['fid'] = fid_score
+-    
+-    # Print results
++        avg_metrics['fid'] = metrics_calc.compute_fid()
++
++    if cfid_acc is not None:
++        avg_metrics['cfid'] = cfid_acc.compute()
++
+     print("\n" + "=" * 80)
+     print("RESULTS")
+     print("=" * 80)
+@@ -236,10 +226,12 @@ def compute_metrics_on_directory(output_dir, batch_size=8, device='cuda', comput
+     print(f"  PSNR:  {avg_metrics['psnr']:.4f} dB")
+     print(f"  SSIM:  {avg_metrics['ssim']:.4f}")
+     print(f"  LPIPS: {avg_metrics['lpips']:.4f}")
+-    if compute_fid:
++    if 'fid' in avg_metrics:
+         print(f"  FID:   {avg_metrics['fid']:.4f}")
++    if 'cfid' in avg_metrics:
++        print(f"  CFID:  {avg_metrics['cfid']:.4f}")
+     print("=" * 80 + "\n")
+-    
++
+     return avg_metrics
+ 
+ 
+@@ -266,6 +258,8 @@ def save_metrics_to_file(metrics, output_dir, output_file='metrics.txt'):
+         f.write(f"  LPIPS: {metrics['lpips']:.4f}\n")
+         if 'fid' in metrics:
+             f.write(f"  FID:   {metrics['fid']:.4f}\n")
++        if 'cfid' in metrics:
++            f.write(f"  CFID:  {metrics['cfid']:.4f}\n")
+         f.write("\n" + "=" * 80 + "\n")
+     
+     print(f"Metrics saved to: {output_path}")
+diff --git a/run_od_ablation.sh b/run_od_ablation.sh
+index 302402e..0f94238 100644
+--- a/run_od_ablation.sh
++++ b/run_od_ablation.sh
+@@ -8,7 +8,7 @@ conda activate diffsynth
+ DATASET_BASE="/home/jw/engsci/thesis/spad/spad_dataset"
+ OUTPUT_BASE="./validation_outputs_od_ablation"
+ 
+-RAW_CKPT="./models/train/FLUX-SPAD-LoRA-SceneAware-RAW/epoch-best.safetensors"
++RAW_CKPT="./models/train/FLUX-SPAD-LoRA-SceneAware-RAW/epoch-15.safetensors"
+ OD03_FT_CKPT="./models/train/FLUX-SPAD-LoRA-SceneAware-OD03-FT/epoch-best.safetensors"
+ OD03_SCR_CKPT="./models/train/FLUX-SPAD-LoRA-SceneAware-OD03-Scratch/epoch-best.safetensors"
+ OD07_FT_CKPT="./models/train/FLUX-SPAD-LoRA-SceneAware-OD07-FT/epoch-best.safetensors"
+@@ -55,6 +55,7 @@ for MODEL_NAME in raw od03_ft od03_scratch od07_ft; do
+             --lora_checkpoint "${CKPT}" \
+             --lora_target controlnet \
+             --metadata_csv "${VAL_CSV}" \
++            --dataset_base "${DATASET_BASE}" \
+             --output_dir "${OUTPUT_DIR}" \
+             --seed 42 --steps 28
+ 
+diff --git a/run_physics_ablation.sh b/run_physics_ablation.sh
+index 7acaa38..9da5edd 100644
+--- a/run_physics_ablation.sh
++++ b/run_physics_ablation.sh
+@@ -31,10 +31,10 @@ python validate_lora.py \
+     --seed 42 --steps 28
+ python run_metrics.py "${OUTPUT_BASE}/baseline" --save --output-file metrics.txt
+ 
+-# 2. FlowDPS with baseline checkpoint
++# 2. Latent-DPS with baseline checkpoint
+ echo ""
+-echo "--- (B) Baseline + FlowDPS ---"
+-for ETA in 0.01 0.05 0.1 0.5; do
++echo "--- (B) Baseline + Latent-DPS ---"
++for ETA in 0.01 0.05 0.1 0.5 1.0; do
+     echo "  eta=${ETA}..."
+     python validate_dps.py \
+         --lora_checkpoint "${LORA_CHECKPOINT_BASELINE}" \
+@@ -77,7 +77,7 @@ echo "Ablation complete!"
+ echo "=========================================="
+ echo ""
+ echo "Results:"
+-for DIR in baseline dps_eta0.01 dps_eta0.05 dps_eta0.1 dps_eta0.5 consistency consistency_dps; do
++for DIR in baseline dps_eta0.01 dps_eta0.05 dps_eta0.1 dps_eta0.5 dps_eta1.0 consistency consistency_dps; do
+     if [ -f "${OUTPUT_BASE}/${DIR}/metrics.txt" ]; then
+         echo "--- ${DIR} ---"
+         grep -E "PSNR|SSIM|LPIPS|FID" "${OUTPUT_BASE}/${DIR}/metrics.txt" 2>/dev/null
+diff --git a/save_intermediate_latents.py b/save_intermediate_latents.py
+index ea0eedd..8639339 100644
+--- a/save_intermediate_latents.py
++++ b/save_intermediate_latents.py
+@@ -15,6 +15,7 @@ Usage:
+ 
+ import argparse
+ import torch
++import numpy as np
+ from pathlib import Path
+ from tqdm import tqdm
+ from PIL import Image
+@@ -26,6 +27,15 @@ from diffsynth.utils.lora.flux import FluxLoRALoader
+ from diffsynth.core import load_state_dict
+ 
+ 
++def load_spad_image(path) -> Image.Image:
++    """Load a SPAD image, handling 16-bit grayscale correctly."""
++    img = Image.open(path)
++    if img.mode == "I;16":
++        arr = np.array(img, dtype=np.float32) * (255.0 / 65535.0)
++        img = Image.fromarray(arr.clip(0, 255).astype(np.uint8))
++    return img.convert("RGB")
++
++
+ def main():
+     parser = argparse.ArgumentParser(description="Save intermediate denoising latents")
+     parser.add_argument("--lora_checkpoint", type=str, required=True)
+@@ -44,26 +54,40 @@ def main():
+     out = Path(args.output_dir)
+     out.mkdir(parents=True, exist_ok=True)
+ 
+-    print("Loading pipeline...")
++    print("Loading FLUX pipeline...")
++    vram_config = {
++        "offload_dtype": torch.float8_e4m3fn,
++        "offload_device": "cpu",
++        "onload_dtype": torch.float8_e4m3fn,
++        "onload_device": "cpu",
++        "preparing_dtype": torch.float8_e4m3fn,
++        "preparing_device": "cuda",
++        "computation_dtype": torch.bfloat16,
++        "computation_device": "cuda",
++    }
++    vram_limit = torch.cuda.mem_get_info()[1] / (1024 ** 3) - 0.5
++    model_configs = [
++        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors", **vram_config),
++        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
++        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config),
++        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", **vram_config),
++        ModelConfig(model_id="InstantX/FLUX.1-dev-Controlnet-Union-alpha", origin_file_pattern="diffusion_pytorch_model.safetensors"),
++    ]
+     pipe = FluxImagePipeline.from_pretrained(
+-        [
+-            ModelConfig("black-forest-labs/FLUX.1-dev", "flux1-dev.safetensors"),
+-            ModelConfig("black-forest-labs/FLUX.1-dev", "text_encoder/model.safetensors"),
+-            ModelConfig("black-forest-labs/FLUX.1-dev", "text_encoder_2/*.safetensors"),
+-            ModelConfig("black-forest-labs/FLUX.1-dev", "ae.safetensors"),
+-            ModelConfig("InstantX/FLUX.1-dev-Controlnet-Union-alpha", "diffusion_pytorch_model.safetensors"),
+-        ],
+-        device="cuda",
+         torch_dtype=torch.bfloat16,
++        device="cuda",
++        model_configs=model_configs,
++        vram_limit=vram_limit,
+     )
+ 
++    print(f"Loading LoRA ({args.lora_target}): {args.lora_checkpoint}")
++    target_module = pipe.dit if args.lora_target == "dit" else pipe.controlnet
+     if args.lora_target == "controlnet":
+-        lora_loader = FluxLoRALoader(torch_dtype=torch.bfloat16, device="cuda")
+-        lora_sd = load_state_dict(args.lora_checkpoint, torch_dtype=torch.bfloat16, device="cuda")
+-        lora_sd = lora_loader.convert_state_dict(lora_sd)
+-        lora_loader.fuse_lora(pipe.controlnet, lora_sd, alpha=1.0)
++        state_dict = load_state_dict(args.lora_checkpoint, torch_dtype=pipe.torch_dtype, device=pipe.device)
++        loader = FluxLoRALoader(torch_dtype=pipe.torch_dtype, device=pipe.device)
++        loader.fuse_lora_to_base_model(target_module, state_dict, alpha=1.0)
+     else:
+-        pipe.load_lora(pipe.dit, args.lora_checkpoint, alpha=1.0)
++        pipe.load_lora(target_module, args.lora_checkpoint, alpha=1.0)
+ 
+     csv_path = Path(args.metadata_csv)
+     with open(csv_path) as f:
+@@ -81,7 +105,7 @@ def main():
+         control_path = csv_path.parent / sample[control_key]
+         gt_path = csv_path.parent / sample["image"]
+ 
+-        control_img = Image.open(control_path).convert("RGB")
++        control_img = load_spad_image(control_path)
+         gt_img = Image.open(gt_path).convert("RGB")
+ 
+         control_img.save(sample_dir / "input.png")
+diff --git a/validate_dps.py b/validate_dps.py
+index 4b82792..1084ad2 100644
+--- a/validate_dps.py
++++ b/validate_dps.py
+@@ -1,9 +1,15 @@
+ #!/usr/bin/env python3
+ """
+-Phase 3b: FlowDPS Validation -- Run inference with measurement-guided sampling.
++Phase 3b: FlowDPS Validation -- Latent-space measurement-guided sampling.
+ 
+-Uses the same checkpoint as standard validation but adds SPAD physics
+-guidance at each denoising step via FlowDPS.
++Monkeypatches the pipeline's step function to inject a latent-space DPS
++correction at each denoising step. This avoids the OOM issue of decoding
++through the VAE during the denoising loop.
++
++The SPAD measurement is pre-encoded through the VAE encoder once, and then
++a simple latent-space consistency gradient is applied at each step:
++  x_0_hat = x_t - sigma * v_theta
++  correction = -eta * normalize(x_0_hat - z_spad)
+ """
+ 
+ import argparse
+@@ -14,17 +20,53 @@ from tqdm import tqdm
+ from PIL import Image
+ import csv
+ import numpy as np
++from functools import partial
+ 
+ from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
+ from diffsynth.utils.controlnet import ControlNetInput
+ from diffsynth.utils.lora.flux import FluxLoRALoader
+ from diffsynth.core import load_state_dict
+-from diffsynth.diffusion.flow_dps import FlowDPSConfig, flux_dps_inference
+-import torchvision.transforms as transforms
++from diffsynth.diffusion.latent_dps import LatentDPSConfig, compute_latent_dps_correction, get_guidance_weight
++
++
++def load_spad_image(path) -> Image.Image:
++    """Load a SPAD image, handling 16-bit grayscale correctly."""
++    img = Image.open(path)
++    if img.mode == "I;16":
++        arr = np.array(img, dtype=np.float32) * (255.0 / 65535.0)
++        img = Image.fromarray(arr.clip(0, 255).astype(np.uint8))
++    return img.convert("RGB")
++
++
++def make_dps_step_fn(original_step, dps_config, total_steps):
++    """Wrap the pipeline's step to inject DPS correction into noise_pred."""
++
++    def dps_step(scheduler, latents, progress_id, noise_pred, **kwargs):
++        weight = get_guidance_weight(
++            progress_id, total_steps,
++            schedule=dps_config.guidance_schedule,
++            start_step=dps_config.start_step,
++            stop_step=dps_config.stop_step,
++        )
++        if weight > 0 and dps_config.spad_latent is not None:
++            sigma = scheduler.sigmas[progress_id].item() if hasattr(scheduler, 'sigmas') else 1.0
++            if sigma > 0.01:
++                correction = compute_latent_dps_correction(
++                    latents=latents,
++                    noise_pred=noise_pred,
++                    sigma=sigma,
++                    spad_latent=dps_config.spad_latent,
++                    guidance_scale=dps_config.guidance_scale * weight,
++                )
++                noise_pred = noise_pred + correction
++
++        return original_step(scheduler, latents=latents, progress_id=progress_id, noise_pred=noise_pred, **kwargs)
++
++    return dps_step
+ 
+ 
+ def main():
+-    parser = argparse.ArgumentParser(description="FLUX LoRA validation with FlowDPS guidance")
++    parser = argparse.ArgumentParser(description="FLUX LoRA validation with latent-space DPS guidance")
+     parser.add_argument("--lora_checkpoint", type=str, required=True)
+     parser.add_argument("--lora_target", type=str, default="controlnet", choices=["dit", "controlnet"])
+     parser.add_argument("--metadata_csv", type=str, default="/home/jw/engsci/thesis/spad/spad_dataset/metadata_val.csv")
+@@ -34,14 +76,12 @@ def main():
+     parser.add_argument("--width", type=int, default=512)
+     parser.add_argument("--seed", type=int, default=42)
+     parser.add_argument("--max_samples", type=int, default=None)
++    parser.add_argument("--controlnet_fp8", action="store_true")
+ 
+-    parser.add_argument("--dps_alpha", type=float, default=1.0, help="SPAD forward model alpha")
+-    parser.add_argument("--dps_num_frames", type=int, default=1, help="Number of SPAD frames")
+-    parser.add_argument("--dps_guidance_scale", type=float, default=0.1, help="DPS guidance strength")
++    parser.add_argument("--dps_guidance_scale", type=float, default=0.05, help="DPS guidance strength (eta)")
+     parser.add_argument("--dps_schedule", type=str, default="linear_decay", choices=["constant", "linear_decay", "cosine"])
+     parser.add_argument("--dps_start_step", type=int, default=0)
+     parser.add_argument("--dps_stop_step", type=int, default=-1)
+-    parser.add_argument("--dps_gradient_clamp", type=float, default=1.0)
+ 
+     args = parser.parse_args()
+ 
+@@ -51,26 +91,40 @@ def main():
+     (output_dir / "ground_truth").mkdir(parents=True, exist_ok=True)
+ 
+     print("Loading FLUX pipeline...")
++    vram_config = {
++        "offload_dtype": torch.float8_e4m3fn,
++        "offload_device": "cpu",
++        "onload_dtype": torch.float8_e4m3fn,
++        "onload_device": "cpu",
++        "preparing_dtype": torch.float8_e4m3fn,
++        "preparing_device": "cuda",
++        "computation_dtype": torch.bfloat16,
++        "computation_device": "cuda",
++    }
++    vram_limit = torch.cuda.mem_get_info()[1] / (1024 ** 3) - 0.5
++    controlnet_vram_config = vram_config if args.controlnet_fp8 else {}
++    model_configs = [
++        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors", **vram_config),
++        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
++        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config),
++        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", **vram_config),
++        ModelConfig(model_id="InstantX/FLUX.1-dev-Controlnet-Union-alpha", origin_file_pattern="diffusion_pytorch_model.safetensors", **controlnet_vram_config),
++    ]
+     pipe = FluxImagePipeline.from_pretrained(
+-        [
+-            ModelConfig("black-forest-labs/FLUX.1-dev", "flux1-dev.safetensors"),
+-            ModelConfig("black-forest-labs/FLUX.1-dev", "text_encoder/model.safetensors"),
+-            ModelConfig("black-forest-labs/FLUX.1-dev", "text_encoder_2/*.safetensors"),
+-            ModelConfig("black-forest-labs/FLUX.1-dev", "ae.safetensors"),
+-            ModelConfig("InstantX/FLUX.1-dev-Controlnet-Union-alpha", "diffusion_pytorch_model.safetensors"),
+-        ],
+-        device="cuda",
+         torch_dtype=torch.bfloat16,
++        device="cuda",
++        model_configs=model_configs,
++        vram_limit=vram_limit,
+     )
+ 
+-    print(f"Loading LoRA from {args.lora_checkpoint} into {args.lora_target}...")
++    print(f"Loading LoRA ({args.lora_target}): {args.lora_checkpoint}")
++    target_module = pipe.dit if args.lora_target == "dit" else pipe.controlnet
+     if args.lora_target == "controlnet":
+-        lora_loader = FluxLoRALoader(torch_dtype=torch.bfloat16, device="cuda")
+-        lora_sd = load_state_dict(args.lora_checkpoint, torch_dtype=torch.bfloat16, device="cuda")
+-        lora_sd = lora_loader.convert_state_dict(lora_sd)
+-        lora_loader.fuse_lora(pipe.controlnet, lora_sd, alpha=1.0)
++        state_dict = load_state_dict(args.lora_checkpoint, torch_dtype=pipe.torch_dtype, device=pipe.device)
++        loader = FluxLoRALoader(torch_dtype=pipe.torch_dtype, device=pipe.device)
++        loader.fuse_lora_to_base_model(target_module, state_dict, alpha=1.0)
+     else:
+-        pipe.load_lora(pipe.dit, args.lora_checkpoint, alpha=1.0)
++        pipe.load_lora(target_module, args.lora_checkpoint, alpha=1.0)
+ 
+     csv_path = Path(args.metadata_csv)
+     with open(csv_path) as f:
+@@ -78,12 +132,12 @@ def main():
+     if args.max_samples:
+         samples = samples[:args.max_samples]
+ 
+-    print(f"Processing {len(samples)} samples with FlowDPS guidance...")
+-    print(f"  DPS alpha={args.dps_alpha}, scale={args.dps_guidance_scale}, schedule={args.dps_schedule}")
++    print(f"Processing {len(samples)} samples with Latent-DPS guidance")
++    print(f"  scale={args.dps_guidance_scale}, schedule={args.dps_schedule}")
+ 
+-    to_tensor = transforms.ToTensor()
++    original_step = pipe.step
+ 
+-    for idx, sample in enumerate(tqdm(samples, desc="FlowDPS inference")):
++    for idx, sample in enumerate(tqdm(samples, desc="Latent-DPS inference")):
+         output_path = output_dir / "output" / f"output_{idx:04d}.png"
+         if output_path.exists():
+             continue
+@@ -92,22 +146,26 @@ def main():
+         control_path = csv_path.parent / sample[control_key]
+         gt_path = csv_path.parent / sample["image"]
+ 
+-        control_img = Image.open(control_path).convert("RGB")
++        control_img = load_spad_image(control_path)
+         gt_img = Image.open(gt_path).convert("RGB")
+ 
+-        spad_tensor = to_tensor(control_img).unsqueeze(0)
++        pipe.load_models_to_device(["vae_encoder"])
++        spad_pil = control_img.resize((args.width, args.height), Image.LANCZOS)
++        spad_tensor = pipe.preprocess_image(spad_pil).to(device=pipe.device, dtype=pipe.torch_dtype)
++        spad_latent = pipe.vae_encoder(spad_tensor, tiled=False)
++        pipe.load_models_to_device([])
++        torch.cuda.empty_cache()
+ 
+-        dps_config = FlowDPSConfig(
+-            spad_measurement=spad_tensor,
+-            alpha=args.dps_alpha,
+-            num_frames=args.dps_num_frames,
++        dps_config = LatentDPSConfig(
++            spad_latent=spad_latent.detach(),
+             guidance_scale=args.dps_guidance_scale,
+             guidance_schedule=args.dps_schedule,
+             start_step=args.dps_start_step,
+             stop_step=args.dps_stop_step,
+-            gradient_clamp=args.dps_gradient_clamp,
+         )
+ 
++        pipe.step = make_dps_step_fn(original_step, dps_config, args.steps)
++
+         controlnet_input = ControlNetInput(
+             image=control_img,
+             processor_id="gray",
+@@ -116,9 +174,7 @@ def main():
+ 
+         seed = args.seed + idx
+ 
+-        result_image = flux_dps_inference(
+-            pipe,
+-            dps_config=dps_config,
++        result_image = pipe(
+             prompt=sample.get("prompt", ""),
+             cfg_scale=1.0,
+             embedded_guidance=3.5,
+@@ -133,6 +189,8 @@ def main():
+         result_image.save(output_dir / "output" / f"output_{idx:04d}.png")
+         gt_img.save(output_dir / "ground_truth" / f"gt_{idx:04d}.png")
+ 
++    pipe.step = original_step
++
+     print(f"\nDone! Results saved to {output_dir}")
+     print(f"Run metrics: python run_metrics.py {output_dir} --save")
+ 
+diff --git a/validate_lora.py b/validate_lora.py
+index 58f31fb..84f346f 100755
+--- a/validate_lora.py
++++ b/validate_lora.py
+@@ -4,6 +4,7 @@ FLUX LoRA Validation - Run inference on validation set
+ import argparse
+ import torch
+ import os
++import numpy as np
+ from pathlib import Path
+ from tqdm import tqdm
+ from PIL import Image
+@@ -14,6 +15,16 @@ from diffsynth.utils.controlnet import ControlNetInput
+ from diffsynth.utils.lora.flux import FluxLoRALoader
+ from diffsynth.core import load_state_dict
+ 
++
++def load_spad_image(path) -> Image.Image:
++    """Load a SPAD image, handling 16-bit grayscale correctly."""
++    img = Image.open(path)
++    if img.mode == "I;16":
++        arr = np.array(img, dtype=np.float32) * (255.0 / 65535.0)
++        img = Image.fromarray(arr.clip(0, 255).astype(np.uint8))
++    return img.convert("RGB")
++
++
+ def main():
+     parser = argparse.ArgumentParser(description="FLUX LoRA validation on val set")
+     parser.add_argument("--lora_checkpoint", type=str, required=True, help="Path to LoRA checkpoint")
+@@ -32,6 +43,7 @@ def main():
+     parser.add_argument("--max_samples", type=int, default=None, help="Max samples (None=all)")
+     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing outputs instead of skipping")
++    parser.add_argument("--dataset_base", type=str, default=None, help="Base directory for resolving CSV paths (default: CSV parent dir)")
+     
+     args = parser.parse_args()
+     
+@@ -114,7 +126,7 @@ def main():
+     
+     # Run inference
+     print("Running inference on validation set...")
+-    csv_base = Path(args.metadata_csv).parent
++    csv_base = Path(args.dataset_base) if args.dataset_base else Path(args.metadata_csv).parent
+     
+     for idx, sample in enumerate(tqdm(samples, desc="Generating")):
+         output_path = output_dir / "output" / f"output_{idx:04d}.png"
+@@ -128,7 +140,7 @@ def main():
+         input_path = csv_base / sample[controlnet_key]
+         gt_path = csv_base / sample['image']
+         
+-        control_img = Image.open(input_path).convert('RGB')
++        control_img = load_spad_image(input_path)
+         gt_img = Image.open(gt_path).convert('RGB')
+         
+         # Generate

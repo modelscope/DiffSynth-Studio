@@ -1,0 +1,56 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   aggregate_metrics.py
+	modified:   diffsynth/core/data/operators.py
+	modified:   diffsynth/diffusion/consistency_loss.py
+	modified:   diffsynth/diffusion/flow_dps.py
+	modified:   inference_lora.py
+	modified:   linear_probing.py
+	modified:   metrics.py
+	modified:   run_frame_ablation.sh
+	modified:   run_metrics.py
+	modified:   run_od_ablation.sh
+	modified:   run_physics_ablation.sh
+	modified:   save_intermediate_latents.py
+	modified:   validate_dps.py
+	modified:   validate_lora.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	EXPERIMENTS.md
+	agent/
+	calibration_analysis/
+	diffsynth/diffusion/latent_dps.py
+	experiment_audit.json
+	intermediate_latents/
+	kyros_test_images_output/
+	logs/
+	od03_ft_log.txt
+	paired_spad_dataset.py
+	probing_log.txt
+	probing_results/
+	probing_train_log.txt
+	probing_train_v2.txt
+	train_consistency.py
+	train_consistency.sh
+	validation_outputs_consistency/
+	validation_outputs_consistency_dps/
+	validation_outputs_frame_ablation/
+	validation_outputs_multiseed/
+	validation_outputs_physics_ablation/
+	validation_outputs_scene_aware/
+	validation_results/
+	validation_results_controlnet_lora_high_steps/
+	validation_results_lora/
+	validation_results_lora_on_controlnet/
+	validation_results_lora_on_controlnet_broken/
+	validation_results_lora_on_controlnet_seed_67/
+	validation_results_lora_on_controlnet_seed_88/
+	validation_results_lora_on_controlnet_train_broken/
+	variance_analysis/
+
+no changes added to commit (use "git add" and/or "git commit -a")
