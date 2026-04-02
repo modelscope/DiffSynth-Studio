@@ -884,4 +884,40 @@ mova_series = [
         "model_class": "diffsynth.models.mova_dual_tower_bridge.DualTowerConditionalBridge",
     },
 ]
-MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series + ltx2_series + anima_series + mova_series
+
+ace_step_series = [
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors")
+        "model_hash": "3509bea17b0e8cffc3dd4a15cc7899d0",
+        "model_name": "ace_step_text_encoder",
+        "model_class": "diffsynth.models.ace_step_text_encoder.AceStepTextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_text_encoder.AceStepTextEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "51420834e54474986a7f4be0e4d6f687",
+        "model_name": "ace_step_vae",
+        "model_class": "diffsynth.models.ace_step_vae.AceStepVAE",
+        "extra_kwargs": {
+            "encoder_hidden_size": 128,
+            "downsampling_ratios": [2, 4, 4, 6, 10],
+            "channel_multiples": [1, 2, 4, 8, 16],
+            "decoder_channels": 128,
+            "decoder_input_channels": 64,
+            "audio_channels": 2,
+            "sampling_rate": 48000
+        }
+    },
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors")
+        "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
+        "model_name": "ace_step_dit",
+        "model_class": "diffsynth.models.ace_step_dit.AceStepConditionGenerationModelWrapper",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_dit.AceStepDiTStateDictConverter",
+        "extra_kwargs": {
+            "config_path": "models/ACE-Step/Ace-Step1.5/acestep-v15-turbo"
+        }
+    },
+]
+
+MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series + ltx2_series + anima_series + mova_series + ace_step_series
