@@ -27,7 +27,7 @@ A **linear probe** (ridge regression) tests whether a target property is **linea
   - Hidden dimension: **3072** per image token
   - Image token count: **1024** tokens (32x32 patch grid for 512x512 input images)
 - **ControlNet**: 5 joint + 10 single blocks (15 total), injects SPAD conditioning via linear projections
-- **LoRA**: Low-rank adapters fused into ControlNet weights (NOT DiT), rank 16
+- **LoRA**: Low-rank adapters fused into ControlNet weights (NOT DiT), rank 32
 
 ### 2.2 Three Experimental Conditions
 
@@ -49,6 +49,7 @@ The **No-ControlNet** ablation confirms that ControlNet is the information condu
 | **Bit density** | Mean of binary SPAD frame (photon evidence) | Input conditioning | Does the network preserve measurement statistics? |
 | **Depth** | Monocular depth from Depth Anything V2 | Pseudo-GT from RGB | Does the network infer 3D structure from 1-bit data? |
 | **Variance** | Pixel-wise std across 3 random seeds | Multi-seed generation | Does the network represent its own uncertainty? |
+| **Cross-frame variance** | Pixel-wise std across 7 SPAD frame realizations | Cross-frame generation | Is the model sensitive to the specific binary realization? |
 
 #### Object Presence Targets (Binary Classification)
 
@@ -391,7 +392,8 @@ Depth and variance are **spatially heterogeneous** — they vary across the imag
 |--------|-----------------|------------------|-------------|
 | Bit density | 0.998 | 0.959 | Global wins (scalar property) |
 | Depth | 0.437 | **0.685** | **+0.248 (+57%)** |
-| Variance | 0.424 | **0.506** | **+0.082 (+19%)** |
+| Variance (seed) | 0.424 | **0.506** | **+0.082 (+19%)** |
+| Cross-frame variance | 0.292 | **0.359** | **+0.067 (+23%)** |
 
 For **depth**, spatial probing provides R² = 0.685 — the probe can decode a 32x32 depth map from a single block's activations with Pearson r = 0.836. This is a striking result: from **1-bit binary SPAD data**, the model's internal representations contain enough information to linearly reconstruct a spatially-resolved depth map.
 
@@ -856,28 +858,91 @@ Cross-frame variance statistics: range [0.000337, 0.014199], mean=0.00255, std=0
 | joint_1 | t=27 | −0.186 | 0.148 |
 | joint_0 | t=4 | −0.199 | 0.003 |
 
-#### E.3.2 Cross-Frame vs Seed Variance Comparison
+#### E.3.2 ControlNet Block — Cross-Frame Variance
 
-| Target | Best R² (Main) | Best Block (Main) | Best R² (Control) | Best R² (No-CN) |
-|--------|---------------|-------------------|-------------------|-----------------|
-| Seed variance (10 seeds) | **0.424** | joint_1 @ t=14 | 0.446 | −0.358 |
-| Cross-frame variance (7 frames) | **0.292** | joint_1 @ t=27 | 0.222 | −0.161 |
+The ControlNet blocks show **higher** cross-frame variance predictability than DiT blocks, consistent with ControlNet being the sole pathway for SPAD conditioning information.
+
+**ControlNet — Top 10 blocks:**
+
+| Block | Timestep | R² | Pearson r |
+|-------|----------|-----|-----------|
+| cn_single_1 | t=24 | **0.360** | 0.614 |
+| cn_single_2 | t=24 | 0.354 | 0.605 |
+| cn_single_2 | t=19 | 0.341 | 0.596 |
+| cn_single_3 | t=19 | 0.337 | 0.605 |
+| cn_single_1 | t=9 | 0.332 | 0.600 |
+| cn_single_6 | t=24 | 0.332 | 0.581 |
+| cn_single_0 | t=24 | 0.329 | 0.589 |
+| cn_joint_4 | t=9 | 0.328 | 0.606 |
+| cn_joint_2 | t=14 | 0.326 | 0.582 |
+| cn_single_3 | t=24 | 0.323 | 0.579 |
+
+ControlNet's best R²=0.360 exceeds the DiT's best R²=0.292 (+23%), confirming that frame-sensitivity information is strongest at the conditioning injection point.
+
+#### E.3.3 Spatial Probing — Cross-Frame Variance
+
+Spatial probing predicts per-patch (32×32) cross-frame variance from spatially-resolved activations, revealing WHERE in the image the model encodes frame sensitivity.
+
+**Spatial Cross-Frame Variance — Top 10 blocks:**
+
+| Block | Timestep | R² | Pearson r |
+|-------|----------|-----|-----------|
+| single_28 | t=9 | **0.359** | 0.614 |
+| single_37 | t=4 | 0.357 | 0.609 |
+| single_37 | t=9 | 0.350 | 0.610 |
+| single_28 | t=4 | 0.348 | 0.602 |
+| single_28 | t=14 | 0.345 | 0.610 |
+| single_37 | t=0 | 0.341 | 0.588 |
+| single_37 | t=14 | 0.335 | 0.603 |
+| single_0 | t=9 | 0.333 | 0.594 |
+| single_19 | t=9 | 0.331 | 0.595 |
+| single_28 | t=19 | 0.331 | 0.603 |
+
+Spatial probing R²=0.359 substantially exceeds global probing R²=0.292 (+23%), indicating that cross-frame variance has strong spatial structure — some image regions are far more frame-sensitive than others.
+
+#### E.3.4 Cross-Frame vs Seed Variance — Full Comparison
+
+| Target | Global (DiT) | Global (CN) | Spatial (DiT) | Best Overall |
+|--------|-------------|-------------|--------------|-------------|
+| Seed variance (10 seeds) | 0.424 (joint_1 @ t=14) | 0.465 (cn_joint_2 @ t=27) | 0.506 (single_28 @ t=4) | **0.506** spatial |
+| Cross-frame variance (7 frames) | 0.292 (joint_1 @ t=27) | 0.360 (cn_single_1 @ t=24) | 0.359 (single_28 @ t=9) | **0.360** CN |
+
+#### E.3.5 Complete Spatial Probing Summary (All 4 Targets)
+
+| Target | Best R² (Spatial) | Best Block | vs Global R² | Spatial Gain |
+|--------|------------------|-----------|-------------|-------------|
+| Bit density | **0.959** | single_37 @ t=0 | 0.998 | −0.039 (ceiling effect) |
+| Depth | **0.685** | single_9 @ t=14 | 0.437 | **+0.248** (+57%) |
+| Seed variance | **0.506** | single_28 @ t=4 | 0.424 | +0.082 (+19%) |
+| Cross-frame variance | **0.359** | single_28 @ t=9 | 0.292 | **+0.067** (+23%) |
 
 ### E.4 Analysis
 
 **Key findings:**
 
-1. **Cross-frame information is encoded in early joint blocks**: joint_1 dominates for the main model (R²=0.292 at t=27), consistent with it being the first block where ControlNet-injected SPAD information is processed.
+1. **Cross-frame information is encoded in early joint blocks**: joint_1 dominates for global DiT probing (R²=0.292 at t=27), consistent with it being the first block where ControlNet-injected SPAD information is processed.
 
-2. **Different temporal profiles for seed vs cross-frame variance**: Seed variance peaks at t=14 (mid-denoising) while cross-frame variance peaks at t=27 (near completion). This suggests frame-dependent variation is *retained through to the final output*, while seed-dependent variation is generated mid-process and partially resolved by the end.
+2. **ControlNet blocks are even more frame-sensitive**: CN best R²=0.360 vs DiT best R²=0.292 (+23%). This is expected — ControlNet directly processes the SPAD conditioning, so it retains the most frame-specific information before it's integrated into the DiT's generative pathway.
 
-3. **LoRA amplifies frame sensitivity**: Main model R²=0.292 vs Control R²=0.222 (+32%). The LoRA finetuning teaches the model to be *more* responsive to the specific SPAD frame content, not less. This makes sense — the LoRA learns to extract more signal from the binary conditioning, but this also means it's more sensitive to the stochastic realization.
+3. **Spatial probing reveals location-dependent frame sensitivity**: Spatial R²=0.359 substantially exceeds global R²=0.292 (+23%), indicating that cross-frame variance has strong spatial structure. Some image regions (likely edges, texture boundaries, and low-photon-count areas) are far more sensitive to the specific SPAD frame realization than others. This is physically meaningful — regions with fewer detected photons have higher Bernoulli variance.
 
-4. **ControlNet is the sole pathway**: No-CN R² values are all negative, confirming that without ControlNet, the DiT has zero ability to predict cross-frame variance. All frame-dependent information enters through the ControlNet.
+4. **Different temporal profiles for seed vs cross-frame variance**: Seed variance peaks at t=14 (mid-denoising) while cross-frame variance peaks at t=27 (near completion) for global probing. This suggests frame-dependent variation is *retained through to the final output*, while seed-dependent variation is generated mid-process and partially resolved by the end.
 
-5. **Cross-frame variance is harder to predict than seed variance**: Best R²=0.292 (crossframe) vs 0.424 (seed). This makes sense — seed variance is a property of the generation process itself, while cross-frame variance depends on the interaction between conditioning and generation.
+5. **Spatial probing shifts cross-frame peak to mid-network**: The spatial cross-frame peak is at single_28 @ t=9 (late-middle network, mid-denoising), different from the global peak at joint_1 @ t=27 (early network, late denoising). This suggests that spatially-resolved frame information propagates deeper into the network than the global signal.
 
-**Implications for consistency training**: The cross-frame variance signal is concentrated in early joint blocks (1–6) at later timesteps (t=14–27). Consistency training should target these regions to reduce frame-dependent output variation. The fact that LoRA *increases* frame sensitivity (vs control) suggests that consistency regularization is indeed needed to counteract this effect.
+6. **LoRA amplifies frame sensitivity**: Main model R²=0.292 vs Control R²=0.222 (+32%). The LoRA finetuning teaches the model to be *more* responsive to the specific SPAD frame content, not less. The LoRA learns to extract more signal from the binary conditioning, making it more sensitive to the stochastic realization.
+
+7. **ControlNet is the sole pathway**: No-CN R² values are all negative, confirming that without ControlNet, the DiT has zero ability to predict cross-frame variance. All frame-dependent information enters through the ControlNet.
+
+8. **Depth benefits most from spatial probing** (+57% gain), consistent with depth being an inherently spatial quantity. Cross-frame variance also benefits substantially (+23%), while bit density sees no gain (already at ceiling). This validates the investment in spatial probing infrastructure.
+
+**Implications for consistency training**: The cross-frame variance signal is concentrated in (a) ControlNet single blocks 0–3 at t=19–24 for global conditioning, and (b) DiT single blocks 19–37 at t=4–14 for spatially-resolved variance. Consistency training should target these regions to reduce frame-dependent output variation. The fact that LoRA *increases* frame sensitivity (vs control) suggests that consistency regularization is indeed needed to counteract this effect.
+
+**Generated figures**:
+- `probing_results_allblocks/probes/heatmap_spatial_crossframe_variance.png` — spatial crossframe heatmap (block × timestep)
+- `probing_results_allblocks/probes/lineplot_spatial_crossframe_variance.png` — R² vs block index line plot
+- `probing_results_allblocks/probes/heatmap_cn_crossframe_variance.png` — ControlNet crossframe heatmap
+- `probing_results_allblocks/probes/lineplot_cn_crossframe_variance.png` — CN crossframe line plot
 
 ## Appendix F: Cross-Architecture Comparison — SD1.5 vs FLUX
 

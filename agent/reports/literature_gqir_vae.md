@@ -58,20 +58,24 @@ The core contribution. The term "predegradation removal" comes from the DiffBIR/
 ### Fundamental Architectural Difference
 
 ```
-gQIR:    SPAD --> [VAE Encoder*] --> latent --> [U-Net+LoRA] --> [VAE Decoder] --> RGB
-                  ^^ must be fine-tuned (Stage 1)
+gQIR:    SPAD --> [VAE Encoder*] --> latent --> [U-Net+LoRA denoises FROM this] --> [VAE Decoder] --> RGB
+                  ^^ must be fine-tuned (Stage 1), latents used as denoising start point
 
-Ours:    SPAD --> [ControlNet] --> conditioning --|
-         RGB  --> [VAE Encoder] --> latent -------|-- [FLUX DiT] --> [VAE Decoder] --> RGB
-                  ^^ only sees clean RGB                (frozen)
+Ours:    SPAD --> [VAE Encoder] --> latent --> [ControlNet+LoRA] --> conditioning --|
+         RGB  --> [VAE Encoder] --> latent target --|                               |
+                  ^^ SAME frozen encoder for both   |-- [FLUX DiT] --> [VAE Decoder] --> RGB
+                                                    flow matching loss    (frozen)
 ```
 
-The key insight: **ControlNet acts as a domain-specific encoder** that translates SPAD → conditioning signals without touching the VAE. This is architecturally superior for several reasons:
+**IMPORTANT**: SPAD DOES go through the frozen VAE encoder in our pipeline (see `FluxImageUnit_ControlNet.process()` at `flux_image.py:473-484`). The difference is HOW the resulting latent is used:
+- **gQIR**: SPAD latent is the **denoising starting point** — U-Net must denoise FROM it → requires on-manifold latents → requires VAE fine-tuning
+- **Ours**: SPAD latent is **conditioning input to ControlNet** — ControlNet+LoRA learns to interpret OOD latents as conditioning signals → no VAE fine-tuning needed
 
-1. **No VAE fine-tuning needed**: The VAE encoder only ever sees natural RGB images (on-manifold). No risk of encoder collapse, no LSA loss needed, no 600k-step Stage 1.
-2. **Frozen foundation model**: FLUX DiT stays frozen in FP8 — we never modify the generative prior.
+This is architecturally advantageous because:
+1. **No VAE fine-tuning needed**: ControlNet+LoRA adapts to interpret OOD SPAD latents. The VAE doesn't need to produce clean latents from SPAD — just consistent ones.
+2. **Frozen foundation model**: FLUX DiT stays frozen in FP8 — generative prior unchanged.
 3. **Single-stage training**: LoRA-on-ControlNet in one pass, vs gQIR's 3 separate stages.
-4. **Modular conditioning**: ControlNet can be swapped, composed, or removed without affecting the base model.
+4. **Modular conditioning**: ControlNet can be swapped/removed without affecting the base model.
 
 ### Where gQIR Has Advantages
 
@@ -107,10 +111,11 @@ The FLUX VAE (AutoencoderKL, 16-channel latent space) is still load-bearing but 
 - But neither component ever needs to understand SPAD data. The ControlNet handles that translation.
 
 ### Would VAE Fine-Tuning Help?
-No. The VAE is **completely frozen** (`freeze_except` sets `requires_grad_(False)` on everything; VAE is never listed as trainable). It only translates between pixel space and latent space for well-formed RGB:
-- **Encoder**: Only ever sees clean GT RGB → latent targets. On-manifold by definition.
-- **Decoder**: Only ever sees DiT-generated latents → RGB pixels.
-- SPAD data never enters the VAE at any point. There is nothing to fix.
+The VAE is **frozen** but SPAD DOES go through it (for ControlNet input). Fine-tuning the VAE encoder to produce better SPAD latents *could* help ControlNet by giving it more informative conditioning. However:
+- ControlNet+LoRA already learns to interpret the OOD latents — it works.
+- VAE fine-tuning risks breaking the latent space geometry (gQIR shows encoder collapse without LSA)
+- The marginal benefit is unclear given that our pipeline already achieves reasonable reconstruction.
+- **Verdict**: Not worth the complexity and risk for uncertain marginal gain.
 
 ### Future Work: Custom SPAD Encoder
 A potentially valuable experiment: add a learned front-end before ControlNet:

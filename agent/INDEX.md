@@ -87,6 +87,8 @@ agent/
 | `AUDIT_IMG2IMG_ABLATION.md` | ~300 | img2img ablation: end-to-end code trace, methodology audit, bug report | **Current** |
 | `AUDIT_DPS_CONSISTENCY_2026-03-23.md` | ~500 | Code audit from 3 external agents (Cursor, Gemini, Codex) | **Current** |
 | `literature_gqir_vae.md` | ~170 | gQIR paper analysis, VAE domain gap, ControlNet justification | **Current** |
+| `ALL_METRICS.md` | ~200 | **Consolidated metrics** — all experiments in one file | **Current** |
+| `parameter_count_audit.md` | ~250 | CN LoRA (40.3M) vs full CN (3.30B) vs DiT LoRA (153.2M) — verified against model | **Current** |
 
 ---
 
@@ -153,4 +155,4 @@ All publication-quality figures in `thesis_figures/publication/` (16 figures, PD
 | Bit density | 0.998 | 0.959 | 0.993 | 0.974 |
 | Depth | 0.437 | 0.685 | 0.375 | 0.727 |
 | Variance (seed) | 0.424 | 0.506 | 0.472 | 0.493 |
-| Cross-frame var | 0.292 | pending | 0.293 | 0.279 |
+| Cross-frame var | 0.292 | **0.359** | 0.293 | 0.279 |

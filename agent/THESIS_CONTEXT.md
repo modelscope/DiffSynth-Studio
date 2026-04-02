@@ -85,29 +85,65 @@ We use a real SPAD dataset captured at the University of Toronto:
 ### 3.1 Model Architecture
 
 ```
-SPAD binary frame (1-bit, 512x512)
-    |
-    v
-[VAE Encoder] --> latent (16, 64, 64)
-    |
-    v
-[ControlNet Union Alpha]  <-- LoRA adapters (rank 16)
-    |  (5 joint + 10 single blocks)
-    |  injects conditioning via linear projections
-    v
-[FLUX.1-dev DiT Backbone]  (12B params, frozen in FP8)
-    |  19 joint blocks (cross-attend text + image)
-    |  38 single blocks (self-attention)
-    |  Hidden dim: 3072, 1024 image tokens (32x32)
-    v
-[VAE Decoder] --> RGB image (3, 512, 512)
+                    ┌──────────────────────────────────────────────┐
+                    │            DATA PREPROCESSING                │
+                    │  (frozen, no gradients, runs once per batch)  │
+                    └──────────────────────────────────────────────┘
+
+  GT RGB (3, 512, 512)                SPAD binary (1-bit, 512x512)
+        |                                       |
+        v                                       v
+  ┌─────────────┐                        ┌─────────────┐
+  │ VAE Encoder │ (frozen)               │ VAE Encoder │ (frozen, SAME encoder)
+  └─────────────┘                        └─────────────┘
+        |                                       |
+        v                                       v
+  target latent z_gt                     SPAD latent z_spad
+  (16, 64, 64)                           (16, 64, 64)
+        |                                       |
+        |                      ┌────────────────┘
+        |                      v
+        |        ┌─────────────────────────────┐
+        |        │   ControlNet Union Alpha    │ <── LoRA rank-32 (80 layers, TRAINABLE)
+        |        │   5 joint + 10 single blocks │
+        |        └─────────────┬───────────────┘
+        |                      │ conditioning injections
+        |                      v
+        |     ┌──────────────────────────────────┐
+        |     │       FLUX.1-dev DiT Backbone     │  (12B params, frozen FP8)
+        |     │  19 joint blocks + 38 single blks  │
+        |     │  Hidden dim 3072, 1024 img tokens  │
+        |     └───────────────┬────────────────────┘
+        |                     │
+  ┌─────┘                     v
+  │              predicted latent z_pred (16, 64, 64)
+  │                           │
+  │    TRAINING:              │    INFERENCE:
+  │    MSE(z_pred, z_gt)      │    ┌─────────────┐
+  │    (flow matching loss)   └───>│ VAE Decoder │ (frozen)
+  │                                └──────┬──────┘
+  │                                       v
+  │                              RGB output (3, 512, 512)
+  └── (not used at inference)
+
+  Text conditioning (T5 + CLIP):
+  ┌──────────────┐   ┌──────────────┐
+  │  CLIP (77 tok)│   │ T5-XXL (512) │   Both frozen, encode EMPTY prompt ""
+  └──────┬───────┘   └──────┬───────┘   → unconditional text embeddings
+         └───────┬──────────┘            → fed to DiT cross-attention
+                 v                       → carry NO information (empty string)
+         prompt_emb + pooled_emb
 ```
 
-- **FLUX.1-dev**: 12B parameter rectified-flow transformer (not standard diffusion -- uses flow matching)
+**Key components**:
+- **FLUX.1-dev**: 12B parameter rectified-flow transformer (flow matching, NOT standard diffusion)
 - **ControlNet Union Alpha**: Pre-trained multi-conditioning ControlNet, adapted via LoRA
-- **LoRA placement**: On ControlNet (NOT on DiT backbone) -- empirically better (see Decisions)
+- **LoRA**: Rank 32, on ControlNet only (NOT on DiT) — 80 LoRA layers, ~24M trainable params
+- **VAE Encoder** (frozen): Encodes BOTH GT RGB and SPAD binary → 16-channel latents. SPAD does go through VAE — it produces OOD latents from binary input, but ControlNet learns to interpret them
+- **VAE Decoder** (frozen): Converts denoised latents → RGB pixels (inference only)
+- **T5-XXL + CLIP** (frozen): Encode empty prompt "" → unconditional text conditioning. Required by architecture but carry no task-relevant information
 - **Sampling**: 28-step Euler ODE solver
-- **Text prompt**: Empty string (unconditional text, SPAD provides all conditioning)
+- **All frozen models stay frozen** — `freeze_except()` in `base_pipeline.py:191` freezes everything except explicitly listed trainable models
 
 ### 3.2 Key Design Choice: LoRA-on-ControlNet
 
@@ -134,7 +170,7 @@ SPAD binary frame (1-bit, 512x512)
 ```
 
 - **No ControlNet** — simpler architecture, lower VRAM
-- LoRA on DiT directly (rank-32), unlike ControlNet approach (rank-16 on CN)
+- LoRA on DiT directly (rank-32), same rank as ControlNet approach
 - Trained 20 epochs (script: `train_img2img_ablation.sh`)
 - Swept denoising_strength {0.3, 0.5, 0.7, 0.8, 0.9, 1.0}
 - **Status**: Training complete, sweep in progress. See Section 6.6.
@@ -142,21 +178,61 @@ SPAD binary frame (1-bit, 512x512)
 
 ### 3.4 Role of the VAE in Our Pipeline
 
-The FLUX VAE (AutoencoderKL, 16-channel latent) is **completely frozen** (`freeze_except` in `base_pipeline.py:191` sets `requires_grad_(False)` on everything except explicitly listed trainable models; VAE is never listed). It serves solely as the **pixel ↔ latent translator for well-formed RGB images**:
+**CORRECTION**: The SPAD binary frame **does** go through the frozen VAE encoder. See `FluxImageUnit_ControlNet.process()` at `flux_image.py:473-484` — ControlNet inputs are VAE-encoded before being fed to ControlNet blocks.
+
+The FLUX VAE (AutoencoderKL, 16-channel latent) is **completely frozen** throughout training and inference:
 
 | Component | Training | Inference | Processes SPAD? |
 |-----------|----------|-----------|-----------------|
-| **VAE Encoder** | Encodes GT RGB → latent targets for flow matching loss | Not used | **No** — only sees natural RGB |
-| **VAE Decoder** | Not used | Converts denoised latents → final RGB output | **No** — sees DiT-generated latents |
-| **ControlNet** | Encodes SPAD binary frame → conditioning injections | Same | **Yes** — dedicated SPAD pathway |
+| **VAE Encoder** | Encodes GT RGB → latent targets | Encodes SPAD → ControlNet input | **YES** — encodes SPAD to latent |
+| **VAE Encoder** | Encodes SPAD → ControlNet input | (same) | **YES** — same encoder, both paths |
+| **VAE Decoder** | Not used | Denoised latents → RGB pixels | No — sees DiT output only |
 
-**The VAE is irrelevant to SPAD processing.** SPAD data never enters the VAE. The VAE encoder translates clean RGB to latent space (training targets), and the VAE decoder translates generated latents back to pixels (inference output). That's it.
+**Data flow (corrected)**:
+```
+SPAD binary {0,255} → VAE encoder (frozen) → z_spad (16,64,64) → ControlNet → conditioning
+GT RGB               → VAE encoder (frozen) → z_gt (16,64,64)   → flow matching loss target
+```
 
-**Why we don't need gQIR's Stage 1**: gQIR (Section 16) shows that feeding SPAD through an unfine-tuned VAE encoder produces OOD latents. Their solution is "predegradation removal" (600k-step VAE encoder fine-tuning with LSA loss). Our ControlNet architecture **sidesteps this problem entirely** — the ControlNet is the dedicated SPAD encoder.
+**Why does this work despite the VAE domain gap?** The frozen VAE encoder produces OOD latents from binary SPAD input (gQIR confirms this). But the ControlNet+LoRA learns to *interpret* these OOD latents as conditioning signals. The ControlNet doesn't need the SPAD latents to be on-manifold — it just needs a consistent, deterministic mapping from SPAD → some latent representation. The LoRA adaptation on ControlNet learns this mapping.
 
-**Connection to img2img failure** (Section 6.6): The img2img ablation *forces* SPAD through the frozen VAE encoder — exactly the scenario gQIR shows requires fine-tuning. Our catastrophic PSNR ~7.5 dB result is predicted by gQIR Table 4 (fine-tuned without LSA: PSNR 10.30; no fine-tuning at all: even worse).
+**Contrast with img2img** (Section 6.6): In img2img, OOD SPAD latents are used as the *denoising starting point* — the DiT must denoise from them directly. This fails catastrophically (PSNR ~7.5) because the DiT expects on-manifold latents. In our ControlNet pipeline, OOD latents are used as *conditioning*, not as the denoising target — a much easier problem.
 
-**Future work — Custom SPAD encoder**: A learned front-end (e.g., lightweight CNN) that maps raw binary SPAD → richer feature representation *before* ControlNet could improve conditioning quality. Currently ControlNet receives raw {0,255} binary; a domain-specific encoder could provide more informative features. This is gQIR's Stage 1 concept applied to the ControlNet input path rather than the VAE.
+**Contrast with gQIR**: gQIR fine-tunes the VAE encoder (Stage 1, 600k steps) so SPAD latents ARE on-manifold, because their U-Net denoises from them directly. We avoid this by routing SPAD through ControlNet instead of the denoising path.
+
+**The VAE decoder** only matters at inference — it converts the DiT's denoised latents to RGB pixels. It never sees SPAD data and needs no adaptation.
+
+**T5-XXL + CLIP**: Both text encoders are frozen and encode empty prompts (""). They produce unconditional text embeddings fed to DiT cross-attention. Required by the FLUX architecture but carry zero task-relevant information. All conditioning comes from ControlNet.
+
+#### Future Work: Improving the SPAD Conditioning Pathway
+
+Three possible experiments to improve how SPAD data enters the pipeline. All are future work — the current pipeline already works without any of these. Listed from least to most feasible:
+
+**Option A: gQIR-style Predegradation Removal (VAE encoder fine-tuning)**
+- Fine-tune VAE encoder with LSA loss so SPAD latents land on the clean-image manifold
+- **Hypothesis**: On-manifold SPAD latents could make ControlNet's job easier, potentially improving reconstruction quality
+- **Why probably NOT worth it**: (1) Requires 600k steps on 8×A100 with fragile LSA loss — encoder collapses without it (gQIR Table 4: PSNR 24.78→10.30). (2) We have ~1,850 training images vs gQIR's 2.81M — too few to safely fine-tune the VAE. (3) ControlNet+LoRA already compensates for OOD latents; the 80 LoRA layers are effectively learning this mapping. (4) Risk of breaking the latent space for the decoder.
+- **Expected gain**: Marginal. The bottleneck is likely not the OOD latents but the information content of 1-bit binary data itself.
+
+**Option B: Custom SPAD Pre-Encoder (before VAE)**
+```
+SPAD {0,255} → [Learned CNN/ViT] → pseudo-natural-image (3,512,512) → VAE encoder → ControlNet
+```
+- A lightweight learned module that maps binary SPAD → something closer to natural image statistics before the VAE sees it
+- **Hypothesis**: If the VAE receives input with natural-image-like statistics, it produces on-manifold latents, giving ControlNet cleaner conditioning
+- **Pros**: Doesn't touch the VAE weights, trainable end-to-end, small model
+- **Cons**: Adds inference latency, another module to train, unclear if the information bottleneck is at the VAE or downstream
+
+**Option C: Custom SPAD Latent Encoder (replacing VAE for conditioning path)**
+```
+SPAD {0,255} → [Learned Latent Encoder] → z_spad (16,64,64) → ControlNet
+```
+- Bypass the VAE entirely for the SPAD path. A learned encoder directly produces 16-channel latents sized for ControlNet input.
+- **Hypothesis**: A domain-specific encoder trained end-to-end could produce more informative conditioning latents than the frozen VAE's OOD outputs
+- **Pros**: Cleanest design, no VAE dependency, can be optimized for SPAD specifically
+- **Cons**: Must match the 16-channel latent format ControlNet expects, needs careful initialization to avoid training instability
+
+**Overall assessment**: All three are reasonable future experiments but NONE are necessary for the thesis. The current ControlNet+LoRA pipeline already handles the OOD VAE latents effectively. The probing results confirm the model extracts depth (R²=0.685), bit density (R²=0.998), and cross-frame variance (R²=0.359) from the SPAD conditioning despite the VAE domain gap. The most promising option for future work is Option C (custom latent encoder) — cleanest design, most directly addresses the domain gap, and avoids the fragility of VAE fine-tuning.
 
 ### 3.5 ControlNet Choice: Why Union Alpha "grey"?
 
@@ -346,17 +422,18 @@ Tests whether ControlNet is necessary by using FLUX's native img2img pathway wit
 | 0.5 | 7.50 | 0.013 | 1.103 | 356.75 | 365.46 | 0.983 |
 | 0.7 | 7.44 | 0.016 | 1.088 | 322.68 | 391.50 | 0.931 |
 | 0.8 | 7.52 | 0.026 | 1.055 | 283.86 | 396.38 | ~0.8 |
-| 0.9 | — | — | — | — | — | ~0.56 |
-| 1.0 | — | — | — | — | — | 0 (no input) |
-| Identity (raw SPAD) | ~6.67 | — | — | — | — | 1.0 |
+| 0.9 | 8.26 | 0.118 | 0.928 | 182.24 | 355.44 | ~0.56 |
+| 1.0 | 10.28 | 0.392 | 0.692 | 107.85 | 308.51 | 0 (no input) |
 
 **Root causes of failure** (two compounding problems):
 1. **VAE domain mismatch**: FLUX VAE trained on natural images (continuous-tone, mean ~128). SPAD binary frames are {0, 255} with ~5-10% white pixels (mean ~10-28). VAE encodes them into OOD latents representing "very dark images", not scene structure. Output brightness tracks SPAD brightness (mean ~25) rather than GT brightness (mean ~106).
 2. **No SPAD→RGB mapping learned**: Training never sees SPAD images (`--data_file_keys "image"` loads only RGB GT). LoRA learns the RGB distribution but has zero mechanism to map SPAD→RGB.
 
-**Why ControlNet succeeds**: (1) Dedicated conditioning encoder bypasses the VAE entirely. (2) Paired training with `--data_file_keys "image,controlnet_image"` and `--extra_inputs "controlnet_image"` provides explicit SPAD→RGB supervision.
+**Why ControlNet succeeds**: (1) ControlNet+LoRA learns to interpret OOD VAE latents as conditioning (not denoising start point). (2) Paired training with `--data_file_keys "image,controlnet_image"` and `--extra_inputs "controlnet_image"` provides explicit SPAD→RGB supervision.
 
-**Known bugs**: Checkpoint sort bug selected epoch-9 instead of epoch-19 (does not affect conclusion). Sweep incomplete (0.9 partial, 1.0 not started).
+**Note**: strength=1.0 (PSNR 10.28) is best because it's pure noise + LoRA generation — no SPAD signal at all, just the learned RGB prior. This is higher than the low-strength results where OOD SPAD latents actively corrupt the output.
+
+**Known bugs**: Checkpoint sort bug selected epoch-9 instead of epoch-19 (does not affect conclusion).
 
 ### 6.7 Best-of-K NLL Reranking
 
@@ -382,6 +459,36 @@ Generated 7 independent reconstructions per image (different SPAD binary frames,
 
 - Cross-frame variance maps computed from 7 frames → used as probing target (Section 7.5)
 - FlowDPS with detection-based guidance (eta=0.1, mid-4 steps 14+) provides modest improvement
+
+### 6.9 No-LoRA Ablation (Frozen Pretrained ControlNet)
+
+Tests the pretrained ControlNet Union Alpha without any LoRA adaptation. Frozen DiT + frozen ControlNet + no LoRA. Sweeps all relevant ControlNet conditioning modes to find the best off-the-shelf configuration.
+
+| Mode | PSNR | SSIM | LPIPS | FID | CFID |
+|------|------|------|-------|-----|------|
+| **ControlNet + LoRA (ours)** | **17.89** | **0.596** | **0.415** | **66.84** | **151.94** |
+| gray (our training mode) | 8.57 | 0.046 | 1.088 | 313.88 | 388.94 |
+| lq (low quality) | 8.74 | 0.112 | 0.848 | 317.66 | 373.48 |
+| canny | **10.81** | 0.189 | 0.797 | 274.57 | 363.70 |
+| tile | 9.68 | **0.188** | **0.751** | 284.79 | **352.09** |
+| depth | 10.13 | 0.171 | 0.784 | 288.28 | 373.83 |
+
+**Key findings**:
+1. **LoRA provides +7.08 dB** over best no-LoRA config (canny 10.81 → 17.89). LoRA adaptation is essential.
+2. **"gray" mode is worst** (8.57 dB) — the pretrained gray mode expects natural grayscale, not binary SPAD. Ironic since this is our training mode; LoRA completely transforms how the ControlNet interprets this mode.
+3. **"canny" is best no-LoRA** (10.81 dB) — SPAD binary frames resemble edge maps (sparse white pixels on black), which is closest to canny's expected input distribution.
+4. **All modes fail** — even the best no-LoRA is far below baseline, confirming that LoRA fine-tuning teaches the SPAD→RGB mapping, not just the mode selection.
+
+### 6.10 Ablation Summary
+
+| Configuration | PSNR | Delta | What It Tests |
+|--------------|------|-------|---------------|
+| **Baseline (CN + LoRA)** | **17.89** | — | Full pipeline |
+| FlowDPS (eta=0.1) | 18.18 | +0.29 | Physics guidance |
+| No-LoRA (best: canny) | 10.81 | **-7.08** | LoRA necessity |
+| img2img (best: s=1.0) | 10.28 | **-7.61** | ControlNet pathway |
+| No-LoRA gray | 8.57 | **-9.32** | Pretrained CN on SPAD |
+| img2img (worst: s=0.7) | 7.44 | **-10.45** | VAE domain gap |
 
 ---
 
@@ -423,7 +530,7 @@ Probing methodology:
 | Bit density (spatial) | 0.959 | 0.992 | -0.046 | ~0 (inherent) |
 | **Depth (spatial)** | **0.685** | 0.453 | 0.406* | **+0.232** |
 | **Variance (spatial)** | **0.506** | 0.434 | -0.067 | **+0.072** |
-| Cross-frame var (spatial) | — | — | — | Pending FLUX re-extraction |
+| **Cross-frame var (spatial)** | **0.359** | — | — | — (re-extraction complete) |
 
 *No-CN depth at S0 t=0 is an artifact (VAE encoding spatial structure).
 
@@ -489,7 +596,18 @@ Cross-frame variance measures how much the reconstruction changes when a *differ
 - Without ControlNet: all negative R^2 → all frame-dependent info enters through ControlNet
 - **Different temporal profile**: Seed variance peaks mid-denoising (t=14), cross-frame variance peaks near completion (t=27). Frame-dependent variation is *retained through to the final output*.
 
-**Spatial cross-frame variance**: Extracted for SD1.5 (R^2=0.279). FLUX spatial extraction pending (Step 4 of experiment pipeline).
+#### Spatial Cross-Frame Variance
+
+| Condition | Best R² | Best Block | Best Timestep |
+|-----------|---------|-----------|---------------|
+| Main (LoRA) — spatial | **0.359** | single_28 | t=9 |
+| Main (LoRA) — CN blocks | **0.360** | cn_single_1 | t=24 |
+
+**Spatial probing exceeds global by +23%** (0.359 vs 0.292), indicating that cross-frame variance has strong spatial structure — physically meaningful since low-photon-count image regions have higher Bernoulli variance and are more frame-sensitive.
+
+**ControlNet blocks are most frame-sensitive**: CN best R²=0.360 matches spatial DiT R²=0.359. Frame information is strongest at the conditioning injection point.
+
+**Spatial peak is deeper in the network**: single_28 @ t=9 vs joint_1 @ t=27 for global. Spatially-resolved frame information propagates deeper than the global signal.
 
 ### 7.6 SD1.5 Cross-Architecture Comparison (NEW — Complete)
 
@@ -502,7 +620,7 @@ Full linear probing pipeline replicated for SD1.5 UNet (860M) + ControlNet (361M
 | Bit density | 0.993 | 0.998 | 0.974 | 0.959 |
 | Depth | 0.375 | 0.437 | **0.727** | 0.685 |
 | Variance (seed) | **0.472** | 0.424 | 0.493 | 0.506 |
-| Cross-frame var | 0.293 | 0.292 | 0.279 | — |
+| Cross-frame var | 0.293 | 0.292 | 0.279 | **0.359** |
 
 #### SD1.5 Top Blocks Per Target
 
@@ -711,7 +829,7 @@ The CFID improvement (152 -> 108) with more frames, despite PSNR degradation, re
 | Perception-distortion-consistency triangle | Medium | Multi-experiment data | Not plotted |
 | SD1.5 vs FLUX probing comparison heatmap | **High** | SD1.5 + FLUX probing results | Data ready, needs composite figure |
 | img2img ablation failure montage | Medium | img2img outputs | Data ready |
-| Cross-frame variance heatmaps (FLUX vs SD1.5) | Medium | Probing results | SD1.5 done, FLUX spatial pending |
+| Cross-frame variance heatmaps (FLUX vs SD1.5) | Medium | Probing results | **Complete** — both done |
 | OD filter ablation results | Medium | Needs OD training | **Blocked** |
 | Spatial depth prediction visualization | **High** | Probing outputs | Needs extraction |
 
@@ -757,7 +875,7 @@ The CFID improvement (152 -> 108) with more frames, despite PSNR degradation, re
    5.1 Bit density preservation (R^2=0.998)
    5.2 Emergent depth encoding (R^2=0.685 spatial)
    5.3 Uncertainty self-awareness (R^2=0.506 spatial)
-   5.4 Cross-frame variance encoding (R^2=0.292)
+   5.4 Cross-frame variance encoding (global R^2=0.292, spatial R^2=0.359, CN R^2=0.360)
    5.5 Object recognition from 1-bit data
    5.6 LoRA delta analysis + No-ControlNet ablation
    5.7 Information flow through denoising
@@ -1020,7 +1138,7 @@ DiffSynth-Studio-SPAD/
 |------|--------|-----|
 | img2img ablation sweep | Strengths 0.3-0.9 done; 1.0 pending | ~1h |
 | Consistency epoch sweep | In pipeline (Step 3), epochs 5/10/15/20/25/29 | ~2h |
-| FLUX spatial crossframe re-extraction | In pipeline (Step 4), ~15h | ~15h |
+| ~~FLUX spatial crossframe re-extraction~~ | **Complete** — R²=0.359 | Done |
 | OD filter training (OD03-FT, OD07-FT) | Partial (4 epochs each) | Check tmux |
 
 ### 14.3 What's Not Started (Priority Order)
@@ -1044,7 +1162,7 @@ DiffSynth-Studio-SPAD/
 |---|-----------|--------|--------|
 | A1 | **img2img + LoRA-on-DiT (no CN)** | **Catastrophic failure** (PSNR ~7.5 dB). VAE can't encode binary SPAD. Strongly justifies ControlNet. | **Complete** |
 | A2 | **SD1.5 cross-architecture probing** | SD1.5 (1.2B) surprisingly competitive. Spatial depth R²=0.727 > FLUX 0.685. Architecture-general ControlNet encoding. | **Complete** |
-| A3 | **Cross-frame variance probing** | R²=0.292 (main), 0.222 (control). LoRA amplifies frame sensitivity. Info in early joint blocks at late timesteps. | **Complete** |
+| A3 | **Cross-frame variance probing** | Global R²=0.292 (DiT), 0.360 (CN); Spatial R²=0.359 (DiT). LoRA amplifies frame sensitivity. Info in early joint blocks at late timesteps; spatial info in late single blocks at mid-denoising. | **Complete** |
 
 ### 14.5 Remaining Ablation Experiments
 
