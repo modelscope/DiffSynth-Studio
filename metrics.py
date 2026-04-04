@@ -12,7 +12,6 @@ Computes various metrics to evaluate image quality:
 import torch
 import torch.nn.functional as F
 import numpy as np
-import cv2
 from torchmetrics.image import StructuralSimilarityIndexMeasure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 from torchmetrics.image.fid import FrechetInceptionDistance
@@ -50,53 +49,21 @@ class ImageMetrics:
     
     def to_grayscale(self, images):
         """
-        Convert RGB images to grayscale using OpenCV's color conversion.
-        
+        Convert RGB images to grayscale using ITU-R BT.601 weights (same as cv2).
+
         Args:
             images: Tensor [B, C, H, W] with C=3 (RGB)
-        
+
         Returns:
             Grayscale images [B, 3, H, W] (replicated across 3 channels for compatibility)
         """
         if images.shape[1] != 3:
             return images  # Already grayscale or wrong format
-        
-        # Convert to numpy for cv2 processing
-        # images: [B, C, H, W] in range [-1, 1] or [0, 1]
-        images_np = images.cpu().numpy()
-        
-        # Normalize to [0, 1] if needed
-        if images_np.min() < 0:
-            images_np = (images_np + 1) / 2
-        
-        # Convert each image in the batch
-        gray_images = []
-        for i in range(images_np.shape[0]):
-            # Get single image: [C, H, W] -> [H, W, C]
-            img = np.transpose(images_np[i], (1, 2, 0))
-            
-            # Convert to uint8 for cv2
-            img_uint8 = (img * 255).astype(np.uint8)
-            
-            # Convert to grayscale
-            gray = cv2.cvtColor(img_uint8, cv2.COLOR_RGB2GRAY)
-            
-            # Convert back to [0, 1] float
-            gray = gray.astype(np.float32) / 255.0
-            
-            # Replicate to 3 channels for compatibility with metrics
-            gray_rgb = np.stack([gray, gray, gray], axis=0)  # [3, H, W]
-            gray_images.append(gray_rgb)
-        
-        # Stack batch and convert to tensor
-        gray_batch = np.stack(gray_images, axis=0)  # [B, 3, H, W]
-        gray_tensor = torch.from_numpy(gray_batch).to(images.device)
-        
-        # Convert back to original range
-        if images.min() < 0:
-            gray_tensor = gray_tensor * 2 - 1  # [0, 1] -> [-1, 1]
-        
-        return gray_tensor
+
+        # ITU-R BT.601 weights: R=0.299, G=0.587, B=0.114 (same as cv2.COLOR_RGB2GRAY)
+        weights = torch.tensor([0.299, 0.587, 0.114], device=images.device, dtype=images.dtype)
+        gray = (images * weights.view(1, 3, 1, 1)).sum(dim=1, keepdim=True)
+        return gray.expand(-1, 3, -1, -1)
     
     def compute_mse(self, pred, target):
         """

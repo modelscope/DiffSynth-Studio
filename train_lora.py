@@ -29,6 +29,8 @@ class FluxTrainingModule(DiffusionTrainingModule):
         offload_models=None,
         device="cpu",
         task="sft",
+        # Dual LoRA support: second LoRA target (e.g., LoRA on both ControlNet AND DiT)
+        lora_base_model_2=None, lora_target_modules_2="", lora_rank_2=32, lora_checkpoint_2=None,
     ):
         super().__init__()
         # Load models
@@ -36,15 +38,43 @@ class FluxTrainingModule(DiffusionTrainingModule):
         tokenizer_1_config = ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="tokenizer/") if tokenizer_1_path is None else ModelConfig(tokenizer_1_path)
         tokenizer_2_config = ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="tokenizer_2/") if tokenizer_2_path is None else ModelConfig(tokenizer_2_path)
         self.pipe = FluxImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_1_config=tokenizer_1_config, tokenizer_2_config=tokenizer_2_config)
-        self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
 
-        # Training mode
+        # For dual LoRA, split_pipeline_units needs both models in models_require_backward.
+        # We add the second LoRA model to trainable_models so it's included.
+        effective_trainable = trainable_models or ""
+        if lora_base_model_2 is not None and lora_base_model_2 not in (effective_trainable.split(",") if effective_trainable else []):
+            effective_trainable = f"{effective_trainable},{lora_base_model_2}" if effective_trainable else lora_base_model_2
+        self.pipe = self.split_pipeline_units(task, self.pipe, effective_trainable or None, lora_base_model)
+
+        # Training mode — primary LoRA
         self.switch_pipe_to_training_mode(
             self.pipe, trainable_models,
             lora_base_model, lora_target_modules, lora_rank, lora_checkpoint,
             preset_lora_path, preset_lora_model,
             task=task,
         )
+
+        # Dual LoRA — second target (e.g., DiT when primary is ControlNet)
+        if lora_base_model_2 is not None and not task.endswith(":data_process"):
+            print(f"[Dual LoRA] Adding second LoRA target: {lora_base_model_2} (rank={lora_rank_2})")
+            target_modules_2 = lora_target_modules_2.split(",") if lora_target_modules_2 else lora_target_modules.split(",")
+            base_model_2 = getattr(self.pipe, lora_base_model_2, None)
+            if base_model_2 is not None:
+                model_2 = self.add_lora_to_model(
+                    base_model_2,
+                    target_modules=target_modules_2,
+                    lora_rank=lora_rank_2,
+                    upcast_dtype=self.pipe.torch_dtype,
+                )
+                if lora_checkpoint_2 is not None:
+                    state_dict = load_state_dict(lora_checkpoint_2)
+                    state_dict = self.mapping_lora_state_dict(state_dict)
+                    model_2.load_state_dict(state_dict, strict=False)
+                    print(f"[Dual LoRA] Loaded checkpoint: {lora_checkpoint_2}")
+                setattr(self.pipe, lora_base_model_2, model_2)
+                print(f"[Dual LoRA] ✓ {lora_base_model_2} LoRA applied (rank={lora_rank_2})")
+            else:
+                print(f"[Dual LoRA] ⚠ {lora_base_model_2} not found in pipeline")
         
         # Other configs
         self.use_gradient_checkpointing = use_gradient_checkpointing
@@ -62,7 +92,11 @@ class FluxTrainingModule(DiffusionTrainingModule):
         }
         
     def get_pipeline_inputs(self, data):
-        inputs_posi = {"prompt": data["prompt"]}
+        # Handle NaN/None prompts (pandas reads empty CSV cells as NaN)
+        prompt = data.get("prompt", "")
+        if prompt is None or (isinstance(prompt, float) and prompt != prompt):  # NaN check: NaN != NaN
+            prompt = ""
+        inputs_posi = {"prompt": prompt}
         inputs_nega = {"negative_prompt": ""}
         inputs_shared = {
             # input_image is the GROUND TRUTH target for training
@@ -103,7 +137,7 @@ class FluxTrainingModule(DiffusionTrainingModule):
 
 def flux_parser():
     """Official FLUX argument parser"""
-    parser = argparse.ArgumentParser(description="FLUX ControlNet LoRA training with logging")
+    parser = argparse.ArgumentParser(description="FLUX ControlNet training with logging (supports both LoRA and full fine-tuning)")
     parser = add_general_config(parser)
     parser = add_image_size_config(parser)
     parser.add_argument("--tokenizer_1_path", type=str, default=None, help="Path to CLIP tokenizer.")
@@ -115,6 +149,15 @@ def flux_parser():
     parser.add_argument("--image_log_freq", type=int, default=1000, help="Image logging frequency (steps)")
     # Validation
     parser.add_argument("--val_metadata_path", type=str, default=None, help="Optional validation CSV for periodic eval")
+    # Checkpoint resuming (for full model training)
+    parser.add_argument("--checkpoint", type=str, default=None, help="Path to checkpoint for resuming full model training (alternative to --lora_checkpoint)")
+    # Memory optimization
+    parser.add_argument("--use_8bit_adam", default=False, action="store_true", help="Use 8-bit Adam optimizer (requires bitsandbytes, saves ~50%% optimizer VRAM)")
+    # Dual LoRA support
+    parser.add_argument("--lora_base_model_2", type=str, default=None, help="Second LoRA target (e.g., 'dit' when primary is 'controlnet')")
+    parser.add_argument("--lora_target_modules_2", type=str, default="", help="Target modules for second LoRA (defaults to same as primary)")
+    parser.add_argument("--lora_rank_2", type=int, default=32, help="Rank of second LoRA")
+    parser.add_argument("--lora_checkpoint_2", type=str, default=None, help="Checkpoint for second LoRA")
     return parser
 
 
@@ -178,6 +221,9 @@ def log_sample_images(model, data, tb_writer, global_step, device="cuda"):
             controlnet_img_pil = data.get('controlnet_image')  # SPAD conditioning
             gt_img_pil = data['image']  # Ground truth RGB
             prompt = data.get('prompt', '')
+            # Handle NaN/None prompts (pandas reads empty CSV cells as NaN)
+            if prompt is None or (isinstance(prompt, float) and prompt != prompt):
+                prompt = ""
             
             if controlnet_img_pil is None:
                 print("Warning: No controlnet_image in batch, skipping image logging")
@@ -293,7 +339,16 @@ def launch_training_with_logging(
         print(f"{'='*60}\n")
     
     # Optimizer and dataloader
-    optimizer = torch.optim.AdamW(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
+    if getattr(args, 'use_8bit_adam', False):
+        try:
+            import bitsandbytes as bnb
+            optimizer = bnb.optim.AdamW8bit(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
+            print("[Optimizer] Using 8-bit AdamW (bitsandbytes) - saves ~50% optimizer VRAM")
+        except ImportError:
+            print("[Warning] bitsandbytes not installed, falling back to standard AdamW")
+            optimizer = torch.optim.AdamW(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
+    else:
+        optimizer = torch.optim.AdamW(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
     dataloader = torch.utils.data.DataLoader(
         dataset,
@@ -305,6 +360,39 @@ def launch_training_with_logging(
     model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
     if val_dataloader is not None:
         val_dataloader = accelerator.prepare(val_dataloader)
+    
+    # Load checkpoint for full model training (if provided and not LoRA)
+    if args.checkpoint and not args.lora_base_model and accelerator.is_main_process:
+        print(f"[Checkpoint] Loading full model checkpoint from: {args.checkpoint}")
+        try:
+            from diffsynth.core.loader.file import load_state_dict
+            checkpoint_state = load_state_dict(args.checkpoint, torch_dtype=model.pipe.torch_dtype, device=accelerator.device)
+            # Load into the trainable model (controlnet)
+            if args.trainable_models:
+                trainable_model_name = args.trainable_models.split(",")[0]  # Get first trainable model
+                trainable_model = getattr(model.pipe, trainable_model_name, None)
+                if trainable_model is not None:
+                    # Checkpoint keys have remove_prefix stripped already (e.g., "blocks.0.attn...")
+                    # Navigate to the inner model if the trainable_model is a wrapper
+                    # (e.g., ControlNetUnit wraps models in a ModuleList at .models[0])
+                    inner_model = trainable_model
+                    if hasattr(trainable_model, 'models') and len(trainable_model.models) > 0:
+                        inner_model = trainable_model.models[0]
+                        print(f"[Checkpoint] Loading into {trainable_model_name}.models[0]")
+                    missing, unexpected = inner_model.load_state_dict(checkpoint_state, strict=False)
+                    if unexpected:
+                        print(f"[Checkpoint] ⚠ {len(unexpected)} unexpected keys — trying wrapper instead")
+                        missing, unexpected = trainable_model.load_state_dict(checkpoint_state, strict=False)
+                    if not missing and not unexpected:
+                        print(f"[Checkpoint] ✓ All {len(checkpoint_state)} keys loaded into {trainable_model_name}")
+                    else:
+                        print(f"[Checkpoint] ✓ Loaded checkpoint into {trainable_model_name} (missing={len(missing)}, unexpected={len(unexpected)})")
+                else:
+                    print(f"[Checkpoint] ⚠ Could not find trainable model '{trainable_model_name}' in pipeline")
+        except Exception as e:
+            print(f"[Checkpoint] ⚠ Failed to load checkpoint: {e}")
+            import traceback
+            traceback.print_exc()
     
     # Calculate global_step for resume
     steps_per_epoch = len(dataloader)
@@ -471,16 +559,20 @@ if __name__ == "__main__":
             num_workers=args.dataset_num_workers
         )
     
-    # Resume epoch
-    resume_epoch = parse_resume_epoch(args.lora_checkpoint)
+    # Resume epoch (check both lora_checkpoint and checkpoint)
+    checkpoint_path = args.lora_checkpoint or args.checkpoint
+    resume_epoch = parse_resume_epoch(checkpoint_path)
     if resume_epoch is not None:
         print(f"[Resume] Detected checkpoint from epoch {resume_epoch}")
+        if args.checkpoint:
+            print(f"[Resume] Will load full model checkpoint: {args.checkpoint}")
     start_epoch = 0 if resume_epoch is None else resume_epoch + 1
     if start_epoch >= args.num_epochs:
         raise ValueError(f"Resume epoch {resume_epoch} is >= num_epochs ({args.num_epochs}). Increase --num_epochs to continue training.")
     
     # Model
-    print(f"[Model] Initializing FLUX ControlNet LoRA...")
+    training_type = "LoRA" if args.lora_base_model else "Full Fine-tuning"
+    print(f"[Model] Initializing FLUX ControlNet {training_type}...")
     model = FluxTrainingModule(
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
@@ -500,6 +592,11 @@ if __name__ == "__main__":
         offload_models=args.offload_models,
         task=args.task,
         device=accelerator.device,
+        # Dual LoRA
+        lora_base_model_2=getattr(args, 'lora_base_model_2', None),
+        lora_target_modules_2=getattr(args, 'lora_target_modules_2', ''),
+        lora_rank_2=getattr(args, 'lora_rank_2', 32),
+        lora_checkpoint_2=getattr(args, 'lora_checkpoint_2', None),
     )
     
     # Model logger (checkpoints)
@@ -518,12 +615,16 @@ if __name__ == "__main__":
     print(f"[TensorBoard] Logging to: {log_dir}")
     
     # Launch training
+    training_type = "LoRA" if args.lora_base_model else "Full Fine-tuning"
     print(f"\n{'='*60}")
-    print(f"Starting FLUX ControlNet LoRA Training")
+    print(f"Starting FLUX ControlNet {training_type} Training")
     print(f"{'='*60}")
     print(f"  Epochs: {start_epoch} → {args.num_epochs - 1}")
     print(f"  Learning rate: {args.learning_rate}")
-    print(f"  LoRA rank: {args.lora_rank}")
+    if args.lora_base_model:
+        print(f"  LoRA rank: {args.lora_rank}")
+    if args.trainable_models:
+        print(f"  Trainable models: {args.trainable_models}")
     print(f"  Checkpoints: {args.output_path}")
     print(f"{'='*60}\n")
     

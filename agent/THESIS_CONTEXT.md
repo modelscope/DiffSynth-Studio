@@ -331,6 +331,13 @@ arr = np.array(img, dtype=np.float32) * (255.0 / 65535.0)
 | OD03 fine-tune | `train_od03_finetune.sh` | 20 | 5e-5 | Rank-16 on CN | RAW epoch-15 | Partial (4 epochs) |
 | OD07 fine-tune | `train_od07_finetune.sh` | 20 | 5e-5 | Rank-16 on CN | RAW epoch-15 | Partial (4 epochs) |
 | OD03 scratch | `train_od03_scratch.sh` | 40 | 1e-4 | Rank-16 on CN | From scratch | **Complete** (40 epochs) |
+| ControlNet Full (lr=1e-5) | `train_controlnet_full.sh` | 40 | 1e-5 | None (full fine-tune) | From scratch | **Complete** (40 epochs, resume bug) |
+| ControlNet Full (lr=1e-4) | — | 40 | 1e-4 | None (full fine-tune) | From scratch | Timed out (27 epochs, diverged) |
+| LoRA Rank 8 | — | 40 | 1e-4 | Rank-8 on CN | From scratch | Timed out (31 epochs) |
+| LoRA Rank 64 | — | 40 | 1e-4 | Rank-64 on CN | From scratch | Timed out (31 epochs) — **best val loss** |
+| LoRA Rank 128 | — | 40 | 1e-4 | Rank-128 on CN | From scratch | Timed out (31 epochs) |
+| Dual LoRA (CN+DiT) | — | 40 | 1e-4 | Rank-16 CN + Rank-8 DiT | From scratch | Timed out (32 epochs) |
+| SPAD Encoder | — | 40 | 1e-4 | LoRA r32 on CN + SPADEncoder | From scratch | Timed out (32 epochs) |
 
 ### 5.2 Hyperparameters
 
@@ -489,6 +496,80 @@ Tests the pretrained ControlNet Union Alpha without any LoRA adaptation. Frozen 
 | img2img (best: s=1.0) | 10.28 | **-7.61** | ControlNet pathway |
 | No-LoRA gray | 8.57 | **-9.32** | Pretrained CN on SPAD |
 | img2img (worst: s=0.7) | 7.44 | **-10.45** | VAE domain gap |
+
+### 6.11 Killarney H100 Training Ablations (March 2026)
+
+Ran on Alliance Canada Killarney cluster (H100 80GB). All experiments: 512x512, FP8 frozen DiT+T5, gradient checkpointing, AdamW, flow matching loss.
+
+#### Summary Table
+
+| Experiment | Best Val Loss | Best Epoch | Final Epoch | Status | Notes |
+|------------|-------------|------------|-------------|--------|-------|
+| **LoRA Rank 64** | **0.3085** | 23 | 31/40 | Timed out | Best overall |
+| Dual LoRA (CN r16 + DiT r8) | 0.3103 | 32 | 32/40 | Timed out | Still improving |
+| LoRA Rank 128 | 0.3111 | 10 | 31/40 | Timed out | Converged fast |
+| SPAD Encoder | 0.3192 | 26 | 32/40 | Timed out | Custom encoder |
+| LoRA Rank 8 | 0.3278 | 21 | 31/40 | Timed out | Underfitting |
+| ControlNet Full (lr=1e-5) | 0.3347 | 17 | 40/40 | Complete | **Checkpoint resume bug** |
+| ControlNet Full (lr=1e-4) | 1.0503 | 27 | 27/40 | Timed out | Diverged after epoch 1 |
+| **Baseline (LoRA r16, Section 6.1)** | **~0.37** | -- | -- | Reference | From original training |
+
+#### ControlNet Full (epoch-39) Image Quality Metrics
+
+| Metric | ControlNet Full (epoch-39) | Baseline LoRA r16 (Section 6.1) |
+|--------|---------------------------|--------------------------------|
+| PSNR (dB) | **18.20** | 17.89 |
+| SSIM | 0.592 | 0.596 |
+| LPIPS | **0.405** | 0.415 |
+
+- ControlNet Full achieves +0.31 dB PSNR and -0.010 LPIPS improvement over LoRA r16 baseline
+- SSIM slightly worse (0.592 vs 0.596)
+- **Note**: These metrics may undercount the potential — checkpoint resume was broken (see below), so this is really ~22 epochs of training, not 40
+
+#### Critical Bug: Checkpoint Resume Failure
+
+The ControlNet Full training used `--remove_prefix_in_ckpt "pipe.controlnet.models.0."` which saves keys like `blocks.0.attn.a_to_qkv.weight`. However, the resume code loaded these into `pipe.controlnet` (the ControlNetUnit wrapper), which expects keys prefixed with `models.0.`. **Zero keys matched**, meaning each chained SLURM job restarted from the base ControlNet. The epoch-39 checkpoint is really only ~22 epochs of single-job training (epochs 18-39 from job 2774305).
+
+**Fixed in**: `train_lora.py` (lines 371-387) and `validate_controlnet_full.py` (lines 94-113). Fix navigates to `trainable_model.models[0]` for wrapper models.
+
+#### Detailed Epoch Losses
+
+**LoRA Rank 64** (best experiment):
+| Epoch | Train | Val | | Epoch | Train | Val |
+|-------|-------|-----|-|-------|-------|-----|
+| 1 | 0.3447 | 0.3464 | | 17 | 0.3031 | 0.3254 |
+| 4 | 0.3391 | 0.3170 | | 20 | 0.3201 | 0.3262 |
+| 8 | 0.3204 | 0.3148 | | 23 | 0.3101 | **0.3085** |
+| 11 | 0.3289 | 0.3210 | | 27 | 0.3225 | 0.3182 |
+| 15 | 0.3249 | 0.3279 | | 31 | 0.3169 | 0.3245 |
+
+**LoRA Rank 128**:
+Best val 0.3111 at epoch 10. Converged faster than rank 64 but plateaued at slightly worse loss.
+
+**Dual LoRA (ControlNet r16 + DiT r8)**:
+Best val 0.3103 at epoch 32. Was still improving when timed out — most promising for further training.
+
+**SPAD Encoder**:
+Best val 0.3192 at epoch 26. SPADEncoder (0.1M params) provides learned preprocessing. One variant (job 2774298) failed with shape mismatch (`1024x256 vs 64x3072` in `controlnet_x_embedder`).
+
+**ControlNet Full lr=1e-4**:
+Diverged catastrophically after epoch 1 (val loss jumped from 0.37 to 1.22). Loss was slowly recovering by epoch 27 (1.05) but still far from usable. Confirms lr=1e-5 is correct for full fine-tuning.
+
+#### Key Takeaways
+
+1. **LoRA rank 64 is optimal**: Best val loss (0.3085), significantly below LoRA r16 baseline (~0.37) and ControlNet Full (0.3347)
+2. **More parameters ≠ better**: ControlNet Full fine-tuning (all 249 params) is worse than LoRA r64 (~26M params), likely due to overfitting risk and the checkpoint bug
+3. **Dual LoRA (CN + DiT) is promising**: Still improving at epoch 32, may surpass LoRA r64 with more training
+4. **lr sensitivity**: Full fine-tuning at lr=1e-4 diverges; LoRA at lr=1e-4 is fine
+5. **All experiments incomplete**: Jobs timed out at 24h on Killarney H100s (reached epoch 31-32 of 40). ControlNet Full is the only complete run (40 epochs)
+
+#### Cluster Details
+
+- **Cluster**: Alliance Canada Killarney, H100 80GB (10 nodes x 8 GPUs)
+- **Account**: aip-lindell (low fairshare priority, NormShares=0.004780)
+- **Walltime**: 24h jobs (b3 partition) for experiments, 6h jobs for ControlNet Full (chained via `--dependency=afterok`)
+- **L40S tested**: OOM at optimizer.step() — 48GB insufficient for full fine-tuning
+- **Training speed**: ~1.4 it/s on H100, ~27 min/epoch (1850 steps), ~18h for 40 epochs
 
 ---
 
