@@ -37,7 +37,7 @@ A **linear probe** (ridge regression) tests whether a target property is **linea
 |--------|-------------|--------|----------------|
 | **Bit density** | Mean of binary SPAD frame (photon evidence) | Input conditioning | Does the network preserve measurement statistics? |
 | **Depth** | Monocular depth from Depth Anything V2 | Pseudo-GT | Does the network infer 3D structure from 1-bit data? |
-| **Cross-seed variance** | Pixel-wise std across 3 seeds | Multi-seed generation | Does the network know where it's uncertain? |
+| **Cross-seed variance** | Pixel-wise std across 10 seeds | Multi-seed generation | Does the network know where it's uncertain? |
 
 ### Probing Algorithm
 - **Activation extraction**: Forward hooks on DiT blocks capture image-token features at 7 denoising timesteps (t ∈ {0, 4, 9, 14, 19, 24, 27} out of 28 steps)

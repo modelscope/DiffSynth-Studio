@@ -48,7 +48,7 @@ The **No-ControlNet** ablation confirms that ControlNet is the information condu
 |--------|-------------|--------|----------------|
 | **Bit density** | Mean of binary SPAD frame (photon evidence) | Input conditioning | Does the network preserve measurement statistics? |
 | **Depth** | Monocular depth from Depth Anything V2 | Pseudo-GT from RGB | Does the network infer 3D structure from 1-bit data? |
-| **Variance** | Pixel-wise std across 3 random seeds | Multi-seed generation | Does the network represent its own uncertainty? |
+| **Variance** | Pixel-wise std across 10 random seeds | Multi-seed generation | Does the network represent its own uncertainty? |
 | **Cross-frame variance** | Pixel-wise std across 7 SPAD frame realizations | Cross-frame generation | Is the model sensitive to the specific binary realization? |
 
 #### Object Presence Targets (Binary Classification)
