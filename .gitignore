@@ -14,7 +14,7 @@ log*.txt
 
 # ── SPAD project: experiment outputs (large, generated) ─────────
 validation_outputs_*/
-validation_results_*/
+validation_results*/
 probing_results*/
 probing_analysis_output/
 variance_analysis/
