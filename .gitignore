@@ -1,6 +1,5 @@
 /data
 /models
-/scripts
 /diffusers
 *.pkl
 *.safetensors
@@ -12,6 +11,19 @@
 *.msc
 *.mv
 log*.txt
+
+# ── SPAD project: experiment outputs (large, generated) ─────────
+validation_outputs_*/
+validation_results_*/
+probing_results*/
+probing_analysis_output/
+variance_analysis/
+intermediate_latents/
+sweep_pixel_dps_results/
+calibration_analysis/
+thesis_figures/
+kyros_test_images_output/
+logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
