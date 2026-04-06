@@ -1,5 +1,6 @@
 import torch, torchvision, imageio, os
 import imageio.v3 as iio
+import numpy as np
 from PIL import Image
 
 
@@ -58,6 +59,9 @@ class LoadImage(DataProcessingOperator):
     
     def __call__(self, data: str):
         image = Image.open(data)
+        if image.mode == "I;16":
+            arr = np.array(image, dtype=np.float32) * (255.0 / 65535.0)
+            image = Image.fromarray(arr.clip(0, 255).astype(np.uint8))
         if self.convert_RGB: image = image.convert("RGB")
         return image
 
