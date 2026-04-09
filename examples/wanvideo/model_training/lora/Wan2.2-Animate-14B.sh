@@ -1,8 +1,10 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "wanvideo/Wan2.2-Animate-14B/*" --local_dir ./data/diffsynth_example_dataset
+
 # 1*80G GPU cannot train Wan2.2-Animate-14B LoRA
 # We tested on 8*80G GPUs
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/wanvideo/model_training/train.py \
-  --dataset_base_path data/example_video_dataset \
-  --dataset_metadata_path data/example_video_dataset/metadata_animate.csv \
+  --dataset_base_path data/diffsynth_example_dataset/wanvideo/Wan2.2-Animate-14B \
+  --dataset_metadata_path data/diffsynth_example_dataset/wanvideo/Wan2.2-Animate-14B/metadata.csv \
   --data_file_keys "video,animate_pose_video,animate_face_video" \
   --height 480 \
   --width 832 \

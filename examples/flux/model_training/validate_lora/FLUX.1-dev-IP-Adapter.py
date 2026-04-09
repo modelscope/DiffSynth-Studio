@@ -1,5 +1,5 @@
 import torch
-from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 from PIL import Image
 
 
@@ -9,10 +9,10 @@ pipe = FluxImagePipeline.from_pretrained(
     model_configs=[
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors"),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/"),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors"),
         ModelConfig(model_id="InstantX/FLUX.1-dev-IP-Adapter", origin_file_pattern="ip-adapter.bin"),
-        ModelConfig(model_id="google/siglip-so400m-patch14-384"),
+        ModelConfig(model_id="google/siglip-so400m-patch14-384", origin_file_pattern="model.safetensors"),
     ],
 )
 pipe.load_lora(pipe.dit, "models/train/FLUX.1-dev-IP-Adapter_lora/epoch-4.safetensors", alpha=1)

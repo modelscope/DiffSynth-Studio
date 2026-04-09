@@ -4,7 +4,6 @@ from PIL import Image, ImageDraw, ImageFont
 from modelscope import dataset_snapshot_download, snapshot_download
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 
-
 def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_random_colors=False):
     # Create a blank image for overlays
     overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
@@ -83,19 +82,29 @@ def example(pipe, seeds, example_id, global_prompt, entity_prompts):
         visualize_masks(image, masks, entity_prompts, f"eligen_example_{example_id}_mask_{seed}.png")
 
 
+vram_config = {
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": torch.float8_e4m3fn,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
 pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", offload_dtype=torch.float8_e4m3fn),
+        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
     ],
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
-pipe.enable_vram_management()
 snapshot_download("DiffSynth-Studio/Qwen-Image-EliGen-V2", local_dir="models/DiffSynth-Studio/Qwen-Image-EliGen-V2", allow_file_pattern="model.safetensors")
-pipe.load_lora(pipe.dit, "models/DiffSynth-Studio/Qwen-Image-EliGen-V2/model.safetensors")
+pipe.load_lora(pipe.dit, "models/DiffSynth-Studio/Qwen-Image-EliGen-V2/model.safetensors", hotload=True)
 
 seeds = [0]
 

@@ -1,10 +1,12 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux/Nexus-Gen/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/flux/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_nexusgen_edit.csv \
+  --dataset_base_path data/diffsynth_example_dataset/flux/Nexus-Gen \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux/Nexus-Gen/metadata.csv \
   --data_file_keys "image,nexus_gen_reference_image" \
   --max_pixels 1048576 \
   --dataset_repeat 400 \
-  --model_id_with_origin_paths "DiffSynth-Studio/Nexus-GenV2:model*.safetensors,DiffSynth-Studio/Nexus-GenV2:edit_decoder.bin,black-forest-labs/FLUX.1-dev:text_encoder/model.safetensors,black-forest-labs/FLUX.1-dev:text_encoder_2/,black-forest-labs/FLUX.1-dev:ae.safetensors" \
+  --model_id_with_origin_paths "DiffSynth-Studio/Nexus-GenV2:model*.safetensors,DiffSynth-Studio/Nexus-GenV2:edit_decoder.bin,black-forest-labs/FLUX.1-dev:text_encoder/model.safetensors,black-forest-labs/FLUX.1-dev:text_encoder_2/*.safetensors,black-forest-labs/FLUX.1-dev:ae.safetensors" \
   --learning_rate 1e-4 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \

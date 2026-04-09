@@ -22,7 +22,7 @@ jobs:
       - name: Install wheel
         run: pip install wheel==0.44.0 && pip install -r requirements.txt
       - name: Build DiffSynth
-        run: python setup.py sdist bdist_wheel
+        run: python -m build
       - name: Publish package to PyPI
         run: |
           pip install twine

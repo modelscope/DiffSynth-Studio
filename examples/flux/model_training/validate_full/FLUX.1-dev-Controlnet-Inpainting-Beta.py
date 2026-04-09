@@ -1,5 +1,5 @@
 import torch
-from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig, ControlNetInput
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig, ControlNetInput
 from diffsynth import load_state_dict
 from PIL import Image
 
@@ -10,7 +10,7 @@ pipe = FluxImagePipeline.from_pretrained(
     model_configs=[
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors"),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/"),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors"),
         ModelConfig(model_id="alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta", origin_file_pattern="diffusion_pytorch_model.safetensors"),
     ],

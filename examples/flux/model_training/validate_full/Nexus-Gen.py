@@ -1,6 +1,6 @@
 import torch
 from PIL import Image
-from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 from diffsynth import load_state_dict
 
 pipe = FluxImagePipeline.from_pretrained(
@@ -10,7 +10,7 @@ pipe = FluxImagePipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="model*.safetensors"),
         ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="edit_decoder.bin"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors"),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/"),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors"),
     ],
 )

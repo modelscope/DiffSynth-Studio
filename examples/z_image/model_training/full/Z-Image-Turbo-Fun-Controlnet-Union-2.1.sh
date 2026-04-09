@@ -1,0 +1,17 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "z_image/Z-Image-Turbo-Fun-Controlnet-Union-2.1/*" --local_dir ./data/diffsynth_example_dataset
+
+accelerate launch examples/z_image/model_training/train.py \
+  --dataset_base_path data/diffsynth_example_dataset/z_image/Z-Image-Turbo-Fun-Controlnet-Union-2.1 \
+  --dataset_metadata_path data/diffsynth_example_dataset/z_image/Z-Image-Turbo-Fun-Controlnet-Union-2.1/metadata.csv \
+  --data_file_keys "image,controlnet_image" \
+  --max_pixels 1048576 \
+  --dataset_repeat 100 \
+  --model_id_with_origin_paths "PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1:Z-Image-Turbo-Fun-Controlnet-Union-2.1.safetensors,Tongyi-MAI/Z-Image-Turbo:transformer/*.safetensors,Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors,Tongyi-MAI/Z-Image-Turbo:vae/diffusion_pytorch_model.safetensors" \
+  --learning_rate 1e-5 \
+  --num_epochs 2 \
+  --remove_prefix_in_ckpt "pipe.controlnet." \
+  --output_path "./models/train/Z-Image-Turbo-Fun-Controlnet-Union-2.1_full" \
+  --trainable_models "controlnet" \
+  --extra_inputs "controlnet_image" \
+  --use_gradient_checkpointing \
+  --dataset_num_workers 8

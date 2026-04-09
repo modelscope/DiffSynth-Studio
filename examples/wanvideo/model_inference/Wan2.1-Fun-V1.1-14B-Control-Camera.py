@@ -1,7 +1,7 @@
 import torch
 from PIL import Image
-from diffsynth import save_video, VideoData
-from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
+from diffsynth.utils.data import save_video, VideoData
+from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
 
 
@@ -9,13 +9,13 @@ pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-14B-Control-Camera", origin_file_pattern="diffusion_pytorch_model*.safetensors", offload_device="cpu"),
-        ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-14B-Control-Camera", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth", offload_device="cpu"),
-        ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-14B-Control-Camera", origin_file_pattern="Wan2.1_VAE.pth", offload_device="cpu"),
-        ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-14B-Control-Camera", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth", offload_device="cpu"),
+        ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-14B-Control-Camera", origin_file_pattern="diffusion_pytorch_model*.safetensors"),
+        ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-14B-Control-Camera", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
+        ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-14B-Control-Camera", origin_file_pattern="Wan2.1_VAE.pth"),
+        ModelConfig(model_id="PAI/Wan2.1-Fun-V1.1-14B-Control-Camera", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"),
     ],
+    tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
 )
-pipe.enable_vram_management()
 
 
 dataset_snapshot_download(
@@ -32,7 +32,7 @@ video = pipe(
     input_image=input_image,
     camera_control_direction="Left", camera_control_speed=0.01,
 )
-save_video(video, "video_left.mp4", fps=15, quality=5)
+save_video(video, "video_left_Wan2.1-Fun-V1.1-14B-Control-Camera.mp4", fps=15, quality=5)
 
 video = pipe(
     prompt="一艘小船正勇敢地乘风破浪前行。蔚蓝的大海波涛汹涌，白色的浪花拍打着船身，但小船毫不畏惧，坚定地驶向远方。阳光洒在水面上，闪烁着金色的光芒，为这壮丽的场景增添了一抹温暖。镜头拉近，可以看到船上的旗帜迎风飘扬，象征着不屈的精神与冒险的勇气。这段画面充满力量，激励人心，展现了面对挑战时的无畏与执着。",
@@ -41,4 +41,4 @@ video = pipe(
     input_image=input_image,
     camera_control_direction="Up", camera_control_speed=0.01,
 )
-save_video(video, "video_up.mp4", fps=15, quality=5)
+save_video(video, "video_up_Wan2.1-Fun-V1.1-14B-Control-Camera.mp4", fps=15, quality=5)

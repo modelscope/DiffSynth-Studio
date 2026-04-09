@@ -1,22 +1,21 @@
 import torch
 from PIL import Image
-from diffsynth import save_video, VideoData
-from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
+from diffsynth.utils.data import save_video, VideoData
+from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 
 
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="PAI/Wan2.2-VACE-Fun-A14B", origin_file_pattern="high_noise_model/diffusion_pytorch_model*.safetensors", offload_device="cpu"),
-        ModelConfig(model_id="PAI/Wan2.2-VACE-Fun-A14B", origin_file_pattern="low_noise_model/diffusion_pytorch_model*.safetensors", offload_device="cpu"),
-        ModelConfig(model_id="PAI/Wan2.2-VACE-Fun-A14B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth", offload_device="cpu"),
-        ModelConfig(model_id="PAI/Wan2.2-VACE-Fun-A14B", origin_file_pattern="Wan2.1_VAE.pth", offload_device="cpu"),
+        ModelConfig(model_id="PAI/Wan2.2-VACE-Fun-A14B", origin_file_pattern="high_noise_model/diffusion_pytorch_model*.safetensors"),
+        ModelConfig(model_id="PAI/Wan2.2-VACE-Fun-A14B", origin_file_pattern="low_noise_model/diffusion_pytorch_model*.safetensors"),
+        ModelConfig(model_id="PAI/Wan2.2-VACE-Fun-A14B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
+        ModelConfig(model_id="PAI/Wan2.2-VACE-Fun-A14B", origin_file_pattern="Wan2.1_VAE.pth"),
     ],
 )
 pipe.load_lora(pipe.vace, "models/train/Wan2.2-VACE-Fun-A14B_high_noise_lora/epoch-4.safetensors", alpha=1)
 pipe.load_lora(pipe.vace2, "models/train/Wan2.2-VACE-Fun-A14B_low_noise_lora/epoch-4.safetensors", alpha=1)
-pipe.enable_vram_management()
 
 video = VideoData("data/example_video_dataset/video1_softedge.mp4", height=480, width=832)
 video = [video[i] for i in range(17)]

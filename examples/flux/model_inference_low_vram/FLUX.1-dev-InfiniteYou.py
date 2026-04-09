@@ -1,11 +1,24 @@
 import torch
-from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig, ControlNetInput
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig, ControlNetInput
 from modelscope import dataset_snapshot_download
 from modelscope import snapshot_download
 from PIL import Image
 import numpy as np
 
 
+# This model has additional requirements.
+# Please install the following packages.
+# pip install facexlib insightface onnxruntime
+vram_config = {
+    "offload_dtype": torch.float8_e4m3fn,
+    "offload_device": "cpu",
+    "onload_dtype": torch.float8_e4m3fn,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
 snapshot_download(
     "ByteDance/InfiniteYou",
     allow_file_pattern="supports/insightface/models/antelopev2/*",
@@ -15,15 +28,15 @@ pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="ByteDance/InfiniteYou", origin_file_pattern="infu_flux_v1.0/aes_stage2/image_proj_model.bin", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="ByteDance/InfiniteYou", origin_file_pattern="infu_flux_v1.0/aes_stage2/InfuseNetModel/*.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors", **vram_config),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", **vram_config),
+        ModelConfig(model_id="ByteDance/InfiniteYou", origin_file_pattern="infu_flux_v1.0/aes_stage2/image_proj_model.bin", **vram_config),
+        ModelConfig(model_id="ByteDance/InfiniteYou", origin_file_pattern="infu_flux_v1.0/aes_stage2/InfuseNetModel/*.safetensors", **vram_config),
     ],
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
-pipe.enable_vram_management()
 
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/examples_in_diffsynth",

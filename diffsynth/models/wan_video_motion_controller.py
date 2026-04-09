@@ -25,20 +25,3 @@ class WanMotionControllerModel(torch.nn.Module):
         state_dict = self.linear[-1].state_dict()
         state_dict = {i: state_dict[i] * 0 for i in state_dict}
         self.linear[-1].load_state_dict(state_dict)
-
-    @staticmethod
-    def state_dict_converter():
-        return WanMotionControllerModelDictConverter()
-    
-    
-
-class WanMotionControllerModelDictConverter:
-    def __init__(self):
-        pass
-
-    def from_diffusers(self, state_dict):
-        return state_dict
-    
-    def from_civitai(self, state_dict):
-        return state_dict
-

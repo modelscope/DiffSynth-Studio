@@ -1,0 +1,2 @@
+from .npu_compatible_device import parse_device_type, parse_nccl_backend, get_available_device_type, get_device_name
+from .npu_compatible_device import IS_NPU_AVAILABLE, IS_CUDA_AVAILABLE

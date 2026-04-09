@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "wanvideo/Wan2.1-I2V-14B-480P/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/wanvideo/model_training/train.py \
-  --dataset_base_path data/example_video_dataset \
-  --dataset_metadata_path data/example_video_dataset/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/wanvideo/Wan2.1-I2V-14B-480P \
+  --dataset_metadata_path data/diffsynth_example_dataset/wanvideo/Wan2.1-I2V-14B-480P/metadata.csv \
   --height 480 \
   --width 832 \
   --dataset_repeat 100 \
@@ -10,4 +12,5 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/Wan2.1-I2V-14B-480P_full" \
   --trainable_models "dit" \
-  --extra_inputs "input_image"
+  --extra_inputs "input_image" \
+  --initialize_model_on_cpu

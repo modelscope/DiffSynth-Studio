@@ -1,11 +1,20 @@
 import random
 import torch
 from PIL import Image, ImageDraw, ImageFont
-from diffsynth import download_customized_models
-from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 from modelscope import dataset_snapshot_download
 
 
+vram_config = {
+    "offload_dtype": torch.float8_e4m3fn,
+    "offload_device": "cpu",
+    "onload_dtype": torch.float8_e4m3fn,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
 def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_random_colors=False):
     # Create a blank image for overlays
     overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
@@ -89,27 +98,14 @@ pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", offload_device="cpu", offload_dtype=torch.float8_e4m3fn),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors", **vram_config),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", **vram_config),
     ],
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
-pipe.enable_vram_management()
-
-download_from_modelscope = True
-if download_from_modelscope:
-    model_id = "DiffSynth-Studio/Eligen"
-    downloading_priority = ["ModelScope"]
-else:
-    model_id = "modelscope/EliGen"
-    downloading_priority = ["HuggingFace"]
-EliGen_path = download_customized_models(
-    model_id=model_id,
-    origin_file_path="model_bf16.safetensors",
-    local_dir="models/lora/entity_control",
-    downloading_priority=downloading_priority)[0]
-pipe.load_lora(pipe.dit, EliGen_path, alpha=1)
+pipe.load_lora(pipe.dit, ModelConfig(model_id="DiffSynth-Studio/Eligen", origin_file_pattern="model_bf16.safetensors"), alpha=1)
 
 # example 1
 global_prompt = "A breathtaking beauty of Raja Ampat by the late-night moonlight , one beautiful woman from behind wearing a pale blue long dress with soft glow, sitting at the top of a cliff looking towards the beach,pastell light colors, a group of small distant birds flying in far sky, a boat sailing on the sea, best quality, realistic, whimsical, fantastic, splash art, intricate detailed, hyperdetailed, maximalist style, photorealistic, concept art, sharp focus, harmony, serenity, tranquility, soft pastell colors,ambient occlusion, cozy ambient lighting, masterpiece, liiv1, linquivera, metix, mentixis, masterpiece, award winning, view from above\n"

@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "wanvideo/Wan2.1-FLF2V-14B-720P/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/wanvideo/model_training/train.py \
-  --dataset_base_path data/example_video_dataset \
-  --dataset_metadata_path data/example_video_dataset/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/wanvideo/Wan2.1-FLF2V-14B-720P \
+  --dataset_metadata_path data/diffsynth_example_dataset/wanvideo/Wan2.1-FLF2V-14B-720P/metadata.csv \
   --height 480 \
   --width 832 \
   --dataset_repeat 100 \
@@ -10,4 +12,5 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/Wan2.1-FLF2V-14B-720P_full" \
   --trainable_models "dit" \
-  --extra_inputs "input_image,end_image"
+  --extra_inputs "input_image,end_image" \
+  --initialize_model_on_cpu

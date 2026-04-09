@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "qwen_image/Qwen-Image-Distill-LoRA/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_distill_qwen_image.csv \
+  --dataset_base_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Distill-LoRA \
+  --dataset_metadata_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Distill-LoRA/metadata.csv \
   --data_file_keys "image" \
   --extra_inputs "seed,rand_device,num_inference_steps,cfg_scale" \
   --height 1328 \

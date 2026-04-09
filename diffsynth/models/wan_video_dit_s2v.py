@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple
-from .utils import hash_state_dict_keys
 from .wan_video_dit import rearrange, precompute_freqs_cis_3d, DiTBlock, Head, CrossAttention, modulate, sinusoidal_embedding_1d
+from ..core.gradient import gradient_checkpoint_forward
 
 
 def torch_dfs(model: nn.Module, parent_name='root'):
@@ -546,46 +546,19 @@ class WanS2VModel(torch.nn.Module):
         t = self.time_embedding(sinusoidal_embedding_1d(self.freq_dim, timestep))
         t_mod = self.time_projection(t).unflatten(1, (6, self.dim)).unsqueeze(2).transpose(0, 2)
 
-        def create_custom_forward(module):
-            def custom_forward(*inputs):
-                return module(*inputs)
-            return custom_forward
-
         for block_id, block in enumerate(self.blocks):
-            if use_gradient_checkpointing_offload:
-                with torch.autograd.graph.save_on_cpu():
-                    x = torch.utils.checkpoint.checkpoint(
-                        create_custom_forward(block),
-                        x,
-                        context,
-                        t_mod,
-                        seq_len_x,
-                        pre_compute_freqs[0],
-                        use_reentrant=False,
-                    )
-                    x = torch.utils.checkpoint.checkpoint(
-                        create_custom_forward(lambda x: self.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x)),
-                        x,
-                        use_reentrant=False,
-                    )
-            elif use_gradient_checkpointing:
-                x = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(block),
-                    x,
-                    context,
-                    t_mod,
-                    seq_len_x,
-                    pre_compute_freqs[0],
-                    use_reentrant=False,
-                )
-                x = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(lambda x: self.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x)),
-                    x,
-                    use_reentrant=False,
-                )
-            else:
-                x = block(x, context, t_mod, seq_len_x, pre_compute_freqs[0])
-                x = self.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x)
+            x = gradient_checkpoint_forward(
+                block,
+                use_gradient_checkpointing,
+                use_gradient_checkpointing_offload,
+                x, context, t_mod, seq_len_x, pre_compute_freqs[0]
+            )
+            x = gradient_checkpoint_forward(
+                lambda x: self.after_transformer_block(block_id, x, audio_emb_global, merged_audio_emb, seq_len_x),
+                use_gradient_checkpointing,
+                use_gradient_checkpointing_offload,
+                x
+            )
 
         x = x[:, :seq_len_x]
         x = self.head(x, t[:-1])
@@ -593,33 +566,3 @@ class WanS2VModel(torch.nn.Module):
         # make compatible with wan video
         x = torch.cat([origin_ref_latents, x], dim=2)
         return x
-
-    @staticmethod
-    def state_dict_converter():
-        return WanS2VModelStateDictConverter()
-
-
-class WanS2VModelStateDictConverter:
-
-    def __init__(self):
-        pass
-
-    def from_civitai(self, state_dict):
-        config = {}
-        if hash_state_dict_keys(state_dict) == "966cffdcc52f9c46c391768b27637614":
-            config = {
-                "dim": 5120,
-                "in_dim": 16,
-                "ffn_dim": 13824,
-                "out_dim": 16,
-                "text_dim": 4096,
-                "freq_dim": 256,
-                "eps": 1e-06,
-                "patch_size": (1, 2, 2),
-                "num_heads": 40,
-                "num_layers": 40,
-                "cond_dim": 16,
-                "audio_dim": 1024,
-                "num_audio_token": 4,
-            }
-        return state_dict, config

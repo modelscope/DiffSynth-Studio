@@ -661,23 +661,3 @@ class Qwen2Connector(torch.nn.Module):
         global_out=self.global_proj_out(x_mean)
         encoder_hidden_states = self.S(x,t,mask)
         return encoder_hidden_states,global_out
-    
-    @staticmethod
-    def state_dict_converter():
-        return Qwen2ConnectorStateDictConverter()
-    
-    
-class Qwen2ConnectorStateDictConverter:
-    def __init__(self):
-        pass
-
-    def from_diffusers(self, state_dict):
-        return state_dict
-    
-    def from_civitai(self, state_dict):
-        state_dict_ = {}
-        for name, param in state_dict.items():
-            if name.startswith("connector."):
-                name_ = name[len("connector."):]
-                state_dict_[name_] = param
-        return state_dict_

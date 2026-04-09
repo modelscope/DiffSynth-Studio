@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "wanvideo/Wan2.1-FLF2V-14B-720P/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/wanvideo/model_training/train.py \
-  --dataset_base_path data/example_video_dataset \
-  --dataset_metadata_path data/example_video_dataset/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/wanvideo/Wan2.1-FLF2V-14B-720P \
+  --dataset_metadata_path data/diffsynth_example_dataset/wanvideo/Wan2.1-FLF2V-14B-720P/metadata.csv \
   --height 480 \
   --width 832 \
   --dataset_repeat 100 \

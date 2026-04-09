@@ -1,4 +1,3 @@
-from transformers import Qwen2_5_VLModel
 import torch
 from typing import Optional, Union
 
@@ -6,7 +5,7 @@ from typing import Optional, Union
 class QwenImageTextEncoder(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        from transformers import Qwen2_5_VLConfig
+        from transformers import Qwen2_5_VLConfig, Qwen2_5_VLModel
         config = Qwen2_5_VLConfig(**{
             "architectures": [
                 "Qwen2_5_VLForConditionalGeneration"
@@ -39,7 +38,7 @@ class QwenImageTextEncoder(torch.nn.Module):
             "sliding_window": 32768,
             "text_config": {
                 "architectures": [
-                "Qwen2_5_VLForConditionalGeneration"
+                    "Qwen2_5_VLForConditionalGeneration"
                 ],
                 "attention_dropout": 0.0,
                 "bos_token_id": 151643,
@@ -144,6 +143,7 @@ class QwenImageTextEncoder(torch.nn.Module):
         })
         self.model = Qwen2_5_VLModel(config)
         self.lm_head = torch.nn.Linear(config.text_config.hidden_size, config.text_config.vocab_size, bias=False)
+        self.config = config
         
     def forward(
         self,
@@ -166,51 +166,6 @@ class QwenImageTextEncoder(torch.nn.Module):
         logits_to_keep: Union[int, torch.Tensor] = 0,
         **kwargs,
     ):
-        r"""
-        labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
-            Labels for computing the masked language modeling loss. Indices should either be in `[0, ...,
-            config.vocab_size]` or -100 (see `input_ids` docstring). Tokens with indices set to `-100` are ignored
-            (masked), the loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
-        image_grid_thw (`torch.LongTensor` of shape `(num_images, 3)`, *optional*):
-            The temporal, height and width of feature shape of each image in LLM.
-        video_grid_thw (`torch.LongTensor` of shape `(num_videos, 3)`, *optional*):
-            The temporal, height and width of feature shape of each video in LLM.
-        rope_deltas (`torch.LongTensor` of shape `(batch_size, )`, *optional*):
-            The rope index difference between sequence length and multimodal rope.
-        second_per_grid_ts (`torch.Tensor` of shape `(num_videos)`, *optional*):
-            The time interval (in seconds) for each grid along the temporal dimension in the 3D position IDs.
-
-        Example:
-
-        ```python
-        >>> from PIL import Image
-        >>> import requests
-        >>> from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
-
-        >>> model = Qwen2_5_VLForConditionalGeneration.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct")
-        >>> processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct")
-
-        >>> messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image"},
-                    {"type": "text", "text": "What is shown in this image?"},
-                ],
-            },
-        ]
-        >>> url = "https://www.ilankelman.org/stopsigns/australia.jpg"
-        >>> image = Image.open(requests.get(url, stream=True).raw)
-
-        >>> text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        >>> inputs = processor(text=[text], images=[image], vision_infos=[vision_infos])
-
-        >>> # Generate
-        >>> generate_ids = model.generate(inputs.input_ids, max_length=30)
-        >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
-        "The image shows a street scene with a red stop sign in the foreground. In the background, there is a large red gate with Chinese characters ..."
-        ```"""
-
         output_attentions = False
         output_hidden_states = True
 
@@ -233,23 +188,3 @@ class QwenImageTextEncoder(torch.nn.Module):
             **kwargs,
         )
         return outputs.hidden_states
-    
-    @staticmethod
-    def state_dict_converter():
-        return QwenImageTextEncoderStateDictConverter()
-
-
-
-class QwenImageTextEncoderStateDictConverter():
-    def __init__(self):
-        pass
-
-    def from_diffusers(self, state_dict):
-        state_dict_ = {}
-        for k, v in state_dict.items():
-            if k.startswith("visual."):
-                k = "model." + k
-            elif k.startswith("model."):
-                k = k.replace("model.", "model.language_model.")
-            state_dict_[k] = v
-        return state_dict_

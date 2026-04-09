@@ -1,11 +1,13 @@
 import torch
-from diffsynth.pipelines.flux_image_new import FluxImagePipeline, ModelConfig, ControlNetInput
+from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig, ControlNetInput
 from modelscope import dataset_snapshot_download
 from modelscope import snapshot_download
 from PIL import Image
 import numpy as np
 
-
+# This model has additional requirements.
+# Please install the following packages.
+# pip install facexlib insightface onnxruntime
 snapshot_download(
     "ByteDance/InfiniteYou",
     allow_file_pattern="supports/insightface/models/antelopev2/*",
@@ -17,7 +19,7 @@ pipe = FluxImagePipeline.from_pretrained(
     model_configs=[
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors"),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/"),
+        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors"),
         ModelConfig(model_id="ByteDance/InfiniteYou", origin_file_pattern="infu_flux_v1.0/aes_stage2/image_proj_model.bin"),
         ModelConfig(model_id="ByteDance/InfiniteYou", origin_file_pattern="infu_flux_v1.0/aes_stage2/InfuseNetModel/*.safetensors"),

@@ -23,3 +23,9 @@ prompt = "生成这两个人的合影"
 edit_image = [Image.open("image1.jpg"), Image.open("image2.jpg")]
 image_3 = pipe(prompt, edit_image=edit_image, seed=1, num_inference_steps=40, height=1328, width=1024, edit_image_auto_resize=True)
 image_3.save("image3.jpg")
+
+# Qwen-Image-Edit-2509 is a multi-image editing model.
+# Please use a list to input `edit_image`, even if the input contains only one image.
+# edit_image = [Image.open("image.jpg")]
+# Please do not input the image directly.
+# edit_image = Image.open("image.jpg")

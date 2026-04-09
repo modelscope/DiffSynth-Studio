@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
-from .sd3_dit import RMSNorm
-from .utils import hash_state_dict_keys
+from .general_modules import RMSNorm
 
 
 class BlockWiseControlBlock(torch.nn.Module):
@@ -55,20 +54,3 @@ class QwenImageBlockWiseControlNet(torch.nn.Module):
 
     def blockwise_forward(self, img, controlnet_conditioning, block_id):
         return self.controlnet_blocks[block_id](img, controlnet_conditioning)
-
-    @staticmethod
-    def state_dict_converter():
-        return QwenImageBlockWiseControlNetStateDictConverter()
-
-
-class QwenImageBlockWiseControlNetStateDictConverter():
-    def __init__(self):
-        pass
-
-    def from_civitai(self, state_dict):
-        hash_value = hash_state_dict_keys(state_dict)
-        extra_kwargs = {}
-        if hash_value == "a9e54e480a628f0b956a688a81c33bab":
-            # inpaint controlnet
-            extra_kwargs = {"additional_in_dim": 4}
-        return state_dict, extra_kwargs

@@ -1,4 +1,5 @@
-from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig, load_state_dict
+from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
+from diffsynth.core import load_state_dict
 from modelscope import snapshot_download
 import torch, math
 
