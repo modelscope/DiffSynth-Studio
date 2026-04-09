@@ -2,7 +2,6 @@ import torch
 from .wan_video_dit import DiTBlock
 from ..core.gradient import gradient_checkpoint_forward
 
-
 class VaceWanAttentionBlock(DiTBlock):
     def __init__(self, has_image_input, dim, num_heads, ffn_dim, eps=1e-6, block_id=0):
         super().__init__(has_image_input, dim, num_heads, ffn_dim, eps=eps)

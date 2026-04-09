@@ -1118,6 +1118,26 @@ class WanVideoUnit_AnimateInpaint(PipelineUnit):
         y_reft = pipe.vae.encode(bg_pixel_values, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0].to(dtype=pipe.torch_dtype, device=pipe.device)
         _, lat_t, lat_h, lat_w = y_reft.shape
         
+    def get_i2v_mask(self, lat_t, lat_h, lat_w, mask_len=1, mask_pixel_values=None, device=get_device_type()):
+        if mask_pixel_values is None:
+            msk = torch.zeros(1, (lat_t-1) * 4 + 1, lat_h, lat_w, device=device)
+        else:
+            msk = mask_pixel_values.clone()
+        msk[:, :mask_len] = 1
+        msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
+        msk = msk.view(1, msk.shape[1] // 4, 4, lat_h, lat_w)
+        msk = msk.transpose(1, 2)[0]
+        return msk
+
+    def process(self, pipe: WanVideoPipeline, animate_inpaint_video, animate_mask_video, input_image, tiled, tile_size, tile_stride):
+        if animate_inpaint_video is None or animate_mask_video is None:
+            return {}
+        pipe.load_models_to_device(self.onload_model_names)
+
+        bg_pixel_values = pipe.preprocess_video(animate_inpaint_video)
+        y_reft = pipe.vae.encode(bg_pixel_values, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)[0].to(dtype=pipe.torch_dtype, device=pipe.device)
+        _, lat_t, lat_h, lat_w = y_reft.shape
+        
         ref_pixel_values = pipe.preprocess_video([input_image])
         ref_latents = pipe.vae.encode(ref_pixel_values, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride).to(dtype=pipe.torch_dtype, device=pipe.device)
         mask_ref = self.get_i2v_mask(1, lat_h, lat_w, 1, device=pipe.device)

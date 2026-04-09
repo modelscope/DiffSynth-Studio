@@ -25,17 +25,6 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
                 state_dict = state_dict_converter(state_dict)
             else:
                 state_dict = {i: state_dict[i] for i in state_dict}
-
-            # MODIFY: depth adapter
-            if not isinstance(state_dict, dict):
-                state_dict = {i: state_dict[i] for i in state_dict}
-            if not any("depth_adapter" in k for k in model.state_dict()):
-                depth_adapter_keys = [k for k in state_dict if "depth_adapter" in k]
-                if len(depth_adapter_keys) > 0:
-                    print(f"Dropping depth_adapter params for concat mode: {len(depth_adapter_keys)} keys")
-                    for k in depth_adapter_keys:
-                        del state_dict[k]
-            
             model.load_state_dict(state_dict, assign=True)
             model = enable_vram_management(model, module_map, vram_config=vram_config, disk_map=None, vram_limit=vram_limit)
         else:
