@@ -147,6 +147,18 @@ class FlowMatchScheduler():
         return sigmas, timesteps
 
     @staticmethod
+    def set_timesteps_joyai_image(num_inference_steps=100, denoising_strength=1.0, shift=None):
+        sigma_min = 0.0
+        sigma_max = 1.0
+        shift = 4.0 if shift is None else shift
+        num_train_timesteps = 1000
+        sigma_start = sigma_min + (sigma_max - sigma_min) * denoising_strength
+        sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps + 1)[:-1]
+        sigmas = shift * sigmas / (1 + (shift - 1) * sigmas)
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
+    @staticmethod
     def set_timesteps_ltx2(num_inference_steps=100, denoising_strength=1.0, dynamic_shift_len=None, terminal=0.1, special_case=None):
         num_train_timesteps = 1000
         if special_case == "stage2":

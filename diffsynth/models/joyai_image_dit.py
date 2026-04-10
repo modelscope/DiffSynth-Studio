@@ -1,10 +1,13 @@
 import math
-from typing import List, Tuple, Optional, Union, Dict
+from typing import List, Optional, Tuple, Union, Dict
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
+
+from ..core.attention import attention_forward
+from ..core.gradient import gradient_checkpoint_forward
 
 
 def get_timestep_embedding(
@@ -146,36 +149,6 @@ class FeedForward(nn.Module):
             hidden_states = self.final_drop(hidden_states)
         return hidden_states
 
-
-try:
-    import flash_attn_interface
-    FLASH_ATTN_3_AVAILABLE = True
-except ModuleNotFoundError:
-    FLASH_ATTN_3_AVAILABLE = False
-
-try:
-    import flash_attn
-    FLASH_ATTN_2_AVAILABLE = True
-except ModuleNotFoundError:
-    FLASH_ATTN_2_AVAILABLE = False
-
-
-def flash_attn_varlen(q, k, v, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv):
-    q_ = q.view(q.shape[0] * q.shape[1], *q.shape[2:])
-    k_ = k.view(k.shape[0] * k.shape[1], *k.shape[2:])
-    v_ = v.view(v.shape[0] * v.shape[1], *v.shape[2:])
-    if FLASH_ATTN_3_AVAILABLE:
-        x = flash_attn_interface.flash_attn_varlen_func(
-            q_, k_, v_, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv
-        )
-        if isinstance(x, tuple):
-            x = x[0]
-    else:
-        x = flash_attn.flash_attn_varlen_func(
-            q_, k_, v_, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv
-        )
-    batch_size = cu_seqlens_q.shape[0] // 2
-    return x.view(batch_size, max_seqlen_q, x.shape[-2], x.shape[-1])
 
 
 def get_cu_seqlens(text_mask, img_len):
@@ -395,11 +368,9 @@ class MMDoubleStreamBlock(nn.Module):
         dtype: Optional[torch.dtype] = None,
         device: Optional[torch.device] = None,
         dit_modulation_type: Optional[str] = "wanx",
-        attn_backend: str = 'flash_attn',
     ):
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
-        self.attn_backend = attn_backend
         self.dit_modulation_type = dit_modulation_type
         self.heads_num = heads_num
         head_dim = hidden_size // heads_num
@@ -472,20 +443,11 @@ class MMDoubleStreamBlock(nn.Module):
         k = torch.cat((img_k, txt_k), dim=1)
         v = torch.cat((img_v, txt_v), dim=1)
 
-        if self.attn_backend == 'flash_attn':
-            cu_seqlens_q = attn_kwargs['cu_seqlens_q']
-            cu_seqlens_kv = attn_kwargs['cu_seqlens_kv']
-            max_seqlen_q = attn_kwargs['max_seqlen_q']
-            max_seqlen_kv = attn_kwargs['max_seqlen_kv']
-            attn_out = flash_attn_varlen(
-                q, k, v, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv
-            )
-        else:
-            q_sdpa = rearrange(q, "b l h c -> b h l c")
-            k_sdpa = rearrange(k, "b l h c -> b h l c")
-            v_sdpa = rearrange(v, "b l h c -> b h l c")
-            attn_out_sdpa = F.scaled_dot_product_attention(q_sdpa, k_sdpa, v_sdpa)
-            attn_out = rearrange(attn_out_sdpa, "b h l c -> b l h c")
+        # Use DiffSynth unified attention
+        attn_out = attention_forward(
+            q, k, v,
+            q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
+        )
 
         attn_out = attn_out.flatten(2, 3)
         img_attn, txt_attn = attn_out[:, : img.shape[1]], attn_out[:, img.shape[1]:]
@@ -551,7 +513,6 @@ class Transformer3DModel(nn.Module):
         dtype: Optional[torch.dtype] = None,
         device: Optional[torch.device] = None,
         dit_modulation_type: str = "wanx",
-        attn_backend: str = 'flash_attn',
         theta: int = 256,
     ):
         super().__init__()
@@ -562,7 +523,6 @@ class Transformer3DModel(nn.Module):
         self.rope_dim_list = rope_dim_list
         self.dit_modulation_type = dit_modulation_type
         self.mm_double_blocks_depth = mm_double_blocks_depth
-        self.attn_backend = attn_backend
         self.rope_type = rope_type
         self.theta = theta
 
@@ -585,7 +545,6 @@ class Transformer3DModel(nn.Module):
                 self.hidden_size, self.heads_num,
                 mlp_width_ratio=mlp_width_ratio,
                 dit_modulation_type=self.dit_modulation_type,
-                attn_backend=attn_backend,
                 **factory_kwargs,
             )
             for _ in range(mm_double_blocks_depth)
@@ -620,8 +579,6 @@ class Transformer3DModel(nn.Module):
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
     ) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
-        from ..core.gradient import gradient_checkpoint_forward
-
         is_multi_item = (len(hidden_states.shape) == 6)
         num_items = 0
         if is_multi_item:
@@ -653,16 +610,6 @@ class Transformer3DModel(nn.Module):
             txt_rope_size=txt_seq_len if self.rope_type == 'mrope' else None,
         )
 
-        attn_kwargs = {'thw': [tt, th, tw], 'txt_len': txt_seq_len}
-        if self.attn_backend == 'flash_attn':
-            cu_seqlens_q = get_cu_seqlens(encoder_hidden_states_mask, img_seq_len)
-            attn_kwargs.update({
-                'cu_seqlens_q': cu_seqlens_q,
-                'cu_seqlens_kv': cu_seqlens_q,
-                'max_seqlen_q': img_seq_len + txt_seq_len,
-                'max_seqlen_kv': img_seq_len + txt_seq_len,
-            })
-
         for block in self.double_blocks:
             img, txt = gradient_checkpoint_forward(
                 block,
@@ -670,7 +617,7 @@ class Transformer3DModel(nn.Module):
                 use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
                 img=img, txt=txt, vec=vec,
                 vis_freqs_cis=vis_freqs_cis, txt_freqs_cis=txt_freqs_cis,
-                attn_kwargs=attn_kwargs,
+                attn_kwargs={},
             )
 
         img_len = img.shape[1]

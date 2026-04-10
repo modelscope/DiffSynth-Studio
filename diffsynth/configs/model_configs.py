@@ -902,13 +902,12 @@ joyai_image_series = [
             "rope_dim_list": [16, 56, 56],
             "rope_type": "rope",
             "dit_modulation_type": "wanx",
-            "attn_backend": "torch_spda",
-            "theta": 256,
+            "theta": 10000,
         },
         "state_dict_converter": "diffsynth.utils.state_dict_converters.joyai_image_dit.JoyAIImageDiTStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/")
+        # Example: ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/model-*.safetensors")
         "model_hash": "2d11bf14bba8b4e87477c8199a895403",
         "model_name": "joyai_image_text_encoder",
         "model_class": "diffsynth.models.joyai_image_text_encoder.JoyAIImageTextEncoder",
