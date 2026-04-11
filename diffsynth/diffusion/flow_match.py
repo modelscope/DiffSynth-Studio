@@ -4,7 +4,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -13,6 +13,7 @@ class FlowMatchScheduler():
             "Z-Image": FlowMatchScheduler.set_timesteps_z_image,
             "LTX-2": FlowMatchScheduler.set_timesteps_ltx2,
             "Qwen-Image-Lightning": FlowMatchScheduler.set_timesteps_qwen_image_lightning,
+            "ERNIE-Image": FlowMatchScheduler.set_timesteps_ernie_image,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -127,6 +128,26 @@ class FlowMatchScheduler():
             mu = FlowMatchScheduler.compute_empirical_mu(dynamic_shift_len, num_inference_steps)
         sigmas = math.exp(mu) / (math.exp(mu) + (1 / sigmas - 1))
         timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_ernie_image(num_inference_steps=50, denoising_strength=1.0):
+        """ERNIE-Image scheduler: pure linear sigmas from 1.0 to 0.0, no shift.
+
+        Target library (diffusers FlowMatchEulerDiscreteScheduler):
+            sigmas = torch.linspace(1.0, 0.0, num_inference_steps + 1)  # N+1 values
+            scheduler.set_timesteps(sigmas=sigmas[:-1])  # pass first N values
+
+        set_timesteps internally appends a 0 at the end and computes:
+            sigmas = [linspace(1.0, 0.0, N+1)[:-1], 0.0]  # N+1 values including trailing 0
+            timesteps = original_sigmas * 1000  # N values: [1000, 980, ..., 20] for N=50
+        """
+        num_train_timesteps = 1000
+        sigma_start = denoising_strength
+        sigmas = torch.linspace(sigma_start, 0.0, num_inference_steps + 1)[:-1]
+        timesteps = sigmas * num_train_timesteps
+        # Append 0 at the end so that the last scheduler step reaches sigma=0
+        sigmas = torch.cat([sigmas, torch.zeros(1)])
         return sigmas, timesteps
 
     @staticmethod

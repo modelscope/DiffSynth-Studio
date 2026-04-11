@@ -541,6 +541,30 @@ flux2_series = [
     },
 ]
 
+ernie_image_series = [
+    {
+        # Example: ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        "model_hash": "584c13713849f1af4e03d5f1858b8b7b",
+        "model_name": "ernie_image_dit",
+        "model_class": "diffsynth.models.ernie_image_dit.ErnieImageDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ernie_image_dit.ErnieImageDiTStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="text_encoder/model.safetensors")
+        "model_hash": "404ed9f40796a38dd34c1620f1920207",
+        "model_name": "ernie_image_text_encoder",
+        "model_class": "diffsynth.models.ernie_image_text_encoder.ErnieImageTextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ernie_image_text_encoder.ErnieImageTextEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="pe/model.safetensors")
+        "model_hash": "d0432a4462b0c3f7d66ca943e1ce49f6",
+        "model_name": "ernie_image_pe",
+        "model_class": "diffsynth.models.ernie_image_pe.ErnieImagePE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ernie_image_pe.ErnieImagePEStateDictConverter",
+    },
+]
+
 z_image_series = [
     {
         # Example: ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="transformer/*.safetensors")
@@ -884,4 +908,4 @@ mova_series = [
         "model_class": "diffsynth.models.mova_dual_tower_bridge.DualTowerConditionalBridge",
     },
 ]
-MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + z_image_series + ltx2_series + anima_series + mova_series
+MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series + z_image_series + ltx2_series + anima_series + mova_series
