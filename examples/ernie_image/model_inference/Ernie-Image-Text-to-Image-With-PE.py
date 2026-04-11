@@ -18,14 +18,22 @@ pipe = ErnieImagePipeline.from_pretrained(
             model_id="baidu/ERNIE-Image",
             origin_file_pattern="vae/diffusion_pytorch_model.safetensors",
         ),
+        ModelConfig(
+            model_id="baidu/ERNIE-Image",
+            origin_file_pattern="pe/model.safetensors",
+        ),
     ],
     tokenizer_config=ModelConfig(
         model_id="baidu/ERNIE-Image",
         origin_file_pattern="tokenizer/",
     ),
+    pe_tokenizer_config=ModelConfig(
+        model_id="baidu/ERNIE-Image",
+        origin_file_pattern="pe/",
+    ),
 )
 
-image = pipe(
+image, revised_prompt = pipe(
     prompt="一只黑白相间的中华田园犬",
     negative_prompt="",
     height=1024,
@@ -33,5 +41,7 @@ image = pipe(
     seed=42,
     num_inference_steps=50,
     cfg_scale=4.0,
+    use_pe=True,
 )
 image.save("output.jpg")
+print(f"Revised prompt: {revised_prompt}")

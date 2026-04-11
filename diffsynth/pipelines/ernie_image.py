@@ -15,14 +15,16 @@ from ..core import ModelConfig, gradient_checkpoint_forward
 from tqdm import tqdm
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 
+import json
 from transformers import AutoTokenizer
 from ..models.ernie_image_text_encoder import ErnieImageTextEncoder
 from ..models.ernie_image_dit import ErnieImageDiT
+from ..models.ernie_image_pe import ErnieImagePE
 from ..models.flux2_vae import Flux2VAE
 
 
 # ============================================================
-# Pipeline
+# ErnieImagePipeline
 # ============================================================
 
 class ErnieImagePipeline(BasePipeline):
@@ -37,11 +39,16 @@ class ErnieImagePipeline(BasePipeline):
         self.dit: ErnieImageDiT = None
         self.vae: Flux2VAE = None
         self.tokenizer: AutoTokenizer = None
+        self.pe: ErnieImagePE = None
+        self.pe_tokenizer: AutoTokenizer = None
+
         self.in_iteration_models = ("dit",)
         self.units = [
             ErnieImageUnit_ShapeChecker(),
+            ErnieImageUnit_PromptEnhancer(),
             ErnieImageUnit_PromptEmbedder(),
             ErnieImageUnit_NoiseInitializer(),
+            ErnieImageUnit_InputImageEmbedder(),
         ]
         self.model_fn = model_fn_ernie_image
         self.compilable_models = ["dit"]
@@ -52,6 +59,7 @@ class ErnieImagePipeline(BasePipeline):
         device: Union[str, torch.device] = get_device_type(),
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="tokenizer/"),
+        pe_tokenizer_config: ModelConfig = ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="pe/"),
         vram_limit: float = None,
     ):
         pipe = ErnieImagePipeline(device=device, torch_dtype=torch_dtype)
@@ -60,10 +68,15 @@ class ErnieImagePipeline(BasePipeline):
         pipe.text_encoder = model_pool.fetch_model("ernie_image_text_encoder")
         pipe.dit = model_pool.fetch_model("ernie_image_dit")
         pipe.vae = model_pool.fetch_model("flux2_vae")
+        pipe.pe = model_pool.fetch_model("ernie_image_pe")
 
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
             pipe.tokenizer = AutoTokenizer.from_pretrained(tokenizer_config.path)
+
+        if pe_tokenizer_config is not None:
+            pe_tokenizer_config.download_if_necessary()
+            pipe.pe_tokenizer = AutoTokenizer.from_pretrained(pe_tokenizer_config.path)
 
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
@@ -75,24 +88,34 @@ class ErnieImagePipeline(BasePipeline):
         prompt: str,
         negative_prompt: str = "",
         cfg_scale: float = 4.0,
+        # PE (Prompt Enhancement)
+        use_pe: bool = False,
+        pe_temperature: float = 0.6,
+        pe_top_p: float = 0.95,
         # Shape
         height: int = 1024,
         width: int = 1024,
         # Randomness
         seed: int = None,
-        rand_device: str = "cpu",
-        initial_noise: torch.Tensor = None,
+        rand_device: str = "cuda",
         # Steps
         num_inference_steps: int = 50,
+        # Tiled VAE
+        tiled: bool = False,
+        tile_size: int = 64,
+        tile_stride: int = 32,
         # Progress bar
         progress_bar_cmd = tqdm,
     ):
-        # Scheduler: FLUX.2 template with exponential shift sigma schedule
+        # Scheduler: ERNIE-Image template (pure linear sigmas, no shift)
         self.scheduler.set_timesteps(num_inference_steps=num_inference_steps)
 
         # Parameters
         inputs_posi = {
             "prompt": prompt,
+            "use_pe": use_pe,
+            "pe_temperature": pe_temperature,
+            "pe_top_p": pe_top_p,
         }
         inputs_nega = {
             "negative_prompt": negative_prompt,
@@ -100,8 +123,9 @@ class ErnieImagePipeline(BasePipeline):
         inputs_shared = {
             "cfg_scale": cfg_scale,
             "height": height, "width": width,
-            "seed": seed, "rand_device": rand_device, "initial_noise": initial_noise,
+            "seed": seed, "rand_device": rand_device,
             "num_inference_steps": num_inference_steps,
+            "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
@@ -121,19 +145,28 @@ class ErnieImagePipeline(BasePipeline):
         # Decode
         self.load_models_to_device(['vae'])
         latents = inputs_shared["latents"]
-        # VAE decode (handles BN unnormalization and unpatchify internally)
+        # VAE decode handles BN unnormalization and unpatchify internally (Flux2VAE.decode L2105-2110)
         image = self.vae.decode(latents)
         image = self.vae_output_to_image(image)
         self.load_models_to_device([])
 
+        # Return revised prompt if PE was used
+        revised_prompt = inputs_posi.get("revised_prompt", None)
+        if use_pe and revised_prompt is not None:
+            return image, revised_prompt
         return image
 
 
 # ============================================================
-# PipelineUnits
+# PipelineUnit 类
 # ============================================================
 
 class ErnieImageUnit_ShapeChecker(PipelineUnit):
+    """尺寸校验 — 目标库 __call__ L243-244
+
+    目标库: if height % 16 != 0 or width % 16 != 0: raise ValueError
+    DiffSynth: 复用 check_resize_height_width (round up 而非报错)
+    """
     def __init__(self):
         super().__init__(
             input_params=("height", "width"),
@@ -145,7 +178,94 @@ class ErnieImageUnit_ShapeChecker(PipelineUnit):
         return {"height": height, "width": width}
 
 
+class ErnieImageUnit_PromptEnhancer(PipelineUnit):
+    """Prompt Enhancement — 目标库 _enhance_prompt_with_pe() L82-121
+
+    使用 PE (Ministral3ForCausalLM) 模型改写/增强 prompt。
+    PE enhancement 仅在正向 prompt 上执行，负向 prompt 直接透传。
+    对应目标库: __call__ L250-257 — if use_pe: prompt = _enhance_prompt_with_pe(...)
+    """
+    def __init__(self):
+        super().__init__(
+            seperate_cfg=True,
+            input_params_posi={
+                "use_pe": "use_pe",
+                "prompt": "prompt",
+                "pe_temperature": "pe_temperature",
+                "pe_top_p": "pe_top_p",
+            },
+            input_params_nega={
+                "use_pe": "use_pe",
+                "prompt": "negative_prompt",
+            },
+            input_params=("height", "width"),
+            output_params=("prompt", "revised_prompt"),
+            onload_model_names=("pe",)
+        )
+
+    def enhance_prompt(self, pipe: ErnieImagePipeline, prompt, height, width, temperature, top_p, system_prompt=None):
+        """Enhance a prompt using the PE model. Matches target库 _enhance_prompt_with_pe()."""
+        if pipe.pe is None or pipe.pe_tokenizer is None:
+            return prompt
+
+        # Build user message as JSON carrying prompt text and target resolution
+        user_content = json.dumps(
+            {"prompt": prompt, "width": width, "height": height},
+            ensure_ascii=False,
+        )
+        messages = []
+        if system_prompt is not None:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": user_content})
+
+        # apply_chat_template picks up the chat_template.jinja loaded with pe_tokenizer
+        input_text = pipe.pe_tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=False,  # "Output:" is already in the user block
+        )
+        inputs = pipe.pe_tokenizer(input_text, return_tensors="pt").to(pipe.device)
+        output_ids = pipe.pe.generate(
+            **inputs,
+            max_new_tokens=pipe.pe_tokenizer.model_max_length,
+            do_sample=temperature != 1.0 or top_p != 1.0,
+            temperature=temperature,
+            top_p=top_p,
+            pad_token_id=pipe.pe_tokenizer.pad_token_id,
+            eos_token_id=pipe.pe_tokenizer.eos_token_id,
+        )
+        # Decode only newly generated tokens
+        generated_ids = output_ids[0][inputs["input_ids"].shape[1]:]
+        return pipe.pe_tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
+
+    def process(self, pipe: ErnieImagePipeline, use_pe=False, prompt="", height=1024, width=1024,
+                pe_temperature=1.0, pe_top_p=1.0):
+        """
+        PipelineUnitRunner 对 seperate_cfg 调用 process() 两次：
+        - 正向：从 input_params_posi + input_params 读取 → use_pe 有值，height/width 有值
+        - 负向：从 input_params_nega 读取 → use_pe 为 None → 直接透传
+
+        PE enhancement 仅在正向 prompt 上执行。
+        """
+        if use_pe and pipe.pe is not None and pipe.pe_tokenizer is not None:
+            # Positive prompt: enhance with PE
+            pipe.load_models_to_device(self.onload_model_names)
+            height = getattr(pipe, '_pe_height', 1024)
+            width = getattr(pipe, '_pe_width', 1024)
+            enhanced = self.enhance_prompt(pipe, prompt, height, width, pe_temperature, pe_top_p)
+            return {"prompt": enhanced, "revised_prompt": enhanced}
+        # Negative prompt or PE not enabled: pass through
+        return {"prompt": prompt}
+
+
 class ErnieImageUnit_PromptEmbedder(PipelineUnit):
+    """文本条件编码 — 目标库 encode_prompt L136-163 + _pad_text L182-192
+
+    分别处理正向/负向 prompt (seperate_cfg)，调用 text_encoder 编码后 padding 到统一长度。
+    对应目标库: encode_prompt → _pad_text → text_bth, text_lens
+
+    Note: input_params 为 "prompt"，由上游 PromptEnhancer 直接覆写 "prompt" 值。
+    """
     def __init__(self):
         super().__init__(
             seperate_cfg=True,
@@ -155,11 +275,10 @@ class ErnieImageUnit_PromptEmbedder(PipelineUnit):
             onload_model_names=("text_encoder",)
         )
 
-    def process(self, pipe: ErnieImagePipeline, prompt):
+    def encode_prompt(self, pipe: ErnieImagePipeline, prompt):
         if isinstance(prompt, str):
             prompt = [prompt]
 
-        # Get text embeddings from encoder
         text_hiddens = []
         text_lens_list = []
         for p in prompt:
@@ -182,7 +301,7 @@ class ErnieImageUnit_PromptEmbedder(PipelineUnit):
             )
             # Text encoder returns tuple of (hidden_states_tuple,)
             # where hidden_states_tuple is a tuple of hidden states from each layer
-            all_hidden_states = outputs[0]  # tuple of hidden states
+            all_hidden_states = outputs[0]
             hidden = all_hidden_states[-2][0]  # [T, H] - second to last layer
             text_hiddens.append(hidden)
             text_lens_list.append(hidden.shape[0])
@@ -205,37 +324,79 @@ class ErnieImageUnit_PromptEmbedder(PipelineUnit):
 
         return {"prompt_embeds": text_bth, "prompt_embeds_mask": text_lens}
 
+    def process(self, pipe: ErnieImagePipeline, prompt):
+        pipe.load_models_to_device(self.onload_model_names)
+        if pipe.text_encoder is not None:
+            return self.encode_prompt(pipe, prompt)
+        return {}
+
 
 class ErnieImageUnit_NoiseInitializer(PipelineUnit):
+    """初始噪声生成 — 目标库 __call__ L285-291
+
+    生成初始高斯噪声张量。使用 pipe.generate_noise 而非 torch.randn。
+    对应目标库: torch.randn((total_batch_size, latent_channels, latent_h, latent_w), ...)
+    """
     def __init__(self):
         super().__init__(
-            input_params=("height", "width", "seed", "rand_device", "initial_noise"),
-            output_params=("latents",),
+            input_params=("height", "width", "seed", "rand_device"),
+            output_params=("noise",),
         )
 
-    def process(self, pipe: ErnieImagePipeline, height, width, seed, rand_device, initial_noise):
-        if initial_noise is not None:
-            return {"latents": initial_noise}
-
+    def process(self, pipe: ErnieImagePipeline, height, width, seed, rand_device):
         latent_h = height // 16
         latent_w = width // 16
         latent_channels = pipe.dit.in_channels
 
-        # Use pipeline device if rand_device is not specified or is "cpu" with CUDA pipeline
-        if rand_device is None or (rand_device == "cpu" and "cuda" in str(pipe.device)):
+        # Use pipeline device if rand_device is not specified
+        if rand_device is None:
             rand_device = str(pipe.device)
 
-        generator = torch.Generator(device=rand_device)
-        if seed is not None:
-            generator.manual_seed(seed)
-
-        noise = torch.randn(
+        noise = pipe.generate_noise(
             (1, latent_channels, latent_h, latent_w),
-            device=pipe.device,
-            dtype=pipe.torch_dtype,
-            generator=generator,
+            seed=seed,
+            rand_device=rand_device,
+            rand_torch_dtype=pipe.torch_dtype,
         )
-        return {"latents": noise}
+        return {"noise": noise}
+
+
+class ErnieImageUnit_InputImageEmbedder(PipelineUnit):
+    """输入模态编码 — 对应目标库 latent 初始化 + VAE 编码路径
+
+    推理模式 (training=False):
+    - input_image is None (纯 T2I): latents = noise
+    - input_image is not None: 对输入图像 VAE 编码 → add_noise 得到 latents (I2I 路径)
+
+    训练模式 (training=True):
+    - input_image 由 get_pipeline_inputs 提供到 inputs_shared
+    - 返回 latents = noise, input_latents = VAE 编码后的输入图像
+
+    对应目标库: __call__ L285-291 (噪声初始化) + L343-351 (VAE 解码前处理)
+    """
+    def __init__(self):
+        super().__init__(
+            input_params=("input_image", "noise", "tiled", "tile_size", "tile_stride"),
+            output_params=("latents", "input_latents"),
+            onload_model_names=("vae",)
+        )
+
+    def process(self, pipe: ErnieImagePipeline, input_image, noise, tiled, tile_size, tile_stride):
+        if input_image is None:
+            # T2I 路径: 直接使用噪声作为初始 latents
+            return {"latents": noise, "input_latents": None}
+
+        # I2I 路径: 对输入图像进行 VAE 编码
+        pipe.load_models_to_device(['vae'])
+        image = pipe.preprocess_image(input_image).to(device=pipe.device, dtype=pipe.torch_dtype)
+        input_latents = pipe.vae.encode(image)
+
+        if pipe.scheduler.training:
+            return {"latents": noise, "input_latents": input_latents}
+        else:
+            # 在推理模式下，对编码后的 latent 添加噪声
+            latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
+            return {"latents": latents}
 
 
 # ============================================================

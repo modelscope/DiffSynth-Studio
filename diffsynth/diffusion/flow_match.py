@@ -146,8 +146,6 @@ class FlowMatchScheduler():
         sigma_start = denoising_strength
         sigmas = torch.linspace(sigma_start, 0.0, num_inference_steps + 1)[:-1]
         timesteps = sigmas * num_train_timesteps
-        # Append 0 at the end so that the last scheduler step reaches sigma=0
-        sigmas = torch.cat([sigmas, torch.zeros(1)])
         return sigmas, timesteps
 
     @staticmethod
