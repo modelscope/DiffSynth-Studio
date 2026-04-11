@@ -65,11 +65,6 @@ class ErnieImageTextEncoder(torch.nn.Module):
         position_ids=None,
         **kwargs,
     ):
-        """
-        Returns:
-            tuple: (all_hidden_states,) where all_hidden_states is a tuple of
-                   hidden states from each layer, matching transformers convention.
-        """
         outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,

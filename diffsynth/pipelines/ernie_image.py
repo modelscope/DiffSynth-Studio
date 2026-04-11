@@ -4,19 +4,17 @@ ERNIE-Image Text-to-Image Pipeline for DiffSynth-Studio.
 Architecture: SharedAdaLN DiT + RoPE 3D + Joint Image-Text Attention.
 """
 
-import torch
+import torch, json
 import numpy as np
 from PIL import Image
 from typing import Union, List, Optional
+from tqdm import tqdm
+from transformers import AutoTokenizer
 
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
 from ..core import ModelConfig, gradient_checkpoint_forward
-from tqdm import tqdm
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
-
-import json
-from transformers import AutoTokenizer
 from ..models.ernie_image_text_encoder import ErnieImageTextEncoder
 from ..models.ernie_image_dit import ErnieImageDiT
 from ..models.ernie_image_pe import ErnieImagePE
@@ -107,25 +105,16 @@ class ErnieImagePipeline(BasePipeline):
         # Progress bar
         progress_bar_cmd = tqdm,
     ):
-        # Scheduler: ERNIE-Image template (pure linear sigmas, no shift)
+        # Scheduler
         self.scheduler.set_timesteps(num_inference_steps=num_inference_steps)
 
         # Parameters
-        inputs_posi = {
-            "prompt": prompt,
-            "use_pe": use_pe,
-            "pe_temperature": pe_temperature,
-            "pe_top_p": pe_top_p,
-        }
-        inputs_nega = {
-            "negative_prompt": negative_prompt,
-        }
+        inputs_posi = {"prompt": prompt, "use_pe": use_pe, "pe_temperature": pe_temperature, "pe_top_p": pe_top_p}
+        inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
-            "cfg_scale": cfg_scale,
-            "height": height, "width": width,
-            "seed": seed, "rand_device": rand_device,
-            "num_inference_steps": num_inference_steps,
-            "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
+            "height": height, "width": width, "seed": seed,
+            "cfg_scale": cfg_scale, "num_inference_steps": num_inference_steps,
+            "rand_device": rand_device, "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
@@ -158,15 +147,11 @@ class ErnieImagePipeline(BasePipeline):
 
 
 # ============================================================
-# PipelineUnit 类
+# PipelineUnit Classes
 # ============================================================
 
 class ErnieImageUnit_ShapeChecker(PipelineUnit):
-    """尺寸校验 — 目标库 __call__ L243-244
-
-    目标库: if height % 16 != 0 or width % 16 != 0: raise ValueError
-    DiffSynth: 复用 check_resize_height_width (round up 而非报错)
-    """
+    """Size validation — target library __call__ L243-244"""
     def __init__(self):
         super().__init__(
             input_params=("height", "width"),
@@ -179,11 +164,11 @@ class ErnieImageUnit_ShapeChecker(PipelineUnit):
 
 
 class ErnieImageUnit_PromptEnhancer(PipelineUnit):
-    """Prompt Enhancement — 目标库 _enhance_prompt_with_pe() L82-121
+    """Prompt Enhancement — target library _enhance_prompt_with_pe() L82-121.
 
-    使用 PE (Ministral3ForCausalLM) 模型改写/增强 prompt。
-    PE enhancement 仅在正向 prompt 上执行，负向 prompt 直接透传。
-    对应目标库: __call__ L250-257 — if use_pe: prompt = _enhance_prompt_with_pe(...)
+    Uses PE (Ministral3ForCausalLM) model to rewrite/enhance prompt.
+    PE enhancement is only applied to positive prompts; negative prompts pass through.
+    Corresponds to target library: __call__ L250-257.
     """
     def __init__(self):
         super().__init__(
@@ -204,7 +189,7 @@ class ErnieImageUnit_PromptEnhancer(PipelineUnit):
         )
 
     def enhance_prompt(self, pipe: ErnieImagePipeline, prompt, height, width, temperature, top_p, system_prompt=None):
-        """Enhance a prompt using the PE model. Matches target库 _enhance_prompt_with_pe()."""
+        """Enhance a prompt using the PE model. Matches target library _enhance_prompt_with_pe()."""
         if pipe.pe is None or pipe.pe_tokenizer is None:
             return prompt
 
@@ -240,12 +225,11 @@ class ErnieImageUnit_PromptEnhancer(PipelineUnit):
 
     def process(self, pipe: ErnieImagePipeline, use_pe=False, prompt="", height=1024, width=1024,
                 pe_temperature=1.0, pe_top_p=1.0):
-        """
-        PipelineUnitRunner 对 seperate_cfg 调用 process() 两次：
-        - 正向：从 input_params_posi + input_params 读取 → use_pe 有值，height/width 有值
-        - 负向：从 input_params_nega 读取 → use_pe 为 None → 直接透传
+        """PipelineUnitRunner calls process() twice with seperate_cfg:
+        - Positive: reads from input_params_posi + input_params → use_pe has value, height/width have values
+        - Negative: reads from input_params_nega → use_pe is None → pass through directly
 
-        PE enhancement 仅在正向 prompt 上执行。
+        PE enhancement is only applied to positive prompts.
         """
         if use_pe and pipe.pe is not None and pipe.pe_tokenizer is not None:
             # Positive prompt: enhance with PE
@@ -259,12 +243,12 @@ class ErnieImageUnit_PromptEnhancer(PipelineUnit):
 
 
 class ErnieImageUnit_PromptEmbedder(PipelineUnit):
-    """文本条件编码 — 目标库 encode_prompt L136-163 + _pad_text L182-192
+    """Text condition encoding — target library encode_prompt L136-163 + _pad_text L182-192.
 
-    分别处理正向/负向 prompt (seperate_cfg)，调用 text_encoder 编码后 padding 到统一长度。
-    对应目标库: encode_prompt → _pad_text → text_bth, text_lens
+    Processes positive/negative prompts separately (seperate_cfg), encodes via text_encoder,
+    then pads to uniform length. Corresponds to target library: encode_prompt → _pad_text → text_bth, text_lens.
 
-    Note: input_params 为 "prompt"，由上游 PromptEnhancer 直接覆写 "prompt" 值。
+    Note: input_params is 'prompt', which is overwritten by upstream PromptEnhancer.
     """
     def __init__(self):
         super().__init__(
@@ -299,8 +283,7 @@ class ErnieImageUnit_PromptEmbedder(PipelineUnit):
             outputs = pipe.text_encoder(
                 input_ids=input_ids,
             )
-            # Text encoder returns tuple of (hidden_states_tuple,)
-            # where hidden_states_tuple is a tuple of hidden states from each layer
+            # Text encoder returns tuple of (hidden_states_tuple,) where each layer's hidden state is included
             all_hidden_states = outputs[0]
             hidden = all_hidden_states[-2][0]  # [T, H] - second to last layer
             text_hiddens.append(hidden)
@@ -332,10 +315,9 @@ class ErnieImageUnit_PromptEmbedder(PipelineUnit):
 
 
 class ErnieImageUnit_NoiseInitializer(PipelineUnit):
-    """初始噪声生成 — 目标库 __call__ L285-291
+    """Initial noise generation — target library __call__ L285-291.
 
-    生成初始高斯噪声张量。使用 pipe.generate_noise 而非 torch.randn。
-    对应目标库: torch.randn((total_batch_size, latent_channels, latent_h, latent_w), ...)
+    Generates initial Gaussian noise tensor. Uses pipe.generate_noise instead of torch.randn.
     """
     def __init__(self):
         super().__init__(
@@ -362,17 +344,17 @@ class ErnieImageUnit_NoiseInitializer(PipelineUnit):
 
 
 class ErnieImageUnit_InputImageEmbedder(PipelineUnit):
-    """输入模态编码 — 对应目标库 latent 初始化 + VAE 编码路径
+    """Input modal embedding — corresponds to target library latent init + VAE encoding path.
 
-    推理模式 (training=False):
-    - input_image is None (纯 T2I): latents = noise
-    - input_image is not None: 对输入图像 VAE 编码 → add_noise 得到 latents (I2I 路径)
+    Inference mode (training=False):
+    - input_image is None (pure T2I): latents = noise
+    - input_image is not None: VAE encode input image → add_noise → latents (I2I path)
 
-    训练模式 (training=True):
-    - input_image 由 get_pipeline_inputs 提供到 inputs_shared
-    - 返回 latents = noise, input_latents = VAE 编码后的输入图像
+    Training mode (training=True):
+    - input_image provided by get_pipeline_inputs into inputs_shared
+    - Returns latents = noise, input_latents = VAE encoded input image
 
-    对应目标库: __call__ L285-291 (噪声初始化) + L343-351 (VAE 解码前处理)
+    Corresponds to target library: __call__ L285-291 (noise init) + L343-351 (VAE decode pre-processing)
     """
     def __init__(self):
         super().__init__(
@@ -383,10 +365,10 @@ class ErnieImageUnit_InputImageEmbedder(PipelineUnit):
 
     def process(self, pipe: ErnieImagePipeline, input_image, noise, tiled, tile_size, tile_stride):
         if input_image is None:
-            # T2I 路径: 直接使用噪声作为初始 latents
+            # T2I path: use noise directly as initial latents
             return {"latents": noise, "input_latents": None}
 
-        # I2I 路径: 对输入图像进行 VAE 编码
+        # I2I path: VAE encode input image
         pipe.load_models_to_device(['vae'])
         image = pipe.preprocess_image(input_image).to(device=pipe.device, dtype=pipe.torch_dtype)
         input_latents = pipe.vae.encode(image)
@@ -394,7 +376,7 @@ class ErnieImageUnit_InputImageEmbedder(PipelineUnit):
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
         else:
-            # 在推理模式下，对编码后的 latent 添加噪声
+            # In inference mode, add noise to encoded latents
             latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
             return {"latents": latents}
 

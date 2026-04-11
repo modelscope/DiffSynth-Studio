@@ -72,10 +72,6 @@ class ErnieImagePE(torch.nn.Module):
         cache_position=None,
         **kwargs,
     ):
-        """
-        Forward pass through the PE model.
-        Returns model outputs matching transformers convention.
-        """
         outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -105,10 +101,6 @@ class ErnieImagePE(torch.nn.Module):
         eos_token_id=None,
         **kwargs,
     ):
-        """
-        Generate text from input tokens.
-        Used for prompt enhancement via the PE model.
-        """
         outputs = self.model.generate(
             input_ids=input_ids,
             attention_mask=attention_mask,

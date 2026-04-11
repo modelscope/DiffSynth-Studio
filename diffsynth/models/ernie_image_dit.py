@@ -5,11 +5,10 @@ Refactored from diffusers ErnieImageTransformer2DModel to use DiffSynth core mod
 Default parameters from actual checkpoint config.json (baidu/ERNIE-Image transformer).
 """
 
-from typing import Optional, Tuple
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import Optional, Tuple
 
 from ..core.attention import attention_forward
 from ..core.gradient import gradient_checkpoint_forward

@@ -1,7 +1,5 @@
 from diffsynth.pipelines.ernie_image import ErnieImagePipeline, ModelConfig
-from diffsynth.core.device import get_device_type
 import torch
-
 
 vram_config = {
     "offload_dtype": "disk",
@@ -15,28 +13,13 @@ vram_config = {
 }
 pipe = ErnieImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
-    device=get_device_type(),
+    device='cuda',
     model_configs=[
-        ModelConfig(
-            model_id="baidu/ERNIE-Image",
-            origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors",
-            **vram_config,
-        ),
-        ModelConfig(
-            model_id="baidu/ERNIE-Image",
-            origin_file_pattern="text_encoder/model.safetensors",
-            **vram_config,
-        ),
-        ModelConfig(
-            model_id="baidu/ERNIE-Image",
-            origin_file_pattern="vae/diffusion_pytorch_model.safetensors",
-            **vram_config,
-        ),
+        ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
+        ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
     ],
-    tokenizer_config=ModelConfig(
-        model_id="baidu/ERNIE-Image",
-        origin_file_pattern="tokenizer/",
-    ),
+    tokenizer_config=ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="tokenizer/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
