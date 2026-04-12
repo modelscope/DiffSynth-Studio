@@ -220,13 +220,15 @@ class JoyAIImageUnit_PromptEmbedder(PipelineUnit):
             input_ids=txt_tokens.input_ids,
             attention_mask=txt_tokens.attention_mask,
             output_hidden_states=True,
-        )[-1]
+        ).hidden_states[-1]
 
         bool_mask = txt_tokens.attention_mask.bool()
-        valid_lengths = bool_mask.sum(dim=1)
-        selected = hidden_states[bool_mask]
-        split_hidden = torch.split(selected, valid_lengths.tolist(), dim=0)
-        split_hidden = [e[drop_idx:] for e in split_hidden]
+        split_hidden = []
+        for i in range(hidden_states.size(0)):
+            mask = bool_mask[i]
+            valid_states = hidden_states[i][mask]
+            valid_states = valid_states[drop_idx:]
+            split_hidden.append(valid_states)
         attn_masks = [torch.ones(e.size(0), dtype=torch.long, device=e.device) for e in split_hidden]
 
         max_seq_len = min(max_sequence_length, max(u.size(0) for u in split_hidden))
@@ -242,25 +244,29 @@ class JoyAIImageUnit_PromptEmbedder(PipelineUnit):
 
 class JoyAIImageUnit_EditImageEmbedder(PipelineUnit):
     """
+    Encodes edit images into reference latents using VAE.
     """
     def __init__(self):
         super().__init__(
-            input_params=("edit_images", "tiled", "tile_size", "tile_stride", "edit_image_basesize"),
+            input_params=("edit_images", "tiled", "tile_size", "tile_stride", "edit_image_basesize", "height", "width"),
             output_params=("ref_latents", "num_items", "is_multi_item"),
             onload_model_names=("wan_video_vae",),
         )
 
-    def process(self, pipe: "JoyAIImagePipeline", edit_images, tiled, tile_size, tile_stride, edit_image_basesize=1024):
+    def process(self, pipe: "JoyAIImagePipeline", edit_images, tiled, tile_size, tile_stride, edit_image_basesize, height, width):
         pipe.load_models_to_device(self.onload_model_names)
+        if edit_images is None:
+            return {}
         if isinstance(edit_images, Image.Image):
             edit_images = [edit_images]
         assert len(edit_images) == 1, "Currently only supports single edit image for reference. Multiple edit images will be supported in the future."
-        edit_images = [_dynamic_resize_from_bucket(img, basesize=edit_image_basesize) for img in edit_images]
+        # Resize edit images to match target dimensions (from ShapeChecker) to ensure ref_latents matches latents
+        edit_images = [img.resize((width, height), Image.LANCZOS) for img in edit_images]
 
         images = [pipe.preprocess_image(img).transpose(0, 1) for img in edit_images]
         latents = pipe.vae.encode(images, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         ref_vae = rearrange(latents, "(b n) c 1 h w -> b n c 1 h w", n=(len(edit_images))).to(device=pipe.device, dtype=pipe.torch_dtype)
-        
+
         return {"ref_latents": ref_vae, "edit_images": edit_images}
 
 
@@ -281,13 +287,29 @@ class JoyAIImageUnit_NoiseInitializer(PipelineUnit):
 class JoyAIImageUnit_InputImageEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("input_image", "noise", "tiled", "tile_size", "tile_stride"),
+            input_params=("input_image", "image", "noise", "tiled", "tile_size", "tile_stride"),
             output_params=("latents", "input_latents"),
             onload_model_names=("vae",),
         )
 
-    def process(self, pipe: JoyAIImagePipeline, input_image, noise, tiled, tile_size, tile_stride):
+    def process(self, pipe: JoyAIImagePipeline, input_image, image, noise, tiled, tile_size, tile_stride):
+        pipe.load_models_to_device(self.onload_model_names)
         if input_image is None:
+            # Training mode: VAE-encode ground truth image to get input_latents
+            if image is not None:
+                if isinstance(image, list):
+                    image = image[0]
+                # Derive target image size from noise shape to ensure latent compatibility
+                # noise shape: [b, n, c, f, h, w]
+                latent_h = noise.shape[-2]
+                latent_w = noise.shape[-1]
+                img_h = latent_h * pipe.vae.upsampling_factor
+                img_w = latent_w * pipe.vae.upsampling_factor
+                image = image.resize((img_w, img_h), Image.LANCZOS)
+                img_tensor = [pipe.preprocess_image(image).transpose(0, 1)]
+                input_latents = pipe.vae.encode(img_tensor, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+                input_latents = rearrange(input_latents, "(b n) c f h w -> b n c f h w", n=1)
+                return {"latents": noise, "input_latents": input_latents}
             return {"latents": noise}
         raise NotImplementedError("Input image to latents is not implemented yet. Currently only supports noise initialization when input_image is None.")
 

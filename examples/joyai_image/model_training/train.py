@@ -63,28 +63,34 @@ class JoyAIImageTrainingModule(DiffusionTrainingModule):
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
             "edit_image_auto_resize": True,
+            "edit_image_basesize": 1024,
         }
-        # Handle input image for image editing
+        # Handle input image for image editing — maps to edit_images in the pipeline
         if "input_image" in data and data["input_image"] is not None:
             if isinstance(data["input_image"], list):
                 inputs_shared.update({
-                    "input_image": data["input_image"],
+                    "edit_images": data["input_image"],
                     "height": data["input_image"][0].size[1],
                     "width": data["input_image"][0].size[0],
                 })
             else:
                 inputs_shared.update({
-                    "input_image": data["input_image"],
+                    "edit_images": data["input_image"],
                     "height": data["input_image"].size[1],
                     "width": data["input_image"].size[0],
                 })
         else:
             inputs_shared.update({
-                "input_image": None,
+                "edit_images": None,
                 "height": 1024,
                 "width": 1024,
             })
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
+        # input_image is None for training (latents initialized from noise)
+        inputs_shared["input_image"] = None
+        # Ground truth image for computing input_latents in loss computation
+        if "image" in data and data["image"] is not None:
+            inputs_shared["image"] = data["image"]
         return inputs_shared, inputs_posi, inputs_nega
 
     def forward(self, data, inputs=None):

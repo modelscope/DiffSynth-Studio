@@ -24,10 +24,7 @@ pipe = JoyAIImagePipeline.from_pretrained(
         origin_file_pattern="JoyAI-Image-Und/",
     ),
 )
-pipe.eval()
-# Image editing
 prompt = "Turn the plate blue"
-# Replace with your input image path
 input_image = Image.open("/mnt/nas1/zhanghong/project26/main_project/opencode/packages/joyai-image/JoyAI-Image/test_images/test_1.jpg").convert("RGB")
 
 output = pipe(
