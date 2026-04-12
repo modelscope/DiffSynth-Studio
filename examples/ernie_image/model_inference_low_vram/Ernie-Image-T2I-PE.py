@@ -11,6 +11,7 @@ vram_config = {
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
 }
+
 pipe = ErnieImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device='cuda',
@@ -18,7 +19,7 @@ pipe = ErnieImagePipeline.from_pretrained(
         ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
         ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
         ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
-        ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="pe/model.safetensors", **vram_config),
+        ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="pe/model.safetensors"),
     ],
     tokenizer_config=ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="tokenizer/"),
     pe_tokenizer_config=ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="pe/"),
