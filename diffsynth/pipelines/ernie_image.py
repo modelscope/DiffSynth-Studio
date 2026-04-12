@@ -21,6 +21,10 @@ from ..models.ernie_image_pe import ErnieImagePE
 from ..models.flux2_vae import Flux2VAE
 
 
+# ============================================================
+# ErnieImagePipeline
+# ============================================================
+
 class ErnieImagePipeline(BasePipeline):
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
@@ -94,10 +98,6 @@ class ErnieImagePipeline(BasePipeline):
         rand_device: str = "cuda",
         # Steps
         num_inference_steps: int = 50,
-        # Tiled VAE
-        tiled: bool = False,
-        tile_size: int = 64,
-        tile_stride: int = 32,
         # Progress bar
         progress_bar_cmd = tqdm,
     ):
@@ -110,7 +110,7 @@ class ErnieImagePipeline(BasePipeline):
         inputs_shared = {
             "height": height, "width": width, "seed": seed,
             "cfg_scale": cfg_scale, "num_inference_steps": num_inference_steps,
-            "rand_device": rand_device, "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
+            "rand_device": rand_device,
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
@@ -141,6 +141,10 @@ class ErnieImagePipeline(BasePipeline):
             return image, revised_prompt
         return image
 
+
+# ============================================================
+# PipelineUnit Classes
+# ============================================================
 
 class ErnieImageUnit_ShapeChecker(PipelineUnit):
     """Size validation for height and width."""
@@ -222,10 +226,8 @@ class ErnieImageUnit_PromptEnhancer(PipelineUnit):
         PE enhancement is only applied to positive prompts.
         """
         if use_pe and pipe.pe is not None and pipe.pe_tokenizer is not None:
-            # Positive prompt: enhance with PE
+            # Positive prompt: enhance with PE using the resolution passed to this unit
             pipe.load_models_to_device(self.onload_model_names)
-            height = getattr(pipe, '_pe_height', 1024)
-            width = getattr(pipe, '_pe_width', 1024)
             enhanced = self.enhance_prompt(pipe, prompt, height, width, pe_temperature, pe_top_p)
             return {"prompt": enhanced, "revised_prompt": enhanced}
         # Negative prompt or PE not enabled: pass through
@@ -311,8 +313,8 @@ class ErnieImageUnit_NoiseInitializer(PipelineUnit):
         )
 
     def process(self, pipe: ErnieImagePipeline, height, width, seed, rand_device):
-        latent_h = height // 16
-        latent_w = width // 16
+        latent_h = height // pipe.height_division_factor
+        latent_w = width // pipe.width_division_factor
         latent_channels = pipe.dit.in_channels
 
         # Use pipeline device if rand_device is not specified
@@ -341,12 +343,12 @@ class ErnieImageUnit_InputImageEmbedder(PipelineUnit):
     """
     def __init__(self):
         super().__init__(
-            input_params=("input_image", "noise", "tiled", "tile_size", "tile_stride"),
+            input_params=("input_image", "noise"),
             output_params=("latents", "input_latents"),
             onload_model_names=("vae",)
         )
 
-    def process(self, pipe: ErnieImagePipeline, input_image, noise, tiled, tile_size, tile_stride):
+    def process(self, pipe: ErnieImagePipeline, input_image, noise):
         if input_image is None:
             # T2I path: use noise directly as initial latents
             return {"latents": noise, "input_latents": None}
@@ -363,6 +365,10 @@ class ErnieImageUnit_InputImageEmbedder(PipelineUnit):
             latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
             return {"latents": latents}
 
+
+# ============================================================
+# model_fn
+# ============================================================
 
 def model_fn_ernie_image(
     dit: ErnieImageDiT,
