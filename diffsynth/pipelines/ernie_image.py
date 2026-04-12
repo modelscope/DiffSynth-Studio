@@ -21,10 +21,6 @@ from ..models.ernie_image_pe import ErnieImagePE
 from ..models.flux2_vae import Flux2VAE
 
 
-# ============================================================
-# ErnieImagePipeline
-# ============================================================
-
 class ErnieImagePipeline(BasePipeline):
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
@@ -146,12 +142,8 @@ class ErnieImagePipeline(BasePipeline):
         return image
 
 
-# ============================================================
-# PipelineUnit Classes
-# ============================================================
-
 class ErnieImageUnit_ShapeChecker(PipelineUnit):
-    """Size validation — target library __call__ L243-244"""
+    """Size validation for height and width."""
     def __init__(self):
         super().__init__(
             input_params=("height", "width"),
@@ -164,11 +156,9 @@ class ErnieImageUnit_ShapeChecker(PipelineUnit):
 
 
 class ErnieImageUnit_PromptEnhancer(PipelineUnit):
-    """Prompt Enhancement — target library _enhance_prompt_with_pe() L82-121.
+    """Prompt Enhancement using PE model to rewrite/enhance prompts.
 
-    Uses PE (Ministral3ForCausalLM) model to rewrite/enhance prompt.
     PE enhancement is only applied to positive prompts; negative prompts pass through.
-    Corresponds to target library: __call__ L250-257.
     """
     def __init__(self):
         super().__init__(
@@ -189,7 +179,7 @@ class ErnieImageUnit_PromptEnhancer(PipelineUnit):
         )
 
     def enhance_prompt(self, pipe: ErnieImagePipeline, prompt, height, width, temperature, top_p, system_prompt=None):
-        """Enhance a prompt using the PE model. Matches target library _enhance_prompt_with_pe()."""
+        """Enhance a prompt using the PE model."""
         if pipe.pe is None or pipe.pe_tokenizer is None:
             return prompt
 
@@ -243,12 +233,10 @@ class ErnieImageUnit_PromptEnhancer(PipelineUnit):
 
 
 class ErnieImageUnit_PromptEmbedder(PipelineUnit):
-    """Text condition encoding — target library encode_prompt L136-163 + _pad_text L182-192.
+    """Text condition encoding via text_encoder with padding to uniform length.
 
-    Processes positive/negative prompts separately (seperate_cfg), encodes via text_encoder,
-    then pads to uniform length. Corresponds to target library: encode_prompt → _pad_text → text_bth, text_lens.
-
-    Note: input_params is 'prompt', which is overwritten by upstream PromptEnhancer.
+    Processes positive/negative prompts separately, encodes via text_encoder,
+    then pads to uniform length.
     """
     def __init__(self):
         super().__init__(
@@ -315,10 +303,7 @@ class ErnieImageUnit_PromptEmbedder(PipelineUnit):
 
 
 class ErnieImageUnit_NoiseInitializer(PipelineUnit):
-    """Initial noise generation — target library __call__ L285-291.
-
-    Generates initial Gaussian noise tensor. Uses pipe.generate_noise instead of torch.randn.
-    """
+    """Initial noise generation using pipeline generate_noise."""
     def __init__(self):
         super().__init__(
             input_params=("height", "width", "seed", "rand_device"),
@@ -344,7 +329,7 @@ class ErnieImageUnit_NoiseInitializer(PipelineUnit):
 
 
 class ErnieImageUnit_InputImageEmbedder(PipelineUnit):
-    """Input modal embedding — corresponds to target library latent init + VAE encoding path.
+    """Input image embedding via VAE encoding.
 
     Inference mode (training=False):
     - input_image is None (pure T2I): latents = noise
@@ -353,8 +338,6 @@ class ErnieImageUnit_InputImageEmbedder(PipelineUnit):
     Training mode (training=True):
     - input_image provided by get_pipeline_inputs into inputs_shared
     - Returns latents = noise, input_latents = VAE encoded input image
-
-    Corresponds to target library: __call__ L285-291 (noise init) + L343-351 (VAE decode pre-processing)
     """
     def __init__(self):
         super().__init__(
@@ -380,10 +363,6 @@ class ErnieImageUnit_InputImageEmbedder(PipelineUnit):
             latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
             return {"latents": latents}
 
-
-# ============================================================
-# model_fn
-# ============================================================
 
 def model_fn_ernie_image(
     dit: ErnieImageDiT,

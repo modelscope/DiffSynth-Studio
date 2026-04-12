@@ -267,9 +267,6 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.ConvTranspose1d": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
-    # ============================================================
-    # ERNIE-Image
-    # ============================================================
     "diffsynth.models.ernie_image_dit.ErnieImageDiT": {
         "diffsynth.models.ernie_image_dit.ErnieImageRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",

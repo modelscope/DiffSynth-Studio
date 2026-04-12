@@ -132,16 +132,7 @@ class FlowMatchScheduler():
 
     @staticmethod
     def set_timesteps_ernie_image(num_inference_steps=50, denoising_strength=1.0):
-        """ERNIE-Image scheduler: pure linear sigmas from 1.0 to 0.0, no shift.
-
-        Target library (diffusers FlowMatchEulerDiscreteScheduler):
-            sigmas = torch.linspace(1.0, 0.0, num_inference_steps + 1)  # N+1 values
-            scheduler.set_timesteps(sigmas=sigmas[:-1])  # pass first N values
-
-        set_timesteps internally appends a 0 at the end and computes:
-            sigmas = [linspace(1.0, 0.0, N+1)[:-1], 0.0]  # N+1 values including trailing 0
-            timesteps = original_sigmas * 1000  # N values: [1000, 980, ..., 20] for N=50
-        """
+        """ERNIE-Image scheduler: pure linear sigmas from 1.0 to 0.0, no shift."""
         num_train_timesteps = 1000
         sigma_start = denoising_strength
         sigmas = torch.linspace(sigma_start, 0.0, num_inference_steps + 1)[:-1]

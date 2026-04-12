@@ -889,11 +889,11 @@ from diffsynth.pipelines.ernie_image import ErnieImagePipeline, ModelConfig
 import torch
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": torch.float8_e4m3fn,
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
     "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
