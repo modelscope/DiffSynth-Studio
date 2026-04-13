@@ -32,7 +32,7 @@ We believe that a well-developed open-source code framework can lower the thresh
 > DiffSynth-Studio has undergone major version updates, and some old features are no longer maintained. If you need to use old features, please switch to the [last historical version](https://github.com/modelscope/DiffSynth-Studio/tree/afd101f3452c9ecae0c87b79adfa2e22d65ffdc3) before the major version update.
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
-- **April 11, 2026** ERNIE-Image open-sourced, welcome a new member to the image generation model family! Support includes text-to-image generation, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/ERNIE-Image.md) and [example code](/examples/ernie_image/).
+
 - **March 19, 2026**: Added support for [openmoss/MOVA-720p](https://modelscope.cn/models/openmoss/MOVA-720p) and [openmoss/MOVA-360p](https://modelscope.cn/models/openmoss/MOVA-360p) models, including training and inference capabilities. [Documentation](/docs/en/Model_Details/Wan.md) and [example code](/examples/mova/) are now available.
 
 - **March 12, 2026**: We have added support for the [LTX-2.3](https://modelscope.cn/models/Lightricks/LTX-2.3) audio-video generation model. The features includes text-to-audio/video, image-to-audio/video, IC-LoRA control, audio-to-video, and audio-video inpainting. We have supported the complete inference and training functionalities. For details, please refer to the [documentation](/docs/en/Model_Details/LTX-2.md) and [code](/examples/ltx2/).
@@ -882,7 +882,7 @@ Example code for Wan is available at: [/examples/wanvideo/](/examples/wanvideo/)
 
 <summary>Quick Start</summary>
 
-Running the following code will quickly load the [baidu/ERNIE-Image](https://www.modelscope.cn/models/baidu/ERNIE-Image) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 24GB VRAM.
+Running the following code will quickly load the [baidu/ERNIE-Image](https://www.modelscope.cn/models/baidu/ERNIE-Image) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 3GB VRAM.
 
 ```python
 from diffsynth.pipelines.ernie_image import ErnieImagePipeline, ModelConfig

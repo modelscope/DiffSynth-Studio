@@ -16,7 +16,7 @@ For more information on installation, please refer to [Setup Dependencies](../Pi
 
 ## Quick Start
 
-Running the following code will load the [baidu/ERNIE-Image](https://www.modelscope.cn/models/baidu/ERNIE-Image) model for inference. VRAM management is enabled, the framework automatically controls parameter loading based on available VRAM, requiring a minimum of 24G VRAM.
+Running the following code will load the [baidu/ERNIE-Image](https://www.modelscope.cn/models/baidu/ERNIE-Image) model for inference. VRAM management is enabled, the framework automatically controls parameter loading based on available VRAM, requiring a minimum of 3G VRAM.
 
 ```python
 from diffsynth.pipelines.ernie_image import ErnieImagePipeline, ModelConfig

@@ -16,7 +16,7 @@ pip install -e .
 
 ## 快速开始
 
-运行以下代码可以快速加载 [baidu/ERNIE-Image](https://www.modelscope.cn/models/baidu/ERNIE-Image) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 24G 显存即可运行。
+运行以下代码可以快速加载 [baidu/ERNIE-Image](https://www.modelscope.cn/models/baidu/ERNIE-Image) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 3G 显存即可运行。
 
 ```python
 from diffsynth.pipelines.ernie_image import ErnieImagePipeline, ModelConfig
