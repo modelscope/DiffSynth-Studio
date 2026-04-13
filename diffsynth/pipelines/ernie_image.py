@@ -4,7 +4,7 @@ ERNIE-Image Text-to-Image Pipeline for DiffSynth-Studio.
 Architecture: SharedAdaLN DiT + RoPE 3D + Joint Image-Text Attention.
 """
 
-import torch, json
+import torch
 import numpy as np
 from PIL import Image
 from typing import Union, List, Optional
@@ -17,13 +17,9 @@ from ..core import ModelConfig, gradient_checkpoint_forward
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..models.ernie_image_text_encoder import ErnieImageTextEncoder
 from ..models.ernie_image_dit import ErnieImageDiT
-from ..models.ernie_image_pe import ErnieImagePE
 from ..models.flux2_vae import Flux2VAE
 
 
-# ============================================================
-# ErnieImagePipeline
-# ============================================================
 
 class ErnieImagePipeline(BasePipeline):
 
@@ -37,13 +33,10 @@ class ErnieImagePipeline(BasePipeline):
         self.dit: ErnieImageDiT = None
         self.vae: Flux2VAE = None
         self.tokenizer: AutoTokenizer = None
-        self.pe: ErnieImagePE = None
-        self.pe_tokenizer: AutoTokenizer = None
 
         self.in_iteration_models = ("dit",)
         self.units = [
             ErnieImageUnit_ShapeChecker(),
-            ErnieImageUnit_PromptEnhancer(),
             ErnieImageUnit_PromptEmbedder(),
             ErnieImageUnit_NoiseInitializer(),
             ErnieImageUnit_InputImageEmbedder(),
@@ -57,7 +50,6 @@ class ErnieImagePipeline(BasePipeline):
         device: Union[str, torch.device] = get_device_type(),
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="tokenizer/"),
-        pe_tokenizer_config: ModelConfig = ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="pe/"),
         vram_limit: float = None,
     ):
         pipe = ErnieImagePipeline(device=device, torch_dtype=torch_dtype)
@@ -66,15 +58,10 @@ class ErnieImagePipeline(BasePipeline):
         pipe.text_encoder = model_pool.fetch_model("ernie_image_text_encoder")
         pipe.dit = model_pool.fetch_model("ernie_image_dit")
         pipe.vae = model_pool.fetch_model("flux2_vae")
-        pipe.pe = model_pool.fetch_model("ernie_image_pe")
 
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
             pipe.tokenizer = AutoTokenizer.from_pretrained(tokenizer_config.path)
-
-        if pe_tokenizer_config is not None:
-            pe_tokenizer_config.download_if_necessary()
-            pipe.pe_tokenizer = AutoTokenizer.from_pretrained(pe_tokenizer_config.path)
 
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
@@ -86,10 +73,6 @@ class ErnieImagePipeline(BasePipeline):
         prompt: str,
         negative_prompt: str = "",
         cfg_scale: float = 4.0,
-        # PE (Prompt Enhancement)
-        use_pe: bool = False,
-        pe_temperature: float = 0.6,
-        pe_top_p: float = 0.95,
         # Shape
         height: int = 1024,
         width: int = 1024,
@@ -105,7 +88,7 @@ class ErnieImagePipeline(BasePipeline):
         self.scheduler.set_timesteps(num_inference_steps=num_inference_steps)
 
         # Parameters
-        inputs_posi = {"prompt": prompt, "use_pe": use_pe, "pe_temperature": pe_temperature, "pe_top_p": pe_top_p}
+        inputs_posi = {"prompt": prompt}
         inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
             "height": height, "width": width, "seed": seed,
@@ -134,11 +117,6 @@ class ErnieImagePipeline(BasePipeline):
         image = self.vae.decode(latents)
         image = self.vae_output_to_image(image)
         self.load_models_to_device([])
-
-        # Return revised prompt if PE was used
-        revised_prompt = inputs_posi.get("revised_prompt", None)
-        if use_pe and revised_prompt is not None:
-            return image, revised_prompt
         return image
 
 
@@ -157,81 +135,6 @@ class ErnieImageUnit_ShapeChecker(PipelineUnit):
     def process(self, pipe: ErnieImagePipeline, height, width):
         height, width = pipe.check_resize_height_width(height, width)
         return {"height": height, "width": width}
-
-
-class ErnieImageUnit_PromptEnhancer(PipelineUnit):
-    """Prompt Enhancement using PE model to rewrite/enhance prompts.
-
-    PE enhancement is only applied to positive prompts; negative prompts pass through.
-    """
-    def __init__(self):
-        super().__init__(
-            seperate_cfg=True,
-            input_params_posi={
-                "use_pe": "use_pe",
-                "prompt": "prompt",
-                "pe_temperature": "pe_temperature",
-                "pe_top_p": "pe_top_p",
-            },
-            input_params_nega={
-                "use_pe": "use_pe",
-                "prompt": "negative_prompt",
-            },
-            input_params=("height", "width"),
-            output_params=("prompt", "revised_prompt"),
-            onload_model_names=("pe",)
-        )
-
-    def enhance_prompt(self, pipe: ErnieImagePipeline, prompt, height, width, temperature, top_p, system_prompt=None):
-        """Enhance a prompt using the PE model."""
-        if pipe.pe is None or pipe.pe_tokenizer is None:
-            return prompt
-
-        # Build user message as JSON carrying prompt text and target resolution
-        user_content = json.dumps(
-            {"prompt": prompt, "width": width, "height": height},
-            ensure_ascii=False,
-        )
-        messages = []
-        if system_prompt is not None:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": user_content})
-
-        # apply_chat_template picks up the chat_template.jinja loaded with pe_tokenizer
-        input_text = pipe.pe_tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=False,  # "Output:" is already in the user block
-        )
-        inputs = pipe.pe_tokenizer(input_text, return_tensors="pt").to(pipe.device)
-        output_ids = pipe.pe.generate(
-            **inputs,
-            max_new_tokens=pipe.pe_tokenizer.model_max_length,
-            do_sample=temperature != 1.0 or top_p != 1.0,
-            temperature=temperature,
-            top_p=top_p,
-            pad_token_id=pipe.pe_tokenizer.pad_token_id,
-            eos_token_id=pipe.pe_tokenizer.eos_token_id,
-        )
-        # Decode only newly generated tokens
-        generated_ids = output_ids[0][inputs["input_ids"].shape[1]:]
-        return pipe.pe_tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
-
-    def process(self, pipe: ErnieImagePipeline, use_pe=False, prompt="", height=1024, width=1024,
-                pe_temperature=1.0, pe_top_p=1.0):
-        """PipelineUnitRunner calls process() twice with seperate_cfg:
-        - Positive: reads from input_params_posi + input_params → use_pe has value, height/width have values
-        - Negative: reads from input_params_nega → use_pe is None → pass through directly
-
-        PE enhancement is only applied to positive prompts.
-        """
-        if use_pe and pipe.pe is not None and pipe.pe_tokenizer is not None:
-            # Positive prompt: enhance with PE using the resolution passed to this unit
-            pipe.load_models_to_device(self.onload_model_names)
-            enhanced = self.enhance_prompt(pipe, prompt, height, width, pe_temperature, pe_top_p)
-            return {"prompt": enhanced, "revised_prompt": enhanced}
-        # Negative prompt or PE not enabled: pass through
-        return {"prompt": prompt}
 
 
 class ErnieImageUnit_PromptEmbedder(PipelineUnit):
@@ -364,11 +267,6 @@ class ErnieImageUnit_InputImageEmbedder(PipelineUnit):
             # In inference mode, add noise to encoded latents
             latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
             return {"latents": latents}
-
-
-# ============================================================
-# model_fn
-# ============================================================
 
 def model_fn_ernie_image(
     dit: ErnieImageDiT,

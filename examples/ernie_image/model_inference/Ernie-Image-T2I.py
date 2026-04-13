@@ -1,10 +1,9 @@
 from diffsynth.pipelines.ernie_image import ErnieImagePipeline, ModelConfig
-from diffsynth.core.device.npu_compatible_device import get_device_type
 import torch
 
 pipe = ErnieImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
-    device=get_device_type(),
+    device='cuda',
     model_configs=[
         ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
         ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="text_encoder/model.safetensors"),

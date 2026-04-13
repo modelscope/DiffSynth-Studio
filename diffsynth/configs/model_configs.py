@@ -547,7 +547,6 @@ ernie_image_series = [
         "model_hash": "584c13713849f1af4e03d5f1858b8b7b",
         "model_name": "ernie_image_dit",
         "model_class": "diffsynth.models.ernie_image_dit.ErnieImageDiT",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ernie_image_dit.ErnieImageDiTStateDictConverter",
     },
     {
         # Example: ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="text_encoder/model.safetensors")
@@ -555,13 +554,6 @@ ernie_image_series = [
         "model_name": "ernie_image_text_encoder",
         "model_class": "diffsynth.models.ernie_image_text_encoder.ErnieImageTextEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ernie_image_text_encoder.ErnieImageTextEncoderStateDictConverter",
-    },
-    {
-        # Example: ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="pe/model.safetensors")
-        "model_hash": "d0432a4462b0c3f7d66ca943e1ce49f6",
-        "model_name": "ernie_image_pe",
-        "model_class": "diffsynth.models.ernie_image_pe.ErnieImagePE",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ernie_image_pe.ErnieImagePEStateDictConverter",
     },
 ]
 

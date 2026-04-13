@@ -61,7 +61,6 @@ image.save("output.jpg")
 |模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
 |[baidu/ERNIE-Image: T2I](https://www.modelscope.cn/models/baidu/ERNIE-Image)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_inference/Ernie-Image-T2I.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_inference_low_vram/Ernie-Image-T2I.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_training/full/Ernie-Image-T2I.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_training/validate_full/Ernie-Image-T2I.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_training/lora/Ernie-Image-T2I.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_training/validate_lora/Ernie-Image-T2I.py)|
-|[baidu/ERNIE-Image: T2I-PE](https://www.modelscope.cn/models/baidu/ERNIE-Image)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_inference/Ernie-Image-T2I-PE.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_inference_low_vram/Ernie-Image-T2I-PE.py)|-|-|-|-|
 
 ## 模型推理
 
@@ -72,17 +71,11 @@ image.save("output.jpg")
 * `prompt`: 提示词，描述画面中出现的内容。
 * `negative_prompt`: 负向提示词，描述画面中不应该出现的内容，默认值为 `""`。
 * `cfg_scale`: Classifier-free guidance 的参数，默认值为 4.0。
-* `use_pe`: 是否启用 Prompt Enhancement（提示词增强），使用 PE 模型自动改写 prompt，默认值为 `False`。
-* `pe_temperature`: PE 模型生成 revised prompt 时的 temperature 参数，默认值为 0.6。
-* `pe_top_p`: PE 模型生成 revised prompt 时的 top_p 参数，默认值为 0.95。
 * `height`: 图像高度，需保证高度为 16 的倍数，默认值为 1024。
 * `width`: 图像宽度，需保证宽度为 16 的倍数，默认值为 1024。
 * `seed`: 随机种子。默认为 `None`，即完全随机。
 * `rand_device`: 生成随机高斯噪声矩阵的计算设备，默认为 `"cuda"`。当设置为 `cuda` 时，在不同 GPU 上会导致不同的生成结果。
 * `num_inference_steps`: 推理步数，默认值为 50。
-* `tiled`: 是否启用 VAE 分块推理，默认为 `False`。设置为 `True` 时可显著减少 VAE 编解码阶段的显存占用，会产生少许误差，以及少量推理时间延长。
-* `tile_size`: VAE 编解码阶段的分块大小，默认为 64，仅在 `tiled=True` 时生效。
-* `tile_stride`: VAE 编解码阶段的分块步长，默认为 32，仅在 `tiled=True` 时生效，需保证其数值小于或等于 `tile_size`。
 
 如果显存不足，请开启[显存管理](../Pipeline_Usage/VRAM_management.md)，我们在示例代码中提供了每个模型推荐的低显存配置，详见前文"模型总览"中的表格。
 

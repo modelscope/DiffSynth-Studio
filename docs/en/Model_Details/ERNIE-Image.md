@@ -61,7 +61,6 @@ image.save("output.jpg")
 |Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
 |-|-|-|-|-|-|-|
 |[baidu/ERNIE-Image: T2I](https://www.modelscope.cn/models/baidu/ERNIE-Image)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_inference/Ernie-Image-T2I.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_inference_low_vram/Ernie-Image-T2I.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_training/full/Ernie-Image-T2I.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_training/validate_full/Ernie-Image-T2I.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_training/lora/Ernie-Image-T2I.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_training/validate_lora/Ernie-Image-T2I.py)|
-|[baidu/ERNIE-Image: T2I-PE](https://www.modelscope.cn/models/baidu/ERNIE-Image)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_inference/Ernie-Image-T2I-PE.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ernie_image/model_inference_low_vram/Ernie-Image-T2I-PE.py)|-|-|-|-|
 
 ## Model Inference
 
@@ -72,17 +71,11 @@ The input parameters for `ErnieImagePipeline` inference include:
 * `prompt`: The prompt describing the content to appear in the image.
 * `negative_prompt`: The negative prompt describing what should not appear in the image, default value is `""`.
 * `cfg_scale`: Classifier-free guidance parameter, default value is 4.0.
-* `use_pe`: Whether to enable Prompt Enhancement, which uses the PE model to automatically rewrite the prompt, default value is `False`.
-* `pe_temperature`: The temperature parameter for the PE model when generating revised prompts, default value is 0.6.
-* `pe_top_p`: The top_p parameter for the PE model when generating revised prompts, default value is 0.95.
 * `height`: Image height, must be a multiple of 16, default value is 1024.
 * `width`: Image width, must be a multiple of 16, default value is 1024.
 * `seed`: Random seed. Default is `None`, meaning completely random.
 * `rand_device`: The computing device for generating random Gaussian noise matrices, default is `"cuda"`. When set to `cuda`, different GPUs will produce different results.
 * `num_inference_steps`: Number of inference steps, default value is 50.
-* `tiled`: Whether to enable tiled VAE inference, default is `False`. Setting to `True` can significantly reduce VRAM usage during VAE encoding/decoding, with slight accuracy trade-off and minor inference time increase.
-* `tile_size`: Tile size for VAE encoding/decoding, default is 64, only effective when `tiled=True`.
-* `tile_stride`: Tile stride for VAE encoding/decoding, default is 32, only effective when `tiled=True`, and must be less than or equal to `tile_size`.
 
 If VRAM is insufficient, please enable [VRAM Management](../Pipeline_Usage/VRAM_management.md). We provide recommended low-VRAM configurations for each model in the "Model Overview" table above.
 
