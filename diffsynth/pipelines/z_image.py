@@ -95,7 +95,7 @@ class ZImagePipeline(BasePipeline):
     def __call__(
         self,
         # Prompt
-        prompt: str,
+        prompt: str = "",
         negative_prompt: str = "",
         cfg_scale: float = 1.0,
         # Image
@@ -109,7 +109,7 @@ class ZImagePipeline(BasePipeline):
         width: int = 1024,
         # Randomness
         seed: int = None,
-        rand_device: str = "cpu",
+        rand_device: Union[str, torch.device] = "cpu",
         # Steps
         num_inference_steps: int = 8,
         sigma_shift: float = None,
