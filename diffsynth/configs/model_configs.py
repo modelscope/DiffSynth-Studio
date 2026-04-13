@@ -543,13 +543,13 @@ flux2_series = [
 
 ernie_image_series = [
     {
-        # Example: ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        # Example: ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
         "model_hash": "584c13713849f1af4e03d5f1858b8b7b",
         "model_name": "ernie_image_dit",
         "model_class": "diffsynth.models.ernie_image_dit.ErnieImageDiT",
     },
     {
-        # Example: ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="text_encoder/model.safetensors")
+        # Example: ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="text_encoder/model.safetensors")
         "model_hash": "404ed9f40796a38dd34c1620f1920207",
         "model_name": "ernie_image_text_encoder",
         "model_class": "diffsynth.models.ernie_image_text_encoder.ErnieImageTextEncoder",
