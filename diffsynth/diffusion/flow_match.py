@@ -195,15 +195,25 @@ class FlowMatchScheduler():
             bsmntw_weighing = bsmntw_weighing * (len(self.timesteps) / steps)
             bsmntw_weighing = bsmntw_weighing + bsmntw_weighing[1]
         self.linear_timesteps_weights = bsmntw_weighing
+
+    def set_uniform_training_weight(self):
+        """Assign equal weight to every timestep, suitable for linear schedulers like ERNIE-Image."""
+        steps = 1000
+        num_steps = len(self.timesteps)
+        uniform_weight = torch.full((num_steps,), steps / num_steps, dtype=self.timesteps.dtype)
+        self.linear_timesteps_weights = uniform_weight
         
-    def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0, training=False, **kwargs):
+    def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0, training=False, uniform_training_weights=False, **kwargs):
         self.sigmas, self.timesteps = self.set_timesteps_fn(
             num_inference_steps=num_inference_steps,
             denoising_strength=denoising_strength,
             **kwargs,
         )
         if training:
-            self.set_training_weight()
+            if uniform_training_weights:
+                self.set_uniform_training_weight()
+            else:
+                self.set_training_weight()
             self.training = True
         else:
             self.training = False

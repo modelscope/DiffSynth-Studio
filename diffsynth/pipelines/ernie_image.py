@@ -5,20 +5,17 @@ Architecture: SharedAdaLN DiT + RoPE 3D + Joint Image-Text Attention.
 """
 
 import torch
-import numpy as np
-from PIL import Image
-from typing import Union, List, Optional
+from typing import Union, Optional
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
-from ..core import ModelConfig, gradient_checkpoint_forward
+from ..core import ModelConfig
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..models.ernie_image_text_encoder import ErnieImageTextEncoder
 from ..models.ernie_image_dit import ErnieImageDiT
 from ..models.flux2_vae import Flux2VAE
-
 
 
 class ErnieImagePipeline(BasePipeline):
@@ -82,7 +79,7 @@ class ErnieImagePipeline(BasePipeline):
         # Steps
         num_inference_steps: int = 50,
         # Progress bar
-        progress_bar_cmd = tqdm,
+        progress_bar_cmd=tqdm,
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps=num_inference_steps)
@@ -113,19 +110,13 @@ class ErnieImagePipeline(BasePipeline):
         # Decode
         self.load_models_to_device(['vae'])
         latents = inputs_shared["latents"]
-        # VAE decode handles BN unnormalization and unpatchify internally (Flux2VAE.decode L2105-2110)
         image = self.vae.decode(latents)
         image = self.vae_output_to_image(image)
         self.load_models_to_device([])
         return image
 
 
-# ============================================================
-# PipelineUnit Classes
-# ============================================================
-
 class ErnieImageUnit_ShapeChecker(PipelineUnit):
-    """Size validation for height and width."""
     def __init__(self):
         super().__init__(
             input_params=("height", "width"),
@@ -138,11 +129,6 @@ class ErnieImageUnit_ShapeChecker(PipelineUnit):
 
 
 class ErnieImageUnit_PromptEmbedder(PipelineUnit):
-    """Text condition encoding via text_encoder with padding to uniform length.
-
-    Processes positive/negative prompts separately, encodes via text_encoder,
-    then pads to uniform length.
-    """
     def __init__(self):
         super().__init__(
             seperate_cfg=True,
@@ -208,7 +194,6 @@ class ErnieImageUnit_PromptEmbedder(PipelineUnit):
 
 
 class ErnieImageUnit_NoiseInitializer(PipelineUnit):
-    """Initial noise generation using pipeline generate_noise."""
     def __init__(self):
         super().__init__(
             input_params=("height", "width", "seed", "rand_device"),
@@ -234,16 +219,6 @@ class ErnieImageUnit_NoiseInitializer(PipelineUnit):
 
 
 class ErnieImageUnit_InputImageEmbedder(PipelineUnit):
-    """Input image embedding via VAE encoding.
-
-    Inference mode (training=False):
-    - input_image is None (pure T2I): latents = noise
-    - input_image is not None: VAE encode input image → add_noise → latents (I2I path)
-
-    Training mode (training=True):
-    - input_image provided by get_pipeline_inputs into inputs_shared
-    - Returns latents = noise, input_latents = VAE encoded input image
-    """
     def __init__(self):
         super().__init__(
             input_params=("input_image", "noise"),
@@ -267,6 +242,7 @@ class ErnieImageUnit_InputImageEmbedder(PipelineUnit):
             # In inference mode, add noise to encoded latents
             latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
             return {"latents": latents}
+
 
 def model_fn_ernie_image(
     dit: ErnieImageDiT,

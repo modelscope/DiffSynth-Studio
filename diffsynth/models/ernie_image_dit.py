@@ -49,8 +49,6 @@ class ErnieImagePatchEmbedDynamic(nn.Module):
 
 
 class ErnieImageSingleStreamAttnProcessor:
-    """Attention processor using DiffSynth attention_forward with "b s n d" pattern."""
-
     def __call__(
         self,
         attn: "ErnieImageAttention",
@@ -169,8 +167,6 @@ class ErnieImageFeedForward(nn.Module):
 
 
 class ErnieImageRMSNorm(nn.Module):
-    """RMSNorm matching diffusers behavior: computes in fp32, outputs in input dtype."""
-
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
         self.eps = eps
