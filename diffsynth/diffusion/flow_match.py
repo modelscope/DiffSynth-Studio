@@ -185,6 +185,9 @@ class FlowMatchScheduler():
         return sigmas, timesteps
 
     def set_training_weight(self):
+        if self.set_timesteps_fn == FlowMatchScheduler.set_timesteps_ernie_image:
+            self.set_uniform_training_weight()
+            return
         steps = 1000
         x = self.timesteps
         y = torch.exp(-2 * ((x - steps / 2) / steps) ** 2)
@@ -203,17 +206,14 @@ class FlowMatchScheduler():
         uniform_weight = torch.full((num_steps,), steps / num_steps, dtype=self.timesteps.dtype)
         self.linear_timesteps_weights = uniform_weight
         
-    def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0, training=False, uniform_training_weights=False, **kwargs):
+    def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0, training=False, **kwargs):
         self.sigmas, self.timesteps = self.set_timesteps_fn(
             num_inference_steps=num_inference_steps,
             denoising_strength=denoising_strength,
             **kwargs,
         )
         if training:
-            if uniform_training_weights:
-                self.set_uniform_training_weight()
-            else:
-                self.set_training_weight()
+            self.set_training_weight()
             self.training = True
         else:
             self.training = False

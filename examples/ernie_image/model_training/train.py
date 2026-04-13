@@ -36,7 +36,6 @@ class ErnieImageTrainingModule(DiffusionTrainingModule):
             preset_lora_path, preset_lora_model,
             task=task,
         )
-        self.pipe.scheduler.set_timesteps(1000, training=True, uniform_training_weights=True)
 
         # Other configs
         self.use_gradient_checkpointing = use_gradient_checkpointing
