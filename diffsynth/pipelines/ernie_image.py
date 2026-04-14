@@ -78,12 +78,12 @@ class ErnieImagePipeline(BasePipeline):
         rand_device: str = "cuda",
         # Steps
         num_inference_steps: int = 50,
-        scheduler_shift: float = 3.0,
+        sigma_shift: float = 3.0,
         # Progress bar
         progress_bar_cmd=tqdm,
     ):
         # Scheduler
-        self.scheduler.set_timesteps(num_inference_steps=num_inference_steps, shift=scheduler_shift)
+        self.scheduler.set_timesteps(num_inference_steps=num_inference_steps, shift=sigma_shift)
 
         # Parameters
         inputs_posi = {"prompt": prompt}

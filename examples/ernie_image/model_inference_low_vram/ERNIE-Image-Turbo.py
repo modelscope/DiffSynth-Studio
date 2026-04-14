@@ -17,10 +17,10 @@ pipe = ErnieImagePipeline.from_pretrained(
     device='cuda',
     model_configs=[
         ModelConfig(model_id="PaddlePaddle/ERNIE-Image-Turbo", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
-        ModelConfig(model_id="PaddlePaddle/ERNIE-Image-Turbo", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
-        ModelConfig(model_id="PaddlePaddle/ERNIE-Image-Turbo", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
+        ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
     ],
-    tokenizer_config=ModelConfig(model_id="PaddlePaddle/ERNIE-Image-Turbo", origin_file_pattern="tokenizer/"),
+    tokenizer_config=ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="tokenizer/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
@@ -32,6 +32,6 @@ image = pipe(
     seed=42,
     num_inference_steps=8,
     cfg_scale=1.0,
-    scheduler_shift=4.0,
+    sigma_shift=4.0,
 )
 image.save("output_turbo.jpg")
