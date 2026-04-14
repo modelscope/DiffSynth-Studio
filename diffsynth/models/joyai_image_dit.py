@@ -632,7 +632,7 @@ class Transformer3DModel(nn.Module):
             if num_items > 1:
                 img = torch.cat([img[:, 1:], img[:, :1]], dim=1)
 
-        return (img, txt)
+        return img
 
     def unpatchify(self, x, t, h, w):
         c = self.out_channels

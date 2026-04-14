@@ -267,6 +267,22 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.ConvTranspose1d": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.joyai_image_dit.Transformer3DModel": {
+        "diffsynth.models.joyai_image_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.joyai_image_dit.ModulateWan": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.joyai_image_text_encoder.JoyAIImageTextEncoder": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionModel": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
 }
 
 def QwenImageTextEncoder_Module_Map_Updater():

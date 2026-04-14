@@ -78,7 +78,6 @@ class JoyAIImagePipeline(BasePipeline):
         cfg_scale: float = 5.0,
         input_image: Image.Image = None,
         edit_images: Union[Image.Image, List[Image.Image]] = None,
-        edit_image_basesize: int = 1024,
         denoising_strength: float = 1.0,
         height: int = 1024,
         width: int = 1024,
@@ -95,12 +94,12 @@ class JoyAIImagePipeline(BasePipeline):
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=shift)
 
         # 2. Three dictionaries
-        inputs_posi = {"prompt": prompt, "positive": True}
-        inputs_nega = {"negative_prompt": negative_prompt, "positive": True}
+        inputs_posi = {"prompt": prompt}
+        inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
             "cfg_scale": cfg_scale,
             "input_image": input_image,
-            "edit_images": edit_images, "edit_image_basesize": edit_image_basesize,
+            "edit_images": edit_images,
             "denoising_strength": denoising_strength,
             "height": height,
             "width": width,
@@ -206,39 +205,8 @@ class JoyAIImageUnit_PromptEmbedder(PipelineUnit):
         return prompt_embeds, prompt_embeds_mask
 
     def _encode_text_only(self, pipe, prompt, max_sequence_length):
-        # TODO:
-        template = "<think>system\n \\nDescribe the image by detailing the color, shape, size, texture, quantity, text, spatial relationships of the objects and background:</think>\n{}<think>assistant\n"
-        drop_idx = 34
-
-        txt = template.format(prompt)
-        txt_tokens = pipe.processor.tokenizer(
-            [txt], max_length=max_sequence_length + drop_idx,
-            padding=True, truncation=True, return_tensors="pt"
-        ).to(pipe.device)
-
-        hidden_states = pipe.text_encoder(
-            input_ids=txt_tokens.input_ids,
-            attention_mask=txt_tokens.attention_mask,
-            output_hidden_states=True,
-        ).hidden_states[-1]
-
-        bool_mask = txt_tokens.attention_mask.bool()
-        split_hidden = []
-        for i in range(hidden_states.size(0)):
-            mask = bool_mask[i]
-            valid_states = hidden_states[i][mask]
-            valid_states = valid_states[drop_idx:]
-            split_hidden.append(valid_states)
-        attn_masks = [torch.ones(e.size(0), dtype=torch.long, device=e.device) for e in split_hidden]
-
-        max_seq_len = min(max_sequence_length, max(u.size(0) for u in split_hidden))
-        prompt_embeds = torch.stack([
-            torch.cat([u, u.new_zeros(max_seq_len - u.size(0), u.size(1))]) for u in split_hidden
-        ])
-        encoder_attention_mask = torch.stack([
-            torch.cat([u, u.new_zeros(max_seq_len - u.size(0))]) for u in attn_masks
-        ])
-
+        # TODO: may support for text-only encoding in the future.
+        raise NotImplementedError("Text-only encoding is not implemented yet. Please provide edit_images for now.")
         return prompt_embeds, encoder_attention_mask
 
 
@@ -254,15 +222,14 @@ class JoyAIImageUnit_EditImageEmbedder(PipelineUnit):
         )
 
     def process(self, pipe: "JoyAIImagePipeline", edit_images, tiled, tile_size, tile_stride, edit_image_basesize, height, width):
-        pipe.load_models_to_device(self.onload_model_names)
         if edit_images is None:
             return {}
         if isinstance(edit_images, Image.Image):
             edit_images = [edit_images]
+        pipe.load_models_to_device(self.onload_model_names)
         assert len(edit_images) == 1, "Currently only supports single edit image for reference. Multiple edit images will be supported in the future."
         # Resize edit images to match target dimensions (from ShapeChecker) to ensure ref_latents matches latents
         edit_images = [img.resize((width, height), Image.LANCZOS) for img in edit_images]
-
         images = [pipe.preprocess_image(img).transpose(0, 1) for img in edit_images]
         latents = pipe.vae.encode(images, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         ref_vae = rearrange(latents, "(b n) c 1 h w -> b n c 1 h w", n=(len(edit_images))).to(device=pipe.device, dtype=pipe.torch_dtype)
@@ -287,31 +254,21 @@ class JoyAIImageUnit_NoiseInitializer(PipelineUnit):
 class JoyAIImageUnit_InputImageEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("input_image", "image", "noise", "tiled", "tile_size", "tile_stride"),
+            input_params=("input_image", "noise", "tiled", "tile_size", "tile_stride"),
             output_params=("latents", "input_latents"),
             onload_model_names=("vae",),
         )
 
-    def process(self, pipe: JoyAIImagePipeline, input_image, image, noise, tiled, tile_size, tile_stride):
-        pipe.load_models_to_device(self.onload_model_names)
+    def process(self, pipe: JoyAIImagePipeline, input_image, noise, tiled, tile_size, tile_stride):
         if input_image is None:
-            # Training mode: VAE-encode ground truth image to get input_latents
-            if image is not None:
-                if isinstance(image, list):
-                    image = image[0]
-                # Derive target image size from noise shape to ensure latent compatibility
-                # noise shape: [b, n, c, f, h, w]
-                latent_h = noise.shape[-2]
-                latent_w = noise.shape[-1]
-                img_h = latent_h * pipe.vae.upsampling_factor
-                img_w = latent_w * pipe.vae.upsampling_factor
-                image = image.resize((img_w, img_h), Image.LANCZOS)
-                img_tensor = [pipe.preprocess_image(image).transpose(0, 1)]
-                input_latents = pipe.vae.encode(img_tensor, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
-                input_latents = rearrange(input_latents, "(b n) c f h w -> b n c f h w", n=1)
-                return {"latents": noise, "input_latents": input_latents}
             return {"latents": noise}
-        raise NotImplementedError("Input image to latents is not implemented yet. Currently only supports noise initialization when input_image is None.")
+        pipe.load_models_to_device(self.onload_model_names)
+        if isinstance(input_image, Image.Image):
+            input_image = [input_image]
+        input_image = [pipe.preprocess_image(img).transpose(0, 1) for img in input_image]
+        latents = pipe.vae.encode(input_image, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+        input_latents = rearrange(latents, "(b n) c 1 h w -> b n c 1 h w", n=(len(input_image)))
+        return {"latents": noise, "input_latents": input_latents}
 
 # ============================================================
 # model_fn — DiT forward call
@@ -330,7 +287,7 @@ def model_fn_joyai_image(
 
     img = torch.cat([ref_latents, latents], dim=1) if ref_latents is not None else latents
 
-    img, _ = dit(
+    img = dit(
         hidden_states=img,
         timestep=timestep,
         encoder_hidden_states=prompt_embeds,

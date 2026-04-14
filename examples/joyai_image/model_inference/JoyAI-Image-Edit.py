@@ -1,6 +1,14 @@
 from diffsynth.pipelines.joyai_image import JoyAIImagePipeline, ModelConfig
 import torch
 from PIL import Image
+from modelscope import dataset_snapshot_download
+
+# Download dataset
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
+    local_dir="data/diffsynth_example_dataset",
+    allow_file_pattern="joyai_image/JoyAI-Image-Edit/*"
+)
 
 pipe = JoyAIImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -24,13 +32,15 @@ pipe = JoyAIImagePipeline.from_pretrained(
         origin_file_pattern="JoyAI-Image-Und/",
     ),
 )
-prompt = "Turn the plate blue"
-input_image = Image.open("/mnt/nas1/zhanghong/project26/main_project/opencode/packages/joyai-image/JoyAI-Image/test_images/test_1.jpg").convert("RGB")
+
+# Use first sample from dataset
+dataset_base_path = "data/diffsynth_example_dataset/joyai_image/JoyAI-Image-Edit"
+prompt = "将裙子改为粉色"
+edit_images = Image.open(f"{dataset_base_path}/edit/image1.jpg").convert("RGB")
 
 output = pipe(
     prompt=prompt,
-    edit_images=[input_image],
-    edit_image_basesize=1024,
+    edit_images=[edit_images],
     height=1024,
     width=1024,
     seed=1,

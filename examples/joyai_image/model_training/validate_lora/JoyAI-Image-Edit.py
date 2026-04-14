@@ -1,7 +1,6 @@
 import torch
 from PIL import Image
 from diffsynth.pipelines.joyai_image import JoyAIImagePipeline, ModelConfig
-from diffsynth import load_state_dict
 
 pipe = JoyAIImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -16,10 +15,21 @@ pipe = JoyAIImagePipeline.from_pretrained(
         origin_file_pattern="JoyAI-Image-Und/",
     ),
 )
-state_dict = load_state_dict("models/train/JoyAI-Image-Edit_lora/epoch-4.safetensors")
-pipe.dit.load_state_dict(state_dict, strict=False)
 
-prompt = "Turn the plate blue"
-image = Image.open("data/diffsynth_example_dataset/joyai_image/JoyAI-Image-Edit/edit/image1.jpg").resize((1024, 1024))
-image = pipe(prompt, edit_images=image, seed=0, num_inference_steps=50, cfg_scale=5.0)
-image.save(f"models/train/JoyAI-Image-Edit_lora/val_epoch-4.jpg")
+# Load LoRA weights from dual-stage training output
+pipe.load_lora(pipe.dit, "models/train/JoyAI-Image-Edit-lora/epoch-4.safetensors")
+
+# Use training dataset prompt and edit_images
+prompt = "将裙子改为粉色"
+edit_images = Image.open("data/diffsynth_example_dataset/joyai_image/JoyAI-Image-Edit/edit/image1.jpg").convert("RGB")
+
+image = pipe(
+    prompt=prompt,
+    edit_images=[edit_images],
+    height=1024,
+    width=1024,
+    seed=0,
+    num_inference_steps=30,
+    cfg_scale=5.0,
+)
+image.save("image_lora.jpg")

@@ -45,52 +45,27 @@ class JoyAIImageTrainingModule(DiffusionTrainingModule):
         self.task = task
         self.task_to_loss = {
             "sft:data_process": lambda pipe, *args: args,
-            "direct_distill:data_process": lambda pipe, *args: args,
             "sft": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTLoss(pipe, **inputs_shared, **inputs_posi),
             "sft:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTLoss(pipe, **inputs_shared, **inputs_posi),
-            "direct_distill": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(pipe, **inputs_shared, **inputs_posi),
-            "direct_distill:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(pipe, **inputs_shared, **inputs_posi),
         }
 
     def get_pipeline_inputs(self, data):
         inputs_posi = {"prompt": data["prompt"]}
         inputs_nega = {"negative_prompt": ""}
         inputs_shared = {
+            # Assume you are using this pipeline for inference,
+            # please fill in the input parameters.
+            "input_image": data["image"],
+            "height": data["image"].size[1],
+            "width": data["image"].size[0],
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
             "cfg_scale": 1,
             "rand_device": self.pipe.device,
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
-            "edit_image_auto_resize": True,
-            "edit_image_basesize": 1024,
         }
-        # Handle input image for image editing — maps to edit_images in the pipeline
-        if "input_image" in data and data["input_image"] is not None:
-            if isinstance(data["input_image"], list):
-                inputs_shared.update({
-                    "edit_images": data["input_image"],
-                    "height": data["input_image"][0].size[1],
-                    "width": data["input_image"][0].size[0],
-                })
-            else:
-                inputs_shared.update({
-                    "edit_images": data["input_image"],
-                    "height": data["input_image"].size[1],
-                    "width": data["input_image"].size[0],
-                })
-        else:
-            inputs_shared.update({
-                "edit_images": None,
-                "height": 1024,
-                "width": 1024,
-            })
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
-        # input_image is None for training (latents initialized from noise)
-        inputs_shared["input_image"] = None
-        # Ground truth image for computing input_latents in loss computation
-        if "image" in data and data["image"] is not None:
-            inputs_shared["image"] = data["image"]
         return inputs_shared, inputs_posi, inputs_nega
 
     def forward(self, data, inputs=None):
@@ -103,7 +78,7 @@ class JoyAIImageTrainingModule(DiffusionTrainingModule):
 
 
 def joyai_image_parser():
-    parser = argparse.ArgumentParser(description="Simple example of a training script.")
+    parser = argparse.ArgumentParser(description="JoyAI-Image training.")
     parser = add_general_config(parser)
     parser = add_image_size_config(parser)
     parser.add_argument("--processor_path", type=str, default=None, help="Path to the processor.")
@@ -131,16 +106,6 @@ if __name__ == "__main__":
             height_division_factor=16,
             width_division_factor=16,
         ),
-        special_operator_map={
-            "input_image": RouteByType(operator_map=[
-                (str, ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16)),
-                (list, SequencialProcess(ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16))),
-            ]),
-            "image": RouteByType(operator_map=[
-                (str, ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16)),
-                (list, SequencialProcess(ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16))),
-            ]),
-        }
     )
     model = JoyAIImageTrainingModule(
         model_paths=args.model_paths,
@@ -167,10 +132,7 @@ if __name__ == "__main__":
     )
     launcher_map = {
         "sft:data_process": launch_data_process_task,
-        "direct_distill:data_process": launch_data_process_task,
         "sft": launch_training_task,
         "sft:train": launch_training_task,
-        "direct_distill": launch_training_task,
-        "direct_distill:train": launch_training_task,
     }
     launcher_map[args.task](accelerator, dataset, model, model_logger, args=args)
