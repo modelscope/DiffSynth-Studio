@@ -29,6 +29,7 @@
    Model_Details/Z-Image
    Model_Details/Anima
    Model_Details/LTX-2
+   Model_Details/JoyAI-Image
 
 .. toctree::
    :maxdepth: 2
