@@ -933,7 +933,7 @@ ERNIE-Image 的示例代码位于：[/examples/ernie_image/](/examples/ernie_ima
 
 | 模型 ID | 推理 | 低显存推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
 |-|-|-|-|-|-|-|
-|[PaddlePaddle/ERNIE-Image](https://www.modelscope.cn/models/PaddlePaddle/ERNIE-Image)|[code](/examples/ernie_image/model_inference/Ernie-Image-T2I.py)|[code](/examples/ernie_image/model_inference_low_vram/Ernie-Image-T2I.py)|[code](/examples/ernie_image/model_training/full/Ernie-Image-T2I.sh)|[code](/examples/ernie_image/model_training/validate_full/Ernie-Image-T2I.py)|[code](/examples/ernie_image/model_training/lora/Ernie-Image-T2I.sh)|[code](/examples/ernie_image/model_training/validate_lora/Ernie-Image-T2I.py)|
+|[PaddlePaddle/ERNIE-Image](https://www.modelscope.cn/models/PaddlePaddle/ERNIE-Image)|[code](/examples/ernie_image/model_inference/ERNIE-Image.py)|[code](/examples/ernie_image/model_inference_low_vram/ERNIE-Image.py)|[code](/examples/ernie_image/model_training/full/ERNIE-Image.sh)|[code](/examples/ernie_image/model_training/validate_full/ERNIE-Image.py)|[code](/examples/ernie_image/model_training/lora/ERNIE-Image.sh)|[code](/examples/ernie_image/model_training/validate_lora/ERNIE-Image.py)|
 |[PaddlePaddle/ERNIE-Image-Turbo](https://www.modelscope.cn/models/PaddlePaddle/ERNIE-Image-Turbo)|[code](/examples/ernie_image/model_inference/ERNIE-Image-Turbo.py)|[code](/examples/ernie_image/model_inference_low_vram/ERNIE-Image-Turbo.py)|—|—|—|—|
 
 </details>
