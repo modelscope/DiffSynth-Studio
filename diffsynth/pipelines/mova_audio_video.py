@@ -116,32 +116,32 @@ class MovaAudioVideoPipeline(BasePipeline):
         self,
         # Prompt
         prompt: str,
-        negative_prompt: Optional[str] = "",
+        negative_prompt: str = "",
         # Image-to-video
-        input_image: Optional[Image.Image] = None,
+        input_image: Image.Image = None,
         # First-last-frame-to-video
-        end_image: Optional[Image.Image] = None,
+        end_image: Image.Image = None,
         # Video-to-video
-        denoising_strength: Optional[float] = 1.0,
+        denoising_strength: float = 1.0,
         # Randomness
-        seed: Optional[int] = None,
-        rand_device: Optional[str] = "cpu",
+        seed: int = None,
+        rand_device: str = "cpu",
         # Shape
-        height: Optional[int] = 352,
-        width: Optional[int] = 640,
-        num_frames: Optional[int] = 81,
-        frame_rate: Optional[int] = 24,
+        height: int = 352,
+        width: int = 640,
+        num_frames: int = 81,
+        frame_rate: int = 24,
         # Classifier-free guidance
-        cfg_scale: Optional[float] = 5.0,
+        cfg_scale: float = 5.0,
         # Boundary
-        switch_DiT_boundary: Optional[float] = 0.9,
+        switch_DiT_boundary: float = 0.9,
         # Scheduler
-        num_inference_steps: Optional[int] = 50,
-        sigma_shift: Optional[float] = 5.0,
+        num_inference_steps: int = 50,
+        sigma_shift: float = 5.0,
         # VAE tiling
-        tiled: Optional[bool] = True,
-        tile_size: Optional[tuple[int, int]] = (30, 52),
-        tile_stride: Optional[tuple[int, int]] = (15, 26),
+        tiled: bool = True,
+        tile_size: tuple[int, int] = (30, 52),
+        tile_stride: tuple[int, int] = (15, 26),
         # progress_bar
         progress_bar_cmd=tqdm,
     ):

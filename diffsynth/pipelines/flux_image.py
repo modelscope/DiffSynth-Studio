@@ -200,9 +200,9 @@ class FluxImagePipeline(BasePipeline):
         # Steps
         num_inference_steps: int = 30,
         # local prompts
-        multidiffusion_prompts=(),
-        multidiffusion_masks=(),
-        multidiffusion_scales=(),
+        multidiffusion_prompts:tuple[str] =(),
+        multidiffusion_masks:tuple[str]=(),
+        multidiffusion_scales:tuple[str]=(),
         # Kontext
         kontext_images: Union[list[Image.Image], Image.Image] = None,
         # ControlNet
