@@ -13,6 +13,7 @@
 
    Pipeline_Usage/Setup
    Pipeline_Usage/Model_Inference
+   Pipeline_Usage/Accelerated_Inference
    Pipeline_Usage/VRAM_management
    Pipeline_Usage/Model_Training
    Pipeline_Usage/Environment_Variables
