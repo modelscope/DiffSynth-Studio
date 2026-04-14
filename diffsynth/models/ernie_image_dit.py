@@ -2,7 +2,7 @@
 Ernie-Image DiT for DiffSynth-Studio.
 
 Refactored from diffusers ErnieImageTransformer2DModel to use DiffSynth core modules.
-Default parameters from actual checkpoint config.json (baidu/ERNIE-Image transformer).
+Default parameters from actual checkpoint config.json (PaddlePaddle/ERNIE-Image transformer).
 """
 
 import torch

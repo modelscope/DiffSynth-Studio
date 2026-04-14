@@ -46,7 +46,7 @@ class ErnieImagePipeline(BasePipeline):
         torch_dtype: torch.dtype = torch.bfloat16,
         device: Union[str, torch.device] = get_device_type(),
         model_configs: list[ModelConfig] = [],
-        tokenizer_config: ModelConfig = ModelConfig(model_id="baidu/ERNIE-Image", origin_file_pattern="tokenizer/"),
+        tokenizer_config: ModelConfig = ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="tokenizer/"),
         vram_limit: float = None,
     ):
         pipe = ErnieImagePipeline(device=device, torch_dtype=torch_dtype)
@@ -78,11 +78,12 @@ class ErnieImagePipeline(BasePipeline):
         rand_device: str = "cuda",
         # Steps
         num_inference_steps: int = 50,
+        sigma_shift: float = 3.0,
         # Progress bar
         progress_bar_cmd=tqdm,
     ):
         # Scheduler
-        self.scheduler.set_timesteps(num_inference_steps=num_inference_steps)
+        self.scheduler.set_timesteps(num_inference_steps=num_inference_steps, shift=sigma_shift)
 
         # Parameters
         inputs_posi = {"prompt": prompt}

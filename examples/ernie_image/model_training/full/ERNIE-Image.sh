@@ -6,7 +6,7 @@ accelerate launch --config_file examples/ernie_image/model_training/full/acceler
   --dataset_metadata_path data/diffsynth_example_dataset/ernie_image/Ernie-Image-T2I/metadata.csv \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
-  --model_id_with_origin_paths "baidu/ERNIE-Image:transformer/diffusion_pytorch_model*.safetensors,baidu/ERNIE-Image:text_encoder/model.safetensors,baidu/ERNIE-Image:vae/diffusion_pytorch_model.safetensors" \
+  --model_id_with_origin_paths "PaddlePaddle/ERNIE-Image:transformer/diffusion_pytorch_model*.safetensors,PaddlePaddle/ERNIE-Image:text_encoder/model.safetensors,PaddlePaddle/ERNIE-Image:vae/diffusion_pytorch_model.safetensors" \
   --learning_rate 1e-5 \
   --num_epochs 2 \
   --remove_prefix_in_ckpt "pipe.dit." \
