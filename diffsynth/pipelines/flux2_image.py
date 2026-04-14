@@ -83,7 +83,7 @@ class Flux2ImagePipeline(BasePipeline):
         input_image: Image.Image = None,
         denoising_strength: float = 1.0,
         # Edit
-        edit_image: Union[Image.Image, List[Image.Image]] = None,
+        edit_image: List[Image.Image] = None,
         edit_image_auto_resize: bool = True,
         # Shape
         height: int = 1024,
