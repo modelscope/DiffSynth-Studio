@@ -2,7 +2,7 @@ compute_environment: LOCAL_MACHINE
 debug: false
 deepspeed_config:
   gradient_accumulation_steps: 1
-  offload_optimizer_device: cpu
+  offload_optimizer_device: none
   offload_param_device: none
   zero3_init_flag: true
   zero3_save_16bit_model: true

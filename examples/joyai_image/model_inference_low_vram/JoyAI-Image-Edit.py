@@ -25,26 +25,11 @@ pipe = JoyAIImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(
-            model_id="jd-opensource/JoyAI-Image-Edit",
-            origin_file_pattern="transformer/transformer.pth",
-            **vram_config,
-        ),
-        ModelConfig(
-            model_id="jd-opensource/JoyAI-Image-Edit",
-            origin_file_pattern="JoyAI-Image-Und/model*.safetensors",
-            **vram_config,
-        ),
-        ModelConfig(
-            model_id="jd-opensource/JoyAI-Image-Edit",
-            origin_file_pattern="vae/Wan2.1_VAE.pth",
-            **vram_config,
-        ),
+        ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="transformer/transformer.pth", **vram_config),
+        ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/model*.safetensors", **vram_config),
+        ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="vae/Wan2.1_VAE.pth", **vram_config),
     ],
-    processor_config=ModelConfig(
-        model_id="jd-opensource/JoyAI-Image-Edit",
-        origin_file_pattern="JoyAI-Image-Und/",
-    ),
+    processor_config=ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 

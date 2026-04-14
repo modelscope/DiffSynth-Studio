@@ -11,10 +11,7 @@ pipe = JoyAIImagePipeline.from_pretrained(
         ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/model*.safetensors"),
         ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="vae/Wan2.1_VAE.pth"),
     ],
-    processor_config=ModelConfig(
-        model_id="jd-opensource/JoyAI-Image-Edit",
-        origin_file_pattern="JoyAI-Image-Und/",
-    ),
+    processor_config=ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/"),
 )
 
 # Load full training weights

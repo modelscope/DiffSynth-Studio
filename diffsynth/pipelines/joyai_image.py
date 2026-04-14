@@ -1,9 +1,8 @@
 import torch
 from PIL import Image
-from typing import Union, List
+from typing import Union, List, Optional
 from tqdm import tqdm
 from einops import rearrange
-from typing import Optional, Union
 
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
@@ -11,12 +10,8 @@ from ..core import ModelConfig
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..models.joyai_image_dit import Transformer3DModel
 from ..models.joyai_image_text_encoder import JoyAIImageTextEncoder
-from ..models.joyai_image_common import _dynamic_resize_from_bucket
 from ..models.wan_video_vae import WanVideoVAE
 
-# ============================================================
-# JoyAIImagePipeline
-# ============================================================
 class JoyAIImagePipeline(BasePipeline):
     """
     Pipeline for JoyAI-Image model.
@@ -49,7 +44,9 @@ class JoyAIImagePipeline(BasePipeline):
         torch_dtype: torch.dtype = torch.bfloat16,
         device: Union[str, torch.device] = get_device_type(),
         model_configs: list[ModelConfig] = [],
+        # Processor
         processor_config: ModelConfig = None,
+        # Optional
         vram_limit: float = None,
     ):
         pipe = JoyAIImagePipeline(device=device, torch_dtype=torch_dtype)
@@ -67,54 +64,56 @@ class JoyAIImagePipeline(BasePipeline):
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
 
-    # ============================================================
-    # __call__ — Orchestration only
-    # ============================================================
     @torch.no_grad()
     def __call__(
         self,
+        # Prompt
         prompt: str,
         negative_prompt: str = "",
         cfg_scale: float = 5.0,
+        # Image
         input_image: Image.Image = None,
         edit_images: Union[Image.Image, List[Image.Image]] = None,
         denoising_strength: float = 1.0,
+        # Shape
         height: int = 1024,
         width: int = 1024,
+        # Randomness
         seed: int = None,
+        # Steps
         max_sequence_length: int = 4096,
         num_inference_steps: int = 30,
+        # Tiling
         tiled: Optional[bool] = False,
         tile_size: Optional[tuple[int, int]] = (30, 52),
         tile_stride: Optional[tuple[int, int]] = (15, 26),
+        # Scheduler
         shift: Optional[float] = 4.0,
+        # Progress bar
         progress_bar_cmd=tqdm,
     ):
-        # 1. Scheduler
+        # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=shift)
 
-        # 2. Three dictionaries
+        # Parameters
         inputs_posi = {"prompt": prompt}
         inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
             "cfg_scale": cfg_scale,
-            "input_image": input_image,
-            "edit_images": edit_images,
+            "input_image": input_image, "edit_images": edit_images,
             "denoising_strength": denoising_strength,
-            "height": height,
-            "width": width,
-            "seed": seed,
-            "max_sequence_length": max_sequence_length,
+            "height": height, "width": width,
+            "seed": seed, "max_sequence_length": max_sequence_length,
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
         }
 
-        # 3. Unit chain
+        # Unit chain
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(
                 unit, self, inputs_shared, inputs_posi, inputs_nega
             )
 
-        # 4. Denoise loop
+        # Denoise
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
@@ -125,8 +124,8 @@ class JoyAIImagePipeline(BasePipeline):
                 **models, timestep=timestep, progress_id=progress_id
             )
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
-        
-        # 5. VAE decode
+
+        # Decode
         self.load_models_to_device(['vae'])
         latents = rearrange(inputs_shared["latents"], "b n c f h w -> (b n) c f h w")
         image = self.vae.decode(latents, device=self.device)[0]
@@ -135,9 +134,6 @@ class JoyAIImagePipeline(BasePipeline):
         return image
 
 
-# ============================================================
-# PipelineUnits
-# ============================================================
 class JoyAIImageUnit_ShapeChecker(PipelineUnit):
     """Validates height/width divisible by 16."""
     def __init__(self):
@@ -270,9 +266,6 @@ class JoyAIImageUnit_InputImageEmbedder(PipelineUnit):
         input_latents = rearrange(latents, "(b n) c 1 h w -> b n c 1 h w", n=(len(input_image)))
         return {"latents": noise, "input_latents": input_latents}
 
-# ============================================================
-# model_fn — DiT forward call
-# ============================================================
 def model_fn_joyai_image(
     dit,
     latents,
