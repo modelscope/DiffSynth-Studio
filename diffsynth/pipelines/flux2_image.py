@@ -75,7 +75,7 @@ class Flux2ImagePipeline(BasePipeline):
     def __call__(
         self,
         # Prompt
-        prompt: str,
+        prompt: str = "",
         negative_prompt: str = "",
         cfg_scale: float = 1.0,
         embedded_guidance: float = 4.0,

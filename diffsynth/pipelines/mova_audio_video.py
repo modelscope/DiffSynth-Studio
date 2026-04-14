@@ -115,7 +115,7 @@ class MovaAudioVideoPipeline(BasePipeline):
     def __call__(
         self,
         # Prompt
-        prompt: str,
+        prompt: str = "",
         negative_prompt: str = "",
         # Image-to-video
         input_image: Image.Image = None,

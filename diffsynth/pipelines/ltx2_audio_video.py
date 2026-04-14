@@ -169,7 +169,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
     def __call__(
         self,
         # Prompt
-        prompt: str,
+        prompt: str = "",
         negative_prompt: str = "",
         denoising_strength: float = 1.0,
         # Image-to-video
