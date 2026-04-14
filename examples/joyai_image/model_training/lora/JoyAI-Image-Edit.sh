@@ -16,8 +16,8 @@ accelerate launch examples/joyai_image/model_training/train.py \
     --lora_rank 32 \
     --use_gradient_checkpointing \
     --find_unused_parameters \
-    --data_file_keys "image,edit_images" \
-    --extra_inputs "edit_images" \
+    --data_file_keys "image,edit_image" \
+    --extra_inputs "edit_image" \
     --task "sft:data_process"
 
 accelerate launch examples/joyai_image/model_training/train.py \
@@ -34,6 +34,6 @@ accelerate launch examples/joyai_image/model_training/train.py \
     --lora_rank 32 \
     --use_gradient_checkpointing \
     --find_unused_parameters \
-    --data_file_keys "image,edit_images" \
-    --extra_inputs "edit_images" \
+    --data_file_keys "image,edit_image" \
+    --extra_inputs "edit_image" \
     --task "sft:train"

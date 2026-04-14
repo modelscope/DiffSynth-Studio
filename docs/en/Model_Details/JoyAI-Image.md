@@ -14,8 +14,6 @@ pip install -e .
 
 For more information on installation, please refer to [Setup Dependencies](../Pipeline_Usage/Setup.md).
 
-> **Note**: JoyAI-Image requires a specific version of `transformers`, please install `transformers>=4.57.0,<4.58.0`.
-
 ## Quick Start
 
 Running the following code will load the [jd-opensource/JoyAI-Image-Edit](https://modelscope.cn/models/jd-opensource/JoyAI-Image-Edit) model for inference. VRAM management is enabled, the framework automatically controls parameter loading based on available VRAM, requiring a minimum of 4GB VRAM.
@@ -59,11 +57,11 @@ pipe = JoyAIImagePipeline.from_pretrained(
 # Use first sample from dataset
 dataset_base_path = "data/diffsynth_example_dataset/joyai_image/JoyAI-Image-Edit"
 prompt = "将裙子改为粉色"
-edit_images = Image.open(f"{dataset_base_path}/edit/image1.jpg").convert("RGB")
+edit_image = Image.open(f"{dataset_base_path}/edit/image1.jpg").convert("RGB")
 
 output = pipe(
     prompt=prompt,
-    edit_images=[edit_images],
+    edit_image=edit_image,
     height=1024,
     width=1024,
     seed=0,
@@ -89,8 +87,7 @@ The input parameters for `JoyAIImagePipeline` inference include:
 * `prompt`: Text prompt describing the desired image editing effect.
 * `negative_prompt`: Negative prompt specifying what should not appear in the result, defaults to empty string.
 * `cfg_scale`: Classifier-free guidance scale factor, defaults to 5.0. Higher values make the output more closely follow the prompt.
-* `input_image`: Input image (img2img mode), optional.
-* `edit_images`: Image(s) to be edited, can be a single image or a list of images.
+* `edit_image`: Image to be edited.
 * `denoising_strength`: Denoising strength controlling how much the input image is repainted, defaults to 1.0.
 * `height`: Height of the output image, defaults to 1024. Must be divisible by 16.
 * `width`: Width of the output image, defaults to 1024. Must be divisible by 16.

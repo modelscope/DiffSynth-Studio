@@ -708,11 +708,11 @@ pipe = JoyAIImagePipeline.from_pretrained(
 # Use first sample from dataset
 dataset_base_path = "data/diffsynth_example_dataset/joyai_image/JoyAI-Image-Edit"
 prompt = "将裙子改为粉色"
-edit_images = Image.open(f"{dataset_base_path}/edit/image1.jpg").convert("RGB")
+edit_image = Image.open(f"{dataset_base_path}/edit/image1.jpg").convert("RGB")
 
 output = pipe(
     prompt=prompt,
-    edit_images=[edit_images],
+    edit_image=edit_image,
     height=1024,
     width=1024,
     seed=0,

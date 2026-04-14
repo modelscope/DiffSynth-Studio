@@ -14,17 +14,15 @@ pipe = JoyAIImagePipeline.from_pretrained(
     processor_config=ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/"),
 )
 
-# Load full training weights
 state_dict = load_state_dict("models/train/JoyAI-Image-Edit_full/epoch-1.safetensors")
 pipe.dit.load_state_dict(state_dict)
 
-# Use training dataset prompt and edit_images
 prompt = "将裙子改为粉色"
-edit_images = Image.open("data/diffsynth_example_dataset/joyai_image/JoyAI-Image-Edit/edit/image1.jpg").convert("RGB")
+edit_image = Image.open("data/diffsynth_example_dataset/joyai_image/JoyAI-Image-Edit/edit/image1.jpg").convert("RGB")
 
 image = pipe(
     prompt=prompt,
-    edit_images=[edit_images],
+    edit_image=edit_image,
     height=1024,
     width=1024,
     seed=0,

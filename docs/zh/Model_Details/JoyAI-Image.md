@@ -14,8 +14,6 @@ pip install -e .
 
 更多关于安装的信息，请参考[安装依赖](../Pipeline_Usage/Setup.md)。
 
-> **注意**：JoyAI-Image 需要特定版本的 `transformers`，请安装 `transformers>=4.57.0,<4.58.0`。
-
 ## 快速开始
 
 运行以下代码可以快速加载 [jd-opensource/JoyAI-Image-Edit](https://modelscope.cn/models/jd-opensource/JoyAI-Image-Edit) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 4G 显存即可运行。
@@ -59,11 +57,11 @@ pipe = JoyAIImagePipeline.from_pretrained(
 # Use first sample from dataset
 dataset_base_path = "data/diffsynth_example_dataset/joyai_image/JoyAI-Image-Edit"
 prompt = "将裙子改为粉色"
-edit_images = Image.open(f"{dataset_base_path}/edit/image1.jpg").convert("RGB")
+edit_image = Image.open(f"{dataset_base_path}/edit/image1.jpg").convert("RGB")
 
 output = pipe(
     prompt=prompt,
-    edit_images=[edit_images],
+    edit_image=edit_image,
     height=1024,
     width=1024,
     seed=0,
@@ -89,8 +87,7 @@ output.save("output_joyai_edit_low_vram.png")
 * `prompt`: 文本提示词，用于描述期望的图像编辑效果。
 * `negative_prompt`: 负向提示词，指定不希望出现在结果中的内容，默认为空字符串。
 * `cfg_scale`: 分类器自由引导的缩放系数，默认为 5.0。值越大，生成结果越贴近 prompt 描述。
-* `input_image`: 输入图像（img2img 模式），可选参数。
-* `edit_images`: 待编辑的图像，可以是单张或多张图片。
+* `edit_image`: 待编辑的单张图像。
 * `denoising_strength`: 降噪强度，控制输入图像被重绘的程度，默认为 1.0。
 * `height`: 输出图像的高度，默认为 1024。需能被 16 整除。
 * `width`: 输出图像的宽度，默认为 1024。需能被 16 整除。

@@ -13,8 +13,8 @@ accelerate launch examples/joyai_image/model_training/train.py \
     --output_path "./models/train/JoyAI-Image-Edit-full-cache" \
     --use_gradient_checkpointing \
     --find_unused_parameters \
-    --data_file_keys "image,edit_images" \
-    --extra_inputs "edit_images" \
+    --data_file_keys "image,edit_image" \
+    --extra_inputs "edit_image" \
     --task "sft:data_process"
 
 accelerate launch --config_file examples/joyai_image/model_training/full/accelerate_config_zero3.yaml \
@@ -30,6 +30,6 @@ accelerate launch --config_file examples/joyai_image/model_training/full/acceler
     --trainable_models "dit" \
     --use_gradient_checkpointing \
     --find_unused_parameters \
-    --data_file_keys "image,edit_images" \
-    --extra_inputs "edit_images" \
+    --data_file_keys "image,edit_image" \
+    --extra_inputs "edit_image" \
     --task "sft:train"

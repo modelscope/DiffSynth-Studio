@@ -905,9 +905,7 @@ joyai_image_series = [
         # Example: ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="transformer/transformer.pth")
         "model_hash": "56592ddfd7d0249d3aa527d24161a863",
         "model_name": "joyai_image_dit",
-        "model_class": "diffsynth.models.joyai_image_dit.Transformer3DModel",
-        "extra_kwargs": {"patch_size": [1, 2, 2], "in_channels": 16, "out_channels": 16, "hidden_size": 4096, "heads_num": 32, "text_states_dim": 4096, "mlp_width_ratio": 4.0, "mm_double_blocks_depth": 40, "rope_dim_list": [16, 56, 56], "rope_type": "rope", "dit_modulation_type": "wanx", "theta": 10000},
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.joyai_image_dit.JoyAIImageDiTStateDictConverter",
+        "model_class": "diffsynth.models.joyai_image_dit.JoyAIImageDiT",
     },
     {
         # Example: ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/model-*.safetensors")

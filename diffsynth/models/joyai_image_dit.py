@@ -1,5 +1,5 @@
 import math
-from typing import List, Optional, Tuple, Union, Dict
+from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -108,6 +108,18 @@ class PixArtAlphaTextProjection(nn.Module):
         return hidden_states
 
 
+class GELU(nn.Module):
+    def __init__(self, dim_in: int, dim_out: int, approximate: str = "none", bias: bool = True):
+        super().__init__()
+        self.proj = nn.Linear(dim_in, dim_out, bias=bias)
+        self.approximate = approximate
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        hidden_states = self.proj(hidden_states)
+        hidden_states = F.gelu(hidden_states, approximate=self.approximate)
+        return hidden_states
+
+
 class FeedForward(nn.Module):
     def __init__(
         self,
@@ -124,45 +136,26 @@ class FeedForward(nn.Module):
         if inner_dim is None:
             inner_dim = int(dim * mult)
         dim_out = dim_out if dim_out is not None else dim
-        if activation_fn == "gelu-approximate":
-            self.proj = nn.Linear(dim, inner_dim, bias=bias)
-            self.act = lambda x: F.gelu(x, approximate="tanh")
-        elif activation_fn == "gelu":
-            self.proj = nn.Linear(dim, inner_dim, bias=bias)
-            self.act = F.gelu
+
+        # Build activation + projection matching diffusers pattern
+        if activation_fn == "gelu":
+            act_fn = GELU(dim, inner_dim, bias=bias)
+        elif activation_fn == "gelu-approximate":
+            act_fn = GELU(dim, inner_dim, approximate="tanh", bias=bias)
         else:
-            self.proj = nn.Linear(dim, inner_dim, bias=bias)
-            self.act = F.gelu
-        self.drop = nn.Dropout(dropout)
-        self.out_proj = nn.Linear(inner_dim, dim_out, bias=bias)
+            act_fn = GELU(dim, inner_dim, bias=bias)
+
+        self.net = nn.ModuleList([])
+        self.net.append(act_fn)
+        self.net.append(nn.Dropout(dropout))
+        self.net.append(nn.Linear(inner_dim, dim_out, bias=bias))
         if final_dropout:
-            self.final_drop = nn.Dropout(dropout)
-        else:
-            self.final_drop = None
+            self.net.append(nn.Dropout(dropout))
 
     def forward(self, hidden_states: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        hidden_states = self.proj(hidden_states)
-        hidden_states = self.act(hidden_states)
-        hidden_states = self.drop(hidden_states)
-        hidden_states = self.out_proj(hidden_states)
-        if self.final_drop is not None:
-            hidden_states = self.final_drop(hidden_states)
+        for module in self.net:
+            hidden_states = module(hidden_states)
         return hidden_states
-
-
-
-def get_cu_seqlens(text_mask, img_len):
-    batch_size = text_mask.shape[0]
-    text_len = text_mask.sum(dim=1)
-    max_len = text_mask.shape[1] + img_len
-    cu_seqlens = torch.zeros([2 * batch_size + 1], dtype=torch.int32, device="cuda")
-    for i in range(batch_size):
-        s = text_len[i] + img_len
-        s1 = i * max_len + s
-        s2 = (i + 1) * max_len
-        cu_seqlens[2 * i + 1] = s1
-        cu_seqlens[2 * i + 2] = s2
-    return cu_seqlens
 
 
 def _to_tuple(x, dim=2):
@@ -495,14 +488,14 @@ class WanTimeTextImageEmbedding(nn.Module):
         return temb, timestep_proj, encoder_hidden_states
 
 
-class Transformer3DModel(nn.Module):
+class JoyAIImageDiT(nn.Module):
     _supports_gradient_checkpointing = True
 
     def __init__(
         self,
         patch_size: list = [1, 2, 2],
         in_channels: int = 16,
-        out_channels: int = None,
+        out_channels: int = 16,
         hidden_size: int = 4096,
         heads_num: int = 32,
         text_states_dim: int = 4096,
@@ -513,7 +506,7 @@ class Transformer3DModel(nn.Module):
         dtype: Optional[torch.dtype] = None,
         device: Optional[torch.device] = None,
         dit_modulation_type: str = "wanx",
-        theta: int = 256,
+        theta: int = 10000,
     ):
         super().__init__()
         self.out_channels = out_channels or in_channels

@@ -1,6 +1,6 @@
 import torch
 from PIL import Image
-from typing import Union, List, Optional
+from typing import Union, Optional
 from tqdm import tqdm
 from einops import rearrange
 
@@ -8,14 +8,11 @@ from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
 from ..core import ModelConfig
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
-from ..models.joyai_image_dit import Transformer3DModel
+from ..models.joyai_image_dit import JoyAIImageDiT
 from ..models.joyai_image_text_encoder import JoyAIImageTextEncoder
 from ..models.wan_video_vae import WanVideoVAE
 
 class JoyAIImagePipeline(BasePipeline):
-    """
-    Pipeline for JoyAI-Image model.
-    """
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
@@ -24,7 +21,7 @@ class JoyAIImagePipeline(BasePipeline):
         )
         self.scheduler = FlowMatchScheduler("Wan")
         self.text_encoder: JoyAIImageTextEncoder = None
-        self.dit: Transformer3DModel = None
+        self.dit: JoyAIImageDiT = None
         self.vae: WanVideoVAE = None
         self.processor = None
         self.in_iteration_models = ("dit",)
@@ -72,8 +69,7 @@ class JoyAIImagePipeline(BasePipeline):
         negative_prompt: str = "",
         cfg_scale: float = 5.0,
         # Image
-        input_image: Image.Image = None,
-        edit_images: Union[Image.Image, List[Image.Image]] = None,
+        edit_image: Image.Image = None,
         denoising_strength: float = 1.0,
         # Shape
         height: int = 1024,
@@ -100,7 +96,7 @@ class JoyAIImagePipeline(BasePipeline):
         inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
             "cfg_scale": cfg_scale,
-            "input_image": input_image, "edit_images": edit_images,
+            "edit_image": edit_image,
             "denoising_strength": denoising_strength,
             "height": height, "width": width,
             "seed": seed, "max_sequence_length": max_sequence_length,
@@ -135,7 +131,6 @@ class JoyAIImagePipeline(BasePipeline):
 
 
 class JoyAIImageUnit_ShapeChecker(PipelineUnit):
-    """Validates height/width divisible by 16."""
     def __init__(self):
         super().__init__(
             input_params=("height", "width"),
@@ -162,24 +157,24 @@ class JoyAIImageUnit_PromptEmbedder(PipelineUnit):
             seperate_cfg=True,
             input_params_posi={"prompt": "prompt", "positive": "positive"},
             input_params_nega={"prompt": "negative_prompt", "positive": "positive"},
-            input_params=("edit_images", "max_sequence_length"),
+            input_params=("edit_image", "max_sequence_length"),
             output_params=("prompt_embeds", "prompt_embeds_mask"),
             onload_model_names=("joyai_image_text_encoder",),
         )
 
-    def process(self, pipe: "JoyAIImagePipeline", prompt, positive, edit_images, max_sequence_length):
+    def process(self, pipe: "JoyAIImagePipeline", prompt, positive, edit_image, max_sequence_length):
         pipe.load_models_to_device(self.onload_model_names)
 
-        has_image = edit_images is not None
+        has_image = edit_image is not None
 
         if has_image:
-            prompt_embeds, prompt_embeds_mask = self._encode_with_image(pipe, prompt, edit_images, max_sequence_length)
+            prompt_embeds, prompt_embeds_mask = self._encode_with_image(pipe, prompt, edit_image, max_sequence_length)
         else:
             prompt_embeds, prompt_embeds_mask = self._encode_text_only(pipe, prompt, max_sequence_length)
 
         return {"prompt_embeds": prompt_embeds, "prompt_embeds_mask": prompt_embeds_mask}
 
-    def _encode_with_image(self, pipe, prompt, edit_images, max_sequence_length):
+    def _encode_with_image(self, pipe, prompt, edit_image, max_sequence_length):
         template = self.prompt_template_encode['multiple_images']
         drop_idx = self.prompt_template_encode_start_idx['multiple_images']
 
@@ -187,9 +182,8 @@ class JoyAIImageUnit_PromptEmbedder(PipelineUnit):
         prompt = f"<|im_start|>user\n{image_tokens}{prompt}<|im_end|>\n"
         prompt = prompt.replace('<image>\n', '<|vision_start|><|image_pad|><|vision_end|>')
         prompt = template.format(prompt)
-        inputs = pipe.processor(text=[prompt], images=edit_images, padding=True, return_tensors="pt").to(pipe.device)
-        encoder_hidden_states = pipe.text_encoder(**inputs, output_hidden_states=True)
-        last_hidden_states = encoder_hidden_states.hidden_states[-1]
+        inputs = pipe.processor(text=[prompt], images=[edit_image], padding=True, return_tensors="pt").to(pipe.device)
+        last_hidden_states = pipe.text_encoder(**inputs)
 
         prompt_embeds = last_hidden_states[:, drop_idx:]
         prompt_embeds_mask = inputs['attention_mask'][:, drop_idx:]
@@ -202,35 +196,29 @@ class JoyAIImageUnit_PromptEmbedder(PipelineUnit):
 
     def _encode_text_only(self, pipe, prompt, max_sequence_length):
         # TODO: may support for text-only encoding in the future.
-        raise NotImplementedError("Text-only encoding is not implemented yet. Please provide edit_images for now.")
+        raise NotImplementedError("Text-only encoding is not implemented yet. Please provide edit_image for now.")
         return prompt_embeds, encoder_attention_mask
 
 
 class JoyAIImageUnit_EditImageEmbedder(PipelineUnit):
-    """
-    Encodes edit images into reference latents using VAE.
-    """
     def __init__(self):
         super().__init__(
-            input_params=("edit_images", "tiled", "tile_size", "tile_stride", "edit_image_basesize", "height", "width"),
+            input_params=("edit_image", "tiled", "tile_size", "tile_stride", "height", "width"),
             output_params=("ref_latents", "num_items", "is_multi_item"),
             onload_model_names=("wan_video_vae",),
         )
 
-    def process(self, pipe: "JoyAIImagePipeline", edit_images, tiled, tile_size, tile_stride, edit_image_basesize, height, width):
-        if edit_images is None:
+    def process(self, pipe: "JoyAIImagePipeline", edit_image, tiled, tile_size, tile_stride, height, width):
+        if edit_image is None:
             return {}
-        if isinstance(edit_images, Image.Image):
-            edit_images = [edit_images]
         pipe.load_models_to_device(self.onload_model_names)
-        assert len(edit_images) == 1, "Currently only supports single edit image for reference. Multiple edit images will be supported in the future."
-        # Resize edit images to match target dimensions (from ShapeChecker) to ensure ref_latents matches latents
-        edit_images = [img.resize((width, height), Image.LANCZOS) for img in edit_images]
-        images = [pipe.preprocess_image(img).transpose(0, 1) for img in edit_images]
+        # Resize edit image to match target dimensions (from ShapeChecker) to ensure ref_latents matches latents
+        edit_image = edit_image.resize((width, height), Image.LANCZOS)
+        images = [pipe.preprocess_image(edit_image).transpose(0, 1)]
         latents = pipe.vae.encode(images, device=pipe.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
-        ref_vae = rearrange(latents, "(b n) c 1 h w -> b n c 1 h w", n=(len(edit_images))).to(device=pipe.device, dtype=pipe.torch_dtype)
+        ref_vae = rearrange(latents, "(b n) c 1 h w -> b n c 1 h w", n=1).to(device=pipe.device, dtype=pipe.torch_dtype)
 
-        return {"ref_latents": ref_vae, "edit_images": edit_images}
+        return {"ref_latents": ref_vae, "edit_image": edit_image}
 
 
 class JoyAIImageUnit_NoiseInitializer(PipelineUnit):
@@ -239,6 +227,7 @@ class JoyAIImageUnit_NoiseInitializer(PipelineUnit):
             input_params=("seed", "height", "width", "rand_device"),
             output_params=("noise"),
         )
+
     def process(self, pipe: "JoyAIImagePipeline", seed, height, width, rand_device):
         latent_h = height // pipe.vae.upsampling_factor
         latent_w = width // pipe.vae.upsampling_factor
