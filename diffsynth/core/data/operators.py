@@ -1,4 +1,4 @@
-import math
+import math, warnings
 import torch, torchvision, imageio, os
 import imageio.v3 as iio
 from PIL import Image
@@ -260,15 +260,19 @@ class LoadAudioWithTorchaudio(DataProcessingOperator, FrameSamplerByRateMixin):
         FrameSamplerByRateMixin.__init__(self, num_frames, time_division_factor, time_division_remainder, frame_rate, fix_frame_rate)
 
     def __call__(self, data: str):
-        reader = self.get_reader(data)
-        num_frames = self.get_num_frames(reader)
-        duration = num_frames / self.frame_rate
-        waveform, sample_rate = torchaudio.load(data)
-        target_samples = int(duration * sample_rate)
-        current_samples = waveform.shape[-1]
-        if current_samples > target_samples:
-            waveform = waveform[..., :target_samples]
-        elif current_samples < target_samples:
-            padding = target_samples - current_samples
-            waveform = torch.nn.functional.pad(waveform, (0, padding))
-        return waveform, sample_rate
+        try:
+            reader = self.get_reader(data)
+            num_frames = self.get_num_frames(reader)
+            duration = num_frames / self.frame_rate
+            waveform, sample_rate = torchaudio.load(data)
+            target_samples = int(duration * sample_rate)
+            current_samples = waveform.shape[-1]
+            if current_samples > target_samples:
+                waveform = waveform[..., :target_samples]
+            elif current_samples < target_samples:
+                padding = target_samples - current_samples
+                waveform = torch.nn.functional.pad(waveform, (0, padding))
+            return waveform, sample_rate
+        except:
+            warnings.warn(f"Cannot load audio in {data}. The audio will be `None`.")
+            return None
