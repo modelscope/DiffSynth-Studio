@@ -900,4 +900,20 @@ mova_series = [
         "model_class": "diffsynth.models.mova_dual_tower_bridge.DualTowerConditionalBridge",
     },
 ]
-MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series + z_image_series + ltx2_series + anima_series + mova_series
+joyai_image_series = [
+    {
+        # Example: ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="transformer/transformer.pth")
+        "model_hash": "56592ddfd7d0249d3aa527d24161a863",
+        "model_name": "joyai_image_dit",
+        "model_class": "diffsynth.models.joyai_image_dit.JoyAIImageDiT",
+    },
+    {
+        # Example: ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/model-*.safetensors")
+        "model_hash": "2d11bf14bba8b4e87477c8199a895403",
+        "model_name": "joyai_image_text_encoder",
+        "model_class": "diffsynth.models.joyai_image_text_encoder.JoyAIImageTextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.joyai_image_text_encoder.JoyAIImageTextEncoderStateDictConverter",
+    },
+]
+
+MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series
