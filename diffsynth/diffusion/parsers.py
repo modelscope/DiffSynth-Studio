@@ -62,6 +62,7 @@ def add_gradient_config(parser: argparse.ArgumentParser):
 
 def add_template_model_config(parser: argparse.ArgumentParser):
     parser.add_argument("--template_model_id_or_path", type=str, default=None, help="Model ID of path of template models.")
+    parser.add_argument("--enable_lora_hot_loading", default=False, action="store_true", help="Whether to enable LoRA hot-loading. Only available for image-to-lora models.")
     return parser
 
 def add_general_config(parser: argparse.ArgumentParser):

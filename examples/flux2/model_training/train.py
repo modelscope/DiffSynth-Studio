@@ -19,6 +19,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         fp8_models=None,
         offload_models=None,
         template_model_id_or_path=None,
+        enable_lora_hot_loading=False,
         device="cpu",
         task="sft",
     ):
@@ -29,6 +30,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         self.pipe = Flux2ImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config)
         self.pipe = self.load_training_template_model(self.pipe, template_model_id_or_path, args.use_gradient_checkpointing, args.use_gradient_checkpointing_offload)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
+        if enable_lora_hot_loading: self.pipe.dit = self.pipe.enable_lora_hot_loading(self.pipe.dit)
 
         # Training mode
         self.switch_pipe_to_training_mode(
@@ -129,6 +131,7 @@ if __name__ == "__main__":
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
         template_model_id_or_path=args.template_model_id_or_path,
+        enable_lora_hot_loading=args.enable_lora_hot_loading,
         task=args.task,
         device="cpu" if args.initialize_model_on_cpu else accelerator.device,
     )
