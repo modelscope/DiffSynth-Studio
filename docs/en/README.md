@@ -18,6 +18,9 @@ graph LR;
     I_want_to_explore_new_technologies_based_on_this_project-->sec5[Section 5: API Reference];
     I_want_to_explore_new_technologies_based_on_this_project-->sec6[Section 6: Academic Guide];
     I_encountered_a_problem-->sec7[Section 7: Frequently Asked Questions];
+    I_want_to_explore_new_technologies_based_on_this_project-->sec6[Section 6: Diffusion Templates]
+    I_want_to_explore_new_technologies_based_on_this_project-->sec8[Section 8: Academic Guide];
+    I_encountered_a_problem-->sec9[Section 9: Frequently Asked Questions];
 ```
 
 </details>
@@ -75,7 +78,15 @@ This section introduces the independent core module `diffsynth.core` in `DiffSyn
 * [`diffsynth.core.loader`](./API_Reference/core/loader.md): Model download and loading
 * [`diffsynth.core.vram`](./API_Reference/core/vram.md): VRAM management
 
-## Section 6: Academic Guide
+## Section 6: Diffusion Templates
+
+This section introduces the controllable generation plugin framework for Diffusion models, explaining the framework's operation mechanism and how to use Template models for inference and training.
+
+* [Understanding Diffusion Templates](./Diffusion_Templates/Understanding_Diffusion_Templates.md)
+* [Template Model Inference](./Diffusion_Templates/Template_Model_Inference.md)
+* [Template Model Training](./Diffusion_Templates/Template_Model_Training.md)
+
+## Section 7: Academic Guide
 
 This section introduces how to use `DiffSynth-Studio` to train new models, helping researchers explore new model technologies.
 
@@ -84,7 +95,7 @@ This section introduces how to use `DiffSynth-Studio` to train new models, helpi
 * Designing controllable generation models 【coming soon】
 * Creating new training paradigms 【coming soon】
 
-## Section 7: Frequently Asked Questions
+## Section 8: Frequently Asked Questions
 
 This section summarizes common developer questions. If you encounter issues during usage or development, please refer to this section. If you still cannot resolve the problem, please submit an issue on GitHub.
 

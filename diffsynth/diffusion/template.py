@@ -88,6 +88,9 @@ class TemplatePipeline(torch.nn.Module):
         self.model_configs = model_configs
         self.lazy_loading = lazy_loading
         if lazy_loading:
+            for model_config in model_configs:
+                TemplatePipeline.check_vram_config(model_config)
+                model_config.download_if_necessary()
             self.models = None
         else:
             models = []

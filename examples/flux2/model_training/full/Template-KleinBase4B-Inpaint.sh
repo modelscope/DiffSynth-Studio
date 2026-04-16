@@ -1,17 +1,18 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux2/Template-KleinBase4B-Inpaint/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/flux2/model_training/train.py \
-  --dataset_base_path xxx \
-  --dataset_metadata_path xxx/metadata.jsonl \
+  --dataset_base_path data/diffsynth_example_dataset/flux2/Template-KleinBase4B-Inpaint \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux2/Template-KleinBase4B-Inpaint/metadata.jsonl \
   --extra_inputs "template_inputs" \
   --max_pixels 1048576 \
-  --dataset_repeat 1 \
+  --dataset_repeat 50 \
   --model_id_with_origin_paths "black-forest-labs/FLUX.2-klein-4B:text_encoder/*.safetensors,black-forest-labs/FLUX.2-klein-base-4B:transformer/*.safetensors,black-forest-labs/FLUX.2-klein-4B:vae/diffusion_pytorch_model.safetensors" \
-  --template_model_id_or_path "xxx" \
+  --template_model_id_or_path "DiffSynth-Studio/Template-KleinBase4B-Inpaint:" \
   --tokenizer_path "black-forest-labs/FLUX.2-klein-4B:tokenizer/" \
   --learning_rate 1e-4 \
-  --num_epochs 999 \
+  --num_epochs 2 \
   --remove_prefix_in_ckpt "pipe.template_model." \
-  --output_path "./models/train/Template-KleinBase4B_full" \
+  --output_path "./models/train/Template-KleinBase4B-Inpaint_full" \
   --trainable_models "template_model" \
-  --save_steps 1000 \
   --use_gradient_checkpointing \
   --find_unused_parameters

@@ -16,8 +16,9 @@ graph LR;
     我想要基于此框架进行二次开发-->sec5[Section 5: API 参考];
     我想要基于本项目探索新的技术-->sec4[Section 4: 模型接入];
     我想要基于本项目探索新的技术-->sec5[Section 5: API 参考];
-    我想要基于本项目探索新的技术-->sec6[Section 6: 学术导引];
-    我遇到了问题-->sec7[Section 7: 常见问题];
+    我想要基于本项目探索新的技术-->sec6[Section 6: Diffusion Templates]
+    我想要基于本项目探索新的技术-->sec7[Section 7: 学术导引];
+    我遇到了问题-->sec8[Section 8: 常见问题];
 ```
 
 </details>
@@ -75,7 +76,15 @@ graph LR;
 * [`diffsynth.core.loader`](./API_Reference/core/loader.md): 模型下载与加载
 * [`diffsynth.core.vram`](./API_Reference/core/vram.md): 显存管理
 
-## Section 6: 学术导引
+## Section 6: Diffusion Templates
+
+本节介绍 Diffusion 模型可控生成插件框架 Diffusion Templates，讲解 Diffusion Templates 框架的运行机制，展示如何使用 Template 模型进行推理和训练。
+
+* [理解 Diffusion Templates](./Diffusion_Templates/Understanding_Diffusion_Templates.md)
+* [Template 模型推理](./Diffusion_Templates/Template_Model_Inference.md)
+* [Template 模型训练](./Diffusion_Templates/Template_Model_Training.md)
+
+## Section 7: 学术导引
 
 本节介绍如何利用 `DiffSynth-Studio` 训练新的模型，帮助科研工作者探索新的模型技术。
 
@@ -84,7 +93,7 @@ graph LR;
 * 设计可控生成模型【coming soon】
 * 创建新的训练范式【coming soon】
 
-## Section 7: 常见问题
+## Section 8: 常见问题
 
 本节总结了开发者常见的问题，如果你在使用和开发中遇到了问题，请参考本节内容，如果仍无法解决，请到 GitHub 上给我们提 issue。
 
