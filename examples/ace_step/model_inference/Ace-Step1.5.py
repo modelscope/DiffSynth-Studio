@@ -22,20 +22,16 @@ pipe = AceStepPipeline.from_pretrained(
         ),
         ModelConfig(
             model_id="ACE-Step/Ace-Step1.5",
-            origin_file_pattern="acestep-v15-turbo/model.safetensors"
+            origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors"
         ),
         ModelConfig(
             model_id="ACE-Step/Ace-Step1.5",
-            origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors"
+            origin_file_pattern="vae/diffusion_pytorch_model.safetensors"
         ),
     ],
-    tokenizer_config=ModelConfig(
+    text_tokenizer_config=ModelConfig(
         model_id="ACE-Step/Ace-Step1.5",
         origin_file_pattern="Qwen3-Embedding-0.6B/"
-    ),
-    vae_config=ModelConfig(
-        model_id="ACE-Step/Ace-Step1.5",
-        origin_file_pattern="vae/"
     ),
 )
 
