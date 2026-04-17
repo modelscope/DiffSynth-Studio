@@ -916,4 +916,114 @@ joyai_image_series = [
     },
 ]
 
-MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series
+ace_step_series = [
+    # === Standard DiT variants (24 layers, hidden_size=2048) ===
+    # Covers: turbo, turbo-shift1, turbo-shift3, turbo-continuous, base, sft
+    # All share identical state_dict structure → same hash
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors")
+        "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
+        "model_name": "ace_step_dit",
+        "model_class": "diffsynth.models.ace_step_dit.AceStepDiTModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_dit.ace_step_dit_converter",
+    },
+    # === XL DiT variants (32 layers, hidden_size=2560) ===
+    # Covers: xl-base, xl-sft, xl-turbo
+    {
+        # Example: ModelConfig(model_id="ACE-Step/acestep-v15-xl-base", origin_file_pattern="model-*.safetensors")
+        "model_hash": "3a28a410c2246f125153ef792d8bc828",
+        "model_name": "ace_step_dit",
+        "model_class": "diffsynth.models.ace_step_dit.AceStepDiTModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_dit.ace_step_dit_converter",
+        "extra_kwargs": {
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+            "num_hidden_layers": 32,
+            "num_attention_heads": 32,
+            "num_key_value_heads": 8,
+            "head_dim": 128,
+            "encoder_hidden_size": 2048,
+            "layer_types": ["sliding_attention", "full_attention"] * 16,
+        },
+    },
+    # === Conditioner (shared by all DiT variants, same architecture) ===
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors")
+        "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
+        "model_name": "ace_step_conditioner",
+        "model_class": "diffsynth.models.ace_step_conditioner.AceStepConditionEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_conditioner.ace_step_conditioner_converter",
+    },
+    # === XL Conditioner (same architecture, but checkpoint includes XL decoder → different file hash) ===
+    {
+        # Example: ModelConfig(model_id="ACE-Step/acestep-v15-xl-base", origin_file_pattern="model-*.safetensors")
+        "model_hash": "3a28a410c2246f125153ef792d8bc828",
+        "model_name": "ace_step_conditioner",
+        "model_class": "diffsynth.models.ace_step_conditioner.AceStepConditionEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_conditioner.ace_step_conditioner_converter",
+    },
+    # === LLM variants ===
+    {
+        # Example: ModelConfig(model_id="ACE-Step/acestep-5Hz-lm-0.6B", origin_file_pattern="model.safetensors")
+        "model_hash": "f3ab4bef9e00745fd0fea7aa8b2a4041",
+        "model_name": "ace_step_lm",
+        "model_class": "diffsynth.models.ace_step_lm.AceStepLM",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_lm.ace_step_lm_converter",
+        "extra_kwargs": {
+            "variant": "acestep-5Hz-lm-0.6B",
+        },
+    },
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-5Hz-lm-1.7B/model.safetensors")
+        "model_hash": "a14b6e422b0faa9b41e7efe0fee46766",
+        "model_name": "ace_step_lm",
+        "model_class": "diffsynth.models.ace_step_lm.AceStepLM",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_lm.ace_step_lm_converter",
+        "extra_kwargs": {
+            "variant": "acestep-5Hz-lm-1.7B",
+        },
+    },
+    {
+        # Example: ModelConfig(model_id="ACE-Step/acestep-5Hz-lm-4B", origin_file_pattern="model-*.safetensors")
+        "model_hash": "046a3934f2e6f2f6d450bad23b1f4933",
+        "model_name": "ace_step_lm",
+        "model_class": "diffsynth.models.ace_step_lm.AceStepLM",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_lm.ace_step_lm_converter",
+        "extra_kwargs": {
+            "variant": "acestep-5Hz-lm-4B",
+        },
+    },
+    # === Qwen3-Embedding (text encoder) ===
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors")
+        "model_hash": "3509bea17b0e8cffc3dd4a15cc7899d0",
+        "model_name": "ace_step_text_encoder",
+        "model_class": "diffsynth.models.ace_step_text_encoder.AceStepTextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_text_encoder.ace_step_text_encoder_converter",
+    },
+    # === VAE (AutoencoderOobleck CNN) ===
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "51420834e54474986a7f4be0e4d6f687",
+        "model_name": "ace_step_vae",
+        "model_class": "diffsynth.models.ace_step_vae.AceStepVAE",
+    },
+    # === Tokenizer (VAE latent discretization: tokenizer + detokenizer) ===
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors")
+        "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
+        "model_name": "ace_step_tokenizer",
+        "model_class": "diffsynth.models.ace_step_tokenizer.AceStepTokenizer",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_tokenizer.ace_step_tokenizer_converter",
+    },
+    # === XL Tokenizer (XL models share same tokenizer architecture) ===
+    {
+        # Example: ModelConfig(model_id="ACE-Step/acestep-v15-xl-base", origin_file_pattern="model-*.safetensors")
+        "model_hash": "3a28a410c2246f125153ef792d8bc828",
+        "model_name": "ace_step_tokenizer",
+        "model_class": "diffsynth.models.ace_step_tokenizer.AceStepTokenizer",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_tokenizer.ace_step_tokenizer_converter",
+    },
+]
+
+MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series
