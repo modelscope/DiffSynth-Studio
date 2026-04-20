@@ -228,9 +228,56 @@ TEMPLATE_MODEL = CustomizedTemplateModel
 
 Set `--trainable_models template_model.mlp` to train only the MLP component.
 
+### Training on Low VRAM Devices
+
+The framework supports splitting Template model training into two stages: the first stage performs gradient-free computation, and the second stage performs gradient updates. For more information, refer to the documentation: [Two-stage Split Training](https://diffsynth-studio-doc.readthedocs.io/en/latest/Training/Split_Training.html). Here's a sample script:
+
+```shell
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux2/Template-KleinBase4B-Brightness/*" --local_dir ./data/diffsynth_example_dataset
+
+accelerate launch examples/flux2/model_training/train.py \
+  --dataset_base_path data/diffsynth_example_dataset/flux2/Template-KleinBase4B-Brightness \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux2/Template-KleinBase4B-Brightness/metadata.jsonl \
+  --extra_inputs "template_inputs" \
+  --max_pixels 1048576 \
+  --dataset_repeat 1 \
+  --model_id_with_origin_paths "black-forest-labs/FLUX.2-klein-4B:text_encoder/*.safetensors,black-forest-labs/FLUX.2-klein-4B:vae/diffusion_pytorch_model.safetensors" \
+  --template_model_id_or_path "DiffSynth-Studio/Template-KleinBase4B-Brightness:" \
+  --tokenizer_path "black-forest-labs/FLUX.2-klein-4B:tokenizer/" \
+  --learning_rate 1e-4 \
+  --num_epochs 2 \
+  --remove_prefix_in_ckpt "pipe.template_model." \
+  --output_path "./models/train/Template-KleinBase4B-Brightness_full_cache" \
+  --trainable_models "template_model" \
+  --use_gradient_checkpointing \
+  --find_unused_parameters \
+  --task "sft:data_process"
+
+accelerate launch examples/flux2/model_training/train.py \
+  --dataset_base_path "./models/train/Template-KleinBase4B-Brightness_full_cache" \
+  --extra_inputs "template_inputs" \
+  --max_pixels 1048576 \
+  --dataset_repeat 50 \
+  --model_id_with_origin_paths "black-forest-labs/FLUX.2-klein-base-4B:transformer/*.safetensors" \
+  --template_model_id_or_path "DiffSynth-Studio/Template-KleinBase4B-Brightness:" \
+  --tokenizer_path "black-forest-labs/FLUX.2-klein-4B:tokenizer/" \
+  --learning_rate 1e-4 \
+  --num_epochs 2 \
+  --remove_prefix_in_ckpt "pipe.template_model." \
+  --output_path "./models/train/Template-KleinBase4B-Brightness_full" \
+  --trainable_models "template_model" \
+  --use_gradient_checkpointing \
+  --find_unused_parameters \
+  --task "sft:train"
+```
+
+Two-stage split training can reduce VRAM requirements and improve training speed. The training process is lossless in precision, but requires significant disk space for storing cache files.
+
+To further reduce VRAM requirements, you can enable fp8 precision by adding the parameters `--fp8_models "black-forest-labs/FLUX.2-klein-4B:text_encoder/*.safetensors,black-forest-labs/FLUX.2-klein-4B:vae/diffusion_pytorch_model.safetensors"` and `--fp8_models "black-forest-labs/FLUX.2-klein-base-4B:transformer/*.safetensors"` to the two-stage training. Note that fp8 precision can only be enabled on non-trainable model components and introduces minor errors.
+
 ### Uploading Template Models
 
-After training, follow these steps to upload to ModelScope:
+After training, follow these steps to upload Template models to ModelScope for wider distribution.
 
 1. Set model path in `model.py`:
 ```python

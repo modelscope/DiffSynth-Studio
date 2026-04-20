@@ -64,6 +64,7 @@ Welcome to DiffSynth-Studio's Documentation
    :maxdepth: 2
    :caption: Diffusion Templates
 
+   Diffusion_Templates/Introducing_Diffusion_Templates.md
    Diffusion_Templates/Understanding_Diffusion_Templates.md
    Diffusion_Templates/Template_Model_Inference.md
    Diffusion_Templates/Template_Model_Training.md

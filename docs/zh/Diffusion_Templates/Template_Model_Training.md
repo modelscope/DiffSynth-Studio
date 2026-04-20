@@ -239,9 +239,56 @@ TEMPLATE_MODEL = CustomizedTemplateModel
 
 此时需在训练命令中通过参数 `--trainable_models template_model.mlp` 设置为仅训练 `mlp` 部分。
 
+### 在低显存的设备上训练
+
+框架支持将 Template 模型的训练拆分为两阶段，第一阶段进行无梯度计算，第二阶段进行梯度更新，更多信息请参考文档：[两阶段拆分训练](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Training/Split_Training.html)，以下是样例脚本：
+
+```shell
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux2/Template-KleinBase4B-Brightness/*" --local_dir ./data/diffsynth_example_dataset
+
+accelerate launch examples/flux2/model_training/train.py \
+  --dataset_base_path data/diffsynth_example_dataset/flux2/Template-KleinBase4B-Brightness \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux2/Template-KleinBase4B-Brightness/metadata.jsonl \
+  --extra_inputs "template_inputs" \
+  --max_pixels 1048576 \
+  --dataset_repeat 1 \
+  --model_id_with_origin_paths "black-forest-labs/FLUX.2-klein-4B:text_encoder/*.safetensors,black-forest-labs/FLUX.2-klein-4B:vae/diffusion_pytorch_model.safetensors" \
+  --template_model_id_or_path "DiffSynth-Studio/Template-KleinBase4B-Brightness:" \
+  --tokenizer_path "black-forest-labs/FLUX.2-klein-4B:tokenizer/" \
+  --learning_rate 1e-4 \
+  --num_epochs 2 \
+  --remove_prefix_in_ckpt "pipe.template_model." \
+  --output_path "./models/train/Template-KleinBase4B-Brightness_full_cache" \
+  --trainable_models "template_model" \
+  --use_gradient_checkpointing \
+  --find_unused_parameters \
+  --task "sft:data_process"
+
+accelerate launch examples/flux2/model_training/train.py \
+  --dataset_base_path "./models/train/Template-KleinBase4B-Brightness_full_cache" \
+  --extra_inputs "template_inputs" \
+  --max_pixels 1048576 \
+  --dataset_repeat 50 \
+  --model_id_with_origin_paths "black-forest-labs/FLUX.2-klein-base-4B:transformer/*.safetensors" \
+  --template_model_id_or_path "DiffSynth-Studio/Template-KleinBase4B-Brightness:" \
+  --tokenizer_path "black-forest-labs/FLUX.2-klein-4B:tokenizer/" \
+  --learning_rate 1e-4 \
+  --num_epochs 2 \
+  --remove_prefix_in_ckpt "pipe.template_model." \
+  --output_path "./models/train/Template-KleinBase4B-Brightness_full" \
+  --trainable_models "template_model" \
+  --use_gradient_checkpointing \
+  --find_unused_parameters \
+  --task "sft:train"
+```
+
+两阶段拆分训练可以降低显存需求，提高训练速度，训练过程是无损精度的，但需要较大硬盘空间用于存储 Cache 文件。
+
+如需进一步减少显存需求，可开启 fp8 精度，在两阶段训练中添加参数 `--fp8_models "black-forest-labs/FLUX.2-klein-4B:text_encoder/*.safetensors,black-forest-labs/FLUX.2-klein-4B:vae/diffusion_pytorch_model.safetensors"` 和 `--fp8_models "black-forest-labs/FLUX.2-klein-base-4B:transformer/*.safetensors"` 即可，fp8 精度只能在非训练模型组件上启用，且存在少量误差。
+
 ### 上传 Template 模型
 
-完成训练后，按照以下步骤可上传 Template 模型到魔搭社区
+完成训练后，按照以下步骤可上传 Template 模型到魔搭社区，供更多人下载使用。
 
 Step 1：在 `model.py` 中填入训练好的模型文件名，例如
 

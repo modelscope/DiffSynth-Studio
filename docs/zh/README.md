@@ -80,7 +80,8 @@ graph LR;
 
 本节介绍 Diffusion 模型可控生成插件框架 Diffusion Templates，讲解 Diffusion Templates 框架的运行机制，展示如何使用 Template 模型进行推理和训练。
 
-* [理解 Diffusion Templates](./Diffusion_Templates/Understanding_Diffusion_Templates.md)
+* [Diffusion Templates 简介](./Diffusion_Templates/Introducing_Diffusion_Templates.md)
+* [Diffusion Templates 架构详解](./Diffusion_Templates/Understanding_Diffusion_Templates.md)
 * [Template 模型推理](./Diffusion_Templates/Template_Model_Inference.md)
 * [Template 模型训练](./Diffusion_Templates/Template_Model_Training.md)
 

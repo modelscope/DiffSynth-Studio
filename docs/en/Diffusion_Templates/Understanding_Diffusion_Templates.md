@@ -1,4 +1,4 @@
-# Understanding Diffusion Templates
+# Diffusion Templates Architecture Details
 
 The Diffusion Templates framework is a controllable generation plugin framework in DiffSynth-Studio that provides additional controllable generation capabilities for Diffusion models.
 

@@ -1,4 +1,4 @@
-# 理解 Diffusion Templates
+# Diffusion Templates 架构详解
 
 ## 框架结构
 

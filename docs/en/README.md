@@ -82,7 +82,8 @@ This section introduces the independent core module `diffsynth.core` in `DiffSyn
 
 This section introduces the controllable generation plugin framework for Diffusion models, explaining the framework's operation mechanism and how to use Template models for inference and training.
 
-* [Understanding Diffusion Templates](./Diffusion_Templates/Understanding_Diffusion_Templates.md)
+* [Introducing Diffusion Templates](./Diffusion_Templates/Introducing_Diffusion_Templates.md)
+* [Diffusion Templates Architecture Details](./Diffusion_Templates/Understanding_Diffusion_Templates.md)
 * [Template Model Inference](./Diffusion_Templates/Template_Model_Inference.md)
 * [Template Model Training](./Diffusion_Templates/Template_Model_Training.md)
 
