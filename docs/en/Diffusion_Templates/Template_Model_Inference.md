@@ -29,7 +29,7 @@ image = pipe(
 image.save("image.png")
 ```
 
-The Template model [DiffSynth-Studio/F2KB4B-Template-Brightness](https://modelscope.cn/models/DiffSynth-Studio/F2KB4B-Template-Brightness) can control image brightness during generation. Through the `TemplatePipeline` model, it can be loaded from ModelScope (via `ModelConfig(model_id="xxx/xxx")`) or from a local path (via `ModelConfig(path="xxx")`). Inputting `scale=0.8` increases image brightness. Note that in the code, input parameters for `pipe` must be transferred to `template_pipeline`, and `template_inputs` should be added.
+The Template model [DiffSynth-Studio/Template-KleinBase4B-Brightness](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Brightness) can control image brightness during generation. Through the `TemplatePipeline` model, it can be loaded from ModelScope (via `ModelConfig(model_id="xxx/xxx")`) or from a local path (via `ModelConfig(path="xxx")`). Inputting `scale=0.8` increases image brightness. Note that in the code, input parameters for `pipe` must be transferred to `template_pipeline`, and `template_inputs` should be added.
 
 ```python
 # Load Template model
@@ -37,7 +37,7 @@ template_pipeline = TemplatePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="DiffSynth-Studio/F2KB4B-Template-Brightness")
+        ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Brightness")
     ],
 )
 # Generate an image
@@ -53,7 +53,7 @@ image.save("image_0.8.png")
 
 ## CFG Enhancement for Template Models
 
-Template models can enable CFG (Classifier-Free Guidance) to make control effects more pronounced. For example, with the model [DiffSynth-Studio/F2KB4B-Template-Brightness](https://modelscope.cn/models/DiffSynth-Studio/F2KB4B-Template-Brightness), adding `negative_template_inputs` to the TemplatePipeline input parameters and setting its scale to 0.5 will generate images with more noticeable brightness variations by contrasting both sides.
+Template models can enable CFG (Classifier-Free Guidance) to make control effects more pronounced. For example, with the model [DiffSynth-Studio/Template-KleinBase4B-Brightness](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Brightness), adding `negative_template_inputs` to the TemplatePipeline input parameters and setting its scale to 0.5 will generate images with more noticeable brightness variations by contrasting both sides.
 
 ```python
 # Generate an image with CFG
@@ -77,7 +77,7 @@ template_pipeline = TemplatePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="DiffSynth-Studio/F2KB4B-Template-Brightness")
+        ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Brightness")
     ],
     lazy_loading=True,
 )
@@ -85,7 +85,7 @@ template_pipeline = TemplatePipeline.from_pretrained(
 
 The base model's Pipeline and Template Pipeline are completely independent and can enable VRAM management on demand.
 
-When Template model outputs contain LoRA in Template Cache, you need to enable VRAM management for the base model's Pipeline or enable LoRA hot loading (using the code below), otherwise LoRA weights will be叠加.
+When Template model outputs contain LoRA in Template Cache, you need to enable VRAM management for the base model's Pipeline or enable LoRA hot loading (using the code below), otherwise LoRA weights will be fused repeatedly.
 
 ```python
 pipe.dit = pipe.enable_lora_hot_loading(pipe.dit)
@@ -100,6 +100,7 @@ After enabling VRAM management for the base model's Pipeline and lazy loading fo
 ```python
 from diffsynth.diffusion.template import TemplatePipeline
 from diffsynth.pipelines.flux2_image import Flux2ImagePipeline, ModelConfig
+from modelscope import dataset_snapshot_download
 import torch
 from PIL import Image
 
@@ -137,6 +138,8 @@ template = TemplatePipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Sharpness"),
         ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Inpaint"),
         ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Aesthetic"),
+        ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-ContentRef"),
+        ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Age"),
         ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-PandaMeme"),
     ],
 )
@@ -154,7 +157,7 @@ image = template(
     template_inputs = [
         {
             "model_id": 3,
-            "image": Image.open("data/assets/image_lowres_100.jpg"),
+            "image": Image.open("data/examples/templates/image_lowres_100.jpg"),
             "prompt": "A cat is sitting on a stone.",
         },
         {
@@ -165,7 +168,7 @@ image = template(
     negative_template_inputs = [
         {
             "model_id": 3,
-            "image": Image.open("data/assets/image_lowres_100.jpg"),
+            "image": Image.open("data/examples/templates/image_lowres_100.jpg"),
             "prompt": "",
         },
         {
@@ -193,7 +196,7 @@ image = template(
     template_inputs = [
         {
             "model_id": 1,
-            "image": Image.open("data/assets/image_depth.jpg"),
+            "image": Image.open("data/examples/templates/image_depth.jpg"),
             "prompt": "A cat is sitting on a stone, bathed in bright sunshine.",
         },
         {
@@ -210,7 +213,7 @@ image = template(
     negative_template_inputs = [
         {
             "model_id": 1,
-            "image": Image.open("data/assets/image_depth.jpg"),
+            "image": Image.open("data/examples/templates/image_depth.jpg"),
             "prompt": "",
         },
         {
@@ -244,12 +247,12 @@ image = template(
     template_inputs = [
         {
             "model_id": 1,
-            "image": Image.open("data/assets/image_depth.jpg"),
+            "image": Image.open("data/examples/templates/image_depth.jpg"),
             "prompt": "A cat is sitting on a stone. Colored ink painting.",
         },
         {
             "model_id": 2,
-            "image": Image.open("data/assets/image_reference.jpg"),
+            "image": Image.open("data/examples/templates/image_reference.jpg"),
             "prompt": "Convert the image style to colored ink painting.",
         },
         {
@@ -262,12 +265,12 @@ image = template(
     negative_template_inputs = [
         {
             "model_id": 1,
-            "image": Image.open("data/assets/image_depth.jpg"),
+            "image": Image.open("data/examples/templates/image_depth.jpg"),
             "prompt": "",
         },
         {
             "model_id": 2,
-            "image": Image.open("data/assets/image_reference.jpg"),
+            "image": Image.open("data/examples/templates/image_reference.jpg"),
             "prompt": "",
         },
     ],
@@ -295,13 +298,13 @@ image = template(
         },
         {
             "model_id": 2,
-            "image": Image.open("data/assets/image_reference.jpg"),
+            "image": Image.open("data/examples/templates/image_reference.jpg"),
             "prompt": "Convert the image style to flat anime style.",
         },
         {
             "model_id": 6,
-            "image": Image.open("data/assets/image_reference.jpg"),
-            "mask": Image.open("data/assets/image_mask_1.jpg"),
+            "image": Image.open("data/examples/templates/image_reference.jpg"),
+            "mask": Image.open("data/examples/templates/image_mask_1.jpg"),
             "force_inpaint": True,
         },
     ],
@@ -312,13 +315,13 @@ image = template(
         },
         {
             "model_id": 2,
-            "image": Image.open("data/assets/image_reference.jpg"),
+            "image": Image.open("data/examples/templates/image_reference.jpg"),
             "prompt": "",
         },
         {
             "model_id": 6,
-            "image": Image.open("data/assets/image_reference.jpg"),
-            "mask": Image.open("data/assets/image_mask_1.jpg"),
+            "image": Image.open("data/examples/templates/image_reference.jpg"),
+            "mask": Image.open("data/examples/templates/image_mask_1.jpg"),
         },
     ],
 )

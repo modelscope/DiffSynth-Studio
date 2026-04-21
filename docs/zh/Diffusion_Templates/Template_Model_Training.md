@@ -101,7 +101,7 @@ TEMPLATE_MODEL_PATH = None
 
 如需使用 DiffSynth-Studio 训练 Template 模型，则需构建训练数据集，数据集中的 `metadata.json` 包含 `template_inputs` 字段。`metadata.json` 中的 `template_inputs` 并不是直接输入给 Template 模型 `process_inputs` 的参数，而是提供给 `TEMPLATE_DATA_PROCESSOR` 的输入参数，由 `TEMPLATE_DATA_PROCESSOR` 计算出输入给 Template 模型 `process_inputs` 的参数。
 
-例如，[DiffSynth-Studio/F2KB4B-Template-Brightness](https://modelscope.cn/models/DiffSynth-Studio/F2KB4B-Template-Brightness) 这一亮度控制模型的输入参数是 `scale`，即图像的亮度数值。`scale` 可以直接写在 `metadata.json` 中，此时 `TEMPLATE_DATA_PROCESSOR` 只需要传递参数：
+例如，[DiffSynth-Studio/Template-KleinBase4B-Brightness](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Brightness) 这一亮度控制模型的输入参数是 `scale`，即图像的亮度数值。`scale` 可以直接写在 `metadata.json` 中，此时 `TEMPLATE_DATA_PROCESSOR` 只需要传递参数：
 
 ```json
 [

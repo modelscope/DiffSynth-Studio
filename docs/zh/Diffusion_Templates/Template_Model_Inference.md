@@ -29,7 +29,7 @@ image = pipe(
 image.save("image.png")
 ```
 
-Template 模型 [DiffSynth-Studio/F2KB4B-Template-Brightness](https://modelscope.cn/models/DiffSynth-Studio/F2KB4B-Template-Brightness) 可以控制模型生成图像的亮度。通过 `TemplatePipeline` 模型，可从魔搭模型库加载（`ModelConfig(model_id="xxx/xxx")`）或从本地路径加载（`ModelConfig(path="xxx")`）。输入 scale=0.8 提高图像的亮度。注意在代码中，需将 `pipe` 的输入参数转移到 `template_pipeline` 中，并添加 `template_inputs`。
+Template 模型 [DiffSynth-Studio/Template-KleinBase4B-Brightness](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Brightness) 可以控制模型生成图像的亮度。通过 `TemplatePipeline` 模型，可从魔搭模型库加载（`ModelConfig(model_id="xxx/xxx")`）或从本地路径加载（`ModelConfig(path="xxx")`）。输入 scale=0.8 提高图像的亮度。注意在代码中，需将 `pipe` 的输入参数转移到 `template_pipeline` 中，并添加 `template_inputs`。
 
 ```python
 # Load Template model
@@ -37,7 +37,7 @@ template_pipeline = TemplatePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="DiffSynth-Studio/F2KB4B-Template-Brightness")
+        ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Brightness")
     ],
 )
 # Generate an image
@@ -53,7 +53,7 @@ image.save("image_0.8.png")
 
 ## Template 模型的 CFG 增强
 
-Template 模型可以开启 CFG（Classifier-Free Guidance），使其控制效果更明显。例如模型 [DiffSynth-Studio/F2KB4B-Template-Brightness](https://modelscope.cn/models/DiffSynth-Studio/F2KB4B-Template-Brightness)，在 `TemplatePipeline` 的输入参数中添加 `negative_template_inputs` 并将其 scale 设置为 0.5，模型就会对比两侧的差异，生成亮度变化更明显的图像。
+Template 模型可以开启 CFG（Classifier-Free Guidance），使其控制效果更明显。例如模型 [DiffSynth-Studio/Template-KleinBase4B-Brightness](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Brightness)，在 `TemplatePipeline` 的输入参数中添加 `negative_template_inputs` 并将其 scale 设置为 0.5，模型就会对比两侧的差异，生成亮度变化更明显的图像。
 
 ```python
 # Generate an image with CFG
@@ -77,7 +77,7 @@ template_pipeline = TemplatePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="DiffSynth-Studio/F2KB4B-Template-Brightness")
+        ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Brightness")
     ],
     lazy_loading=True,
 )
@@ -100,6 +100,7 @@ pipe.dit = pipe.enable_lora_hot_loading(pipe.dit)
 ```python
 from diffsynth.diffusion.template import TemplatePipeline
 from diffsynth.pipelines.flux2_image import Flux2ImagePipeline, ModelConfig
+from modelscope import dataset_snapshot_download
 import torch
 from PIL import Image
 
@@ -137,6 +138,8 @@ template = TemplatePipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Sharpness"),
         ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Inpaint"),
         ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Aesthetic"),
+        ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-ContentRef"),
+        ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Age"),
         ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-PandaMeme"),
     ],
 )
@@ -154,7 +157,7 @@ image = template(
     template_inputs = [
         {
             "model_id": 3,
-            "image": Image.open("data/assets/image_lowres_100.jpg"),
+            "image": Image.open("data/examples/templates/image_lowres_100.jpg"),
             "prompt": "A cat is sitting on a stone.",
         },
         {
@@ -165,7 +168,7 @@ image = template(
     negative_template_inputs = [
         {
             "model_id": 3,
-            "image": Image.open("data/assets/image_lowres_100.jpg"),
+            "image": Image.open("data/examples/templates/image_lowres_100.jpg"),
             "prompt": "",
         },
         {
@@ -193,7 +196,7 @@ image = template(
     template_inputs = [
         {
             "model_id": 1,
-            "image": Image.open("data/assets/image_depth.jpg"),
+            "image": Image.open("data/examples/templates/image_depth.jpg"),
             "prompt": "A cat is sitting on a stone, bathed in bright sunshine.",
         },
         {
@@ -210,7 +213,7 @@ image = template(
     negative_template_inputs = [
         {
             "model_id": 1,
-            "image": Image.open("data/assets/image_depth.jpg"),
+            "image": Image.open("data/examples/templates/image_depth.jpg"),
             "prompt": "",
         },
         {
@@ -244,12 +247,12 @@ image = template(
     template_inputs = [
         {
             "model_id": 1,
-            "image": Image.open("data/assets/image_depth.jpg"),
+            "image": Image.open("data/examples/templates/image_depth.jpg"),
             "prompt": "A cat is sitting on a stone. Colored ink painting.",
         },
         {
             "model_id": 2,
-            "image": Image.open("data/assets/image_reference.jpg"),
+            "image": Image.open("data/examples/templates/image_reference.jpg"),
             "prompt": "Convert the image style to colored ink painting.",
         },
         {
@@ -262,12 +265,12 @@ image = template(
     negative_template_inputs = [
         {
             "model_id": 1,
-            "image": Image.open("data/assets/image_depth.jpg"),
+            "image": Image.open("data/examples/templates/image_depth.jpg"),
             "prompt": "",
         },
         {
             "model_id": 2,
-            "image": Image.open("data/assets/image_reference.jpg"),
+            "image": Image.open("data/examples/templates/image_reference.jpg"),
             "prompt": "",
         },
     ],
@@ -295,13 +298,13 @@ image = template(
         },
         {
             "model_id": 2,
-            "image": Image.open("data/assets/image_reference.jpg"),
+            "image": Image.open("data/examples/templates/image_reference.jpg"),
             "prompt": "Convert the image style to flat anime style.",
         },
         {
             "model_id": 6,
-            "image": Image.open("data/assets/image_reference.jpg"),
-            "mask": Image.open("data/assets/image_mask_1.jpg"),
+            "image": Image.open("data/examples/templates/image_reference.jpg"),
+            "mask": Image.open("data/examples/templates/image_mask_1.jpg"),
             "force_inpaint": True,
         },
     ],
@@ -312,13 +315,13 @@ image = template(
         },
         {
             "model_id": 2,
-            "image": Image.open("data/assets/image_reference.jpg"),
+            "image": Image.open("data/examples/templates/image_reference.jpg"),
             "prompt": "",
         },
         {
             "model_id": 6,
-            "image": Image.open("data/assets/image_reference.jpg"),
-            "mask": Image.open("data/assets/image_mask_1.jpg"),
+            "image": Image.open("data/examples/templates/image_reference.jpg"),
+            "mask": Image.open("data/examples/templates/image_mask_1.jpg"),
         },
     ],
 )
