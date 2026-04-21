@@ -23,7 +23,7 @@ Diffusion Templates is a controllable generation plugin framework for Diffusion 
     * Content Reference: [DiffSynth-Studio/Template-KleinBase4B-ContentRef](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ContentRef)
     * Age Control: [DiffSynth-Studio/Template-KleinBase4B-Age](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ContentRef)
     * Panda Meme (Easter Egg Model): [DiffSynth-Studio/Template-KleinBase4B-PandaMeme](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-PandaMeme)
-* Datasets: [Collection](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2--shujuji)
+* Datasets: [Collection](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2)
     * [DiffSynth-Studio/ImagePulseV2-Edit-Inpaint](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Inpaint)
     * [DiffSynth-Studio/ImagePulseV2-TextImage](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-TextImage)
     * [DiffSynth-Studio/ImagePulseV2-Edit-Background](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Background)
