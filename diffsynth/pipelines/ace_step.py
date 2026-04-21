@@ -145,7 +145,6 @@ class AceStepPipeline(BasePipeline):
         # 4. Denoise loop
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
-        self.momentum_buffer = MomentumBuffer()
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.to(dtype=self.torch_dtype, device=self.device)
             noise_pred = self.cfg_guided_model_fn(

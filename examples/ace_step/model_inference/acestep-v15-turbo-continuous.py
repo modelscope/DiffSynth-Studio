@@ -1,8 +1,8 @@
 """
-Ace-Step 1.5 SFT (supervised fine-tuned) — Text-to-Music inference example.
+Ace-Step 1.5 Turbo (continuous, shift 1-5) — Text-to-Music inference example.
 
-SFT variant is fine-tuned for specific music styles.
-Non-turbo model: uses num_inference_steps=30, cfg_scale=4.0.
+Turbo model: no num_inference_steps or cfg_scale (use defaults).
+Continuous variant: handles shift range internally, no shift parameter needed.
 """
 from diffsynth.pipelines.ace_step import AceStepPipeline, ModelConfig
 from diffsynth.utils.data.audio import save_audio
@@ -13,7 +13,7 @@ pipe = AceStepPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="ACE-Step/acestep-v15-sft", origin_file_pattern="model.safetensors"),
+        ModelConfig(model_id="ACE-Step/acestep-v15-turbo-continuous", origin_file_pattern="model.safetensors"),
         ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors"),
         ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
@@ -32,7 +32,5 @@ audio = pipe(
     timesignature="4",
     vocal_language="zh",
     seed=42,
-    num_inference_steps=30,
-    cfg_scale=4.0,
 )
-save_audio(audio, pipe.vae.sampling_rate, "acestep-v15-sft.wav")
+save_audio(audio, pipe.vae.sampling_rate, "acestep-v15-turbo-continuous.wav")
