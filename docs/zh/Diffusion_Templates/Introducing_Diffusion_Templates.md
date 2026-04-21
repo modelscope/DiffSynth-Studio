@@ -9,6 +9,7 @@ Diffusion Templates 是 DiffSynth-Studio 中的 Diffusion 模型可控生成插�
     * Diffusion Templates 架构详解：[English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Understanding_Diffusion_Templates.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Understanding_Diffusion_Templates.html)
     * Template 模型推理：[English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Template_Model_Inference.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Template_Model_Inference.html)
     * Template 模型训练：[English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Template_Model_Training.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Template_Model_Training.html)
+    * FLUX.2 系列模型的 Templates 训练样例代码请参考 [FLUX.2](../Model_Details/FLUX2.md#模型总览)
 * 在线体验：[魔搭社区创空间](https://modelscope.cn/studios/DiffSynth-Studio/Diffusion-Templates)
 * 模型：[合集](https://modelscope.cn/collections/DiffSynth-Studio/KleinBase4B-Templates)
     * 结构控制：[DiffSynth-Studio/Template-KleinBase4B-ControlNet](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ControlNet)

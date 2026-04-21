@@ -9,6 +9,7 @@ Diffusion Templates is a controllable generation plugin framework for Diffusion 
     * Diffusion Templates Architecture Details: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Understanding_Diffusion_Templates.html), [中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Understanding_Diffusion_Templates.html)
     * Template Model Inference: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Template_Model_Inference.html), [中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Template_Model_Inference.html)
     * Template Model Training: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Template_Model_Training.html), [中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Template_Model_Training.html)
+    * For template training code of the FLUX.2 series models, please refer to [FLUX.2](../Model_Details/FLUX2.md#model-overview).
 * Online Demo: [ModelScope Creative Space](https://modelscope.cn/studios/DiffSynth-Studio/Diffusion-Templates)
 * Models: [Collection](https://modelscope.cn/collections/DiffSynth-Studio/KleinBase4B-Templates)
     * Structure Control: [DiffSynth-Studio/Template-KleinBase4B-ControlNet](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ControlNet)
