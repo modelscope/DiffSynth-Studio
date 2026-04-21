@@ -20,7 +20,7 @@ template = TemplatePipeline.from_pretrained(
 )
 state_dict = load_state_dict("./models/train/Template-KleinBase4B-Age_full/epoch-1.safetensors", torch_dtype=torch.bfloat16)
 template.models[0].load_state_dict(state_dict)
-prompt = "Half body color photograph of a single woman, head and torso with visible arms and hands resting gently in front of the body, looking directly at the camera, centered composition, colorful studio background with soft gradient of warm pastel tones, vibrant studio lighting, wearing a plain red short-sleeve t-shirt, straight black shoulder-length hair, photorealistic, high quality"# prompt = "Full body photograph of a single woman standing, looking directly at the camera, centered composition, plain neutral gray background, soft even studio lighting, wearing a plain white short-sleeve t-shirt and blue jeans, barefoot, arms resting naturally at sides, straight black shoulder-length hair, photorealistic, high quality"
+prompt = "Half body color photograph of a single woman, head and torso with visible arms and hands resting gently in front of the body, looking directly at the camera, centered composition, colorful studio background with soft gradient of warm pastel tones, vibrant studio lighting, wearing a plain red short-sleeve t-shirt, straight black shoulder-length hair, photorealistic, high quality"
 negative_age = 45
 for age in [10, 35, 70]:
     print(f"Generating age {age}...")
