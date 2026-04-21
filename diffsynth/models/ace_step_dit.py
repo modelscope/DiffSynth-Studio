@@ -165,7 +165,7 @@ class TimestepEmbedding(nn.Module):
         self,
         in_channels: int,
         time_embed_dim: int,
-        scale: float = 1000,
+        scale: float = 1,
     ):
         super().__init__()
 
@@ -711,7 +711,7 @@ class AceStepDiTModel(nn.Module):
         encoder_hidden_states: torch.Tensor,
         encoder_attention_mask: torch.Tensor,
         context_latents: torch.Tensor,
-        use_cache: Optional[bool] = None,
+        use_cache: Optional[bool] = False,
         past_key_values: Optional[EncoderDecoderCache] = None,
         cache_position: Optional[torch.LongTensor] = None,
         position_ids: Optional[torch.LongTensor] = None,

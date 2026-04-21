@@ -540,17 +540,9 @@ class AceStepTimbreEncoder(nn.Module):
     ) -> BaseModelOutput:
         inputs_embeds = refer_audio_acoustic_hidden_states_packed
         inputs_embeds = self.embed_tokens(inputs_embeds)
-        # Handle 2D (packed) or 3D (batched) input
-        is_packed = inputs_embeds.dim() == 2
-        if is_packed:
-            seq_len = inputs_embeds.shape[0]
-            cache_position = torch.arange(0, seq_len, device=inputs_embeds.device)
-            position_ids = cache_position.unsqueeze(0)
-            inputs_embeds = inputs_embeds.unsqueeze(0)
-        else:
-            seq_len = inputs_embeds.shape[1]
-            cache_position = torch.arange(0, seq_len, device=inputs_embeds.device)
-            position_ids = cache_position.unsqueeze(0)
+        seq_len = inputs_embeds.shape[1]
+        cache_position = torch.arange(0, seq_len, device=inputs_embeds.device)
+        position_ids = cache_position.unsqueeze(0)
 
         dtype = inputs_embeds.dtype
         device = inputs_embeds.device
@@ -586,9 +578,8 @@ class AceStepTimbreEncoder(nn.Module):
             hidden_states = layer_outputs[0]
 
         hidden_states = self.norm(hidden_states)
+        hidden_states = hidden_states[:, 0, :]
         # For packed input: reshape [1, T, D] -> [T, D] for unpacking
-        if is_packed:
-            hidden_states = hidden_states.squeeze(0)
         timbre_embs_unpack, timbre_embs_mask = self.unpack_timbre_embeddings(hidden_states, refer_audio_order_mask)
         return timbre_embs_unpack, timbre_embs_mask
 
@@ -686,7 +677,7 @@ class AceStepConditionEncoder(nn.Module):
         text_attention_mask: Optional[torch.Tensor] = None,
         lyric_hidden_states: Optional[torch.LongTensor] = None,
         lyric_attention_mask: Optional[torch.Tensor] = None,
-        refer_audio_acoustic_hidden_states_packed: Optional[torch.Tensor] = None,
+        reference_latents: Optional[torch.Tensor] = None,
         refer_audio_order_mask: Optional[torch.LongTensor] = None,
     ):
         text_hidden_states = self.text_projector(text_hidden_states)
@@ -695,11 +686,7 @@ class AceStepConditionEncoder(nn.Module):
             attention_mask=lyric_attention_mask,
         )
         lyric_hidden_states = lyric_encoder_outputs.last_hidden_state
-        timbre_embs_unpack, timbre_embs_mask = self.timbre_encoder(
-            refer_audio_acoustic_hidden_states_packed,
-            refer_audio_order_mask
-        )
-
+        timbre_embs_unpack, timbre_embs_mask = self.timbre_encoder(reference_latents, refer_audio_order_mask)
         encoder_hidden_states, encoder_attention_mask = pack_sequences(
             lyric_hidden_states, timbre_embs_unpack, lyric_attention_mask, timbre_embs_mask
         )

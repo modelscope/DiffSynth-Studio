@@ -2,8 +2,8 @@
 Ace-Step 1.5 — Text-to-Music with Simple Mode (LLM expansion).
 
 Uses the ACE-Step LLM to expand a simple description into structured
-parameters (caption, lyrics, bpm, keyscale, etc.), then feeds them
-to the DiffSynth Pipeline.
+parameters (caption, lyrics, bpm, keyscale, etc.) AND audio codes,
+then feeds them to the DiffSynth Pipeline.
 
 The LLM expansion uses the target library's LLMHandler. If vLLM is
 not available, it falls back to using pre-structured parameters.
@@ -47,11 +47,14 @@ def try_load_llm_handler(checkpoint_dir: str, lm_model_path: str = "acestep-5Hz-
 
 
 def expand_with_llm(llm_handler, description: str, duration: float = 30.0):
-    """Expand a simple description using LLM Chain-of-Thought."""
+    """Expand a simple description using LLM Chain-of-Thought.
+
+    Returns (params_dict, audio_codes_string).
+    """
     result = llm_handler.generate_with_stop_condition(
         caption=description,
         lyrics="",
-        infer_type="dit",  # metadata only
+        infer_type="dit",  # metadata + audio codes
         temperature=0.85,
         cfg_scale=1.0,
         use_cot_metas=True,
@@ -62,7 +65,7 @@ def expand_with_llm(llm_handler, description: str, duration: float = 30.0):
 
     if result.get("success") and result.get("metadata"):
         meta = result["metadata"]
-        return {
+        params = {
             "caption": meta.get("caption", description),
             "lyrics": meta.get("lyrics", ""),
             "bpm": meta.get("bpm", 100),
@@ -71,9 +74,11 @@ def expand_with_llm(llm_handler, description: str, duration: float = 30.0):
             "timesignature": meta.get("timesignature", "4"),
             "duration": meta.get("duration", duration),
         }
+        audio_codes = result.get("audio_codes", "")
+        return params, audio_codes
 
     print(f"[Simple Mode] LLM expansion failed: {result.get('error', 'unknown')}")
-    return None
+    return None, ""
 
 
 def fallback_expand(description: str, duration: float = 30.0):
@@ -87,7 +92,7 @@ def fallback_expand(description: str, duration: float = 30.0):
         "language": "en",
         "timesignature": "4",
         "duration": duration,
-    }
+    }, ""
 
 
 # ---------------------------------------------------------------------------
@@ -114,13 +119,13 @@ def main():
         lm_model_path="acestep-5Hz-lm-1.7B",
     )
 
-    # 2. Expand parameters
+    # 2. Expand parameters + audio codes
     if llm_ok:
-        params = expand_with_llm(llm_handler, description, duration=duration)
+        params, audio_codes = expand_with_llm(llm_handler, description, duration=duration)
         if params is None:
-            params = fallback_expand(description, duration)
+            params, audio_codes = fallback_expand(description, duration)
     else:
-        params = fallback_expand(description, duration)
+        params, audio_codes = fallback_expand(description, duration)
 
     print(f"\n[Simple Mode] Parameters:")
     print(f"  Caption: {params['caption'][:100]}...")
@@ -128,6 +133,7 @@ def main():
     print(f"  BPM: {params['bpm']}, Keyscale: {params['keyscale']}")
     print(f"  Language: {params['language']}, Time Sig: {params['timesignature']}")
     print(f"  Duration: {params['duration']}s")
+    print(f"  Audio codes: {len(audio_codes)} chars" if audio_codes else "  Audio codes: None (fallback)")
 
     # 3. Load Pipeline
     print(f"\n[Pipeline] Loading Ace-Step 1.5 (turbo)...")
@@ -141,20 +147,16 @@ def main():
             ),
             ModelConfig(
                 model_id="ACE-Step/Ace-Step1.5",
-                origin_file_pattern="acestep-v15-turbo/model.safetensors"
+                origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors"
             ),
             ModelConfig(
                 model_id="ACE-Step/Ace-Step1.5",
-                origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors"
+                origin_file_pattern="vae/diffusion_pytorch_model.safetensors"
             ),
         ],
-        tokenizer_config=ModelConfig(
+        text_tokenizer_config=ModelConfig(
             model_id="ACE-Step/Ace-Step1.5",
             origin_file_pattern="Qwen3-Embedding-0.6B/"
-        ),
-        vae_config=ModelConfig(
-            model_id="ACE-Step/Ace-Step1.5",
-            origin_file_pattern="vae/"
         ),
     )
 
@@ -164,6 +166,7 @@ def main():
         prompt=params["caption"],
         lyrics=params["lyrics"],
         duration=params["duration"],
+        audio_codes=audio_codes if audio_codes else None,
         seed=42,
         num_inference_steps=8,
         cfg_scale=1.0,

@@ -226,6 +226,7 @@ class AceStepVAE(nn.Module):
             upsampling_ratios=upsampling_ratios,
             channel_multiples=channel_multiples,
         )
+        self.sampling_rate = sampling_rate
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         """Audio waveform [B, audio_channels, T] → latent [B, encoder_hidden_size, T']."""

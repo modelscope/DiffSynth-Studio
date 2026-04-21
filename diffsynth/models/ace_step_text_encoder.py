@@ -2,17 +2,6 @@ import torch
 
 
 class AceStepTextEncoder(torch.nn.Module):
-    """
-    Text encoder for ACE-Step using Qwen3-Embedding-0.6B.
-
-    Converts text/lyric tokens to hidden state embeddings that are
-    further processed by the ACE-Step ConditionEncoder.
-
-    Wraps a Qwen3Model transformers model. Config is manually
-    constructed, and model weights are loaded via DiffSynth's
-    standard mechanism from safetensors files.
-    """
-
     def __init__(
         self,
     ):
@@ -49,8 +38,6 @@ class AceStepTextEncoder(torch.nn.Module):
         )
 
         self.model = Qwen3Model(config)
-        self.config = config
-        self.hidden_size = config.hidden_size
 
     @torch.no_grad()
     def forward(
@@ -58,23 +45,9 @@ class AceStepTextEncoder(torch.nn.Module):
         input_ids: torch.LongTensor,
         attention_mask: torch.Tensor,
     ):
-        """
-        Encode text/lyric tokens to hidden states.
-
-        Args:
-            input_ids: [B, T] token IDs
-            attention_mask: [B, T] attention mask
-
-        Returns:
-            last_hidden_state: [B, T, hidden_size]
-        """
         outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
             return_dict=True,
         )
         return outputs.last_hidden_state
-
-    def to(self, *args, **kwargs):
-        self.model.to(*args, **kwargs)
-        return self

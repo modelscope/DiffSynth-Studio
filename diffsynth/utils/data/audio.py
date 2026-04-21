@@ -99,6 +99,7 @@ def save_audio(waveform: torch.Tensor, sample_rate: int, save_path: str, backend
     """
     if waveform.dim() == 3:
         waveform = waveform[0]
+    waveform.cpu()
 
     if backend == "torchcodec":
         from torchcodec.encoders import AudioEncoder

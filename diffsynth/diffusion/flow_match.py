@@ -157,10 +157,10 @@ class FlowMatchScheduler():
         """
         num_train_timesteps = 1000
         sigma_start = denoising_strength
-        sigmas = torch.linspace(sigma_start, 0.0, num_inference_steps)
+        sigmas = torch.linspace(sigma_start, 0.0, num_inference_steps + 1)[:-1]
         if shift is not None and shift != 1.0:
             sigmas = shift * sigmas / (1 + (shift - 1) * sigmas)
-        timesteps = sigmas  # ACE-Step uses [0, 1] range directly
+        timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
 
     @staticmethod
