@@ -962,37 +962,6 @@ ace_step_series = [
         "model_class": "diffsynth.models.ace_step_conditioner.AceStepConditionEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_conditioner.ace_step_conditioner_converter",
     },
-    # === LLM variants ===
-    {
-        # Example: ModelConfig(model_id="ACE-Step/acestep-5Hz-lm-0.6B", origin_file_pattern="model.safetensors")
-        "model_hash": "f3ab4bef9e00745fd0fea7aa8b2a4041",
-        "model_name": "ace_step_lm",
-        "model_class": "diffsynth.models.ace_step_lm.AceStepLM",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_lm.ace_step_lm_converter",
-        "extra_kwargs": {
-            "variant": "acestep-5Hz-lm-0.6B",
-        },
-    },
-    {
-        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-5Hz-lm-1.7B/model.safetensors")
-        "model_hash": "a14b6e422b0faa9b41e7efe0fee46766",
-        "model_name": "ace_step_lm",
-        "model_class": "diffsynth.models.ace_step_lm.AceStepLM",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_lm.ace_step_lm_converter",
-        "extra_kwargs": {
-            "variant": "acestep-5Hz-lm-1.7B",
-        },
-    },
-    {
-        # Example: ModelConfig(model_id="ACE-Step/acestep-5Hz-lm-4B", origin_file_pattern="model-*.safetensors")
-        "model_hash": "046a3934f2e6f2f6d450bad23b1f4933",
-        "model_name": "ace_step_lm",
-        "model_class": "diffsynth.models.ace_step_lm.AceStepLM",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_lm.ace_step_lm_converter",
-        "extra_kwargs": {
-            "variant": "acestep-5Hz-lm-4B",
-        },
-    },
     # === Qwen3-Embedding (text encoder) ===
     {
         # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors")
