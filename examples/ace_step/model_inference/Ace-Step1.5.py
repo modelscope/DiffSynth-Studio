@@ -35,6 +35,7 @@ with open("data/diffsynth_example_dataset/ace_step/Ace-Step1.5/audio_codes_input
 audio = pipe(
     prompt=prompt,
     lyrics=lyrics,
+    task_type="cover",
     audio_code_string=audio_code_string,
     duration=160,
     bpm=100,
