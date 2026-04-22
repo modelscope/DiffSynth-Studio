@@ -506,7 +506,6 @@ class AceStepTimbreEncoder(nn.Module):
             for layer_idx in range(num_timbre_encoder_hidden_layers)
         ])
 
-
     def unpack_timbre_embeddings(self, timbre_embs_packed, refer_audio_order_mask):
         N, d = timbre_embs_packed.shape
         device = timbre_embs_packed.device
