@@ -594,7 +594,7 @@ class AudioTokenDetokenizer(nn.Module):
         x = self.embed_tokens(x)
         x = x.unsqueeze(2).repeat(1, 1, self.pool_window_size, 1)
         special_tokens = self.special_tokens.expand(B, T, -1, -1)
-        x = x + special_tokens
+        x = x + special_tokens.to(x.device)
         x = rearrange(x, "b t p c -> (b t) p c")
 
         cache_position = torch.arange(0, x.shape[1], device=x.device)

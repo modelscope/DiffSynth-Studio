@@ -1,16 +1,35 @@
+"""
+Ace-Step 1.5 Base — Text-to-Music inference example (Low VRAM).
+
+Low VRAM version: models are offloaded to CPU and loaded on-demand.
+"""
 from diffsynth.pipelines.ace_step import AceStepPipeline, ModelConfig
 from diffsynth.utils.data.audio import save_audio
 import torch
+
+
+vram_config = {
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+
 
 pipe = AceStepPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors"),
-        ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors"),
-        ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+        ModelConfig(model_id="ACE-Step/acestep-v15-base", origin_file_pattern="model.safetensors", **vram_config),
+        ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors", **vram_config),
+        ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
     ],
     text_tokenizer_config=ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="Qwen3-Embedding-0.6B/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
 prompt = "An explosive, high-energy pop-rock track with a strong anime theme song feel. The song kicks off with a catchy, synthesized brass fanfare over a driving rock beat with punchy drums and a solid bassline. A powerful, clear male vocal enters with a theatrical and energetic delivery, soaring through the verses and hitting powerful high notes in the chorus. The arrangement is dense and dynamic, featuring rhythmic electric guitar chords, brief instrumental breaks with synth flourishes, and a consistent, danceable groove throughout. The overall mood is triumphant, adventurous, and exhilarating."
@@ -24,23 +43,7 @@ audio = pipe(
     timesignature="4",
     vocal_language="zh",
     seed=42,
+    num_inference_steps=30,
+    cfg_scale=4.0,
 )
-
-save_audio(audio, pipe.vae.sampling_rate, "acestep-v15-turbo.wav")
-
-# input audio codes as reference
-with open("data/diffsynth_example_dataset/ace_step/Ace-Step1.5/audio_codes_input.txt", "r") as f:
-    audio_code_string = f.read().strip()
-
-audio = pipe(
-    prompt=prompt,
-    lyrics=lyrics,
-    audio_code_string=audio_code_string,
-    duration=160,
-    bpm=100,
-    keyscale="B minor",
-    timesignature="4",
-    vocal_language="zh",
-    seed=42,
-)
-save_audio(audio, pipe.vae.sampling_rate, "acestep-v15-turbo5-with-audio-codes.wav")
+save_audio(audio, pipe.vae.sampling_rate, "acestep-v15-base-low-vram.wav")

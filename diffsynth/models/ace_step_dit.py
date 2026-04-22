@@ -522,7 +522,7 @@ class AceStepDiTLayer(nn.Module):
         # Extract scale-shift parameters for adaptive layer norm from timestep embeddings
         # 6 values: (shift_msa, scale_msa, gate_msa, c_shift_msa, c_scale_msa, c_gate_msa)
         shift_msa, scale_msa, gate_msa, c_shift_msa, c_scale_msa, c_gate_msa = (
-            self.scale_shift_table + temb
+            self.scale_shift_table.to(temb.device) + temb
         ).chunk(6, dim=1)
 
         # Step 1: Self-attention with adaptive layer norm (AdaLN)
@@ -889,7 +889,7 @@ class AceStepDiTModel(nn.Module):
             return hidden_states
 
         # Extract scale-shift parameters for adaptive output normalization
-        shift, scale = (self.scale_shift_table + temb.unsqueeze(1)).chunk(2, dim=1)
+        shift, scale = (self.scale_shift_table.to(temb.device) + temb.unsqueeze(1)).chunk(2, dim=1)
         shift = shift.to(hidden_states.device)
         scale = scale.to(hidden_states.device)
 
