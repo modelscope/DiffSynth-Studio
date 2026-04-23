@@ -1,10 +1,3 @@
-"""
-Ace-Step 1.5 SFT (supervised fine-tuned) — Text-to-Music inference example (Low VRAM).
-
-Low VRAM version: models are offloaded to CPU and loaded on-demand.
-SFT variant is fine-tuned for specific music styles.
-Non-turbo model: uses num_inference_steps=30, cfg_scale=4.0.
-"""
 from diffsynth.pipelines.ace_step import AceStepPipeline, ModelConfig
 from diffsynth.utils.data.audio import save_audio
 import torch

@@ -145,16 +145,6 @@ class FlowMatchScheduler():
 
     @staticmethod
     def set_timesteps_ace_step(num_inference_steps=8, denoising_strength=1.0, shift=3.0):
-        """ACE-Step Flow Matching scheduler.
-
-        Timesteps range from 1.0 to 0.0 (not multiplied by 1000).
-        Shift transformation: t = shift * t / (1 + (shift - 1) * t)
-
-        Args:
-            num_inference_steps: Number of diffusion steps.
-            denoising_strength: Denoising strength (1.0 = full denoising).
-            shift: Timestep shift parameter (default 3.0 for turbo).
-        """
         num_train_timesteps = 1000
         sigma_start = denoising_strength
         sigmas = torch.linspace(sigma_start, 0.0, num_inference_steps + 1)[:-1]

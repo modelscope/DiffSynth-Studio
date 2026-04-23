@@ -1,9 +1,3 @@
-"""
-Ace-Step 1.5 (main model, turbo) — Text-to-Music inference example (Low VRAM).
-
-Low VRAM version: models are offloaded to CPU and loaded on-demand.
-Turbo model: uses num_inference_steps=8, cfg_scale=1.0.
-"""
 from diffsynth.pipelines.ace_step import AceStepPipeline, ModelConfig
 from diffsynth.utils.data.audio import save_audio
 from modelscope import dataset_snapshot_download

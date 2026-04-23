@@ -11,14 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""ACE-Step Audio Tokenizer — VAE latent discretization pathway.
-
-Contains:
-- AceStepAudioTokenizer: continuous VAE latent → discrete FSQ tokens
-- AudioTokenDetokenizer: discrete tokens → continuous VAE-latent-shaped features
-
-Only used in cover song mode (is_covers=True). Bypassed in text-to-music.
-"""
 from typing import Optional
 
 import torch
@@ -671,8 +663,6 @@ class AceStepTokenizer(nn.Module):
         **kwargs,
     ):
         super().__init__()
-        # Default layer_types matches target library config (24 alternating entries).
-        # Sub-modules (pooler/detokenizer) slice first N entries for their own layer count.
         if layer_types is None:
             layer_types = ["sliding_attention", "full_attention"] * 12
         self.tokenizer = AceStepAudioTokenizer(

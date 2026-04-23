@@ -1,10 +1,3 @@
-"""
-Ace-Step 1.5 Turbo (continuous, shift 1-5) — Text-to-Music inference example (Low VRAM).
-
-Low VRAM version: models are offloaded to CPU and loaded on-demand.
-Turbo model: no num_inference_steps or cfg_scale (use defaults).
-Continuous variant: handles shift range internally, no shift parameter needed.
-"""
 from diffsynth.pipelines.ace_step import AceStepPipeline, ModelConfig
 from diffsynth.utils.data.audio import save_audio
 import torch

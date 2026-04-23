@@ -11,12 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""ACE-Step Audio VAE (AutoencoderOobleck CNN architecture).
-
-This is a CNN-based VAE for audio waveform encoding/decoding.
-It uses weight-normalized convolutions and Snake1d activations.
-Does NOT depend on diffusers — pure nn.Module implementation.
-"""
 import math
 from typing import Optional
 
