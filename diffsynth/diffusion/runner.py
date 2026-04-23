@@ -17,6 +17,7 @@ def launch_training_task(
     num_epochs: int = 1,
     args=None,
 ):
+    resume_from_checkpoint = None
     if args is not None:
         learning_rate = args.learning_rate
         weight_decay = args.weight_decay
@@ -57,6 +58,8 @@ def launch_training_task(
             global_step = int(os.path.basename(ckpt_path).split("-")[-1])
         except:
             global_step = 0
+
+    model_logger.num_steps = global_step
 
     # compute steps per epoch after dataloader is built
     steps_per_epoch = len(dataloader)
@@ -100,15 +103,10 @@ def launch_training_task(
 
             global_step += 1
 
-            # existing logging (LoRA weights etc.)
-            model_logger.on_step_end(
-                accelerator, model, save_steps, loss=loss
-            )
-
             # Full checkpoint save
             if save_steps is not None and global_step % save_steps == 0:
                 save_dir = os.path.join(
-                    args.output_path, f"checkpoint-{global_step}"
+                    model_logger.output_path, f"checkpoint-{global_step}"
                 )
                 accelerator.save_state(save_dir)
                 accelerator.print(f"Saved checkpoint to {save_dir}")

@@ -41,6 +41,7 @@ def add_training_config(parser: argparse.ArgumentParser):
         "--resume_from_checkpoint",
         type=str,
         default=None,
+        help="Path to a checkpoint directory to resume training from."
     )
     return parser
 
