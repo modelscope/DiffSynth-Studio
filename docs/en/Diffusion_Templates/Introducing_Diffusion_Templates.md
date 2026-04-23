@@ -2,68 +2,74 @@
 
 Diffusion Templates is a controllable generation plugin framework for Diffusion models in DiffSynth-Studio, providing additional controllable generation capabilities for base models.
 
-* Open Source Code: [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio)
-* Technical Report: coming soon
-* Documentation Reference
-    * Introducing Diffusion Templates: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html), [中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)
-    * Diffusion Templates Architecture Details: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Understanding_Diffusion_Templates.html), [中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Understanding_Diffusion_Templates.html)
-    * Template Model Inference: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Template_Model_Inference.html), [中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Template_Model_Inference.html)
-    * Template Model Training: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Template_Model_Training.html), [中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Template_Model_Training.html)
-    * For template training code of the FLUX.2 series models, please refer to [FLUX.2](../Model_Details/FLUX2.md#model-overview).
-* Online Demo: [ModelScope Creative Space](https://modelscope.cn/studios/DiffSynth-Studio/Diffusion-Templates)
-* Models: [Collection](https://modelscope.cn/collections/DiffSynth-Studio/KleinBase4B-Templates)
-    * Structure Control: [DiffSynth-Studio/Template-KleinBase4B-ControlNet](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ControlNet)
-    * Brightness Adjustment: [DiffSynth-Studio/Template-KleinBase4B-Brightness](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Brightness)
-    * Color Adjustment: [DiffSynth-Studio/Template-KleinBase4B-SoftRGB](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-SoftRGB)
-    * Image Editing: [DiffSynth-Studio/Template-KleinBase4B-Edit](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Edit)
-    * Super Resolution: [DiffSynth-Studio/Template-KleinBase4B-Upscaler](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Upscaler)
-    * Sharpness Enhancement: [DiffSynth-Studio/Template-KleinBase4B-Sharpness](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Sharpness)
-    * Aesthetic Alignment: [DiffSynth-Studio/Template-KleinBase4B-Aesthetic](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Aesthetic)
-    * Inpainting: [DiffSynth-Studio/Template-KleinBase4B-Inpaint](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Inpaint)
-    * Content Reference: [DiffSynth-Studio/Template-KleinBase4B-ContentRef](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ContentRef)
-    * Age Control: [DiffSynth-Studio/Template-KleinBase4B-Age](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ContentRef)
-    * Panda Meme (Easter Egg Model): [DiffSynth-Studio/Template-KleinBase4B-PandaMeme](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-PandaMeme)
-* Datasets: [Collection](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-Inpaint](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Inpaint)
-    * [DiffSynth-Studio/ImagePulseV2-TextImage](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-TextImage)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-Background](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Background)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-Clothes](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Clothes)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-Pose](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Pose)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-Change](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Change)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-AddRemove](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-AddRemove)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-Upscale](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Upscale)
-    * [DiffSynth-Studio/ImagePulseV2-TextImage-Human](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-TextImage-Human)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-Crop](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Crop)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-Light](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Light)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-Structure](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Structure)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-HumanFace](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-HumanFace)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-Angle](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Angle)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-Style](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Style)
-    * [DiffSynth-Studio/ImagePulseV2-TextImage-MultiResolution](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-TextImage-MultiResolution)
-    * [DiffSynth-Studio/ImagePulseV2-Edit-Merge](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Merge)
+* Open-source code: [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio)
+* Technical report: coming soon
+* Documentation reference
+    * Introduction to Diffusion Templates: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)
+    * Detailed Architecture of Diffusion Templates: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Understanding_Diffusion_Templates.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Understanding_Diffusion_Templates.html)
+    * Template Model Inference: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Template_Model_Inference.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Template_Model_Inference.html)
+    * Template Model Training: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Template_Model_Training.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Template_Model_Training.html)
+* Online experience: [ModelScope Studio](https://modelscope.cn/studios/DiffSynth-Studio/Diffusion-Templates)
+* Model collection: [ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/KleinBase4B-Templates)、[ModelScope International](https://modelscope.ai/collections/DiffSynth-Studio/KleinBase4B-Templates)、[HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/kleinbase4b-templates)
 
-## Model Gallery
+|Model Name|ModelScope|ModelScope International|HuggingFace|Inference Code|Low VRAM Inference Code|Training Code|Training Validation Code|
+|-|-|-|-|-|-|-|-|
+|Structure Control|[link](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ControlNet)|[link](https://modelscope.ai/models/DiffSynth-Studio/Template-KleinBase4B-ControlNet)|[link](https://huggingface.co/DiffSynth-Studio/Template-KleinBase4B-ControlNet)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference/Template-KleinBase4B-ControlNet.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference_low_vram/Template-KleinBase4B-ControlNet.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/full/Template-KleinBase4B-ControlNet.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/validate_full/Template-KleinBase4B-ControlNet.py)|
+|Brightness Adjustment|[link](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Brightness)|[link](https://modelscope.ai/models/DiffSynth-Studio/Template-KleinBase4B-Brightness)|[link](https://huggingface.co/DiffSynth-Studio/Template-KleinBase4B-Brightness)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference/Template-KleinBase4B-Brightness.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Brightness.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/full/Template-KleinBase4B-Brightness.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/validate_full/Template-KleinBase4B-Brightness.py)|
+|Color Adjustment|[link](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-SoftRGB)|[link](https://modelscope.ai/models/DiffSynth-Studio/Template-KleinBase4B-SoftRGB)|[link](https://huggingface.co/DiffSynth-Studio/Template-KleinBase4B-SoftRGB)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference/Template-KleinBase4B-SoftRGB.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference_low_vram/Template-KleinBase4B-SoftRGB.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/full/Template-KleinBase4B-SoftRGB.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/validate_full/Template-KleinBase4B-SoftRGB.py)|
+|Image Editing|[link](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Edit)|[link](https://modelscope.ai/models/DiffSynth-Studio/Template-KleinBase4B-Edit)|[link](https://huggingface.co/DiffSynth-Studio/Template-KleinBase4B-Edit)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference/Template-KleinBase4B-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/full/Template-KleinBase4B-Edit.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/validate_full/Template-KleinBase4B-Edit.py)|
+|Super-Resolution|[link](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Upscaler)|[link](https://modelscope.ai/models/DiffSynth-Studio/Template-KleinBase4B-Upscaler)|[link](https://huggingface.co/DiffSynth-Studio/Template-KleinBase4B-Upscaler)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference/Template-KleinBase4B-Upscaler.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Upscaler.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/full/Template-KleinBase4B-Upscaler.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/validate_full/Template-KleinBase4B-Upscaler.py)|
+|Sharpness Enhancement|[link](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Sharpness)|[link](https://modelscope.ai/models/DiffSynth-Studio/Template-KleinBase4B-Sharpness)|[link](https://huggingface.co/DiffSynth-Studio/Template-KleinBase4B-Sharpness)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference/Template-KleinBase4B-Sharpness.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Sharpness.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/full/Template-KleinBase4B-Sharpness.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/validate_full/Template-KleinBase4B-Sharpness.py)|
+|Aesthetic Alignment|[link](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Aesthetic)|[link](https://modelscope.ai/models/DiffSynth-Studio/Template-KleinBase4B-Aesthetic)|[link](https://huggingface.co/DiffSynth-Studio/Template-KleinBase4B-Aesthetic)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference/Template-KleinBase4B-Aesthetic.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Aesthetic.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/full/Template-KleinBase4B-Aesthetic.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/validate_full/Template-KleinBase4B-Aesthetic.py)|
+|Local Redrawing|[link](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Inpaint)|[link](https://modelscope.ai/models/DiffSynth-Studio/Template-KleinBase4B-Inpaint)|[link](https://huggingface.co/DiffSynth-Studio/Template-KleinBase4B-Inpaint)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference/Template-KleinBase4B-Inpaint.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Inpaint.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/full/Template-KleinBase4B-Inpaint.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/validate_full/Template-KleinBase4B-Inpaint.py)|
+|Content Reference|[link](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ContentRef)|[link](https://modelscope.ai/models/DiffSynth-Studio/Template-KleinBase4B-ContentRef)|[link](https://huggingface.co/DiffSynth-Studio/Template-KleinBase4B-ContentRef)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference/Template-KleinBase4B-ContentRef.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference_low_vram/Template-KleinBase4B-ContentRef.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/full/Template-KleinBase4B-ContentRef.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/validate_full/Template-KleinBase4B-ContentRef.py)|
+|Age Control|[link](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Age)|[link](https://modelscope.ai/models/DiffSynth-Studio/Template-KleinBase4B-Age)|[link](https://huggingface.co/DiffSynth-Studio/Template-KleinBase4B-Age)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference/Template-KleinBase4B-Age.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Age.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/full/Template-KleinBase4B-Age.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/validate_full/Template-KleinBase4B-Age.py)|
+|Panda Meme (Easter Egg Model)|[link](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-PandaMeme)|[link](https://modelscope.ai/models/DiffSynth-Studio/Template-KleinBase4B-PandaMeme)|[link](https://huggingface.co/DiffSynth-Studio/Template-KleinBase4B-PandaMeme)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference/Template-KleinBase4B-PandaMeme.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_inference_low_vram/Template-KleinBase4B-PandaMeme.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/full/Template-KleinBase4B-PandaMeme.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/validate_full/Template-KleinBase4B-PandaMeme.py)|
 
-* Super Resolution + Sharpness Enhancement: Generate ultra-high-clarity images
+* Dataset: [ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2)、[ModelScope International](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2)、[HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/imagepulsev2)
+
+|Dataset Name|ModelScope|ModelScope International|HuggingFace|
+|-|-|-|-|
+|Text-to-Image|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-TextImage)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-TextImage)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-TextImage)|
+|Local Redrawing|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Inpaint)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Inpaint)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Inpaint)|
+|Background Replacement|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Background)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Background)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Background)|
+|Clothing Replacement|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Clothes)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Clothes)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Clothes)|
+|Pose Adjustment|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Pose)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Pose)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Pose)|
+|Foreground Modification|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Change)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Change)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Change)|
+|Local Addition/Removal|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-AddRemove)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-AddRemove)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-AddRemove)|
+|Super-Resolution|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Upscale)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Upscale)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Upscale)|
+|Portrait Generation|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-TextImage-Human)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-TextImage-Human)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-TextImage-Human)|
+|Random Cropping|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Crop)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Crop)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Crop)|
+|Lighting Adjustment|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Light)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Light)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Light)|
+|Scene Structure|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Structure)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Structure)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Structure)|
+|Facial Expression Editing|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-HumanFace)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-HumanFace)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-HumanFace)|
+|View Angle Adjustment|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Angle)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Angle)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Angle)|
+|Style Transfer|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Style)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Style)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Style)|
+|Multi-Resolution|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-TextImage-MultiResolution)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-TextImage-MultiResolution)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-TextImage-MultiResolution)|
+|Multi-Image Merge|[link](https://modelscope.cn/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Merge)|[link](https://modelscope.ai/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Merge)|[link](https://huggingface.co/datasets/DiffSynth-Studio/ImagePulseV2-Edit-Merge)|
+
+## Model Performance Overview
+
+* Super-Resolution + Sharpness Enhancement: Generate ultra-high-resolution images
 
 |Low Resolution Input|High Resolution Output|
 |-|-|
 |![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_lowres_100.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Upscaler_Sharpness.png)|
 
-* Structure Control + Aesthetic Alignment + Sharpness Enhancement: Fully-armed ControlNet
+* Structure Control + Aesthetic Alignment + Sharpness Enhancement: Fully-equipped ControlNet
 
 |Structure Control Image|Output Image|
 |-|-|
 |![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_depth.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Controlnet_Aesthetic_Sharpness.png)|
 
-* Structure Control + Image Editing + Color Adjustment: Artistic style creation at will
+* Structure Control + Image Editing + Color Adjustment: Artistic Style Creation at Will
 
 |Structure Control Image|Editing Input Image|Output Image|
 |-|-|-|
 |![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_depth.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_reference.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Controlnet_Edit_SoftRGB.png)|
 
-* Brightness Control + Image Editing + Inpainting: Transport elements across dimensions
+* Brightness Control + Image Editing + Local Redrawing: Cross-dimensional Elements in Images
 
-|Reference Image|Inpaint Region|Output Image|
+|Reference Image|Redrawing Area|Output Image|
 |-|-|-|
 |![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_reference.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_mask_1.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Brightness_Edit_Inpaint.png)|
