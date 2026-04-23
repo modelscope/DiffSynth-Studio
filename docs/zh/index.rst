@@ -32,6 +32,7 @@
    Model_Details/LTX-2
    Model_Details/ERNIE-Image
    Model_Details/JoyAI-Image
+   Model_Details/ACE-Step
 
 .. toctree::
    :maxdepth: 2
