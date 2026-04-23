@@ -6,6 +6,7 @@ Turbo model: uses num_inference_steps=8, cfg_scale=1.0.
 """
 from diffsynth.pipelines.ace_step import AceStepPipeline, ModelConfig
 from diffsynth.utils.data.audio import save_audio
+from modelscope import dataset_snapshot_download
 import torch
 
 
@@ -49,6 +50,11 @@ audio = pipe(
 save_audio(audio, pipe.vae.sampling_rate, "acestep-v15-turbo-low-vram.wav")
 
 # input audio codes as reference
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
+    local_dir="data/diffsynth_example_dataset",
+    allow_file_pattern="ace_step/Ace-Step1.5/audio_codes_input.txt",
+)
 with open("data/diffsynth_example_dataset/ace_step/Ace-Step1.5/audio_codes_input.txt", "r") as f:
     audio_code_string = f.read().strip()
 

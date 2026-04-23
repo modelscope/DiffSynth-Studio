@@ -925,7 +925,7 @@ ace_step_series = [
         "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
         "model_name": "ace_step_dit",
         "model_class": "diffsynth.models.ace_step_dit.AceStepDiTModel",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_dit.ace_step_dit_converter",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_dit.AceStepDiTModelStateDictConverter",
     },
     # === XL DiT variants (32 layers, hidden_size=2560) ===
     # Covers: xl-base, xl-sft, xl-turbo
@@ -934,7 +934,7 @@ ace_step_series = [
         "model_hash": "3a28a410c2246f125153ef792d8bc828",
         "model_name": "ace_step_dit",
         "model_class": "diffsynth.models.ace_step_dit.AceStepDiTModel",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_dit.ace_step_dit_converter",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_dit.AceStepDiTModelStateDictConverter",
         "extra_kwargs": {
             "hidden_size": 2560,
             "intermediate_size": 9728,
@@ -952,7 +952,7 @@ ace_step_series = [
         "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
         "model_name": "ace_step_conditioner",
         "model_class": "diffsynth.models.ace_step_conditioner.AceStepConditionEncoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_conditioner.ace_step_conditioner_converter",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_conditioner.AceStepConditionEncoderStateDictConverter",
     },
     # === XL Conditioner (same architecture, but checkpoint includes XL decoder → different file hash) ===
     {
@@ -960,7 +960,7 @@ ace_step_series = [
         "model_hash": "3a28a410c2246f125153ef792d8bc828",
         "model_name": "ace_step_conditioner",
         "model_class": "diffsynth.models.ace_step_conditioner.AceStepConditionEncoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_conditioner.ace_step_conditioner_converter",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_conditioner.AceStepConditionEncoderStateDictConverter",
     },
     # === Qwen3-Embedding (text encoder) ===
     {
@@ -968,7 +968,7 @@ ace_step_series = [
         "model_hash": "3509bea17b0e8cffc3dd4a15cc7899d0",
         "model_name": "ace_step_text_encoder",
         "model_class": "diffsynth.models.ace_step_text_encoder.AceStepTextEncoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_text_encoder.ace_step_text_encoder_converter",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_text_encoder.AceStepTextEncoderStateDictConverter",
     },
     # === VAE (AutoencoderOobleck CNN) ===
     {
@@ -983,7 +983,7 @@ ace_step_series = [
         "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
         "model_name": "ace_step_tokenizer",
         "model_class": "diffsynth.models.ace_step_tokenizer.AceStepTokenizer",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_tokenizer.ace_step_tokenizer_converter",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_tokenizer.AceStepTokenizerStateDictConverter",
     },
     # === XL Tokenizer (XL models share same tokenizer architecture) ===
     {
@@ -991,8 +991,11 @@ ace_step_series = [
         "model_hash": "3a28a410c2246f125153ef792d8bc828",
         "model_name": "ace_step_tokenizer",
         "model_class": "diffsynth.models.ace_step_tokenizer.AceStepTokenizer",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_tokenizer.ace_step_tokenizer_converter",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_tokenizer.AceStepTokenizerStateDictConverter",
     },
 ]
 
-MODEL_CONFIGS = qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series
+MODEL_CONFIGS = (
+    qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
+    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series
+)
