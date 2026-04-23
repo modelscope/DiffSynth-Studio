@@ -15,7 +15,7 @@ def launch_training_task(
     num_workers: int = 1,
     save_steps: int = None,
     num_epochs: int = 1,
-    args = None,
+    args=None,
 ):
     if args is not None:
         learning_rate = args.learning_rate
@@ -23,27 +23,99 @@ def launch_training_task(
         num_workers = args.dataset_num_workers
         save_steps = args.save_steps
         num_epochs = args.num_epochs
-    
-    optimizer = torch.optim.AdamW(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
+        resume_from_checkpoint = args.resume_from_checkpoint
+
+    optimizer = torch.optim.AdamW(
+        model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay
+    )
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
-    dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
+
+    dataloader = torch.utils.data.DataLoader(
+        dataset,
+        shuffle=True,
+        collate_fn=lambda x: x[0],
+        num_workers=num_workers,
+    )
+
     model.to(device=accelerator.device)
-    model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
+    model, optimizer, dataloader, scheduler = accelerator.prepare(
+        model, optimizer, dataloader, scheduler
+    )
+
     initialize_deepspeed_gradient_checkpointing(accelerator)
-    for epoch_id in range(num_epochs):
-        for data in tqdm(dataloader):
+
+    # Resume from checkpoints if specified
+    global_step = 0
+
+    if resume_from_checkpoint:
+        ckpt_path = args.resume_from_checkpoint
+        accelerator.print(f"Resuming from {ckpt_path}")
+        accelerator.load_state(ckpt_path)
+
+        # recover step number from folder name
+        try:
+            global_step = int(os.path.basename(ckpt_path).split("-")[-1])
+        except:
+            global_step = 0
+
+    # compute steps per epoch after dataloader is built
+    steps_per_epoch = len(dataloader)
+
+    start_epoch = 0
+    resume_step = 0
+    if global_step > 0:
+        start_epoch = global_step // steps_per_epoch
+        resume_step = global_step % steps_per_epoch
+
+    accelerator.print(
+        f"Resuming at global_step={global_step}, "
+        f"start_epoch={start_epoch}, resume_step={resume_step}"
+    )
+
+    # Training loop
+    for epoch_id in range(start_epoch, num_epochs):
+        progress_bar = tqdm(
+            enumerate(dataloader),
+            total=len(dataloader),
+            disable=not accelerator.is_local_main_process
+        )
+
+        for step, data in progress_bar:
+
+            # skip already-trained steps
+            if epoch_id == start_epoch and step < resume_step:
+                continue
+
             with accelerator.accumulate(model):
                 if dataset.load_from_cache:
                     loss = model({}, inputs=data)
                 else:
                     loss = model(data)
+
                 accelerator.backward(loss)
                 optimizer.step()
                 scheduler.step()
                 optimizer.zero_grad()
                 model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
+
+            global_step += 1
+
+            # existing logging (LoRA weights etc.)
+            model_logger.on_step_end(
+                accelerator, model, save_steps, loss=loss
+            )
+
+            # Full checkpoint save
+            if save_steps is not None and global_step % save_steps == 0:
+                save_dir = os.path.join(
+                    args.output_path, f"checkpoint-{global_step}"
+                )
+                accelerator.save_state(save_dir)
+                accelerator.print(f"Saved checkpoint to {save_dir}")
+
         if save_steps is None:
             model_logger.on_epoch_end(accelerator, model, epoch_id)
+
     model_logger.on_training_end(accelerator, model, save_steps)
 
 
