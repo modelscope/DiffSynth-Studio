@@ -189,14 +189,27 @@ class SDUnit_NoiseInitializer(PipelineUnit):
 class SDUnit_InputImageEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("noise",),
-            output_params=("latents",),
+            input_params=("input_image", "noise"),
+            output_params=("latents", "input_latents"),
+            onload_model_names=("vae",),
         )
 
-    def process(self, pipe: StableDiffusionPipeline, noise):
-        # For Text-to-Image, latents = noise (scaled by scheduler)
-        latents = noise * pipe.scheduler.init_noise_sigma
-        return {"latents": latents}
+    def process(self, pipe: StableDiffusionPipeline, input_image, noise):
+        if input_image is None:
+            return {"latents": noise * pipe.scheduler.init_noise_sigma, "input_latents": None}
+        if pipe.scheduler.training:
+            pipe.load_models_to_device(self.onload_model_names)
+            input_tensor = pipe.preprocess_image(input_image)
+            input_latents = pipe.vae.encode(input_tensor).sample()
+            latents = noise * pipe.scheduler.init_noise_sigma
+            return {"latents": latents, "input_latents": input_latents}
+        else:
+            # Inference mode: VAE encode input image, add noise for initial latent
+            pipe.load_models_to_device(self.onload_model_names)
+            input_tensor = pipe.preprocess_image(input_image)
+            input_latents = pipe.vae.encode(input_tensor).sample()
+            latents = pipe.scheduler.add_noise(input_latents, noise, pipe.scheduler.timesteps[0])
+            return {"latents": latents}
 
 
 def model_fn_stable_diffusion(
