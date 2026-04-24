@@ -906,14 +906,7 @@ stable_diffusion_xl_series = [
         "model_hash": "142b114f67f5ab3a6d83fb5788f12ded",
         "model_name": "stable_diffusion_xl_unet",
         "model_class": "diffsynth.models.stable_diffusion_xl_unet.SDXLUNet2DConditionModel",
-        "extra_kwargs": {
-            "attention_head_dim": [5, 10, 20],
-            "transformer_layers_per_block": [1, 2, 10],
-            "use_linear_projection": True,
-            "addition_embed_type": "text_time",
-            "addition_time_embed_dim": 256,
-            "projection_class_embeddings_input_dim": 2816,
-        },
+        "extra_kwargs": {"attention_head_dim": [5, 10, 20], "transformer_layers_per_block": [1, 2, 10], "use_linear_projection": True, "addition_embed_type": "text_time", "addition_time_embed_dim": 256, "projection_class_embeddings_input_dim": 2816},
     },
     {
         # Example: ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="text_encoder_2/model.safetensors")
