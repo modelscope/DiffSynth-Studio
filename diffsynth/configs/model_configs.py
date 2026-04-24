@@ -917,9 +917,6 @@ joyai_image_series = [
 ]
 
 ace_step_series = [
-    # === Standard DiT variants (24 layers, hidden_size=2048) ===
-    # Covers: turbo, turbo-shift1, turbo-shift3, turbo-continuous, base, sft
-    # All share identical state_dict structure → same hash
     {
         # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors")
         "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
@@ -927,8 +924,6 @@ ace_step_series = [
         "model_class": "diffsynth.models.ace_step_dit.AceStepDiTModel",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_dit.AceStepDiTModelStateDictConverter",
     },
-    # === XL DiT variants (32 layers, hidden_size=2560) ===
-    # Covers: xl-base, xl-sft, xl-turbo
     {
         # Example: ModelConfig(model_id="ACE-Step/acestep-v15-xl-base", origin_file_pattern="model-*.safetensors")
         "model_hash": "3a28a410c2246f125153ef792d8bc828",
@@ -946,7 +941,6 @@ ace_step_series = [
             "layer_types": ["sliding_attention", "full_attention"] * 16,
         },
     },
-    # === Conditioner (shared by all DiT variants, same architecture) ===
     {
         # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors")
         "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
@@ -954,7 +948,6 @@ ace_step_series = [
         "model_class": "diffsynth.models.ace_step_conditioner.AceStepConditionEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_conditioner.AceStepConditionEncoderStateDictConverter",
     },
-    # === XL Conditioner (same architecture, but checkpoint includes XL decoder → different file hash) ===
     {
         # Example: ModelConfig(model_id="ACE-Step/acestep-v15-xl-base", origin_file_pattern="model-*.safetensors")
         "model_hash": "3a28a410c2246f125153ef792d8bc828",
@@ -962,7 +955,6 @@ ace_step_series = [
         "model_class": "diffsynth.models.ace_step_conditioner.AceStepConditionEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_conditioner.AceStepConditionEncoderStateDictConverter",
     },
-    # === Qwen3-Embedding (text encoder) ===
     {
         # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors")
         "model_hash": "3509bea17b0e8cffc3dd4a15cc7899d0",
@@ -970,14 +962,12 @@ ace_step_series = [
         "model_class": "diffsynth.models.ace_step_text_encoder.AceStepTextEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_text_encoder.AceStepTextEncoderStateDictConverter",
     },
-    # === VAE (AutoencoderOobleck CNN) ===
     {
         # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
         "model_hash": "51420834e54474986a7f4be0e4d6f687",
         "model_name": "ace_step_vae",
         "model_class": "diffsynth.models.ace_step_vae.AceStepVAE",
     },
-    # === Tokenizer (VAE latent discretization: tokenizer + detokenizer) ===
     {
         # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors")
         "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
@@ -985,7 +975,6 @@ ace_step_series = [
         "model_class": "diffsynth.models.ace_step_tokenizer.AceStepTokenizer",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_tokenizer.AceStepTokenizerStateDictConverter",
     },
-    # === XL Tokenizer (XL models share same tokenizer architecture) ===
     {
         # Example: ModelConfig(model_id="ACE-Step/acestep-v15-xl-base", origin_file_pattern="model-*.safetensors")
         "model_hash": "3a28a410c2246f125153ef792d8bc828",
