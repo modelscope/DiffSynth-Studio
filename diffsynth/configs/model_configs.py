@@ -902,7 +902,7 @@ mova_series = [
 ]
 stable_diffusion_xl_series = [
     {
-        # Example: ModelConfig(model_id="AI-ModelScope/stable-diffusion-xl-base-1.0", origin_file_pattern="unet/diffusion_pytorch_model.safetensors")
+        # Example: ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="unet/diffusion_pytorch_model.safetensors")
         "model_hash": "142b114f67f5ab3a6d83fb5788f12ded",
         "model_name": "stable_diffusion_xl_unet",
         "model_class": "diffsynth.models.stable_diffusion_xl_unet.SDXLUNet2DConditionModel",
@@ -916,21 +916,21 @@ stable_diffusion_xl_series = [
         },
     },
     {
-        # Example: ModelConfig(model_id="AI-ModelScope/stable-diffusion-xl-base-1.0", origin_file_pattern="text_encoder_2/model.safetensors")
+        # Example: ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="text_encoder_2/model.safetensors")
         "model_hash": "98cc34ccc5b54ae0e56bdea8688dcd5a",
         "model_name": "stable_diffusion_xl_text_encoder",
         "model_class": "diffsynth.models.stable_diffusion_xl_text_encoder.SDXLTextEncoder2",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.stable_diffusion_xl_text_encoder.SDXLTextEncoder2StateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="AI-ModelScope/stable-diffusion-xl-base-1.0", origin_file_pattern="text_encoder/model.safetensors")
+        # Example: ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="text_encoder/model.safetensors")
         "model_hash": "94eefa3dac9cec93cb1ebaf1747d7b78",
         "model_name": "stable_diffusion_text_encoder",
         "model_class": "diffsynth.models.stable_diffusion_text_encoder.SDTextEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.stable_diffusion_text_encoder.SDTextEncoderStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="AI-ModelScope/stable-diffusion-xl-base-1.0", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        # Example: ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
         "model_hash": "13115dd45a6e1c39860f91ab073b8a78",
         "model_name": "stable_diffusion_xl_vae",
         "model_class": "diffsynth.models.stable_diffusion_vae.StableDiffusionVAE",

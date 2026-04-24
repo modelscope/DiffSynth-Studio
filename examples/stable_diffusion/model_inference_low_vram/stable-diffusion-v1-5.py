@@ -12,7 +12,6 @@ vram_config = {
     "computation_dtype": torch.float32,
     "computation_device": "cuda",
 }
-
 pipe = StableDiffusionPipeline.from_pretrained(
     torch_dtype=torch.float32,
     model_configs=[
@@ -25,13 +24,13 @@ pipe = StableDiffusionPipeline.from_pretrained(
 )
 
 image = pipe(
-    prompt="a photo of an astronaut riding a horse on mars",
-    negative_prompt="",
+    prompt="a photo of an astronaut riding a horse on mars, high quality, detailed",
+    negative_prompt="blurry, low quality, deformed",
     cfg_scale=7.5,
     height=512,
     width=512,
     seed=42,
+    rand_device="cuda",
     num_inference_steps=50,
 )
-image.save("output_stable_diffusion_t2i_low_vram.png")
-print("Image saved to output_stable_diffusion_t2i_low_vram.png")
+image.save("image.jpg")

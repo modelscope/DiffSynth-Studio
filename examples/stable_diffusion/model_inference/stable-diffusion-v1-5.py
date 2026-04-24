@@ -1,10 +1,9 @@
-from diffsynth.pipelines.stable_diffusion import StableDiffusionPipeline, ModelConfig
 import torch
-
+from diffsynth.core import ModelConfig
+from diffsynth.pipelines.stable_diffusion import StableDiffusionPipeline
 
 pipe = StableDiffusionPipeline.from_pretrained(
     torch_dtype=torch.float32,
-    device="cuda",
     model_configs=[
         ModelConfig(model_id="AI-ModelScope/stable-diffusion-v1-5", origin_file_pattern="text_encoder/model.safetensors"),
         ModelConfig(model_id="AI-ModelScope/stable-diffusion-v1-5", origin_file_pattern="unet/diffusion_pytorch_model.safetensors"),
@@ -12,6 +11,15 @@ pipe = StableDiffusionPipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="AI-ModelScope/stable-diffusion-v1-5", origin_file_pattern="tokenizer/"),
 )
-prompt = "dog, white and brown dog, sitting on wall, under pink flowers"
-image = pipe(prompt=prompt, seed=42, rand_device="cuda", num_inference_steps=50, cfg_scale=7.5)
+
+image = pipe(
+    prompt="a photo of an astronaut riding a horse on mars, high quality, detailed",
+    negative_prompt="blurry, low quality, deformed",
+    cfg_scale=7.5,
+    height=512,
+    width=512,
+    seed=42,
+    rand_device="cuda",
+    num_inference_steps=50,
+)
 image.save("image.jpg")
