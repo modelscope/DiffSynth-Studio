@@ -1,5 +1,5 @@
-from transformers import DINOv3ViTModel, DINOv3ViTImageProcessor
-from transformers.models.dinov3_vit.modeling_dinov3_vit import DINOv3ViTConfig
+from transformers.models.dinov3_vit.modeling_dinov3_vit import DINOv3ViTModel, DINOv3ViTConfig
+from transformers import DINOv3ViTImageProcessor
 import torch
 
 from ..core.device.npu_compatible_device import get_device_type
@@ -82,7 +82,7 @@ class DINOv3ImageEncoder(DINOv3ViTModel):
         hidden_states = self.embeddings(pixel_values, bool_masked_pos=bool_masked_pos)
         position_embeddings = self.rope_embeddings(pixel_values)
 
-        for i, layer_module in enumerate(self.layer):
+        for i, layer_module in enumerate(self.model.layer):
             layer_head_mask = head_mask[i] if head_mask is not None else None
             hidden_states = layer_module(
                 hidden_states,
