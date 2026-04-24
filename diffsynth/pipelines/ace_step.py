@@ -289,8 +289,6 @@ class AceStepUnit_PromptEmbedder(PipelineUnit):
         lyric_text = self.LYRIC_PROMPT.format(vocal_language, lyrics)
         lyric_hidden_states, lyric_attention_mask = self._encode_lyrics(pipe, lyric_text, max_length=2048)
 
-        # TODO: remove this
-        newtext = prompt + "\n\n" + lyric_text
         return {
             "text_hidden_states": text_hidden_states,
             "text_attention_mask": text_attention_mask,
