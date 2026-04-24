@@ -30,6 +30,9 @@ def launch_training_task(
     model.to(device=accelerator.device)
     model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
     initialize_deepspeed_gradient_checkpointing(accelerator)
+    if args is not None and getattr(args, 'cpu_offload', False):
+        from diffsynth.core import setup_layer_offload
+        setup_layer_offload(model, target_device=accelerator.device, optimize_on_cpu=True)
     for epoch_id in range(num_epochs):
         for data in tqdm(dataloader):
             with accelerator.accumulate(model):
