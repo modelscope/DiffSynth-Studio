@@ -274,10 +274,20 @@ def launch_webui():
         with st.expander("Pipeline", expanded=True):
             pipeline_class = draw_selectbox("Pipeline Class", st.session_state["available_pipelines"].keys(), st.session_state["available_pipelines"], value=st.session_state["available_pipelines"]["ZImagePipeline"])
             example = st.selectbox("Parse model configs from an example (optional)", st.session_state["available_examples"][pipeline_class.__name__])
-            if example != "None":
-                st.session_state["model_configs_from_example"] = parse_model_configs_from_an_example(example)
+
+            # Clear if pipeline is changed
+            if "prev_pipeline_class" in st.session_state and st.session_state["prev_pipeline_class"] != pipeline_class:
+                if "pipeline_class" in st.session_state: del st.session_state["pipeline_class"]
+                if "model_configs_from_example" in st.session_state: del st.session_state["model_configs_from_example"]
+            if "prev_example" in st.session_state and st.session_state["prev_example"] != example:
+                if "model_configs_from_example" in st.session_state: del st.session_state["model_configs_from_example"]
+            st.session_state["prev_pipeline_class"] = pipeline_class
+            st.session_state["prev_example"] = example
+
         if st.button("Step 1: Parse Pipeline", type="primary"):
             st.session_state["pipeline_class"] = pipeline_class
+            if example != "None":
+                st.session_state["model_configs_from_example"] = parse_model_configs_from_an_example(example)
 
         if "pipeline_class" not in st.session_state:
             return
