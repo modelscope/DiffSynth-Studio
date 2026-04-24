@@ -42,6 +42,7 @@ qwen_image_series = [
         "model_hash": "5722b5c873720009de96422993b15682",
         "model_name": "dinov3_image_encoder",
         "model_class": "diffsynth.models.dinov3_image_encoder.DINOv3ImageEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.dino_v3.DINOv3StateDictConverter",
     },
     {
         # Example: 

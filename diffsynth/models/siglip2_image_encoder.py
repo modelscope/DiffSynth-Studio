@@ -1,11 +1,11 @@
-from transformers.models.siglip.modeling_siglip import SiglipVisionTransformer, SiglipVisionConfig
+from transformers.models.siglip.modeling_siglip import SiglipVisionModel, SiglipVisionConfig
 from transformers import SiglipImageProcessor, Siglip2VisionModel, Siglip2VisionConfig, Siglip2ImageProcessor
 import torch
 
 from diffsynth.core.device.npu_compatible_device import get_device_type
 
 
-class Siglip2ImageEncoder(SiglipVisionTransformer):
+class Siglip2ImageEncoder(SiglipVisionModel):
     def __init__(self):
         config = SiglipVisionConfig(
             attention_dropout = 0.0,
