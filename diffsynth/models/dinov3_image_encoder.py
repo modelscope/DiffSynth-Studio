@@ -1,4 +1,4 @@
-from transformers import DINOv3ViTModel, DINOv3ViTImageProcessorFast
+from transformers import DINOv3ViTModel, DINOv3ViTImageProcessor
 from transformers.models.dinov3_vit.modeling_dinov3_vit import DINOv3ViTConfig
 import torch
 
@@ -40,7 +40,7 @@ class DINOv3ImageEncoder(DINOv3ViTModel):
             value_bias = False
         )
         super().__init__(config)
-        self.processor = DINOv3ViTImageProcessorFast(
+        self.processor = DINOv3ViTImageProcessor(
             crop_size = None,
             data_format = "channels_first",
             default_to_square = True,
@@ -56,7 +56,7 @@ class DINOv3ImageEncoder(DINOv3ViTModel):
                 0.456,
                 0.406
             ],
-            image_processor_type = "DINOv3ViTImageProcessorFast",
+            image_processor_type = "DINOv3ViTImageProcessor",
             image_std = [
                 0.229,
                 0.224,

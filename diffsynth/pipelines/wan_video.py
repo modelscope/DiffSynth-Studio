@@ -190,82 +190,82 @@ class WanVideoPipeline(BasePipeline):
     def __call__(
         self,
         # Prompt
-        prompt: str,
-        negative_prompt: Optional[str] = "",
+        prompt: str = "",
+        negative_prompt: str = "",
         # Image-to-video
-        input_image: Optional[Image.Image] = None,
+        input_image: Image.Image = None,
         # First-last-frame-to-video
-        end_image: Optional[Image.Image] = None,
+        end_image: Image.Image = None,
         # Video-to-video
-        input_video: Optional[list[Image.Image]] = None,
-        denoising_strength: Optional[float] = 1.0,
+        input_video: list[Image.Image] = None,
+        denoising_strength: float = 1.0,
         # Speech-to-video
-        input_audio: Optional[np.array] = None,
-        audio_embeds: Optional[torch.Tensor] = None,
-        audio_sample_rate: Optional[int] = 16000,
-        s2v_pose_video: Optional[list[Image.Image]] = None,
-        s2v_pose_latents: Optional[torch.Tensor] = None,
-        motion_video: Optional[list[Image.Image]] = None,
+        input_audio: np.array = None,
+        audio_embeds: torch.Tensor = None,
+        audio_sample_rate: int = 16000,
+        s2v_pose_video: list[Image.Image] = None,
+        s2v_pose_latents: torch.Tensor = None,
+        motion_video: list[Image.Image] = None,
         # ControlNet
-        control_video: Optional[list[Image.Image]] = None,
-        reference_image: Optional[Image.Image] = None,
+        control_video: list[Image.Image] = None,
+        reference_image: Image.Image = None,
         # Camera control
-        camera_control_direction: Optional[Literal["Left", "Right", "Up", "Down", "LeftUp", "LeftDown", "RightUp", "RightDown"]] = None,
-        camera_control_speed: Optional[float] = 1/54,
-        camera_control_origin: Optional[tuple] = (0, 0.532139961, 0.946026558, 0.5, 0.5, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0),
+        camera_control_direction: Literal["Left", "Right", "Up", "Down", "LeftUp", "LeftDown", "RightUp", "RightDown"] = None,
+        camera_control_speed: float = 1/54,
+        camera_control_origin: tuple = (0, 0.532139961, 0.946026558, 0.5, 0.5, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0),
         # VACE
-        vace_video: Optional[list[Image.Image]] = None,
-        vace_video_mask: Optional[Image.Image] = None,
-        vace_reference_image: Optional[Image.Image] = None,
-        vace_scale: Optional[float] = 1.0,
+        vace_video: list[Image.Image] = None,
+        vace_video_mask: Image.Image = None,
+        vace_reference_image: Image.Image = None,
+        vace_scale: float = 1.0,
         # Animate
-        animate_pose_video: Optional[list[Image.Image]] = None,
-        animate_face_video: Optional[list[Image.Image]] = None,
-        animate_inpaint_video: Optional[list[Image.Image]] = None,
-        animate_mask_video: Optional[list[Image.Image]] = None,
+        animate_pose_video: list[Image.Image] = None,
+        animate_face_video: list[Image.Image] = None,
+        animate_inpaint_video: list[Image.Image] = None,
+        animate_mask_video: list[Image.Image] = None,
         # VAP
-        vap_video: Optional[list[Image.Image]] = None,
-        vap_prompt: Optional[str] = " ",
-        negative_vap_prompt: Optional[str] = " ",
+        vap_video: list[Image.Image] = None,
+        vap_prompt: str = " ",
+        negative_vap_prompt: str = " ",
         # Randomness
-        seed: Optional[int] = None,
-        rand_device: Optional[str] = "cpu",
+        seed: int = None,
+        rand_device: str = "cpu",
         # Shape
-        height: Optional[int] = 480,
-        width: Optional[int] = 832,
-        num_frames=81,
+        height: int = 480,
+        width: int = 832,
+        num_frames: int = 81,
         # Classifier-free guidance
-        cfg_scale: Optional[float] = 5.0,
-        cfg_merge: Optional[bool] = False,
+        cfg_scale: float = 5.0,
+        cfg_merge: bool = False,
         # Boundary
-        switch_DiT_boundary: Optional[float] = 0.875,
+        switch_DiT_boundary: float = 0.875,
         # Scheduler
-        num_inference_steps: Optional[int] = 50,
-        sigma_shift: Optional[float] = 5.0,
+        num_inference_steps: int = 50,
+        sigma_shift: float = 5.0,
         # Speed control
-        motion_bucket_id: Optional[int] = None,
+        motion_bucket_id: int = None,
         # LongCat-Video
-        longcat_video: Optional[list[Image.Image]] = None,
+        longcat_video: list[Image.Image] = None,
         # VAE tiling
-        tiled: Optional[bool] = True,
-        tile_size: Optional[tuple[int, int]] = (30, 52),
-        tile_stride: Optional[tuple[int, int]] = (15, 26),
+        tiled: bool = True,
+        tile_size: tuple[int, int] = (30, 52),
+        tile_stride: tuple[int, int] = (15, 26),
         # Sliding window
-        sliding_window_size: Optional[int] = None,
-        sliding_window_stride: Optional[int] = None,
+        sliding_window_size: int = None,
+        sliding_window_stride: int = None,
         # Teacache
-        tea_cache_l1_thresh: Optional[float] = None,
-        tea_cache_model_id: Optional[str] = "",
+        tea_cache_l1_thresh: float = None,
+        tea_cache_model_id: str = "",
         # WanToDance
-        wantodance_music_path: Optional[str] = None,
-        wantodance_reference_image: Optional[Image.Image] = None,
-        wantodance_fps: Optional[float] = 30,
-        wantodance_keyframes: Optional[list[Image.Image]] = None,
-        wantodance_keyframes_mask: Optional[list[int]] = None,
+        wantodance_music_path: str = None,
+        wantodance_reference_image: Image.Image = None,
+        wantodance_fps: float = 30,
+        wantodance_keyframes: list[Image.Image] = None,
+        wantodance_keyframes_mask: list[int] = None,
         framewise_decoding: bool = False,
         # progress_bar
         progress_bar_cmd=tqdm,
-        output_type: Optional[Literal["quantized", "floatpoint"]] = "quantized",
+        output_type: Literal["quantized", "floatpoint"] = "quantized",
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)

@@ -1,5 +1,5 @@
 from transformers.models.siglip.modeling_siglip import SiglipVisionTransformer, SiglipVisionConfig
-from transformers import SiglipImageProcessor, Siglip2VisionModel, Siglip2VisionConfig, Siglip2ImageProcessorFast
+from transformers import SiglipImageProcessor, Siglip2VisionModel, Siglip2VisionConfig, Siglip2ImageProcessor
 import torch
 
 from diffsynth.core.device.npu_compatible_device import get_device_type
@@ -90,7 +90,7 @@ class Siglip2ImageEncoder428M(Siglip2VisionModel):
             transformers_version = "4.57.1"
         )
         super().__init__(config)
-        self.processor = Siglip2ImageProcessorFast(
+        self.processor = Siglip2ImageProcessor(
             **{
                 "data_format": "channels_first",
                 "default_to_square": True,
@@ -106,7 +106,7 @@ class Siglip2ImageEncoder428M(Siglip2VisionModel):
                     0.5,
                     0.5
                 ],
-                "image_processor_type": "Siglip2ImageProcessorFast",
+                "image_processor_type": "Siglip2ImageProcessor",
                 "image_std": [
                     0.5,
                     0.5,
