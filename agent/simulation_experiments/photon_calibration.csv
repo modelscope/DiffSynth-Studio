@@ -1,0 +1,21 @@
+OD_decimal_assumed,OD_integer_alternative,citation,color,detected_hi,detected_lo,f_number,incident_hi,incident_hi_per_frame,incident_hi_per_sec,incident_lo,incident_lo_per_frame,incident_lo_per_sec,incident_max_per_frame,incident_min_per_frame,incident_p50_per_frame,kind,label,label_short,lam_det_p1,lam_det_p25,lam_det_p50,lam_det_p75,lam_det_p99,method,n_scenes,pixel_um,qe_or_pde,scene_lux_hi,scene_lux_lo,sensor,t_exp_hi,t_exp_lo,transmission_decimal,transmission_integer
+,,"Chen et al., CVPR 2018 (1805.01934). f/5.6, ISO ≤409 600 stated; 1/30 s example in Fig 1.",tab:blue,15.400730692837683,1.5400730692837683,5.6,30.801461385675367,,,3.0801461385675366,,,,,,CMOS,"SID (Chen 2018), short exp.
+0.1 lux indoor, 1/30 s, f/5.6",SID,,,,,,lens-eq from lux,,5.95,0.5,0.3,0.03,Sony A7S II,0.03333333333333333,0.03333333333333333,,
+,,"Chen et al., CVPR 2018. Reference exposures 10–30 s.",tab:cyan,231010.96039256526,462.02192078513053,5.6,462021.9207851305,,,924.0438415702611,,,,,,CMOS,"SID (Chen 2018), long exp.
+0.03–5 lux, 10–30 s, f/5.6",SID,,,,,,lens-eq from lux,,5.95,0.5,5.0,0.03,Sony A7S II,30.0,10.0,,
+,,"Wei et al., CVPR 2020 (2003.12751). Calibrates ×100/200/300 ratios; targets 100–300 e⁻ regime.",tab:purple,45278.14823694279,3.018543215796186,4.0,90556.29647388558,,,6.037086431592372,,,,,,CMOS,"ELD (Wei 2020)
+low-light noise-model regime",ELD,,,,,,lens-eq from lux,,5.95,0.5,0.5,0.01,Sony A7S II / Nikon D850 / Canon,30.0,0.1,,
+,,"Monakhova et al., CVPR 2022 (2204.04210). Paper §3 specs; PR-810 Prichard photometer.",tab:olive,40.202639014456246,2.010131950722813,1.4,100.5065975361406,,,5.025329876807032,,,,,,CMOS,"Starlight (Monakhova 2022)
+0.0006–0.001 lux, 0.1–0.2 s, f/1.4",Starlight,,,,,,lens-eq from lux,,19.0,0.4,0.001,0.0001,Canon LI3030SAI (19 µm),0.2,0.1,,
+,,"Ma et al., SIGGRAPH 2020 (2006.11840). Direct SPAD measurement; range cites Fig 7-8.",tab:orange,0.6321205588285577,0.009950166250831893,2.0,3.3333333333333335,,,0.03333333333333333,,,,,,SPAD,"Quanta Burst (Ma 2020)
+SwissSPAD2, 1 binary frame",Quanta Burst,,,,,,direct,,16.38,0.3,,,SwissSPAD2 (16.38 µm),5e-05,5e-05,,
+,,"Liu et al., NeurIPS 2024 (2410.23247). Abstract: λ̄=0.0625 incident → 0.0590 detected/frame.",tab:red,0.05823546641575128,0.03076676552365587,2.0,0.12,,,0.0625,,,,,,SPAD,"bit2bit (Liu 2024)
+SPAD512S, 1 binary frame",bit2bit,,,,,,direct,,16.38,0.5,,,SPAD512S,5e-05,5e-05,,
+0.0,0.0,,,,,,,0.43372148027022683,7228.83591166387,,0.13784394289056462,2297.4449961570404,1.4633051087458926,0.03680412129809459,0.26530553897221887,SPAD-ours,"Ours, RAW_empty
+(measured, n=50 scenes)",Ours RAW_empty,0.011041236389428378,0.04135318286716938,0.07959166169166565,0.13011644408106804,0.4389915326237678,,50,,,,,,,,1.0,1.0
+0.1,1.0,,,,,,,0.34938876827557885,5823.262600849072,,0.12308627367019653,2051.4789232611656,1.1734955877065656,0.033435479210068786,0.21870913604895276,SPAD-ours,"Ours, RAW_OD_01
+(measured, n=50 scenes)",Ours RAW_OD_01,0.010030643763020635,0.03692588210105896,0.06561274081468582,0.10481663048267365,0.3520486763119697,,50,,,,,,,,0.7943282347242815,0.1
+0.3,3.0,,,,,,,0.2338765747845173,3898.0208719335496,,0.09038394627471766,1506.4292325607191,0.7716637730598449,0.03680412129809459,0.14302682131528854,SPAD-ours,"Ours, RAW_OD_03
+(measured, n=50 scenes)",Ours RAW_OD_03,0.011041236389428378,0.027115183882415295,0.04290804639458656,0.07016297243535519,0.23149913191795346,,50,,,,,,,,0.5011872336272722,0.001
+0.7,7.0,,,,,,,0.0989573479940494,1649.3221190168213,,0.04446220273772876,741.0515330297252,0.31112404291828466,0.028421240982909997,0.06734409059087436,SPAD-ours,"Ours, RAW_OD_07
+(measured, n=50 scenes)",Ours RAW_OD_07,0.008526372294872998,0.013338660821318626,0.020203227177262306,0.029687204398214817,0.0933372128754854,,50,,,,,,,,0.19952623149688797,1e-07

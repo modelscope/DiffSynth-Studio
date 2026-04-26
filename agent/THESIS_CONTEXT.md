@@ -1221,6 +1221,54 @@ DiffSynth-Studio-SPAD/
 | Consistency epoch sweep | In pipeline (Step 3), epochs 5/10/15/20/25/29 | ~2h |
 | ~~FLUX spatial crossframe re-extraction~~ | **Complete** — R²=0.359 | Done |
 | OD filter training (OD03-FT, OD07-FT) | Partial (4 epochs each) | Check tmux |
+| **SPAD simulation pipeline (sRGB → SPAD)** | v3 calibration + dyadic-pyramid LUT + AFHQ demo + 7/7 cascade integrity tests | See `simulation_experiments/` |
+
+#### Simulation experiments (new workstream)
+
+Parallel thread to build a **parametric augmentation pipeline**: given an
+online sRGB image, synthesize plausible SPAD captures (per-channel and/or
+mono) to expand training data beyond what we can physically capture.
+
+**Step 1 — RGB→mono Bernoulli-rate calibration (DONE, 2026-04-15).** Three
+versions run over all 2632 scenes, 80/20 scene-level split:
+
+| Version | Space | `w_r` | `w_g` | `w_b` | sum | Val R² | Verdict |
+|---|---|---|---|---|---|---|---|
+| v1 | p (raw) | 0.859 | 1.430 | **−0.545** | 1.744 | 0.897 | superseded (p-space linearization artifact) |
+| **v3** | **λ = −ln(1−p)** | **1.031** | **1.181** | **+0.836** | **3.048** | **0.970** | **PRIMARY — physics-correct, all-positive, sum≈3** |
+| v4 | processed PNG | 0.370 | 0.500 | 0.094 | 0.965 | 0.968 | sanity comparison (tone-map-aligned) |
+
+v3's `sum ≈ 3` matches the spectral-partition identity: if `F_r+F_g+F_b ≈ 1`
+pointwise, mono = R+G+B and `w = (1,1,1), sum=3`. Our weights `(1.03, 1.18,
+0.84)` are close to `(1,1,1)` with a modest Bayer-style green-peaked /
+blue-attenuated bias. Directly usable in the forward model.
+
+**What's done (post-pyramid + cascade test, 2026-04-19):**
+- ✅ Per-pixel + super-pixel + global LUTs built race-free with full provenance
+- ✅ 10-level dyadic pyramid (`lut_pyramid.npz`, 28.7 GB) replaces 3-level hierarchy
+  - 1M-query usage: 48.5 % L=1, 39.9 % L=2, 11.1 % L=4, 0.5 % L=8, ~0 % deeper
+  - Cascade integrity test: 7/7 pass (reachability, edge bins, safety net,
+    unbiasedness, determinism, level containment)
+- ✅ Variance decomposition: Var_between/Var_total ≈ 28 % (moderate FPN)
+- ✅ Inter-arrival v3: no afterpulsing detected (per-pixel residual ≈ 0,
+  lag-1 ≈ 0). v2's "17 % afterpulsing" was a rate-mixing artifact — see
+  `simulation_experiments/AUDIT_RESPONSE_2026-04-16.md`.
+- ✅ End-to-end AFHQ → simulated SPAD demo: 10 sRGB images → 10 000 simulated
+  binary frames each → accumulated PNGs at K ∈ {1, 10, 100, 1000, 10 000}.
+- ✅ `calibration/README.md` documents the pipeline, run order, and conventions.
+
+**Known limitations (not blockers for this workstream):**
+- Camera-RGB ↔ SPAD-flux bridge uncalibrated (would need a CCM); current
+  simulator treats them as proportional with a single scalar exposure α.
+- Exposure scaling α is hand-picked; future work could sample from empirical
+  λ-distribution.
+
+**Note:** the non-parametric sim code in `spad-diffusion/spad_dataset/` is
+**ignored** for this workstream — this is a parametric pipeline built from
+scratch.
+
+All docs + discussion logs + weights live under
+`agent/simulation_experiments/` and `/nfs/horai.dgpsrv/ondemand30/jw954/calibration/`.
 
 ### 14.3 What's Not Started (Priority Order)
 
