@@ -152,7 +152,7 @@ class BasePipeline(torch.nn.Module):
         # remove batch dim
         if audio_output.ndim == 3:
             audio_output = audio_output.squeeze(0)
-        return audio_output.float()
+        return audio_output.float().cpu()
 
     def load_models_to_device(self, model_names):
         if self.vram_management_enabled:

@@ -4,7 +4,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -14,6 +14,7 @@ class FlowMatchScheduler():
             "LTX-2": FlowMatchScheduler.set_timesteps_ltx2,
             "Qwen-Image-Lightning": FlowMatchScheduler.set_timesteps_qwen_image_lightning,
             "ERNIE-Image": FlowMatchScheduler.set_timesteps_ernie_image,
+            "ACE-Step": FlowMatchScheduler.set_timesteps_ace_step,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -137,6 +138,16 @@ class FlowMatchScheduler():
         num_train_timesteps = 1000
         sigma_start = sigma_min + (sigma_max - sigma_min) * denoising_strength
         sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps + 1)[:-1]
+        if shift is not None and shift != 1.0:
+            sigmas = shift * sigmas / (1 + (shift - 1) * sigmas)
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_ace_step(num_inference_steps=8, denoising_strength=1.0, shift=3.0):
+        num_train_timesteps = 1000
+        sigma_start = denoising_strength
+        sigmas = torch.linspace(sigma_start, 0.0, num_inference_steps + 1)[:-1]
         if shift is not None and shift != 1.0:
             sigmas = shift * sigmas / (1 + (shift - 1) * sigmas)
         timesteps = sigmas * num_train_timesteps

@@ -972,4 +972,75 @@ joyai_image_series = [
     },
 ]
 
-MODEL_CONFIGS = stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series
+ace_step_series = [
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors")
+        "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
+        "model_name": "ace_step_dit",
+        "model_class": "diffsynth.models.ace_step_dit.AceStepDiTModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_dit.AceStepDiTModelStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="ACE-Step/acestep-v15-xl-base", origin_file_pattern="model-*.safetensors")
+        "model_hash": "3a28a410c2246f125153ef792d8bc828",
+        "model_name": "ace_step_dit",
+        "model_class": "diffsynth.models.ace_step_dit.AceStepDiTModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_dit.AceStepDiTModelStateDictConverter",
+        "extra_kwargs": {
+            "hidden_size": 2560,
+            "intermediate_size": 9728,
+            "num_hidden_layers": 32,
+            "num_attention_heads": 32,
+            "num_key_value_heads": 8,
+            "head_dim": 128,
+            "encoder_hidden_size": 2048,
+            "layer_types": ["sliding_attention", "full_attention"] * 16,
+        },
+    },
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors")
+        "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
+        "model_name": "ace_step_conditioner",
+        "model_class": "diffsynth.models.ace_step_conditioner.AceStepConditionEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_conditioner.AceStepConditionEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="ACE-Step/acestep-v15-xl-base", origin_file_pattern="model-*.safetensors")
+        "model_hash": "3a28a410c2246f125153ef792d8bc828",
+        "model_name": "ace_step_conditioner",
+        "model_class": "diffsynth.models.ace_step_conditioner.AceStepConditionEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_conditioner.AceStepConditionEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors")
+        "model_hash": "3509bea17b0e8cffc3dd4a15cc7899d0",
+        "model_name": "ace_step_text_encoder",
+        "model_class": "diffsynth.models.ace_step_text_encoder.AceStepTextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_text_encoder.AceStepTextEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "51420834e54474986a7f4be0e4d6f687",
+        "model_name": "ace_step_vae",
+        "model_class": "diffsynth.models.ace_step_vae.AceStepVAE",
+    },
+    {
+        # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors")
+        "model_hash": "ba29d8bddbb6ace65675f6a757a13c00",
+        "model_name": "ace_step_tokenizer",
+        "model_class": "diffsynth.models.ace_step_tokenizer.AceStepTokenizer",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_tokenizer.AceStepTokenizerStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="ACE-Step/acestep-v15-xl-base", origin_file_pattern="model-*.safetensors")
+        "model_hash": "3a28a410c2246f125153ef792d8bc828",
+        "model_name": "ace_step_tokenizer",
+        "model_class": "diffsynth.models.ace_step_tokenizer.AceStepTokenizer",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_tokenizer.AceStepTokenizerStateDictConverter",
+    },
+]
+
+MODEL_CONFIGS = (
+    stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
+    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series
+)
