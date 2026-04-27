@@ -315,9 +315,9 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
     "diffsynth.models.stable_diffusion_text_encoder.SDTextEncoder": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "transformers.models.clip.modeling_clip.CLIPTextTransformer": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "transformers.models.clip.modeling_clip.CLIPEncoderLayer": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "transformers.models.clip.modeling_clip.CLIPAttention": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.stable_diffusion_text_encoder.CLIPEncoderLayer": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.stable_diffusion_text_encoder.CLIPAttention": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.stable_diffusion_xl_unet.SDXLUNet2DConditionModel": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
@@ -330,9 +330,10 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
     "diffsynth.models.stable_diffusion_xl_text_encoder.SDXLTextEncoder2": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "transformers.models.clip.modeling_clip.CLIPTextTransformer": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "transformers.models.clip.modeling_clip.CLIPEncoderLayer": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "transformers.models.clip.modeling_clip.CLIPAttention": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.stable_diffusion_text_encoder.CLIPEncoderLayer": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.stable_diffusion_text_encoder.CLIPAttention": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.stable_diffusion_xl_text_encoder.CLIPTextModelWithProjection": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
 }
 
