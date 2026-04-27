@@ -34,7 +34,7 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
-- **April 24, 2026** We add support for Stable Diffusion v1.5 and SDXL, including inference, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/Stable-Diffusion.md), [documentation](/docs/en/Model_Details/Stable-Diffusion-XL.md) and [example code](/examples/stable_diffusion/).
+- **April 27, 2026**: We have reinstated support for the Stable Diffusion v1.5 and SDXL models, providing academic research support exclusively for these two model types.
 
 - **April 14, 2026** JoyAI-Image open-sourced, welcome a new member to the image editing model family! Support includes instruction-guided image editing, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/JoyAI-Image.md) and [example code](/examples/joyai_image/).
 
