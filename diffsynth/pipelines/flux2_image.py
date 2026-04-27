@@ -75,7 +75,7 @@ class Flux2ImagePipeline(BasePipeline):
     def __call__(
         self,
         # Prompt
-        prompt: str,
+        prompt: str = "",
         negative_prompt: str = "",
         cfg_scale: float = 1.0,
         embedded_guidance: float = 4.0,
@@ -83,7 +83,7 @@ class Flux2ImagePipeline(BasePipeline):
         input_image: Image.Image = None,
         denoising_strength: float = 1.0,
         # Edit
-        edit_image: Union[Image.Image, List[Image.Image]] = None,
+        edit_image: List[Image.Image] = None,
         edit_image_auto_resize: bool = True,
         # Shape
         height: int = 1024,
