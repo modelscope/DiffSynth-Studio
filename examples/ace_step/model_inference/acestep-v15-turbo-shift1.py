@@ -31,6 +31,7 @@ audio = pipe(
     keyscale="B minor",
     timesignature="4",
     vocal_language="zh",
+    shift=1,
     seed=42,
 )
 save_audio(audio, pipe.vae.sampling_rate, "acestep-v15-turbo-shift1.wav")

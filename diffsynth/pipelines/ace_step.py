@@ -119,7 +119,7 @@ class AceStepPipeline(BasePipeline):
         # Steps
         num_inference_steps: int = 8,
         # Scheduler-specific parameters
-        shift: float = 1.0,
+        shift: float = 3.0,
         # Progress
         progress_bar_cmd=tqdm,
     ):

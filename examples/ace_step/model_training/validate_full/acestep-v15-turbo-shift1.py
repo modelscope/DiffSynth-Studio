@@ -31,5 +31,6 @@ audio = pipe(
     seed=1,
     num_inference_steps=30,
     cfg_scale=4.0,
+    shift=1,
 )
 save_audio(audio, pipe.vae.sampling_rate, "acestep-v15-turbo-shift1_full.wav")
