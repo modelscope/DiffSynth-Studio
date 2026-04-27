@@ -32,6 +32,8 @@
    Model_Details/LTX-2
    Model_Details/ERNIE-Image
    Model_Details/JoyAI-Image
+   Model_Details/Stable-Diffusion
+   Model_Details/Stable-Diffusion-XL
 
 .. toctree::
    :maxdepth: 2
