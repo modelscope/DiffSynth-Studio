@@ -299,5 +299,5 @@ class LoadPureAudioWithTorchaudio(DataProcessingOperator):
                     waveform = torch.nn.functional.pad(waveform, (0, padding))
             return waveform, sample_rate
         except Exception as e:
-            warnings.warn(f"Cannot load audio in '{data}' due to '{e}'. The audio will be `None`.")
+            print(f"Cannot load audio in {data} due to {e}. The audio will be `None`.")
             return None
