@@ -34,6 +34,15 @@ DiffSynth 目前包括两个开源项目：
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年4月28日** 🔥 我们发布了 Diffusion Templates，面向 Diffusion 模型的插件框架，大幅降低了可控生成模型的训练门槛，一起来探索新奇的技术吧！
+    * 开源代码：[DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio)
+    * 技术报告：[arXiv](https://arxiv.org/abs/2604.24351)
+    * 项目主页：[GitHub](https://modelscope.github.io/diffusion-templates-web/)
+    * 文档参考：[English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)
+    * 在线体验：[魔搭社区创空间](https://modelscope.cn/studios/DiffSynth-Studio/Diffusion-Templates)
+    * 模型集：[ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/KleinBase4B-Templates)、[ModelScope 国际站](https://modelscope.ai/collections/DiffSynth-Studio/KleinBase4B-Templates)、[HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/kleinbase4b-templates)
+    * 数据集：[ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2)、[ModelScope 国际站](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2)、[HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/imagepulsev2)
+
 - **2026年4月27日** 我们支持了 ACE-Step-1.5！包括文生音乐推理、低显存推理和 LoRA 训练能力。详情请参考[文档](/docs/zh/Model_Details/ACE-Step.md)和[示例代码](/examples/ace_step/)。
 
 - **2026年4月27日** 我们重新支持了模型 Stable Diffusion v1.5 和 SDXL，仅对这两类模型提供学术科研支持。
@@ -96,7 +105,7 @@ DiffSynth 目前包括两个开源项目：
 
 - **2025年8月20日** 我们开源了 [DiffSynth-Studio/Qwen-Image-Edit-Lowres-Fix](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Edit-Lowres-Fix) 模型，提升了 Qwen-Image-Edit 对低分辨率图像输入的编辑效果。请参考[我们的示例代码](./examples/qwen_image/model_inference/Qwen-Image-Edit-Lowres-Fix.py)
 
-- **2025年8月19日** 🔥 Qwen-Image-Edit 开源，欢迎图像编辑模型新成员！
+- **2025年8月19日** Qwen-Image-Edit 开源，欢迎图像编辑模型新成员！
 
 - **2025年8月18日** 我们训练并开源了 Qwen-Image 的图像重绘 ControlNet 模型 [DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Inpaint](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Inpaint)，模型结构采用了轻量化的设计，请参考[我们的示例代码](./examples/qwen_image/model_inference/Qwen-Image-Blockwise-ControlNet-Inpaint.py)。
 
@@ -112,7 +121,7 @@ DiffSynth 目前包括两个开源项目：
 
 - **2025年8月5日** 我们开源了 Qwen-Image 的蒸馏加速模型 [DiffSynth-Studio/Qwen-Image-Distill-Full](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Distill-Full)，实现了约 5 倍加速。
 
-- **2025年8月4日** 🔥 Qwen-Image 开源，欢迎图像生成模型家族新成员！
+- **2025年8月4日** Qwen-Image 开源，欢迎图像生成模型家族新成员！
 
 - **2025年8月1日** [FLUX.1-Krea-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.1-Krea-dev) 开源，这是一个专注于美学摄影的文生图模型。我们第一时间提供了全方位支持，包括低显存逐层 offload、LoRA 训练、全量训练。详细信息请参考 [./examples/flux/](./examples/flux/)。
 
@@ -479,6 +488,17 @@ FLUX.2 的示例代码位于：[/examples/flux2/](/examples/flux2/)
 |[black-forest-labs/FLUX.2-klein-9B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-9B)|[code](/examples/flux2/model_inference/FLUX.2-klein-9B.py)|[code](/examples/flux2/model_inference_low_vram/FLUX.2-klein-9B.py)|[code](/examples/flux2/model_training/full/FLUX.2-klein-9B.sh)|[code](/examples/flux2/model_training/validate_full/FLUX.2-klein-9B.py)|[code](/examples/flux2/model_training/lora/FLUX.2-klein-9B.sh)|[code](/examples/flux2/model_training/validate_lora/FLUX.2-klein-9B.py)|
 |[black-forest-labs/FLUX.2-klein-base-4B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-base-4B)|[code](/examples/flux2/model_inference/FLUX.2-klein-base-4B.py)|[code](/examples/flux2/model_inference_low_vram/FLUX.2-klein-base-4B.py)|[code](/examples/flux2/model_training/full/FLUX.2-klein-base-4B.sh)|[code](/examples/flux2/model_training/validate_full/FLUX.2-klein-base-4B.py)|[code](/examples/flux2/model_training/lora/FLUX.2-klein-base-4B.sh)|[code](/examples/flux2/model_training/validate_lora/FLUX.2-klein-base-4B.py)|
 |[black-forest-labs/FLUX.2-klein-base-9B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-base-9B)|[code](/examples/flux2/model_inference/FLUX.2-klein-base-9B.py)|[code](/examples/flux2/model_inference_low_vram/FLUX.2-klein-base-9B.py)|[code](/examples/flux2/model_training/full/FLUX.2-klein-base-9B.sh)|[code](/examples/flux2/model_training/validate_full/FLUX.2-klein-base-9B.py)|[code](/examples/flux2/model_training/lora/FLUX.2-klein-base-9B.sh)|[code](/examples/flux2/model_training/validate_lora/FLUX.2-klein-base-9B.py)|
+|[DiffSynth-Studio/Template-KleinBase4B-Aesthetic](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Aesthetic)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Aesthetic.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Aesthetic.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Aesthetic.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Aesthetic.py)|-|-|
+|[DiffSynth-Studio/Template-KleinBase4B-Brightness](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Brightness)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Brightness.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Brightness.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Brightness.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Brightness.py)|-|-|
+|[DiffSynth-Studio/Template-KleinBase4B-Age](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Age)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Age.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Age.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Age.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Age.py)|-|-|
+|[DiffSynth-Studio/Template-KleinBase4B-ControlNet](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ControlNet)|[code](/examples/flux2/model_inference/Template-KleinBase4B-ControlNet.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-ControlNet.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-ControlNet.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-ControlNet.py)|-|-|
+|[DiffSynth-Studio/Template-KleinBase4B-Edit](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Edit)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Edit.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Edit.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Edit.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Edit.py)|-|-|
+|[DiffSynth-Studio/Template-KleinBase4B-Inpaint](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Inpaint)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Inpaint.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Inpaint.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Inpaint.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Inpaint.py)|-|-|
+|[DiffSynth-Studio/Template-KleinBase4B-PandaMeme](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-PandaMeme)|[code](/examples/flux2/model_inference/Template-KleinBase4B-PandaMeme.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-PandaMeme.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-PandaMeme.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-PandaMeme.py)|-|-|
+|[DiffSynth-Studio/Template-KleinBase4B-Sharpness](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Sharpness)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Sharpness.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Sharpness.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Sharpness.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Sharpness.py)|-|-|
+|[DiffSynth-Studio/Template-KleinBase4B-SoftRGB](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-SoftRGB)|[code](/examples/flux2/model_inference/Template-KleinBase4B-SoftRGB.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-SoftRGB.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-SoftRGB.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-SoftRGB.py)|-|-|
+|[DiffSynth-Studio/Template-KleinBase4B-Upscaler](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Upscaler)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Upscaler.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Upscaler.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Upscaler.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Upscaler.py)|-|-|
+|[DiffSynth-Studio/Template-KleinBase4B-ContentRef](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ContentRef)|[code](/examples/flux2/model_inference/Template-KleinBase4B-ContentRef.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-ContentRef.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-ContentRef.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-ContentRef.py)|-|-|
 
 </details>
 
