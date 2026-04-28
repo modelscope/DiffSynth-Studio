@@ -29,19 +29,19 @@ def launch_training_task(
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
     model.to(device=accelerator.device)
     model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
-    
+    initialize_deepspeed_gradient_checkpointing(accelerator)
     for epoch_id in range(num_epochs):
         for data in tqdm(dataloader):
             with accelerator.accumulate(model):
-                optimizer.zero_grad()
                 if dataset.load_from_cache:
                     loss = model({}, inputs=data)
                 else:
                     loss = model(data)
                 accelerator.backward(loss)
                 optimizer.step()
-                model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
                 scheduler.step()
+                optimizer.zero_grad()
+                model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
         if save_steps is None:
             model_logger.on_epoch_end(accelerator, model, epoch_id)
     model_logger.on_training_end(accelerator, model, save_steps)
@@ -70,3 +70,19 @@ def launch_data_process_task(
                 save_path = os.path.join(model_logger.output_path, str(accelerator.process_index), f"{data_id}.pth")
                 data = model(data)
                 torch.save(data, save_path)
+
+
+def initialize_deepspeed_gradient_checkpointing(accelerator: Accelerator):
+    if getattr(accelerator.state, "deepspeed_plugin", None) is not None:
+        ds_config = accelerator.state.deepspeed_plugin.deepspeed_config
+        if "activation_checkpointing" in ds_config:
+            import deepspeed
+            act_config = ds_config["activation_checkpointing"]
+            deepspeed.checkpointing.configure(
+                mpu_=None, 
+                partition_activations=act_config.get("partition_activations", False),
+                checkpoint_in_cpu=act_config.get("cpu_checkpointing", False),
+                contiguous_checkpointing=act_config.get("contiguous_memory_optimization", False)
+            )
+        else:
+            print("Do not find activation_checkpointing config in deepspeed config, skip initializing deepspeed gradient checkpointing.")

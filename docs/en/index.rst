@@ -13,6 +13,7 @@ Welcome to DiffSynth-Studio's Documentation
 
    Pipeline_Usage/Setup
    Pipeline_Usage/Model_Inference
+   Pipeline_Usage/Accelerated_Inference
    Pipeline_Usage/VRAM_management
    Pipeline_Usage/Model_Training
    Pipeline_Usage/Environment_Variables
@@ -29,6 +30,11 @@ Welcome to DiffSynth-Studio's Documentation
    Model_Details/Z-Image
    Model_Details/Anima
    Model_Details/LTX-2
+   Model_Details/ERNIE-Image
+   Model_Details/JoyAI-Image
+   Model_Details/ACE-Step
+   Model_Details/Stable-Diffusion
+   Model_Details/Stable-Diffusion-XL
 
 .. toctree::
    :maxdepth: 2

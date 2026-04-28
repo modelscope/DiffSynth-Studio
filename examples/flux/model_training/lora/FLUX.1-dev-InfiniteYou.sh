@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux/FLUX.1-dev-InfiniteYou/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/flux/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_infiniteyou.csv \
+  --dataset_base_path data/diffsynth_example_dataset/flux/FLUX.1-dev-InfiniteYou \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux/FLUX.1-dev-InfiniteYou/metadata.csv \
   --data_file_keys "image,controlnet_image,infinityou_id_image" \
   --max_pixels 1048576 \
   --dataset_repeat 100 \

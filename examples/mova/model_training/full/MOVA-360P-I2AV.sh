@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "mova/MOVA-360P-I2AV/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/mova/model_training/train.py \
-  --dataset_base_path data/example_video_dataset/ltx2 \
-  --dataset_metadata_path data/example_video_dataset/ltx2_t2av.csv \
+  --dataset_base_path data/diffsynth_example_dataset/mova/MOVA-360P-I2AV \
+  --dataset_metadata_path data/diffsynth_example_dataset/mova/MOVA-360P-I2AV/metadata.csv \
   --data_file_keys "video,input_audio" \
   --extra_inputs "input_audio,input_image" \
   --height 352 \
@@ -19,8 +21,8 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
 # boundary corresponds to timesteps [900, 1000]
 
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/mova/model_training/train.py \
-  --dataset_base_path data/example_video_dataset/ltx2 \
-  --dataset_metadata_path data/example_video_dataset/ltx2_t2av.csv \
+  --dataset_base_path data/diffsynth_example_dataset/mova/MOVA-360P-I2AV \
+  --dataset_metadata_path data/diffsynth_example_dataset/mova/MOVA-360P-I2AV/metadata.csv \
   --data_file_keys "video,input_audio" \
   --extra_inputs "input_audio,input_image" \
   --height 352 \

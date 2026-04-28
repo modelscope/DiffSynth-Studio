@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "qwen_image/Qwen-Image-2512/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-2512 \
+  --dataset_metadata_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-2512/metadata.csv \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
   --model_id_with_origin_paths "Qwen/Qwen-Image-2512:transformer/diffusion_pytorch_model*.safetensors,Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors" \

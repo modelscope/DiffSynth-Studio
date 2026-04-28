@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux/Step1X-Edit/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch --config_file examples/flux/model_training/full/accelerate_config.yaml examples/flux/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_step1x.csv \
+  --dataset_base_path data/diffsynth_example_dataset/flux/Step1X-Edit \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux/Step1X-Edit/metadata.csv \
   --data_file_keys "image,step1x_reference_image" \
   --max_pixels 1048576 \
   --dataset_repeat 400 \

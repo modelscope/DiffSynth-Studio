@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "qwen_image/Qwen-Image-Blockwise-ControlNet-Inpaint/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_blockwise_controlnet_inpaint.csv \
+  --dataset_base_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Blockwise-ControlNet-Inpaint \
+  --dataset_metadata_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Blockwise-ControlNet-Inpaint/metadata.csv \
   --data_file_keys "image,blockwise_controlnet_image,blockwise_controlnet_inpaint_mask" \
   --max_pixels 1048576 \
   --dataset_repeat 50 \

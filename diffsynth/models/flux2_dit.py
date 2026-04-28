@@ -821,6 +821,9 @@ class Flux2Modulation(nn.Module):
 
 
 class Flux2DiT(torch.nn.Module):
+
+    _repeated_blocks = ["Flux2TransformerBlock", "Flux2SingleTransformerBlock"]
+
     def __init__(
         self,
         patch_size: int = 1,

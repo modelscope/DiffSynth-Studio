@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "qwen_image/Qwen-Image-Blockwise-ControlNet-Depth/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata_blockwise_controlnet_depth.csv \
+  --dataset_base_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Blockwise-ControlNet-Depth \
+  --dataset_metadata_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Blockwise-ControlNet-Depth/metadata.csv \
   --data_file_keys "image,blockwise_controlnet_image" \
   --max_pixels 1048576 \
   --dataset_repeat 50 \

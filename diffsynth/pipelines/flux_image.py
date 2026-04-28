@@ -103,6 +103,7 @@ class FluxImagePipeline(BasePipeline):
             FluxImageUnit_LoRAEncode(),
         ]
         self.model_fn = model_fn_flux_image
+        self.compilable_models = ["dit"]
         self.lora_loader = FluxLoRALoader
 
     def enable_lora_merger(self):
@@ -180,7 +181,7 @@ class FluxImagePipeline(BasePipeline):
     def __call__(
         self,
         # Prompt
-        prompt: str,
+        prompt: str = "",
         negative_prompt: str = "",
         cfg_scale: float = 1.0,
         embedded_guidance: float = 3.5,
@@ -198,10 +199,6 @@ class FluxImagePipeline(BasePipeline):
         sigma_shift: float = None,
         # Steps
         num_inference_steps: int = 30,
-        # local prompts
-        multidiffusion_prompts=(),
-        multidiffusion_masks=(),
-        multidiffusion_scales=(),
         # Kontext
         kontext_images: Union[list[Image.Image], Image.Image] = None,
         # ControlNet
@@ -256,7 +253,6 @@ class FluxImagePipeline(BasePipeline):
             "height": height, "width": width,
             "seed": seed, "rand_device": rand_device,
             "sigma_shift": sigma_shift, "num_inference_steps": num_inference_steps,
-            "multidiffusion_prompts": multidiffusion_prompts, "multidiffusion_masks": multidiffusion_masks, "multidiffusion_scales": multidiffusion_scales,
             "kontext_images": kontext_images,
             "controlnet_inputs": controlnet_inputs,
             "ipadapter_images": ipadapter_images, "ipadapter_scale": ipadapter_scale,

@@ -148,11 +148,11 @@ if __name__ == "__main__":
         max_pixels=args.max_pixels,
         height=args.height,
         width=args.width,
-        height_division_factor=model.pipe.height_division_factor,
-        width_division_factor=model.pipe.width_division_factor,
+        height_division_factor=16,
+        width_division_factor=16,
         num_frames=args.num_frames,
-        time_division_factor=model.pipe.time_division_factor,
-        time_division_remainder=model.pipe.time_division_remainder,
+        time_division_factor=4,
+        time_division_remainder=1,
         frame_rate=args.frame_rate,
         fix_frame_rate=True,
     )
@@ -166,8 +166,8 @@ if __name__ == "__main__":
             "input_audio":
                 ToAbsolutePath(args.dataset_base_path) >> LoadAudioWithTorchaudio(
                     num_frames=args.num_frames,
-                    time_division_factor=model.pipe.time_division_factor,
-                    time_division_remainder=model.pipe.time_division_remainder,
+                    time_division_factor=4,
+                    time_division_remainder=1,
                     frame_rate=args.frame_rate,
                 ),
             "in_context_videos":

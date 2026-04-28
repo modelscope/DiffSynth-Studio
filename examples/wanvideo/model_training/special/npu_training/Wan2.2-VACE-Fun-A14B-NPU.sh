@@ -1,9 +1,11 @@
 export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
 export CPU_AFFINITY_CONF=1
 
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "wanvideo/Wan2.2-VACE-Fun-A14B/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/wanvideo/model_training/train.py \
-  --dataset_base_path data/example_video_dataset \
-  --dataset_metadata_path data/example_video_dataset/metadata_vace.csv \
+  --dataset_base_path data/diffsynth_example_dataset/wanvideo/Wan2.2-VACE-Fun-A14B \
+  --dataset_metadata_path data/diffsynth_example_dataset/wanvideo/Wan2.2-VACE-Fun-A14B/metadata.csv \
   --data_file_keys "video,vace_video,vace_reference_image" \
   --height 480 \
   --width 832 \
@@ -24,8 +26,8 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
 
 
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/wanvideo/model_training/train.py \
-  --dataset_base_path data/example_video_dataset \
-  --dataset_metadata_path data/example_video_dataset/metadata_vace.csv \
+  --dataset_base_path data/diffsynth_example_dataset/wanvideo/Wan2.2-VACE-Fun-A14B \
+  --dataset_metadata_path data/diffsynth_example_dataset/wanvideo/Wan2.2-VACE-Fun-A14B/metadata.csv \
   --data_file_keys "video,vace_video,vace_reference_image" \
   --height 480 \
   --width 832 \

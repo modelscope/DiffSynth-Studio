@@ -1,6 +1,8 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "wanvideo/Wan2.1-Fun-V1.1-14B-InP/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch --config_file examples/wanvideo/model_training/full/accelerate_config_14B.yaml examples/wanvideo/model_training/train.py \
-  --dataset_base_path data/example_video_dataset \
-  --dataset_metadata_path data/example_video_dataset/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/wanvideo/Wan2.1-Fun-V1.1-14B-InP \
+  --dataset_metadata_path data/diffsynth_example_dataset/wanvideo/Wan2.1-Fun-V1.1-14B-InP/metadata.csv \
   --height 480 \
   --width 832 \
   --dataset_repeat 100 \
