@@ -1085,7 +1085,7 @@ class WanVideoUnit_WanToDance_ProcessInputs(PipelineUnit):
         return torch.from_numpy(audio_feature)
 
     def process(self, pipe: WanVideoPipeline, inputs_shared, inputs_posi, inputs_nega):
-        if pipe.dit.wantodance_enable_global:
+        if hasattr(pipe.dit, "wantodance_enable_global") and pipe.dit.wantodance_enable_global:
             inputs_nega["skip_9th_layer"] = True
         if inputs_shared.get("wantodance_music_path", None) is not None:
             inputs_shared["music_feature"] = self.get_music_base_feature(inputs_shared["wantodance_music_path"]).to(dtype=pipe.torch_dtype, device=pipe.device)
