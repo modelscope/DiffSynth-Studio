@@ -3,7 +3,8 @@
 Diffusion Templates is a controllable generation plugin framework for Diffusion models in DiffSynth-Studio, providing additional controllable generation capabilities for base models.
 
 * Open-source code: [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio)
-* Technical report: coming soon
+* Technical report: [arXiv](https://arxiv.org/abs/2604.24351)
+* Project page: [GitHub](https://modelscope.github.io/diffusion-templates-web/)
 * Documentation reference
     * Introduction to Diffusion Templates: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)
     * Detailed Architecture of Diffusion Templates: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Understanding_Diffusion_Templates.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Understanding_Diffusion_Templates.html)

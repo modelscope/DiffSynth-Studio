@@ -3,7 +3,8 @@
 Diffusion Templates 是 DiffSynth-Studio 中的 Diffusion 模型可控生成插件框架，可以为基础模型提供额外的可控生成能力。
 
 * 开源代码：[DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio)
-* 技术报告：coming soon
+* 技术报告：[arXiv](https://arxiv.org/abs/2604.24351)
+* 项目主页：[GitHub](https://modelscope.github.io/diffusion-templates-web/)
 * 文档参考
     * Diffusion Templates 简介：[English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)
     * Diffusion Templates 架构详解：[English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Understanding_Diffusion_Templates.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Understanding_Diffusion_Templates.html)
