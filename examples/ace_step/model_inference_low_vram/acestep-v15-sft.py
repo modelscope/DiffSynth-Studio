@@ -38,7 +38,7 @@ audio = pipe(
     timesignature="4",
     vocal_language="zh",
     seed=42,
-    num_inference_steps=30,
+    num_inference_steps=50,
     cfg_scale=4.0,
 )
 save_audio(audio, pipe.vae.sampling_rate, "acestep-v15-sft-low-vram.wav")

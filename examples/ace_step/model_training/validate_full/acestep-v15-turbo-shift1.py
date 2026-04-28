@@ -29,7 +29,7 @@ audio = pipe(
     timesignature="4",
     vocal_language="zh",
     seed=1,
-    num_inference_steps=30,
+    num_inference_steps=50,
     cfg_scale=4.0,
     shift=1,
 )
