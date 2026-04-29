@@ -60,6 +60,11 @@ def add_gradient_config(parser: argparse.ArgumentParser):
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help="Gradient accumulation steps.")
     return parser
 
+def add_template_model_config(parser: argparse.ArgumentParser):
+    parser.add_argument("--template_model_id_or_path", type=str, default=None, help="Model ID of path of template models.")
+    parser.add_argument("--enable_lora_hot_loading", default=False, action="store_true", help="Whether to enable LoRA hot-loading. Only available for image-to-lora models.")
+    return parser
+
 def add_general_config(parser: argparse.ArgumentParser):
     parser = add_dataset_base_config(parser)
     parser = add_model_config(parser)
@@ -67,4 +72,5 @@ def add_general_config(parser: argparse.ArgumentParser):
     parser = add_output_config(parser)
     parser = add_lora_config(parser)
     parser = add_gradient_config(parser)
+    parser = add_template_model_config(parser)
     return parser

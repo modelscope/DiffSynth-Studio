@@ -1,12 +1,17 @@
-from transformers.models.siglip.modeling_siglip import SiglipVisionTransformer, SiglipVisionConfig
-from transformers import SiglipImageProcessor, Siglip2VisionModel, Siglip2VisionConfig, Siglip2ImageProcessorFast
-import torch
-
+import torch, warnings
+from transformers import Siglip2VisionModel
+try:
+    from transformers.models.siglip.modeling_siglip import SiglipVisionModel
+except:
+    warnings.warn(f"Cannot import `SiglipVisionModel`. `Siglip2ImageEncoder` is not available. Please update `transformers` by `pip install -U transformers`.")
+    SiglipVisionModel = torch.nn.Module
 from diffsynth.core.device.npu_compatible_device import get_device_type
 
 
-class Siglip2ImageEncoder(SiglipVisionTransformer):
+class Siglip2ImageEncoder(SiglipVisionModel):
     def __init__(self):
+        from transformers.models.siglip.modeling_siglip import SiglipVisionConfig
+        from transformers import SiglipImageProcessor
         config = SiglipVisionConfig(
             attention_dropout = 0.0,
             dtype = "float32",
@@ -74,6 +79,7 @@ class Siglip2ImageEncoder(SiglipVisionTransformer):
 
 class Siglip2ImageEncoder428M(Siglip2VisionModel):
     def __init__(self):
+        from transformers import Siglip2VisionConfig, Siglip2ImageProcessor
         config = Siglip2VisionConfig(
             attention_dropout = 0.0,
             dtype = "bfloat16",
@@ -90,7 +96,7 @@ class Siglip2ImageEncoder428M(Siglip2VisionModel):
             transformers_version = "4.57.1"
         )
         super().__init__(config)
-        self.processor = Siglip2ImageProcessorFast(
+        self.processor = Siglip2ImageProcessor(
             **{
                 "data_format": "channels_first",
                 "default_to_square": True,
@@ -106,7 +112,7 @@ class Siglip2ImageEncoder428M(Siglip2VisionModel):
                     0.5,
                     0.5
                 ],
-                "image_processor_type": "Siglip2ImageProcessorFast",
+                "image_processor_type": "Siglip2ImageProcessor",
                 "image_std": [
                     0.5,
                     0.5,

@@ -275,6 +275,9 @@ class AdaLayerNormContinuous(torch.nn.Module):
 
 
 class FluxDiT(torch.nn.Module):
+
+    _repeated_blocks = ["FluxJointTransformerBlock", "FluxSingleTransformerBlock"]
+
     def __init__(self, disable_guidance_embedder=False, input_dim=64, num_blocks=19):
         super().__init__()
         self.pos_embedder = RoPEEmbedding(3072, 10000, [16, 56, 56])

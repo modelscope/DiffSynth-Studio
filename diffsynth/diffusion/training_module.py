@@ -6,6 +6,7 @@ from peft import LoraConfig, inject_adapter_in_model
 
 
 class GeneralUnit_RemoveCache(PipelineUnit):
+    # Only used for training
     def __init__(self, required_params=tuple(), force_remove_params_shared=tuple(), force_remove_params_posi=tuple(), force_remove_params_nega=tuple()):
         super().__init__(take_over=True)
         self.required_params = required_params
@@ -25,6 +26,47 @@ class GeneralUnit_RemoveCache(PipelineUnit):
         inputs_posi = self.process_params(inputs_posi, self.required_params, self.force_remove_params_posi)
         inputs_nega = self.process_params(inputs_nega, self.required_params, self.force_remove_params_nega)
         return inputs_shared, inputs_posi, inputs_nega
+
+
+class GeneralUnit_TemplateProcessInputs(PipelineUnit):
+    # Only used for training
+    def __init__(self, data_processor):
+        super().__init__(
+            input_params=("template_inputs",),
+            output_params=("template_inputs",),
+        )
+        self.data_processor = data_processor
+    
+    def process(self, pipe, template_inputs):
+        if not hasattr(pipe, "template_model") or template_inputs is None:
+            return {}
+        if self.data_processor is not None:
+            template_inputs = self.data_processor(**template_inputs)
+        template_inputs = pipe.template_model.process_inputs(pipe=pipe, **template_inputs)
+        return {"template_inputs": template_inputs}
+
+
+class GeneralUnit_TemplateForward(PipelineUnit):
+    # Only used for training
+    def __init__(self, use_gradient_checkpointing=False, use_gradient_checkpointing_offload=False):
+        super().__init__(
+            input_params=("template_inputs",),
+            output_params=("kv_cache",),
+            onload_model_names=("template_model",)
+        )
+        self.use_gradient_checkpointing = use_gradient_checkpointing
+        self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
+    
+    def process(self, pipe, template_inputs):
+        if not hasattr(pipe, "template_model") or template_inputs is None:
+            return {}
+        template_cache = pipe.template_model.forward(
+            **template_inputs,
+            pipe=pipe,
+            use_gradient_checkpointing=self.use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=self.use_gradient_checkpointing_offload,
+        )
+        return template_cache
 
 
 class DiffusionTrainingModule(torch.nn.Module):
@@ -209,6 +251,16 @@ class DiffusionTrainingModule(torch.nn.Module):
         else:
             lora_target_modules = lora_target_modules.split(",")
         return lora_target_modules
+    
+
+    def load_training_template_model(self, pipe, path_or_model_id, use_gradient_checkpointing=False, use_gradient_checkpointing_offload=False):
+        if path_or_model_id is None:
+            return pipe
+        model_config = self.parse_path_or_model_id(path_or_model_id)
+        pipe.load_training_template_model(model_config)
+        pipe.units.append(GeneralUnit_TemplateProcessInputs(pipe.template_data_processor))
+        pipe.units.append(GeneralUnit_TemplateForward(use_gradient_checkpointing, use_gradient_checkpointing_offload))
+        return pipe
 
 
     def switch_pipe_to_training_mode(
@@ -235,23 +287,30 @@ class DiffusionTrainingModule(torch.nn.Module):
         
         # Add LoRA to the base models
         if lora_base_model is not None and not task.endswith(":data_process"):
-            if (not hasattr(pipe, lora_base_model)) or getattr(pipe, lora_base_model) is None:
+            if lora_base_model != "" and ((not hasattr(pipe, lora_base_model)) or getattr(pipe, lora_base_model) is None):
                 print(f"No {lora_base_model} models in the pipeline. We cannot patch LoRA on the model. If this occurs during the data processing stage, it is normal.")
                 return
+            model = pipe if lora_base_model == "" else getattr(pipe, lora_base_model)
             model = self.add_lora_to_model(
-                getattr(pipe, lora_base_model),
-                target_modules=self.parse_lora_target_modules(getattr(pipe, lora_base_model), lora_target_modules),
+                model,
+                target_modules=self.parse_lora_target_modules(model, lora_target_modules),
                 lora_rank=lora_rank,
                 upcast_dtype=pipe.torch_dtype,
             )
             if lora_checkpoint is not None:
-                state_dict = load_state_dict(lora_checkpoint)
-                state_dict = self.mapping_lora_state_dict(state_dict)
-                load_result = model.load_state_dict(state_dict, strict=False)
-                print(f"LoRA checkpoint loaded: {lora_checkpoint}, total {len(state_dict)} keys")
+                if isinstance(lora_checkpoint, str):
+                    lora = load_state_dict(lora_checkpoint)
+                else:
+                    lora = lora_checkpoint
+                lora_loader = pipe.lora_loader(torch_dtype=pipe.torch_dtype, device=pipe.device)
+                lora = lora_loader.convert_state_dict(lora)
+                lora = self.mapping_lora_state_dict(lora)
+                load_result = model.load_state_dict(lora, strict=False)
+                print(f"LoRA checkpoint loaded. Total {len(lora)} keys")
                 if len(load_result[1]) > 0:
                     print(f"Warning, LoRA key mismatch! Unexpected keys in LoRA checkpoint: {load_result[1]}")
-            setattr(pipe, lora_base_model, model)
+            if lora_base_model != "":
+                setattr(pipe, lora_base_model, model)
 
 
     def split_pipeline_units(

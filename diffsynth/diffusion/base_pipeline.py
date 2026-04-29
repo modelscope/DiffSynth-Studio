@@ -3,12 +3,13 @@ import torch
 import numpy as np
 from einops import repeat, reduce
 from typing import Union
-from ..core import AutoTorchModule, AutoWrappedLinear, load_state_dict, ModelConfig, parse_device_type
+from ..core import AutoTorchModule, AutoWrappedLinear, load_state_dict, ModelConfig, parse_device_type, enable_vram_management
 from ..core.device.npu_compatible_device import get_device_type
 from ..utils.lora import GeneralLoRALoader
 from ..models.model_loader import ModelPool
 from ..utils.controlnet import ControlNetInput
 from ..core.device import get_device_name, IS_NPU_AVAILABLE
+from .template import load_template_model, load_template_data_processor
 
 
 class PipelineUnit:
@@ -152,7 +153,7 @@ class BasePipeline(torch.nn.Module):
         # remove batch dim
         if audio_output.ndim == 3:
             audio_output = audio_output.squeeze(0)
-        return audio_output.float()
+        return audio_output.float().cpu()
 
     def load_models_to_device(self, model_names):
         if self.vram_management_enabled:
@@ -319,14 +320,21 @@ class BasePipeline(torch.nn.Module):
     
     
     def cfg_guided_model_fn(self, model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, **inputs_others):
+        # Positive side forward
         if inputs_shared.get("positive_only_lora", None) is not None:
-            self.clear_lora(verbose=0)
             self.load_lora(self.dit, state_dict=inputs_shared["positive_only_lora"], verbose=0)
         noise_pred_posi = model_fn(**inputs_posi, **inputs_shared, **inputs_others)
+        if inputs_shared.get("positive_only_lora", None) is not None:
+            self.clear_lora(verbose=0)
+            
         if cfg_scale != 1.0:
-            if inputs_shared.get("positive_only_lora", None) is not None:
-                self.clear_lora(verbose=0)
+            # Negative side forward
+            if inputs_shared.get("negative_only_lora", None) is not None:
+                self.load_lora(self.dit, state_dict=inputs_shared["negative_only_lora"], verbose=0)
             noise_pred_nega = model_fn(**inputs_nega, **inputs_shared, **inputs_others)
+            if inputs_shared.get("negative_only_lora", None) is not None:
+                self.clear_lora(verbose=0)
+            
             if isinstance(noise_pred_posi, tuple):
                 # Separately handling different output types of latents, eg. video and audio latents.
                 noise_pred = tuple(
@@ -338,6 +346,63 @@ class BasePipeline(torch.nn.Module):
         else:
             noise_pred = noise_pred_posi
         return noise_pred
+    
+
+    def load_training_template_model(self, model_config: ModelConfig = None):
+        if model_config is not None:
+            model_config.download_if_necessary()
+            self.template_model = load_template_model(model_config.path, torch_dtype=self.torch_dtype, device=self.device)
+            self.template_data_processor = load_template_data_processor(model_config.path)()
+
+    
+    def enable_lora_hot_loading(self, model: torch.nn.Module):
+        if hasattr(model, "vram_management_enabled") and getattr(model, "vram_management_enabled"):
+            return model
+        module_map = {torch.nn.Linear: AutoWrappedLinear}
+        vram_config = {
+            "offload_dtype": self.torch_dtype,
+            "offload_device": self.device,
+            "onload_dtype": self.torch_dtype,
+            "onload_device": self.device,
+            "preparing_dtype": self.torch_dtype,
+            "preparing_device": self.device,
+            "computation_dtype": self.torch_dtype,
+            "computation_device": self.device,
+        }
+        model = enable_vram_management(model, module_map, vram_config=vram_config)
+        return model
+
+    def compile_pipeline(self, mode: str = "default", dynamic: bool = True, fullgraph: bool = False, compile_models: list = None, **kwargs):
+        """
+        compile the pipeline with torch.compile. The models that will be compiled are determined by the `compilable_models` attribute of the pipeline.
+        If a model has `_repeated_blocks` attribute, we will compile these blocks with regional compilation. Otherwise, we will compile the whole model.
+        See https://docs.pytorch.org/docs/stable/generated/torch.compile.html#torch.compile for details about compilation arguments.
+        Args:
+            mode: The compilation mode, which will be passed to `torch.compile`, options are "default", "reduce-overhead", "max-autotune" and "max-autotune-no-cudagraphs. Default to "default".
+            dynamic: Whether to enable dynamic graph compilation to support dynamic input shapes, which will be passed to `torch.compile`. Default to True (recommended).
+            fullgraph: Whether to use full graph compilation, which will be passed to `torch.compile`. Default to False (recommended).
+            compile_models: The list of model names to be compiled. If None, we will compile the models in `pipeline.compilable_models`. Default to None.
+            **kwargs: Other arguments for `torch.compile`.
+        """
+        compile_models = compile_models or getattr(self, "compilable_models", [])
+        if len(compile_models) == 0:
+            print("No compilable models in the pipeline. Skip compilation.")
+            return
+        for name in compile_models:
+            model = getattr(self, name, None)
+            if model is None:
+                print(f"Model '{name}' not found in the pipeline.")
+                continue
+            repeated_blocks = getattr(model, "_repeated_blocks", None)
+            # regional compilation for repeated blocks.
+            if repeated_blocks is not None:
+                for submod in model.modules():
+                    if submod.__class__.__name__ in repeated_blocks:
+                        submod.compile(mode=mode, dynamic=dynamic, fullgraph=fullgraph, **kwargs)
+            # compile the whole model.
+            else:
+                model.compile(mode=mode, dynamic=dynamic, fullgraph=fullgraph, **kwargs)
+            print(f"{name} is compiled with mode={mode}, dynamic={dynamic}, fullgraph={fullgraph}.")
 
 
 class PipelineUnitGraph:

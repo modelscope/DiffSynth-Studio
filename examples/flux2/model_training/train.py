@@ -18,6 +18,8 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         extra_inputs=None,
         fp8_models=None,
         offload_models=None,
+        template_model_id_or_path=None,
+        enable_lora_hot_loading=False,
         device="cpu",
         task="sft",
     ):
@@ -26,7 +28,9 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
         tokenizer_config = self.parse_path_or_model_id(tokenizer_path, default_value=ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="tokenizer/"))
         self.pipe = Flux2ImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config)
-        self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
+        self.pipe = self.load_training_template_model(self.pipe, template_model_id_or_path, args.use_gradient_checkpointing, args.use_gradient_checkpointing_offload)
+        self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model, remove_unnecessary_params=True)
+        if enable_lora_hot_loading: self.pipe.dit = self.pipe.enable_lora_hot_loading(self.pipe.dit)
 
         # Training mode
         self.switch_pipe_to_training_mode(
@@ -126,6 +130,8 @@ if __name__ == "__main__":
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
+        template_model_id_or_path=args.template_model_id_or_path,
+        enable_lora_hot_loading=args.enable_lora_hot_loading,
         task=args.task,
         device="cpu" if args.initialize_model_on_cpu else accelerator.device,
     )

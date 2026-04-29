@@ -326,6 +326,7 @@ class RopeEmbedder:
 class ZImageDiT(nn.Module):
     _supports_gradient_checkpointing = True
     _no_split_modules = ["ZImageTransformerBlock"]
+    _repeated_blocks = ["ZImageTransformerBlock"]
 
     def __init__(
         self,

@@ -549,6 +549,9 @@ class QwenImageTransformerBlock(nn.Module):
 
 
 class QwenImageDiT(torch.nn.Module):
+
+    _repeated_blocks = ["QwenImageTransformerBlock"]
+
     def __init__(
         self,
         num_layers: int = 60,

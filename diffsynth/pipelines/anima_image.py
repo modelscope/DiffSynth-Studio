@@ -39,6 +39,7 @@ class AnimaImagePipeline(BasePipeline):
             AnimaUnit_PromptEmbedder(),
         ]
         self.model_fn = model_fn_anima
+        self.compilable_models = ["dit"]
     
     
     @staticmethod
@@ -73,7 +74,7 @@ class AnimaImagePipeline(BasePipeline):
     def __call__(
         self,
         # Prompt
-        prompt: str,
+        prompt: str = "",
         negative_prompt: str = "",
         cfg_scale: float = 4.0,
         # Image

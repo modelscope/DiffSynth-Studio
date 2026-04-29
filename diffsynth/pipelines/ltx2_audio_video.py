@@ -76,6 +76,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
             LTX2AudioVideoUnit_SetScheduleStage2(),
         ]
         self.model_fn = model_fn_ltx2
+        self.compilable_models = ["dit"]
 
         self.default_negative_prompt = {
             "LTX-2": (
@@ -168,46 +169,46 @@ class LTX2AudioVideoPipeline(BasePipeline):
     def __call__(
         self,
         # Prompt
-        prompt: str,
-        negative_prompt: Optional[str] = "",
+        prompt: str = "",
+        negative_prompt: str = "",
         denoising_strength: float = 1.0,
         # Image-to-video
-        input_images: Optional[list[Image.Image]] = None,
-        input_images_indexes: Optional[list[int]] = [0],
-        input_images_strength: Optional[float] = 1.0,
+        input_images: list[Image.Image] = None,
+        input_images_indexes: list[int] = [0],
+        input_images_strength: float = 1.0,
         # In-Context Video Control
-        in_context_videos: Optional[list[list[Image.Image]]] = None,
-        in_context_downsample_factor: Optional[int] = 2,
+        in_context_videos: list[list[Image.Image]] = None,
+        in_context_downsample_factor: int = 2,
         # Video-to-video
-        retake_video: Optional[list[Image.Image]] = None,
-        retake_video_regions: Optional[list[tuple[float, float]]] = None,
+        retake_video: list[Image.Image] = None,
+        retake_video_regions: list[tuple[float, float]] = None,
         # Audio-to-video
-        retake_audio: Optional[torch.Tensor] = None,
-        audio_sample_rate: Optional[int] = 48000,
-        retake_audio_regions: Optional[list[tuple[float, float]]] = None,
+        retake_audio: torch.Tensor = None,
+        audio_sample_rate: int = 48000,
+        retake_audio_regions: list[tuple[float, float]] = None,
         # Randomness
-        seed: Optional[int] = None,
-        rand_device: Optional[str] = "cpu",
+        seed: int = None,
+        rand_device: str = "cpu",
         # Shape
-        height: Optional[int] = 512,
-        width: Optional[int] = 768,
-        num_frames: Optional[int] = 121,
-        frame_rate: Optional[int] = 24,
+        height: int = 512,
+        width: int = 768,
+        num_frames: int = 121,
+        frame_rate: int = 24,
         # Classifier-free guidance
-        cfg_scale: Optional[float] = 3.0,
+        cfg_scale: float = 3.0,
         # Scheduler
-        num_inference_steps: Optional[int] = 30,
+        num_inference_steps: int = 30,
         # VAE tiling
-        tiled: Optional[bool] = True,
-        tile_size_in_pixels: Optional[int] = 512,
-        tile_overlap_in_pixels: Optional[int] = 128,
-        tile_size_in_frames: Optional[int] = 128,
-        tile_overlap_in_frames: Optional[int] = 24,
+        tiled: bool = True,
+        tile_size_in_pixels: int = 512,
+        tile_overlap_in_pixels: int = 128,
+        tile_size_in_frames: int = 128,
+        tile_overlap_in_frames: int = 24,
         # Special Pipelines
-        use_two_stage_pipeline: Optional[bool] = False,
-        stage2_spatial_upsample_factor: Optional[int] = 2,
-        clear_lora_before_state_two: Optional[bool] = False,
-        use_distilled_pipeline: Optional[bool] = False,
+        use_two_stage_pipeline: bool = False,
+        stage2_spatial_upsample_factor: int = 2,
+        clear_lora_before_state_two: bool = False,
+        use_distilled_pipeline: bool = False,
         # progress_bar
         progress_bar_cmd=tqdm,
     ):
