@@ -1,12 +1,17 @@
-from transformers.models.siglip.modeling_siglip import SiglipVisionModel, SiglipVisionConfig
-from transformers import SiglipImageProcessor, Siglip2VisionModel, Siglip2VisionConfig, Siglip2ImageProcessor
-import torch
-
+import torch, warnings
+from transformers import Siglip2VisionModel
+try:
+    from transformers.models.siglip.modeling_siglip import SiglipVisionModel
+except:
+    warnings.warn(f"Cannot import `SiglipVisionModel`. `Siglip2ImageEncoder` is not available. Please update `transformers` by `pip install -U transformers`.")
+    SiglipVisionModel = torch.nn.Module
 from diffsynth.core.device.npu_compatible_device import get_device_type
 
 
 class Siglip2ImageEncoder(SiglipVisionModel):
     def __init__(self):
+        from transformers.models.siglip.modeling_siglip import SiglipVisionConfig
+        from transformers import SiglipImageProcessor
         config = SiglipVisionConfig(
             attention_dropout = 0.0,
             dtype = "float32",
@@ -74,6 +79,7 @@ class Siglip2ImageEncoder(SiglipVisionModel):
 
 class Siglip2ImageEncoder428M(Siglip2VisionModel):
     def __init__(self):
+        from transformers import Siglip2VisionConfig, Siglip2ImageProcessor
         config = Siglip2VisionConfig(
             attention_dropout = 0.0,
             dtype = "bfloat16",

@@ -1,12 +1,16 @@
-from transformers.models.dinov3_vit.modeling_dinov3_vit import DINOv3ViTModel, DINOv3ViTConfig
-from transformers import DINOv3ViTImageProcessor
-import torch
-
+import torch, warnings
+try:
+    from transformers.models.dinov3_vit.modeling_dinov3_vit import DINOv3ViTModel
+except:
+    warnings.warn(f"Cannot import `DINOv3ViTModel`. `DINOv3ImageEncoder` is not available. Please update `transformers` by `pip install -U transformers`.")
+    DINOv3ViTModel = torch.nn.Module
 from ..core.device.npu_compatible_device import get_device_type
 
 
 class DINOv3ImageEncoder(DINOv3ViTModel):
     def __init__(self):
+        from transformers.models.dinov3_vit.modeling_dinov3_vit import DINOv3ViTConfig
+        from transformers import DINOv3ViTImageProcessor
         config = DINOv3ViTConfig(
             architectures = [
                 "DINOv3ViTModel"
