@@ -105,7 +105,7 @@ save_audio(audio, pipe.vae.sampling_rate, "acestep-v15-turbo.wav")
 * `seed`: 随机种子。
 * `rand_device`: 噪声生成设备，默认为 "cpu"。
 * `num_inference_steps`: 推理步数，默认为 8。
-* `shift`: 调度器时间偏移参数，默认为 1.0。
+* `shift`: 调度器时间偏移参数，默认为 3.0。
 
 ## 模型训练
 
