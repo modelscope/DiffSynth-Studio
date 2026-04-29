@@ -105,7 +105,7 @@ The input parameters for `AceStepPipeline` inference include:
 * `seed`: Random seed.
 * `rand_device`: Device for noise generation, defaults to "cpu".
 * `num_inference_steps`: Number of inference steps, defaults to 8.
-* `shift`: Timestep shift parameter for the scheduler, defaults to 1.0.
+* `shift`: Timestep shift parameter for the scheduler, defaults to 3.0.
 
 ## Model Training
 
