@@ -1,0 +1,35 @@
+from diffsynth.diffusion.template import TemplatePipeline
+from diffsynth.pipelines.flux2_image import Flux2ImagePipeline, ModelConfig
+import torch
+
+pipe = Flux2ImagePipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="black-forest-labs/FLUX.2-klein-base-4B", origin_file_pattern="transformer/*.safetensors"),
+        ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="text_encoder/*.safetensors"),
+        ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+    ],
+    tokenizer_config=ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="tokenizer/"),
+)
+template = TemplatePipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[ModelConfig(model_id="DiffSynth-Studio/Template-KleinBase4B-Sharpness")],
+)
+image = template(
+    pipe,
+    prompt="A cat is sitting on a stone.",
+    seed=0, cfg_scale=4, num_inference_steps=50,
+    template_inputs = [{"scale": 0.1}],
+    negative_template_inputs = [{"scale": 0.5}],
+)
+image.save("image_Sharpness_0.1.jpg")
+image = template(
+    pipe,
+    prompt="A cat is sitting on a stone.",
+    seed=0, cfg_scale=4, num_inference_steps=50,
+    template_inputs = [{"scale": 0.8}],
+    negative_template_inputs = [{"scale": 0.5}],
+)
+image.save("image_Sharpness_0.8.jpg")

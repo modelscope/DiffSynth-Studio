@@ -46,7 +46,6 @@ def launch_training_task(
         for data in tqdm(dataloader):
             step_start = time.time()
             with accelerator.accumulate(model):
-                optimizer.zero_grad()
                 if dataset.load_from_cache:
                     loss = model({}, inputs=data)
                 else:
@@ -57,10 +56,11 @@ def launch_training_task(
                 if cpu_offload and offload_manager:
                     offload_manager.reset_in_recompute()
                 optimizer.step()
-                model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
                 scheduler.step()
-            step_time = time.time() - step_start
-            step_times.append(step_time)
+                step_time = time.time() - step_start
+                step_times.append(step_time)
+                optimizer.zero_grad()
+                model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
         if save_steps is None:
             model_logger.on_epoch_end(accelerator, model, epoch_id)
 

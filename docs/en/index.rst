@@ -32,6 +32,9 @@ Welcome to DiffSynth-Studio's Documentation
    Model_Details/LTX-2
    Model_Details/ERNIE-Image
    Model_Details/JoyAI-Image
+   Model_Details/ACE-Step
+   Model_Details/Stable-Diffusion
+   Model_Details/Stable-Diffusion-XL
 
 .. toctree::
    :maxdepth: 2
@@ -62,6 +65,15 @@ Welcome to DiffSynth-Studio's Documentation
    API_Reference/core/gradient
    API_Reference/core/loader
    API_Reference/core/vram
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Diffusion Templates
+
+   Diffusion_Templates/Introducing_Diffusion_Templates.md
+   Diffusion_Templates/Understanding_Diffusion_Templates.md
+   Diffusion_Templates/Template_Model_Inference.md
+   Diffusion_Templates/Template_Model_Training.md
 
 .. toctree::
    :maxdepth: 2

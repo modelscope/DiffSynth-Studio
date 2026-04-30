@@ -3,6 +3,11 @@ import torch
 
 
 def FlowMatchSFTLoss(pipe: BasePipeline, **inputs):
+    if "lora" in inputs:
+        # Image-to-LoRA models need to load lora here.
+        pipe.clear_lora(verbose=0)
+        pipe.load_lora(pipe.dit, state_dict=inputs["lora"], hotload=True, verbose=0)
+
     max_timestep_boundary = int(inputs.get("max_timestep_boundary", 1) * len(pipe.scheduler.timesteps))
     min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
 
