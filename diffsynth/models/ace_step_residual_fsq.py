@@ -1,8 +1,6 @@
 """
 Code adapted from https://github.com/lucidrains/vector-quantize-pytorch/blob/master/vector_quantize_pytorch/residual_fsq.py
 """
-from __future__ import annotations
-
 from functools import wraps, partial
 from contextlib import nullcontext
 
@@ -15,8 +13,7 @@ from torch.nn import Module
 import torch.nn.functional as F
 from torch.amp import autocast
 import torch.distributed as dist
-from einops import rearrange, repeat, reduce, pack, unpack
-from einx import get_at
+from einops import rearrange, reduce, pack, unpack
 
 
 # helper functions
@@ -447,7 +444,7 @@ class ResidualFSQ(Module):
         mask = indices == -1
         indices = indices.masked_fill(mask, 0) # have it fetch a dummy code to be masked out later
 
-        all_codes = get_at('q [c] d, b n q -> q b n d', self.codebooks, indices)
+        all_codes = torch.stack([F.embedding(indices[:, :, i], self.codebooks[i]) for i in range(self.num_quantizers)], dim=0)  # (q, b, n, d)
 
         # mask out any codes that were dropout-ed
 
