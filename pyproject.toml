@@ -48,8 +48,17 @@ npu = [
     "torchvision==0.22.1+cpu"
 ]
 audio = [
+    "av",
     "torchaudio",
-    "torchcodec"
+    "torchcodec",
+    "librosa"
+]
+all = [
+    "av",
+    "torchaudio",
+    "torchcodec",
+    "librosa",
+    "streamlit"
 ]
 
 [tool.setuptools]
