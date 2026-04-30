@@ -12,19 +12,11 @@ def count_parameters(module: nn.Module) -> int:
 def is_leaf_module(module: nn.Module) -> bool:
     return len(list(module.children())) == 0
 
-
-class UnitWiseHookManager:
-    def __init__(
-        self,
-        model: torch.nn.Module,
-        target_device: torch.device,
-        optimize_on_cpu: bool = False,
-        verbose: bool = False,
-    ):
+class UnitWiseParamManager:
+    def __init__(self, model: nn.Module, target_device: torch.device, optimize_on_cpu: bool = False):
         self.model = model
         self.target_device = target_device
         self.optimize_on_cpu = optimize_on_cpu
-        self._verbose = verbose
         # Track which params are currently on GPU (for trainable mode)
         self._params_on_gpu: set = set()
         # Permanent CPU copies for non-trainable params (offload = no transfer)
@@ -38,8 +30,6 @@ class UnitWiseHookManager:
             else:
                 # Create permanent pinned CPU copy for non-trainable params
                 self._cpu_copies[id(param)] = param.data.cpu().pin_memory()
-        self._in_recompute: set = set()
-        self._register_hooks_for_unit(model)
 
     def _load_param_to_gpu(self, param, device):
         if param.device.type == self.target_device.type:
@@ -60,12 +50,42 @@ class UnitWiseHookManager:
             if self.optimize_on_cpu:
                 param.data = param.data.to('cpu', non_blocking=True)
 
+    def move_gradients_to_cpu(self):
+        if not self.optimize_on_cpu:
+            return
+        for param in self.model.parameters():
+            if param.grad is not None:
+                if param.device.type != 'cpu':
+                    param.data = param.data.to('cpu', non_blocking=True)
+                param.grad = param.grad.to('cpu')
+
+    def onload_module(self, module: nn.Module):
+        for param in module.parameters():
+            self._load_param_to_gpu(param, self.target_device)
+
+    def offload_module(self, module: nn.Module):
+        for param in module.parameters():
+            self._offload_param_to_cpu(param)
+
+
+class UnitWiseHookManager:
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        target_device: torch.device,
+        optimize_on_cpu: bool = False,
+        verbose: bool = False,
+    ):
+        self._verbose = verbose
+        self.param_manager = UnitWiseParamManager(model, target_device, optimize_on_cpu)
+        self._in_recompute: set = set()
+        self._register_hooks_for_unit(model)
+
     def _register_hooks_for_unit(self, module: nn.Module):
         def forward_pre_hook(mod, args):
             if self._verbose:
                 print(f"Forward Pre Hook: Loading {type(mod).__name__} to {self.target_device}")
-            for param in mod.parameters():
-                self._load_param_to_gpu(param, self.target_device)
+            self.param_manager.onload_module(mod)
 
         def forward_hook(mod, args, output):
             if self._verbose:
@@ -73,20 +93,17 @@ class UnitWiseHookManager:
             if mod in self._in_recompute:
                 return
             self._in_recompute.add(mod)
-            for param in mod.parameters():
-                self._offload_param_to_cpu(param)
+            self.param_manager.offload_module(mod)
 
         def backward_pre_hook(mod, grad_output):
             if self._verbose:
                 print(f"Backward Pre Hook: Loading {type(mod).__name__} to {self.target_device} for backward") if not mod in self._in_recompute else print(f"Backward Pre Hook: Keeping {type(mod).__name__} on GPU for backward")
-            for param in mod.parameters():
-                self._load_param_to_gpu(param, self.target_device)
+            self.param_manager.onload_module(mod)
 
         def backward_hook(mod, grad_input, grad_output):
             if self._verbose:
                 print(f"Backward Hook: Offloading {type(mod).__name__} to CPU after backward")
-            for param in mod.parameters():
-                self._offload_param_to_cpu(param)
+            self.param_manager.offload_module(mod)
 
         module.register_forward_pre_hook(forward_pre_hook)
         module.register_forward_hook(forward_hook)
@@ -103,14 +120,6 @@ class UnitWiseHookManager:
     def reset_in_recompute(self):
         self._in_recompute.clear()
 
-    def move_gradients_to_cpu(self):
-        for param in self.model.parameters():
-            if param.grad is not None:
-                if param.device.type != 'cpu':
-                    param.data = param.data.to('cpu', non_blocking=True)
-                param.grad = param.grad.to('cpu')
-
     def after_backward(self):
         self.reset_in_recompute()
-        if self.optimize_on_cpu:
-            self.move_gradients_to_cpu()
+        self.param_manager.move_gradients_to_cpu()
