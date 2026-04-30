@@ -60,7 +60,6 @@ def add_gradient_config(parser: argparse.ArgumentParser):
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help="Gradient accumulation steps.")
     parser.add_argument("--cpu_offload", default=False, action="store_true", help="Enable layer offload training. Weights are kept on CPU and loaded to GPU one layer at a time. Forces --initialize_model_on_cpu.")
     parser.add_argument("--optimize_on_cpu", default=False, action="store_true", help="When --cpu_offload is enabled, run optimizer on CPU. All params are offloaded to CPU. Default is False (trainable params stay on GPU, optimizer on GPU).")
-    parser.add_argument("--param_size_threshold", type=int, default=500, help="Threshold (in MB, default 500) for offload granularity. Modules below this size are grouped as a single offload unit. Larger modules are recursively split.")
     return parser
 
 def add_general_config(parser: argparse.ArgumentParser):
