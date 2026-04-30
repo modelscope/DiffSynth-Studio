@@ -1,1 +1,1 @@
-from .layer import *
+from .manager import OffloadTrainingManager

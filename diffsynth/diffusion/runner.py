@@ -3,8 +3,7 @@ from tqdm import tqdm
 from accelerate import Accelerator
 from .training_module import DiffusionTrainingModule
 from .logger import ModelLogger
-from diffsynth.core import setup_layer_offload
-from diffsynth.core.offload_training.layer import move_gradients_to_cpu
+from diffsynth.core import OffloadTrainingManager
 
 
 def launch_training_task(
@@ -27,6 +26,7 @@ def launch_training_task(
         num_epochs = args.num_epochs
         cpu_offload = args.cpu_offload
         optimize_on_cpu = args.optimize_on_cpu
+        param_size_threshold = args.param_size_threshold
 
     optimizer = torch.optim.AdamW(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
@@ -34,7 +34,7 @@ def launch_training_task(
 
     if cpu_offload:
         optimizer, dataloader, scheduler = accelerator.prepare(optimizer, dataloader, scheduler)
-        offload_manager = setup_layer_offload(model, target_device=accelerator.device, optimize_on_cpu=optimize_on_cpu)
+        offload_manager = OffloadTrainingManager(model, accelerator.device, optimize_on_cpu, param_size_threshold)
         model.pipe.device = accelerator.device
     else:
         model.to(device=accelerator.device)
@@ -51,10 +51,8 @@ def launch_training_task(
                 else:
                     loss = model(data)
                 accelerator.backward(loss)
-                if cpu_offload and optimize_on_cpu:
-                    move_gradients_to_cpu(model)
-                if cpu_offload and offload_manager:
-                    offload_manager.reset_in_recompute()
+                if cpu_offload:
+                    offload_manager.after_backward()
                 optimizer.step()
                 scheduler.step()
                 step_time = time.time() - step_start
@@ -65,6 +63,7 @@ def launch_training_task(
             model_logger.on_epoch_end(accelerator, model, epoch_id)
 
     if accelerator.is_local_main_process:
+        step_times = step_times[1:] if len(step_times) > 1 else step_times
         avg_time = sum(step_times) / len(step_times) if step_times else 0
         accelerator.print(f"Epoch {epoch_id}: avg step time={avg_time:.2f}s")
 
