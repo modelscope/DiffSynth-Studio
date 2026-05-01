@@ -148,7 +148,7 @@ class OffloadTrainingManager:
 
     def _find_units_recursive(self, module: nn.Module, param_size_threshold: int = None) -> list:
         if param_size_threshold is None:
-            return [m for m in module.modules() if is_leaf_module(m)]
+            return [m for m in module.modules() if is_leaf_module(m) and has_parameters(m)]
         if self._should_force_recurse(module, param_size_threshold):
             units = []
             for child in module.children():
