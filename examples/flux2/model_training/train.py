@@ -97,19 +97,10 @@ if __name__ == "__main__":
     parser = flux2_parser()
     args = parser.parse_args()
 
-    # cpu_offload requires model initialized on CPU and no device placement by accelerate
-    if getattr(args, 'cpu_offload', False):
-        args.initialize_model_on_cpu = True
-        accelerator = accelerate.Accelerator(
-            gradient_accumulation_steps=args.gradient_accumulation_steps,
-            device_placement=False,
-            kwargs_handlers=[accelerate.DistributedDataParallelKwargs(find_unused_parameters=args.find_unused_parameters)],
-        )
-    else:
-        accelerator = accelerate.Accelerator(
-            gradient_accumulation_steps=args.gradient_accumulation_steps,
-            kwargs_handlers=[accelerate.DistributedDataParallelKwargs(find_unused_parameters=args.find_unused_parameters)],
-        )
+    accelerator = accelerate.Accelerator(
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        kwargs_handlers=[accelerate.DistributedDataParallelKwargs(find_unused_parameters=args.find_unused_parameters)],
+    )
     dataset = UnifiedDataset(
         base_path=args.dataset_base_path,
         metadata_path=args.dataset_metadata_path,
@@ -143,7 +134,7 @@ if __name__ == "__main__":
         template_model_id_or_path=args.template_model_id_or_path,
         enable_lora_hot_loading=args.enable_lora_hot_loading,
         task=args.task,
-        device="cpu" if args.initialize_model_on_cpu else accelerator.device,
+        device="cpu" if (args.initialize_model_on_cpu or args.cpu_offload) else accelerator.device,
     )
     model_logger = ModelLogger(
         args.output_path,

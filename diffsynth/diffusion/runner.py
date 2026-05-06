@@ -59,13 +59,12 @@ def launch_training_task(
                 step_times.append(step_time)
                 optimizer.zero_grad()
                 model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
+        if accelerator.is_local_main_process:
+            step_times = step_times[1:] if len(step_times) > 1 else step_times
+            avg_time = sum(step_times) / len(step_times) if step_times else 0
+            accelerator.print(f"Epoch {epoch_id}: avg step time= {avg_time:.2f} s")
         if save_steps is None:
             model_logger.on_epoch_end(accelerator, model, epoch_id)
-
-    if accelerator.is_local_main_process:
-        step_times = step_times[1:] if len(step_times) > 1 else step_times
-        avg_time = sum(step_times) / len(step_times) if step_times else 0
-        accelerator.print(f"Epoch {epoch_id}: avg step time={avg_time:.2f}s")
 
     model_logger.on_training_end(accelerator, model, save_steps)
 
@@ -80,10 +79,18 @@ def launch_data_process_task(
 ):
     if args is not None:
         num_workers = args.dataset_num_workers
+        cpu_offload = args.cpu_offload
+        optimize_on_cpu = args.optimize_on_cpu
+        param_size_threshold = args.param_size_threshold
         
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=False, collate_fn=lambda x: x[0], num_workers=num_workers)
-    model.to(device=accelerator.device)
-    model, dataloader = accelerator.prepare(model, dataloader)
+    if cpu_offload:
+        dataloader = accelerator.prepare(dataloader)
+        offload_manager = OffloadTrainingManager(model, accelerator.device, optimize_on_cpu, param_size_threshold)
+        model.pipe.device = accelerator.device
+    else:
+        model.to(device=accelerator.device)
+        model, dataloader = accelerator.prepare(model, dataloader)
     
     for data_id, data in enumerate(tqdm(dataloader)):
         with accelerator.accumulate(model):
@@ -93,7 +100,8 @@ def launch_data_process_task(
                 save_path = os.path.join(model_logger.output_path, str(accelerator.process_index), f"{data_id}.pth")
                 data = model(data)
                 torch.save(data, save_path)
-
+                if cpu_offload:
+                    offload_manager.after_backward()
 
 def initialize_deepspeed_gradient_checkpointing(accelerator: Accelerator):
     if getattr(accelerator.state, "deepspeed_plugin", None) is not None:

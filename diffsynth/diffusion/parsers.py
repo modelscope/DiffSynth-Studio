@@ -58,14 +58,18 @@ def add_gradient_config(parser: argparse.ArgumentParser):
     parser.add_argument("--use_gradient_checkpointing", default=False, action="store_true", help="Whether to use gradient checkpointing.")
     parser.add_argument("--use_gradient_checkpointing_offload", default=False, action="store_true", help="Whether to offload gradient checkpointing to CPU memory.")
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help="Gradient accumulation steps.")
-    parser.add_argument("--cpu_offload", default=False, action="store_true", help="Enable layer offload training. Weights are kept on CPU and loaded to GPU one layer at a time. Forces --initialize_model_on_cpu.")
-    parser.add_argument("--optimize_on_cpu", default=False, action="store_true", help="When --cpu_offload is enabled, run optimizer on CPU. All params are offloaded to CPU. Default is False (trainable params stay on GPU, optimizer on GPU).")
-    parser.add_argument("--param_size_threshold", type=int, default=None, help="Experimental! When --cpu_offload is enabled, modules with total params above this threshold (in MB) are recursively split into children. None means offload every leaf module directly. Default: None.")
     return parser
 
 def add_template_model_config(parser: argparse.ArgumentParser):
     parser.add_argument("--template_model_id_or_path", type=str, default=None, help="Model ID of path of template models.")
     parser.add_argument("--enable_lora_hot_loading", default=False, action="store_true", help="Whether to enable LoRA hot-loading. Only available for image-to-lora models.")
+    return parser
+
+def add_offload_training_config(parser: argparse.ArgumentParser):
+    parser.add_argument("--cpu_offload", default=False, action="store_true", help="Enable layer offload training. Weights are kept on CPU and loaded to GPU one layer at a time. Forces --initialize_model_on_cpu.")
+    parser.add_argument("--optimize_on_cpu", default=False, action="store_true", help="When --cpu_offload is enabled, run optimizer on CPU. All params are offloaded to CPU. Default is False (trainable params stay on GPU, optimizer on GPU).")
+    parser.add_argument("--param_size_threshold", type=int, default=None, help="Experimental! When --cpu_offload is enabled, modules with total params above this threshold (in MB) are recursively split into children. None means offload every leaf module directly. Default: None.")
+    # parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
     return parser
 
 def add_general_config(parser: argparse.ArgumentParser):
@@ -76,4 +80,5 @@ def add_general_config(parser: argparse.ArgumentParser):
     parser = add_lora_config(parser)
     parser = add_gradient_config(parser)
     parser = add_template_model_config(parser)
+    parser = add_offload_training_config(parser)
     return parser
