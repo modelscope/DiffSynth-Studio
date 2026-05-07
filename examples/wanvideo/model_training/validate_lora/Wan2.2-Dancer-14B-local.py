@@ -16,7 +16,7 @@ pipe = WanVideoPipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
 )
-pipe.load_lora(pipe.dit, "models/train/Wan2.2-Dancer-14B-global_lora/epoch-4.safetensors", alpha=1)
+pipe.load_lora(pipe.dit, "models/train/Wan2.2-Dancer-14B-local_lora/epoch-4.safetensors", alpha=1)
 dataset_snapshot_download(
     "DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
