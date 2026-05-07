@@ -126,7 +126,7 @@ class QwenImagePipeline(BasePipeline):
         eligen_entity_masks: list[Image.Image] = None,
         eligen_enable_on_negative: bool = False,
         # Qwen-Image-Edit
-        edit_image: Image.Image = None,
+        edit_image: list[Image.Image] = None,
         edit_image_auto_resize: bool = True,
         edit_rope_interpolation: bool = False,
         # Qwen-Image-Edit-2511

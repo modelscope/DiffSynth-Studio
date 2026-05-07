@@ -18,11 +18,9 @@ import torch.nn as nn
 from einops import rearrange
 
 from ..core.attention import attention_forward
-from ..core.gradient import gradient_checkpoint_forward
 
 from transformers.cache_utils import Cache
 from transformers.modeling_flash_attention_utils import FlashAttentionKwargs
-from transformers.modeling_outputs import BaseModelOutput
 from transformers.processing_utils import Unpack
 from transformers.utils import can_return_tuple, logging
 from transformers.models.qwen3.modeling_qwen3 import (
@@ -31,7 +29,7 @@ from transformers.models.qwen3.modeling_qwen3 import (
     Qwen3RotaryEmbedding,
     apply_rotary_pos_emb,
 )
-from vector_quantize_pytorch import ResidualFSQ
+from .ace_step_residual_fsq import ResidualFSQ
 
 logger = logging.get_logger(__name__)
 
@@ -464,7 +462,7 @@ class AceStepAudioTokenizer(nn.Module):
             dim=self.fsq_dim,
             levels=self.fsq_input_levels,
             num_quantizers=self.fsq_input_num_quantizers,
-            force_quantization_f32=False,  # avoid autocast bug in vector_quantize_pytorch
+            force_quantization_f32=False,
         )
 
     @can_return_tuple

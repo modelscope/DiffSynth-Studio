@@ -448,28 +448,27 @@ class AceStepUnit_ContextLatentBuilder(PipelineUnit):
             return src_audio, repainting_ranges, None, None
         min_left = min([start for start, end in repainting_ranges])
         max_right = max([end for start, end in repainting_ranges])
-        total_length = src_audio.shape[-1] // pipe.vae.sampling_rate
         pad_left = max(0, -min_left)
-        pad_right = max(0, max_right - total_length)
-        if pad_left > 0 or pad_right > 0:
-            padding_frames_left, padding_frames_right = pad_left * pipe.vae.sampling_rate, pad_right * pipe.vae.sampling_rate
+        padding_frames_left = int(pad_left * pipe.vae.sampling_rate)
+        padding_frames_right = max(int(max_right * pipe.vae.sampling_rate) - src_audio.shape[-1], 0)
+        if padding_frames_left > 0 or padding_frames_right > 0:
             src_audio = F.pad(src_audio, (padding_frames_left, padding_frames_right), value=0.0)
         repainting_ranges = [(start + pad_left, end + pad_left) for start, end in repainting_ranges]
-        return src_audio, repainting_ranges, pad_left, pad_right
+        return src_audio, repainting_ranges, padding_frames_left, padding_frames_right
 
-    def parse_repaint_masks(self, pipe, src_latents, task_type, repainting_ranges, repainting_strength, pad_left, pad_right):
+    def parse_repaint_masks(self, pipe, src_latents, task_type, repainting_ranges, repainting_strength, padding_frames_left, padding_frames_right):
         if task_type != "repaint" or repainting_ranges is None:
             return None, src_latents
         # let repainting area be repainting_strength, non-repainting area be 0.0, and blend at the boundary with cf_frames.
         max_latent_length = src_latents.shape[1]
         denoise_mask = torch.zeros((1, max_latent_length, 1), dtype=pipe.torch_dtype, device=pipe.device)
         for start, end in repainting_ranges:
-            start_frame = start * pipe.vae.sampling_rate // 1920
-            end_frame = end * pipe.vae.sampling_rate // 1920
+            start_frame = int(start * pipe.vae.sampling_rate / 1920)
+            end_frame = int(end * pipe.vae.sampling_rate / 1920)
             denoise_mask[:, start_frame:end_frame, :] = repainting_strength
         # set padding areas to 1.0 (full repaint) to avoid artifacts at the boundaries caused by padding
-        pad_left_frames = pad_left * pipe.vae.sampling_rate // 1920
-        pad_right_frames = pad_right * pipe.vae.sampling_rate // 1920
+        pad_left_frames =  int(padding_frames_left / 1920)
+        pad_right_frames = int(padding_frames_right / 1920)
         denoise_mask[:, :pad_left_frames, :] = 1
         denoise_mask[:, max_latent_length - pad_right_frames:, :] = 1
 
@@ -506,10 +505,12 @@ class AceStepUnit_ContextLatentBuilder(PipelineUnit):
             if task_type == "cover":
                 lm_hints_5Hz = self.tokenize(pipe.tokenizer_model.tokenizer, src_latents, pipe.silence_latent, pipe.tokenizer_model.tokenizer.pool_window_size)
                 src_latents = pipe.tokenizer_model.detokenizer(lm_hints_5Hz)
+                if src_latents.shape[1] > source_latents.shape[1]:
+                    source_latents = torch.cat([source_latents, src_latents[:, source_latents.shape[1]:]], dim=1)
             max_latent_length = src_latents.shape[1]
         else:
             # use silence latents.
-            max_latent_length = int(duration * pipe.sample_rate  // 1920)
+            max_latent_length = round(duration * pipe.sample_rate  / 1920)
             src_latents = self._get_silence_latent_slice(pipe, max_latent_length).unsqueeze(0)
         chunk_masks = torch.ones((1, max_latent_length, src_latents.shape[-1]), dtype=torch.bool, device=pipe.device)
         attention_mask = torch.ones((1, max_latent_length), device=src_latents.device, dtype=pipe.torch_dtype)
