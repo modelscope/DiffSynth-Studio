@@ -1,5 +1,4 @@
 import torch
-import gc
 
 
 class OffloaderMixin:
@@ -21,10 +20,9 @@ class BaseParamOffloader(OffloaderMixin):
 class StaticParamOffloader(BaseParamOffloader):
     def __init__(self, param: torch.nn.Parameter, target_device: torch.device):
         super().__init__(param, target_device)
-        self.cpu_copy = param.data.cpu().pin_memory()
-        
-        # 替换指针，旧的视图失去引用
+        self.cpu_copy = param.data.cpu().pin_memory().detach()
         param.data = self.cpu_copy
+
     def onload(self):
         self.param.data = self.cpu_copy.to(self.target_device, non_blocking=True)
 

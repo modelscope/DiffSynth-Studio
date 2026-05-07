@@ -34,8 +34,8 @@ def launch_training_task(
 
     if cpu_offload:
         optimizer, dataloader, scheduler = accelerator.prepare(optimizer, dataloader, scheduler)
-        offload_manager = OffloadTrainingManager(model, accelerator.device, optimize_on_cpu, param_size_threshold)
         model.pipe.device = accelerator.device
+        offload_manager = OffloadTrainingManager(model, accelerator.device, optimize_on_cpu, param_size_threshold)
     else:
         model.to(device=accelerator.device)
         model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)

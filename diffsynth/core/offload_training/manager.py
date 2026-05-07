@@ -53,18 +53,21 @@ class UnitWiseParamManager:
         for param in params:
             if not param.requires_grad:
                 self.param_offloaders[id(param)] = StaticParamOffloader(param, target_device)
-                print(f"Registering StaticParamOffloader for param with shape {param.shape} and {param.numel()} elements (non-trainable)")
+                # print(f"Registering StaticParamOffloader for param with shape {param.shape} and {param.numel()} elements (non-trainable)")
             else:
                 if optimize_on_cpu:
                     self.param_offloaders[id(param)] = TrainableParamOffloader(param, target_device)
-                    print(f"Registering TrainableParamOffloader for param with shape {param.shape} and {param.numel()} elements (trainable, optimize_on_cpu=True)")
+                    # print(f"Registering TrainableParamOffloader for param with shape {param.shape} and {param.numel()} elements (trainable, optimize_on_cpu=True)")
                 else:
                     AlwaysOnGPUParamOffloader(param, target_device)
-                    print(f"Registering AlwaysOnGPUParamOffloader for param with shape {param.shape} and {param.numel()} elements (trainable, optimize_on_cpu=False)")
+                    # print(f"Registering AlwaysOnGPUParamOffloader for param with shape {param.shape} and {param.numel()} elements (trainable, optimize_on_cpu=False)")
         if buffers is not None and len(buffers) > 0:
             for mod, buf_name, buf in buffers:
                 self.param_offloaders[id(buf)] = BufferOffloader(mod, buf_name, buf, target_device)
-                print(f"Registering BufferOffloader for buffer with shape {buf.shape} and {buf.numel()} elements in module {type(mod).__name__}")
+                # print(f"Registering BufferOffloader for buffer with shape {buf.shape} and {buf.numel()} elements in module {type(mod).__name__}")
+
+        # Release GPU memory from the CUDA caching allocator after all params are offloaded to CPU.
+        torch.cuda.empty_cache()
 
     def move_gradients_to_cpu(self):
         for offloader in self.param_offloaders.values():
@@ -97,7 +100,7 @@ class UnitWiseHookManager:
         buffers: list = None,
     ):
         self._verbose = verbose
-        print(f"Initializing UnitWiseHookManager for module {type(model).__name__} on device {target_device} with optimize_on_cpu={optimize_on_cpu}")
+        # print(f"Initializing UnitWiseHookManager for module {type(model).__name__} on device {target_device} with optimize_on_cpu={optimize_on_cpu}")
         self.param_manager = UnitWiseParamManager(model, target_device, optimize_on_cpu, params=params, buffers=buffers)
         self._in_recompute: set = set()
         self._register_hooks_for_unit(model)
@@ -168,8 +171,8 @@ class OffloadTrainingManager:
 
     def _register_units(self, model: nn.Module, target_device: torch.device, optimize_on_cpu: bool = False, param_size_threshold: int = None):
         units = self._find_units_recursive(model, param_size_threshold)
-        for unit in units:
-            print(f"Registering offload hooks for unit: {self._get_module_hierarchy(unit)}")
+        # for unit in units:
+        #     print(f"Registering offload hooks for unit: {self._get_module_hierarchy(unit)}")
         self.units = [UnitWiseHookManager(unit, self.target_device, self.optimize_on_cpu) for unit in units]
 
         managed_param_ids = set().union(*[unit.managed_param_ids for unit in self.units])
@@ -177,7 +180,6 @@ class OffloadTrainingManager:
         for orphan_module in set(orphan_params.keys()) | set(orphan_buffers.keys()):
             params = orphan_params.get(orphan_module, [])
             buffers = orphan_buffers.get(orphan_module, [])
-            print(f"Registering orphan hooks for module: {self._get_module_hierarchy(orphan_module)} with {len(params)} orphan params and {len(buffers)} orphan buffers")
             self.units.append(UnitWiseHookManager(orphan_module, target_device, optimize_on_cpu, params=params, buffers=buffers))
 
     def _find_orphan_params_and_buffers(self, model: nn.Module, managed_param_ids: set):
