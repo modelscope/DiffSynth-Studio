@@ -25,9 +25,9 @@ def add_video_size_config(parser: argparse.ArgumentParser):
 def add_model_config(parser: argparse.ArgumentParser):
     parser.add_argument("--model_paths", type=str, default=None, help="Paths to load models. In JSON format.")
     parser.add_argument("--model_id_with_origin_paths", type=str, default=None, help="Model ID with origin paths, e.g., Wan-AI/Wan2.1-T2V-1.3B:diffusion_pytorch_model*.safetensors. Comma-separated.")
-    parser.add_argument("--extra_inputs", default=None, help="Additional model inputs, comma-separated.")
-    parser.add_argument("--fp8_models", default=None, help="Models with FP8 precision, comma-separated.")
-    parser.add_argument("--offload_models", default=None, help="Models with offload, comma-separated. Only used in splited training.")
+    parser.add_argument("--extra_inputs", default=None, type=str, help="Additional model inputs, comma-separated.")
+    parser.add_argument("--fp8_models", default=None, type=str, help="Models with FP8 precision, comma-separated.")
+    parser.add_argument("--offload_models", default=None, type=str, help="Models with offload, comma-separated. Only used in splited training.")
     return parser
 
 def add_training_config(parser: argparse.ArgumentParser):
