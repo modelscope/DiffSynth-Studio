@@ -13,6 +13,11 @@ def LTX2TextEncoderStateDictConverter(state_dict):
             continue
         state_dict_[new_key] = state_dict[key]
     state_dict_["lm_head.weight"] = state_dict_.get("model.language_model.embed_tokens.weight")
+    # Fix compatibility with transformers version >= 5.6.0 where the vision_model is removed in the state dict keys
+    from packaging import version
+    import transformers
+    if version.parse(transformers.__version__) >= version.parse("5.6.0"):
+        state_dict_ = {k.replace(".vision_model.", "."): v for k, v in state_dict_.items()}
     return state_dict_
 
 
