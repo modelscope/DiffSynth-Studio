@@ -27,8 +27,17 @@ def launch_training_task(
     optimizer = torch.optim.AdamW(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
-    model.to(device=accelerator.device)
-    model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
+    # Dual-GPU model-parallel: skip the device move that would undo our
+    # manual split, and tell accelerate not to touch the model's device.
+    _flux2_dual_gpu = os.environ.get("FLUX2_DUAL_GPU", "false").lower() == "true"
+    if not _flux2_dual_gpu:
+        model.to(device=accelerator.device)
+        model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
+    else:
+        model, optimizer, dataloader, scheduler = accelerator.prepare(
+            model, optimizer, dataloader, scheduler,
+            device_placement=[False, True, True, True],
+        )
     initialize_deepspeed_gradient_checkpointing(accelerator)
     for epoch_id in range(num_epochs):
         for data in tqdm(dataloader):
@@ -59,8 +68,16 @@ def launch_data_process_task(
         num_workers = args.dataset_num_workers
         
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=False, collate_fn=lambda x: x[0], num_workers=num_workers)
-    model.to(device=accelerator.device)
-    model, dataloader = accelerator.prepare(model, dataloader)
+    # Keep TE/VAE on CPU when explicitly requested. FLUX.2's Mistral-24B TE
+    # is ~48 GB bf16; data_process OOMs on cards <48 GB without CPU offload.
+    _data_process_on_cpu = os.environ.get('DIFFSYNTH_DATA_PROCESS_ON_CPU', 'false').lower() == 'true'
+    if not _data_process_on_cpu:
+        model.to(device=accelerator.device)
+        model, dataloader = accelerator.prepare(model, dataloader)
+    else:
+        model, dataloader = accelerator.prepare(
+            model, dataloader, device_placement=[False, True],
+        )
     
     for data_id, data in enumerate(tqdm(dataloader)):
         with accelerator.accumulate(model):

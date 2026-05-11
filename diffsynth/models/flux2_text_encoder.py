@@ -54,5 +54,25 @@ class Flux2TextEncoder(Mistral3ForConditionalGeneration):
         super().__init__(config)
     
     def forward(self, input_ids = None, pixel_values = None, attention_mask = None, position_ids = None, past_key_values = None, inputs_embeds = None, labels = None, use_cache = None, output_attentions = None, output_hidden_states = None, return_dict = None, cache_position = None, logits_to_keep = 0, image_sizes = None, **kwargs):
-        return super().forward(input_ids, pixel_values, attention_mask, position_ids, past_key_values, inputs_embeds, labels, use_cache, output_attentions, output_hidden_states, return_dict, cache_position, logits_to_keep, image_sizes, **kwargs)
+        # transformers 5.8 trimmed Mistral3's positional args; pass everything
+        # as kwargs so the call survives across transformers versions. The dropped
+        # output_hidden_states / output_attentions are still honored via
+        # TransformersKwargs -> forward them through **kwargs.
+        if output_hidden_states is not None:
+            kwargs.setdefault("output_hidden_states", output_hidden_states)
+        if output_attentions is not None:
+            kwargs.setdefault("output_attentions", output_attentions)
+        return super().forward(
+            input_ids=input_ids,
+            pixel_values=pixel_values,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_values=past_key_values,
+            inputs_embeds=inputs_embeds,
+            labels=labels,
+            use_cache=use_cache,
+            logits_to_keep=logits_to_keep,
+            image_sizes=image_sizes,
+            **kwargs,
+        )
 
