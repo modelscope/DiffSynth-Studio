@@ -29,8 +29,8 @@ def launch_training_task(
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
     # Dual-GPU model-parallel: skip the device move that would undo our
     # manual split, and tell accelerate not to touch the model's device.
-    _flux2_dual_gpu = os.environ.get("FLUX2_DUAL_GPU", "false").lower() == "true"
-    if not _flux2_dual_gpu:
+    _diffsynth_dual_gpu = os.environ.get("DIFFSYNTH_DUAL_GPU", "false").lower() == "true"
+    if not _diffsynth_dual_gpu:
         model.to(device=accelerator.device)
         model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
     else:

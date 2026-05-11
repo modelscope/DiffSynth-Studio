@@ -138,7 +138,7 @@ if __name__ == "__main__":
         # pre-allocate on cuda:0 before we get a chance to split it.
         device="cpu" if (args.initialize_model_on_cpu or is_dual_gpu_enabled()) else accelerator.device,
     )
-    # Dual-GPU split: gated on FLUX2_DUAL_GPU env var. Distributes
+    # Dual-GPU split: gated on DIFFSYNTH_DUAL_GPU env var. Distributes
     # pipe.dit across cuda:0 and cuda:1 at the single_transformer_blocks
     # midpoint. Called AFTER LoRA injection (which happened inside
     # Flux2ImageTrainingModule.__init__) so PEFT LoRA params follow
