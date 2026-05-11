@@ -3,6 +3,7 @@ from diffsynth.core import UnifiedDataset
 from diffsynth.core.data.operators import LoadVideo, LoadAudio, ImageCropAndResize, ToAbsolutePath
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 from diffsynth.diffusion import *
+from wan_dual_gpu_diffsynth import enable_wan_dual_gpu, is_dual_gpu_enabled
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -171,10 +172,50 @@ if __name__ == "__main__":
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
         task=args.task,
-        device="cpu" if args.initialize_model_on_cpu else accelerator.device,
+        # Dual-GPU: force CPU load so the 14B bf16 transformer doesn't
+        # pre-allocate on cuda:0 before we get a chance to split it.
+        device="cpu" if (args.initialize_model_on_cpu or is_dual_gpu_enabled()) else accelerator.device,
         max_timestep_boundary=args.max_timestep_boundary,
         min_timestep_boundary=args.min_timestep_boundary,
     )
+
+    # Dual-GPU split: gated on WAN_DUAL_GPU env var. Distributes pipe.dit
+    # across cuda:0 and cuda:1 at the blocks midpoint. Called AFTER LoRA
+    # injection (which happened inside WanTrainingModule.__init__) so PEFT
+    # LoRA params follow the base layer's device automatically when
+    # block.to() runs.
+    if is_dual_gpu_enabled():
+        for _i in range(torch.cuda.device_count()):
+            _free, _total = torch.cuda.mem_get_info(_i)
+            print(f"[wan-dual-gpu] pre-distribute cuda:{_i} free={_free/1024**3:.1f}G / {_total/1024**3:.1f}G")
+        # fp8 weight-only quant on CPU BEFORE distribute. Wan 2.2 14B is
+        # ~28 GB bf16 -- fits one 32 GB card, but with video activations
+        # at 480x832x49 frames plus gradient checkpointing the dual split
+        # gives breathing room. Filter excludes LoRA's lora_A/lora_B
+        # submodules -- quantizing them strips requires_grad and breaks
+        # backward (see also the FLUX.2 helper for the same pattern).
+        import gc as _gc
+        from torchao.quantization import quantize_, Float8WeightOnlyConfig
+        def _quant_filter(module, name):
+            if not isinstance(module, torch.nn.Linear):
+                return False
+            return "lora_A" not in name and "lora_B" not in name
+        quantize_(model.pipe.dit, Float8WeightOnlyConfig(), filter_fn=_quant_filter)
+        _gc.collect()
+        print("[wan-dual-gpu] fp8 weight-only quant done (LoRA params unmodified)")
+        enable_wan_dual_gpu(model.pipe.dit)
+        # Pin pipe.device to cuda:0 for input transfer (forward() calls
+        # transfer_data_to_device(inputs, pipe.device, ...)). Scaffold
+        # (patch_embedding, text_embedding) lives on cuda:0.
+        model.pipe.device = torch.device("cuda:0")
+        # Signal launch_training_task to skip its own model.to() move
+        # (runner.py keys off FLUX2_DUAL_GPU for that branch; reuse to
+        # avoid duplicating the device-placement logic).
+        os.environ["FLUX2_DUAL_GPU"] = "true"
+        for _i in range(torch.cuda.device_count()):
+            _free, _total = torch.cuda.mem_get_info(_i)
+            print(f"[wan-dual-gpu] post-distribute cuda:{_i} free={_free/1024**3:.1f}G / {_total/1024**3:.1f}G")
+
     model_logger = ModelLogger(
         args.output_path,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
