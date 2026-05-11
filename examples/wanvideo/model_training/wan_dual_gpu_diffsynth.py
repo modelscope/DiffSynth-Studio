@@ -16,8 +16,8 @@ shape is similar but simpler — Wan has one block type
 the helper only registers per-block hooks across one boundary.
 
 Env vars:
-    WAN_DUAL_GPU=true                     enable dual-GPU path
-    WAN_DUAL_GPU_SPLIT_AT=15              override split index
+    DIFFSYNTH_DUAL_GPU=true                     enable dual-GPU path
+    DIFFSYNTH_DUAL_GPU_SPLIT_AT=15              override split index
                                           (default: num_blocks // 2)
 
 Usage in DiffSynth-Studio's training script
@@ -28,7 +28,7 @@ Usage in DiffSynth-Studio's training script
     # ...build training module normally...
     training_module = WanTrainingModule(...)
 
-    # Activate the split (env-gated; no-op when WAN_DUAL_GPU is unset).
+    # Activate the split (env-gated; no-op when DIFFSYNTH_DUAL_GPU is unset).
     # Call AFTER LoRA injection (switch_pipe_to_training_mode) so PEFT
     # has wrapped target modules. The split places the wrapped modules
     # and PEFT LoRA params follow the base layer's device automatically.
@@ -50,13 +50,13 @@ import torch.nn as nn
 # ─── Env-gated public surface ───────────────────────────────────────────────
 
 def is_dual_gpu_enabled() -> bool:
-    """True iff ``WAN_DUAL_GPU=true`` in the environment."""
-    return os.getenv("WAN_DUAL_GPU", "false").lower() == "true"
+    """True iff ``DIFFSYNTH_DUAL_GPU=true`` in the environment."""
+    return os.getenv("DIFFSYNTH_DUAL_GPU", "false").lower() == "true"
 
 
 def get_split_at(num_blocks: int) -> int:
-    """Block split index. Override via ``WAN_DUAL_GPU_SPLIT_AT``."""
-    override = os.getenv("WAN_DUAL_GPU_SPLIT_AT")
+    """Block split index. Override via ``DIFFSYNTH_DUAL_GPU_SPLIT_AT``."""
+    override = os.getenv("DIFFSYNTH_DUAL_GPU_SPLIT_AT")
     if override is not None:
         return int(override)
     return num_blocks // 2
@@ -65,7 +65,7 @@ def get_split_at(num_blocks: int) -> int:
 def enable_wan_dual_gpu(dit: nn.Module) -> nn.Module:
     """Distribute the WanModel DiT across cuda:0 and cuda:1.
 
-    When ``WAN_DUAL_GPU`` is unset this is a no-op pass-through.
+    When ``DIFFSYNTH_DUAL_GPU`` is unset this is a no-op pass-through.
 
     Call after the WanModel is loaded and after PEFT LoRA injection has
     run. PEFT places LoRA params on the base layer's device automatically,
@@ -79,7 +79,7 @@ def enable_wan_dual_gpu(dit: nn.Module) -> nn.Module:
 
     if torch.cuda.device_count() < 2:
         raise RuntimeError(
-            f"WAN_DUAL_GPU=true requires ≥2 CUDA devices, found "
+            f"DIFFSYNTH_DUAL_GPU=true requires ≥2 CUDA devices, found "
             f"{torch.cuda.device_count()}."
         )
 
@@ -87,7 +87,7 @@ def enable_wan_dual_gpu(dit: nn.Module) -> nn.Module:
     split_at = get_split_at(num_blocks)
     if not 0 < split_at < num_blocks:
         raise RuntimeError(
-            f"WAN_DUAL_GPU_SPLIT_AT={split_at} out of range "
+            f"DIFFSYNTH_DUAL_GPU_SPLIT_AT={split_at} out of range "
             f"(dit has {num_blocks} blocks)."
         )
 

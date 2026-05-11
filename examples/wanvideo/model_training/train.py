@@ -179,7 +179,7 @@ if __name__ == "__main__":
         min_timestep_boundary=args.min_timestep_boundary,
     )
 
-    # Dual-GPU split: gated on WAN_DUAL_GPU env var. Distributes pipe.dit
+    # Dual-GPU split: gated on DIFFSYNTH_DUAL_GPU env var. Distributes pipe.dit
     # across cuda:0 and cuda:1 at the blocks midpoint. Called AFTER LoRA
     # injection (which happened inside WanTrainingModule.__init__) so PEFT
     # LoRA params follow the base layer's device automatically when
@@ -208,10 +208,13 @@ if __name__ == "__main__":
         # transfer_data_to_device(inputs, pipe.device, ...)). Scaffold
         # (patch_embedding, text_embedding) lives on cuda:0.
         model.pipe.device = torch.device("cuda:0")
-        # Signal launch_training_task to skip its own model.to() move
-        # (runner.py keys off FLUX2_DUAL_GPU for that branch; reuse to
-        # avoid duplicating the device-placement logic).
-        os.environ["FLUX2_DUAL_GPU"] = "true"
+        # Note: this Wan dual-GPU path depends on PR #1434 (flux2 dual-GPU)
+        # for the runner.py env-gated skip of model.to(accelerator.device).
+        # Without that change, runner.py will move the split DiT back to a
+        # single device and undo the distribute. The launcher's
+        # DIFFSYNTH_DUAL_GPU=true env var is read by both this helper's
+        # is_dual_gpu_enabled() and runner.py's gate, so no re-broadcast
+        # is needed here once both PRs are applied.
         for _i in range(torch.cuda.device_count()):
             _free, _total = torch.cuda.mem_get_info(_i)
             print(f"[wan-dual-gpu] post-distribute cuda:{_i} free={_free/1024**3:.1f}G / {_total/1024**3:.1f}G")
