@@ -1,4 +1,5 @@
 import torch
+from .memory_buffer import PinnedArenaPool
 
 
 class OffloaderMixin:
@@ -18,9 +19,13 @@ class BaseParamOffloader(OffloaderMixin):
         self.target_device = target_device
 
 class StaticParamOffloader(BaseParamOffloader):
-    def __init__(self, param: torch.nn.Parameter, target_device: torch.device):
+    def __init__(self, param: torch.nn.Parameter, target_device: torch.device, pinned_pool: PinnedArenaPool = None):
         super().__init__(param, target_device)
-        self.cpu_copy = param.data.cpu().pin_memory().detach()
+        cpu_data = param.data.cpu().detach().contiguous()
+        if pinned_pool is not None:
+            self.cpu_copy = pinned_pool.allocate_like(cpu_data)
+        else:
+            self.cpu_copy = cpu_data.pin_memory()
         param.data = self.cpu_copy
 
     def onload(self):
@@ -28,9 +33,6 @@ class StaticParamOffloader(BaseParamOffloader):
 
     def offload(self):
         self.param.data = self.cpu_copy
-
-    def offload_grad(self):
-        pass
 
 
 class TrainableParamOffloader(BaseParamOffloader):
@@ -58,14 +60,18 @@ class AlwaysOnGPUParamOffloader(BaseParamOffloader):
 
 
 class BufferOffloader(OffloaderMixin):
-    def __init__(self, module: torch.nn.Module, buf_name: str, buf: torch.Tensor, target_device: torch.device):
+    def __init__(self, module: torch.nn.Module, buf_name: str, buf: torch.Tensor, target_device: torch.device, pinned_pool: PinnedArenaPool = None):
         self.module = module
         self.buf_name = buf_name
         self.target_device = target_device
-        self.cpu_copy = buf.data.cpu().pin_memory()
+        cpu_data = buf.data.cpu().contiguous()
+        if pinned_pool is not None:
+            self.cpu_copy = pinned_pool.allocate_like(cpu_data)
+        else:
+            self.cpu_copy = cpu_data.pin_memory()
 
     def onload(self):
-        self.module.register_buffer(self.buf_name, self.cpu_copy.to(self.target_device, non_blocking=True))
+        self.module._buffers[self.buf_name] = self.cpu_copy.to(self.target_device, non_blocking=True)
 
     def offload(self):
-        self.module.register_buffer(self.buf_name, self.cpu_copy)
+        self.module._buffers[self.buf_name] = self.cpu_copy

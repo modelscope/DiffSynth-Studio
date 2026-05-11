@@ -28,6 +28,7 @@ import torch
 import torch.nn as nn
 import warnings
 from .offloader import StaticParamOffloader, TrainableParamOffloader, AlwaysOnGPUParamOffloader, BufferOffloader
+from .memory_buffer import PinnedArenaPool
 warnings.filterwarnings("ignore", message="Full backward hook is firing when gradients are computed with respect to module outputs")
 
 
@@ -44,7 +45,7 @@ def is_leaf_module(module: nn.Module) -> bool:
 
 
 class UnitWiseParamManager:
-    def __init__(self, model: nn.Module, target_device: torch.device, optimize_on_cpu: bool = False, params: list = None, buffers: list = None):
+    def __init__(self, model: nn.Module, target_device: torch.device, optimize_on_cpu: bool = False, params: list = None, buffers: list = None, pinned_pool: PinnedArenaPool = None):
         self.model = model
         self.target_device = target_device
         self.optimize_on_cpu = optimize_on_cpu
@@ -52,19 +53,19 @@ class UnitWiseParamManager:
         params = params or model.parameters()
         for param in params:
             if not param.requires_grad:
-                self.param_offloaders[id(param)] = StaticParamOffloader(param, target_device)
-                # print(f"Registering StaticParamOffloader for param with shape {param.shape} and {param.numel()} elements (non-trainable)")
+                self.param_offloaders[id(param)] = StaticParamOffloader(param, target_device, pinned_pool=pinned_pool)
+                print(f"Registering StaticParamOffloader for param with shape {param.shape} and {param.numel()} elements (non-trainable)")
             else:
                 if optimize_on_cpu:
                     self.param_offloaders[id(param)] = TrainableParamOffloader(param, target_device)
-                    # print(f"Registering TrainableParamOffloader for param with shape {param.shape} and {param.numel()} elements (trainable, optimize_on_cpu=True)")
+                    print(f"Registering TrainableParamOffloader for param with shape {param.shape} and {param.numel()} elements (trainable, optimize_on_cpu=True)")
                 else:
-                    AlwaysOnGPUParamOffloader(param, target_device)
-                    # print(f"Registering AlwaysOnGPUParamOffloader for param with shape {param.shape} and {param.numel()} elements (trainable, optimize_on_cpu=False)")
+                    self.param_offloaders[id(param)] = AlwaysOnGPUParamOffloader(param, target_device)
+                    print(f"Registering AlwaysOnGPUParamOffloader for param with shape {param.shape} and {param.numel()} elements (trainable, optimize_on_cpu=False)")
         if buffers is not None and len(buffers) > 0:
             for mod, buf_name, buf in buffers:
-                self.param_offloaders[id(buf)] = BufferOffloader(mod, buf_name, buf, target_device)
-                # print(f"Registering BufferOffloader for buffer with shape {buf.shape} and {buf.numel()} elements in module {type(mod).__name__}")
+                self.param_offloaders[id(buf)] = BufferOffloader(mod, buf_name, buf, target_device, pinned_pool=pinned_pool)
+                print(f"Registering BufferOffloader for buffer with shape {buf.shape} and {buf.numel()} elements in module {type(mod).__name__}")
 
         # Release GPU memory from the CUDA caching allocator after all params are offloaded to CPU.
         torch.cuda.empty_cache()
@@ -98,10 +99,11 @@ class UnitWiseHookManager:
         verbose: bool = False,
         params: list = None,
         buffers: list = None,
+        pinned_pool: PinnedArenaPool = None,
     ):
         self._verbose = verbose
         # print(f"Initializing UnitWiseHookManager for module {type(model).__name__} on device {target_device} with optimize_on_cpu={optimize_on_cpu}")
-        self.param_manager = UnitWiseParamManager(model, target_device, optimize_on_cpu, params=params, buffers=buffers)
+        self.param_manager = UnitWiseParamManager(model, target_device, optimize_on_cpu, params=params, buffers=buffers, pinned_pool=pinned_pool)
         self._in_recompute: set = set()
         self._register_hooks_for_unit(model)
 
@@ -170,17 +172,101 @@ class OffloadTrainingManager:
         self._register_units(model, target_device, optimize_on_cpu, param_size_threshold)
 
     def _register_units(self, model: nn.Module, target_device: torch.device, optimize_on_cpu: bool = False, param_size_threshold: int = None):
+        # Save original param/buffer data for post-init verification
+        original_state = {name: p.data.clone() for name, p in model.named_parameters() if not p.requires_grad}
+        original_state.update({f"__buf__{name}": b.clone() for name, b in model.named_buffers()})
+
+        # Pre-compute total pinned memory needed and create pool
+        self.pinned_pool = PinnedArenaPool.from_model(model)
+
         units = self._find_units_recursive(model, param_size_threshold)
-        # for unit in units:
-        #     print(f"Registering offload hooks for unit: {self._get_module_hierarchy(unit)}")
-        self.units = [UnitWiseHookManager(unit, self.target_device, self.optimize_on_cpu) for unit in units]
+        for unit in units:
+            print(f"Registering offload hooks for unit: {self._get_module_hierarchy(unit)}")
+        self.units = [UnitWiseHookManager(unit, self.target_device, self.optimize_on_cpu, pinned_pool=self.pinned_pool) for unit in units]
 
         managed_param_ids = set().union(*[unit.managed_param_ids for unit in self.units])
         orphan_params, orphan_buffers = self._find_orphan_params_and_buffers(model, managed_param_ids)
         for orphan_module in set(orphan_params.keys()) | set(orphan_buffers.keys()):
             params = orphan_params.get(orphan_module, [])
             buffers = orphan_buffers.get(orphan_module, [])
-            self.units.append(UnitWiseHookManager(orphan_module, target_device, optimize_on_cpu, params=params, buffers=buffers))
+            print(f"Registering offload hooks for orphan module: {self._get_module_hierarchy(orphan_module)} with {len(params)} params and {len(buffers)} buffers")
+            self.units.append(UnitWiseHookManager(orphan_module, target_device, optimize_on_cpu, params=params, buffers=buffers, pinned_pool=self.pinned_pool))
+
+        # Post-registration debug verification
+        self._verify_data_integrity(model, original_state)
+        self._verify_pinned_status()
+        self._verify_coverage(model)
+        self._verify_no_duplicate_management()
+        self._print_pool_utilization()
+
+    def _verify_data_integrity(self, model: nn.Module, original_state: dict):
+        """Verify that param/buffer data is unchanged after offloader registration."""
+        errors = []
+        for name, p in model.named_parameters():
+            if p.requires_grad:
+                continue
+            if name not in original_state:
+                errors.append(f"param '{name}' missing from original state")
+                continue
+            if not torch.equal(p.data.cpu(), original_state[name]):
+                errors.append(f"param '{name}' data mismatch")
+        for name, b in model.named_buffers():
+            key = f"__buf__{name}"
+            if key not in original_state:
+                errors.append(f"buffer '{name}' missing from original state")
+                continue
+            if not torch.equal(b.cpu(), original_state[key]):
+                errors.append(f"buffer '{name}' data mismatch")
+        if errors:
+            raise RuntimeError(f"[OffloadManager] Data integrity check FAILED:\n" + "\n".join(errors))
+        print(f"[OffloadManager] Data integrity check passed.")
+
+    def _verify_pinned_status(self):
+        """Verify all cpu_copy tensors are actually pinned."""
+        errors = []
+        for unit in self.units:
+            for offloader in unit.param_manager.param_offloaders.values():
+                if hasattr(offloader, 'cpu_copy') and not offloader.cpu_copy.is_pinned():
+                    errors.append(f"cpu_copy shape={offloader.cpu_copy.shape} is NOT pinned")
+        if errors:
+            raise RuntimeError(f"[OffloadManager] Pinned status check FAILED:\n" + "\n".join(errors))
+        print(f"[OffloadManager] Pinned status check passed.")
+
+    def _verify_coverage(self, model: nn.Module):
+        """Verify all non-trainable params and buffers are managed by some offloader."""
+        all_managed_ids = set()
+        for unit in self.units:
+            all_managed_ids.update(unit.managed_param_ids)
+        errors = []
+        for name, p in model.named_parameters():
+            if not p.requires_grad and id(p) not in all_managed_ids:
+                errors.append(f"param '{name}' (shape={p.shape}) is not managed by any offloader")
+        for name, b in model.named_buffers():
+            if id(b) not in all_managed_ids:
+                errors.append(f"buffer '{name}' (shape={b.shape}) is not managed by any offloader")
+        if errors:
+            raise RuntimeError(f"[OffloadManager] Coverage check FAILED:\n" + "\n".join(errors))
+        print(f"[OffloadManager] Coverage check passed.")
+
+    def _verify_no_duplicate_management(self):
+        """Verify no param/buffer is managed by multiple units."""
+        seen = {}
+        errors = []
+        for i, unit in enumerate(self.units):
+            for pid in unit.managed_param_ids:
+                if pid in seen:
+                    errors.append(f"param id={pid} managed by both unit[{seen[pid]}] and unit[{i}]")
+                else:
+                    seen[pid] = i
+        if errors:
+            raise RuntimeError(f"[OffloadManager] Duplicate management check FAILED:\n" + "\n".join(errors))
+        print(f"[OffloadManager] No duplicate management check passed.")
+
+    def _print_pool_utilization(self):
+        """Print pool utilization statistics."""
+        allocated = self.pinned_pool.allocated_bytes()
+        used = self.pinned_pool.used_bytes_approx()
+        print(f"[OffloadManager] Pool utilization: used={used / 1024**3:.3f} GiB / allocated={allocated / 1024**3:.3f} GiB ({used / max(allocated, 1) * 100:.1f}%)")
 
     def _find_orphan_params_and_buffers(self, model: nn.Module, managed_param_ids: set):
         orphan_params_by_module = {}
