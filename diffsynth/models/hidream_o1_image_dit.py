@@ -648,36 +648,37 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
 
                 softmax_scale = head_dim ** -0.5
 
+                # Rearrange to [B, H, S, D] for attention_forward
+                q_bn = q.transpose(1, 2).contiguous()
+                k_bn = k.transpose(1, 2).contiguous()
+                v_bn = v.transpose(1, 2).contiguous()
+
+                # Two-pass attention using attention_forward
                 # Pass 1: causal attention on AR tokens only
-                q_ar = q[:, idx_ar].contiguous()
-                k_ar = k[:, idx_ar].contiguous()
-                v_ar = v[:, idx_ar].contiguous()
-                seq_ar = q_ar.shape[2]
-                causal_mask = torch.full(
-                    (seq_ar, seq_ar),
-                    torch.finfo(q_ar.dtype).min,
-                    device=q_ar.device, dtype=q_ar.dtype,
-                )
-                causal_mask = torch.triu(causal_mask, diagonal=1)
+                q_ar = q_bn[:, :, idx_ar].contiguous()
+                k_ar = k_bn[:, :, idx_ar].contiguous()
+                v_ar = v_bn[:, :, idx_ar].contiguous()
                 out_ar = attention_forward(
                     q_ar, k_ar, v_ar,
                     q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d",
                     out_pattern="b n s d",
-                    attn_mask=causal_mask,
+                    is_causal=True,
                     scale=softmax_scale,
                 )
 
-                # Pass 2: full attention on all tokens
+                # Pass 2: full (bidirectional) attention on all tokens
                 out_full = attention_forward(
-                    q, k, v,
+                    q_bn, k_bn, v_bn,
                     q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d",
                     out_pattern="b n s d",
+                    is_causal=False,
                     scale=softmax_scale,
                 )
 
-                # Replace AR positions with causal result
+                # Replace AR positions with causal result, rearrange back to [B, S, H, D]
                 out_full = out_full.clone()
-                out_full[:, :, idx_ar, :] = out_ar
+                out_full[:, :, idx_ar] = out_ar
+                out_full = out_full.transpose(1, 2).contiguous()
 
                 attn_output = out_full.reshape(*input_shape, -1).contiguous()
                 attn_output = attn.o_proj(attn_output)
@@ -716,7 +717,7 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
 
     def _forward_generation(self, input_ids, position_ids, vinputs, timestep, token_types,
                              attention_mask=None, pixel_values=None, pixel_values_videos=None,
-                             image_grid_thw=None, video_grid_thw=None, use_flash_attn=False,
+                             image_grid_thw=None, video_grid_thw=None,
                              return_mid_results_layers=None,
                              **kwargs):
         """Forward pass for image generation (denoising step)."""
@@ -786,44 +787,11 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
             _rank2 = int(_os2.environ.get('RANK', 0))
             _a = torch.cuda.memory_allocated() / 1e9
             print(f"[MEM][rank{_rank2}][_forward_gen] before decoder: alloc={_a:.2f}GB, "
-                  f"total_seq_len={total_seq_len}, batch={batch_size}, flash={use_flash_attn}", flush=True)
+                  f"total_seq_len={total_seq_len}, batch={batch_size}", flush=True)
 
-        if use_flash_attn:
-            hidden_states, mid_results = self._run_decoder_flash(
-                inputs_embeds, position_ids, token_types,
-                return_mid_results_layers=return_mid_results_layers)
-        else:
-            dtype = inputs_embeds.dtype
-            min_val = torch.finfo(dtype).min
-            attn_masks = []
-            for b in range(batch_size):
-                causal = torch.full(
-                    (total_seq_len, total_seq_len), min_val,
-                    device=inputs_embeds.device, dtype=dtype)
-                causal = torch.triu(causal, diagonal=1)
-                gen_positions = token_types[b].bool()
-                causal[gen_positions, :] = 0
-                attn_masks.append(causal)
-            attention_mask_4d = torch.stack(attn_masks, dim=0).unsqueeze(1)
-
-            if _mem_debug2:
-                _rank2 = int(_os2.environ.get('RANK', 0))
-                _mask_gb = attention_mask_4d.element_size() * attention_mask_4d.numel() / 1e9
-                _a = torch.cuda.memory_allocated() / 1e9
-                print(f"[MEM][rank{_rank2}][_forward_gen] attn_mask_4d: shape={list(attention_mask_4d.shape)}, "
-                      f"size={_mask_gb:.3f}GB, alloc={_a:.2f}GB", flush=True)
-
-            outputs = self.language_model(
-                input_ids=None,
-                position_ids=position_ids,
-                attention_mask=attention_mask_4d,
-                inputs_embeds=inputs_embeds,
-                use_cache=False,
-                return_mid_results_layers=return_mid_results_layers,
-            )
-            hidden_states = outputs.last_hidden_state
-            if hasattr(outputs, 'mid_results'):
-                mid_results = outputs.mid_results
+        hidden_states, mid_results = self._run_decoder_flash(
+            inputs_embeds, position_ids, token_types,
+            return_mid_results_layers=return_mid_results_layers)
 
         x_pred = self.final_layer2(hidden_states)
 
@@ -848,7 +816,6 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
         vinputs: Optional[torch.Tensor] = None,
         timestep: Optional[torch.Tensor] = None,
         token_types: Optional[torch.Tensor] = None,
-        use_flash_attn: bool = False,
         return_mid_results_layers: Optional[list] = None,
         **kwargs,
     ) -> Union[tuple, Qwen3VLModelOutputWithPast]:
@@ -859,7 +826,6 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
                 attention_mask=attention_mask,
                 pixel_values=pixel_values, pixel_values_videos=pixel_values_videos,
                 image_grid_thw=image_grid_thw, video_grid_thw=video_grid_thw,
-                use_flash_attn=use_flash_attn,
                 return_mid_results_layers=return_mid_results_layers,
                 **kwargs)
 
@@ -1391,7 +1357,6 @@ class HiDreamO1ImageModel(Qwen3VLPreTrainedModel):
         vinputs: Optional[torch.Tensor] = None,
         timestep: Optional[torch.Tensor] = None,
         token_types: Optional[torch.Tensor] = None,
-        use_flash_attn: bool = False,
         return_mid_results_layers: Optional[list] = None,
         **kwargs,
     ) -> Union[tuple, Qwen3VLCausalLMOutputWithPast]:
@@ -1409,7 +1374,6 @@ class HiDreamO1ImageModel(Qwen3VLPreTrainedModel):
             vinputs=vinputs,
             timestep=timestep,
             token_types=token_types,
-            use_flash_attn=use_flash_attn,
             return_mid_results_layers=return_mid_results_layers,
             **kwargs,
         )
