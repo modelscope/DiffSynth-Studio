@@ -173,8 +173,8 @@ class OffloadTrainingManager:
 
     def _register_units(self, model: nn.Module, target_device: torch.device, optimize_on_cpu: bool = False, param_size_threshold: int = None):
         # Save original param/buffer data for post-init verification
-        original_state = {name: p.data.clone() for name, p in model.named_parameters() if not p.requires_grad}
-        original_state.update({f"__buf__{name}": b.clone() for name, b in model.named_buffers()})
+        # original_state = {name: p.data.clone() for name, p in model.named_parameters() if not p.requires_grad}
+        # original_state.update({f"__buf__{name}": b.clone() for name, b in model.named_buffers()})
 
         # Pre-compute total pinned memory needed and create pool
         self.pinned_pool = PinnedArenaPool.from_model(model)
@@ -193,11 +193,11 @@ class OffloadTrainingManager:
             self.units.append(UnitWiseHookManager(orphan_module, target_device, optimize_on_cpu, params=params, buffers=buffers, pinned_pool=self.pinned_pool))
 
         # Post-registration debug verification
-        self._verify_data_integrity(model, original_state)
-        self._verify_pinned_status()
-        self._verify_coverage(model)
-        self._verify_no_duplicate_management()
-        self._print_pool_utilization()
+        # self._verify_data_integrity(model, original_state)
+        # self._verify_pinned_status()
+        # self._verify_coverage(model)
+        # self._verify_no_duplicate_management()
+        # self._print_pool_utilization()
 
     def _verify_data_integrity(self, model: nn.Module, original_state: dict):
         """Verify that param/buffer data is unchanged after offloader registration."""

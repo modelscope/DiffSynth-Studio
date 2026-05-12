@@ -49,8 +49,6 @@ class TrainableParamOffloader(BaseParamOffloader):
     def offload_grad(self):
         if self.param.grad is not None:
             self.param.grad = self.param.grad.to('cpu', non_blocking=True)
-        else:
-            print(f"Warning: Attempting to offload grad for param with shape {self.param.shape} but grad is None")
 
 
 class AlwaysOnGPUParamOffloader(BaseParamOffloader):
