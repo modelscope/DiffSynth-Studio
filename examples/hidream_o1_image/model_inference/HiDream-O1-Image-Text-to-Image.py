@@ -13,10 +13,6 @@ pipe = HiDreamO1ImagePipeline.from_pretrained(
             origin_file_pattern="model-*.safetensors",
         ),
     ],
-    tokenizer_config=ModelConfig(
-        model_id="HiDream-ai/HiDream-O1-Image-Dev",
-        origin_file_pattern="./",
-    ),
     processor_config=ModelConfig(
         model_id="HiDream-ai/HiDream-O1-Image-Dev",
         origin_file_pattern="./",

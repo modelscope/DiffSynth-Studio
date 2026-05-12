@@ -1,14 +1,14 @@
-import math
 import torch
 from typing import Optional
-from PIL import Image
 
 def add_special_tokens(tokenizer):
+    """Attach the special-token shortcuts that the pipeline relies on."""
     tokenizer.boi_token = "<|boi_token|>"
     tokenizer.bor_token = "<|bor_token|>"
     tokenizer.eor_token = "<|eor_token|>"
     tokenizer.bot_token = "<|bot_token|>"
     tokenizer.tms_token = "<|tms_token|>"
+
 
 def get_rope_index_fix_point(
         spatial_merge_size,
