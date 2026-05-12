@@ -12,6 +12,7 @@ from ..core import ModelConfig
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 
 from ..models.hidream_o1_image_dit import HiDreamO1ImageModel
+from ..models.hidream_common import add_special_tokens, get_rope_index_fix_point
 from transformers import AutoTokenizer
 
 
@@ -222,14 +223,6 @@ class HiDreamO1ImageUnit_NoiseInitializer(PipelineUnit):
 # ──────────────────────────────────────────────────────────────────────
 # Pipeline
 # ──────────────────────────────────────────────────────────────────────
-def add_special_tokens(tokenizer):
-    """Attach the special-token shortcuts that the pipeline relies on."""
-    tokenizer.boi_token = "<|boi_token|>"
-    tokenizer.bor_token = "<|bor_token|>"
-    tokenizer.eor_token = "<|eor_token|>"
-    tokenizer.bot_token = "<|bot_token|>"
-    tokenizer.tms_token = "<|tms_token|>"
-
 
 class HiDreamO1ImagePipeline(BasePipeline):
 
@@ -255,30 +248,19 @@ class HiDreamO1ImagePipeline(BasePipeline):
         torch_dtype: torch.dtype = torch.bfloat16,
         device: Union[str, torch.device] = get_device_type(),
         model_configs: list[ModelConfig] = [],
-        tokenizer_config: ModelConfig = None,
+        tokenizer_config: ModelConfig = ModelConfig(model_id="HiDream-ai/HiDream-O1-Image-Dev", origin_file_pattern="./"),
+        processor_config: ModelConfig = ModelConfig(model_id="HiDream-ai/HiDream-O1-Image-Dev", origin_file_pattern="./"),
         vram_limit: float = None,
     ):
         pipe = HiDreamO1ImagePipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
         pipe.dit = model_pool.fetch_model("hidream_o1_image_dit")
-
         if tokenizer_config is not None:
             from transformers import AutoTokenizer, AutoProcessor
-            # Use the parent directory of the model checkpoint as the processor/tokenizer path
             tokenizer_config.download_if_necessary()
-            # tokenizer_config.path could be a file like "tokenizer_config.json"
-            # We need the directory containing it
-            import os
-            tokenizer_path = tokenizer_config.path
-            if os.path.isfile(tokenizer_path):
-                tokenizer_path = os.path.dirname(tokenizer_path)
-            # Fall back to model path if tokenizer_path is empty
-            if not tokenizer_path:
-                tokenizer_path = model_configs[0].path if model_configs else None
-            pipe.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-            pipe.processor = AutoProcessor.from_pretrained(tokenizer_path)
-            add_special_tokens(pipe.tokenizer)
-
+            processor_config.download_if_necessary()
+            pipe.tokenizer = AutoTokenizer.from_pretrained(tokenizer_config.path)
+            pipe.processor = AutoProcessor.from_pretrained(processor_config.path)
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
 
@@ -400,13 +382,12 @@ def model_fn_hidream_o1_image(
     input_ids, position_ids, token_types, vinput_mask,
     **kwargs
 ):
-    with torch.autocast(timestep.device.type, dtype=latents.dtype, cache_enabled=False):
-        outputs = dit(
-            input_ids=input_ids,
-            position_ids=position_ids,
-            vinputs=latents,
-            timestep=timestep.reshape(-1),
-            token_types=token_types,
-        )
-    x_pred = outputs.x_pred
-    return x_pred[0, vinput_mask[0]].unsqueeze(0)
+    outputs = dit(
+        input_ids=input_ids,
+        position_ids=position_ids,
+        vinputs=latents,
+        timestep=timestep.reshape(-1),
+        token_types=token_types,
+    )
+    x_pred = outputs.x_pred[0, vinput_mask[0]].unsqueeze(0)
+    return x_pred

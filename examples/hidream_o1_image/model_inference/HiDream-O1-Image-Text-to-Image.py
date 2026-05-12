@@ -3,10 +3,10 @@ import torch
 from diffsynth.pipelines.hidream_o1_image import HiDreamO1ImagePipeline
 from diffsynth.core.loader.config import ModelConfig
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Device: {device}")
 
 pipe = HiDreamO1ImagePipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
     model_configs=[
         ModelConfig(
             model_id="HiDream-ai/HiDream-O1-Image-Dev",
@@ -15,10 +15,12 @@ pipe = HiDreamO1ImagePipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(
         model_id="HiDream-ai/HiDream-O1-Image-Dev",
-        origin_file_pattern="tokenizer_config.json",
+        origin_file_pattern="./",
     ),
-    torch_dtype=torch.bfloat16,
-    device=device,
+    processor_config=ModelConfig(
+        model_id="HiDream-ai/HiDream-O1-Image-Dev",
+        origin_file_pattern="./",
+    ),
 )
 
 image = pipe(
@@ -34,7 +36,4 @@ image = pipe(
     noise_scale_end=7.5,
     noise_clip_std=2.5,
 )
-import os
-output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output_hidream_o1_image_dev.png")
-image.save(output_path)
-print(f"Saved to {output_path}")
+image.save("image.jpg")

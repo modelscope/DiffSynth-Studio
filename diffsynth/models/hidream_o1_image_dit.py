@@ -599,7 +599,8 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
 
         return special_image_mask, special_video_mask
 
-    def _run_decoder_flash(self, inputs_embeds, position_ids, token_types, return_mid_results_layers=None):
+    def _run_decoder_flash(self, inputs_embeds, position_ids, token_types, return_mid_results_layers=None,
+                           use_gradient_checkpointing=False, use_gradient_checkpointing_offload=False):
         """Run decoder layers with flash attention two-pass approach.
 
         Replicates the Megatron attention pattern:
@@ -621,8 +622,6 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
 
         hidden_states = inputs_embeds
         mid_results = [] if return_mid_results_layers else None
-
-        use_gc = text_model.gradient_checkpointing and torch.is_grad_enabled()
 
         def _flash_layer_forward(hidden_states, decoder_layer, cos, sin, idx_ar):
             """Flash attention layer with two-pass approach using DiffSynth attention_forward."""
@@ -652,6 +651,12 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
                 q_bn = q.transpose(1, 2).contiguous()
                 k_bn = k.transpose(1, 2).contiguous()
                 v_bn = v.transpose(1, 2).contiguous()
+
+                # Handle GQA: repeat K/V heads to match Q heads for attention_forward
+                n_rep = attn.num_key_value_groups
+                if n_rep > 1:
+                    k_bn = k_bn.repeat_interleave(n_rep, dim=1)
+                    v_bn = v_bn.repeat_interleave(n_rep, dim=1)
 
                 # Two-pass attention using attention_forward
                 # Pass 1: causal attention on AR tokens only
@@ -684,8 +689,6 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
                 attn_output = attn.o_proj(attn_output)
                 return attn_output, None
 
-            _saved_gc = decoder_layer.gradient_checkpointing
-            decoder_layer.gradient_checkpointing = False
             decoder_layer.self_attn.forward = _custom_flash_attn
             try:
                 hidden_states = decoder_layer(
@@ -694,20 +697,20 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
                 )
             finally:
                 decoder_layer.self_attn.forward = original_attn_forward
-                decoder_layer.gradient_checkpointing = _saved_gc
 
             return hidden_states
 
         for layer_idx, decoder_layer in enumerate(text_model.layers):
-            if use_gc:
-                hidden_states = gradient_checkpoint_forward(
-                    _flash_layer_forward,
-                    hidden_states, decoder_layer, cos, sin, idx_ar,
-                )
-            else:
-                hidden_states = _flash_layer_forward(
-                    hidden_states, decoder_layer, cos, sin, idx_ar,
-                )
+            hidden_states = gradient_checkpoint_forward(
+                _flash_layer_forward,
+                use_gradient_checkpointing=use_gradient_checkpointing,
+                use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+                hidden_states=hidden_states,
+                decoder_layer=decoder_layer,
+                cos=cos,
+                sin=sin,
+                idx_ar=idx_ar,
+            )
 
             if return_mid_results_layers is not None and layer_idx in return_mid_results_layers:
                 mid_results.append(hidden_states)
@@ -719,6 +722,8 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
                              attention_mask=None, pixel_values=None, pixel_values_videos=None,
                              image_grid_thw=None, video_grid_thw=None,
                              return_mid_results_layers=None,
+                             use_gradient_checkpointing=False,
+                             use_gradient_checkpointing_offload=False,
                              **kwargs):
         """Forward pass for image generation (denoising step)."""
         inputs_embeds = self.get_input_embeddings()(input_ids)
@@ -791,7 +796,10 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
 
         hidden_states, mid_results = self._run_decoder_flash(
             inputs_embeds, position_ids, token_types,
-            return_mid_results_layers=return_mid_results_layers)
+            return_mid_results_layers=return_mid_results_layers,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+        )
 
         x_pred = self.final_layer2(hidden_states)
 
@@ -817,6 +825,8 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
         timestep: Optional[torch.Tensor] = None,
         token_types: Optional[torch.Tensor] = None,
         return_mid_results_layers: Optional[list] = None,
+        use_gradient_checkpointing: bool = False,
+        use_gradient_checkpointing_offload: bool = False,
         **kwargs,
     ) -> Union[tuple, Qwen3VLModelOutputWithPast]:
         if vinputs is not None:
@@ -827,6 +837,8 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
                 pixel_values=pixel_values, pixel_values_videos=pixel_values_videos,
                 image_grid_thw=image_grid_thw, video_grid_thw=video_grid_thw,
                 return_mid_results_layers=return_mid_results_layers,
+                use_gradient_checkpointing=use_gradient_checkpointing,
+                use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
                 **kwargs)
 
         if (input_ids is None) ^ (inputs_embeds is not None):
@@ -907,6 +919,8 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
             cache_position=cache_position,
             visual_pos_masks=visual_pos_masks,
             deepstack_visual_embeds=deepstack_visual_embeds,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
             **kwargs,
         )
 
@@ -1038,7 +1052,6 @@ class Qwen3VLTextModel(Qwen3VLPreTrainedModel):
         self.norm = Qwen3VLTextRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.rotary_emb = Qwen3VLRotaryEmbedding(config=config)
 
-        self.gradient_checkpointing = False
         self.post_init()
 
     def get_input_embeddings(self):
@@ -1059,6 +1072,8 @@ class Qwen3VLTextModel(Qwen3VLPreTrainedModel):
         deepstack_visual_embeds: Optional[torch.FloatTensor] = None,
         use_cache: Optional[bool] = None,
         return_mid_results_layers: Optional[list] = None,
+        use_gradient_checkpointing: bool = False,
+        use_gradient_checkpointing_offload: bool = False,
         **kwargs,
     ) -> BaseModelOutputWithPast:
         if (input_ids is None) ^ (inputs_embeds is not None):
@@ -1079,24 +1094,18 @@ class Qwen3VLTextModel(Qwen3VLPreTrainedModel):
         hidden_states = inputs_embeds
         mid_results = [] if return_mid_results_layers else None
 
-        use_gc = self.gradient_checkpointing and torch.is_grad_enabled()
-
         for layer_idx, decoder_layer in enumerate(self.layers):
-            if use_gc:
-                hidden_states = gradient_checkpoint_forward(
-                    decoder_layer, hidden_states,
-                    (position_embeddings[0], position_embeddings[1]),
-                )
-            else:
-                layer_outputs = decoder_layer(
-                    hidden_states,
-                    position_embeddings=position_embeddings,
-                    attention_mask=attention_mask,
-                    past_key_values=past_key_values,
-                    use_cache=use_cache,
-                    cache_position=cache_position,
-                )
-                hidden_states = layer_outputs
+            hidden_states = gradient_checkpoint_forward(
+                decoder_layer,
+                use_gradient_checkpointing=use_gradient_checkpointing,
+                use_gradient_checkpointing_offload=False,
+                hidden_states=hidden_states,
+                position_embeddings=position_embeddings,
+                attention_mask=attention_mask,
+                past_key_values=past_key_values,
+                use_cache=use_cache,
+                cache_position=cache_position,
+            )
 
             if return_mid_results_layers is not None and layer_idx in return_mid_results_layers:
                 mid_results.append(hidden_states)
