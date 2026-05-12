@@ -1367,6 +1367,8 @@ class HiDreamO1ImageModel(Qwen3VLPreTrainedModel):
         timestep: Optional[torch.Tensor] = None,
         token_types: Optional[torch.Tensor] = None,
         return_mid_results_layers: Optional[list] = None,
+        use_gradient_checkpointing: bool = False,
+        use_gradient_checkpointing_offload: bool = False,
         **kwargs,
     ) -> Union[tuple, Qwen3VLCausalLMOutputWithPast]:
         outputs = self.model(
@@ -1384,6 +1386,8 @@ class HiDreamO1ImageModel(Qwen3VLPreTrainedModel):
             timestep=timestep,
             token_types=token_types,
             return_mid_results_layers=return_mid_results_layers,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
             **kwargs,
         )
 
