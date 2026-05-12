@@ -2,17 +2,22 @@ import torch
 
 ALIGNMENT = 64
 
-
 def _align_up(x: int, alignment: int = ALIGNMENT) -> int:
     return (x + alignment - 1) // alignment * alignment
 
-
 def _next_power_of_two(x: int) -> int:
+    """
+    Smallest power of two >= x.
+    For power-of-two x=2^k: (x-1) has bit_length=k, so 1<<k = x (unchanged).
+    For non-power-of-two: (x-1).bit_length() exceeds floor-log2(x), rounding up to next 2^n.
+    """
     return 1 if x <= 1 else 1 << (x - 1).bit_length()
 
+def _prev_power_of_two(x: int) -> int:
+    """Largest power-of-two <= x."""
+    return 1 if x <= 1 else 1 << (x.bit_length() - 1)
 
 def _tensor_storage_size(tensor: torch.Tensor) -> int:
-    """Aligned byte size needed to store a tensor in the arena."""
     return _align_up(tensor.numel() * tensor.element_size())
 
 
@@ -45,9 +50,7 @@ class PinnedBuffer:
 
     @property
     def remaining(self) -> int:
-        if self._buf is None:
-            return self._size
-        return self._buf.numel() - self._offset
+        return self._size if self._buf is None else self._buf.numel() - self._offset
 
     @property
     def used(self) -> int:
@@ -55,7 +58,6 @@ class PinnedBuffer:
 
     @classmethod
     def from_tensor(cls, tensor: torch.Tensor, min_size: int = 1 * 1024**3):
-        """Create a PinnedBuffer sized to fit tensor, at least min_size, rounded to power-of-two."""
         size = max(_tensor_storage_size(tensor) + ALIGNMENT, min_size)
         return cls(_next_power_of_two(size))
 
@@ -73,20 +75,25 @@ class PinnedBuffer:
 
 
 class PinnedArenaPool(BaseBufferPool):
-    """Pinned arena pool. Manages a list of PinnedBuffer, memory allocated lazily per-buffer."""
+    """Pinned arena pool — pre-allocate pinned memory, avoid per-tensor cudaHostAlloc overhead.
+
+    Pool strategy:
+      1. Sizing: from_model() scans all non-trainable params + buffers, sums their aligned sizes
+         as total_bytes. max_chunk_size is raised to fit the largest single tensor.
+      2. Decomposition: total_bytes is split into power-of-two chunks (min_chunk_size ~ max_chunk_size).
+         Each chunk becomes one PinnedBuffer (lazy — actual pin_memory on first use).
+      3. Allocation: allocate_like() sequentially probes each buffer for space (first-fit).
+         Each PinnedBuffer uses bump-pointer with ALIGNMENT padding between tensors.
+      4. Growth: if all existing buffers are full, _grow() appends a new PinnedBuffer sized
+         to the requesting tensor (at least min_chunk_size, power-of-two rounded).
+      5. Fallback: on any exception, falls back to per-tensor pin_memory().
+    """
 
     def __init__(self, total_bytes: int, min_chunk_size: int = 1 * 1024**3, max_chunk_size: int = 4 * 1024**3):
         self.min_chunk_size = _next_power_of_two(int(min_chunk_size))
         self.max_chunk_size = _next_power_of_two(int(max_chunk_size))
-        self.min_chunk_size = self.max_chunk_size if self.min_chunk_size > self.max_chunk_size else self.min_chunk_size
-
-        chunks = self._decompose(total_bytes, self.min_chunk_size, self.max_chunk_size)
-        self._buffers = [PinnedBuffer(s) for s in chunks]
-
-        alloc_plan = sum(chunks)
-        print(f"[PinnedArenaPool] requested={total_bytes / 1024**3:.3f} GiB, "
-              f"plan={alloc_plan / 1024**3:.3f} GiB, "
-              f"chunks={[f'{s / 1024**3:.2f}GiB' for s in chunks]}")
+        self.min_chunk_size = min(self.min_chunk_size, self.max_chunk_size)
+        self._buffers = [PinnedBuffer(s) for s in self._decompose(total_bytes, self.min_chunk_size, self.max_chunk_size)]
 
     @classmethod
     def from_model(cls, model: torch.nn.Module, min_chunk_size: int = 1 * 1024**3, max_chunk_size: int = 4 * 1024**3):
@@ -104,18 +111,14 @@ class PinnedArenaPool(BaseBufferPool):
             return []
         chunks, remaining = [], total_bytes
         while remaining > 0:
-            chunk = min(1 << (remaining.bit_length() - 1), max_chunk_size)
-            if chunk < min_chunk_size:
-                chunk = min_chunk_size
+            chunk = max(min(_prev_power_of_two(remaining), max_chunk_size), min_chunk_size)
             chunks.append(chunk)
             remaining -= chunk
         chunks.sort(reverse=True)
         return chunks
 
     def _grow(self, tensor: torch.Tensor):
-        buf = PinnedBuffer.from_tensor(tensor, min_size=self.min_chunk_size)
-        self._buffers.append(buf)
-        print(f"[PinnedArenaPool] Grow buffer: {buf.capacity / 1024**3:.3f} GiB (total={len(self._buffers)})")
+        self._buffers.append(PinnedBuffer.from_tensor(tensor, min_size=self.min_chunk_size))
 
     def allocate_like(self, tensor: torch.Tensor, *, copy: bool = True, require_contiguous: bool = True, non_blocking: bool = False) -> torch.Tensor:
         """Allocate a pinned view. Falls back to per-tensor pin_memory on failure."""
@@ -129,12 +132,5 @@ class PinnedArenaPool(BaseBufferPool):
                     return view
             self._grow(src)
             return self._buffers[-1].allocate_like(src, copy=copy, non_blocking=non_blocking)
-        except Exception as e:
-            print(f"[PinnedArenaPool] allocate_like failed ({e}), fallback to per-tensor pin_memory")
+        except Exception:
             return src.pin_memory()
-
-    def allocated_bytes(self) -> int:
-        return sum(b.capacity for b in self._buffers)
-
-    def used_bytes_approx(self) -> int:
-        return sum(b.used for b in self._buffers)

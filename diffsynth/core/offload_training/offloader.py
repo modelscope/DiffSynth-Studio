@@ -1,5 +1,5 @@
 import torch
-from .memory_buffer import PinnedArenaPool
+from .memory_buffer import BaseBufferPool
 
 
 class OffloaderMixin:
@@ -18,14 +18,12 @@ class BaseParamOffloader(OffloaderMixin):
         self.param = param
         self.target_device = target_device
 
+
 class StaticParamOffloader(BaseParamOffloader):
-    def __init__(self, param: torch.nn.Parameter, target_device: torch.device, pinned_pool: PinnedArenaPool = None):
+    def __init__(self, param: torch.nn.Parameter, target_device: torch.device, memory_buffer: BaseBufferPool = None):
         super().__init__(param, target_device)
         cpu_data = param.data.cpu().detach().contiguous()
-        if pinned_pool is not None:
-            self.cpu_copy = pinned_pool.allocate_like(cpu_data)
-        else:
-            self.cpu_copy = cpu_data.pin_memory()
+        self.cpu_copy = memory_buffer.allocate_like(cpu_data) if memory_buffer is not None else cpu_data.pin_memory()
         param.data = self.cpu_copy
 
     def onload(self):
@@ -58,15 +56,12 @@ class AlwaysOnGPUParamOffloader(BaseParamOffloader):
 
 
 class BufferOffloader(OffloaderMixin):
-    def __init__(self, module: torch.nn.Module, buf_name: str, buf: torch.Tensor, target_device: torch.device, pinned_pool: PinnedArenaPool = None):
+    def __init__(self, module: torch.nn.Module, buf_name: str, buf: torch.Tensor, target_device: torch.device, memory_buffer: BaseBufferPool = None):
         self.module = module
         self.buf_name = buf_name
         self.target_device = target_device
         cpu_data = buf.data.cpu().contiguous()
-        if pinned_pool is not None:
-            self.cpu_copy = pinned_pool.allocate_like(cpu_data)
-        else:
-            self.cpu_copy = cpu_data.pin_memory()
+        self.cpu_copy = memory_buffer.allocate_like(cpu_data) if memory_buffer is not None else cpu_data.pin_memory()
 
     def onload(self):
         self.module._buffers[self.buf_name] = self.cpu_copy.to(self.target_device, non_blocking=True)
