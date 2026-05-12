@@ -124,7 +124,7 @@ if __name__ == "__main__":
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
         task=args.task,
-        device="cpu" if args.initialize_model_on_cpu else accelerator.device,
+        device="cpu" if (args.initialize_model_on_cpu or args.cpu_offload) else accelerator.device,
     )
     model_logger = ModelLogger(
         args.output_path,
