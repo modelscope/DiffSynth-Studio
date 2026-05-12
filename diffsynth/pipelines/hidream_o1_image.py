@@ -12,33 +12,8 @@ from ..core import ModelConfig
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 
 from ..models.hidream_o1_image_dit import HiDreamO1ImageModel
-from ..models.hidream_common import add_special_tokens, get_rope_index_fix_point
+from ..models.hidream_common import add_special_tokens, get_rope_index_fix_point, patchify, unpatchify, PATCH_SIZE
 from transformers import AutoTokenizer
-
-
-# ──────────────────────────────────────────────────────────────────────
-# Flash scheduler step (temporary, matches FlashFlowMatchEulerDiscreteScheduler.step)
-# ──────────────────────────────────────────────────────────────────────
-def _flash_step(sigmas, step_index, model_output, sample, s_noise=1.0, noise_clip_std=0.0):
-    """Equivalent to FlashFlowMatchEulerDiscreteScheduler.step (flash_scheduler.py L276-362)."""
-    sigma = sigmas[step_index]
-    sample = sample.to(torch.float32)
-    model_output = model_output.to(torch.float32)
-
-    denoised = sample - model_output * sigma
-
-    if step_index < len(sigmas) - 1:
-        sigma_next = sigmas[step_index + 1]
-        noise = torch.randn_like(denoised)
-        if noise_clip_std > 0:
-            noise_std = noise.std().item()
-            clip_val = noise_clip_std * noise_std
-            noise = noise.clamp(min=-clip_val, max=clip_val)
-        sample = sigma_next * noise * s_noise + (1.0 - sigma_next) * denoised
-    else:
-        sample = denoised
-
-    return sample
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -50,7 +25,7 @@ class HiDreamO1ImagePipeline(BasePipeline):
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
             device=device, torch_dtype=torch_dtype,
-            height_division_factor=32, width_division_factor=32,
+            height_division_factor=PATCH_SIZE, width_division_factor=PATCH_SIZE,
         )
         self.scheduler = FlowMatchScheduler("HiDream-O1-Image")
         self.dit: HiDreamO1ImageModel = None
@@ -88,120 +63,71 @@ class HiDreamO1ImagePipeline(BasePipeline):
         self,
         prompt: str,
         negative_prompt: str = " ",
-        cfg_scale: float = 0.0,
-        height: int = 1024,
-        width: int = 1024,
+        cfg_scale: float = 4.0,
+        height: int = 2048,
+        width: int = 2048,
         seed: int = None,
-        num_inference_steps: int = 28,
-        shift: float = 1.0,
-        noise_scale_start: float = 7.5,
-        noise_scale_end: float = 7.5,
-        noise_clip_std: float = 2.5,
+        rand_device: str = "cpu",
+        num_inference_steps: int = 50,
+        model_type: str = "full",
+        shift: float = 3.0,
+        noise_scale: float = 8.0,
         progress_bar_cmd=tqdm,
     ):
         # 1. Scheduler: set timesteps for Dev mode
         self.scheduler.set_timesteps(
             num_inference_steps, shift=shift,
-            special_case="flash"
+            special_case=model_type,
         )
 
-        # Noise scale schedule
-        num_steps = len(self.scheduler.timesteps)
-        if num_steps > 1:
-            noise_scale_schedule = [
-                noise_scale_start + (noise_scale_end - noise_scale_start) * i / (num_steps - 1)
-                for i in range(num_steps)
-            ]
-        else:
-            noise_scale_schedule = [noise_scale_start]
-
-        # 2. Three dictionaries
+        # 2. Input Dictionaries
         inputs_posi = {"prompt": prompt}
         inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
             "cfg_scale": cfg_scale,
             "height": height, "width": width,
-            "seed": seed,
-            "noise_scale_start": noise_scale_start,
+            "seed": seed, "rand_device": rand_device,
+            "noise_scale": noise_scale,
         }
 
-        # 3. Unit chain
+        # 3. Units
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(
                 unit, self, inputs_shared, inputs_posi, inputs_nega
             )
 
-        # 4. Denoise loop (manual CFG in velocity space)
+        # 4. Denoise loop
         self.load_models_to_device(self.in_iteration_models)
-
-        for step_idx, step_t in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
-            sigma = (step_t / 1000.0).to(dtype=self.torch_dtype).clamp_min(0.001)
-            t_pixeldit = (1.0 - step_t / 1000.0).to(dtype=self.torch_dtype, device=self.device)
-
-            # Positive forward
-            x_pred_cond = self.model_fn(
-                dit=self.dit, latents=inputs_shared["latents"], timestep=t_pixeldit,
-                input_ids=inputs_posi["input_ids"],
-                position_ids=inputs_posi["position_ids"],
-                token_types=inputs_posi["token_types"],
-                vinput_mask=inputs_posi["vinput_mask"],
+        models = {name: getattr(self, name) for name in self.in_iteration_models}
+        for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
+            timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
+            noise_pred = self.cfg_guided_model_fn(
+                self.model_fn, cfg_scale,
+                inputs_shared, inputs_posi, inputs_nega,
+                **models, timestep=timestep, progress_id=progress_id
             )
-            v_cond = (x_pred_cond.to(torch.float32) - inputs_shared["latents"].to(torch.float32)) / sigma
+            inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
 
-            # CFG
-            if cfg_scale > 1.0:
-                x_pred_uncond = self.model_fn(
-                    dit=self.dit, latents=inputs_shared["latents"], timestep=t_pixeldit,
-                    input_ids=inputs_nega["input_ids"],
-                    position_ids=inputs_nega["position_ids"],
-                    token_types=inputs_nega["token_types"],
-                    vinput_mask=inputs_nega["vinput_mask"],
-                )
-                v_uncond = (x_pred_uncond.to(torch.float32) - inputs_shared["latents"].to(torch.float32)) / sigma
-                v_guided = v_uncond + cfg_scale * (v_cond - v_uncond)
-            else:
-                v_guided = v_cond
-
-            model_output = -v_guided
-
-            # Flash scheduler step
-            inputs_shared["latents"] = _flash_step(
-                self.scheduler.sigmas, step_idx, model_output, inputs_shared["latents"],
-                s_noise=noise_scale_schedule[step_idx],
-                noise_clip_std=noise_clip_std,
-            ).to(self.torch_dtype)
-
-        # 5. Decode
-        img = (inputs_shared["latents"] + 1) / 2
-        h_patches = height // 32
-        w_patches = width // 32
-        img = einops.rearrange(
-            img.cpu().float(), 'B (H W) (C p1 p2) -> B C (H p1) (W p2)',
-            H=h_patches, W=w_patches, p1=32, p2=32,
-        )
-        arr = np.round(np.clip(img[0].numpy().transpose(1, 2, 0) * 255, 0, 255)).astype(np.uint8)
-        return Image.fromarray(arr).convert("RGB")
+        image = self.vae_output_to_image(inputs_shared["latents"])
+        return image
 
 class HiDreamO1ImageUnit_NoiseInitializer(PipelineUnit):
     """Generate pixel-level noise and rearrange to patch space."""
 
     def __init__(self):
         super().__init__(
-            input_params=("height", "width", "seed", "rand_device", "noise_scale_start"),
+            input_params=("height", "width", "seed", "rand_device", "noise_scale"),
             output_params=("latents",),
         )
 
     def prepare_inputs(self, inputs_shared, inputs_posi, inputs_nega):
         return inputs_shared, inputs_posi, inputs_nega
 
-    def process(self, pipe: HiDreamO1ImagePipeline, height=None, width=None, seed=None, rand_device=None, noise_scale_start=None):
+    def process(self, pipe: HiDreamO1ImagePipeline, height=None, width=None, seed=None, rand_device=None, noise_scale=None):
         noise = pipe.generate_noise((1, 3, height, width), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype)
-        noise = noise_scale_start * noise
-        latents = einops.rearrange(
-            noise, 'B C (H p1) (W p2) -> B (H W) (C p1 p2)',
-            p1=pipe.height_division_factor, p2=pipe.width_division_factor,
-        )
-        return {"latents": latents}
+        noise = noise_scale * noise
+        return {"latents": noise}
+
 
 class HiDreamO1ImageUnit_ShapeChecker(PipelineUnit):
     def __init__(self):
@@ -238,7 +164,6 @@ class HiDreamO1ImageUnit_PromptTokenizer(PipelineUnit):
 
     def build_text_sample(self, prompt, height, width, tokenizer, processor, model_config, device):
         TIMESTEP_TOKEN_NUM = 1
-        PATCH_SIZE = 32
         image_token_id = model_config.image_token_id
         video_token_id = model_config.video_token_id
         vision_start_token_id = model_config.vision_start_token_id
@@ -302,12 +227,18 @@ def model_fn_hidream_o1_image(
     input_ids, position_ids, token_types, vinput_mask,
     **kwargs
 ):
+
+    b, c, h, w = latents.shape
+    x = patchify(latents)
+
+    timestep = timestep / 1000
     outputs = dit(
         input_ids=input_ids,
         position_ids=position_ids,
-        vinputs=latents,
-        timestep=timestep.reshape(-1),
+        vinputs=x,
+        timestep=(1 - timestep).reshape(-1),
         token_types=token_types,
     )
-    x_pred = outputs.x_pred[0, vinput_mask[0]].unsqueeze(0)
-    return x_pred
+    x_pred = unpatchify(outputs.x_pred[0, vinput_mask[0]].unsqueeze(0), h, w)
+    v_pred = (latents - x_pred) / timestep
+    return v_pred

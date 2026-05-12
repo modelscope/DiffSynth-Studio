@@ -1,4 +1,3 @@
-"""HiDream-O1-Image Dev model Text-to-Image inference example."""
 import torch
 from diffsynth.pipelines.hidream_o1_image import HiDreamO1ImagePipeline
 from diffsynth.core.loader.config import ModelConfig
@@ -18,18 +17,14 @@ pipe = HiDreamO1ImagePipeline.from_pretrained(
         origin_file_pattern="./",
     ),
 )
-
 image = pipe(
     prompt="medium shot, eye-level, front view. A woman is seated in an ornate bedroom, illuminated by candlelight, with a calm and composed expression. The subject is a young woman with fair skin, light brown hair styled in an updo with loose tendrils framing her face, and blue eyes. She wears a cream-colored satin robe with delicate floral embroidery and lace trim along the neckline. Her ears are adorned with pearl drop earrings. She is seated on a bed with a dark, intricately carved wooden headboard. To her left, a wooden nightstand holds three lit white candles and a candelabra with multiple lit candles in the background. The bed is covered with patterned pillows and a dark, textured blanket. The walls are paneled with dark wood and feature a large, ornate tapestry with muted earth tones. The lighting creates soft highlights on her face and robe, with warm shadows cast across the room.",
-    negative_prompt=" ",
-    cfg_scale=0.0,  # Dev model: no guidance
+    cfg_scale=1.0,
     height=2048,
     width=2048,
     seed=42,
     num_inference_steps=28,
-    shift=1.0,
-    noise_scale_start=7.5,
-    noise_scale_end=7.5,
-    noise_clip_std=2.5,
+    model_type="dev",
+    noise_scale=7.5,
 )
-image.save("image.jpg")
+image.save(f"image.jpg")

@@ -1033,12 +1033,6 @@ hidream_o1_image_series = [
         "model_name": "hidream_o1_image_dit",
         "model_class": "diffsynth.models.hidream_o1_image_dit.HiDreamO1ImageModel",
     },
-    {
-        # Example: ModelConfig(model_id="HiDream-ai/HiDream-O1-Image-Dev", origin_file_pattern="model-*.safetensors")
-        "model_hash": "58a7c1073d79556bfc61e05e6061b771",
-        "model_name": "hidream_o1_image_dit",
-        "model_class": "diffsynth.models.hidream_o1_image_dit.HiDreamO1ImageModel",
-    },
 ]
 
 MODEL_CONFIGS = (

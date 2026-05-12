@@ -1,5 +1,10 @@
 import torch
 from typing import Optional
+import einops
+
+
+PATCH_SIZE = 32
+
 
 def add_special_tokens(tokenizer):
     """Attach the special-token shortcuts that the pipeline relies on."""
@@ -8,6 +13,24 @@ def add_special_tokens(tokenizer):
     tokenizer.eor_token = "<|eor_token|>"
     tokenizer.bot_token = "<|bot_token|>"
     tokenizer.tms_token = "<|tms_token|>"
+
+
+def unpatchify(x, height, width):
+    h_patches = height // PATCH_SIZE
+    w_patches = width // PATCH_SIZE
+    x = einops.rearrange(
+        x, 'B (H W) (C p1 p2) -> B C (H p1) (W p2)',
+        H=h_patches, W=w_patches, p1=PATCH_SIZE, p2=PATCH_SIZE,
+    )
+    return x
+
+
+def patchify(x):
+    x = einops.rearrange(
+        x, 'B C (H p1) (W p2) -> B (H W) (C p1 p2)',
+        p1=PATCH_SIZE, p2=PATCH_SIZE,
+    )
+    return x
 
 
 def get_rope_index_fix_point(

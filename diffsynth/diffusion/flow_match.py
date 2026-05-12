@@ -186,26 +186,22 @@ class FlowMatchScheduler():
     @staticmethod
     def set_timesteps_hidream_o1_image(num_inference_steps=28, denoising_strength=1.0, shift=None, special_case=None, **kwargs):
         num_train_timesteps = 1000
-        shift = 1.0 if shift is None else shift
-
-        if special_case == "flash":
+        shift = 3.0 if shift is None else shift
+        if special_case == "dev":
             timesteps_list = [
                 999, 987, 974, 960, 945, 929, 913, 895, 877, 857, 836, 814, 790, 764, 737,
                 707, 675, 640, 602, 560, 515, 464, 409, 347, 278, 199, 110, 8,
             ]
             sigmas = torch.tensor([t / 1000.0 for t in timesteps_list], dtype=torch.float32)
-            sigmas = torch.cat([sigmas, torch.zeros(1)])
             timesteps = torch.tensor(timesteps_list, dtype=torch.float32)
             return sigmas, timesteps
         else:
-            # Base mode: FlowUniPCMultistepScheduler style (not validated)
             sigma_min = 0.0
             sigma_max = 1.0
             sigma_start = sigma_min + (sigma_max - sigma_min) * denoising_strength
             sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps + 1)[:-1]
             sigmas = shift * sigmas / (1 + (shift - 1) * sigmas)
-            sigmas = torch.cat([sigmas, torch.zeros(1)])
-            timesteps = sigmas[:-1] * num_train_timesteps
+            timesteps = sigmas * num_train_timesteps
             return sigmas, timesteps
 
     @staticmethod
