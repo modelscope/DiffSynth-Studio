@@ -1,5 +1,7 @@
 import torch
+import math
 from typing import Optional
+from PIL import Image
 import einops
 
 
@@ -31,6 +33,54 @@ def patchify(x):
         p1=PATCH_SIZE, p2=PATCH_SIZE,
     )
     return x
+
+
+def resize_pilimage(pil_image, image_size, patch_size=32, resampler=Image.BICUBIC):
+    """Target: HiDream-O1-Image/models/utils.py:32-67"""
+    while min(*pil_image.size) >= 2 * image_size:
+        pil_image = pil_image.resize(
+            tuple(x // 2 for x in pil_image.size), resample=Image.BOX
+        )
+
+    m = patch_size
+    width, height = pil_image.width, pil_image.height
+    S_max = image_size * image_size
+    scale = S_max / (width * height)
+    scale = math.sqrt(scale)
+
+    new_sizes = [
+        (round(width * scale) // m * m, round(height * scale) // m * m),
+        (round(width * scale) // m * m, math.floor(height * scale) // m * m),
+        (math.floor(width * scale) // m * m, round(height * scale) // m * m),
+        (math.floor(width * scale) // m * m, math.floor(height * scale) // m * m),
+    ]
+    new_sizes = sorted(new_sizes, key=lambda x: x[0] * x[1], reverse=True)
+
+    for new_size in new_sizes:
+        if new_size[0] * new_size[1] <= S_max:
+            break
+
+    s1 = width / new_size[0]
+    s2 = height / new_size[1]
+    if s1 < s2:
+        pil_image = pil_image.resize([new_size[0], round(height / s1)], resample=resampler)
+        top = (round(height / s1) - new_size[1]) // 2
+        pil_image = pil_image.crop((0, top, new_size[0], top + new_size[1]))
+    else:
+        pil_image = pil_image.resize([round(width / s2), new_size[1]], resample=resampler)
+        left = (round(width / s2) - new_size[0]) // 2
+        pil_image = pil_image.crop((left, 0, left + new_size[0], new_size[1]))
+
+    return pil_image
+
+
+def calculate_dimensions(max_size, ratio):
+    """Target: HiDream-O1-Image/models/utils.py:69-74"""
+    width = math.sqrt(max_size * max_size * ratio)
+    height = width / ratio
+    width = int(width / 32) * 32
+    height = int(height / 32) * 32
+    return width, height
 
 
 def get_rope_index_fix_point(

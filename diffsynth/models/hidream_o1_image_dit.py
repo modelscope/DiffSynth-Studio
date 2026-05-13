@@ -21,6 +21,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 
+# Use torch (SDPA) attention to match target library behavior
+os.environ['DIFFSYNTH_ATTENTION_IMPLEMENTATION'] = 'torch'
+
 from ..core.attention.attention import attention_forward
 from ..core import gradient_checkpoint_forward
 
@@ -83,8 +86,12 @@ class Qwen3VLVisionRotaryEmbedding(nn.Module):
         self.register_buffer("inv_freq", inv_freq, persistent=False)
 
     def forward(self, seqlen: int) -> torch.Tensor:
-        seq = torch.arange(seqlen, device=self.inv_freq.device, dtype=self.inv_freq.dtype)
-        freqs = torch.outer(seq, self.inv_freq)
+        # Recompute inv_freq on CPU first (matching target __init__ behavior), then move to device
+        dim = self.inv_freq.shape[0] * 2
+        inv_freq = 1.0 / (10000.0 ** (torch.arange(0, dim, 2, dtype=torch.float) / dim))
+        inv_freq = inv_freq.to(self.inv_freq.device)
+        seq = torch.arange(seqlen, device=inv_freq.device, dtype=inv_freq.dtype)
+        freqs = torch.outer(seq, inv_freq)
         return freqs
 
 
