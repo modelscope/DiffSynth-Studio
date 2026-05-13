@@ -7,23 +7,25 @@ pipe = HiDreamO1ImagePipeline.from_pretrained(
     device="cuda",
     model_configs=[
         ModelConfig(
-            model_id="HiDream-ai/HiDream-O1-Image",
+            model_id="HiDream-ai/HiDream-O1-Image-Dev",
             origin_file_pattern="model-*.safetensors",
         ),
     ],
     processor_config=ModelConfig(
-        model_id="HiDream-ai/HiDream-O1-Image",
+        model_id="HiDream-ai/HiDream-O1-Image-Dev",
         origin_file_pattern="./",
     ),
 )
-pipe.load_lora(pipe.dit, "./models/train/HiDream-O1-Image_lora_1.0/epoch-4.safetensors")
+state_dict = torch.load("./models/train/HiDream-O1-Image-Dev_full/epoch-1.safetensors", map_location="cuda", weights_only=False)
+pipe.dit.load_state_dict(state_dict, strict=False)
 image = pipe(
     prompt="dog,white and brown dog, sitting on wall, under pink flowers",
-    negative_prompt=" ",
-    cfg_scale=4.0,
+    cfg_scale=1.0,
     height=2048,
     width=2048,
     seed=42,
-    num_inference_steps=50,
+    num_inference_steps=28,
+    model_type="dev",
+    noise_scale=7.5,
 )
 image.save("image.jpg")

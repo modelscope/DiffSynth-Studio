@@ -224,7 +224,7 @@ def model_fn_hidream_o1_image(
     input_ids, position_ids, token_types, vinput_mask,
     use_gradient_checkpointing: bool = False,
     use_gradient_checkpointing_offload: bool = False,
-    **kwargs
+    **kwargs,
 ):
 
     b, c, h, w = latents.shape

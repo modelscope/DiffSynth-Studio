@@ -13,7 +13,7 @@ class HiDreamO1ImageTrainingModule(DiffusionTrainingModule):
     def __init__(
         self,
         model_paths=None, model_id_with_origin_paths=None,
-        tokenizer_path=None,
+        processor_config=None,
         trainable_models=None,
         lora_base_model=None, lora_target_modules="", lora_rank=32, lora_checkpoint=None,
         preset_lora_path=None, preset_lora_model=None,
@@ -25,16 +25,14 @@ class HiDreamO1ImageTrainingModule(DiffusionTrainingModule):
         device="cpu",
         task="sft",
         noise_scale=8.0,
-        max_timestep_boundary=1.0,
-        min_timestep_boundary=0.0,
     ):
         super().__init__()
         # ===== Parse model configs =====
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
-        # ===== Tokenizer config =====
-        tokenizer_config = self.parse_path_or_model_id(tokenizer_path, default_value=ModelConfig(model_id="HiDream-ai/HiDream-O1-Image-Dev", origin_file_pattern="./"))
+        # ===== Processor config =====
+        processor_config = self.parse_path_or_model_id(processor_config, default_value=ModelConfig(model_id="HiDream-ai/HiDream-O1-Image-Dev", origin_file_pattern="./"))
         # ===== Build Pipeline =====
-        self.pipe = HiDreamO1ImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, processor_config=tokenizer_config)
+        self.pipe = HiDreamO1ImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, processor_config=processor_config)
         # ===== Split Pipeline Units =====
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
 
@@ -53,8 +51,6 @@ class HiDreamO1ImageTrainingModule(DiffusionTrainingModule):
         self.fp8_models = fp8_models
         self.task = task
         self.noise_scale = noise_scale
-        self.max_timestep_boundary = max_timestep_boundary
-        self.min_timestep_boundary = min_timestep_boundary
         # ===== Task routing =====
         self.task_to_loss = {
             "sft:data_process": lambda pipe, *args: args,
@@ -66,10 +62,10 @@ class HiDreamO1ImageTrainingModule(DiffusionTrainingModule):
         # ===== Positive prompt =====
         inputs_posi = {"prompt": data["prompt"]}
         # ===== Negative prompt: must be empty =====
-        inputs_nega = {"negative_prompt": ""}
+        inputs_nega = {"negative_prompt": " "}
         # ===== Shared params =====
         image = data["image"]
-        img_tensor = torch.from_numpy(np.array(image)).permute(2, 0, 1).unsqueeze(0).to(dtype=self.pipe.torch_dtype) / 255.0
+        img_tensor = pipe.preprocess_image(image).to(device=pipe.device, dtype=pipe.torch_dtype)
         inputs_shared = {
             # input_latents: (1, 3, H, W) tensor, same shape as noise
             "input_latents": img_tensor,
@@ -79,8 +75,6 @@ class HiDreamO1ImageTrainingModule(DiffusionTrainingModule):
             "cfg_scale": 1,
             "rand_device": self.pipe.device,
             "noise_scale": self.noise_scale,
-            "max_timestep_boundary": self.max_timestep_boundary,
-            "min_timestep_boundary": self.min_timestep_boundary,
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
         }
@@ -102,10 +96,8 @@ def hidream_o1_image_parser():
     parser = argparse.ArgumentParser(description="HiDream-O1-Image training.")
     parser = add_general_config(parser)
     parser = add_image_size_config(parser)
-    parser.add_argument("--tokenizer_path", type=str, default=None, help="Path to tokenizer.")
+    parser.add_argument("--processor_config", type=str, default=None, help="Path to processor config.")
     parser.add_argument("--noise_scale", type=float, default=8.0, help="Noise scale factor.")
-    parser.add_argument("--max_timestep_boundary", type=float, default=1.0, help="Max timestep boundary.")
-    parser.add_argument("--min_timestep_boundary", type=float, default=0.0, help="Min timestep boundary.")
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
     return parser
 
@@ -133,18 +125,12 @@ if __name__ == "__main__":
             height_division_factor=PATCH_SIZE,
             width_division_factor=PATCH_SIZE,
         ),
-        special_operator_map={
-            "image": RouteByType(operator_map=[
-                (str, ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, PATCH_SIZE, PATCH_SIZE)),
-                (list, SequencialProcess(ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, PATCH_SIZE, PATCH_SIZE))),
-            ]),
-        },
     )
     # ===== TrainingModule =====
     model = HiDreamO1ImageTrainingModule(
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
-        tokenizer_path=args.tokenizer_path,
+        processor_config=args.processor_config,
         trainable_models=args.trainable_models,
         lora_base_model=args.lora_base_model,
         lora_target_modules=args.lora_target_modules,
@@ -160,8 +146,6 @@ if __name__ == "__main__":
         task=args.task,
         device="cpu" if args.initialize_model_on_cpu else accelerator.device,
         noise_scale=args.noise_scale,
-        max_timestep_boundary=args.max_timestep_boundary,
-        min_timestep_boundary=args.min_timestep_boundary,
     )
     # ===== ModelLogger =====
     model_logger = ModelLogger(

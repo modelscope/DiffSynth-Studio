@@ -16,7 +16,8 @@ pipe = HiDreamO1ImagePipeline.from_pretrained(
         origin_file_pattern="./",
     ),
 )
-pipe.load_lora(pipe.dit, "./models/train/HiDream-O1-Image_lora_1.0/epoch-4.safetensors")
+state_dict = torch.load("./models/train/HiDream-O1-Image_full/epoch-1.safetensors", map_location="cuda", weights_only=False)
+pipe.dit.load_state_dict(state_dict, strict=False)
 image = pipe(
     prompt="dog,white and brown dog, sitting on wall, under pink flowers",
     negative_prompt=" ",
