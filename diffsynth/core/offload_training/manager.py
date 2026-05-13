@@ -47,7 +47,7 @@ class UnitWiseParamManager:
         self.model = model
         self.target_device = target_device
         self.param_offloaders = {}
-        for param in (params or model.parameters()):
+        for param in (model.parameters() if params is None else params):
             if not param.requires_grad:
                 self.param_offloaders[id(param)] = StaticParamOffloader(param, target_device, memory_buffer=memory_buffer)
             else:
