@@ -1,10 +1,8 @@
 # HiDream-O1-Image Pipeline for DiffSynth-Studio.
 
-import torch, einops
+import torch
 from typing import Optional, Union
 from tqdm import tqdm
-from PIL import Image
-import numpy as np
 
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
@@ -13,7 +11,6 @@ from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 
 from ..models.hidream_o1_image_dit import HiDreamO1ImageModel
 from ..models.hidream_common import add_special_tokens, get_rope_index_fix_point, patchify, unpatchify, PATCH_SIZE
-from transformers import AutoTokenizer
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -225,6 +222,8 @@ class HiDreamO1ImageUnit_PromptTokenizer(PipelineUnit):
 def model_fn_hidream_o1_image(
     dit, latents, timestep,
     input_ids, position_ids, token_types, vinput_mask,
+    use_gradient_checkpointing: bool = False,
+    use_gradient_checkpointing_offload: bool = False,
     **kwargs
 ):
 
@@ -238,6 +237,8 @@ def model_fn_hidream_o1_image(
         vinputs=x,
         timestep=(1 - timestep).reshape(-1),
         token_types=token_types,
+        use_gradient_checkpointing=use_gradient_checkpointing,
+        use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
     x_pred = unpatchify(outputs.x_pred[0, vinput_mask[0]].unsqueeze(0), h, w)
     v_pred = (latents - x_pred) / timestep
