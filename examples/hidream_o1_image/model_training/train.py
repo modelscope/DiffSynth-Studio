@@ -65,10 +65,8 @@ class HiDreamO1ImageTrainingModule(DiffusionTrainingModule):
         inputs_nega = {"negative_prompt": " "}
         # ===== Shared params =====
         image = data["image"]
-        img_tensor = pipe.preprocess_image(image).to(device=pipe.device, dtype=pipe.torch_dtype)
         inputs_shared = {
-            # input_latents: (1, 3, H, W) tensor, same shape as noise
-            "input_latents": img_tensor,
+            "input_image": image,
             "height": image.size[1],
             "width": image.size[0],
             # Framework control params

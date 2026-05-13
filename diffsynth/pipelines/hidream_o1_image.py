@@ -33,6 +33,7 @@ class HiDreamO1ImagePipeline(BasePipeline):
             HiDreamO1ImageUnit_ShapeChecker(),
             HiDreamO1ImageUnit_PromptTokenizer(),
             HiDreamO1ImageUnit_NoiseInitializer(),
+            HiDreamO1ImageUnit_InputImageEmbedder(),
         ]
         self.model_fn = model_fn_hidream_o1_image
 
@@ -107,6 +108,20 @@ class HiDreamO1ImagePipeline(BasePipeline):
 
         image = self.vae_output_to_image(inputs_shared["latents"])
         return image
+
+class HiDreamO1ImageUnit_InputImageEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("input_image",),
+            output_params=("input_latents",),
+        )
+
+    def process(self, pipe: HiDreamO1ImagePipeline, input_image):
+        if input_image is None or not pipe.scheduler.training:
+            return {}
+        img_tensor = pipe.preprocess_image(input_image).to(device=pipe.device, dtype=pipe.torch_dtype)
+        return {"input_latents": img_tensor}
+
 
 class HiDreamO1ImageUnit_NoiseInitializer(PipelineUnit):
     """Generate pixel-level noise and rearrange to patch space."""

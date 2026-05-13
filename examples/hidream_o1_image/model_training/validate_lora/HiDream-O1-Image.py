@@ -16,7 +16,7 @@ pipe = HiDreamO1ImagePipeline.from_pretrained(
         origin_file_pattern="./",
     ),
 )
-pipe.load_lora(pipe.dit, "./models/train/HiDream-O1-Image_lora_1.0/epoch-4.safetensors")
+pipe.load_lora(pipe.dit, "./models/train/HiDream-O1-Image_lora/epoch-4.safetensors")
 image = pipe(
     prompt="dog,white and brown dog, sitting on wall, under pink flowers",
     negative_prompt=" ",

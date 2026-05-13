@@ -23,7 +23,7 @@ image = pipe(
     cfg_scale=4.0,
     height=2048,
     width=2048,
-    seed=seed,
+    seed=42,
     num_inference_steps=50,
 )
 image.save("image.jpg")
