@@ -24,13 +24,14 @@ class StaticParamOffloader(BaseParamOffloader):
         super().__init__(param, target_device)
         cpu_data = param.data.cpu().detach().contiguous()
         self.cpu_copy = memory_buffer.allocate_like(cpu_data) if memory_buffer is not None else cpu_data.pin_memory()
-        param.data = self.cpu_copy
+        self._placeholder = torch.empty(0, device=target_device, dtype=param.dtype)
+        param.data = self._placeholder
 
     def onload(self):
         self.param.data = self.cpu_copy.to(self.target_device, non_blocking=True)
 
     def offload(self):
-        self.param.data = self.cpu_copy
+        self.param.data = self._placeholder
 
 
 class TrainableParamOffloader(BaseParamOffloader):
@@ -62,9 +63,11 @@ class BufferOffloader(OffloaderMixin):
         self.target_device = target_device
         cpu_data = buf.data.cpu().contiguous()
         self.cpu_copy = memory_buffer.allocate_like(cpu_data) if memory_buffer is not None else cpu_data.pin_memory()
+        self._placeholder = torch.empty(0, device=target_device, dtype=buf.dtype)
+        self.module._buffers[self.buf_name] = self._placeholder
 
     def onload(self):
         self.module._buffers[self.buf_name] = self.cpu_copy.to(self.target_device, non_blocking=True)
 
     def offload(self):
-        self.module._buffers[self.buf_name] = self.cpu_copy
+        self.module._buffers[self.buf_name] = self._placeholder
