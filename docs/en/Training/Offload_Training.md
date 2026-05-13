@@ -24,19 +24,20 @@ module.backward()  → Compute gradients
 backward_hook      → Offload module weights back to CPU (offload)
 ```
 
-### Parameter Classification
+### Parameter and Buffer Classification
 
-Different offload strategies are applied depending on whether parameters are trainable:
+Different offload strategies are applied depending on whether parameters are trainable and for buffer types:
 
-| Parameter Type | Offloader Class | Behavior |
+| Type | Offloader Class | Behavior |
 |---------------|----------------|----------|
-| Non-trainable (`requires_grad=False`) | `StaticParamOffloader` | Copies weights to pre-allocated pinned memory at init, maintaining a permanent CPU copy; onload copies from CPU to GPU, offload reassigns `param.data` back to the CPU copy (no PCIe transfer back) |
+| Non-trainable (`requires_grad=False`) | `StaticParamOffloader` | Copies weights to pre-allocated pinned memory at init, maintaining a permanent CPU copy, and replaces `param.data` with an empty GPU placeholder (freeing GPU memory); onload asynchronously copies from CPU to GPU, offload reassigns `param.data` to the placeholder (no PCIe transfer back) |
 | Trainable + `optimize_on_cpu=True` | `TrainableParamOffloader` | Weights change during training, so no static copy is kept; onload/offload via `param.data.to(device)` with actual data transfer; also moves `param.grad` to CPU after backward |
 | Trainable + `optimize_on_cpu=False` | `AlwaysOnGPUParamOffloader` | Moves parameters to GPU at init and never offloads; suitable for LoRA training (small number of trainable params) |
+| Module Buffers (e.g., BatchNorm's `running_mean`/`running_var`) | `BufferOffloader` | Similar to `StaticParamOffloader`: copies buffer to pinned memory at init; onload asynchronously copies from CPU to GPU, offload reassigns `module._buffers[name]` back to the CPU copy |
 
 ### Pinned Memory Pool
 
-`StaticParamOffloader` needs to allocate a pinned memory copy on CPU for each non-trainable parameter (pinned memory enables asynchronous non-blocking CPU→GPU transfers, much faster than regular pageable memory).
+`StaticParamOffloader` and `BufferOffloader` need to allocate a pinned memory copy on CPU for each non-trainable parameter/buffer (pinned memory enables asynchronous non-blocking CPU→GPU transfers, much faster than regular pageable memory).
 
 **Problem**: PyTorch's `pin_memory()` allocates memory through `CachingHostAllocator`, which rounds up each allocation size to the next power of two. For example, a 17MB tensor actually allocates 32MB. Large models have thousands of parameter tensors, and allocating each independently via `pin_memory()` leads to massive memory waste (measured inflation of 50%~100%).
 
@@ -61,9 +62,13 @@ Gradient Checkpointing re-executes forward during backward (recomputing activati
 `OffloadTrainingManager` controls module granularity via the `param_size_threshold` parameter:
 
 - `param_size_threshold=None` (default): offloads every leaf module (`nn.Linear`, `nn.LayerNorm`, etc.)
-- `param_size_threshold=N` (MB): modules with total parameters exceeding the threshold are recursively split into children; modules below the threshold are offloaded as a whole
+- `param_size_threshold=N` (MB): uses `_should_force_recurse` to decide whether to recursively split. Modules are force-split when:
+  - Total parameter count exceeds the threshold
+  - The module class does not define its own `forward` method (pure container module)
+  - The module has both `encode` and `decode` methods (e.g., VAE)
+  - Modules not matching the above conditions are offloaded as a whole
 
-Additionally, "orphan parameters" and buffers not managed by any unit are automatically collected and hooked.
+Additionally, "orphan parameters" and "orphan buffers" not managed by any unit are automatically collected and hooked.
 
 ### Training Loop Integration
 

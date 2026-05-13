@@ -24,19 +24,20 @@ module.backward()  → 计算梯度
 backward_hook      → 将模块权重卸载回 CPU (offload)
 ```
 
-### 参数分类管理
+### 参数与 Buffer 分类管理
 
-根据参数是否可训练，采用不同的 offload 策略：
+根据参数是否可训练以及 buffer 类型，采用不同的 offload 策略：
 
-| 参数类型 | Offloader 类 | 行为 |
+| 类型 | Offloader 类 | 行为 |
 |---------|-------------|------|
-| 非可训练参数 (`requires_grad=False`) | `StaticParamOffloader` | 初始化时将权重拷贝到预分配的 pinned memory 中保持永久 CPU 副本；onload 时从 CPU 副本拷贝到 GPU，offload 时将 `param.data` 重新指向 CPU 副本（无需 PCIe 回传） |
+| 非可训练参数 (`requires_grad=False`) | `StaticParamOffloader` | 初始化时将权重拷贝到预分配的 pinned memory 中保持永久 CPU 副本，并将 `param.data` 替换为 GPU 端空 placeholder（释放 GPU 显存）；onload 时从 CPU 副本异步拷贝到 GPU，offload 时将 `param.data` 重新指向 placeholder（无需 PCIe 回传） |
 | 可训练参数 + `optimize_on_cpu=True` | `TrainableParamOffloader` | 权重在训练中会变化，无法保持静态副本；onload/offload 通过 `param.data.to(device)` 实际搬运；backward 后将 `param.grad` 也移到 CPU |
 | 可训练参数 + `optimize_on_cpu=False` | `AlwaysOnGPUParamOffloader` | 初始化时直接将参数移到 GPU，之后不再搬运；适用于 LoRA 训练（可训练参数量小） |
+| 模块 Buffer（如 BatchNorm 的 `running_mean`/`running_var`） | `BufferOffloader` | 与 `StaticParamOffloader` 类似：初始化时将 buffer 拷贝到 pinned memory；onload 时从 CPU 副本异步拷贝到 GPU，offload 时将 `module._buffers[name]` 重新指向 CPU 副本 |
 
 ### Pinned Memory Pool
 
-`StaticParamOffloader` 在初始化时需要为每个非可训练参数分配一份 CPU 端的 pinned memory 副本（pinned memory 可以实现 CPU→GPU 的异步非阻塞传输，比普通 pageable memory 快得多）。
+`StaticParamOffloader` 和 `BufferOffloader` 在初始化时需要为每个非可训练参数/buffer 分配一份 CPU 端的 pinned memory 副本（pinned memory 可以实现 CPU→GPU 的异步非阻塞传输，比普通 pageable memory 快得多）。
 
 **问题**：PyTorch 的 `pin_memory()` 底层通过 `CachingHostAllocator` 分配内存，该分配器会将每次申请的大小向上取整到 2 的整数次方。例如一个 17MB 的 tensor 会实际分配 32MB。大模型有数千个参数 tensor，每个都独立 `pin_memory()` 会导致大量内存浪费（实测可能膨胀 50%~100%）。
 
@@ -61,9 +62,13 @@ Gradient Checkpointing 在 backward 时会重新执行 forward（重算激活）
 `OffloadTrainingManager` 通过 `param_size_threshold` 参数控制模块粒度：
 
 - `param_size_threshold=None`（默认）：offload 每个叶子模块（`nn.Linear`、`nn.LayerNorm` 等）
-- `param_size_threshold=N`（MB）：参数量超过阈值的模块会被递归拆分为子模块；未超过阈值的模块作为整体进行 offload
+- `param_size_threshold=N`（MB）：通过 `_should_force_recurse` 决定是否递归拆分，以下情况的模块会被强制递归拆分为子模块：
+  - 参数总量超过阈值
+  - 模块类未定义自己的 `forward` 方法（纯容器模块）
+  - 同时具有 `encode` 和 `decode` 方法（如 VAE）
+  - 不满足以上条件的模块作为整体进行 offload
 
-此外，未被任何 unit 管理到的「孤儿参数」和 buffer 也会被自动收集并注册 hook。
+此外，未被任何 unit 管理到的「孤儿参数」和「孤儿 buffer」也会被自动收集并注册 hook。
 
 ### 训练流程集成
 
