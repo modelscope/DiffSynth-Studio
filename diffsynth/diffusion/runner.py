@@ -1,4 +1,4 @@
-import os, torch, time
+import os, torch
 from tqdm import tqdm
 from accelerate import Accelerator
 from .training_module import DiffusionTrainingModule
@@ -41,10 +41,8 @@ def launch_training_task(
         model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
 
     initialize_deepspeed_gradient_checkpointing(accelerator)
-    step_times = [] 
     for epoch_id in range(num_epochs):
         for data in tqdm(dataloader):
-            step_start = time.time()
             with accelerator.accumulate(model):
                 if dataset.load_from_cache:
                     loss = model({}, inputs=data)
@@ -55,14 +53,8 @@ def launch_training_task(
                     offload_manager.after_backward()
                 optimizer.step()
                 scheduler.step()
-                step_time = time.time() - step_start
-                step_times.append(step_time)
                 optimizer.zero_grad()
                 model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
-        if accelerator.is_local_main_process:
-            step_times = step_times[1:] if len(step_times) > 1 else step_times
-            avg_time = sum(step_times) / len(step_times) if step_times else 0
-            accelerator.print(f"Epoch {epoch_id}: avg step time= {avg_time:.2f} s")
         if save_steps is None:
             model_logger.on_epoch_end(accelerator, model, epoch_id)
 
