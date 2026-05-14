@@ -27,3 +27,15 @@ image = pipe(
     num_inference_steps=50,
 )
 image.save("image.jpg")
+
+image = pipe(
+    prompt="change her clothes to blue",
+    negative_prompt=" ",
+    cfg_scale=4.0,
+    height=2048,
+    width=2048,
+    seed=43,
+    num_inference_steps=50,
+    edit_image=[image],
+)
+image.save("image_edit.jpg")

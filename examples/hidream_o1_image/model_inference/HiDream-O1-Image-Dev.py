@@ -28,3 +28,16 @@ image = pipe(
     noise_scale=7.5,
 )
 image.save(f"image.jpg")
+
+image = pipe(
+    prompt="change her clothes to blue",
+    cfg_scale=1.0,
+    height=2048,
+    width=2048,
+    seed=43,
+    num_inference_steps=28,
+    model_type="dev",
+    noise_scale=7.5,
+    edit_image=[image],
+)
+image.save(f"image_edit.jpg")

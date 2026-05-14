@@ -5,7 +5,6 @@ import math
 from typing import Optional, Union
 from tqdm import tqdm
 from PIL import Image
-import torchvision.transforms.v2 as transforms
 
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
@@ -17,19 +16,6 @@ from ..models.hidream_common import (
     add_special_tokens, get_rope_index_fix_point, patchify, unpatchify, PATCH_SIZE,
     resize_pilimage, calculate_dimensions,
 )
-import einops
-
-
-# I2I: reference image tensor transform (target: HiDream-O1-Image/models/pipeline.py:19-23)
-TENSOR_TRANSFORM = transforms.Compose([
-    transforms.ToImage(),
-    transforms.ToDtype(torch.float32, scale=True),
-    transforms.Normalize([0.5], [0.5]),
-])
-
-# I2I: VLM conditioning image size constant (target: pipeline.py:16)
-
-
 # ──────────────────────────────────────────────────────────────────────
 # Pipeline
 # ──────────────────────────────────────────────────────────────────────
@@ -93,10 +79,7 @@ class HiDreamO1ImagePipeline(BasePipeline):
         progress_bar_cmd=tqdm,
     ):
         # 1. Scheduler: set timesteps for Dev mode
-        self.scheduler.set_timesteps(
-            num_inference_steps, shift=shift,
-            special_case=model_type,
-        )
+        self.scheduler.set_timesteps(num_inference_steps, shift=shift, special_case=model_type)
 
         # 2. Input Dictionaries
         inputs_posi = {"prompt": prompt}
@@ -111,9 +94,7 @@ class HiDreamO1ImagePipeline(BasePipeline):
 
         # 3. Units
         for unit in self.units:
-            inputs_shared, inputs_posi, inputs_nega = self.unit_runner(
-                unit, self, inputs_shared, inputs_posi, inputs_nega
-            )
+            inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
 
         # 4. Denoise loop
         self.load_models_to_device(self.in_iteration_models)
@@ -220,7 +201,6 @@ class HiDreamO1ImageUnit_RefImageEmbedder(PipelineUnit):
             cond_w, cond_h = calculate_dimensions(cond_img_size, pil_r.width / pil_r.height)
             ref_pils_vlm.append(pil_r.resize((cond_w, cond_h), resample=Image.LANCZOS))
             image_grid_thw_ref[i] = torch.tensor([1, pil_r.height // PATCH_SIZE, pil_r.width // PATCH_SIZE], dtype=torch.int64)
-            # x = TENSOR_TRANSFORM(pil_r).unsqueeze(0) # TODO: change it to preprocessimage
             x = pipe.preprocess_image(pil_r)
             x = patchify(x)
             ref_image_tensors.append(x)

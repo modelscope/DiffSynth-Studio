@@ -12,36 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import math
-import os
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from einops import rearrange
-
-# Use torch (SDPA) attention to match target library behavior
-os.environ['DIFFSYNTH_ATTENTION_IMPLEMENTATION'] = 'torch'
 
 from ..core.attention.attention import attention_forward
 from ..core import gradient_checkpoint_forward
 
 from transformers.activations import ACT2FN
-from transformers.cache_utils import Cache, DynamicCache
+from transformers.cache_utils import Cache
 from transformers.modeling_outputs import BaseModelOutputWithPast, ModelOutput
 from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
-from transformers.modeling_utils import PreTrainedModel, ALL_ATTENTION_FUNCTIONS
 from transformers.modeling_layers import GradientCheckpointingLayer
-from transformers.integrations import use_kernel_forward_from_hub
-from transformers.processing_utils import Unpack
-from transformers.utils import TransformersKwargs, is_torchdynamo_compiling
-from transformers.utils.deprecation import deprecate_kwarg
-from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
-from transformers.utils.generic import check_model_inputs
-from transformers.masking_utils import create_causal_mask
-from transformers.modeling_flash_attention_utils import FlashAttentionKwargs
-from transformers.generation import GenerationMixin
+from transformers.modeling_utils import PreTrainedModel
 from transformers.models.qwen3_vl.configuration_qwen3_vl import Qwen3VLConfig, Qwen3VLTextConfig, Qwen3VLVisionConfig
 
 
@@ -87,14 +73,9 @@ class Qwen3VLVisionRotaryEmbedding(nn.Module):
         self.register_buffer("inv_freq", inv_freq, persistent=False)
 
     def forward(self, seqlen: int) -> torch.Tensor:
-        # Recompute inv_freq on CPU first (matching target __init__ behavior), then move to device
-        dim = self.inv_freq.shape[0] * 2
-        inv_freq = 1.0 / (10000.0 ** (torch.arange(0, dim, 2, dtype=torch.float) / dim))
-        inv_freq = inv_freq.to(self.inv_freq.device)
-        seq = torch.arange(seqlen, device=inv_freq.device, dtype=inv_freq.dtype)
-        freqs = torch.outer(seq, inv_freq)
+        seq = torch.arange(seqlen, device=self.inv_freq.device, dtype=self.inv_freq.dtype)
+        freqs = torch.outer(seq, self.inv_freq)
         return freqs
-
 
 class Qwen3VLVisionPatchMerger(nn.Module):
     def __init__(self, config, use_postshuffle_norm=False) -> None:
@@ -194,24 +175,6 @@ class Qwen3VLVisionAttention(nn.Module):
             torch.split(tensor, lengths.tolist(), dim=2)
             for tensor in (query_states, key_states, value_states)
         ]
-        # attention_interface = ALL_ATTENTION_FUNCTIONS["sdpa"]
-        # attn_outputs = [
-        #     attention_interface(
-        #         self,
-        #         q,
-        #         k,
-        #         v,
-        #         attention_mask=None,
-        #         scaling=self.scaling,
-        #         dropout=0.0 if not self.training else self.attention_dropout,
-        #         is_causal=False,
-        #         **kwargs,
-        #     )[0]
-        #     for q, k, v in zip(*splits)
-        # ]
-        # attn_output = torch.cat(attn_outputs, dim=1)
-        # attn_output = attn_output.reshape(seq_length, -1).contiguous()
-        # attn_output = self.proj(attn_output)
 
         attn_outputs = [
             attention_forward(
@@ -222,8 +185,6 @@ class Qwen3VLVisionAttention(nn.Module):
             )
             for q, k, v in zip(*splits)
         ]
-        # attention_forward returns [B, N, S, D], but we need [B, S, N, D]
-        # before reshaping to [S, N*D] to match the target library layout
         attn_output = torch.cat(attn_outputs, dim=2)  # [B, N, total_S, D]
         attn_output = attn_output.transpose(1, 2).contiguous()  # [B, total_S, N, D]
         attn_output = attn_output.reshape(seq_length, -1).contiguous()
