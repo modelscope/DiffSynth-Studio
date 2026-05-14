@@ -188,6 +188,8 @@ class FlowMatchScheduler():
         num_train_timesteps = 1000
         shift = 3.0 if shift is None else shift
         if special_case == "dev":
+            if num_inference_steps != 28:
+                print(f"The num_inference_steps is set from {num_inference_steps} to 28, because the distilled model use fixed 28 timesteps.")
             timesteps_list = [
                 999, 987, 974, 960, 945, 929, 913, 895, 877, 857, 836, 814, 790, 764, 737,
                 707, 675, 640, 602, 560, 515, 464, 409, 347, 278, 199, 110, 8,

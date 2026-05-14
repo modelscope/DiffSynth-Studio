@@ -1,4 +1,4 @@
-# modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "hidream_o1_image/HiDream-O1-Image-Dev/*" --local_dir ./data/diffsynth_example_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "hidream_o1_image/HiDream-O1-Image-Dev/*" --local_dir ./data/diffsynth_example_dataset
 
 accelerate launch --config_file examples/hidream_o1_image/model_training/full/accelerate_config_zero3.yaml examples/hidream_o1_image/model_training/train.py \
   --dataset_base_path data/diffsynth_example_dataset/hidream_o1_image/HiDream-O1-Image-Dev \

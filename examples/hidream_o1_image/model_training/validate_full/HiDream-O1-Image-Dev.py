@@ -18,7 +18,6 @@ image = pipe(
     height=2048,
     width=2048,
     seed=42,
-    num_inference_steps=28,
     model_type="dev",
     noise_scale=7.5,
 )
