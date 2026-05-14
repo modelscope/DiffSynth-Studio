@@ -103,8 +103,8 @@ optimizer.zero_grad()
 | 场景 | `--cpu_offload` | `--optimize_on_cpu` | 效果 |
 |------|:---------------:|:-------------------:|------|
 | 默认训练 | ❌ | ❌ | 所有权重和 optimizer 在 GPU |
-| 仅权重 offload | ✅ | ❌ | 非可训练参数逐层 offload，可训练参数（如 LoRA）和 optimizer 留在 GPU |
-| 完整 offload | ✅ | ✅ | 所有参数逐层 offload，梯度和 optimizer 在 CPU 执行 |
+| 仅 offload 非可训练参数 | ✅ | ❌ | 非可训练参数逐层 offload，可训练参数和 optimizer 留在 GPU |
+| offload 所有参数 | ✅ | ✅ | 所有参数逐层 offload，梯度和 optimizer 在 CPU 执行 |
 
 **推荐**：
 - LoRA 训练：使用 `--cpu_offload`（可训练参数量小，留在 GPU 无压力）

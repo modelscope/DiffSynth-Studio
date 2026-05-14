@@ -103,8 +103,8 @@ optimizer.zero_grad()
 | Scenario | `--cpu_offload` | `--optimize_on_cpu` | Effect |
 |----------|:---------------:|:-------------------:|--------|
 | Default training | ❌ | ❌ | All weights and optimizer on GPU |
-| Weight offload only | ✅ | ❌ | Non-trainable params offloaded layer-by-layer; trainable params (e.g., LoRA) and optimizer stay on GPU |
-| Full offload | ✅ | ✅ | All params offloaded layer-by-layer; gradients and optimizer run on CPU |
+| Offload non-trainable params | ✅ | ❌ | Non-trainable params offloaded layer-by-layer; trainable params and optimizer stay on GPU |
+| Offload all params | ✅ | ✅ | All params offloaded layer-by-layer; gradients and optimizer run on CPU |
 
 **Recommendations**:
 - LoRA training: use `--cpu_offload` (trainable params are small, fine to keep on GPU)
