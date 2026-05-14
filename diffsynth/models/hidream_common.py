@@ -74,7 +74,6 @@ def resize_pilimage(pil_image, image_size, resampler=Image.BICUBIC):
 
 
 def calculate_dimensions(max_size, ratio):
-    """Target: HiDream-O1-Image/models/utils.py:69-74"""
     width = math.sqrt(max_size * max_size * ratio)
     height = width / ratio
     width = int(width / 32) * 32

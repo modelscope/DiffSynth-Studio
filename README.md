@@ -892,7 +892,7 @@ Example code for JoyAI-Image is available at: [/examples/joyai_image/](/examples
 
 <summary>Quick Start</summary>
 
-Running the following code will quickly load the [HiDream-ai/HiDream-O1-Image](https://huggingface.co/HiDream-ai/HiDream-O1-Image) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 3GB VRAM.
+Running the following code will quickly load the [HiDream-ai/HiDream-O1-Image](https://modelscope.cn/HiDream-ai/HiDream-O1-Image) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 3GB VRAM.
 
 ```python
 from diffsynth.pipelines.hidream_o1_image import HiDreamO1ImagePipeline
@@ -943,8 +943,8 @@ Example code for HiDream-O1-Image is available at: [/examples/hidream_o1_image/]
 
 | Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
 |-|-|-|-|-|-|-|
-|[HiDream-ai/HiDream-O1-Image](https://huggingface.co/HiDream-ai/HiDream-O1-Image)|[code](/examples/hidream_o1_image/model_inference/HiDream-O1-Image.py)|[code](/examples/hidream_o1_image/model_inference_low_vram/HiDream-O1-Image.py)|[code](/examples/hidream_o1_image/model_training/full/HiDream-O1-Image.sh)|[code](/examples/hidream_o1_image/model_training/validate_full/HiDream-O1-Image.py)|[code](/examples/hidream_o1_image/model_training/lora/HiDream-O1-Image.sh)|[code](/examples/hidream_o1_image/model_training/validate_lora/HiDream-O1-Image.py)|
-|[HiDream-ai/HiDream-O1-Image-Dev](https://huggingface.co/HiDream-ai/HiDream-O1-Image-Dev)|[code](/examples/hidream_o1_image/model_inference/HiDream-O1-Image-Dev.py)|[code](/examples/hidream_o1_image/model_inference_low_vram/HiDream-O1-Image-Dev.py)|[code](/examples/hidream_o1_image/model_training/full/HiDream-O1-Image-Dev.sh)|[code](/examples/hidream_o1_image/model_training/validate_full/HiDream-O1-Image-Dev.py)|[code](/examples/hidream_o1_image/model_training/lora/HiDream-O1-Image-Dev.sh)|[code](/examples/hidream_o1_image/model_training/validate_lora/HiDream-O1-Image-Dev.py)|
+|[HiDream-ai/HiDream-O1-Image](https://modelscope.cn/HiDream-ai/HiDream-O1-Image)|[code](/examples/hidream_o1_image/model_inference/HiDream-O1-Image.py)|[code](/examples/hidream_o1_image/model_inference_low_vram/HiDream-O1-Image.py)|[code](/examples/hidream_o1_image/model_training/full/HiDream-O1-Image.sh)|[code](/examples/hidream_o1_image/model_training/validate_full/HiDream-O1-Image.py)|[code](/examples/hidream_o1_image/model_training/lora/HiDream-O1-Image.sh)|[code](/examples/hidream_o1_image/model_training/validate_lora/HiDream-O1-Image.py)|
+|[HiDream-ai/HiDream-O1-Image-Dev](https://modelscope.cn/HiDream-ai/HiDream-O1-Image-Dev)|[code](/examples/hidream_o1_image/model_inference/HiDream-O1-Image-Dev.py)|[code](/examples/hidream_o1_image/model_inference_low_vram/HiDream-O1-Image-Dev.py)|[code](/examples/hidream_o1_image/model_training/full/HiDream-O1-Image-Dev.sh)|[code](/examples/hidream_o1_image/model_training/validate_full/HiDream-O1-Image-Dev.py)|[code](/examples/hidream_o1_image/model_training/lora/HiDream-O1-Image-Dev.sh)|[code](/examples/hidream_o1_image/model_training/validate_lora/HiDream-O1-Image-Dev.py)|
 
 </details>
 
