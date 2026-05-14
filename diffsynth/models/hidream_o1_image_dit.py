@@ -781,14 +781,6 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
             token_types = token_types.expand(batch_size, -1)
 
         mid_results = None
-        import os as _os2
-        _mem_debug2 = _os2.environ.get('DEBUG_MEM', '0') == '1'
-
-        if _mem_debug2:
-            _rank2 = int(_os2.environ.get('RANK', 0))
-            _a = torch.cuda.memory_allocated() / 1e9
-            print(f"[MEM][rank{_rank2}][_forward_gen] before decoder: alloc={_a:.2f}GB, "
-                  f"total_seq_len={total_seq_len}, batch={batch_size}", flush=True)
 
         hidden_states, mid_results = self._run_decoder_flash(
             inputs_embeds, position_ids, token_types,

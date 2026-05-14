@@ -1,5 +1,4 @@
-import torch
-import math
+import torch, math
 from typing import Optional
 from PIL import Image
 import einops

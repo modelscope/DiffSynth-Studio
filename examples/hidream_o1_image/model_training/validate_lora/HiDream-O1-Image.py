@@ -6,15 +6,9 @@ pipe = HiDreamO1ImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(
-            model_id="HiDream-ai/HiDream-O1-Image",
-            origin_file_pattern="model-*.safetensors",
-        ),
+        ModelConfig(model_id="HiDream-ai/HiDream-O1-Image", origin_file_pattern="model-*.safetensors"),
     ],
-    processor_config=ModelConfig(
-        model_id="HiDream-ai/HiDream-O1-Image",
-        origin_file_pattern="./",
-    ),
+    processor_config=ModelConfig(model_id="HiDream-ai/HiDream-O1-Image", origin_file_pattern="./"),
 )
 pipe.load_lora(pipe.dit, "./models/train/HiDream-O1-Image_lora/epoch-4.safetensors")
 image = pipe(

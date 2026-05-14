@@ -1,7 +1,6 @@
 # HiDream-O1-Image Pipeline for DiffSynth-Studio.
 
-import torch
-import math
+import torch, math
 from typing import Optional, Union
 from tqdm import tqdm
 from PIL import Image
@@ -16,9 +15,6 @@ from ..models.hidream_common import (
     add_special_tokens, get_rope_index_fix_point, patchify, unpatchify, PATCH_SIZE,
     resize_pilimage, calculate_dimensions,
 )
-# ──────────────────────────────────────────────────────────────────────
-# Pipeline
-# ──────────────────────────────────────────────────────────────────────
 
 class HiDreamO1ImagePipeline(BasePipeline):
 
@@ -78,10 +74,10 @@ class HiDreamO1ImagePipeline(BasePipeline):
         keep_original_aspect: bool = True,
         progress_bar_cmd=tqdm,
     ):
-        # 1. Scheduler: set timesteps for Dev mode
+        # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, shift=shift, special_case=model_type)
 
-        # 2. Input Dictionaries
+        # Parameters
         inputs_posi = {"prompt": prompt}
         inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
@@ -92,11 +88,11 @@ class HiDreamO1ImagePipeline(BasePipeline):
             "edit_image": edit_image, "keep_original_aspect": keep_original_aspect,
         }
 
-        # 3. Units
+        # Units
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
 
-        # 4. Denoise loop
+        # Denoise
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
@@ -124,9 +120,7 @@ class HiDreamO1ImageUnit_InputImageEmbedder(PipelineUnit):
         img_tensor = pipe.preprocess_image(input_image).to(device=pipe.device, dtype=pipe.torch_dtype)
         return {"input_latents": img_tensor}
 
-
 class HiDreamO1ImageUnit_NoiseInitializer(PipelineUnit):
-    """Generate pixel-level noise and rearrange to patch space."""
 
     def __init__(self):
         super().__init__(
@@ -156,11 +150,6 @@ class HiDreamO1ImageUnit_ShapeChecker(PipelineUnit):
 
 
 class HiDreamO1ImageUnit_RefImageEmbedder(PipelineUnit):
-    """Encode reference images into patch tokens.
-
-    Target: HiDream-O1-Image/models/pipeline.py:183-208
-    Outputs a single 'ref_for_prompt_tokenizer' dict to reduce scattered parameters.
-    """
 
     def __init__(self):
         super().__init__(
@@ -223,12 +212,6 @@ class HiDreamO1ImageUnit_RefImageEmbedder(PipelineUnit):
 
 
 class HiDreamO1ImageUnit_PromptTokenizer(PipelineUnit):
-    """Tokenize prompt into input_ids, position_ids, token_types, vinput_mask.
-
-    T2I path: build_text_sample (no edit_image)
-    I2I path: target HiDream-O1-Image/models/pipeline.py:214-289
-    Uses seperate_cfg to handle positive/negative separately.
-    """
 
     def __init__(self):
         super().__init__(
@@ -319,7 +302,6 @@ class HiDreamO1ImageUnit_PromptTokenizer(PipelineUnit):
 
     def build_i2i_sample(self, prompt, height, width, ref_for_prompt_tokenizer,
                          tokenizer, processor, model_config, device, torch_dtype):
-        """Target: HiDream-O1-Image/models/pipeline.py:214-289"""
         TIMESTEP_TOKEN_NUM = 1
         image_token_id = model_config.image_token_id
         video_token_id = model_config.video_token_id
@@ -393,9 +375,7 @@ class HiDreamO1ImageUnit_PromptTokenizer(PipelineUnit):
             'image_grid_thw': proc.image_grid_thw.to(device),
         }
 
-# ──────────────────────────────────────────────────────────────────────
-# model_fn
-# ──────────────────────────────────────────────────────────────────────
+
 def model_fn_hidream_o1_image(
     dit,
     latents,
