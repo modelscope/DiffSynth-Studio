@@ -11,24 +11,448 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import functools
 import math
+from collections import OrderedDict
+from abc import ABC, abstractmethod
+import dataclasses
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 
 from ..core.attention.attention import attention_forward
 from ..core import gradient_checkpoint_forward
 
-from transformers.activations import ACT2FN
-from transformers.cache_utils import Cache
-from transformers.modeling_outputs import BaseModelOutputWithPast, ModelOutput
-from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
-from transformers.modeling_layers import GradientCheckpointingLayer
 from transformers.modeling_utils import PreTrainedModel
-from transformers.models.qwen3_vl.configuration_qwen3_vl import Qwen3VLConfig, Qwen3VLTextConfig, Qwen3VLVisionConfig
+from transformers.configuration_utils import PretrainedConfig
+
+
+class ClassInstantier(OrderedDict):
+    def __getitem__(self, key):
+        content = super().__getitem__(key)
+        cls, kwargs = content if isinstance(content, tuple) else (content, {})
+        return cls(**kwargs)
+
+
+class SiLUActivation(nn.Module):
+
+    def forward(self, input: Tensor) -> Tensor:
+        return nn.functional.silu(input)
+
+
+class GELUTanh(nn.Module):
+    def __init__(self, use_gelu_tanh_python: bool = False):
+        super().__init__()
+        if use_gelu_tanh_python:
+            self.act = self._gelu_tanh_python
+        else:
+            self.act = functools.partial(nn.functional.gelu, approximate="tanh")
+
+    def _gelu_tanh_python(self, input: Tensor) -> Tensor:
+        return input * 0.5 * (1.0 + torch.tanh(math.sqrt(2.0 / math.pi) * (input + 0.044715 * torch.pow(input, 3.0))))
+
+    def forward(self, input: Tensor) -> Tensor:
+        return self.act(input)
+
+
+ACT2CLS = {
+    "gelu_pytorch_tanh": GELUTanh,
+    "silu": SiLUActivation,
+}
+ACT2FN = ClassInstantier(ACT2CLS)
+
+
+class CacheLayerMixin(ABC):
+    """Base, abstract class for a single layer's cache."""
+    is_compileable = False
+
+    def __init__(self):
+        self.keys: Optional[torch.Tensor] = None
+        self.values: Optional[torch.Tensor] = None
+        self.is_initialized = False
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}"
+
+    @abstractmethod
+    def lazy_initialization(self, key_states: torch.Tensor): ...
+
+    @abstractmethod
+    def update(self, key_states: torch.Tensor, value_states: torch.Tensor, cache_kwargs: Optional[dict[str, Any]] = None) -> tuple[torch.Tensor, torch.Tensor]: ...
+
+    @abstractmethod
+    def get_mask_sizes(self, cache_position: torch.Tensor) -> tuple[int, int]: ...
+
+    @abstractmethod
+    def get_seq_length(self) -> int: ...
+
+    @abstractmethod
+    def get_max_cache_shape(self) -> int: ...
+
+    def offload(self):
+        if self.is_initialized:
+            self.keys = self.keys.to("cpu", non_blocking=True)
+            self.values = self.values.to("cpu", non_blocking=True)
+
+    def prefetch(self):
+        if self.is_initialized and self.keys.device != self.device:
+            self.keys = self.keys.to(self.device, non_blocking=True)
+            self.values = self.values.to(self.device, non_blocking=True)
+
+    def reset(self) -> None:
+        if self.is_initialized:
+            self.keys.zero_()
+            self.values.zero_()
+        if hasattr(self, "cumulative_length"):
+            self.cumulative_length = 0
+
+    def reorder_cache(self, beam_idx: torch.LongTensor) -> None:
+        if self.get_seq_length() > 0:
+            self.keys = self.keys.index_select(0, beam_idx.to(self.keys.device))
+            self.values = self.values.index_select(0, beam_idx.to(self.values.device))
+
+
+class DynamicLayer(CacheLayerMixin):
+    is_sliding = False
+
+    def lazy_initialization(self, key_states: torch.Tensor):
+        self.dtype, self.device = key_states.dtype, key_states.device
+        self.keys = torch.tensor([], dtype=self.dtype, device=self.device)
+        self.values = torch.tensor([], dtype=self.dtype, device=self.device)
+        self.is_initialized = True
+
+    def update(self, key_states: torch.Tensor, value_states: torch.Tensor, cache_kwargs: Optional[dict[str, Any]] = None) -> tuple[torch.Tensor, torch.Tensor]:
+        if not self.is_initialized:
+            self.lazy_initialization(key_states)
+        self.keys = torch.cat([self.keys, key_states], dim=-2)
+        self.values = torch.cat([self.values, value_states], dim=-2)
+        return self.keys, self.values
+
+    def get_mask_sizes(self, cache_position: torch.Tensor) -> tuple[int, int]:
+        kv_offset = 0
+        query_length = cache_position.shape[0]
+        kv_length = self.get_seq_length() + query_length
+        return kv_length, kv_offset
+
+    def get_seq_length(self) -> int:
+        if not self.is_initialized or self.keys.numel() == 0:
+            return 0
+        return self.keys.shape[-2]
+
+    def get_max_cache_shape(self) -> int:
+        return -1
+
+    def crop(self, max_length: int) -> None:
+        if max_length < 0:
+            max_length = self.get_seq_length() - abs(max_length)
+        if self.get_seq_length() <= max_length:
+            return
+        self.keys = self.keys[..., :max_length, :]
+        self.values = self.values[..., :max_length, :]
+
+    def batch_repeat_interleave(self, repeats: int) -> None:
+        if self.get_seq_length() > 0:
+            self.keys = self.keys.repeat_interleave(repeats, dim=0)
+            self.values = self.values.repeat_interleave(repeats, dim=0)
+
+    def batch_select_indices(self, indices: torch.Tensor) -> None:
+        if self.get_seq_length() > 0:
+            self.keys = self.keys[indices, ...]
+            self.values = self.values[indices, ...]
+
+
+class Cache:
+    def __init__(self, layers: Optional[list[CacheLayerMixin]] = None, layer_class_to_replicate: Optional[type[CacheLayerMixin]] = None, offloading: bool = False, offload_only_non_sliding: bool = True):
+        if layers is not None and layer_class_to_replicate is not None:
+            raise ValueError("Provide exactly one of `layers` or `layer_class_to_replicate`.")
+        if layers is None and layer_class_to_replicate is None:
+            raise ValueError("Provide exactly one of `layers` or `layer_class_to_replicate`.")
+        self.layers = layers if layers is not None else []
+        self.layer_class_to_replicate = layer_class_to_replicate
+        self.offloading = offloading
+        if self.offloading:
+            self.only_non_sliding = offload_only_non_sliding
+            self.prefetch_stream = torch.cuda.Stream()
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(layers={self.layers})"
+
+    def update(self, key_states: torch.Tensor, value_states: torch.Tensor, layer_idx: int, cache_kwargs: Optional[dict[str, Any]] = None) -> tuple[torch.Tensor, torch.Tensor]:
+        if self.layer_class_to_replicate is not None:
+            while len(self.layers) <= layer_idx:
+                self.layers.append(self.layer_class_to_replicate())
+        if self.offloading:
+            torch.cuda.default_stream(key_states.device).wait_stream(self.prefetch_stream)
+            self.prefetch(layer_idx + 1, self.only_non_sliding)
+        keys, values = self.layers[layer_idx].update(key_states, value_states, cache_kwargs)
+        if self.offloading:
+            self.offload(layer_idx, self.only_non_sliding)
+        return keys, values
+
+    def get_seq_length(self, layer_idx: int = 0) -> int:
+        if layer_idx >= len(self.layers):
+            return 0
+        return self.layers[layer_idx].get_seq_length()
+
+    def get_mask_sizes(self, cache_position: torch.Tensor, layer_idx: int) -> tuple[int, int]:
+        if layer_idx >= len(self.layers):
+            return cache_position.shape[0], 0
+        return self.layers[layer_idx].get_mask_sizes(cache_position)
+
+    def get_max_cache_shape(self, layer_idx: int = 0) -> int:
+        if layer_idx >= len(self.layers):
+            return -1
+        return self.layers[layer_idx].get_max_cache_shape()
+
+    def reset(self):
+        for layer_idx in range(len(self.layers)):
+            self.layers[layer_idx].reset()
+
+    def reorder_cache(self, beam_idx: torch.LongTensor):
+        for layer_idx in range(len(self.layers)):
+            self.layers[layer_idx].reorder_cache(beam_idx)
+
+    def crop(self, max_length: int):
+        for layer_idx in range(len(self.layers)):
+            self.layers[layer_idx].crop(max_length)
+
+    def batch_repeat_interleave(self, repeats: int):
+        for layer_idx in range(len(self.layers)):
+            self.layers[layer_idx].batch_repeat_interleave(repeats)
+
+    def batch_select_indices(self, indices: torch.Tensor):
+        for layer_idx in range(len(self.layers)):
+            self.layers[layer_idx].batch_select_indices(indices)
+
+    def prefetch(self, layer_idx: int, only_non_sliding: bool = True):
+        if only_non_sliding:
+            try:
+                layer_idx = layer_idx + self.is_sliding[layer_idx:].index(False)
+            except ValueError:
+                layer_idx = self.is_sliding.index(False)
+        else:
+            layer_idx = layer_idx if layer_idx < len(self.layers) else 0
+        with torch.cuda.stream(self.prefetch_stream):
+            self.layers[layer_idx].prefetch()
+
+    def offload(self, layer_idx: int, only_non_sliding: bool = True):
+        if not (only_non_sliding and self.is_sliding[layer_idx]):
+            self.layers[layer_idx].offload()
+
+    @property
+    def is_sliding(self) -> list[bool]:
+        return [getattr(layer, "is_sliding", False) for layer in self.layers]
+
+    def __getitem__(self, layer_idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        if layer_idx < len(self.layers):
+            return self.layers[layer_idx].keys, self.layers[layer_idx].values
+        else:
+            raise KeyError(f"Cache only has {len(self.layers)} layers, attempted to access layer with index {layer_idx}")
+
+    def __iter__(self):
+        for layer_idx in range(len(self)):
+            yield (self.layers[layer_idx].keys, self.layers[layer_idx].values)
+
+    def __len__(self):
+        return len(self.layers)
+
+    @property
+    def is_compileable(self) -> bool:
+        if len(self.layers) == 0:
+            return False
+        return all(layer.is_compileable for layer in self.layers)
+
+    @property
+    def is_initialized(self) -> bool:
+        return len(self.layers) > 0 and all(layer.is_initialized for layer in self.layers)
+
+
+class ModelOutput(OrderedDict):
+    """Base class for model outputs that allows additional fields."""
+    def __post_init__(self):
+        if dataclasses.is_dataclass(self):
+            self.__dict__.update({f.name: getattr(self, f.name) for f in dataclasses.fields(self)})
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
+    def __iter__(self):
+        if dataclasses.is_dataclass(self):
+            for f in dataclasses.fields(self):
+                val = getattr(self, f.name)
+                if val is not None:
+                    yield val
+        else:
+            for key in self.keys():
+                yield self[key]
+
+    def keys(self):
+        if dataclasses.is_dataclass(self):
+            return [f.name for f in dataclasses.fields(self) if getattr(self, f.name) is not None]
+        return list(self.__dict__.keys())
+
+    def values(self):
+        if dataclasses.is_dataclass(self):
+            return [getattr(self, f.name) for f in dataclasses.fields(self) if getattr(self, f.name) is not None]
+        return list(self.__dict__.values())
+
+    def items(self):
+        if dataclasses.is_dataclass(self):
+            return [(f.name, getattr(self, f.name)) for f in dataclasses.fields(self) if getattr(self, f.name) is not None]
+        return list(self.__dict__.items())
+
+    def __contains__(self, key):
+        return hasattr(self, key) and getattr(self, key) is not None
+
+
+@dataclass
+class BaseModelOutputWithPast(ModelOutput):
+    last_hidden_state: Optional[torch.FloatTensor] = None
+    past_key_values: Optional[Cache] = None
+    hidden_states: Optional[tuple[torch.FloatTensor, ...]] = None
+    attentions: Optional[tuple[torch.FloatTensor, ...]] = None
+
+
+def _compute_default_rope_parameters(config, device=None, seq_len=None):
+    base = config.rope_theta
+    partial_rotary_factor = getattr(config, "partial_rotary_factor", 1.0)
+    head_dim = getattr(config, "head_dim", None) or config.hidden_size // config.num_attention_heads
+    dim = int(head_dim * partial_rotary_factor)
+    attention_factor = 1.0
+    inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2, dtype=torch.int64).to(device=device, dtype=torch.float) / dim))
+    return inv_freq, attention_factor
+
+
+ROPE_INIT_FUNCTIONS = {
+    "default": _compute_default_rope_parameters,
+}
+
+
+class Qwen3VLVisionConfig(PretrainedConfig):
+
+    model_type = "qwen3_vl"
+    base_config_key = "vision_config"
+
+    def __init__(
+        self,
+        depth=27,
+        hidden_size=1152,
+        hidden_act="gelu_pytorch_tanh",
+        intermediate_size=4304,
+        num_heads=16,
+        in_channels=3,
+        patch_size=16,
+        spatial_merge_size=2,
+        temporal_patch_size=2,
+        out_hidden_size=3584,
+        num_position_embeddings=2304,
+        deepstack_visual_indexes=[8, 16, 24],
+        initializer_range=0.02,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+        self.depth = depth
+        self.hidden_size = hidden_size
+        self.hidden_act = hidden_act
+        self.intermediate_size = intermediate_size
+        self.num_heads = num_heads
+        self.in_channels = in_channels
+        self.patch_size = patch_size
+        self.spatial_merge_size = spatial_merge_size
+        self.temporal_patch_size = temporal_patch_size
+        self.out_hidden_size = out_hidden_size
+        self.num_position_embeddings = num_position_embeddings
+        self.initializer_range = initializer_range
+        self.deepstack_visual_indexes = deepstack_visual_indexes
+
+
+class Qwen3VLTextConfig(PretrainedConfig):
+
+    model_type = "qwen3_vl_text"
+    base_config_key = "text_config"
+
+    def __init__(
+        self,
+        vocab_size=151936,
+        hidden_size=4096,
+        intermediate_size=22016,
+        num_hidden_layers=32,
+        num_attention_heads=32,
+        num_key_value_heads=32,
+        head_dim=128,
+        hidden_act="silu",
+        max_position_embeddings=128000,
+        initializer_range=0.02,
+        rms_norm_eps=1e-6,
+        use_cache=True,
+        tie_word_embeddings=False,
+        rope_theta=5000000.0,
+        rope_scaling=None,
+        attention_bias=False,
+        attention_dropout=0.0,
+        **kwargs,
+    ):
+        self.vocab_size = vocab_size
+        self.max_position_embeddings = max_position_embeddings
+        self.hidden_size = hidden_size
+        self.intermediate_size = intermediate_size
+        self.num_hidden_layers = num_hidden_layers
+        self.num_attention_heads = num_attention_heads
+        if num_key_value_heads is None:
+            num_key_value_heads = num_attention_heads
+        self.num_key_value_heads = num_key_value_heads
+        self.head_dim = head_dim
+        self.hidden_act = hidden_act
+        self.initializer_range = initializer_range
+        self.rms_norm_eps = rms_norm_eps
+        self.use_cache = use_cache
+        self.rope_theta = rope_theta
+        self.rope_scaling = rope_scaling
+        self.attention_bias = attention_bias
+        self.attention_dropout = attention_dropout
+        super().__init__(tie_word_embeddings=tie_word_embeddings, **kwargs)
+
+
+class Qwen3VLConfig(PretrainedConfig):
+
+    model_type = "qwen3_vl"
+    sub_configs = {"vision_config": Qwen3VLVisionConfig, "text_config": Qwen3VLTextConfig}
+    keys_to_ignore_at_inference = ["past_key_values"]
+
+    def __init__(
+        self,
+        text_config=None,
+        vision_config=None,
+        image_token_id=151655,
+        video_token_id=151656,
+        vision_start_token_id=151652,
+        vision_end_token_id=151653,
+        tie_word_embeddings=False,
+        **kwargs,
+    ):
+        if isinstance(vision_config, dict):
+            self.vision_config = self.sub_configs["vision_config"](**vision_config)
+        elif vision_config is None:
+            self.vision_config = self.sub_configs["vision_config"]()
+
+        if isinstance(text_config, dict):
+            self.text_config = self.sub_configs["text_config"](**text_config)
+        elif text_config is None:
+            self.text_config = self.sub_configs["text_config"]()
+
+        self.image_token_id = image_token_id
+        self.video_token_id = video_token_id
+        self.vision_start_token_id = vision_start_token_id
+        self.vision_end_token_id = vision_end_token_id
+        super().__init__(**kwargs, tie_word_embeddings=tie_word_embeddings)
 
 
 class Qwen3VLVisionMLP(nn.Module):
@@ -192,7 +616,7 @@ class Qwen3VLVisionAttention(nn.Module):
         return attn_output
 
 
-class Qwen3VLVisionBlock(GradientCheckpointingLayer):
+class Qwen3VLVisionBlock(nn.Module):
     def __init__(self, config, attn_implementation: str = "sdpa") -> None:
         super().__init__()
         self.norm1 = nn.LayerNorm(config.hidden_size, eps=1e-6)
@@ -275,7 +699,7 @@ class Qwen3VLTextMLP(nn.Module):
         return down_proj
 
 
-class Qwen3VLTextDecoderLayer(GradientCheckpointingLayer):
+class Qwen3VLTextDecoderLayer(nn.Module):
     def __init__(self, config, layer_idx: int):
         super().__init__()
         self.hidden_size = config.hidden_size
@@ -1030,10 +1454,9 @@ class Qwen3VLTextModel(Qwen3VLPreTrainedModel):
 
     def __init__(self, config):
         super().__init__(config)
-        self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
 
-        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
+        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size)
         self.layers = nn.ModuleList(
             [Qwen3VLTextDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
         )
@@ -1305,6 +1728,10 @@ class Qwen3VLRotaryEmbedding(nn.Module):
         self.mrope_section = config.rope_scaling.get("mrope_section", [24, 20, 20])
 
     @staticmethod
+    def compute_default_rope_parameters(config, device=None, seq_len=None):
+        return _compute_default_rope_parameters(config, device=None, seq_len=None)
+
+    @staticmethod
     def apply_interleaved_mrope(freqs, mrope_section):
         freqs_t = freqs[0]
         for dim, offset in enumerate((1, 2), start=1):
@@ -1341,12 +1768,6 @@ class Qwen3VLCausalLMOutputWithPast(ModelOutput):
 
 
 def _build_hidream_config():
-    """Build Qwen3VLConfig matching the target library exactly.
-
-    Both full and dev models share identical config. Values below are verified
-    against the actual config after target library model initialization.
-    """
-    from transformers.models.qwen3_vl.configuration_qwen3_vl import Qwen3VLTextConfig, Qwen3VLVisionConfig
     text_config = Qwen3VLTextConfig(
         hidden_size=4096,
         num_hidden_layers=36,
@@ -1389,7 +1810,6 @@ def _build_hidream_config():
     config.video_token_id = 151656
     config.vision_start_token_id = 151652
     config.vision_end_token_id = 151653
-    # dtype is set after model loads from checkpoint; match target behavior
     return config
 
 
