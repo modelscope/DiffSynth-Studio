@@ -31,12 +31,13 @@ from transformers.activations import ACT2FN
 from transformers.cache_utils import Cache, DynamicCache
 from transformers.modeling_outputs import BaseModelOutputWithPast, ModelOutput
 from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
-from transformers.modeling_utils import PreTrainedModel
+from transformers.modeling_utils import PreTrainedModel, ALL_ATTENTION_FUNCTIONS
 from transformers.modeling_layers import GradientCheckpointingLayer
 from transformers.integrations import use_kernel_forward_from_hub
 from transformers.processing_utils import Unpack
 from transformers.utils import TransformersKwargs, is_torchdynamo_compiling
 from transformers.utils.deprecation import deprecate_kwarg
+from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
 from transformers.utils.generic import check_model_inputs
 from transformers.masking_utils import create_causal_mask
 from transformers.modeling_flash_attention_utils import FlashAttentionKwargs
@@ -193,6 +194,24 @@ class Qwen3VLVisionAttention(nn.Module):
             torch.split(tensor, lengths.tolist(), dim=2)
             for tensor in (query_states, key_states, value_states)
         ]
+        # attention_interface = ALL_ATTENTION_FUNCTIONS["sdpa"]
+        # attn_outputs = [
+        #     attention_interface(
+        #         self,
+        #         q,
+        #         k,
+        #         v,
+        #         attention_mask=None,
+        #         scaling=self.scaling,
+        #         dropout=0.0 if not self.training else self.attention_dropout,
+        #         is_causal=False,
+        #         **kwargs,
+        #     )[0]
+        #     for q, k, v in zip(*splits)
+        # ]
+        # attn_output = torch.cat(attn_outputs, dim=1)
+        # attn_output = attn_output.reshape(seq_length, -1).contiguous()
+        # attn_output = self.proj(attn_output)
 
         attn_outputs = [
             attention_forward(

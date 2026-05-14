@@ -20,17 +20,39 @@ pipe = HiDreamO1ImagePipeline.from_pretrained(
 )
 
 # Load two reference images
+# ref_image_1 = Image.open("/mnt/nas1/zhanghong/project26/main_project/opencode/packages/hidream-o1-image/HiDream-O1-Image/assets/edit/test.jpg").convert("RGB")
+
+# image = pipe(
+#     prompt="remove the earphones",
+#     cfg_scale=1.0,
+#     height=2304,
+#     width=1792,
+#     seed=42,
+#     num_inference_steps=28,
+#     model_type="dev",
+#     noise_scale=7.5,
+#     edit_image=[ref_image_1],
+# )
+# image.save("image_edit_demo.jpg")
+
+
+# # Load two reference images
 ref_image_1 = Image.open("image.jpg").convert("RGB")
 
-image = pipe(
-    prompt="change her hair to black",
-    cfg_scale=1.0,
-    height=2048,
-    width=2048,
-    seed=42,
-    num_inference_steps=28,
-    model_type="dev",
-    noise_scale=7.5,
-    ref_images=[ref_image_1],
-)
-image.save("image_edit.jpg")
+workdirs = "workdirs/edit_dev/"
+import os
+os.makedirs(workdirs, exist_ok=True)
+for seed in range(20):
+    # Load two reference images
+    image = pipe(
+        prompt="change her clothes to blue",
+        cfg_scale=1.0,
+        height=2048,
+        width=2048,
+        seed=seed,
+        num_inference_steps=28,
+        model_type="dev",
+        noise_scale=7.5,
+        edit_image=[ref_image_1],
+    )
+    image.save(os.path.join(workdirs, f"image_edit1_{seed}.jpg"))

@@ -35,8 +35,8 @@ def patchify(x):
     return x
 
 
-def resize_pilimage(pil_image, image_size, patch_size=32, resampler=Image.BICUBIC):
-    """Target: HiDream-O1-Image/models/utils.py:32-67"""
+def resize_pilimage(pil_image, image_size, resampler=Image.BICUBIC):
+    patch_size = PATCH_SIZE
     while min(*pil_image.size) >= 2 * image_size:
         pil_image = pil_image.resize(
             tuple(x // 2 for x in pil_image.size), resample=Image.BOX
