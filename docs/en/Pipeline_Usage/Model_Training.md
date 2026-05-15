@@ -39,6 +39,10 @@ Training scripts typically include the following parameters:
     * `--use_gradient_checkpointing`: Whether to enable gradient checkpointing.
     * `--use_gradient_checkpointing_offload`: Whether to offload gradient checkpointing to memory.
     * `--gradient_accumulation_steps`: Number of gradient accumulation steps.
+* CPU Offload training configuration
+    * `--cpu_offload`: Enable CPU offload training. Weights are kept on CPU and loaded to GPU one layer at a time.
+    * `--optimize_on_cpu`: When `--cpu_offload` is enabled, run optimizer on CPU. All params are offloaded to CPU. Default is False (trainable params stay on GPU, optimizer on GPU).
+    * `--param_size_threshold`: (Experimental) When `--cpu_offload` is enabled, modules with total params above this threshold (in MB) are recursively split into children. None means offload every leaf module directly. Default: None.
 * Image dimension configuration (applicable to image generation models and video generation models)
     * `--height`: Height of images or videos. Leave `height` and `width` blank to enable dynamic resolution.
     * `--width`: Width of images or videos. Leave `height` and `width` blank to enable dynamic resolution.

@@ -1,15 +1,6 @@
 """
 Layer offloading for training — hook-based CPU offload.
 
-Two offload strategies:
-1. Non-trainable params: permanent CPU copy kept at all times.
-   Offload = reassign param.data to CPU copy (GPU tensor freed, no PCIe transfer).
-   Load = copy from CPU copy to GPU.
-
-2. Trainable params: no permanent CPU copy (they change during training).
-   Offload = param.data.to('cpu') (actual PCIe transfer).
-   Load = param.data.to(target_device).
-
 Hook lifecycle per module:
 
 No checkpointing:

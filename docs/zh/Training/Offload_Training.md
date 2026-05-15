@@ -57,18 +57,11 @@ Gradient Checkpointing 在 backward 时会重新执行 forward（重算激活）
 - 重算 forward（backward 期间）：检测到模块在 `_in_recompute` 中，跳过 offload，保持权重在 GPU 供 backward 使用
 - `after_backward()` 调用时：清空 `_in_recompute`，为下一个 step 做准备
 
-### 模块发现策略（Experimental）
+### Hook 注册粒度
 
-`OffloadTrainingManager` 通过 `param_size_threshold` 参数控制模块粒度：
+`OffloadTrainingManager` 默认以每个叶子模块（`nn.Linear`、`nn.LayerNorm` 等）为单位注册 hook，即每个叶子模块独立进行 onload/offload。此外，未被任何叶子模块管理到的「孤儿参数」和「孤儿 buffer」也会被自动收集并注册 hook。
 
-- `param_size_threshold=None`（默认）：offload 每个叶子模块（`nn.Linear`、`nn.LayerNorm` 等）
-- `param_size_threshold=N`（MB）：通过 `_should_force_recurse` 决定是否递归拆分，以下情况的模块会被强制递归拆分为子模块：
-  - 参数总量超过阈值
-  - 模块类未定义自己的 `forward` 方法（纯容器模块）
-  - 同时具有 `encode` 和 `decode` 方法（如 VAE）
-  - 不满足以上条件的模块作为整体进行 offload
-
-此外，未被任何 unit 管理到的「孤儿参数」和「孤儿 buffer」也会被自动收集并注册 hook。
+**实验性功能**：通过 `param_size_threshold`（单位 MB）可以调整 hook 的注册粒度。设置后，参数总量超过阈值的模块会被递归拆分为子模块，未超过阈值的模块则作为整体注册 hook。该功能当前版本可能无法兼容所有模型结构，默认不启用。
 
 ### 训练流程集成
 
@@ -145,7 +138,6 @@ accelerate launch examples/qwen_image/model_training/train.py \
 
 | 特性 | 兼容 | 说明 |
 |------|:----:|------|
-| LoRA 训练 | ✅ | 可训练参数通过 `AlwaysOnGPUParamOffloader` 留在 GPU |
 | Gradient Checkpointing | ✅ | `_in_recompute` 机制兼容 |
 | Accelerate DDP | ✅ | cpu_offload 模式下不 prepare model，仅 prepare optimizer/dataloader |
 | 拆分训练 | ✅ | `launch_data_process_task` 同样支持 `--cpu_offload` |

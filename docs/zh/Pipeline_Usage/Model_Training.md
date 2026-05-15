@@ -39,6 +39,10 @@
     * `--use_gradient_checkpointing`: 是否启用 gradient checkpointing。
     * `--use_gradient_checkpointing_offload`: 是否将 gradient checkpointing 卸载到内存中。
     * `--gradient_accumulation_steps`: 梯度累积步数。
+* CPU Offload 训练配置
+    * `--cpu_offload`: 启用 CPU offload 训练，权重保留在 CPU，逐层加载到 GPU 进行计算。
+    * `--optimize_on_cpu`: 当 `--cpu_offload` 启用时，在 CPU 上执行 optimizer。所有参数都 offload 到 CPU。默认为 False（可训练参数和 optimizer 留在 GPU）。
+    * `--param_size_threshold`: （实验性）当 `--cpu_offload` 启用时，参数总量超过此阈值（单位 MB）的模块会被递归拆分为子模块。None 表示直接以叶子模块为单位 offload。默认：None。
 * 图像宽高配置（适用于图像生成模型和视频生成模型）
     * `--height`: 图像或视频的高度。将 `height` 和 `width` 留空以启用动态分辨率。
     * `--width`: 图像或视频的宽度。将 `height` 和 `width` 留空以启用动态分辨率。

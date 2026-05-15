@@ -57,18 +57,11 @@ Gradient Checkpointing re-executes forward during backward (recomputing activati
 - Recomputed forward (during backward): detects module in `_in_recompute`, skips offload, keeps weights on GPU for backward
 - When `after_backward()` is called: clears `_in_recompute`, preparing for the next step
 
-### Module Discovery Strategy (Experimental)
+### Hook Registration Granularity
 
-`OffloadTrainingManager` controls module granularity via the `param_size_threshold` parameter:
+`OffloadTrainingManager` registers hooks at leaf module granularity by default (`nn.Linear`, `nn.LayerNorm`, etc.), meaning each leaf module is independently onloaded/offloaded. Additionally, "orphan parameters" and "orphan buffers" not managed by any leaf module are automatically collected and hooked.
 
-- `param_size_threshold=None` (default): offloads every leaf module (`nn.Linear`, `nn.LayerNorm`, etc.)
-- `param_size_threshold=N` (MB): uses `_should_force_recurse` to decide whether to recursively split. Modules are force-split when:
-  - Total parameter count exceeds the threshold
-  - The module class does not define its own `forward` method (pure container module)
-  - The module has both `encode` and `decode` methods (e.g., VAE)
-  - Modules not matching the above conditions are offloaded as a whole
-
-Additionally, "orphan parameters" and "orphan buffers" not managed by any unit are automatically collected and hooked.
+**Experimental**: The `param_size_threshold` parameter (unit: MB) allows adjusting hook registration granularity. When set, modules with total parameters exceeding the threshold are recursively split into children, while modules below the threshold are hooked as a whole. This feature may not be compatible with all model architectures in the current version and is disabled by default.
 
 ### Training Loop Integration
 
@@ -145,7 +138,6 @@ For full offload (optimizer also on CPU), add `--optimize_on_cpu`:
 
 | Feature | Compatible | Notes |
 |---------|:----------:|-------|
-| LoRA Training | ✅ | Trainable params stay on GPU via `AlwaysOnGPUParamOffloader` |
 | Gradient Checkpointing | ✅ | `_in_recompute` mechanism handles recomputation |
 | Accelerate DDP | ✅ | In cpu_offload mode, model is not prepared; only optimizer/dataloader are |
 | Split Training | ✅ | `launch_data_process_task` also supports `--cpu_offload` |
