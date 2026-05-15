@@ -101,10 +101,6 @@ optimizer.zero_grad()
 | 仅 offload 非可训练参数 | ✅ | ❌ | 非可训练参数逐层 offload，可训练参数和 optimizer 留在 GPU |
 | offload 所有参数 | ✅ | ✅ | 所有参数逐层 offload，梯度和 optimizer 在 CPU 执行 |
 
-**推荐**：
-- LoRA 训练：使用 `--cpu_offload`（可训练参数量小，留在 GPU 无压力）
-- 全量微调：使用 `--cpu_offload --optimize_on_cpu`（optimizer states 量大，需卸载到 CPU）
-
 ### 使用示例
 
 在现有训练命令中添加 `--cpu_offload` 即可启用，以 Qwen-Image LoRA 训练为例：
@@ -150,3 +146,4 @@ accelerate launch examples/qwen_image/model_training/train.py \
 - 开启 `--cpu_offload` 后，模型不会调用 `model.to(device)`，权重始终由 hook 管理
 - 训练速度会因 CPU↔GPU 传输而下降（典型约 2-10 倍），模型越大，速度下降越多，适合显存受限场景
 - 建议配合 `--use_gradient_checkpointing` 使用以进一步降低激活值的显存占用
+- `--optimize_on_cpu` 仅支持梯度累积步数为 1（`--gradient_accumulation_steps 1`）

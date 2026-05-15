@@ -101,10 +101,6 @@ optimizer.zero_grad()
 | Offload non-trainable params | ✅ | ❌ | Non-trainable params offloaded layer-by-layer; trainable params and optimizer stay on GPU |
 | Offload all params | ✅ | ✅ | All params offloaded layer-by-layer; gradients and optimizer run on CPU |
 
-**Recommendations**:
-- LoRA training: use `--cpu_offload` (trainable params are small, fine to keep on GPU)
-- Full fine-tuning: use `--cpu_offload --optimize_on_cpu` (optimizer states are large, need to offload to CPU)
-
 ### Example
 
 Simply add `--cpu_offload` to your existing training command. Example with Qwen-Image LoRA training:
@@ -150,3 +146,4 @@ For full offload (optimizer also on CPU), add `--optimize_on_cpu`:
 - With `--cpu_offload` enabled, the model never calls `model.to(device)`; weights are managed entirely by hooks
 - Training speed decreases due to CPU↔GPU transfers (typically 2-10x slower); larger models see greater slowdown; suitable for memory-constrained scenarios
 - Recommended to use with `--use_gradient_checkpointing` to further reduce activation memory
+- `--optimize_on_cpu` only supports gradient accumulation steps of 1 (`--gradient_accumulation_steps 1`)
