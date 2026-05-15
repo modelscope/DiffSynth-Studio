@@ -139,7 +139,7 @@ For full offload (optimizer also on CPU), add `--optimize_on_cpu`:
 | Feature | Compatible | Notes |
 |---------|:----------:|-------|
 | Gradient Checkpointing | ✅ | `_in_recompute` mechanism handles recomputation |
-| Accelerate DDP | ✅ | In cpu_offload mode, model is not prepared; only optimizer/dataloader are |
+| Accelerate DDP (multi-GPU) | ⚠️ | In cpu_offload mode, model is not wrapped by DDP (no `accelerator.prepare(model)`), so **gradient allreduce is not performed**. Multi-GPU training compatibility is not guaranteed; each GPU trains independently without gradient synchronization |
 | Split Training | ✅ | `launch_data_process_task` also supports `--cpu_offload` |
 | DeepSpeed | ❌ | ZeRO's parameter gathering conflicts with hooks |
 

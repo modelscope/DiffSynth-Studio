@@ -139,7 +139,7 @@ accelerate launch examples/qwen_image/model_training/train.py \
 | 特性 | 兼容 | 说明 |
 |------|:----:|------|
 | Gradient Checkpointing | ✅ | `_in_recompute` 机制兼容 |
-| Accelerate DDP | ✅ | cpu_offload 模式下不 prepare model，仅 prepare optimizer/dataloader |
+| Accelerate DDP（多卡训练） | ⚠️ | cpu_offload 模式下不会对 model 进行 DDP 包装（不调用 `accelerator.prepare(model)`），因此**不会执行梯度 allreduce**。无法保证与多卡训练的兼容性，各卡独立计算梯度而无同步 |
 | 拆分训练 | ✅ | `launch_data_process_task` 同样支持 `--cpu_offload` |
 | DeepSpeed | ❌ | ZeRO 的参数聚集机制与 hook 冲突 |
 
