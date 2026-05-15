@@ -13,7 +13,7 @@ from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..models.hidream_o1_image_dit import HiDreamO1ImageModel
 from ..models.hidream_common import (
     add_special_tokens, get_rope_index_fix_point, patchify, unpatchify, PATCH_SIZE,
-    resize_pilimage, calculate_dimensions,
+    resize_pilimage, calculate_dimensions, create_layout_reference_images
 )
 
 class HiDreamO1ImagePipeline(BasePipeline):
@@ -72,6 +72,7 @@ class HiDreamO1ImagePipeline(BasePipeline):
         noise_scale: float = 8.0,
         edit_image: Union[Image.Image, list[Image.Image]] = None,
         keep_original_aspect: bool = True,
+        layout_bboxes: list[list[float]] = None,
         progress_bar_cmd=tqdm,
     ):
         # Scheduler
@@ -85,7 +86,7 @@ class HiDreamO1ImagePipeline(BasePipeline):
             "height": height, "width": width,
             "seed": seed, "rand_device": rand_device,
             "noise_scale": noise_scale,
-            "edit_image": edit_image, "keep_original_aspect": keep_original_aspect,
+            "edit_image": edit_image, "keep_original_aspect": keep_original_aspect, "layout_bboxes": layout_bboxes,
         }
 
         # Units
@@ -153,12 +154,11 @@ class HiDreamO1ImageUnit_RefImageEmbedder(PipelineUnit):
 
     def __init__(self):
         super().__init__(
-            input_params=("edit_image", "height", "width", "keep_original_aspect"),
+            input_params=("edit_image", "height", "width", "keep_original_aspect", "layout_bboxes"),
             output_params=("ref_for_prompt_tokenizer", "height", "width", "ref_patches"),
         )
 
-    def get_sizes(self, edit_image, height, width):
-        K = len(edit_image)
+    def get_sizes(self, K, height, width):
         if K == 1: max_size = max(height, width)
         elif K == 2: max_size = max(height, width) * 48 // 64
         elif K <= 4: max_size = max(height, width) // 2
@@ -172,7 +172,7 @@ class HiDreamO1ImageUnit_RefImageEmbedder(PipelineUnit):
         return max_size, cond_img_size
 
 
-    def process(self, pipe: HiDreamO1ImagePipeline, edit_image, height, width, keep_original_aspect):
+    def process(self, pipe: HiDreamO1ImagePipeline, edit_image, height, width, keep_original_aspect, layout_bboxes):
         if edit_image is None:
             return {}
         if isinstance(edit_image, Image.Image):
@@ -181,7 +181,10 @@ class HiDreamO1ImageUnit_RefImageEmbedder(PipelineUnit):
             edit_image = [resize_pilimage(pil, 2048) for pil in edit_image]
             width, height = edit_image[0].size
 
-        max_size, cond_img_size = self.get_sizes(edit_image, height, width)
+        if layout_bboxes is not None:
+            edit_image = create_layout_reference_images(edit_image, layout_bboxes, width, height)
+        max_size, cond_img_size = self.get_sizes(len(edit_image), height, width)
+
         ref_image_tensors, ref_pils_vlm = [], []
         image_grid_thw_tgt = torch.tensor([1, height // PATCH_SIZE, width // PATCH_SIZE], dtype=torch.int64).unsqueeze(0)
         image_grid_thw_ref = torch.zeros((len(edit_image), 3), dtype=torch.int64)
