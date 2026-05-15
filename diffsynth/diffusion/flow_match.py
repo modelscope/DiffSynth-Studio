@@ -292,3 +292,43 @@ class FlowMatchScheduler():
         timestep_id = torch.argmin((self.timesteps - timestep.to(self.timesteps.device)).abs())
         weights = self.linear_timesteps_weights[timestep_id]
         return weights
+
+
+class HiDreamO1FlashScheduler(FlowMatchScheduler):
+    
+    def __init__(self, noise_scale_start=7.5, noise_scale_end=7.5, noise_clip_std=2.5):
+        self.set_timesteps_fn = HiDreamO1FlashScheduler.set_timesteps_hidream_o1_image_dev
+        self.num_train_timesteps = 1000
+        self.noise_clip_std = noise_clip_std
+        num_steps = 28
+        self.noise_scale_schedule = [
+            noise_scale_start + (noise_scale_end - noise_scale_start) * i / (num_steps - 1)
+            for i in range(num_steps)
+        ]
+
+    @staticmethod
+    def set_timesteps_hidream_o1_image_dev(**kwargs):
+        timesteps_list = [
+            999, 987, 974, 960, 945, 929, 913, 895, 877, 857, 836, 814, 790, 764, 737,
+            707, 675, 640, 602, 560, 515, 464, 409, 347, 278, 199, 110, 8,
+        ]
+        sigmas = torch.tensor([t / 1000.0 for t in timesteps_list], dtype=torch.float32)
+        timesteps = torch.tensor(timesteps_list, dtype=torch.float32)
+        return sigmas, timesteps
+
+    def clip_noise(self, noise):
+        if self.noise_clip_std > 0:
+            noise_std = noise.std().item()
+            clip_val = self.noise_clip_std * noise_std
+            noise = noise.clamp(min=-clip_val, max=clip_val)
+        return noise
+    
+    def step(self, model_output, timestep, sample):
+        timestep_id = torch.argmin((self.timesteps - timestep).abs())
+        sigma = self.sigmas[timestep_id]
+        sigma_ = self.sigmas[timestep_id + 1] if timestep_id + 1 < len(self.sigmas) else 0
+        denoised = sample - model_output * sigma
+
+        noise = self.clip_noise(torch.randn(denoised.shape, device=denoised.device, dtype=denoised.dtype))
+        sample = sigma_ * noise * self.noise_scale_schedule[timestep_id] + (1.0 - sigma_) * denoised
+        return sample
