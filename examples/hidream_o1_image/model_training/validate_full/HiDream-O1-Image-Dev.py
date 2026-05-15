@@ -10,6 +10,8 @@ pipe = HiDreamO1ImagePipeline.from_pretrained(
     ],
     processor_config=ModelConfig(model_id="HiDream-ai/HiDream-O1-Image-Dev", origin_file_pattern="./"),
 )
+pipe.scheduler = HiDreamO1FlashScheduler(noise_scale_start=7.5, noise_scale_end=7.5, noise_clip_std=2.5)
+
 state_dict = torch.load("./models/train/HiDream-O1-Image-Dev_full/epoch-1.safetensors", map_location="cuda", weights_only=False)
 pipe.dit.load_state_dict(state_dict, strict=False)
 image = pipe(
