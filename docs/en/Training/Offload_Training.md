@@ -2,6 +2,8 @@
 
 This document introduces the Offload Training feature in DiffSynth-Studio, which significantly reduces GPU memory usage during training by moving model weights layer-by-layer between CPU and GPU.
 
+> **Note**: Offload Training currently supports single-GPU training only and is not compatible with multi-GPU (DDP) setups.
+
 ## What is Offload Training
 
 When training large-scale models (e.g., Qwen-Image with 60 layers, Wan2.1-14B with 40 layers), all layer weights must reside on the GPU simultaneously, consuming tens of GB of memory for weights alone. The core idea of Offload Training is: **at any given moment, only load the weights of the currently computing module onto the GPU, and immediately offload them back to CPU after computation**, reducing memory usage from O(N × params_per_layer) to O(1 × params_per_layer).

@@ -45,7 +45,7 @@ DiffSynth 目前包括两个开源项目：
     * 模型集：[ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/KleinBase4B-Templates)、[ModelScope 国际站](https://modelscope.ai/collections/DiffSynth-Studio/KleinBase4B-Templates)、[HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/kleinbase4b-templates)
     * 数据集：[ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2)、[ModelScope 国际站](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2)、[HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/imagepulsev2)
 
-- **2026年5月15日** 新增 **CPU Offload Training** 功能，通过将模型权重逐层在 CPU 与 GPU 之间搬运，大幅降低训练时的 GPU 显存占用，让消费级显卡也能进行大模型 LoRA 训练，适配所有模型。只需在训练命令中添加 `--cpu_offload` 即可启用。详情请参考[文档](/docs/zh/Training/Offload_Training.md)。
+- **2026年5月15日** 新增 **CPU Offload Training** 功能，通过将模型权重逐层在 CPU 与 GPU 之间搬运，大幅降低训练时的 GPU 显存占用，让消费级显卡也能进行大模型 LoRA 训练，适配所有模型。只需在训练命令中添加 `--cpu_offload` 即可启用（当前仅支持单卡训练）。详情请参考[文档](/docs/zh/Training/Offload_Training.md)。
 
 - **2026年4月27日** 我们支持了 ACE-Step-1.5！包括文生音乐推理、低显存推理和 LoRA 训练能力。详情请参考[文档](/docs/zh/Model_Details/ACE-Step.md)和[示例代码](/examples/ace_step/)。
 

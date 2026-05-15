@@ -2,6 +2,8 @@
 
 本文档介绍 DiffSynth-Studio 中的 Offload Training 功能，通过将模型权重逐层在 CPU 和 GPU 间搬运，大幅降低训练时的 GPU 显存占用。
 
+> **注意**：当前 Offload Training 仅支持单卡训练，暂不兼容多卡（DDP）场景。
+
 ## 什么是 Offload Training
 
 训练大规模模型（如 Qwen-Image 60 层、Wan2.1-14B 40 层）时，所有层的权重需同时驻留 GPU，仅权重就占用数十 GB 显存。Offload Training 的核心思想是：**任一时刻只将当前正在计算的模块权重加载到 GPU，计算完毕后立即卸载回 CPU**，从而将显存占用从 O(N × 每层参数量) 降低到 O(1 × 每层参数量)。
