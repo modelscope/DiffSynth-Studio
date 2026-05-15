@@ -10,19 +10,19 @@ pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Wan-AI/WanToDance-14B", origin_file_pattern="global_model.safetensors"),
-        ModelConfig(model_id="Wan-AI/WanToDance-14B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
-        ModelConfig(model_id="Wan-AI/WanToDance-14B", origin_file_pattern="Wan2.1_VAE.pth"),
-        ModelConfig(model_id="Wan-AI/WanToDance-14B", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Dancer-14B", origin_file_pattern="global_model.safetensors"),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Dancer-14B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Dancer-14B", origin_file_pattern="Wan2.1_VAE.pth"),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Dancer-14B", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"),
     ],
     tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
 )
-state_dict = load_state_dict("models/train/WanToDance-14B-global_full/epoch-1.safetensors")
+state_dict = load_state_dict("models/train/Wan2.2-Dancer-14B-global_full/epoch-1.safetensors")
 pipe.dit.load_state_dict(state_dict)
 dataset_snapshot_download(
     "DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="wanvideo/WanToDance-14B-global/*"
+    allow_file_pattern="wanvideo/Wan2.2-Dancer-14B-global/*"
 )
 # This is a specialized model with the following constraints on its input parameters:
 # *   The model outputs a sequence of keyframes rather than a video; therefore, `framewise_decoding=True` must be set.
@@ -33,7 +33,7 @@ dataset_snapshot_download(
 # *   `wantodance_fps` is configurable, but since the model appears to have been trained exclusively at 7.5 FPS, setting it to other values is not recommended.
 # *   The first frame of `wantodance_keyframes` is the `wantodance_reference_image`, while all subsequent frames are solid black.
 # *   `wantodance_keyframes_mask` indicates the positions of valid frames within `wantodance_keyframes`.
-wantodance_keyframes = VideoData("data/diffsynth_example_dataset/wanvideo/WanToDance-14B-global/keyframes.mp4")
+wantodance_keyframes = VideoData("data/diffsynth_example_dataset/wanvideo/Wan2.2-Dancer-14B-global/keyframes.mp4")
 wantodance_keyframes = [wantodance_keyframes[i] for i in range(149)]
 video = pipe(
     prompt="一个人正在跳舞，舞蹈种类是韩舞。帧率是7.5000",
@@ -41,11 +41,11 @@ video = pipe(
     seed=0, tiled=False,
     height=1280, width=720, num_frames=149,
     num_inference_steps=48,
-    wantodance_music_path="data/diffsynth_example_dataset/wanvideo/WanToDance-14B-global/music.WAV",
-    wantodance_reference_image=Image.open("data/diffsynth_example_dataset/wanvideo/WanToDance-14B-global/refimage.jpg"),
+    wantodance_music_path="data/diffsynth_example_dataset/wanvideo/Wan2.2-Dancer-14B-global/music.WAV",
+    wantodance_reference_image=Image.open("data/diffsynth_example_dataset/wanvideo/Wan2.2-Dancer-14B-global/refimage.jpg"),
     wantodance_fps=7.5,
     wantodance_keyframes=wantodance_keyframes,
     wantodance_keyframes_mask=[1] + [0] * 148,
     framewise_decoding=True,
 )
-save_video(video, "video_WanToDance-14B-global.mp4", fps=7.5, quality=5)
+save_video(video, "video_Wan2.2-Dancer-14B-global.mp4", fps=7.5, quality=5)

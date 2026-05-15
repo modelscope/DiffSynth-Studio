@@ -1,4 +1,4 @@
-import importlib, inspect, pkgutil, traceback, torch, os, re, typing
+import importlib, inspect, pkgutil, traceback, torch, os, re, typing, io
 from typing import Union, List, Optional, Tuple, Iterable, Dict, Literal
 from contextlib import contextmanager
 from diffsynth.utils.data import VideoData
@@ -40,8 +40,29 @@ def catch_error(error_value):
         error_message = traceback.format_exc()
         print(f"Error {error_value}:\n{error_message}")
 
+def parse_vram_config_from_an_example(path):
+    vram_config = {
+        "offload_dtype": None,
+        "offload_device": None,
+        "onload_dtype": None,
+        "onload_device": None,
+        "preparing_dtype": None,
+        "preparing_device": None,
+        "computation_dtype": None,
+        "computation_device": None,
+    }
+    with open(path, "r") as f:
+        for code in f.readlines():
+            code = code.strip()
+            for param in vram_config:
+                if vram_config[param] is None and f'"{param}":' in code:
+                    value = code.split(" ")[-1].replace(",", "").replace('"', "").replace("torch.", "")
+                    vram_config[param] = value
+    return vram_config
+
 def parse_model_configs_from_an_example(path):
     model_configs = []
+    vram_config = parse_vram_config_from_an_example(path)
     with open(path, "r") as f:
         for code in f.readlines():
             code = code.strip()
@@ -49,7 +70,8 @@ def parse_model_configs_from_an_example(path):
                 continue
             pairs = re.findall(r'(\w+)\s*=\s*["\']([^"\']+)["\']', code)
             config_dict = {k: v for k, v in pairs}
-            model_configs.append(ModelConfig(model_id=config_dict["model_id"], origin_file_pattern=config_dict["origin_file_pattern"]))
+            vram_config_ = vram_config if "**vram_config" in code else {}
+            model_configs.append(ModelConfig(model_id=config_dict["model_id"], origin_file_pattern=config_dict["origin_file_pattern"], **vram_config_))
     return model_configs
 
 def list_examples(path, keyword=None):
@@ -98,7 +120,21 @@ def parse_params(fn):
         params.append({"name": name, "dtype": annotation, "value": default})
     return params
 
-def draw_model_config(model_config=None, key_suffix="", disabled=False):
+def draw_vram_device(label, value=None, key_suffix="", disabled=False):
+    option_map = {"None": None, "disk": "disk", "cuda": "cuda", "cpu": "cpu"}
+    options = option_map.keys()
+    default_index = 0 if value is None else tuple(options).index(value)
+    option = st.selectbox(label=label, options=tuple(options), index=default_index, key=label + key_suffix, disabled=disabled)
+    return option_map.get(option)
+
+def draw_vram_dtype(label, value=None, key_suffix="", disabled=False):
+    option_map = {"None": None, "disk": "disk", "bfloat16": torch.bfloat16, "float32": torch.float32, "float16": torch.float16, "float8_e4m3fn": torch.float8_e4m3fn, "float8_e5m2": torch.float8_e5m2}
+    options = option_map.keys()
+    default_index = 0 if value is None else tuple(options).index(value)
+    option = st.selectbox(label=label, options=tuple(options), index=default_index, key=label + key_suffix, disabled=disabled)
+    return option_map.get(option)
+
+def draw_model_config(model_config=None, key_suffix="", disabled=False, enable_vram_config=False):
     with st.container(border=True):
         if model_config is None:
             model_config = ModelConfig()
@@ -108,20 +144,46 @@ def draw_model_config(model_config=None, key_suffix="", disabled=False):
             model_id = st.text_input(label="model_id", key="model_id" + key_suffix, value=model_config.model_id, disabled=disabled)
         with col2:
             origin_file_pattern = st.text_input(label="origin_file_pattern", key="origin_file_pattern" + key_suffix, value=model_config.origin_file_pattern, disabled=disabled)
+        if enable_vram_config:
+            with st.container(border=True):
+                col1, col2 = st.columns(2)
+                with col1:
+                    offload_device = draw_vram_device(label="offload_device", value=model_config.offload_device, key_suffix=key_suffix, disabled=disabled)
+                    onload_device = draw_vram_device(label="onload_device", value=model_config.onload_device, key_suffix=key_suffix, disabled=disabled)
+                    preparing_device = draw_vram_device(label="preparing_device", value=model_config.preparing_device, key_suffix=key_suffix, disabled=disabled)
+                    computation_device = draw_vram_device(label="computation_device", value=model_config.computation_device, key_suffix=key_suffix, disabled=disabled)
+                with col2:
+                    offload_dtype = draw_vram_dtype(label="offload_dtype", value=model_config.offload_dtype, key_suffix=key_suffix, disabled=disabled)
+                    onload_dtype = draw_vram_dtype(label="onload_dtype", value=model_config.onload_dtype, key_suffix=key_suffix, disabled=disabled)
+                    preparing_dtype = draw_vram_dtype(label="preparing_dtype", value=model_config.preparing_dtype, key_suffix=key_suffix, disabled=disabled)
+                    computation_dtype = draw_vram_dtype(label="computation_dtype", value=model_config.computation_dtype, key_suffix=key_suffix, disabled=disabled)
+                vram_config = {
+                    "offload_device": offload_device,
+                    "onload_device": onload_device,
+                    "preparing_device": preparing_device,
+                    "computation_device": computation_device,
+                    "offload_dtype": offload_dtype,
+                    "onload_dtype": onload_dtype,
+                    "preparing_dtype": preparing_dtype,
+                    "computation_dtype": computation_dtype,
+                }
+        else:
+            vram_config = {}
         model_config = ModelConfig(
             path=None if path == "" else path,
             model_id=model_id,
             origin_file_pattern=origin_file_pattern,
+            **vram_config,
         )
     return model_config
 
-def draw_multi_model_config(name="", value=None, disabled=False):
+def draw_multi_model_config(name="", value=None, disabled=False, enable_vram_config=False):
     model_configs = []
     with st.container(border=True):
         st.markdown(name)
         num = st.number_input(f"num_{name}", min_value=0, max_value=20, value=0 if value is None else len(value), disabled=disabled)
         for i in range(num):
-            model_config = draw_model_config(key_suffix=f"_{name}_{i}", model_config=None if value is None else value[i], disabled=disabled)
+            model_config = draw_model_config(key_suffix=f"_{name}_{i}", model_config=None if value is None else value[i], disabled=disabled, enable_vram_config=enable_vram_config)
             model_configs.append(model_config)
     return model_configs
 
@@ -151,6 +213,20 @@ def draw_multi_elements(st_element, name="", value=None, disabled=False, kwargs=
         for i in range(num):
             element = st_element(name, key=f"{name}_{i}", disabled=disabled, value=None if value is None else value[i], **kwargs)
             elements.append(element)
+    return elements
+
+def draw_lora_configs(name="", value=None, disabled=False):
+    elements = []
+    with st.container(border=True):
+        st.markdown(name)
+        num = st.number_input(f"num_{name}", min_value=0, max_value=20, value=0 if value is None else len(value), disabled=disabled)
+        for i in range(num):
+            with st.container(border=True):
+                lora_base_model = st.text_input(label="LoRA base model", key="LoRA base model" + f"LoRA_{i}")
+                lora_scale = st.slider(label="LoRA scale", min_value=-8.0, max_value=8.0, value=1.0, step=0.1, key="LoRA scale" + f"LoRA_{i}")
+                lora_config = draw_model_config(key_suffix=f"LoRA_{i}", disabled=disabled)
+                element = {"base_model": lora_base_model, "alpha": lora_scale, "lora_config": lora_config}
+                elements.append(element)
     return elements
 
 def draw_controlnet_input(name="", value=None, disabled=False):
@@ -213,10 +289,9 @@ def draw_ui_element_safely(name, dtype, value, disabled=False):
     elif dtype == ModelConfig:
         ui = draw_single_model_config(name, value=value, disabled=disabled)
     elif dtype in [list[ModelConfig], List[ModelConfig], Union[list[ModelConfig], ModelConfig, str]]:
-        if name == "model_configs" and "model_configs_from_example" in st.session_state:
-            model_configs = st.session_state["model_configs_from_example"]
-            del st.session_state["model_configs_from_example"]
-            ui = draw_multi_model_config(name, model_configs, disabled=disabled)
+        if name == "model_configs":
+            model_configs = st.session_state.get("model_configs_from_example")
+            ui = draw_multi_model_config(name, model_configs, disabled=disabled, enable_vram_config=True)
         else:
             ui = draw_multi_model_config(name, disabled=disabled)
     elif dtype == str:
@@ -262,6 +337,10 @@ def draw_ui_element_safely(name, dtype, value, disabled=False):
         ui = value
     return ui
 
+def flush_example():
+    for key in list(st.session_state.keys()):
+        if key not in ["available_pipelines", "available_examples"]:
+            del st.session_state[key]
 
 def launch_webui():
     input_col, output_col = st.columns(2)
@@ -273,16 +352,7 @@ def launch_webui():
 
         with st.expander("Pipeline", expanded=True):
             pipeline_class = draw_selectbox("Pipeline Class", st.session_state["available_pipelines"].keys(), st.session_state["available_pipelines"], value=st.session_state["available_pipelines"]["ZImagePipeline"])
-            example = st.selectbox("Parse model configs from an example (optional)", st.session_state["available_examples"][pipeline_class.__name__])
-
-            # Clear if pipeline is changed
-            if "prev_pipeline_class" in st.session_state and st.session_state["prev_pipeline_class"] != pipeline_class:
-                if "pipeline_class" in st.session_state: del st.session_state["pipeline_class"]
-                if "model_configs_from_example" in st.session_state: del st.session_state["model_configs_from_example"]
-            if "prev_example" in st.session_state and st.session_state["prev_example"] != example:
-                if "model_configs_from_example" in st.session_state: del st.session_state["model_configs_from_example"]
-            st.session_state["prev_pipeline_class"] = pipeline_class
-            st.session_state["prev_example"] = example
+            example = st.selectbox("Parse model configs from an example (optional)", st.session_state["available_examples"][pipeline_class.__name__], on_change=flush_example)
 
         if st.button("Step 1: Parse Pipeline", type="primary"):
             st.session_state["pipeline_class"] = pipeline_class
@@ -296,12 +366,16 @@ def launch_webui():
             params = parse_params(pipeline_class.from_pretrained)
             for param in params:
                 input_params[param["name"]] = draw_ui_element(**param)
+            lora_configs = draw_lora_configs(name="LoRA")
         if st.button("Step 2: Load Models", type="primary"):
             with st.spinner("Loading models", show_time=True):
                 if "pipe" in st.session_state:
                     del st.session_state["pipe"]
                     torch.cuda.empty_cache()
-                st.session_state["pipe"] = pipeline_class.from_pretrained(**input_params)
+                pipe = pipeline_class.from_pretrained(**input_params)
+                for lora_config in lora_configs:
+                    pipe.load_lora(pipe.get_module(pipe, lora_config["base_model"]), lora_config=lora_config["lora_config"], alpha=lora_config["alpha"])
+                st.session_state["pipe"] = pipe
 
         if "pipe" not in st.session_state:
             return
@@ -325,6 +399,9 @@ def launch_webui():
             result = st.session_state["result"]
             if isinstance(result, Image.Image):
                 st.image(result)
+                buf = io.BytesIO()
+                result.save(buf, format='PNG')
+                st.download_button(label="Download", data=buf.getvalue(), file_name="image.png", mime="image/png", type="primary")
             else:
                 print(f"unsupported result format: {result}")
 

@@ -55,12 +55,14 @@ class AudioProcessor(nn.Module):
         waveform_sample_rate: int,
     ) -> torch.Tensor:
         """Convert waveform to log-mel spectrogram [batch, channels, time, n_mels]."""
+        original_dtype = waveform.dtype
         waveform = self.resample_waveform(waveform, waveform_sample_rate, self.sample_rate)
 
-        mel = self.mel_transform(waveform)
+        self.mel_transform = self.mel_transform.to(dtype=torch.float32)
+        mel = self.mel_transform(waveform.to(dtype=torch.float32))
         mel = torch.log(torch.clamp(mel, min=1e-5))
 
-        mel = mel.to(device=waveform.device, dtype=waveform.dtype)
+        mel = mel.to(device=waveform.device, dtype=original_dtype)
         return mel.permute(0, 1, 3, 2).contiguous()
 
 

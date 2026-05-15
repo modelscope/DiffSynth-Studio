@@ -309,7 +309,7 @@ wan_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.wans2v_audio_encoder.WanS2VAudioEncoderStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="Wan-AI/WanToDance-14B", origin_file_pattern="global_model.safetensors")
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.2-Dancer-14B", origin_file_pattern="global_model.safetensors")
         "model_hash": "eb18873fc0ba77b541eb7b62dbcd2059",
         "model_name": "wan_video_dit",
         "model_class": "diffsynth.models.wan_video_dit.WanModel",
@@ -835,20 +835,6 @@ ltx2_series = [
     },
     {
         # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="audio_vocoder.safetensors")
-        "model_hash": "7d7823dde8f1ea0b50fb07ac329dd4cb",
-        "model_name": "ltx2_audio_vae_decoder",
-        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2AudioDecoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2AudioDecoderStateDictConverter",
-    },
-    {
-        # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="audio_vae_encoder.safetensors")
-        "model_hash": "29338f3b95e7e312a3460a482e4f4554",
-        "model_name": "ltx2_audio_vae_encoder",
-        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2AudioEncoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2AudioEncoderStateDictConverter",
-    },
-    {
-        # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="audio_vocoder.safetensors")
         "model_hash": "cd436c99e69ec5c80f050f0944f02a15",
         "model_name": "ltx2_audio_vocoder",
         "model_class": "diffsynth.models.ltx2_audio_vae.LTX2VocoderWithBWE",
@@ -1040,7 +1026,16 @@ ace_step_series = [
     },
 ]
 
+hidream_o1_image_series = [
+    {
+        # Example: ModelConfig(model_id="HiDream-ai/HiDream-O1-Image", origin_file_pattern="model-*.safetensors")
+        "model_hash": "58a7c1073d79556bfc61e05e6061b771",
+        "model_name": "hidream_o1_image_dit",
+        "model_class": "diffsynth.models.hidream_o1_image_dit.HiDreamO1ImageModel",
+    },
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
-    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series
+    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series + hidream_o1_image_series
 )

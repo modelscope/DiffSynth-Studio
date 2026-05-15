@@ -3,23 +3,26 @@ from PIL import Image
 from diffsynth.utils.data import save_video, VideoData
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
+from diffsynth.core import load_state_dict
 
 
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Wan-AI/WanToDance-14B", origin_file_pattern="local_model.safetensors"),
-        ModelConfig(model_id="Wan-AI/WanToDance-14B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
-        ModelConfig(model_id="Wan-AI/WanToDance-14B", origin_file_pattern="Wan2.1_VAE.pth"),
-        ModelConfig(model_id="Wan-AI/WanToDance-14B", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Dancer-14B", origin_file_pattern="local_model.safetensors"),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Dancer-14B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Dancer-14B", origin_file_pattern="Wan2.1_VAE.pth"),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Dancer-14B", origin_file_pattern="models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"),
     ],
     tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
 )
+state_dict = load_state_dict("models/train/Wan2.2-Dancer-14B-local_full/epoch-1.safetensors")
+pipe.dit.load_state_dict(state_dict)
 dataset_snapshot_download(
     "DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="wanvideo/WanToDance-14B-local/*"
+    allow_file_pattern="wanvideo/Wan2.2-Dancer-14B-local/*"
 )
 # This is a specialized model with the following constraints on its input parameters:
 # *   The model renders and outputs video based on a sequence of keyframes; therefore, `wantodance_keyframes` must be provided correctly.
@@ -29,7 +32,7 @@ dataset_snapshot_download(
 # *   `wantodance_fps` is configurable, but since the model appears to have been trained exclusively at 30 FPS, setting it to other values is not recommended.
 # *   In `wantodance_keyframes`, frames that are not keyframes should be solid black.
 # *   `wantodance_keyframes_mask` indicates the positions of valid frames within `wantodance_keyframes`.
-wantodance_keyframes = VideoData("data/diffsynth_example_dataset/wanvideo/WanToDance-14B-local/keyframes.mp4")
+wantodance_keyframes = VideoData("data/diffsynth_example_dataset/wanvideo/Wan2.2-Dancer-14B-local/keyframes.mp4")
 wantodance_keyframes = [wantodance_keyframes[i] for i in range(149)]
 video = pipe(
     prompt="一个人正在跳舞，舞蹈种类是古典舞,图像清晰程度高,人物动作平均幅度中等,人物动作最大幅度中等。, 帧率是30fps。",
@@ -37,8 +40,8 @@ video = pipe(
     seed=0, tiled=True,
     height=1280, width=720, num_frames=149,
     num_inference_steps=24,
-    wantodance_music_path="data/diffsynth_example_dataset/wanvideo/WanToDance-14B-local/music.wav",
-    wantodance_reference_image=Image.open("data/diffsynth_example_dataset/wanvideo/WanToDance-14B-local/refimage.jpg"),
+    wantodance_music_path="data/diffsynth_example_dataset/wanvideo/Wan2.2-Dancer-14B-local/music.wav",
+    wantodance_reference_image=Image.open("data/diffsynth_example_dataset/wanvideo/Wan2.2-Dancer-14B-local/refimage.jpg"),
     wantodance_fps=30,
     wantodance_keyframes=wantodance_keyframes,
     wantodance_keyframes_mask=[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -49,4 +52,4 @@ video = pipe(
                                1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                1],
 )
-save_video(video, "video_WanToDance-14B-local.mp4", fps=30, quality=5)
+save_video(video, "video_Wan2.2-Dancer-14B-local.mp4", fps=30, quality=5)

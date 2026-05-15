@@ -372,6 +372,14 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "diffsynth.models.stable_diffusion_text_encoder.CLIPAttention": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.stable_diffusion_xl_text_encoder.CLIPTextModelWithProjection": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.hidream_o1_image_dit.HiDreamO1ImageModel": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.hidream_o1_image_dit.Qwen3VLTextRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.hidream_o1_image_dit.Qwen3VLVisionModel": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
 }
 
 def QwenImageTextEncoder_Module_Map_Updater():

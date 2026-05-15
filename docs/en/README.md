@@ -16,11 +16,9 @@ graph LR;
     I_want_to_develop_based_on_this_framework-->sec5[Section 5: API Reference];
     I_want_to_explore_new_technologies_based_on_this_project-->sec4[Section 4: Model Integration];
     I_want_to_explore_new_technologies_based_on_this_project-->sec5[Section 5: API Reference];
-    I_want_to_explore_new_technologies_based_on_this_project-->sec6[Section 6: Academic Guide];
-    I_encountered_a_problem-->sec7[Section 7: Frequently Asked Questions];
-    I_want_to_explore_new_technologies_based_on_this_project-->sec6[Section 6: Diffusion Templates]
-    I_want_to_explore_new_technologies_based_on_this_project-->sec8[Section 8: Academic Guide];
-    I_encountered_a_problem-->sec9[Section 9: Frequently Asked Questions];
+    I_want_to_explore_new_technologies_based_on_this_project-->sec6[Section 6: Diffusion Templates];
+    I_want_to_explore_new_technologies_based_on_this_project-->sec7[Section 7: Research Guide];
+    I_encountered_a_problem-->sec8[Section 8: Frequently Asked Questions];
 ```
 
 </details>
@@ -31,10 +29,12 @@ This section introduces the basic usage of `DiffSynth-Studio`, including how to 
 
 * [Installation Dependencies](./Pipeline_Usage/Setup.md)
 * [Model Inference](./Pipeline_Usage/Model_Inference.md)
+* [Accelerated Inference](./Pipeline_Usage/Accelerated_Inference.md)
 * [VRAM Management](./Pipeline_Usage/VRAM_management.md)
 * [Model Training](./Pipeline_Usage/Model_Training.md)
 * [Environment Variables](./Pipeline_Usage/Environment_Variables.md)
 * [GPU/NPU Support](./Pipeline_Usage/GPU_support.md)
+* [Inference WebUI](./Pipeline_Usage/Inference_WebUI.md)
 
 ## Section 2: Model Details
 
@@ -47,6 +47,11 @@ This section introduces the Diffusion models supported by `DiffSynth-Studio`. So
 * [Z-Image](./Model_Details/Z-Image.md)
 * [Anima](./Model_Details/Anima.md)
 * [LTX-2](./Model_Details/LTX-2.md)
+* [ERNIE-Image](./Model_Details/ERNIE-Image.md)
+* [JoyAI-Image](./Model_Details/JoyAI-Image.md)
+* [ACE-Step](./Model_Details/ACE-Step.md)
+* [Stable Diffusion](./Model_Details/Stable-Diffusion.md)
+* [Stable Diffusion XL](./Model_Details/Stable-Diffusion-XL.md)
 
 ## Section 3: Training Framework
 
@@ -87,7 +92,7 @@ This section introduces the controllable generation plugin framework for Diffusi
 * [Template Model Inference](./Diffusion_Templates/Template_Model_Inference.md)
 * [Template Model Training](./Diffusion_Templates/Template_Model_Training.md)
 
-## Section 7: Academic Guide
+## Section 7: Research Guide
 
 This section introduces how to use `DiffSynth-Studio` to train new models, helping researchers explore new model technologies.
 

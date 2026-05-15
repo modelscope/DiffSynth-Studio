@@ -29,10 +29,12 @@ graph LR;
 
 * [安装依赖](./Pipeline_Usage/Setup.md)
 * [模型推理](./Pipeline_Usage/Model_Inference.md)
+* [加速推理](./Pipeline_Usage/Accelerated_Inference.md)
 * [显存管理](./Pipeline_Usage/VRAM_management.md)
 * [模型训练](./Pipeline_Usage/Model_Training.md)
 * [环境变量](./Pipeline_Usage/Environment_Variables.md)
 * [GPU/NPU 支持](./Pipeline_Usage/GPU_support.md)
+* [推理 WebUI](./Pipeline_Usage/Inference_WebUI.md)
 
 ## Section 2: 模型详解
 
@@ -45,6 +47,11 @@ graph LR;
 * [Z-Image](./Model_Details/Z-Image.md)
 * [Anima](./Model_Details/Anima.md)
 * [LTX-2](./Model_Details/LTX-2.md)
+* [ERNIE-Image](./Model_Details/ERNIE-Image.md)
+* [JoyAI-Image](./Model_Details/JoyAI-Image.md)
+* [ACE-Step](./Model_Details/ACE-Step.md)
+* [Stable Diffusion](./Model_Details/Stable-Diffusion.md)
+* [Stable Diffusion XL](./Model_Details/Stable-Diffusion-XL.md)
 
 ## Section 3: 训练框架
 
