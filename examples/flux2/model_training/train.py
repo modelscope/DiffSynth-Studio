@@ -2,6 +2,7 @@ import torch, os, argparse, accelerate
 from diffsynth.core import UnifiedDataset
 from diffsynth.pipelines.flux2_image import Flux2ImagePipeline, ModelConfig
 from diffsynth.diffusion import *
+from flux2_dual_gpu_diffsynth import enable_flux2_dual_gpu, is_dual_gpu_enabled
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -133,8 +134,41 @@ if __name__ == "__main__":
         template_model_id_or_path=args.template_model_id_or_path,
         enable_lora_hot_loading=args.enable_lora_hot_loading,
         task=args.task,
-        device="cpu" if args.initialize_model_on_cpu else accelerator.device,
+        # Dual-GPU: force CPU load so the 60 GB bf16 transformer doesn't
+        # pre-allocate on cuda:0 before we get a chance to split it.
+        device="cpu" if (args.initialize_model_on_cpu or is_dual_gpu_enabled()) else accelerator.device,
     )
+    # Dual-GPU split: gated on DIFFSYNTH_DUAL_GPU env var. Distributes
+    # pipe.dit across cuda:0 and cuda:1 at the single_transformer_blocks
+    # midpoint. Called AFTER LoRA injection (which happened inside
+    # Flux2ImageTrainingModule.__init__) so PEFT LoRA params follow
+    # the base layer's device automatically when block.to() runs.
+    if is_dual_gpu_enabled():
+        for _i in range(torch.cuda.device_count()):
+            _free, _total = torch.cuda.mem_get_info(_i)
+            print(f"[dual-gpu] pre-distribute cuda:{_i} free={_free/1024**3:.1f}G / {_total/1024**3:.1f}G")
+        # fp8 weight-only quant on CPU BEFORE distribute. Without this the
+        # bf16 transformer (~60 GB) overflows a 32 GB card on either side.
+        # Filter excludes LoRA's lora_A/lora_B Linear submodules -- quantizing
+        # them strips requires_grad and breaks backward.
+        import gc as _gc
+        from torchao.quantization import quantize_, Float8WeightOnlyConfig
+        def _quant_filter(module, name):
+            if not isinstance(module, torch.nn.Linear):
+                return False
+            return "lora_A" not in name and "lora_B" not in name
+        quantize_(model.pipe.dit, Float8WeightOnlyConfig(), filter_fn=_quant_filter)
+        _gc.collect()
+        print("[dual-gpu] fp8 weight-only quant done (LoRA params unmodified)")
+        enable_flux2_dual_gpu(model.pipe.dit)
+        # Pipeline tracks a logical device for input transfer (forward()
+        # calls transfer_data_to_device(inputs, pipe.device, ...)). Pin it
+        # to cuda:0 since x_embedder lives there.
+        model.pipe.device = torch.device("cuda:0")
+        for _i in range(torch.cuda.device_count()):
+            _free, _total = torch.cuda.mem_get_info(_i)
+            print(f"[dual-gpu] post-distribute cuda:{_i} free={_free/1024**3:.1f}G / {_total/1024**3:.1f}G")
+
     model_logger = ModelLogger(
         args.output_path,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
