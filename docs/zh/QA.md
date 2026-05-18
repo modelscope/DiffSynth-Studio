@@ -33,3 +33,7 @@
 
 * 冷加载：当基础模型未开启[显存管理](./Pipeline_Usage/VRAM_management.md)时，LoRA 会融合进基础模型权重，此时推理速度没有变化，LoRA 加载后无法卸载。
 * 热加载：当基础模型开启[显存管理](./Pipeline_Usage/VRAM_management.md)时，LoRA 不会融合进基础模型权重，此时推理速度会变慢，LoRA 加载后可通过 `pipe.clear_lora()` 卸载。
+
+## 如何减少训练所需的显存？
+
+框架支持多种方式减少训练所需的显存，包括 Gradient Checkpointing、DeepSpeed、FP8、两阶段拆分训练、CPU Offload，请参考[低显存训练](./Pipeline_Usage/Model_Training.md#低显存训练)。
