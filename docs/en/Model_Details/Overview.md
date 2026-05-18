@@ -289,3 +289,42 @@ graph LR;
 * FP8 Precision Training: [doc](../Training/FP8_Precision.md), [code](https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/wanvideo/model_training/special/fp8_training/)
 * Two-stage Split Training: [doc](../Training/Split_Training.md), [code](https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/wanvideo/model_training/special/split_training/)
 * End-to-end Direct Distillation: [doc](../Training/Direct_Distill.md), [code](https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/wanvideo/model_training/special/direct_distill/)
+
+
+## Image Quality Evaluation Metrics
+
+Documentation: [./Image-Quality-Metrics.md](../Model_Details/Image-Quality-Metrics.md)
+
+<details>
+
+<summary>Quick Start</summary>
+
+```python
+from PIL import Image
+from diffsynth.metrics import PickScoreMetric, ModelConfig
+
+prompt = ""
+path_to_image = ""
+image = Image.open(path_to_image).convert("RGB")
+device = "cuda"
+
+metric = PickScoreMetric.from_pretrained(
+    model_config=ModelConfig(model_id="AI-ModelScope/PickScore_v1"),
+    processor_config=ModelConfig(model_id="AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K"),
+    device=device,
+)
+score = metric.calc_scores(prompt, image)[0]
+print("PickScore:", score)
+```
+
+</details>
+
+| Metric | Default Model | Example Code |
+|-|-|-|
+|PickScore|[AI-ModelScope/PickScore_v1](https://www.modelscope.cn/models/AI-ModelScope/PickScore_v1)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/image_quality_metric/pickscore.py)|
+|ImageReward|[ZhipuAI/ImageReward](https://www.modelscope.cn/models/ZhipuAI/ImageReward)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/image_quality_metric/image_reward.py)|
+|HPSv2|[AI-ModelScope/HPSv2](https://www.modelscope.cn/models/AI-ModelScope/HPSv2)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/image_quality_metric/hpsv2.py)|
+|HPSv3|[MizzenAI/HPSv3](https://www.modelscope.cn/models/MizzenAI/HPSv3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/image_quality_metric/hpsv3.py)|
+|CLIP Score|[AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K](https://www.modelscope.cn/models/AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/image_quality_metric/clipscore.py)|
+|Aesthetic|[AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE](https://www.modelscope.cn/models/AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/image_quality_metric/aesthetic.py)|
+|FID|[diffusionTry/weights-inception-2015-12-05-6726825d](https://www.modelscope.cn/models/diffusionTry/weights-inception-2015-12-05-6726825d)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/image_quality_metric/fid.py)|
