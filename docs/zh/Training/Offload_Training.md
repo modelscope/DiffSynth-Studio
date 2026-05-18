@@ -33,8 +33,8 @@ backward_hook      → 将模块权重卸载回 CPU (offload)
 | 类型 | Offloader 类 | 行为 |
 |---------|-------------|------|
 | 非可训练参数 (`requires_grad=False`) | `StaticParamOffloader` | 初始化时将权重拷贝到预分配的 pinned memory 中保持永久 CPU 副本，并将 `param.data` 替换为 GPU 端空 placeholder（释放 GPU 显存）；onload 时从 CPU 副本异步拷贝到 GPU，offload 时将 `param.data` 重新指向 placeholder（无需 PCIe 回传） |
-| 可训练参数 + `optimize_on_cpu=True` | `TrainableParamOffloader` | 权重在训练中会变化，无法保持静态副本；onload/offload 通过 `param.data.to(device)` 实际搬运；backward 后将 `param.grad` 也移到 CPU |
-| 可训练参数 + `optimize_on_cpu=False` | `AlwaysOnGPUParamOffloader` | 初始化时直接将参数移到 GPU，之后不再搬运；适用于 LoRA 训练（可训练参数量小） |
+| 可训练参数 + `enable_optimizer_cpu_offload=True` | `TrainableParamOffloader` | 权重在训练中会变化，无法保持静态副本；onload/offload 通过 `param.data.to(device)` 实际搬运；backward 后将 `param.grad` 也移到 CPU |
+| 可训练参数 + `enable_optimizer_cpu_offload=False` | `AlwaysOnGPUParamOffloader` | 初始化时直接将参数移到 GPU，之后不再搬运；适用于 LoRA 训练（可训练参数量小） |
 | 模块 Buffer（如 BatchNorm 的 `running_mean`/`running_var`） | `BufferOffloader` | 与 `StaticParamOffloader` 类似：初始化时将 buffer 拷贝到 pinned memory；onload 时从 CPU 副本异步拷贝到 GPU，offload 时将 `module._buffers[name]` 重新指向 CPU 副本 |
 
 ### Pinned Memory Pool
@@ -63,14 +63,14 @@ Gradient Checkpointing 在 backward 时会重新执行 forward（重算激活）
 
 `OffloadTrainingManager` 默认以每个叶子模块（`nn.Linear`、`nn.LayerNorm` 等）为单位注册 hook，即每个叶子模块独立进行 onload/offload。此外，未被任何叶子模块管理到的「孤儿参数」和「孤儿 buffer」也会被自动收集并注册 hook。
 
-**实验性功能**：通过 `param_size_threshold`（单位 MB）可以调整 hook 的注册粒度。设置后，参数总量超过阈值的模块会被递归拆分为子模块，未超过阈值的模块则作为整体注册 hook。该功能当前版本可能无法兼容所有模型结构，默认不启用。
+**实验性功能**：通过 `cpu_offload_split_threshold`（单位 MB）可以调整 hook 的注册粒度。设置后，参数总量超过阈值的模块会被递归拆分为子模块，未超过阈值的模块则作为整体注册 hook。该功能当前版本可能无法兼容所有模型结构，默认不启用。
 
 ### 训练流程集成
 
 在 `runner.py` 中的执行流程：
 
 ```python
-# cpu_offload=True 时：
+# enable_model_cpu_offload=True 时：
 # 1. 模型不调用 model.to(device)，保持在 CPU
 # 2. 只 prepare optimizer、dataloader、scheduler（不 prepare model）
 # 3. 创建 OffloadTrainingManager，自动为模型注册 hook
@@ -89,13 +89,13 @@ optimizer.zero_grad()
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--cpu_offload` | False | 启用逐层 offload 训练 |
-| `--optimize_on_cpu` | False | 配合 `--cpu_offload`，将可训练参数和 optimizer 也放在 CPU |
-| `--param_size_threshold` | None | 实验性参数（单位 MB），超过此阈值的模块会被递归拆分 |
+| `--enable_model_cpu_offload` | False | 启用逐层 offload 训练 |
+| `--enable_optimizer_cpu_offload` | False | 配合 `--enable_model_cpu_offload`，将可训练参数和 optimizer 也放在 CPU |
+| `--cpu_offload_split_threshold` | None | 实验性参数（单位 MB），超过此阈值的模块会被递归拆分 |
 
 ### 参数组合
 
-| 场景 | `--cpu_offload` | `--optimize_on_cpu` | 效果 |
+| 场景 | `--enable_model_cpu_offload` | `--enable_optimizer_cpu_offload` | 效果 |
 |------|:---------------:|:-------------------:|------|
 | 默认训练 | ❌ | ❌ | 所有权重和 optimizer 在 GPU |
 | 仅 offload 非可训练参数 | ✅ | ❌ | 非可训练参数逐层 offload，可训练参数和 optimizer 留在 GPU |
@@ -103,7 +103,7 @@ optimizer.zero_grad()
 
 ### 使用示例
 
-在现有训练命令中添加 `--cpu_offload` 即可启用，以 Qwen-Image LoRA 训练为例：
+在现有训练命令中添加 `--enable_model_cpu_offload` 即可启用，以 Qwen-Image LoRA 训练为例：
 
 ```bash
 accelerate launch examples/qwen_image/model_training/train.py \
@@ -122,14 +122,14 @@ accelerate launch examples/qwen_image/model_training/train.py \
   --use_gradient_checkpointing \
   --dataset_num_workers 8 \
   --find_unused_parameters \
-  --cpu_offload
+  --enable_model_cpu_offload
 ```
 
-如需完整 offload（optimizer 也在 CPU），添加 `--optimize_on_cpu`：
+如需完整 offload（optimizer 也在 CPU），添加 `--enable_optimizer_cpu_offload`：
 
 ```bash
-  --cpu_offload \
-  --optimize_on_cpu
+  --enable_model_cpu_offload \
+  --enable_optimizer_cpu_offload
 ```
 
 ### 兼容性
@@ -137,13 +137,13 @@ accelerate launch examples/qwen_image/model_training/train.py \
 | 特性 | 兼容 | 说明 |
 |------|:----:|------|
 | Gradient Checkpointing | ✅ | `_in_recompute` 机制兼容 |
-| Accelerate DDP（多卡训练） | ⚠️ | cpu_offload 模式下不会对 model 进行 DDP 包装（不调用 `accelerator.prepare(model)`），因此**不会执行梯度 allreduce**。无法保证与多卡训练的兼容性，各卡独立计算梯度而无同步 |
-| 拆分训练 | ✅ | `launch_data_process_task` 同样支持 `--cpu_offload` |
+| Accelerate DDP（多卡训练） | ⚠️ | enable_model_cpu_offload 模式下不会对 model 进行 DDP 包装（不调用 `accelerator.prepare(model)`），因此**不会执行梯度 allreduce**。无法保证与多卡训练的兼容性，各卡独立计算梯度而无同步 |
+| 拆分训练 | ✅ | `launch_data_process_task` 同样支持 `--enable_model_cpu_offload` |
 | DeepSpeed | ❌ | ZeRO 的参数聚集机制与 hook 冲突 |
 
 ### 注意事项
 
-- 开启 `--cpu_offload` 后，模型不会调用 `model.to(device)`，权重始终由 hook 管理
+- 开启 `--enable_model_cpu_offload` 后，模型不会调用 `model.to(device)`，权重始终由 hook 管理
 - 训练速度会因 CPU↔GPU 传输而下降（典型约 2-10 倍），模型越大，速度下降越多，适合显存受限场景
 - 建议配合 `--use_gradient_checkpointing` 使用以进一步降低激活值的显存占用
-- `--optimize_on_cpu` 仅支持梯度累积步数为 1（`--gradient_accumulation_steps 1`）
+- `--enable_optimizer_cpu_offload` 仅支持梯度累积步数为 1（`--gradient_accumulation_steps 1`）

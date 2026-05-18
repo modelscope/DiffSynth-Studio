@@ -66,9 +66,9 @@ def add_template_model_config(parser: argparse.ArgumentParser):
     return parser
 
 def add_offload_training_config(parser: argparse.ArgumentParser):
-    parser.add_argument("--cpu_offload", default=False, action="store_true", help="Enable layer offload training. Weights are kept on CPU and loaded to GPU one layer at a time.")
-    parser.add_argument("--optimize_on_cpu", default=False, action="store_true", help="When --cpu_offload is enabled, run optimizer on CPU. All params are offloaded to CPU. Default is False (trainable params stay on GPU, optimizer on GPU).")
-    parser.add_argument("--param_size_threshold", type=int, default=None, help="Experimental! When --cpu_offload is enabled, modules with total params above this threshold (in MB) are recursively split into children. None means offload every leaf module directly. Default: None.")
+    parser.add_argument("--enable_model_cpu_offload", default=False, action="store_true", help="Enable layer offload training. Weights are kept on CPU and loaded to GPU one layer at a time.")
+    parser.add_argument("--enable_optimizer_cpu_offload", default=False, action="store_true", help="When --enable_model_cpu_offload is enabled, run optimizer on CPU. All params are offloaded to CPU. Default is False (trainable params stay on GPU, optimizer on GPU).")
+    parser.add_argument("--cpu_offload_split_threshold", type=int, default=None, help="Experimental! When --enable_model_cpu_offload is enabled, modules with total params above this threshold (in MB) are recursively split into children. None means offload every leaf module directly. Default: None.")
     return parser
 
 def add_general_config(parser: argparse.ArgumentParser):

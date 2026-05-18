@@ -34,7 +34,7 @@ def is_leaf_module(module: nn.Module) -> bool:
 
 
 class UnitWiseParamManager:
-    def __init__(self, model: nn.Module, target_device: torch.device, optimize_on_cpu: bool = False, params: list = None, buffers: list = None, memory_buffer: BaseBufferPool = None):
+    def __init__(self, model: nn.Module, target_device: torch.device, enable_optimizer_cpu_offload: bool = False, params: list = None, buffers: list = None, memory_buffer: BaseBufferPool = None):
         self.model = model
         self.target_device = target_device
         self.param_offloaders = {}
@@ -42,7 +42,7 @@ class UnitWiseParamManager:
             if not param.requires_grad:
                 self.param_offloaders[id(param)] = StaticParamOffloader(param, target_device, memory_buffer=memory_buffer)
             else:
-                if optimize_on_cpu:
+                if enable_optimizer_cpu_offload:
                     self.param_offloaders[id(param)] = TrainableParamOffloader(param, target_device)
                 else:
                     self.param_offloaders[id(param)] = AlwaysOnGPUParamOffloader(param, target_device)
@@ -72,9 +72,9 @@ class UnitWiseParamManager:
 
 
 class UnitWiseHookManager:
-    def __init__(self, model: nn.Module, target_device: torch.device, optimize_on_cpu: bool = False,
+    def __init__(self, model: nn.Module, target_device: torch.device, enable_optimizer_cpu_offload: bool = False,
                  params: list = None, buffers: list = None, memory_buffer: BaseBufferPool = None):
-        self.param_manager = UnitWiseParamManager(model, target_device, optimize_on_cpu, params=params, buffers=buffers, memory_buffer=memory_buffer)
+        self.param_manager = UnitWiseParamManager(model, target_device, enable_optimizer_cpu_offload, params=params, buffers=buffers, memory_buffer=memory_buffer)
         self._in_recompute: set = set()
         self._register_hooks(model)
 
@@ -116,24 +116,24 @@ class UnitWiseHookManager:
 
 
 class OffloadTrainingManager:
-    def __init__(self, model: nn.Module, target_device: torch.device, optimize_on_cpu: bool = False, param_size_threshold: int = None):
+    def __init__(self, model: nn.Module, target_device: torch.device, enable_optimizer_cpu_offload: bool = False, cpu_offload_split_threshold: int = None):
         self.model = model
         self.target_device = target_device
-        self.optimize_on_cpu = optimize_on_cpu
-        param_size_threshold = param_size_threshold * 1024 * 1024 if param_size_threshold is not None else None
-        self._register_units(model, target_device, optimize_on_cpu, param_size_threshold)
+        self.enable_optimizer_cpu_offload = enable_optimizer_cpu_offload
+        cpu_offload_split_threshold = cpu_offload_split_threshold * 1024 * 1024 if cpu_offload_split_threshold is not None else None
+        self._register_units(model, target_device, enable_optimizer_cpu_offload, cpu_offload_split_threshold)
 
-    def _register_units(self, model: nn.Module, target_device: torch.device, optimize_on_cpu: bool, param_size_threshold: int = None):
+    def _register_units(self, model: nn.Module, target_device: torch.device, enable_optimizer_cpu_offload: bool, cpu_offload_split_threshold: int = None):
         self.memory_buffer = PinnedArenaPool.from_model(model)
-        units = self._find_units_recursive(model, param_size_threshold)
-        self.units = [UnitWiseHookManager(u, target_device, optimize_on_cpu, memory_buffer=self.memory_buffer) for u in units]
+        units = self._find_units_recursive(model, cpu_offload_split_threshold)
+        self.units = [UnitWiseHookManager(u, target_device, enable_optimizer_cpu_offload, memory_buffer=self.memory_buffer) for u in units]
 
         managed_param_ids = set().union(*[unit.managed_param_ids for unit in self.units])
         orphan_params, orphan_buffers = self._find_orphan_params_and_buffers(model, managed_param_ids)
         for orphan_module in set(orphan_params.keys()) | set(orphan_buffers.keys()):
             params = orphan_params.get(orphan_module, [])
             buffers = orphan_buffers.get(orphan_module, [])
-            self.units.append(UnitWiseHookManager(orphan_module, target_device, optimize_on_cpu, params=params, buffers=buffers, memory_buffer=self.memory_buffer))
+            self.units.append(UnitWiseHookManager(orphan_module, target_device, enable_optimizer_cpu_offload, params=params, buffers=buffers, memory_buffer=self.memory_buffer))
 
     def _find_orphan_params_and_buffers(self, model: nn.Module, managed_param_ids: set):
         orphan_params_by_module = {}
@@ -149,21 +149,21 @@ class OffloadTrainingManager:
         
         return orphan_params_by_module, orphan_buffers_by_module
 
-    def _find_units_recursive(self, module: nn.Module, param_size_threshold: int = None) -> list:
-        if param_size_threshold is None:
+    def _find_units_recursive(self, module: nn.Module, cpu_offload_split_threshold: int = None) -> list:
+        if cpu_offload_split_threshold is None:
             return [m for m in module.modules() if is_leaf_module(m) and has_parameters(m)]
-        if self._should_force_recurse(module, param_size_threshold):
+        if self._should_force_recurse(module, cpu_offload_split_threshold):
             units = []
             for child in module.children():
-                units.extend(self._find_units_recursive(child, param_size_threshold))
+                units.extend(self._find_units_recursive(child, cpu_offload_split_threshold))
             return units
         return [module]
 
-    def _should_force_recurse(self, module: nn.Module, param_size_threshold: int = None) -> bool:
+    def _should_force_recurse(self, module: nn.Module, cpu_offload_split_threshold: int = None) -> bool:
         if is_leaf_module(module):
             return False
         if (
-            count_parameters(module) > param_size_threshold
+            count_parameters(module) > cpu_offload_split_threshold
             or ('forward' not in type(module).__dict__)
             or (hasattr(module, 'encode') and hasattr(module, 'decode'))
         ):

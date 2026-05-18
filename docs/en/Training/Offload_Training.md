@@ -33,8 +33,8 @@ Different offload strategies are applied depending on whether parameters are tra
 | Type | Offloader Class | Behavior |
 |---------------|----------------|----------|
 | Non-trainable (`requires_grad=False`) | `StaticParamOffloader` | Copies weights to pre-allocated pinned memory at init, maintaining a permanent CPU copy, and replaces `param.data` with an empty GPU placeholder (freeing GPU memory); onload asynchronously copies from CPU to GPU, offload reassigns `param.data` to the placeholder (no PCIe transfer back) |
-| Trainable + `optimize_on_cpu=True` | `TrainableParamOffloader` | Weights change during training, so no static copy is kept; onload/offload via `param.data.to(device)` with actual data transfer; also moves `param.grad` to CPU after backward |
-| Trainable + `optimize_on_cpu=False` | `AlwaysOnGPUParamOffloader` | Moves parameters to GPU at init and never offloads; suitable for LoRA training (small number of trainable params) |
+| Trainable + `enable_optimizer_cpu_offload=True` | `TrainableParamOffloader` | Weights change during training, so no static copy is kept; onload/offload via `param.data.to(device)` with actual data transfer; also moves `param.grad` to CPU after backward |
+| Trainable + `enable_optimizer_cpu_offload=False` | `AlwaysOnGPUParamOffloader` | Moves parameters to GPU at init and never offloads; suitable for LoRA training (small number of trainable params) |
 | Module Buffers (e.g., BatchNorm's `running_mean`/`running_var`) | `BufferOffloader` | Similar to `StaticParamOffloader`: copies buffer to pinned memory at init; onload asynchronously copies from CPU to GPU, offload reassigns `module._buffers[name]` back to the CPU copy |
 
 ### Pinned Memory Pool
@@ -63,14 +63,14 @@ Gradient Checkpointing re-executes forward during backward (recomputing activati
 
 `OffloadTrainingManager` registers hooks at leaf module granularity by default (`nn.Linear`, `nn.LayerNorm`, etc.), meaning each leaf module is independently onloaded/offloaded. Additionally, "orphan parameters" and "orphan buffers" not managed by any leaf module are automatically collected and hooked.
 
-**Experimental**: The `param_size_threshold` parameter (unit: MB) allows adjusting hook registration granularity. When set, modules with total parameters exceeding the threshold are recursively split into children, while modules below the threshold are hooked as a whole. This feature may not be compatible with all model architectures in the current version and is disabled by default.
+**Experimental**: The `cpu_offload_split_threshold` parameter (unit: MB) allows adjusting hook registration granularity. When set, modules with total parameters exceeding the threshold are recursively split into children, while modules below the threshold are hooked as a whole. This feature may not be compatible with all model architectures in the current version and is disabled by default.
 
 ### Training Loop Integration
 
 Execution flow in `runner.py`:
 
 ```python
-# When cpu_offload=True:
+# When enable_model_cpu_offload=True:
 # 1. Model does NOT call model.to(device), stays on CPU
 # 2. Only prepare optimizer, dataloader, scheduler (model is NOT prepared)
 # 3. Create OffloadTrainingManager, which auto-registers hooks on the model
@@ -89,13 +89,13 @@ optimizer.zero_grad()
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--cpu_offload` | False | Enable layer-wise offload training |
-| `--optimize_on_cpu` | False | Used with `--cpu_offload`; moves trainable params and optimizer to CPU |
-| `--param_size_threshold` | None | Experimental (unit: MB); modules above this threshold are recursively split |
+| `--enable_model_cpu_offload` | False | Enable layer-wise offload training |
+| `--enable_optimizer_cpu_offload` | False | Used with `--enable_model_cpu_offload`; moves trainable params and optimizer to CPU |
+| `--cpu_offload_split_threshold` | None | Experimental (unit: MB); modules above this threshold are recursively split |
 
 ### Parameter Combinations
 
-| Scenario | `--cpu_offload` | `--optimize_on_cpu` | Effect |
+| Scenario | `--enable_model_cpu_offload` | `--enable_optimizer_cpu_offload` | Effect |
 |----------|:---------------:|:-------------------:|--------|
 | Default training | ❌ | ❌ | All weights and optimizer on GPU |
 | Offload non-trainable params | ✅ | ❌ | Non-trainable params offloaded layer-by-layer; trainable params and optimizer stay on GPU |
@@ -103,7 +103,7 @@ optimizer.zero_grad()
 
 ### Example
 
-Simply add `--cpu_offload` to your existing training command. Example with Qwen-Image LoRA training:
+Simply add `--enable_model_cpu_offload` to your existing training command. Example with Qwen-Image LoRA training:
 
 ```bash
 accelerate launch examples/qwen_image/model_training/train.py \
@@ -122,14 +122,14 @@ accelerate launch examples/qwen_image/model_training/train.py \
   --use_gradient_checkpointing \
   --dataset_num_workers 8 \
   --find_unused_parameters \
-  --cpu_offload
+  --enable_model_cpu_offload
 ```
 
-For full offload (optimizer also on CPU), add `--optimize_on_cpu`:
+For full offload (optimizer also on CPU), add `--enable_optimizer_cpu_offload`:
 
 ```bash
-  --cpu_offload \
-  --optimize_on_cpu
+  --enable_model_cpu_offload \
+  --enable_optimizer_cpu_offload
 ```
 
 ### Compatibility
@@ -137,13 +137,13 @@ For full offload (optimizer also on CPU), add `--optimize_on_cpu`:
 | Feature | Compatible | Notes |
 |---------|:----------:|-------|
 | Gradient Checkpointing | ✅ | `_in_recompute` mechanism handles recomputation |
-| Accelerate DDP (multi-GPU) | ⚠️ | In cpu_offload mode, model is not wrapped by DDP (no `accelerator.prepare(model)`), so **gradient allreduce is not performed**. Multi-GPU training compatibility is not guaranteed; each GPU trains independently without gradient synchronization |
-| Split Training | ✅ | `launch_data_process_task` also supports `--cpu_offload` |
+| Accelerate DDP (multi-GPU) | ⚠️ | In enable_model_cpu_offload mode, model is not wrapped by DDP (no `accelerator.prepare(model)`), so **gradient allreduce is not performed**. Multi-GPU training compatibility is not guaranteed; each GPU trains independently without gradient synchronization |
+| Split Training | ✅ | `launch_data_process_task` also supports `--enable_model_cpu_offload` |
 | DeepSpeed | ❌ | ZeRO's parameter gathering conflicts with hooks |
 
 ### Notes
 
-- With `--cpu_offload` enabled, the model never calls `model.to(device)`; weights are managed entirely by hooks
+- With `--enable_model_cpu_offload` enabled, the model never calls `model.to(device)`; weights are managed entirely by hooks
 - Training speed decreases due to CPU↔GPU transfers (typically 2-10x slower); larger models see greater slowdown; suitable for memory-constrained scenarios
 - Recommended to use with `--use_gradient_checkpointing` to further reduce activation memory
-- `--optimize_on_cpu` only supports gradient accumulation steps of 1 (`--gradient_accumulation_steps 1`)
+- `--enable_optimizer_cpu_offload` only supports gradient accumulation steps of 1 (`--gradient_accumulation_steps 1`)

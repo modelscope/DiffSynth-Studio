@@ -134,7 +134,7 @@ if __name__ == "__main__":
         template_model_id_or_path=args.template_model_id_or_path,
         enable_lora_hot_loading=args.enable_lora_hot_loading,
         task=args.task,
-        device="cpu" if (args.initialize_model_on_cpu or args.cpu_offload) else accelerator.device,
+        device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
     )
     model_logger = ModelLogger(
         args.output_path,

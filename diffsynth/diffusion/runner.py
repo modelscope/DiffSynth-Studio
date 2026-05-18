@@ -24,18 +24,18 @@ def launch_training_task(
         num_workers = args.dataset_num_workers
         save_steps = args.save_steps
         num_epochs = args.num_epochs
-        cpu_offload = args.cpu_offload
-        optimize_on_cpu = args.optimize_on_cpu
-        param_size_threshold = args.param_size_threshold
+        enable_model_cpu_offload = args.enable_model_cpu_offload
+        enable_optimizer_cpu_offload = args.enable_optimizer_cpu_offload
+        cpu_offload_split_threshold = args.cpu_offload_split_threshold
 
     optimizer = torch.optim.AdamW(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
 
-    if cpu_offload:
+    if enable_model_cpu_offload:
         optimizer, dataloader, scheduler = accelerator.prepare(optimizer, dataloader, scheduler)
         model.pipe.device = accelerator.device
-        offload_manager = OffloadTrainingManager(model, accelerator.device, optimize_on_cpu, param_size_threshold)
+        offload_manager = OffloadTrainingManager(model, accelerator.device, enable_optimizer_cpu_offload, cpu_offload_split_threshold)
     else:
         model.to(device=accelerator.device)
         model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
@@ -49,7 +49,7 @@ def launch_training_task(
                 else:
                     loss = model(data)
                 accelerator.backward(loss)
-                if cpu_offload:
+                if enable_model_cpu_offload:
                     offload_manager.after_backward()
                 optimizer.step()
                 scheduler.step()
@@ -71,14 +71,14 @@ def launch_data_process_task(
 ):
     if args is not None:
         num_workers = args.dataset_num_workers
-        cpu_offload = args.cpu_offload
-        optimize_on_cpu = args.optimize_on_cpu
-        param_size_threshold = args.param_size_threshold
+        enable_model_cpu_offload = args.enable_model_cpu_offload
+        enable_optimizer_cpu_offload = args.enable_optimizer_cpu_offload
+        cpu_offload_split_threshold = args.cpu_offload_split_threshold
         
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=False, collate_fn=lambda x: x[0], num_workers=num_workers)
-    if cpu_offload:
+    if enable_model_cpu_offload:
         dataloader = accelerator.prepare(dataloader)
-        offload_manager = OffloadTrainingManager(model, accelerator.device, optimize_on_cpu, param_size_threshold)
+        offload_manager = OffloadTrainingManager(model, accelerator.device, enable_optimizer_cpu_offload, cpu_offload_split_threshold)
         model.pipe.device = accelerator.device
     else:
         model.to(device=accelerator.device)
@@ -92,7 +92,7 @@ def launch_data_process_task(
                 save_path = os.path.join(model_logger.output_path, str(accelerator.process_index), f"{data_id}.pth")
                 data = model(data)
                 torch.save(data, save_path)
-                if cpu_offload:
+                if enable_model_cpu_offload:
                     offload_manager.after_backward()
 
 def initialize_deepspeed_gradient_checkpointing(accelerator: Accelerator):
