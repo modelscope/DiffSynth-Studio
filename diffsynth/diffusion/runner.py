@@ -16,6 +16,9 @@ def launch_training_task(
     num_workers: int = 1,
     save_steps: int = None,
     num_epochs: int = 1,
+    enable_model_cpu_offload: bool = False,
+    enable_optimizer_cpu_offload: bool = False,
+    cpu_offload_split_threshold: int = None,
     args = None,
 ):
     if args is not None:
