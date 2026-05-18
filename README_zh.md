@@ -34,6 +34,8 @@ DiffSynth 目前包括两个开源项目：
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年5月18日** 新增 **CPU Offload Training** 功能，通过将模型权重逐层在 CPU 与 GPU 之间搬运，大幅降低训练时的 GPU 显存占用，让消费级显卡也能进行大模型 LoRA 训练，适配所有模型。只需在训练命令中添加 `--enable_model_cpu_offload` 即可启用（当前仅支持单卡训练）。详情请参考[文档](/docs/zh/Training/Offload_Training.md)。
+
 - **2026年5月14日** HiDream-O1-Image 开源，欢迎加入图像生成模型家族！支持文生图推理、图像编辑推理、低显存推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/HiDream-O1-Image.md)和[示例代码](/examples/hidream_o1_image/)。
 
 - **2026年4月28日** 🔥 我们发布了 Diffusion Templates，面向 Diffusion 模型的插件框架，大幅降低了可控生成模型的训练门槛，一起来探索新奇的技术吧！
@@ -44,8 +46,6 @@ DiffSynth 目前包括两个开源项目：
     * 在线体验：[魔搭社区创空间](https://modelscope.cn/studios/DiffSynth-Studio/Diffusion-Templates)
     * 模型集：[ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/KleinBase4B-Templates)、[ModelScope 国际站](https://modelscope.ai/collections/DiffSynth-Studio/KleinBase4B-Templates)、[HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/kleinbase4b-templates)
     * 数据集：[ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2)、[ModelScope 国际站](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2)、[HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/imagepulsev2)
-
-- **2026年5月15日** 新增 **CPU Offload Training** 功能，通过将模型权重逐层在 CPU 与 GPU 之间搬运，大幅降低训练时的 GPU 显存占用，让消费级显卡也能进行大模型 LoRA 训练，适配所有模型。只需在训练命令中添加 `--enable_model_cpu_offload` 即可启用（当前仅支持单卡训练）。详情请参考[文档](/docs/zh/Training/Offload_Training.md)。
 
 - **2026年4月27日** 我们支持了 ACE-Step-1.5！包括文生音乐推理、低显存推理和 LoRA 训练能力。详情请参考[文档](/docs/zh/Model_Details/ACE-Step.md)和[示例代码](/examples/ace_step/)。
 

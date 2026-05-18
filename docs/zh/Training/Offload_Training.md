@@ -147,3 +147,68 @@ accelerate launch examples/qwen_image/model_training/train.py \
 - 训练速度会因 CPU↔GPU 传输而下降（典型约 2-10 倍），模型越大，速度下降越多，适合显存受限场景
 - 建议配合 `--use_gradient_checkpointing` 使用以进一步降低激活值的显存占用
 - `--enable_optimizer_cpu_offload` 仅支持梯度累积步数为 1（`--gradient_accumulation_steps 1`）
+
+## 在其他代码库中集成 Offload Training 模块
+
+Offload Training 模块是相对独立的，因此开发者可以将其集成到其他代码库中，以下是一个代码样例，显存占用 4G。
+
+```python
+import torch
+from tqdm import tqdm
+
+class ToyModel(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layers = torch.nn.ModuleList(torch.nn.Linear(4096, 4096) for _ in range(10))
+    
+    def forward(self, x):
+        for layer in self.layers:
+            x = x + layer(torch.nn.functional.layer_norm(x, (4096,)))
+        return x
+
+model = ToyModel().to("cuda")
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+pbar = tqdm(range(100))
+for i in pbar:
+    x = torch.randn((512, 4096), device="cuda")
+    y = x + 1
+    y_pred = model(x)
+    loss = torch.nn.functional.mse_loss(y_pred, y)
+    loss.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+    pbar.set_postfix(loss=f"{loss.item():.4f}")
+```
+
+启用 Offload Training，显存占用降低到 1.4G：
+
+```python
+import torch
+from tqdm import tqdm
+from diffsynth.core import OffloadTrainingManager
+
+class ToyModel(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layers = torch.nn.ModuleList(torch.nn.Linear(4096, 4096) for _ in range(10))
+    
+    def forward(self, x):
+        for layer in self.layers:
+            x = x + layer(torch.nn.functional.layer_norm(x, (4096,)))
+        return x
+
+model = ToyModel().to("cpu")
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+offload_manager = OffloadTrainingManager(model, target_device="cuda", enable_optimizer_cpu_offload=True)
+pbar = tqdm(range(100))
+for i in pbar:
+    x = torch.randn((512, 4096), device="cuda")
+    y = x + 1
+    y_pred = model(x)
+    loss = torch.nn.functional.mse_loss(y_pred, y)
+    loss.backward()
+    offload_manager.after_backward()
+    optimizer.step()
+    optimizer.zero_grad()
+    pbar.set_postfix(loss=f"{loss.item():.4f}")
+```

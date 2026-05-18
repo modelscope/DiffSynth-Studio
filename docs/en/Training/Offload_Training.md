@@ -147,3 +147,68 @@ For full offload (optimizer also on CPU), add `--enable_optimizer_cpu_offload`:
 - Training speed decreases due to CPU↔GPU transfers (typically 2-10x slower); larger models see greater slowdown; suitable for memory-constrained scenarios
 - Recommended to use with `--use_gradient_checkpointing` to further reduce activation memory
 - `--enable_optimizer_cpu_offload` only supports gradient accumulation steps of 1 (`--gradient_accumulation_steps 1`)
+
+## Integrating Offload Training Module in Other Codebases
+
+The Offload Training module is relatively independent, so developers can integrate it into other codebases. Below is a code example with 4GB VRAM usage.
+
+```python
+import torch
+from tqdm import tqdm
+
+class ToyModel(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layers = torch.nn.ModuleList(torch.nn.Linear(4096, 4096) for _ in range(10))
+    
+    def forward(self, x):
+        for layer in self.layers:
+            x = x + layer(torch.nn.functional.layer_norm(x, (4096,)))
+        return x
+
+model = ToyModel().to("cuda")
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+pbar = tqdm(range(100))
+for i in pbar:
+    x = torch.randn((512, 4096), device="cuda")
+    y = x + 1
+    y_pred = model(x)
+    loss = torch.nn.functional.mse_loss(y_pred, y)
+    loss.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+    pbar.set_postfix(loss=f"{loss.item():.4f}")
+```
+
+With Offload Training enabled, VRAM usage drops to 1.4GB:
+
+```python
+import torch
+from tqdm import tqdm
+from diffsynth.core import OffloadTrainingManager
+
+class ToyModel(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layers = torch.nn.ModuleList(torch.nn.Linear(4096, 4096) for _ in range(10))
+    
+    def forward(self, x):
+        for layer in self.layers:
+            x = x + layer(torch.nn.functional.layer_norm(x, (4096,)))
+        return x
+
+model = ToyModel().to("cpu")
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+offload_manager = OffloadTrainingManager(model, target_device="cuda", enable_optimizer_cpu_offload=True)
+pbar = tqdm(range(100))
+for i in pbar:
+    x = torch.randn((512, 4096), device="cuda")
+    y = x + 1
+    y_pred = model(x)
+    loss = torch.nn.functional.mse_loss(y_pred, y)
+    loss.backward()
+    offload_manager.after_backward()
+    optimizer.step()
+    optimizer.zero_grad()
+    pbar.set_postfix(loss=f"{loss.item():.4f}")
+```

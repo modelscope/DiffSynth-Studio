@@ -174,3 +174,4 @@ class OffloadTrainingManager:
     def after_backward(self):
         for unit in self.units:
             unit.after_backward()
+        torch.cuda.synchronize()

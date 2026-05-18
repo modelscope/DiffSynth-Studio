@@ -48,6 +48,8 @@
    Training/Direct_Distill
    Training/Split_Training
    Training/Differential_LoRA
+   Training/DeepSpeed
+   Training/Offload_Training
 
 .. toctree::
    :maxdepth: 2
