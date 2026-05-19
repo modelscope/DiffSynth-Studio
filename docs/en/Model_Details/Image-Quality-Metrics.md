@@ -19,12 +19,19 @@ For more information about installation, please refer to [Install Dependencies](
 Run the following code to quickly load PickScore and score an image against a prompt. The default models will be downloaded from ModelScope to `./models`.
 
 ```python
-from PIL import Image
+import csv
 from diffsynth.metrics import PickScoreMetric, ModelConfig
+from modelscope import dataset_snapshot_download
+from PIL import Image
 
-prompt = ""
-path_to_image = ""
-image = Image.open(path_to_image).convert("RGB")
+dataset_snapshot_download(
+    "DiffSynth-Studio/diffsynth_example_dataset",
+    allow_file_pattern="flux/FLUX.1-dev/*",
+    local_dir="./data/diffsynth_example_dataset",
+)
+
+image = Image.open("data/diffsynth_example_dataset/flux/FLUX.1-dev/1.jpg").convert("RGB")
+prompt = "dog,white and brown dog, sitting on wall, under pink flowers"
 device = "cuda"
 
 metric = PickScoreMetric.from_pretrained(
@@ -32,21 +39,21 @@ metric = PickScoreMetric.from_pretrained(
     processor_config=ModelConfig(model_id="AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K"),
     device=device,
 )
-score = metric.calc_scores(prompt, image)[0]
-print("PickScore:", score)
+
+print("PickScore score:", metric.compute(prompt, image)[0])
 ```
 
 ## Metrics Overview
 
 | Metric | Default Model | Input | Output | Example Code |
 | --- | --- | --- | --- | --- |
-| PickScore | [AI-ModelScope/PickScore_v1](https://www.modelscope.cn/models/AI-ModelScope/PickScore_v1) | prompt + PIL Image | Preference Score | [code](https://www.google.com/search?q=../../../examples/image_quality_metric/pickscore.py) |
-| ImageReward | [ZhipuAI/ImageReward](https://www.modelscope.cn/models/ZhipuAI/ImageReward) | prompt + PIL Image | Preference Score | [code](https://www.google.com/search?q=../../../examples/image_quality_metric/image_reward.py) |
-| HPSv2 | [AI-ModelScope/HPSv2](https://www.modelscope.cn/models/AI-ModelScope/HPSv2) | prompt + PIL Image | Preference Score | [code](https://www.google.com/search?q=../../../examples/image_quality_metric/hpsv2.py) |
-| HPSv3 | [MizzenAI/HPSv3](https://www.modelscope.cn/models/MizzenAI/HPSv3) | prompt + PIL Image | Preference Score | [code](https://www.google.com/search?q=../../../examples/image_quality_metric/hpsv3.py) |
-| CLIP Score | [AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K](https://www.modelscope.cn/models/AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K) | prompt + PIL Image | Text-Image Similarity | [code](https://www.google.com/search?q=../../../examples/image_quality_metric/clipscore.py) |
-| Aesthetic | [AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE](https://www.modelscope.cn/models/AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE) | PIL Image | Aesthetic Score | [code](https://www.google.com/search?q=../../../examples/image_quality_metric/aesthetic.py) |
-| FID | [diffusionTry/weights-inception-2015-12-05-6726825d](https://www.modelscope.cn/models/diffusionTry/weights-inception-2015-12-05-6726825d) | reference image directory + generated image directory | Distribution Distance | [code](https://www.google.com/search?q=../../../examples/image_quality_metric/fid.py) |
+| PickScore | [AI-ModelScope/PickScore_v1](https://www.modelscope.cn/models/AI-ModelScope/PickScore_v1) | prompt + PIL Image | Preference Score | [code](../../../examples/image_quality_metric/pickscore.py) |
+| ImageReward | [ZhipuAI/ImageReward](https://www.modelscope.cn/models/ZhipuAI/ImageReward) | prompt + PIL Image | Preference Score | [code](../../../examples/image_quality_metric/image_reward.py) |
+| HPSv2 | [AI-ModelScope/HPSv2](https://www.modelscope.cn/models/AI-ModelScope/HPSv2) | prompt + PIL Image | Preference Score | [code](../../../examples/image_quality_metric/hpsv2.py) |
+| HPSv3 | [MizzenAI/HPSv3](https://www.modelscope.cn/models/MizzenAI/HPSv3) | prompt + PIL Image | Preference Score | [code](../../../examples/image_quality_metric/hpsv3.py) |
+| CLIP Score | [AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K](https://www.modelscope.cn/models/AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K) | prompt + PIL Image | Text-Image Similarity | [code](../../../examples/image_quality_metric/clipscore.py) |
+| Aesthetic | [AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE](https://www.modelscope.cn/models/AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE) | PIL Image | Aesthetic Score | [code](../../../examples/image_quality_metric/aesthetic.py) |
+| FID | [diffusionTry/weights-inception-2015-12-05-6726825d](https://www.modelscope.cn/models/diffusionTry/weights-inception-2015-12-05-6726825d) | reference image directory + generated image directory | Distribution Distance | [code](../../../examples/image_quality_metric/fid.py) |
 
 ## Single-Image Reward Models
 

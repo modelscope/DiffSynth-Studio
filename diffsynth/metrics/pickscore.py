@@ -9,28 +9,18 @@ class PickScoreMetric(Metric):
     def __init__(self, model: PickScoreModel):
         super().__init__()
         self.model = model
-
-    @staticmethod
-    def default_model_config():
-        return PickScoreMetric.local_or_modelscope_config("AI-ModelScope/PickScore_v1")
-
-    @staticmethod
-    def default_processor_config():
-        return PickScoreMetric.local_or_modelscope_config("AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K")
         
     @classmethod
     def from_pretrained(
         cls,
-        model_config: Union[ModelConfig, str] = None,
-        processor_config: Union[ModelConfig, str] = None,
+        model_config: Union[ModelConfig, str] = "AI-ModelScope/PickScore_v1",
+        processor_config: Union[ModelConfig, str] = "AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K",
         torch_dtype: torch.dtype = None,
         device: Union[str, torch.device] = get_device_type(),
         max_length: int = 77,
         model_kwargs: dict = None,
         processor_kwargs: dict = None,
     ):
-        model_config = cls.default_model_config() if model_config is None else model_config
-        processor_config = cls.default_processor_config() if processor_config is None else processor_config
         model_config = cls.resolve_model_config(model_config)
         processor_config = cls.resolve_model_config(processor_config)
         model = PickScoreModel.from_pretrained(
@@ -66,7 +56,7 @@ class PickScoreMetric(Metric):
     def calc_probs(self, prompt: Union[str, list[str]], images):
         return self.probabilities(prompt, images)
 
-    def calc_scores(self, prompt: Union[str, list[str]], images):
+    def compute(self, prompt: Union[str, list[str]], images):
         return self.score(prompt, images)
 
     def forward(self, prompt: Union[str, list[str]], images):

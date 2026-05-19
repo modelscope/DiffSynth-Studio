@@ -24,10 +24,6 @@ class ImageRewardMetric(Metric):
         self.model = model
 
     @staticmethod
-    def default_model_config():
-        return ImageRewardMetric.local_or_modelscope_config("ZhipuAI/ImageReward")
-
-    @staticmethod
     def default_tokenizer_config():
         local_path = Path(os.environ.get("DIFFSYNTH_MODEL_BASE_PATH", "./models")) / ImageRewardMetric.BERT_TOKENIZER_MODEL_ID
         if all((local_path / filename).exists() for filename in ImageRewardMetric.BERT_TOKENIZER_FILES):
@@ -62,7 +58,7 @@ class ImageRewardMetric(Metric):
     @classmethod
     def from_pretrained(
         cls,
-        model_config: Union[ModelConfig, str] = None,
+        model_config: Union[ModelConfig, str] = "ZhipuAI/ImageReward",
         med_config: Union[ModelConfig, str] = None,
         tokenizer_config: Union[ModelConfig, str] = None,
         torch_dtype: torch.dtype = None,
@@ -71,7 +67,6 @@ class ImageRewardMetric(Metric):
         model_kwargs: dict = None,
         tokenizer_kwargs: dict = None,
     ):
-        model_config = cls.default_model_config() if model_config is None else model_config
         tokenizer_config = cls.default_tokenizer_config() if tokenizer_config is None else tokenizer_config
         model_config = cls.resolve_model_config(model_config)
         med_config = cls.resolve_model_config(med_config) if med_config is not None else None
@@ -93,7 +88,7 @@ class ImageRewardMetric(Metric):
         scores = self.model(prompt, images)
         return self.tensor_to_list(scores)
 
-    def calc_scores(self, prompt: Union[str, list[str]], images):
+    def compute(self, prompt: Union[str, list[str]], images):
         return self.score(prompt, images)
 
     def forward(self, prompt: Union[str, list[str]], images):

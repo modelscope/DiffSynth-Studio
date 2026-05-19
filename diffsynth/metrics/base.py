@@ -19,17 +19,22 @@ class Metric(torch.nn.Module):
         return float(value)
 
     @staticmethod
-    def resolve_model_config(config: Union[ModelConfig, str, Path]):
-        if isinstance(config, (str, Path)):
+    def resolve_model_config(config: Union[ModelConfig, str, Path], origin_file_pattern: str = ""):
+        if config is None:
+            return None
+        if isinstance(config, Path):
             config = ModelConfig(path=str(config))
+        elif isinstance(config, str):
+            path = Path(config).expanduser()
+            if path.exists() or path.is_absolute() or config.startswith(("./", "../", "~")) or ("/" not in config and path.suffix):
+                config = ModelConfig(path=str(path))
+            else:
+                local_path = Path("./models") / config
+                if not origin_file_pattern and local_path.exists():
+                    config = ModelConfig(path=str(local_path))
+                else:
+                    config = ModelConfig(model_id=config, origin_file_pattern=origin_file_pattern)
         if config is None:
             return None
         config.download_if_necessary()
         return config
-
-    @staticmethod
-    def local_or_modelscope_config(model_id: str, origin_file_pattern: str = ""):
-        local_path = Path("./models") / model_id
-        if local_path.exists():
-            return ModelConfig(path=str(local_path))
-        return ModelConfig(model_id=model_id, origin_file_pattern=origin_file_pattern)

@@ -1,6 +1,13 @@
 from diffsynth.metrics import FIDMetric
+from modelscope import dataset_snapshot_download
 
-generated_dir = ""
+dataset_snapshot_download(
+    "DiffSynth-Studio/diffsynth_example_dataset",
+    allow_file_pattern="flux/FLUX.1-dev/*",
+    local_dir="./data/diffsynth_example_dataset",
+)
+
+generated_dir = "data/diffsynth_example_dataset/flux/FLUX.1-dev"
 device = "cuda"
 
 reference_dir = FIDMetric.default_reference_dir(

@@ -10,14 +10,10 @@ class AestheticMetric(Metric):
         super().__init__()
         self.model = model
 
-    @staticmethod
-    def default_model_config():
-        return AestheticMetric.local_or_modelscope_config("AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE")
-
     @classmethod
     def from_pretrained(
         cls,
-        model_config: Union[ModelConfig, str] = None,
+        model_config: Union[ModelConfig, str] = "AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE",
         clip_config: Union[ModelConfig, str] = None,
         clip_processor_config: Union[ModelConfig, str] = None,
         torch_dtype: torch.dtype = None,
@@ -25,7 +21,6 @@ class AestheticMetric(Metric):
         clip_kwargs: dict = None,
         processor_kwargs: dict = None,
     ):
-        model_config = cls.default_model_config() if model_config is None else model_config
         model_config = cls.resolve_model_config(model_config)
         clip_config = cls.resolve_model_config(clip_config) if clip_config is not None else None
         clip_processor_config = cls.resolve_model_config(clip_processor_config) if clip_processor_config is not None else clip_config
@@ -45,7 +40,7 @@ class AestheticMetric(Metric):
         scores = self.model(images)
         return self.tensor_to_list(scores)
 
-    def calc_scores(self, images):
+    def compute(self, images):
         return self.score(images)
 
     def forward(self, images):

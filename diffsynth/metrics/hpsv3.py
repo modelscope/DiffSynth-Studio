@@ -11,19 +11,11 @@ class HPSv3Metric(Metric):
         super().__init__()
         self.model = model
 
-    @staticmethod
-    def default_model_config():
-        return HPSv3Metric.local_or_modelscope_config("MizzenAI/HPSv3")
-
-    @staticmethod
-    def default_base_model_config():
-        return HPSv3Metric.local_or_modelscope_config("Qwen/Qwen2-VL-7B-Instruct")
-
     @classmethod
     def from_pretrained(
         cls,
-        model_config: Union[ModelConfig, str] = None,
-        base_model_config: Union[ModelConfig, str] = None,
+        model_config: Union[ModelConfig, str] = "MizzenAI/HPSv3",
+        base_model_config: Union[ModelConfig, str] = "Qwen/Qwen2-VL-7B-Instruct",
         torch_dtype: torch.dtype = torch.bfloat16,
         device: Union[str, torch.device] = get_device_type(),
         output_dim: int = 2,
@@ -34,8 +26,6 @@ class HPSv3Metric(Metric):
         model_kwargs: dict = None,
         processor_kwargs: dict = None,
     ):
-        model_config = cls.default_model_config() if model_config is None else model_config
-        base_model_config = cls.default_base_model_config() if base_model_config is None else base_model_config
         model_config = cls.resolve_model_config(model_config)
         base_model_config = cls.resolve_model_config(base_model_config)
         model = HPSv3Model.from_pretrained(
@@ -58,7 +48,7 @@ class HPSv3Metric(Metric):
         scores = self.model(prompt, images)
         return self.tensor_to_list(scores)
 
-    def calc_scores(self, prompt: Union[str, list[str]], images):
+    def compute(self, prompt: Union[str, list[str]], images):
         return self.score(prompt, images)
 
     def forward(self, prompt: Union[str, list[str]], images):

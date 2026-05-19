@@ -20,17 +20,12 @@ class FIDMetric(Metric):
     DEFAULT_REFERENCE_DATASET_ID = "modelscope/coco_2014_caption"
     DEFAULT_REFERENCE_METADATA_URL = "https://modelscope.oss-cn-beijing.aliyuncs.com/open_data/coco_2014_caption/val2014.csv.zip"
     DEFAULT_REFERENCE_SPLIT = "validation"
+    DEFAULT_WEIGHTS_ID = "diffusionTry/weights-inception-2015-12-05-6726825d"
+    DEFAULT_WEIGHTS_FILE = "weights-inception-2015-12-05-6726825d.pth"
 
     def __init__(self, model: FIDModel):
         super().__init__()
         self.model = model
-
-    @staticmethod
-    def default_weights_config():
-        return ModelConfig(
-            model_id="diffusionTry/weights-inception-2015-12-05-6726825d",
-            origin_file_pattern="weights-inception-2015-12-05-6726825d.pth",
-        )
 
     @staticmethod
     def default_reference_root():
@@ -105,14 +100,6 @@ class FIDMetric(Metric):
         retries: int = 3,
         verbose: bool = True,
     ):
-        """
-        Download the default COCO 2014 caption validation reference images.
-
-        The ModelScope dataset stores a small CSV archive whose image column
-        points to ModelScope OSS image URLs. This helper downloads that metadata
-        and materializes the referenced real images as a normal image directory.
-        """
-
         root = Path(local_dir) if local_dir is not None else cls.default_reference_root()
         images_dir = root / "images"
         metadata_dir = root / "metadata"
@@ -191,16 +178,17 @@ class FIDMetric(Metric):
     @classmethod
     def from_pretrained(
         cls,
-        weights_config: Union[ModelConfig, str] = None,
+        weights_config: Union[ModelConfig, str] = DEFAULT_WEIGHTS_ID,
         pretrained: bool = True,
         device: Union[str, torch.device] = get_device_type(),
         batch_size: int = 50,
         num_workers: int = 0,
         use_fid_inception: bool = True,
     ):
-        if weights_config is None and use_fid_inception:
-            weights_config = cls.default_weights_config()
-        weights_config = cls.resolve_model_config(weights_config) if weights_config is not None else None
+        weights_config = cls.resolve_model_config(
+            weights_config,
+            origin_file_pattern=cls.DEFAULT_WEIGHTS_FILE if weights_config == cls.DEFAULT_WEIGHTS_ID else "",
+        ) if weights_config is not None and use_fid_inception else None
         model = FIDModel.from_pretrained(
             weights_path=None if weights_config is None else weights_config.path,
             pretrained=pretrained,
