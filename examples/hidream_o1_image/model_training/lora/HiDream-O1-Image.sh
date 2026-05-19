@@ -13,7 +13,7 @@ accelerate launch examples/hidream_o1_image/model_training/train.py \
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/HiDream-O1-Image_lora" \
   --lora_base_model "dit" \
-  --lora_target_modules "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj" \
+  --lora_target_modules "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj,attn.qkv,attn.proj,mlp.linear_fc1,mlp.linear_fc2" \
   --use_gradient_checkpointing \
   --noise_scale 8.0
 
@@ -34,6 +34,6 @@ accelerate launch examples/hidream_o1_image/model_training/train.py \
 #   --remove_prefix_in_ckpt "pipe.dit." \
 #   --output_path "./models/train/HiDream-O1-Image_lora" \
 #   --lora_base_model "dit" \
-#   --lora_target_modules "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj" \
+#   --lora_target_modules "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj,attn.qkv,attn.proj,mlp.linear_fc1,mlp.linear_fc2" \
 #   --use_gradient_checkpointing \
 #   --noise_scale 8.0
