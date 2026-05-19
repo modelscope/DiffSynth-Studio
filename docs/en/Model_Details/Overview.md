@@ -300,12 +300,19 @@ Documentation: [./Image-Quality-Metrics.md](../Model_Details/Image-Quality-Metri
 <summary>Quick Start</summary>
 
 ```python
-from PIL import Image
+import csv
 from diffsynth.metrics import PickScoreMetric, ModelConfig
+from modelscope import dataset_snapshot_download
+from PIL import Image
 
-prompt = ""
-path_to_image = ""
-image = Image.open(path_to_image).convert("RGB")
+dataset_snapshot_download(
+    "DiffSynth-Studio/diffsynth_example_dataset",
+    allow_file_pattern="flux/FLUX.1-dev/*",
+    local_dir="./data/diffsynth_example_dataset",
+)
+
+image = Image.open("data/diffsynth_example_dataset/flux/FLUX.1-dev/1.jpg").convert("RGB")
+prompt = "dog,white and brown dog, sitting on wall, under pink flowers"
 device = "cuda"
 
 metric = PickScoreMetric.from_pretrained(
@@ -313,8 +320,8 @@ metric = PickScoreMetric.from_pretrained(
     processor_config=ModelConfig(model_id="AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K"),
     device=device,
 )
-score = metric.calc_scores(prompt, image)[0]
-print("PickScore:", score)
+
+print("PickScore score:", metric.compute(prompt, image)[0])
 ```
 
 </details>
