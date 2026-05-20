@@ -1,4 +1,3 @@
-import csv
 from diffsynth.metrics import ImageRewardMetric, ModelConfig
 from modelscope import dataset_snapshot_download
 from PIL import Image
@@ -14,8 +13,9 @@ prompt = "dog,white and brown dog, sitting on wall, under pink flowers"
 device = "cuda"
 
 metric = ImageRewardMetric.from_pretrained(
-    model_config=ModelConfig(model_id="ZhipuAI/ImageReward"),
-    device=device,
-)
+    model_config=ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="ImageReward/model.safetensors"),
+    device=device
+    )
 
-print("ImageReward score:", metric.compute(prompt, image)[0])
+score = metric.compute(prompt, image)[0]
+print(f"ImageReward score: {score:.3f}")

@@ -19,7 +19,6 @@ pip install -e .
 运行以下代码可以快速加载 PickScore，并对一张图像和一段提示词进行评分。默认模型会从 ModelScope 下载到 `./models`。
 
 ```python
-import csv
 from diffsynth.metrics import PickScoreMetric, ModelConfig
 from modelscope import dataset_snapshot_download
 from PIL import Image
@@ -35,85 +34,79 @@ prompt = "dog,white and brown dog, sitting on wall, under pink flowers"
 device = "cuda"
 
 metric = PickScoreMetric.from_pretrained(
-    model_config=ModelConfig(model_id="AI-ModelScope/PickScore_v1"),
-    processor_config=ModelConfig(model_id="AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K"),
-    device=device,
-)
+    model_config=ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="PickScore/model.safetensors"),
+    device=device
+    )
+
+score = metric.compute(prompt, image)[0]
+print(f"PickScore score:: {score:.3f}")
 ```
 
 ## 指标总览
 
-|指标|默认模型|输入|输出|示例代码|
-|-|-|-|-|-|
-|PickScore|[AI-ModelScope/PickScore_v1](https://www.modelscope.cn/models/AI-ModelScope/PickScore_v1)|prompt + PIL 图像|偏好分数|[code](../../../examples/image_quality_metric/pickscore.py)|
-|ImageReward|[ZhipuAI/ImageReward](https://www.modelscope.cn/models/ZhipuAI/ImageReward)|prompt + PIL 图像|偏好分数|[code](../../../examples/image_quality_metric/image_reward.py)|
-|HPSv2|[AI-ModelScope/HPSv2](https://www.modelscope.cn/models/AI-ModelScope/HPSv2)|prompt + PIL 图像|偏好分数|[code](../../../examples/image_quality_metric/hpsv2.py)|
-|HPSv3|[MizzenAI/HPSv3](https://www.modelscope.cn/models/MizzenAI/HPSv3)|prompt + PIL 图像|偏好分数|[code](../../../examples/image_quality_metric/hpsv3.py)|
-|CLIP Score|[AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K](https://www.modelscope.cn/models/AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K)|prompt + PIL 图像|图文相似度|[code](../../../examples/image_quality_metric/clipscore.py)|
-|Aesthetic|[AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE](https://www.modelscope.cn/models/AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE)|PIL 图像|美学分数|[code](../../../examples/image_quality_metric/aesthetic.py)|
-|FID|[diffusionTry/weights-inception-2015-12-05-6726825d](https://www.modelscope.cn/models/diffusionTry/weights-inception-2015-12-05-6726825d)|reference 图像目录 + generated 图像目录|分布距离|[code](../../../examples/image_quality_metric/fid.py)|
+|指标|输入|输出|示例代码|
+|-|-|-|-|
+|PickScore|prompt + PIL 图像|偏好分数|[code](../../../examples/image_quality_metric/pickscore.py)|
+|ImageReward|prompt + PIL 图像|偏好分数|[code](../../../examples/image_quality_metric/image_reward.py)|
+|HPSv2|prompt + PIL 图像|偏好分数|[code](../../../examples/image_quality_metric/hpsv2.py)|
+|HPSv3|prompt + PIL 图像|偏好分数|[code](../../../examples/image_quality_metric/hpsv3.py)|
+|CLIP Score|prompt + PIL 图像|图文匹配度|[code](../../../examples/image_quality_metric/clipscore.py)|
+|Aesthetic|PIL 图像|美学分数|[code](../../../examples/image_quality_metric/aesthetic.py)|
+|FID|reference 图像目录 + generated 图像目录|分布距离|[code](../../../examples/image_quality_metric/fid.py)|
 
-## 单图奖励模型
+### 文本-图像对齐与偏好评估
 
-**PickScore**、**ImageReward**、**HPSv2**、**HPSv3** 和 **CLIP Score** 的输入形式相同：一段文本提示词和一张已经打开的 `PIL.Image.Image`。示例：
+适用指标： **PickScore**，**ImageReward**，**HPSv2**，**HPSv3**，**CLIP Score**
 
+这类模型用于评估图像是否遵循提示词以及是否符合人类视觉偏好。它们必须同时接收 `prompt` 和 `image`。
+
+**基础打分**
 ```python
-from PIL import Image
-from diffsynth.metrics import CLIPMetric, ModelConfig
-
-prompt = ""
-path_to_image = ""
-image = Image.open(path_to_image).convert("RGB")
-device = "cuda"
-
-metric = CLIPMetric.from_pretrained(
-    model_config=ModelConfig(model_id="AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K"),
-    device=device,
-)
-scores = metric.calc_scores(prompt, image)[0]
+score = metric.compute(prompt, image)[0]
 ```
 
-如果要评估多张图像，可以传入 PIL 图像列表：
+**批量打分**
+如果需要评估多张图像，可以直接传入列表：
 
 ```python
-scores = metric.calc_scores(prompt, [image1, image2, image3])
+scores = metric.compute("a cute cat", [image1, image2, image3])
+
+scores = metric.compute(["a cat", "a dog"], [image_cat, image_dog])
 ```
 
 其中 prompt 为单个字符串时，会对每张图像使用同一个 prompt。prompt 为字符串列表时，prompt 数量需要和图像数量一致。
 
-## Aesthetic
+### 纯图像美学评估
 
-Aesthetic 只评估图像审美质量，不使用 prompt。
+适用指标： **Aesthetic**
+
+该模型仅评估图像本身的构图、色彩、清晰度等美学特征，不需要提示词介入。
+
 
 ```python
-from PIL import Image
 from diffsynth.metrics import AestheticMetric
 
-path_to_image = ""
-image = Image.open(path_to_image).convert("RGB")
 metric = AestheticMetric.from_pretrained(device="cuda")
-score = metric.calc_scores(image)[0]
+score = metric.compute(image)[0]
 ```
 
-## FID
+### 数据集分布评估
+适用指标： **FID** (Fréchet Inception Distance)
 
-FID 用于比较两组图像的特征分布。它不是单图打分，也不使用 prompt。典型用法是比较真实参考图像目录和生成结果目录：
+FID 不对单张图片打分，而是比较真实参考图像集与生成图像集的整体特征分布距离。分数越低，说明生成分布越接近真实分布。
 
 ```python
 from diffsynth.metrics import FIDMetric
 
-reference_dir = FIDMetric.default_reference_dir(
-    local_dir="data/examples/ImageQualityMetric/reference/coco_2014_caption_validation",
-    max_images=10000,
-)
-generated_dir = ""
+reference_dir = "path/to/real_reference_images"
+generated_dir = "path/to/model_generated_images"
 
 metric = FIDMetric.from_pretrained(device="cuda", batch_size=16)
-score = metric.compute(reference_dir, generated_dir)
-print("FID:", score)
+fid_score = metric.compute(reference_dir, generated_dir)
+print(f"FID: {fid_score:.3f}")
 ```
 
-FID 的 reference 不是固定唯一的官方答案。对于通用文生图质量评估，COCO validation 是一个方便的默认选择；对于人像、商品图、医学等垂直任务，应传入该领域真实数据构成的 `reference_dir`。
+FID 的基准不是固定唯一的。对于通用图像生成，常使用 COCO Validation；如果是特定领域（如医学图像、电商商品），应提供该领域真实数据构成的 `reference_dir`。
 
 
 ## 注意事项

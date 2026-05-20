@@ -1,4 +1,4 @@
-from typing import Union
+from transformers import AutoProcessor
 import torch
 from ..core import ModelConfig
 from ..core.device.npu_compatible_device import get_device_type
@@ -13,31 +13,27 @@ class PickScoreMetric(Metric):
     @classmethod
     def from_pretrained(
         cls,
-        model_config: Union[ModelConfig, str] = "AI-ModelScope/PickScore_v1",
-        processor_config: Union[ModelConfig, str] = "AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K",
+        model_config: ModelConfig = ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="PickScore/model.safetensors"),
+        processor_config: ModelConfig = ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="PickScore/"),
         torch_dtype: torch.dtype = None,
-        device: Union[str, torch.device] = get_device_type(),
+        device: torch.device = get_device_type(),
         max_length: int = 77,
-        model_kwargs: dict = None,
         processor_kwargs: dict = None,
+        vram_limit: float = None,
     ):
-        model_config = cls.resolve_model_config(model_config)
-        processor_config = cls.resolve_model_config(processor_config)
-        model = PickScoreModel.from_pretrained(
-            model_path=model_config.path,
-            processor_path=processor_config.path,
-            torch_dtype=torch_dtype,
-            device=device,
-            max_length=max_length,
-            model_kwargs=model_kwargs,
-            processor_kwargs=processor_kwargs,
-        )
+    
+        processor_kwargs = processor_kwargs or {}
+        model_pool = cls.download_and_load_models([model_config], torch_dtype=torch_dtype, device=device, vram_limit=vram_limit)
+        model = model_pool.fetch_model("image_metrics_clip_hf")
+        processor_config.download_if_necessary()
+        processor = AutoProcessor.from_pretrained(processor_config.path, **processor_kwargs)
+        model = PickScoreModel(model=model, processor=processor, max_length=max_length).eval()
         return cls(model)
 
     @torch.no_grad()
     def score(
         self,
-        prompt: Union[str, list[str]],
+        prompt: str | list[str],
         images,
     ):
         scores = self.model(prompt, images)
@@ -46,18 +42,18 @@ class PickScoreMetric(Metric):
     @torch.no_grad()
     def probabilities(
         self,
-        prompt: Union[str, list[str]],
+        prompt: str | list[str],
         images,
     ):
         scores = self.model(prompt, images)
         probabilities = torch.softmax(scores, dim=-1)
         return self.tensor_to_list(probabilities)
 
-    def calc_probs(self, prompt: Union[str, list[str]], images):
+    def calc_probs(self, prompt: str | list[str], images):
         return self.probabilities(prompt, images)
 
-    def compute(self, prompt: Union[str, list[str]], images):
+    def compute(self, prompt: str | list[str], images):
         return self.score(prompt, images)
 
-    def forward(self, prompt: Union[str, list[str]], images):
+    def forward(self, prompt: str | list[str], images):
         return self.score(prompt, images)

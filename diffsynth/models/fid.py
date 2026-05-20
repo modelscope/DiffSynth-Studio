@@ -1,50 +1,32 @@
-from pathlib import Path
+import os
 from typing import Iterable, Union
-import warnings
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
-from torchvision.models import Inception_V3_Weights, inception_v3
+from torchvision.models import inception_v3
 from torchvision.models.inception import InceptionA, InceptionC, InceptionE
 
-ImageInput = Union[str, Path, Image.Image]
+ImageInput = Union[str, os.PathLike, Image.Image]
 
 IMAGE_EXTENSIONS = {".bmp", ".jpg", ".jpeg", ".pgm", ".png", ".ppm", ".tif", ".tiff", ".webp"}
 
-def _resolve_device(device: Union[str, torch.device, None]):
-    if device is None:
-        device = "cuda" if _is_cuda_usable("cuda", warn=False) else "cpu"
-    device = torch.device(device)
-    if device.type == "cuda" and not _is_cuda_usable(device, warn=True):
-        return torch.device("cpu")
-    return device
 
-
-def _is_cuda_usable(device: Union[str, torch.device], warn: bool = True):
-    try:
-        if not torch.cuda.is_available():
-            if warn:
-                warnings.warn("CUDA was requested but torch.cuda.is_available() is False. FID will run on CPU instead.", RuntimeWarning)
-            return False
-        torch.empty(1, device=device)
-        return True
-    except Exception as error:
-        if warn:
-            warnings.warn(f"CUDA was requested but cannot be initialized ({error}). FID will run on CPU instead.", RuntimeWarning)
-        return False
-
-
-def _image_files(path: Union[str, Path]):
-    path = Path(path)
-    if path.is_file():
-        if path.suffix.lower() not in IMAGE_EXTENSIONS:
+def _image_files(path: Union[str, os.PathLike]):
+    path = os.fspath(path)
+    if os.path.isfile(path):
+        if os.path.splitext(path)[1].lower() not in IMAGE_EXTENSIONS:
             raise ValueError(f"Unsupported image extension for FID: {path}")
         return [path]
-    if not path.exists():
+    if not os.path.exists(path):
         raise FileNotFoundError(f"FID path does not exist: {path}")
-    files = [item for item in sorted(path.rglob("*")) if item.is_file() and item.suffix.lower() in IMAGE_EXTENSIONS]
+    files = []
+    for root, dirs, names in os.walk(path):
+        dirs.sort()
+        for name in sorted(names):
+            if os.path.splitext(name)[1].lower() in IMAGE_EXTENSIONS:
+                files.append(os.path.join(root, name))
     if not files:
         raise ValueError(f"No images found under {path}.")
     return files
@@ -60,48 +42,24 @@ class _ImageDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         image = self.images[index]
-        if isinstance(image, (str, Path)):
+        if isinstance(image, (str, os.PathLike)):
             image = Image.open(image)
         if not isinstance(image, Image.Image):
             raise TypeError(f"FID expects PIL images or image paths, but received {type(image)}.")
         return self.transform(image.convert("RGB"))
 
 
-class _InceptionFeatures(nn.Module):
-    def __init__(self, weights_path: str = None, pretrained: bool = True, use_fid_inception: bool = True):
+class FIDInceptionModel(nn.Module):
+    def __init__(self):
         super().__init__()
-        if use_fid_inception and weights_path is not None:
-            model = _fid_inception_v3(weights_path)
-            self.normalize_input = "fid"
-        elif use_fid_inception and weights_path is None:
-            warnings.warn(
-                "FID-specific Inception weights were not provided. Falling back to torchvision Inception weights; "
-                "scores are useful for relative comparisons but are not directly comparable to standard pytorch-fid values.",
-                RuntimeWarning,
-            )
-            weights = Inception_V3_Weights.DEFAULT if pretrained else None
-            model = inception_v3(weights=weights, aux_logits=True, init_weights=False)
-            model.fc = nn.Identity()
-            self.normalize_input = "imagenet" if pretrained else None
-        else:
-            weights = Inception_V3_Weights.DEFAULT if pretrained else None
-            model = inception_v3(weights=weights, aux_logits=True, init_weights=False)
-            model.fc = nn.Identity()
-            self.normalize_input = "imagenet" if pretrained else None
-        model.eval()
-        self.model = model
+        self.model = _fid_inception_v3()
 
     def forward(self, images):
-        if self.normalize_input == "fid":
-            images = 2 * images - 1
-        elif self.normalize_input == "imagenet":
-            mean = images.new_tensor((0.485, 0.456, 0.406)).view(1, 3, 1, 1)
-            std = images.new_tensor((0.229, 0.224, 0.225)).view(1, 3, 1, 1)
-            images = (images - mean) / std
+        images = 2 * images - 1
         return self.model(images)
 
 
-def _fid_inception_v3(weights_path: str):
+def _fid_inception_v3(weights_path: str = None):
     model = inception_v3(weights=None, aux_logits=False, num_classes=1008, init_weights=False)
     model.Mixed_5b = _FIDInceptionA(192, pool_features=32)
     model.Mixed_5c = _FIDInceptionA(256, pool_features=64)
@@ -112,7 +70,8 @@ def _fid_inception_v3(weights_path: str):
     model.Mixed_6e = _FIDInceptionC(768, channels_7x7=192)
     model.Mixed_7b = _FIDInceptionE1(1280)
     model.Mixed_7c = _FIDInceptionE2(2048)
-    model.load_state_dict(torch.load(weights_path, map_location="cpu"))
+    if weights_path is not None:
+        model.load_state_dict(torch.load(weights_path, map_location="cpu"))
     model.fc = nn.Identity()
     return model
 
@@ -202,31 +161,6 @@ class FIDModel(torch.nn.Module):
         )
         self.to(device)
 
-    @classmethod
-    def from_pretrained(
-        cls,
-        weights_path: str = None,
-        pretrained: bool = True,
-        device: Union[str, torch.device] = "cpu",
-        batch_size: int = 50,
-        num_workers: int = 0,
-        use_fid_inception: bool = True,
-    ):
-        if isinstance(weights_path, (list, tuple)):
-            if len(weights_path) == 1:
-                weights_path = weights_path[0]
-            elif len(weights_path) == 0:
-                raise FileNotFoundError(
-                    "FID weights were not found. Please check the ModelScope model id and file pattern."
-                )
-            else:
-                raise ValueError(
-                    f"FID expects a single weights file, but got {len(weights_path)} paths: {weights_path}"
-                )
-        device = _resolve_device(device)
-        model = _InceptionFeatures(weights_path=weights_path, pretrained=pretrained, use_fid_inception=use_fid_inception).to(device).eval()
-        return cls(model=model, device=device, batch_size=batch_size, num_workers=num_workers)
-
     @property
     def device(self):
         try:
@@ -235,7 +169,7 @@ class FIDModel(torch.nn.Module):
             return torch.device("cpu")
 
     def _as_images(self, images):
-        if isinstance(images, (str, Path)):
+        if isinstance(images, (str, os.PathLike)):
             return _image_files(images)
         if isinstance(images, Image.Image):
             return [images]

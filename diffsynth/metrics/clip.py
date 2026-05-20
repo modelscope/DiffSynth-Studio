@@ -1,5 +1,5 @@
-from typing import Union
 import torch
+from transformers import AutoProcessor
 from ..core import ModelConfig
 from ..core.device.npu_compatible_device import get_device_type
 from ..models.clip import CLIPModel
@@ -13,31 +13,27 @@ class CLIPMetric(Metric):
     @classmethod
     def from_pretrained(
         cls,
-        model_config: Union[ModelConfig, str] = "AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K",
-        processor_config: Union[ModelConfig, str] = None,
+        model_config: ModelConfig = ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="CLIP-ViT-H-14-laion2B-s32B-b79K/model.safetensors"),
+        processor_config: ModelConfig = ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="CLIP-ViT-H-14-laion2B-s32B-b79K/"),
         torch_dtype: torch.dtype = None,
-        device: Union[str, torch.device] = get_device_type(),
+        device: torch.device = get_device_type(),
         max_length: int = 77,
-        model_kwargs: dict = None,
         processor_kwargs: dict = None,
+        vram_limit: float = None,
     ):
-        model_config = cls.resolve_model_config(model_config)
-        processor_config = cls.resolve_model_config(processor_config) if processor_config is not None else model_config
-        model = CLIPModel.from_pretrained(
-            model_path=model_config.path,
-            processor_path=processor_config.path,
-            torch_dtype=torch_dtype,
-            device=device,
-            max_length=max_length,
-            model_kwargs=model_kwargs,
-            processor_kwargs=processor_kwargs,
-        )
+
+        processor_kwargs = processor_kwargs or {}
+        model_pool = cls.download_and_load_models([model_config], torch_dtype=torch_dtype, device=device, vram_limit=vram_limit)
+        model = model_pool.fetch_model("image_metrics_clip_hf")
+        processor_config.download_if_necessary()
+        processor = AutoProcessor.from_pretrained(processor_config.path, **processor_kwargs)
+        model = CLIPModel(model=model, processor=processor, max_length=max_length).eval()
         return cls(model)
 
     @torch.no_grad()
     def score(
         self,
-        prompt: Union[str, list[str]],
+        prompt: str | list[str],
         images,
     ):
         scores = self.model(prompt, images)
@@ -46,14 +42,14 @@ class CLIPMetric(Metric):
     @torch.no_grad()
     def similarity_matrix(
         self,
-        prompt: Union[str, list[str]],
+        prompt: str | list[str],
         images,
     ):
         scores = self.model.similarity_matrix(prompt, images)
         return self.tensor_to_list(scores)
 
-    def compute(self, prompt: Union[str, list[str]], images):
+    def compute(self, prompt: str | list[str], images):
         return self.score(prompt, images)
 
-    def forward(self, prompt: Union[str, list[str]], images):
+    def forward(self, prompt: str | list[str], images):
         return self.score(prompt, images)

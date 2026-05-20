@@ -1,40 +1,28 @@
-from pathlib import Path
-from typing import Union
 import torch
 from ..core import ModelConfig
+from ..models.model_loader import ModelPool
 
 class Metric(torch.nn.Module):
+    
     @staticmethod
     def tensor_to_list(value):
         if torch.is_tensor(value):
             value = value.detach().cpu().tolist()
-        if not isinstance(value, list):
-            return [value]
-        return value
+        return value if isinstance(value, list) else [value]
 
     @staticmethod
-    def tensor_to_float(value):
-        if torch.is_tensor(value):
-            return float(value.detach().cpu())
-        return float(value)
-
-    @staticmethod
-    def resolve_model_config(config: Union[ModelConfig, str, Path], origin_file_pattern: str = ""):
-        if config is None:
-            return None
-        if isinstance(config, Path):
-            config = ModelConfig(path=str(config))
-        elif isinstance(config, str):
-            path = Path(config).expanduser()
-            if path.exists() or path.is_absolute() or config.startswith(("./", "../", "~")) or ("/" not in config and path.suffix):
-                config = ModelConfig(path=str(path))
-            else:
-                local_path = Path("./models") / config
-                if not origin_file_pattern and local_path.exists():
-                    config = ModelConfig(path=str(local_path))
-                else:
-                    config = ModelConfig(model_id=config, origin_file_pattern=origin_file_pattern)
-        if config is None:
-            return None
-        config.download_if_necessary()
-        return config
+    def download_and_load_models(model_configs: list[ModelConfig], torch_dtype: torch.dtype = torch.float32, device="cuda", vram_limit: float = None):
+        model_pool = ModelPool()
+        for model_config in model_configs:
+            model_config.download_if_necessary()
+            vram_config = model_config.vram_config()
+            vram_config["computation_dtype"] = vram_config["computation_dtype"] or torch_dtype or torch.float32
+            vram_config["computation_device"] = vram_config["computation_device"] or device
+            model_pool.auto_load_model(
+                model_config.path,
+                vram_config=vram_config,
+                vram_limit=vram_limit,
+                clear_parameters=model_config.clear_parameters,
+                state_dict=model_config.state_dict,
+            )
+        return model_pool

@@ -1,11 +1,8 @@
 import math
-from pathlib import Path
 from typing import Optional, Union
-
 import torch
-import torch.nn as nn
 from PIL import Image
-from transformers import AutoProcessor
+from transformers import Qwen2VLForConditionalGeneration
 
 ImageInput = Union[Image.Image, list[Image.Image], tuple[Image.Image, ...]]
 
@@ -59,8 +56,10 @@ def _floor_by_factor(number, factor):
 def _smart_resize(height, width, factor=28, min_pixels=256 * 28 * 28, max_pixels=256 * 28 * 28):
     if max(height, width) / min(height, width) > 200:
         raise ValueError(f"Image aspect ratio must be smaller than 200, got {max(height, width) / min(height, width)}.")
+        
     h_bar = max(factor, _round_by_factor(height, factor))
     w_bar = max(factor, _round_by_factor(width, factor))
+    
     if h_bar * w_bar > max_pixels:
         beta = math.sqrt((height * width) / max_pixels)
         h_bar = _floor_by_factor(height / beta, factor)
@@ -69,20 +68,9 @@ def _smart_resize(height, width, factor=28, min_pixels=256 * 28 * 28, max_pixels
         beta = math.sqrt(min_pixels / (height * width))
         h_bar = _ceil_by_factor(height * beta, factor)
         w_bar = _ceil_by_factor(width * beta, factor)
+        
     return h_bar, w_bar
 
-def _find_checkpoint(path):
-    path = Path(path)
-    if path.is_file():
-        return path
-    for name in ("HPSv3.safetensors", "*.safetensors", "*.bin", "*.pt", "*.pth"):
-        candidate = path / name
-        if candidate.exists():
-            return candidate
-        matches = sorted(path.rglob(name))
-        if matches:
-            return matches[0]
-    return None
 
 class HPSv3RewardModelMixin:
     def init_reward_head(
@@ -96,23 +84,26 @@ class HPSv3RewardModelMixin:
         self.output_dim = output_dim
         self.reward_token = "special" if special_token_ids is not None else reward_token
         self.special_token_ids = special_token_ids
+        
         hidden_size = getattr(self.config, "hidden_size", None)
         if hidden_size is None and hasattr(self.config, "text_config"):
             hidden_size = self.config.text_config.hidden_size
+            
         if rm_head_type == "ranknet":
-            rm_head_kwargs = {} if rm_head_kwargs is None else rm_head_kwargs
+            rm_head_kwargs = rm_head_kwargs or {}
             hidden = rm_head_kwargs.get("hidden_size", 1024)
             dropout = rm_head_kwargs.get("dropout", 0.05)
-            self.rm_head = nn.Sequential(
-                nn.Linear(hidden_size, hidden),
-                nn.ReLU(),
-                nn.Dropout(dropout),
-                nn.Linear(hidden, 16),
-                nn.ReLU(),
-                nn.Linear(16, output_dim),
+            self.rm_head = torch.nn.Sequential(
+                torch.nn.Linear(hidden_size, hidden),
+                torch.nn.ReLU(),
+                torch.nn.Dropout(dropout),
+                torch.nn.Linear(hidden, 16),
+                torch.nn.ReLU(),
+                torch.nn.Linear(16, output_dim),
             )
         else:
-            self.rm_head = nn.Linear(hidden_size, output_dim, bias=False)
+            self.rm_head = torch.nn.Linear(hidden_size, output_dim, bias=False)
+            
         self.rm_head.to(torch.float32)
 
     def forward(
@@ -132,12 +123,15 @@ class HPSv3RewardModelMixin:
         image_grid_thw: Optional[torch.LongTensor] = None,
         video_grid_thw: Optional[torch.LongTensor] = None,
         rope_deltas: Optional[torch.LongTensor] = None,
-        mm_token_type_ids: Optional[torch.IntTensor] = None,
         **kwargs,
     ):
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
+        kwargs.pop("logits_to_keep", None)
+        mm_token_type_ids = kwargs.pop("mm_token_type_ids", None)
+        
         outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -153,18 +147,25 @@ class HPSv3RewardModelMixin:
             mm_token_type_ids=mm_token_type_ids,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
             **kwargs,
         )
+        
         hidden_states = outputs.last_hidden_state if hasattr(outputs, "last_hidden_state") else outputs[0]
         logits = self.rm_head(hidden_states.to(next(self.rm_head.parameters()).dtype))
 
         batch_size = input_ids.shape[0] if input_ids is not None else inputs_embeds.shape[0]
-        if self.config.pad_token_id is None and batch_size != 1:
+        pad_token_id = getattr(self.config, "pad_token_id", None)
+        if pad_token_id is None and hasattr(self.config, "text_config"):
+            pad_token_id = getattr(self.config.text_config, "pad_token_id", None)
+            
+        if pad_token_id is None and batch_size != 1:
             raise ValueError("Cannot handle batch sizes > 1 if no padding token is defined.")
-        if self.config.pad_token_id is None:
+            
+        if pad_token_id is None:
             sequence_lengths = -1
         elif input_ids is not None:
-            sequence_lengths = torch.eq(input_ids, self.config.pad_token_id).int().argmax(-1) - 1
+            sequence_lengths = torch.eq(input_ids, pad_token_id).int().argmax(-1) - 1
             sequence_lengths = sequence_lengths % input_ids.shape[-1]
             sequence_lengths = sequence_lengths.to(logits.device)
         else:
@@ -176,37 +177,91 @@ class HPSv3RewardModelMixin:
             valid_lengths = torch.clamp(sequence_lengths, min=0, max=logits.size(1) - 1)
             pooled_logits = torch.stack([logits[i, : valid_lengths[i]].mean(dim=0) for i in range(batch_size)])
         elif self.reward_token == "special":
+            if self.special_token_ids is None:
+                raise ValueError("HPSv3 reward_token='special' requires special_token_ids.")
             special_token_mask = torch.zeros_like(input_ids, dtype=torch.bool)
             for special_token_id in self.special_token_ids:
                 special_token_mask = special_token_mask | (input_ids == special_token_id)
             pooled_logits = logits[special_token_mask, ...].view(batch_size, -1)
         else:
             raise ValueError(f"Invalid HPSv3 reward token mode: {self.reward_token}")
+            
         return {"logits": pooled_logits}
 
-def _create_reward_model_class():
-    from transformers import Qwen2VLForConditionalGeneration
 
-    class HPSv3Qwen2VLRewardModel(HPSv3RewardModelMixin, Qwen2VLForConditionalGeneration):
-        def __init__(
-            self,
-            config,
-            output_dim=2,
-            reward_token="special",
-            special_token_ids=None,
-            rm_head_type="ranknet",
-            rm_head_kwargs=None,
-        ):
-            super().__init__(config)
-            self.init_reward_head(
-                output_dim=output_dim,
-                reward_token=reward_token,
-                special_token_ids=special_token_ids,
-                rm_head_type=rm_head_type,
-                rm_head_kwargs=rm_head_kwargs,
-            )
+class HPSv3Qwen2VLRewardModel(HPSv3RewardModelMixin, Qwen2VLForConditionalGeneration):
+    def __init__(
+        self,
+        config=None,
+        vocab_size=None,
+        output_dim=2,
+        reward_token="special",
+        special_token_ids=None,
+        rm_head_type="ranknet",
+        rm_head_kwargs=None,
+    ):
+        if config is None:
+            config = self.default_config(vocab_size or 151658)
+        elif vocab_size is not None and hasattr(config, "text_config"):
+            config.text_config.vocab_size = vocab_size
+            
+        super().__init__(config)
+        self.init_reward_head(
+            output_dim=output_dim,
+            reward_token=reward_token,
+            special_token_ids=special_token_ids,
+            rm_head_type=rm_head_type,
+            rm_head_kwargs=rm_head_kwargs,
+        )
 
-    return HPSv3Qwen2VLRewardModel
+    @staticmethod
+    def default_config(vocab_size=151658):
+        from transformers import Qwen2VLConfig
+
+        return Qwen2VLConfig(
+            text_config={
+                "vocab_size": vocab_size,
+                "hidden_size": 3584,
+                "intermediate_size": 18944,
+                "num_hidden_layers": 28,
+                "num_attention_heads": 28,
+                "num_key_value_heads": 4,
+                "hidden_act": "silu",
+                "max_position_embeddings": 32768,
+                "initializer_range": 0.02,
+                "rms_norm_eps": 1e-6,
+                "use_cache": True,
+                "use_sliding_window": False,
+                "sliding_window": 32768,
+                "max_window_layers": 28,
+                "attention_dropout": 0.0,
+                "rope_parameters": {
+                    "rope_type": "default",
+                    "type": "mrope",
+                    "mrope_section": [16, 24, 24],
+                    "rope_theta": 1000000.0,
+                },
+                "bos_token_id": 151643,
+                "eos_token_id": 151645,
+            },
+            vision_config={
+                "depth": 32,
+                "embed_dim": 1280,
+                "hidden_size": 3584,
+                "mlp_ratio": 4,
+                "num_heads": 16,
+                "in_channels": 3,
+                "patch_size": 14,
+                "spatial_merge_size": 2,
+                "temporal_patch_size": 2,
+            },
+            image_token_id=151655,
+            video_token_id=151656,
+            vision_start_token_id=151652,
+            vision_end_token_id=151653,
+            tie_word_embeddings=False,
+        )
+
 
 class HPSv3Model(torch.nn.Module):
     def __init__(
@@ -226,122 +281,19 @@ class HPSv3Model(torch.nn.Module):
         self.min_pixels = min_pixels
         self.score_index = score_index
 
-    @classmethod
-    def from_pretrained(
-        cls,
-        model_path: str,
-        base_model_path: str = None,
-        torch_dtype: torch.dtype = torch.bfloat16,
-        device: Union[str, torch.device] = "cpu",
-        output_dim: int = 2,
-        score_index: int = 0,
-        use_special_tokens: bool = True,
-        reward_token: str = "special",
-        rm_head_type: str = "ranknet",
-        rm_head_kwargs: dict = None,
-        max_pixels: int = 256 * 28 * 28,
-        min_pixels: int = 256 * 28 * 28,
-        model_kwargs: dict = None,
-        processor_kwargs: dict = None,
-    ):
-        model_kwargs = {} if model_kwargs is None else model_kwargs
-        processor_kwargs = {} if processor_kwargs is None else processor_kwargs
-        model_path = Path(model_path)
-        base_model_path = base_model_path or str(model_path)
-        checkpoint_path = _find_checkpoint(model_path)
-        if checkpoint_path is None:
-            raise FileNotFoundError(f"Cannot find an HPSv3 checkpoint under {model_path}.")
-
-        processor = AutoProcessor.from_pretrained(base_model_path, padding_side="right", **processor_kwargs)
-        special_token_ids = None
-        if use_special_tokens:
-            special_tokens = ["<|Reward|>"]
-            processor.tokenizer.add_special_tokens({"additional_special_tokens": special_tokens})
-            special_token_ids = processor.tokenizer.convert_tokens_to_ids(special_tokens)
-
-        reward_model_class = _create_reward_model_class()
-        model = reward_model_class.from_pretrained(
-            base_model_path,
-            output_dim=output_dim,
-            reward_token=reward_token,
-            special_token_ids=special_token_ids,
-            torch_dtype=torch_dtype,
-            attn_implementation=model_kwargs.pop("attn_implementation", "sdpa"),
-            **model_kwargs,
-        )
-        if use_special_tokens:
-            model.resize_token_embeddings(len(processor.tokenizer))
-        state_dict = cls._load_checkpoint(checkpoint_path)
-        state_dict = cls._prepare_state_dict(state_dict, model.state_dict())
-        model.load_state_dict(state_dict, strict=True)
-        model.config.tokenizer_padding_side = processor.tokenizer.padding_side
-        model.config.pad_token_id = processor.tokenizer.pad_token_id
-        model.rm_head.to(torch.float32)
-        model = model.to(device).eval()
-        return cls(
-            model=model,
-            processor=processor,
-            use_special_tokens=use_special_tokens,
-            max_pixels=max_pixels,
-            min_pixels=min_pixels,
-            score_index=score_index,
-        )
-
-    @staticmethod
-    def _load_checkpoint(checkpoint_path):
-        checkpoint_path = Path(checkpoint_path)
-        if checkpoint_path.suffix == ".safetensors":
-            import safetensors.torch
-
-            state_dict = safetensors.torch.load_file(str(checkpoint_path), device="cpu")
-        else:
-            state_dict = torch.load(checkpoint_path, map_location="cpu")
-        if isinstance(state_dict, dict):
-            for key in ("state_dict", "model"):
-                if key in state_dict and isinstance(state_dict[key], dict):
-                    state_dict = state_dict[key]
-                    break
-        return {key[len("module.") :] if key.startswith("module.") else key: value for key, value in state_dict.items()}
-
-    @staticmethod
-    def _prepare_state_dict(state_dict, target_state_dict):
-        target_keys = set(target_state_dict.keys())
-        converted = {}
-        for key, value in state_dict.items():
-            new_key = key
-            if key.startswith("visual.") and f"model.{key}" in target_keys:
-                new_key = f"model.{key}"
-            elif key.startswith("model.visual.") and key[len("model.") :] in target_keys:
-                new_key = key[len("model.") :]
-            elif key.startswith("model.") and not key.startswith("model.language_model."):
-                suffix = key[len("model.") :]
-                if f"model.language_model.{suffix}" in target_keys:
-                    new_key = f"model.language_model.{suffix}"
-            elif key.startswith("model.language_model."):
-                suffix = key[len("model.language_model.") :]
-                if f"model.{suffix}" in target_keys:
-                    new_key = f"model.{suffix}"
-            elif key.startswith("lm_head.") and f"model.{key}" in target_keys:
-                new_key = f"model.{key}"
-            elif key.startswith("model.lm_head.") and key[len("model.") :] in target_keys:
-                new_key = key[len("model.") :]
-            converted[new_key] = value
-        return converted
-
     @property
     def device(self):
-        try:
-            return next(self.model.parameters()).device
-        except StopIteration:
-            return torch.device("cpu")
+        return next(self.parameters(), torch.tensor([])).device
 
     def _normalize_inputs(self, prompts, images):
         images = _as_list(images)
         prompts = _as_list(prompts)
+        
         if len(prompts) == 1 and len(images) > 1:
             prompts = prompts * len(images)
         if len(images) == 1 and len(prompts) > 1:
             images = images * len(prompts)
+            
         if len(prompts) != len(images):
             raise ValueError(f"Expected the same number of prompts and images, got {len(prompts)} and {len(images)}.")
         return prompts, images
@@ -351,6 +303,7 @@ class HPSv3Model(torch.nn.Module):
         for image in images:
             image = image.convert("RGB")
             height, width = image.height, image.width
+            
             resized_height, resized_width = _smart_resize(
                 height,
                 width,
@@ -358,11 +311,13 @@ class HPSv3Model(torch.nn.Module):
                 max_pixels=self.max_pixels,
             )
             prepared.append(image.resize((resized_width, resized_height), Image.BICUBIC))
+            
         return prepared
 
     def _messages(self, prompts, images):
         suffix = HPSV3_PROMPT_WITH_SPECIAL_TOKEN if self.use_special_tokens else HPSV3_PROMPT_WITHOUT_SPECIAL_TOKEN
         messages = []
+        
         for prompt, image in zip(prompts, images):
             messages.append(
                 [
@@ -380,15 +335,19 @@ class HPSv3Model(torch.nn.Module):
     def _prepare_batch(self, prompts, images):
         images = self._prepare_images(images)
         messages = self._messages(prompts, images)
+        
         text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         batch = self.processor(text=text, images=images, padding=True, return_tensors="pt")
+        
         return batch.to(self.device)
 
-    @torch.inference_mode()
+    @torch.no_grad()
     def forward(self, prompts: Union[str, list[str]], images):
         prompts, images = self._normalize_inputs(prompts, images)
         batch = self._prepare_batch(prompts, images)
+        
         rewards = self.model(return_dict=True, **batch)["logits"]
         if rewards.ndim == 2:
             return rewards[:, self.score_index]
+            
         return rewards

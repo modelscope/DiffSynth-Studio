@@ -12,8 +12,9 @@ image = Image.open("data/diffsynth_example_dataset/flux/FLUX.1-dev/1.jpg").conve
 device = "cuda"
 
 metric = AestheticMetric.from_pretrained(
-    model_config=ModelConfig(model_id="AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE"),
-    device=device,
-)
+    model_config=ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="Aesthetic/model.safetensors"),
+    device=device
+    )
 
-print("Aesthetic score:", metric.compute(image)[0])
+score = metric.compute(image)[0]
+print(f"Aesthetic score: {score:.3f}")

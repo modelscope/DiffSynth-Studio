@@ -1,4 +1,3 @@
-import csv
 from diffsynth.metrics import HPSv3Metric, ModelConfig
 from modelscope import dataset_snapshot_download
 from PIL import Image
@@ -14,9 +13,9 @@ prompt = "dog,white and brown dog, sitting on wall, under pink flowers"
 device = "cuda"
 
 metric = HPSv3Metric.from_pretrained(
-    model_config=ModelConfig(model_id="MizzenAI/HPSv3"),
-    base_model_config=ModelConfig(model_id="Qwen/Qwen2-VL-7B-Instruct"),
-    device=device,
-)
+    model_config=ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="HPSv3/model.safetensors"),
+    device=device
+    )
 
-print("HPSv3 score:", metric.compute(prompt, image)[0])
+score = metric.compute(prompt, image)[0]
+print(f"HPSv3 score: {score:.3f}")

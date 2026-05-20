@@ -1,4 +1,3 @@
-import csv
 from diffsynth.metrics import CLIPMetric, ModelConfig
 from modelscope import dataset_snapshot_download
 from PIL import Image
@@ -14,8 +13,9 @@ prompt = "dog,white and brown dog, sitting on wall, under pink flowers"
 device = "cuda"
 
 metric = CLIPMetric.from_pretrained(
-    model_config=ModelConfig(model_id="AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K"),
-    device=device,
-)
+    model_config=ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="CLIP-ViT-H-14-laion2B-s32B-b79K/model.safetensors"),
+    device=device
+    )
 
-print("CLIP score:", metric.compute(prompt, image)[0])
+score = metric.compute(prompt, image)[0]
+print(f"CLIP score: {score:.3f}")

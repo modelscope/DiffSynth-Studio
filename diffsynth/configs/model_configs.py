@@ -1026,7 +1026,54 @@ ace_step_series = [
     },
 ]
 
+image_metrics_series = [
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="PickScore/model.safetensors")
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="CLIP-ViT-H-14-laion2B-s32B-b79K/model.safetensors")
+        "model_hash": "b5e2c0bfcbf4085ccdb2feb8f0ba408a",
+        "model_name": "image_metrics_clip_hf",
+        "model_class": "diffsynth.models.clip.ImageMetricsCLIPModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsCLIPStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="HPSv2/model.safetensors")
+        "model_hash": "f79e72cec8ae5a540cff0304bfb21b00",
+        "model_name": "image_metrics_hpsv2",
+        "model_class": "diffsynth.models.clip.ImageMetricsCLIPModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsOpenCLIPStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="HPSv3/model.safetensors")
+        "model_hash": "5655d9cde15b759cfeefe7432d7a912c",
+        "model_name": "image_metrics_hpsv3",
+        "model_class": "diffsynth.models.hpsv3.HPSv3Qwen2VLRewardModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsHPSv3StateDictConverter",
+        "extra_kwargs": {"vocab_size": 151658, "output_dim": 2, "reward_token": "special", "rm_head_type": "ranknet"},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="ImageReward/model.safetensors")
+        "model_hash": "b3cc8e10b76ca98cde653daa5cf63139",
+        "model_name": "image_metrics_image_reward",
+        "model_class": "diffsynth.models.image_reward.ImageRewardModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsImageRewardStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="Aesthetic/model.safetensors")
+        "model_hash": "306981222ec94302794e07cf676c84cc",
+        "model_name": "image_metrics_aesthetic",
+        "model_class": "diffsynth.models.aesthetic.AestheticModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsAestheticStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="FID/model.safetensors")
+        "model_hash": "d4e9549be726259b444d1f62db4ce413",
+        "model_name": "image_metrics_fid_inception",
+        "model_class": "diffsynth.models.fid.FIDInceptionModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsFIDStateDictConverter",
+    },
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
-    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series
+    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series + image_metrics_series
 )

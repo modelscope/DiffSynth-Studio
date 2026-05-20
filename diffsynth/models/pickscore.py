@@ -25,41 +25,13 @@ class PickScoreModel(torch.nn.Module):
         self.processor = processor
         self.max_length = max_length
 
-    @classmethod
-    def from_pretrained(
-        cls,
-        model_path: str,
-        processor_path: str,
-        torch_dtype: torch.dtype = None,
-        device: Union[str, torch.device] = "cuda",
-        max_length: int = 77,
-        model_kwargs: dict = None,
-        processor_kwargs: dict = None,
-    ):
-        from modelscope import AutoModel, AutoProcessor
-
-        model_kwargs = {} if model_kwargs is None else model_kwargs
-        processor_kwargs = {} if processor_kwargs is None else processor_kwargs
-        processor = AutoProcessor.from_pretrained(processor_path, **processor_kwargs)
-        model = AutoModel.from_pretrained(model_path, **model_kwargs).eval()
-        if torch_dtype is not None:
-            model = model.to(dtype=torch_dtype)
-        model = model.to(device)
-        return cls(model=model, processor=processor, max_length=max_length)
-
     @property
     def device(self):
-        try:
-            return next(self.model.parameters()).device
-        except StopIteration:
-            return torch.device("cpu")
+        return next(self.parameters(), torch.tensor([])).device
 
     @property
     def dtype(self):
-        try:
-            return next(self.model.parameters()).dtype
-        except StopIteration:
-            return torch.float32
+        return next(self.parameters(), torch.tensor(0.0)).dtype
 
     def _processor_call(self, **kwargs):
         inputs = self.processor(
@@ -69,6 +41,7 @@ class PickScoreModel(torch.nn.Module):
             return_tensors="pt",
             **kwargs,
         ).to(self.device)
+        
         if self.dtype != torch.float32:
             inputs = {
                 name: (
@@ -78,6 +51,7 @@ class PickScoreModel(torch.nn.Module):
                 )
                 for name, value in inputs.items()
             }
+            
         return inputs
 
     @torch.no_grad()
@@ -85,23 +59,26 @@ class PickScoreModel(torch.nn.Module):
         if isinstance(images, Image.Image):
             images = [images]
         images = [image.convert("RGB") for image in images]
+        
         image_inputs = self._processor_call(images=images)
         image_features = _feature_tensor(self.model.get_image_features(**image_inputs), "image_features")
-        image_features = image_features / image_features.norm(dim=-1, keepdim=True).clamp_min(1e-12)
-        return image_features
+        
+        return torch.nn.functional.normalize(image_features, dim=-1)
 
     @torch.no_grad()
     def get_text_features(self, text: Union[str, list[str]]):
         text_inputs = self._processor_call(text=text)
         text_features = _feature_tensor(self.model.get_text_features(**text_inputs), "text_features")
-        text_features = text_features / text_features.norm(dim=-1, keepdim=True).clamp_min(1e-12)
-        return text_features
+        
+        return torch.nn.functional.normalize(text_features, dim=-1)
 
     @torch.no_grad()
     def forward(self, text: Union[str, list[str]], images: ImageInput):
         image_features = self.get_image_features(images)
         text_features = self.get_text_features(text)
+        
         scores = self.model.logit_scale.exp() * (text_features @ image_features.T)
         if isinstance(text, str):
             scores = scores[0]
+            
         return scores
