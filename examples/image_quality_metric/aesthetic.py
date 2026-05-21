@@ -7,14 +7,10 @@ dataset_snapshot_download(
     allow_file_pattern="flux/FLUX.1-dev/*",
     local_dir="./data/diffsynth_example_dataset",
 )
-
 image = Image.open("data/diffsynth_example_dataset/flux/FLUX.1-dev/1.jpg").convert("RGB")
-device = "cuda"
-
 metric = AestheticMetric.from_pretrained(
     model_config=ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="Aesthetic/model.safetensors"),
-    device=device
-    )
-
+    device="cuda"
+)
 score = metric.compute(image)[0]
 print(f"Aesthetic score: {score:.3f}")

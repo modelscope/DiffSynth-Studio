@@ -36,6 +36,7 @@ Welcome to DiffSynth-Studio's Documentation
    Model_Details/ACE-Step
    Model_Details/Stable-Diffusion
    Model_Details/Stable-Diffusion-XL
+   Model_Details/Image-Quality-Metrics
 
 .. toctree::
    :maxdepth: 2

@@ -323,12 +323,12 @@ print("PickScore score:", metric.compute(prompt, image)[0])
 
 </details>
 
-|指标|默认模型|示例代码|
+|指标|GitHub 仓库|示例代码|
 |-|-|-|
-|PickScore|[AI-ModelScope/PickScore_v1](https://www.modelscope.cn/models/AI-ModelScope/PickScore_v1)|[code](../../../examples/image_quality_metric/pickscore.py)|
-|ImageReward|[ZhipuAI/ImageReward](https://www.modelscope.cn/models/ZhipuAI/ImageReward)|[code](../../../examples/image_quality_metric/image_reward.py)|
-|HPSv2|[AI-ModelScope/HPSv2](https://www.modelscope.cn/models/AI-ModelScope/HPSv2)|[code](../../../examples/image_quality_metric/hpsv2.py)|
-|HPSv3|[MizzenAI/HPSv3](https://www.modelscope.cn/models/MizzenAI/HPSv3)|[code](../../../examples/image_quality_metric/hpsv3.py)|
-|CLIP Score|[AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K](https://www.modelscope.cn/models/AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K)|[code](../../../examples/image_quality_metric/clipscore.py)|
-|Aesthetic|[AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE](https://www.modelscope.cn/models/AI-ModelScope/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE)|[code](../../../examples/image_quality_metric/aesthetic.py)|
-|FID|[diffusionTry/weights-inception-2015-12-05-6726825d](https://www.modelscope.cn/models/diffusionTry/weights-inception-2015-12-05-6726825d)|[code](../../../examples/image_quality_metric/fid.py)|
+|PickScore|[GitHub](https://github.com/yuvalkirstain/pickscore)|[code](../../../examples/image_quality_metric/pickscore.py)|
+|ImageReward|[GitHub](https://github.com/zai-org/ImageReward)|[code](../../../examples/image_quality_metric/image_reward.py)|
+|HPSv2|[GitHub](https://github.com/tgxs002/HPSv2)|[code](../../../examples/image_quality_metric/hpsv2.py)|
+|HPSv3|[GitHub](https://github.com/MizzenAI/HPSv3)|[code](../../../examples/image_quality_metric/hpsv3.py)|
+|CLIP Score|[GitHub](https://github.com/openai/CLIP)|[code](../../../examples/image_quality_metric/clipscore.py)|
+|Aesthetic|[GitHub](https://github.com/christophschuhmann/improved-aesthetic-predictor)|[code](../../../examples/image_quality_metric/aesthetic.py)|
+|FID|[GitHub](https://github.com/mseitzer/pytorch-fid)|[code](../../../examples/image_quality_metric/fid.py)|
