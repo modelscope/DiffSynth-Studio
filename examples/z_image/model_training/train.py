@@ -137,7 +137,7 @@ if __name__ == "__main__":
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
         task=args.task,
-        device=accelerator.device,
+        device="cpu" if args.enable_model_cpu_offload else accelerator.device,
         enable_npu_patch=args.enable_npu_patch
     )
     model_logger = ModelLogger(

@@ -316,7 +316,7 @@ class AceStepUnit_ReferenceAudioEmbedder(PipelineUnit):
         else:
             reference_audios = [[torch.zeros(2, 30 * pipe.vae.sampling_rate).to(dtype=pipe.torch_dtype, device=pipe.device)]]
             reference_latents, refer_audio_order_mask = self.infer_refer_latent(pipe, reference_audios)
-        return {"reference_latents": reference_latents, "refer_audio_order_mask": refer_audio_order_mask}
+        return {"reference_latents": reference_latents.to(pipe.device), "refer_audio_order_mask": refer_audio_order_mask.to(pipe.device)}
 
     def process_reference_audio(self, audio) -> Optional[torch.Tensor]:
         if audio.ndim == 3 and audio.shape[0] == 1:
@@ -415,10 +415,10 @@ class AceStepUnit_ContextLatentBuilder(PipelineUnit):
     def _get_silence_latent_slice(self, pipe, length: int) -> torch.Tensor:
         available = pipe.silence_latent.shape[1]
         if length <= available:
-            return pipe.silence_latent[0, :length, :]
+            return pipe.silence_latent[0, :length, :].to(pipe.device)
         repeats = (length + available - 1) // available
         tiled = pipe.silence_latent[0].repeat(repeats, 1)
-        return tiled[:length, :]
+        return tiled[:length, :].to(pipe.device)
 
     def tokenize(self, tokenizer, x, silence_latent, pool_window_size):
         if x.shape[1] % pool_window_size != 0:

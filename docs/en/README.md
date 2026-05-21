@@ -63,6 +63,8 @@ This section introduces the design philosophy of the training framework in `Diff
 * [End-to-End Distillation Accelerated Training](./Training/Direct_Distill.md)
 * [Two-Stage Split Training](./Training/Split_Training.md)
 * [Differential LoRA Training](./Training/Differential_LoRA.md)
+* [Enabling DeepSpeed](./Training/DeepSpeed.md)
+* [Offload Training](./Training/Offload_Training.md)
 
 ## Section 4: Model Integration
 

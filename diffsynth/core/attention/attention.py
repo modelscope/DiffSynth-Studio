@@ -63,10 +63,10 @@ def rearrange_out(out: torch.Tensor, out_pattern="b n s d", required_out_pattern
     return out
 
 
-def torch_sdpa(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, attn_mask=None, scale=None):
+def torch_sdpa(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, attn_mask=None, scale=None, is_causal=False):
     required_in_pattern, required_out_pattern= "b n s d", "b n s d"
     q, k, v = rearrange_qkv(q, k, v, q_pattern, k_pattern, v_pattern, required_in_pattern, dims)
-    out = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask, scale=scale)
+    out = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask, scale=scale, is_causal=is_causal)
     out = rearrange_out(out, out_pattern, required_out_pattern, dims)
     return out
 
@@ -81,10 +81,10 @@ def flash_attention_3(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_patte
     return out
 
 
-def flash_attention_2(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, scale=None):
+def flash_attention_2(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, scale=None, is_causal=False):
     required_in_pattern, required_out_pattern= "b s n d", "b s n d"
     q, k, v = rearrange_qkv(q, k, v, q_pattern, k_pattern, v_pattern, required_in_pattern, dims)
-    out = flash_attn.flash_attn_func(q, k, v, softmax_scale=scale)
+    out = flash_attn.flash_attn_func(q, k, v, softmax_scale=scale, causal=is_causal)
     out = rearrange_out(out, out_pattern, required_out_pattern, dims)
     return out
 
@@ -105,17 +105,17 @@ def xformers_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_patt
     return out
 
 
-def attention_forward(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, attn_mask=None, scale=None, compatibility_mode=False):
+def attention_forward(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, attn_mask=None, scale=None, is_causal=False, compatibility_mode=False):
     if compatibility_mode or (attn_mask is not None):
-        return torch_sdpa(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale)
+        return torch_sdpa(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale, is_causal=is_causal)
     else:
         if ATTENTION_IMPLEMENTATION == "flash_attention_3":
             return flash_attention_3(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, scale=scale)
         elif ATTENTION_IMPLEMENTATION == "flash_attention_2":
-            return flash_attention_2(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, scale=scale)
+            return flash_attention_2(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, scale=scale, is_causal=is_causal)
         elif ATTENTION_IMPLEMENTATION == "sage_attention":
             return sage_attention(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, scale=scale)
         elif ATTENTION_IMPLEMENTATION == "xformers":
             return xformers_attention(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, scale=scale)
         else:
-            return torch_sdpa(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, scale=scale)
+            return torch_sdpa(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, scale=scale, is_causal=is_causal)

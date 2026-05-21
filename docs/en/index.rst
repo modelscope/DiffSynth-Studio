@@ -34,6 +34,7 @@ Welcome to DiffSynth-Studio's Documentation
    Model_Details/ERNIE-Image
    Model_Details/JoyAI-Image
    Model_Details/ACE-Step
+   Model_Details/HiDream-O1-Image
    Model_Details/Stable-Diffusion
    Model_Details/Stable-Diffusion-XL
    Model_Details/Image-Quality-Metrics
@@ -48,6 +49,8 @@ Welcome to DiffSynth-Studio's Documentation
    Training/Direct_Distill
    Training/Split_Training
    Training/Differential_LoRA
+   Training/DeepSpeed
+   Training/Offload_Training
 
 .. toctree::
    :maxdepth: 2
