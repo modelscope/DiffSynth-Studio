@@ -34,6 +34,8 @@ DiffSynth 目前包括两个开源项目：
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年5月21日** 新增图像质量评估模型的支持，包括 FID、CLIP、Aesthetic、PickScore、ImageReward、HPSv2、HPSv3，详情请参考[文档](/docs/zh/Model_Details/Image-Quality-Metrics.md)和[示例代码](/examples/image_quality_metric/)
+
 - **2026年5月18日** 新增 **CPU Offload Training** 功能，通过将模型权重逐层在 CPU 与 GPU 之间搬运，大幅降低训练时的 GPU 显存占用，让消费级显卡也能进行大模型 LoRA 训练，适配所有模型。只需在训练命令中添加 `--enable_model_cpu_offload` 即可启用（当前仅支持单卡训练）。详情请参考[文档](/docs/zh/Training/Offload_Training.md)。
 
 - **2026年5月14日** HiDream-O1-Image 开源，欢迎加入图像生成模型家族！支持文生图推理、图像编辑推理、低显存推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/HiDream-O1-Image.md)和[示例代码](/examples/hidream_o1_image/)。
@@ -53,6 +55,9 @@ DiffSynth 目前包括两个开源项目：
 
 - **2026年4月14日** JoyAI-Image 开源，欢迎加入图像编辑模型家族！支持指令引导的图像编辑推理、低显存推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/JoyAI-Image.md)和[示例代码](/examples/joyai_image/)。
 
+<details>
+<summary>更多</summary>
+
 - **2026年3月19日** 新增对 [openmoss/MOVA-720p](https://modelscope.cn/models/openmoss/MOVA-720p) 和 [openmoss/MOVA-360p](https://modelscope.cn/models/openmoss/MOVA-360p) 模型的支持，包括完整的训练和推理功能。[文档](/docs/zh/Model_Details/Wan.md)和[示例代码](/examples/mova/)现已可用。
 
 - **2026年3月12日** 我们新增了 [LTX-2.3](https://modelscope.cn/models/Lightricks/LTX-2.3) 音视频生成模型的支持，模型支持的功能包括文生音视频、图生音视频、IC-LoRA控制、音频生视频、音视频局部Inpainting，框架支持完整的推理和训练功能。详细信息请参考 [文档](/docs/zh/Model_Details/LTX-2.md) 和 [示例代码](/examples/ltx2/)。
@@ -60,9 +65,6 @@ DiffSynth 目前包括两个开源项目：
 - **2026年3月3日** 我们发布了 [DiffSynth-Studio/Qwen-Image-Layered-Control-V2](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Layered-Control-V2) 模型，这是 Qwen-Image-Layered-Control 的更新版本。除了原本就支持的文本引导功能，新增了画笔控制的图层拆分能力。
 
 - **2026年3月2日** 新增对[Anima](https://modelscope.cn/models/circlestone-labs/Anima)的支持，详见[文档](docs/zh/Model_Details/Anima.md)。这是一个有趣的动漫风格图像生成模型，我们期待其后续的模型更新。
-
-<details>
-<summary>更多</summary>
 
 - **2026年2月26日** 新增对[LTX-2](https://www.modelscope.cn/models/Lightricks/LTX-2)音视频生成模型全量微调与LoRA训练支持，详见[文档](docs/zh/Model_Details/LTX-2.md)。
 
@@ -1306,6 +1308,56 @@ ACE-Step 的示例代码位于：[/examples/ace_step/](/examples/ace_step/)
 |[ACE-Step/acestep-v15-xl-base](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-base)|[code](/examples/ace_step/model_inference/acestep-v15-xl-base.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-base.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-base.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-base.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-base.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-base.py)|
 |[ACE-Step/acestep-v15-xl-sft](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-sft)|[code](/examples/ace_step/model_inference/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-sft.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-sft.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-sft.py)|
 |[ACE-Step/acestep-v15-xl-turbo](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-turbo)|[code](/examples/ace_step/model_inference/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-turbo.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-turbo.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-turbo.py)|
+
+</details>
+
+### 图像指标模型
+
+[/docs/zh/Model_Details/Image-Quality-Metrics.md](/docs/zh/Model_Details/Image-Quality-Metrics.md)
+
+<details>
+
+<summary>快速开始</summary>
+
+运行以下代码可以快速加载 PickScore，并对一张图像和一段提示词进行评分。默认模型会从 ModelScope 下载到 `./models`。
+
+```python
+from diffsynth.metrics import PickScoreMetric, ModelConfig
+from modelscope import dataset_snapshot_download
+from PIL import Image
+
+dataset_snapshot_download(
+    "DiffSynth-Studio/diffsynth_example_dataset",
+    allow_file_pattern="flux/FLUX.1-dev/*",
+    local_dir="./data/diffsynth_example_dataset",
+)
+image = Image.open("data/diffsynth_example_dataset/flux/FLUX.1-dev/1.jpg").convert("RGB")
+prompt = "a dog"
+metric = PickScoreMetric.from_pretrained(
+    model_config=ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="PickScore/model.safetensors"),
+    device="cuda"
+)
+score = metric.compute(prompt, image)[0]
+print(f"PickScore score:: {score:.3f}")
+```
+
+</details>
+
+<details>
+
+<summary>示例代码</summary>
+
+图像指标模型的示例代码位于：[/examples/image_quality_metric/](/examples/image_quality_metric/)
+
+|指标|GitHub 仓库|示例代码|
+|-|-|-|
+|PickScore|[GitHub](https://github.com/yuvalkirstain/pickscore)|[code](../../../examples/image_quality_metric/pickscore.py)|
+|ImageReward|[GitHub](https://github.com/zai-org/ImageReward)|[code](../../../examples/image_quality_metric/image_reward.py)|
+|HPSv2|[GitHub](https://github.com/tgxs002/HPSv2)|[code](../../../examples/image_quality_metric/hpsv2.py)|
+|HPSv3|[GitHub](https://github.com/MizzenAI/HPSv3)|[code](../../../examples/image_quality_metric/hpsv3.py)|
+|CLIP Score|[GitHub](https://github.com/openai/CLIP)|[code](../../../examples/image_quality_metric/clipscore.py)|
+|Aesthetic|[GitHub](https://github.com/christophschuhmann/improved-aesthetic-predictor)|[code](../../../examples/image_quality_metric/aesthetic.py)|
+|FID|[GitHub](https://github.com/mseitzer/pytorch-fid)|[code](../../../examples/image_quality_metric/fid.py)|
 
 </details>
 
