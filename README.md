@@ -34,6 +34,8 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
+- **May 21, 2026**: Added support for image quality metrics models, including FID, CLIP, Aesthetic, PickScore, ImageReward, HPSv2, and HPSv3. For details, refer to the [documentation](/docs/en/Model_Details/Image-Quality-Metrics.md) and [example code](/examples/image_quality_metric/).
+
 - **May 18, 2026** Added **CPU Offload Training** support. By moving model weights layer-by-layer between CPU and GPU, it significantly reduces GPU VRAM usage during training, enabling LoRA training of large models even on consumer-grade GPUs, compatible with all models. Simply add `--enable_model_cpu_offload` to your training command to enable (currently supports single-GPU training only). For details, see the [documentation](/docs/en/Training/Offload_Training.md).
 
 - **May 14, 2026** HiDream-O1-Image open-sourced, welcome a new member to the image model family! Support includes text-to-image generation, image editing, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/HiDream-O1-Image.md) and [example code](/examples/hidream_o1_image/).
@@ -53,6 +55,9 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 - **April 14, 2026** JoyAI-Image open-sourced, welcome a new member to the image editing model family! Support includes instruction-guided image editing, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/JoyAI-Image.md) and [example code](/examples/joyai_image/).
 
+<details>
+<summary>More</summary>
+
 - **March 19, 2026**: Added support for [openmoss/MOVA-720p](https://modelscope.cn/models/openmoss/MOVA-720p) and [openmoss/MOVA-360p](https://modelscope.cn/models/openmoss/MOVA-360p) models, including training and inference capabilities. [Documentation](/docs/en/Model_Details/Wan.md) and [example code](/examples/mova/) are now available.
 
 - **March 12, 2026**: We have added support for the [LTX-2.3](https://modelscope.cn/models/Lightricks/LTX-2.3) audio-video generation model. The features includes text-to-audio/video, image-to-audio/video, IC-LoRA control, audio-to-video, and audio-video inpainting. We have supported the complete inference and training functionalities. For details, please refer to the [documentation](/docs/en/Model_Details/LTX-2.md) and [code](/examples/ltx2/).
@@ -60,9 +65,6 @@ We believe that a well-developed open-source code framework can lower the thresh
 - **March 3, 2026**: We released the [DiffSynth-Studio/Qwen-Image-Layered-Control-V2](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Layered-Control-V2) model, which is an updated version of Qwen-Image-Layered-Control. In addition to the originally supported text-guided functionality, it adds brush-controlled layer separation capabilities.
 
 - **March 2, 2026** Added support for [Anima](https://modelscope.cn/models/circlestone-labs/Anima). For details, please refer to the [documentation](docs/en/Model_Details/Anima.md). This is an interesting anime-style image generation model. We look forward to its future updates.
-
-<details>
-<summary>More</summary>
 
 - **February 26, 2026** Added full and lora training support for the LTX-2 audio-video generation model. See the [documentation](/docs/en/Model_Details/LTX-2.md) for details.
 
@@ -1306,6 +1308,56 @@ Example code for ACE-Step is available at: [/examples/ace_step/](/examples/ace_s
 |[ACE-Step/acestep-v15-xl-base](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-base)|[code](/examples/ace_step/model_inference/acestep-v15-xl-base.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-base.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-base.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-base.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-base.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-base.py)|
 |[ACE-Step/acestep-v15-xl-sft](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-sft)|[code](/examples/ace_step/model_inference/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-sft.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-sft.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-sft.py)|
 |[ACE-Step/acestep-v15-xl-turbo](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-turbo)|[code](/examples/ace_step/model_inference/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-turbo.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-turbo.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-turbo.py)|
+
+</details>
+
+### Image Quality Metrics Models
+
+[/docs/en/Model_Details/Image-Quality-Metrics.md](/docs/en/Model_Details/Image-Quality-Metrics.md)
+
+<details>
+
+<summary>Quick Start</summary>
+
+Run the following code to quickly load PickScore and evaluate an image against a text prompt. The default model will be downloaded from ModelScope to `./models`.
+
+```python
+from diffsynth.metrics import PickScoreMetric, ModelConfig
+from modelscope import dataset_snapshot_download
+from PIL import Image
+
+dataset_snapshot_download(
+    "DiffSynth-Studio/diffsynth_example_dataset",
+    allow_file_pattern="flux/FLUX.1-dev/*",
+    local_dir="./data/diffsynth_example_dataset",
+)
+image = Image.open("data/diffsynth_example_dataset/flux/FLUX.1-dev/1.jpg").convert("RGB")
+prompt = "a dog"
+metric = PickScoreMetric.from_pretrained(
+    model_config=ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="PickScore/model.safetensors"),
+    device="cuda"
+)
+score = metric.compute(prompt, image)[0]
+print(f"PickScore score:: {score:.3f}")
+```
+
+</details>
+
+<details>
+
+<summary>Example Code</summary>
+
+Example code for image quality metrics models can be found at: [/examples/image_quality_metric/](/examples/image_quality_metric/)
+
+| Metric | GitHub Repository | Example Code |
+| - | - | - |
+| PickScore | [GitHub](https://github.com/yuvalkirstain/pickscore) | [code](../../../examples/image_quality_metric/pickscore.py) |
+| ImageReward | [GitHub](https://github.com/zai-org/ImageReward) | [code](../../../examples/image_quality_metric/image_reward.py) |
+| HPSv2 | [GitHub](https://github.com/tgxs002/HPSv2) | [code](../../../examples/image_quality_metric/hpsv2.py) |
+| HPSv3 | [GitHub](https://github.com/MizzenAI/HPSv3) | [code](../../../examples/image_quality_metric/hpsv3.py) |
+| CLIP Score | [GitHub](https://github.com/openai/CLIP) | [code](../../../examples/image_quality_metric/clipscore.py) |
+| Aesthetic | [GitHub](https://github.com/christophschuhmann/improved-aesthetic-predictor) | [code](../../../examples/image_quality_metric/aesthetic.py) |
+| FID | [GitHub](https://github.com/mseitzer/pytorch-fid) | [code](../../../examples/image_quality_metric/fid.py) |
 
 </details>
 
