@@ -17,6 +17,7 @@
     * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 `"Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors"`。用逗号分隔。
     * `--extra_inputs`: 模型 Pipeline 所需的额外输入参数，例如训练图像编辑模型 Qwen-Image-Edit 时需要额外参数 `edit_image`，以 `,` 分隔。
     * `--fp8_models`：以 FP8 格式加载的模型，格式与 `--model_paths` 或 `--model_id_with_origin_paths` 一致，目前仅支持参数不被梯度更新的模型（不需要梯度回传，或梯度仅更新其 LoRA）。
+    * `--resume_from_checkpoint`：从 checkpoint 文件中加载模型权重并继续训练。目前仅支持非 LoRA 的单模型加载。
 * 训练基础配置
     * `--learning_rate`: 学习率。
     * `--num_epochs`: 轮数（Epoch）。
@@ -235,6 +236,7 @@ accelerate launch --config_file examples/qwen_image/model_training/full/accelera
 * 少数模型包含冗余参数，例如 Qwen-Image 的 DiT 部分最后一层的文本编码部分，在训练这些模型时，需设置 `--find_unused_parameters` 避免在多 GPU 训练中报错。出于对开源社区模型兼容性的考虑，我们不打算删除这些冗余参数。
 * Diffusion 模型的损失函数值与实际效果的关系不大，因此我们在训练过程中不会记录损失函数值。我们建议把 `--num_epochs` 设置为足够大的数值，边训边测，直至效果收敛后手动关闭训练程序。
 * `--use_gradient_checkpointing` 通常是开启的，除非 GPU 显存足够；`--use_gradient_checkpointing_offload` 则按需开启，详见 [`diffsynth.core.gradient`](../API_Reference/core/gradient.md)。
+* 如需加载前一次训练好的模型 checkpoint 文件并继续训练，请使用 `--lora_checkpoint` 加载 LoRA checkpoint，使用 `--resume_from_checkpoint` 加载基础模型，目前仅支持单模型的加载。
 
 ## 低显存训练
 

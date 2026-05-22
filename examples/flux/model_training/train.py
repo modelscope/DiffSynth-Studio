@@ -18,6 +18,7 @@ class FluxTrainingModule(DiffusionTrainingModule):
         extra_inputs=None,
         fp8_models=None,
         offload_models=None,
+        resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         device="cpu",
         task="sft",
     ):
@@ -28,6 +29,7 @@ class FluxTrainingModule(DiffusionTrainingModule):
         tokenizer_2_config = ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="tokenizer_2/") if tokenizer_2_path is None else ModelConfig(tokenizer_2_path)
         self.pipe = FluxImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_1_config=tokenizer_1_config, tokenizer_2_config=tokenizer_2_config)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
+        self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
 
         # Training mode
         self.switch_pipe_to_training_mode(
@@ -174,6 +176,8 @@ if __name__ == "__main__":
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+        remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         task=args.task,
         device="cpu" if args.enable_model_cpu_offload else accelerator.device,
     )

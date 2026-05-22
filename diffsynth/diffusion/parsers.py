@@ -28,6 +28,7 @@ def add_model_config(parser: argparse.ArgumentParser):
     parser.add_argument("--extra_inputs", default=None, help="Additional model inputs, comma-separated.")
     parser.add_argument("--fp8_models", default=None, help="Models with FP8 precision, comma-separated.")
     parser.add_argument("--offload_models", default=None, help="Models with offload, comma-separated. Only used in splited training.")
+    parser.add_argument("--resume_from_checkpoint", default=None, help="Resume training from checkpoint file. Only single model training is supported.")
     return parser
 
 def add_training_config(parser: argparse.ArgumentParser):

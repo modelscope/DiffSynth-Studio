@@ -19,6 +19,7 @@ class MOVATrainingModule(DiffusionTrainingModule):
         extra_inputs=None,
         fp8_models=None,
         offload_models=None,
+        resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         device="cpu",
         task="sft",
         max_timestep_boundary=1.0,
@@ -40,6 +41,7 @@ class MOVATrainingModule(DiffusionTrainingModule):
             force_remove_params_shared=("audio_latents", "video_latents"),
             force_remove_params_nega=("audio_context", "video_context")
         )
+        self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
         # Training mode
         self.switch_pipe_to_training_mode(
             self.pipe, trainable_models,
@@ -138,6 +140,8 @@ if __name__ == "__main__":
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+        remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         task=args.task,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
         max_timestep_boundary=args.max_timestep_boundary,

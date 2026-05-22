@@ -359,3 +359,14 @@ class DiffusionTrainingModule(torch.nn.Module):
         for name, params in controlnet_inputs.items():
             inputs_shared[name] = [ControlNetInput(**params)]
         return inputs_shared
+    
+    def resume_from_checkpoint(self, path, remove_prefix_in_ckpt):
+        if path is None:
+            return
+        state_dict = load_state_dict(path)
+        if remove_prefix_in_ckpt is not None:
+            state_dict = {remove_prefix_in_ckpt + i: state_dict[i] for i in state_dict}
+        missing_keys, unexpected_keys = self.load_state_dict(state_dict, strict=False)
+        if len(unexpected_keys) != 0:
+            raise ValueError(f"Cannot load checkpoint: {path}. {len(unexpected_keys)} keys are unexpected.")
+        print(f"Loaded checkpoint from {path}. {len(state_dict)} keys are available.")

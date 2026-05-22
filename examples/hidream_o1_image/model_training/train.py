@@ -22,6 +22,7 @@ class HiDreamO1ImageTrainingModule(DiffusionTrainingModule):
         extra_inputs=None,
         fp8_models=None,
         offload_models=None,
+        resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         device="cpu",
         task="sft",
         noise_scale=8.0,
@@ -31,6 +32,7 @@ class HiDreamO1ImageTrainingModule(DiffusionTrainingModule):
         processor_config = self.parse_path_or_model_id(processor_config, default_value=ModelConfig(model_id="HiDream-ai/HiDream-O1-Image-Dev", origin_file_pattern="./"))
         self.pipe = HiDreamO1ImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, processor_config=processor_config)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
+        self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
         self.switch_pipe_to_training_mode(
             self.pipe, trainable_models,
             lora_base_model, lora_target_modules, lora_rank, lora_checkpoint,
@@ -124,6 +126,8 @@ if __name__ == "__main__":
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+        remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         task=args.task,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
         noise_scale=args.noise_scale,
