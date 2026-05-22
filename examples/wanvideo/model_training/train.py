@@ -19,6 +19,7 @@ class WanTrainingModule(DiffusionTrainingModule):
         extra_inputs=None,
         fp8_models=None,
         offload_models=None,
+        resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         device="cpu",
         task="sft",
         max_timestep_boundary=1.0,
@@ -29,13 +30,14 @@ class WanTrainingModule(DiffusionTrainingModule):
         if not use_gradient_checkpointing:
             warnings.warn("Gradient checkpointing is detected as disabled. To prevent out-of-memory errors, the training framework will forcibly enable gradient checkpointing.")
             use_gradient_checkpointing = True
-        
+
         # Load models
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
         tokenizer_config = ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/") if tokenizer_path is None else ModelConfig(tokenizer_path)
         audio_processor_config = self.parse_path_or_model_id(audio_processor_path)
         self.pipe = WanVideoPipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config, audio_processor_config=audio_processor_config)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
+        self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
         
         # Training mode
         self.switch_pipe_to_training_mode(
@@ -170,6 +172,8 @@ if __name__ == "__main__":
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+        remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         task=args.task,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
         max_timestep_boundary=args.max_timestep_boundary,

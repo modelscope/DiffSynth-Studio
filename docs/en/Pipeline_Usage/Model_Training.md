@@ -17,6 +17,7 @@ Training scripts typically include the following parameters:
     * `--model_id_with_origin_paths`: Model IDs with original paths, for example `"Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors"`. Separated by commas.
     * `--extra_inputs`: Extra input parameters required by the model Pipeline, for example, training image editing model Qwen-Image-Edit requires extra parameter `edit_image`, separated by `,`.
     * `--fp8_models`: Models loaded in FP8 format, consistent with the format of `--model_paths` or `--model_id_with_origin_paths`. Currently only supports models whose parameters are not updated by gradients (no gradient backpropagation, or gradients only update their LoRA).
+    * `--resume_from_checkpoint`: Load model weights from a checkpoint file and resume training. Currently only supports single model loading without LoRA.
 * Training base configuration
     * `--learning_rate`: Learning rate.
     * `--num_epochs`: Number of epochs.
@@ -234,6 +235,7 @@ accelerate launch --config_file examples/qwen_image/model_training/full/accelera
 * Some models contain redundant parameters. For example, the text encoding part of the last layer of Qwen-Image's DiT part. When training these models, `--find_unused_parameters` needs to be set to avoid errors in multi-GPU training. For compatibility with community models, we do not intend to remove these redundant parameters.
 * The loss function value of Diffusion models has little relationship with actual effects. Therefore, we do not record loss function values during training. We recommend setting `--num_epochs` to a sufficiently large value, testing while training, and manually closing the training program after the effect converges.
 * `--use_gradient_checkpointing` is usually enabled unless GPU VRAM is sufficient; `--use_gradient_checkpointing_offload` is enabled as needed. See [`diffsynth.core.gradient`](../API_Reference/core/gradient.md) for details.
+* To load a previously trained model checkpoint and resume training, use `--lora_checkpoint` to load a LoRA checkpoint, or use `--resume_from_checkpoint` to load a base model checkpoint. Currently only supports single model loading.
 
 ## Low VRAM Training
 
