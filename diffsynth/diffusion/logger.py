@@ -55,17 +55,29 @@ class ModelLogger:
         self.remove_prefix_in_ckpt = remove_prefix_in_ckpt
         self.state_dict_converter = state_dict_converter
         self.num_steps = 0
+        # Loggers
+        self.enable_tensorboard_log = enable_tensorboard_log
+        self.enable_swanlab_log = enable_swanlab_log
+        self.swanlab_project = swanlab_project
+        self.enable_wandb_log = enable_wandb_log
+        self.wandb_project = wandb_project
         self.loggers = []
-        if enable_tensorboard_log:
+        self.loggers_initialized = False
+
+    def init_loggers(self):
+        if self.enable_tensorboard_log:
             self.loggers.append(TensorBoardLogger(os.path.join(self.output_path, "tensorboard_log")))
-        if enable_swanlab_log:
-            self.loggers.append(SwanLabLogger(project_name=swanlab_project, log_dir=os.path.join(self.output_path, "swanlab_log")))
-        if enable_wandb_log:
-            self.loggers.append(WandbLogger(project_name=wandb_project, log_dir=os.path.join(self.output_path, "wandb_log")))
+        if self.enable_swanlab_log:
+            self.loggers.append(SwanLabLogger(project_name=self.swanlab_project, log_dir=os.path.join(self.output_path, "swanlab_log")))
+        if self.enable_wandb_log:
+            self.loggers.append(WandbLogger(project_name=self.wandb_project, log_dir=os.path.join(self.output_path, "wandb_log")))
+        self.loggers_initialized = True
 
     def on_step_end(self, accelerator: Accelerator, model: torch.nn.Module, save_steps=None, **kwargs):
         self.num_steps += 1
         if accelerator.is_main_process:
+            if not self.loggers_initialized:
+                self.init_loggers()
             loss = kwargs.get("loss")
             if loss is not None:
                 for logger in self.loggers:
