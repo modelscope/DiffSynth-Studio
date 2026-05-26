@@ -72,6 +72,12 @@ def add_offload_training_config(parser: argparse.ArgumentParser):
     parser.add_argument("--cpu_offload_split_threshold", type=int, default=None, help="Experimental! When --enable_model_cpu_offload is enabled, modules with total params above this threshold (in MB) are recursively split into children. None means offload every leaf module directly. Default: None.")
     return parser
 
+def add_logger_config(parser: argparse.ArgumentParser):
+    parser.add_argument("--enable_tensorboard_log", default=False, action="store_true", help="Enable tensorboard for logging.")
+    parser.add_argument("--enable_swanlab_log", default=False, action="store_true", help="Enable swanlab for logging.")
+    parser.add_argument("--enable_wandb_log", default=False, action="store_true", help="Enable wandb for logging.")
+    return parser
+
 def add_general_config(parser: argparse.ArgumentParser):
     parser = add_dataset_base_config(parser)
     parser = add_model_config(parser)
@@ -81,4 +87,5 @@ def add_general_config(parser: argparse.ArgumentParser):
     parser = add_gradient_config(parser)
     parser = add_template_model_config(parser)
     parser = add_offload_training_config(parser)
+    parser = add_logger_config(parser)
     return parser
