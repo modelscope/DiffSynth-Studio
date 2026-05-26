@@ -185,6 +185,9 @@ if __name__ == "__main__":
         args.output_path,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         state_dict_converter=convert_lora_format if args.align_to_opensource_format else lambda x:x,
+        enable_tensorboard_log=args.enable_tensorboard_log,
+        enable_swanlab_log=args.enable_swanlab_log,
+        enable_wandb_log=args.enable_wandb_log,
     )
     launcher_map = {
         "sft:data_process": launch_data_process_task,
