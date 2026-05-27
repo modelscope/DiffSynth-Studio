@@ -18,6 +18,7 @@ class ZImageTrainingModule(DiffusionTrainingModule):
         extra_inputs=None,
         fp8_models=None,
         offload_models=None,
+        resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         device="cpu",
         task="sft",
         enable_npu_patch=True,
@@ -28,6 +29,7 @@ class ZImageTrainingModule(DiffusionTrainingModule):
         tokenizer_config = ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/") if tokenizer_path is None else ModelConfig(tokenizer_path)
         self.pipe = ZImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config, enable_npu_patch=enable_npu_patch)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
+        self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
 
         # Training mode
         self.switch_pipe_to_training_mode(
@@ -136,13 +138,18 @@ if __name__ == "__main__":
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+        remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         task=args.task,
-        device=accelerator.device,
+        device="cpu" if args.enable_model_cpu_offload else accelerator.device,
         enable_npu_patch=args.enable_npu_patch
     )
     model_logger = ModelLogger(
         args.output_path,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
+        enable_tensorboard_log=args.enable_tensorboard_log,
+        enable_swanlab_log=args.enable_swanlab_log,
+        enable_wandb_log=args.enable_wandb_log,
     )
     launcher_map = {
         "sft:data_process": launch_data_process_task,

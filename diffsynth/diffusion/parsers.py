@@ -28,6 +28,7 @@ def add_model_config(parser: argparse.ArgumentParser):
     parser.add_argument("--extra_inputs", default=None, help="Additional model inputs, comma-separated.")
     parser.add_argument("--fp8_models", default=None, help="Models with FP8 precision, comma-separated.")
     parser.add_argument("--offload_models", default=None, help="Models with offload, comma-separated. Only used in splited training.")
+    parser.add_argument("--resume_from_checkpoint", default=None, help="Resume training from checkpoint file. Only single model training is supported.")
     return parser
 
 def add_training_config(parser: argparse.ArgumentParser):
@@ -65,6 +66,18 @@ def add_template_model_config(parser: argparse.ArgumentParser):
     parser.add_argument("--enable_lora_hot_loading", default=False, action="store_true", help="Whether to enable LoRA hot-loading. Only available for image-to-lora models.")
     return parser
 
+def add_offload_training_config(parser: argparse.ArgumentParser):
+    parser.add_argument("--enable_model_cpu_offload", default=False, action="store_true", help="Enable layer offload training. Weights are kept on CPU and loaded to GPU one layer at a time.")
+    parser.add_argument("--enable_optimizer_cpu_offload", default=False, action="store_true", help="When --enable_model_cpu_offload is enabled, run optimizer on CPU. All params are offloaded to CPU. Default is False (trainable params stay on GPU, optimizer on GPU).")
+    parser.add_argument("--cpu_offload_split_threshold", type=int, default=None, help="Experimental! When --enable_model_cpu_offload is enabled, modules with total params above this threshold (in MB) are recursively split into children. None means offload every leaf module directly. Default: None.")
+    return parser
+
+def add_logger_config(parser: argparse.ArgumentParser):
+    parser.add_argument("--enable_tensorboard_log", default=False, action="store_true", help="Enable tensorboard for logging.")
+    parser.add_argument("--enable_swanlab_log", default=False, action="store_true", help="Enable swanlab for logging.")
+    parser.add_argument("--enable_wandb_log", default=False, action="store_true", help="Enable wandb for logging.")
+    return parser
+
 def add_general_config(parser: argparse.ArgumentParser):
     parser = add_dataset_base_config(parser)
     parser = add_model_config(parser)
@@ -73,4 +86,6 @@ def add_general_config(parser: argparse.ArgumentParser):
     parser = add_lora_config(parser)
     parser = add_gradient_config(parser)
     parser = add_template_model_config(parser)
+    parser = add_offload_training_config(parser)
+    parser = add_logger_config(parser)
     return parser

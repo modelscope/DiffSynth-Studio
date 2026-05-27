@@ -63,6 +63,8 @@ graph LR;
 * [端到端的蒸馏加速训练](./Training/Direct_Distill.md)
 * [两阶段拆分训练](./Training/Split_Training.md)
 * [差分 LoRA 训练](./Training/Differential_LoRA.md)
+* [启用 DeepSpeed](./Training/DeepSpeed.md)
+* [Offload Training](./Training/Offload_Training.md)
 
 ## Section 4: 模型接入
 

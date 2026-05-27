@@ -1,5 +1,5 @@
 # Dataset: data/diffsynth_example_dataset/ace_step/acestep-v15-turbo-shift3/
-# Download: modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "ace_step/acestep-v15-turbo-shift3/*" --local_dir ./data/diffsynth_example_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "ace_step/acestep-v15-turbo-shift3/*" --local_dir ./data/diffsynth_example_dataset
 
 accelerate launch examples/ace_step/model_training/train.py \
     --learning_rate 1e-4 \
@@ -16,5 +16,5 @@ accelerate launch examples/ace_step/model_training/train.py \
     --remove_prefix_in_ckpt "pipe.dit." \
     --dataset_repeat 50 \
     --output_path "./models/train/acestep-v15-turbo-shift3_lora" \
-    --lora_target_modules "q_proj,k_proj,v_proj,o_proj" \
+    --lora_target_modules "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj" \
     --data_file_keys "audio"

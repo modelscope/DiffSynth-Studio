@@ -17,6 +17,7 @@
     * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 `"Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors"`。用逗号分隔。
     * `--extra_inputs`: 模型 Pipeline 所需的额外输入参数，例如训练图像编辑模型 Qwen-Image-Edit 时需要额外参数 `edit_image`，以 `,` 分隔。
     * `--fp8_models`：以 FP8 格式加载的模型，格式与 `--model_paths` 或 `--model_id_with_origin_paths` 一致，目前仅支持参数不被梯度更新的模型（不需要梯度回传，或梯度仅更新其 LoRA）。
+    * `--resume_from_checkpoint`：从 checkpoint 文件中加载模型权重并继续训练。目前仅支持非 LoRA 的单模型加载。
 * 训练基础配置
     * `--learning_rate`: 学习率。
     * `--num_epochs`: 轮数（Epoch）。
@@ -39,6 +40,10 @@
     * `--use_gradient_checkpointing`: 是否启用 gradient checkpointing。
     * `--use_gradient_checkpointing_offload`: 是否将 gradient checkpointing 卸载到内存中。
     * `--gradient_accumulation_steps`: 梯度累积步数。
+* CPU Offload 训练配置
+    * `--enable_model_cpu_offload`: 启用 CPU offload 训练，权重保留在 CPU，逐层加载到 GPU 进行计算。
+    * `--enable_optimizer_cpu_offload`: 当 `--enable_model_cpu_offload` 启用时，在 CPU 上执行 optimizer。所有参数都 offload 到 CPU。默认为 False（可训练参数和 optimizer 留在 GPU）。
+    * `--cpu_offload_split_threshold`: （实验性）当 `--enable_model_cpu_offload` 启用时，参数总量超过此阈值（单位 MB）的模块会被递归拆分为子模块。None 表示直接以叶子模块为单位 offload。默认：None。
 * 图像宽高配置（适用于图像生成模型和视频生成模型）
     * `--height`: 图像或视频的高度。将 `height` 和 `width` 留空以启用动态分辨率。
     * `--width`: 图像或视频的宽度。将 `height` 和 `width` 留空以启用动态分辨率。
@@ -231,116 +236,17 @@ accelerate launch --config_file examples/qwen_image/model_training/full/accelera
 * 少数模型包含冗余参数，例如 Qwen-Image 的 DiT 部分最后一层的文本编码部分，在训练这些模型时，需设置 `--find_unused_parameters` 避免在多 GPU 训练中报错。出于对开源社区模型兼容性的考虑，我们不打算删除这些冗余参数。
 * Diffusion 模型的损失函数值与实际效果的关系不大，因此我们在训练过程中不会记录损失函数值。我们建议把 `--num_epochs` 设置为足够大的数值，边训边测，直至效果收敛后手动关闭训练程序。
 * `--use_gradient_checkpointing` 通常是开启的，除非 GPU 显存足够；`--use_gradient_checkpointing_offload` 则按需开启，详见 [`diffsynth.core.gradient`](../API_Reference/core/gradient.md)。
+* 如需加载前一次训练好的模型 checkpoint 文件并继续训练，请使用 `--lora_checkpoint` 加载 LoRA checkpoint，使用 `--resume_from_checkpoint` 加载基础模型，目前仅支持单模型的加载。
 
 ## 低显存训练
-如果想在低显存显卡上完成 LoRA 模型训练，可以同时采用 [两阶段拆分训练](../Training/Split_Training.md) 和 `deepspeed_zero3_offload` 训练。 首先，将前处理过程拆分到第一阶段，将计算结果存储到硬盘中。其次，在第二阶段从硬盘中读取这些结果并进行去噪模型的训练，训练通过采用 `deepspeed_zero3_offload`，将训练参数和优化器状态 offload 到 cpu 或者 disk 上。我们为部分模型提供了样例，主要是通过 `--config_file` 指定 `deepspeed` 配置。
 
-需要注意的是，`deepspeed_zero3_offload` 模式与 `pytorch` 原生的梯度检查点机制不兼容，我们为此对 `deepspeed` 的`checkpointing` 接口做了适配。用户需要在 `deepspeed` 配置中填写 `activation_checkpointing` 字段以启用梯度检查点。
+框架支持多种方式减少训练所需的显存，包括：
 
-以下为 Qwen-Image 模型的低显存模型训练脚本：
-```shell
-accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata.csv \
-  --max_pixels 1048576 \
-  --dataset_repeat 1 \
-  --model_id_with_origin_paths "Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors" \
-  --learning_rate 1e-4 \
-  --num_epochs 5 \
-  --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/Qwen-Image_lora-splited-cache" \
-  --lora_base_model "dit" \
-  --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_out.0,to_add_out,img_mlp.net.2,img_mod.1,txt_mlp.net.2,txt_mod.1" \
-  --lora_rank 32 \
-  --task "sft:data_process" \
-  --use_gradient_checkpointing \
-  --dataset_num_workers 8 \
-  --find_unused_parameters
-
-accelerate launch --config_file examples/qwen_image/model_training/special/low_vram_training/deepspeed_zero3_cpuoffload.yaml examples/qwen_image/model_training/train.py \
-  --dataset_base_path "./models/train/Qwen-Image_lora-splited-cache" \
-  --max_pixels 1048576 \
-  --dataset_repeat 50 \
-  --model_id_with_origin_paths "Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors" \
-  --learning_rate 1e-4 \
-  --num_epochs 5 \
-  --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/Qwen-Image_lora" \
-  --lora_base_model "dit" \
-  --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_out.0,to_add_out,img_mlp.net.2,img_mod.1,txt_mlp.net.2,txt_mod.1" \
-  --lora_rank 32 \
-  --task "sft:train" \
-  --use_gradient_checkpointing \
-  --dataset_num_workers 8 \
-  --find_unused_parameters \
-  --initialize_model_on_cpu
-```
-
-其中，`accelerate` 和 `deepspeed` 的配置文件如下：
-
-```yaml
-compute_environment: LOCAL_MACHINE
-debug: true
-deepspeed_config:
-  deepspeed_config_file: examples/qwen_image/model_training/special/low_vram_training/ds_z3_cpuoffload.json
-  zero3_init_flag: true
-distributed_type: DEEPSPEED
-downcast_bf16: 'no'
-enable_cpu_affinity: false
-machine_rank: 0
-main_training_function: main
-num_machines: 1
-num_processes: 1
-rdzv_backend: static
-same_network: true
-tpu_env: []
-tpu_use_cluster: false
-tpu_use_sudo: false
-use_cpu: false
-```
-
-```json
-{
-    "fp16": {
-        "enabled": "auto",
-        "loss_scale": 0,
-        "loss_scale_window": 1000,
-        "initial_scale_power": 16,
-        "hysteresis": 2,
-        "min_loss_scale": 1
-    },
-    "bf16": {
-        "enabled": "auto"
-    },
-    "zero_optimization": {
-        "stage": 3,
-        "offload_optimizer": {
-            "device": "cpu",
-            "pin_memory": true
-        },
-        "offload_param": {
-            "device": "cpu",
-            "pin_memory": true
-        },
-        "overlap_comm": false,
-        "contiguous_gradients": true,
-        "sub_group_size": 1e9,
-        "reduce_bucket_size": 5e7,
-        "stage3_prefetch_bucket_size": 5e7,
-        "stage3_param_persistence_threshold": 1e5,
-        "stage3_max_live_parameters": 1e8,
-        "stage3_max_reuse_distance": 1e8,
-        "stage3_gather_16bit_weights_on_model_save": true
-    },
-    "activation_checkpointing": {
-        "partition_activations": false,
-        "cpu_checkpointing": false,
-        "contiguous_memory_optimization": false
-    },
-    "gradient_accumulation_steps": "auto",
-    "gradient_clipping": "auto",
-    "train_batch_size": "auto",
-    "train_micro_batch_size_per_gpu": "auto",
-    "wall_clock_breakdown": false
-}
-```
+|名称|开启方式|技术原理|使用效果|何时启用|参考文档|
+|-|-|-|-|-|-|
+|Gradient Checkpointing|通过 `--use_gradient_checkpointing` 开启|在前向传播时不保留梯度相关参数，在反向传播时重新计算这些参数|显著减少显存占用，增加计算时间|在大部分情况下，我们推荐开启这个功能|[文档](../API_Reference/core/gradient.md)|
+|Gradient Checkpointing Offload|通过 `--use_gradient_checkpointing_offload` 开启）|在 Gradient Checkpointing 的基础上，将 Gradient Checkpointing 的参数从显存移至内存中|进一步减少显存占用和增加计算时间，同时增加内存占用|仅推荐在视频生成模型的训练中考虑开启这个功能|[文档](../API_Reference/core/gradient.md)|
+|DeepSpeed|通过 `accelerate config` 交互式地配置|DeepSpeed 支持将梯度、Optimizer 等参数分拆到多 GPU 上|减少显存占用，增加多 GPU 与多机之间的通信成本，增加计算时间|仅推荐在多 GPU 与多机集群训练中启用|[文档](../Training/DeepSpeed.md)|
+|FP8 训练|通过 `--fp8_models` 设置将哪些模型组件切换为 FP8 模式|将模型参数以 FP8 精度存储在显存中，在推理时临时转换为更高精度，仅支持不需要梯度更新参数的模型|减少显存占用，少量增加计算时间，引入少量训练误差|仅推荐在 `text_encoder`、`vae` 等非训练模块上启用，也可在 LoRA 训练时对 `dit` 启用|[文档](../Training/FP8_Precision.md)|
+|两阶段拆分训练|较为复杂，请参考[文档](../Training/Split_Training.md)。额外注意 Wan 系列模型的开启方式不同，请参考对应的代码样例。|将训练过程拆分为两个阶段，第一阶段进行无梯度计算并将中间结果保存至硬盘，第二阶段计算梯度并更新模型参数。|减少显存占用，增加计算速度，占用额外硬盘空间|部分模型的两阶段训练功能未验证，请谨慎使用|[文档](../Training/Split_Training.md)|
+|CPU Offload|通过 `--enable_model_cpu_offload` 启用|在训练时将模型保存在内存中，逐层移至显存中进行前向和后向传播|减少显存占用，增加计算时间，增加内存占用|仅推荐在单 GPU 且显存极为有限的设备上启用|[文档](../Training/Offload_Training.md)|
