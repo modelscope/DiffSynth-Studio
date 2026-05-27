@@ -46,7 +46,7 @@ class UnifiedDataset(torch.utils.data.Dataset):
     ):
         return RouteByType(operator_map=[
             (str, ToAbsolutePath(base_path) >> RouteByExtensionName(operator_map=[
-                (("jpg", "jpeg", "png", "webp"), LoadImage() >> ImageCropAndResize(height, width, max_pixels, height_division_factor, width_division_factor) >> ToList()),
+                (("jpg", "jpeg", "png", "webp", "bmp"), LoadImage() >> ImageCropAndResize(height, width, max_pixels, height_division_factor, width_division_factor) >> ToList()),
                 (("gif",), LoadGIF(
                     num_frames, time_division_factor, time_division_remainder,
                     frame_processor=ImageCropAndResize(height, width, max_pixels, height_division_factor, width_division_factor),
