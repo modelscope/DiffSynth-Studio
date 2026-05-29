@@ -86,14 +86,7 @@ class ModelLogger:
             self.save_model(accelerator, model, f"step-{self.num_steps}.safetensors")
 
     def on_epoch_end(self, accelerator: Accelerator, model: torch.nn.Module, epoch_id):
-        accelerator.wait_for_everyone()
-        state_dict = accelerator.get_state_dict(model)
-        if accelerator.is_main_process:
-            state_dict = accelerator.unwrap_model(model).export_trainable_state_dict(state_dict, remove_prefix=self.remove_prefix_in_ckpt)
-            state_dict = self.state_dict_converter(state_dict)
-            os.makedirs(self.output_path, exist_ok=True)
-            path = os.path.join(self.output_path, f"epoch-{epoch_id}.safetensors")
-            accelerator.save(state_dict, path, safe_serialization=True)
+        self.save_model(accelerator, model, f"epoch-{epoch_id}.safetensors")
 
     def on_training_end(self, accelerator: Accelerator, model: torch.nn.Module, save_steps=None):
         if save_steps is not None and self.num_steps % save_steps != 0:
