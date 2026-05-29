@@ -48,11 +48,11 @@ class AutoTorchModule(torch.nn.Module):
         vram_limit: float = None,
     ):
         self.offload_dtype = offload_dtype or computation_dtype
-        self.offload_device = offload_device or computation_dtype
+        self.offload_device = offload_device or ("disk" if self.offload_dtype == "disk" else computation_device)
         self.onload_dtype = onload_dtype or computation_dtype
-        self.onload_device = onload_device or computation_dtype
+        self.onload_device = onload_device or ("disk" if self.onload_dtype == "disk" else computation_device)
         self.preparing_dtype = preparing_dtype or computation_dtype
-        self.preparing_device = preparing_device or computation_dtype
+        self.preparing_device = preparing_device or ("disk" if self.preparing_dtype == "disk" else computation_device)
         self.computation_dtype = computation_dtype
         self.computation_device = computation_device
         self.vram_limit = vram_limit
