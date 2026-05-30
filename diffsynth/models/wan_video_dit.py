@@ -527,8 +527,10 @@ class WanModel(torch.nn.Module):
             clip_embdding = self.img_emb(clip_feature)
             context = torch.cat([clip_embdding, context], dim=1)
         
-        x, (f, h, w) = self.patchify(x)
-        
+        x = self.patchify(x)
+        f, h, w = x.shape[-3], x.shape[-2], x.shape[-1]
+        x = x.flatten(2).transpose(1, 2)
+
         freqs = torch.cat([
             self.freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
             self.freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
