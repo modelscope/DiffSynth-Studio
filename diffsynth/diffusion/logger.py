@@ -33,6 +33,7 @@ class SwanLabLogger:
 class WandbLogger:
     def __init__(self, project_name="DiffSynth-Studio", log_dir=None):
         import wandb
+        project_name = os.environ.get("WANDB_PROJECT", project_name)
         self.wandb = wandb
         self.run = self.wandb.init(project=project_name, dir=log_dir)
         print(f"Wandb is enabled. Project: {project_name}")
