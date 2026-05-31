@@ -6,6 +6,7 @@ from .fid import FIDMetric
 from .hpsv2 import HPSv2Metric
 from .hpsv3 import HPSv3Metric
 from .image_reward import ImageRewardMetric
+from .lpips import LPIPSMetric
 from .pickscore import PickScoreMetric
 
 
@@ -19,4 +20,5 @@ __all__ = [
     "CLIPMetric",
     "AestheticMetric",
     "FIDMetric",
+    "LPIPSMetric",
 ]

@@ -76,6 +76,10 @@ def ImageMetricsFIDStateDictConverter(state_dict):
     return {"model." + key: state_dict[key] for key in state_dict if not key.startswith("fc.")}
 
 
+def ImageMetricsLPIPSStateDictConverter(state_dict):
+    return {key: state_dict[key] for key in state_dict}
+
+
 def ImageMetricsHPSv3StateDictConverter(state_dict):
     converted = {}
     for key in state_dict:
