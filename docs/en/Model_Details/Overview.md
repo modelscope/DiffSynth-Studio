@@ -335,3 +335,6 @@ print("PickScore score:", metric.compute(prompt, image)[0])
 |CLIP Score|[GitHub](https://github.com/openai/CLIP)|[code](../../../examples/image_quality_metric/clipscore.py)|
 |Aesthetic|[GitHub](https://github.com/christophschuhmann/improved-aesthetic-predictor)|[code](../../../examples/image_quality_metric/aesthetic.py)|
 |FID|[GitHub](https://github.com/mseitzer/pytorch-fid)|[code](../../../examples/image_quality_metric/fid.py)|
+|UnifiedReward|[GitHub](https://github.com/CodeGoat24/UnifiedReward)|[code](../../../examples/image_quality_metric/unified_reward_2.py)|
+|UnifiedReward Edit|[GitHub](https://github.com/CodeGoat24/UnifiedReward)|[code](../../../examples/image_quality_metric/unified_reward_edit.py)|
+|Qwen-Image-Bench|[GitHub](https://github.com/QwenLM/Qwen-Image-Bench)|[code](../../../examples/image_quality_metric/qwen_image_bench.py)|
