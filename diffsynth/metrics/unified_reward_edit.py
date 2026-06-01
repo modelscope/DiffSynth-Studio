@@ -57,10 +57,11 @@ class UnifiedRewardEditMetric(Metric):
         ).eval()
         return cls(model)
 
+
     @staticmethod
-    def _primary_score(output: dict, task: str):
+    def _primary_score(parsed: dict, task: str):
         if task == "edit_pairwise_rank":
-            winner = output.get("winner")
+            winner = parsed.get("winner")
             if isinstance(winner, (int, float)):
                 return int(winner)
             if isinstance(winner, str):
@@ -73,8 +74,9 @@ class UnifiedRewardEditMetric(Metric):
                     return 2
             return 0
         if task == "edit_pairwise_score":
-            return [output.get("image_1_score"), output.get("image_2_score")]
-        return output.get("score")
+            return [parsed.get("image_1_score"), parsed.get("image_2_score")]
+        return parsed.get("score")
+
 
     @torch.no_grad()
     def evaluate(self, prompt: str | list[str] | None, images, task: str = DEFAULT_UNIFIED_REWARD_TASK):

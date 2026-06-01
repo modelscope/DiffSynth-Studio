@@ -299,7 +299,7 @@ class UnifiedRewardEditModel(torch.nn.Module):
             return "Edited image 1"
         if re.search(r"((edited )?image\s*2|second image).{0,24}\b(better|best|wins?|preferred|superior)\b", text, flags=re.I | re.S):
             return "Edited image 2"
-        return 0
+        return None
 
     def _parse_pointwise_score(self, text: str):
         parsed = self._extract_first_json(text)
@@ -362,15 +362,12 @@ class UnifiedRewardEditModel(torch.nn.Module):
         if images and isinstance(images[0], Image.Image):
             images = [images]
 
-        if len(prompts) == 1 and len(images) > 1 and not isinstance(images[0], (list, tuple)):
+        if len(prompts) == 1 and len(images) > 1:
             prompts = prompts * len(images)
+        if len(images) == 1 and len(prompts) > 1:
+            images = images * len(prompts)
         if len(prompts) != len(images):
-            if len(prompts) == 1:
-                prompts = prompts * len(images)
-            elif len(images) == 1:
-                images = images * len(prompts)
-            if len(prompts) != len(images):
-                raise ValueError(f"Expected the same number of prompts and images, got {len(prompts)} and {len(images)}.")
+            raise ValueError(f"Expected the same number of prompts and images, got {len(prompts)} and {len(images)}.")
 
         outputs = []
         for single_prompt, single_images in zip(prompts, images):

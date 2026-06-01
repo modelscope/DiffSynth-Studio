@@ -1092,5 +1092,5 @@ image_metrics_series = [
 
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
-    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series + image_metrics_series
+    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series + hidream_o1_image_series + image_metrics_series
 )
