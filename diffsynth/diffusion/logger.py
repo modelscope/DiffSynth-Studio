@@ -19,6 +19,7 @@ class TensorBoardLogger:
 class SwanLabLogger:
     def __init__(self, project_name="DiffSynth-Studio", log_dir=None):
         import swanlab
+        project_name = os.environ.get("SWANLAB_PROJECT", project_name)
         self.swanlab = swanlab
         self.swanlab.init(project=project_name, logdir=log_dir)
         print(f"SwanLab is enabled. Project: {project_name}")

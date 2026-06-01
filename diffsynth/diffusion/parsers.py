@@ -75,7 +75,9 @@ def add_offload_training_config(parser: argparse.ArgumentParser):
 def add_logger_config(parser: argparse.ArgumentParser):
     parser.add_argument("--enable_tensorboard_log", default=False, action="store_true", help="Enable tensorboard for logging.")
     parser.add_argument("--enable_swanlab_log", default=False, action="store_true", help="Enable swanlab for logging.")
+    parser.add_argument("--swanlab_project", type=str, default="DiffSynth-Studio", help="SwanLab project name.")
     parser.add_argument("--enable_wandb_log", default=False, action="store_true", help="Enable wandb for logging.")
+    parser.add_argument("--wandb_project", type=str, default="DiffSynth-Studio", help="Wandb project name.")
     return parser
 
 def add_general_config(parser: argparse.ArgumentParser):
