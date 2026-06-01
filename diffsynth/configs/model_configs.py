@@ -1072,7 +1072,7 @@ image_metrics_series = [
         "model_class": "diffsynth.models.fid.FIDInceptionModel",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsFIDStateDictConverter",
     },
-    {
+        {
         # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="UnifiedReward-2.0-qwen35-9b/model-*.safetensors")
         "model_hash": "f9786d06eca5c0f1ece89843b2c4cc66",
         "model_name": "image_metrics_unified_reward_2",
@@ -1088,9 +1088,20 @@ image_metrics_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsUnifiedRewardStateDictConverter",
         "extra_kwargs": {"variant": "qwen35"},
     },
+
+]
+
+hidream_o1_image_series = [
+    {
+        # Example: ModelConfig(model_id="HiDream-ai/HiDream-O1-Image", origin_file_pattern="model-*.safetensors")
+        "model_hash": "58a7c1073d79556bfc61e05e6061b771",
+        "model_name": "hidream_o1_image_dit",
+        "model_class": "diffsynth.models.hidream_o1_image_dit.HiDreamO1ImageModel",
+    },
 ]
 
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
-    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series + hidream_o1_image_series + image_metrics_series
+    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series + hidream_o1_image_series
+    + image_metrics_series
 )
