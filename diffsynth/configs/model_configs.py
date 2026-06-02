@@ -951,6 +951,7 @@ joyai_image_series = [
     },
     {
         # Example: ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/model-*.safetensors")
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="UnifiedReward-Edit-qwen3vl-8b/model-*.safetensors")
         "model_hash": "2d11bf14bba8b4e87477c8199a895403",
         "model_name": "joyai_image_text_encoder",
         "model_class": "diffsynth.models.joyai_image_text_encoder.JoyAIImageTextEncoder",
@@ -1071,6 +1072,23 @@ image_metrics_series = [
         "model_class": "diffsynth.models.fid.FIDInceptionModel",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsFIDStateDictConverter",
     },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="UnifiedReward-2.0-qwen35-9b/model-*.safetensors")
+        "model_hash": "f9786d06eca5c0f1ece89843b2c4cc66",
+        "model_name": "image_metrics_unified_reward_2",
+        "model_class": "diffsynth.models.unified_reward_2.UnifiedReward2Qwen35ForConditionalGeneration",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsUnifiedRewardStateDictConverter",
+        "extra_kwargs": {"variant": "qwen35_9b"},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="Qwen-Image-Bench/model-*.safetensors")
+        "model_hash": "ff4ad0463675e96738483611f6dd551b",
+        "model_name": "image_metrics_qwen_image_bench",
+        "model_class": "diffsynth.models.qwen_image_bench.QwenImageBenchQwen35ForConditionalGeneration",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsUnifiedRewardStateDictConverter",
+        "extra_kwargs": {"variant": "qwen35"},
+    },
+
 ]
 
 hidream_o1_image_series = [

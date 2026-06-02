@@ -90,6 +90,20 @@ def ImageMetricsHPSv3StateDictConverter(state_dict):
     return converted
 
 
+def ImageMetricsUnifiedRewardStateDictConverter(state_dict):
+    converted = {}
+    for key in state_dict:
+        value = state_dict[key]
+        if key == "lm_head.weight":
+            key = "model.lm_head.weight"
+        elif key.startswith("model.language_model."):
+            key = "model.model." + key[len("model.") :]
+        elif key.startswith("model.visual."):
+            key = "model.model." + key[len("model.") :]
+        converted[key] = value
+    return converted
+
+
 def _convert_open_clip_resblock(prefix, suffix, value):
     converted = {}
     parts = suffix.split(".")

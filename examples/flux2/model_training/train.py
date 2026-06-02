@@ -19,6 +19,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         fp8_models=None,
         offload_models=None,
         template_model_id_or_path=None,
+        resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         enable_lora_hot_loading=False,
         device="cpu",
         task="sft",
@@ -30,6 +31,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         self.pipe = Flux2ImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config)
         self.pipe = self.load_training_template_model(self.pipe, template_model_id_or_path, args.use_gradient_checkpointing, args.use_gradient_checkpointing_offload)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model, remove_unnecessary_params=True)
+        self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
         if enable_lora_hot_loading: self.pipe.dit = self.pipe.enable_lora_hot_loading(self.pipe.dit)
 
         # Training mode
@@ -132,6 +134,8 @@ if __name__ == "__main__":
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
         template_model_id_or_path=args.template_model_id_or_path,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+        remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         enable_lora_hot_loading=args.enable_lora_hot_loading,
         task=args.task,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
@@ -139,6 +143,11 @@ if __name__ == "__main__":
     model_logger = ModelLogger(
         args.output_path,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
+        enable_tensorboard_log=args.enable_tensorboard_log,
+        enable_swanlab_log=args.enable_swanlab_log,
+        swanlab_project=args.swanlab_project,
+        enable_wandb_log=args.enable_wandb_log,
+        wandb_project=args.wandb_project,
     )
     launcher_map = {
         "sft:data_process": launch_data_process_task,
