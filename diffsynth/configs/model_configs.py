@@ -1072,7 +1072,7 @@ image_metrics_series = [
         "model_class": "diffsynth.models.fid.FIDInceptionModel",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsFIDStateDictConverter",
     },
-        {
+    {
         # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="UnifiedReward-2.0-qwen35-9b/model-*.safetensors")
         "model_hash": "f9786d06eca5c0f1ece89843b2c4cc66",
         "model_name": "image_metrics_unified_reward_2",
