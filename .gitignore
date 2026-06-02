@@ -13,8 +13,6 @@
 *.msc
 *.mv
 log*.txt
-.claude
-test.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
