@@ -266,13 +266,11 @@ class LPIPSCompute(nn.Module):
         model: LPIPSModel,
         device: Union[str, torch.device] = "cpu",
         batch_size: int = 16,
-        num_workers: int = 0,
         target_size: int = 512,
     ):
         super().__init__()
         self.model = model
         self.batch_size = batch_size
-        self.num_workers = num_workers
         self.target_size = target_size
         self._resize_transform = transforms.Compose(
             [

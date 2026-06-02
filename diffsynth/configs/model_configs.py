@@ -1076,7 +1076,6 @@ image_metrics_series = [
         "model_hash": "08a75c660c9b2e775c530a0955857f1f",
         "model_name": "image_metrics_lpips_alex",
         "model_class": "diffsynth.models.lpips.LPIPSModel",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsLPIPSStateDictConverter",
         "extra_kwargs": {"net": "alex"},
     },
     {
@@ -1084,7 +1083,6 @@ image_metrics_series = [
         "model_hash": "5740953aaa8aba2ecd9b9c23da813591",
         "model_name": "image_metrics_lpips_vgg",
         "model_class": "diffsynth.models.lpips.LPIPSModel",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsLPIPSStateDictConverter",
         "extra_kwargs": {"net": "vgg"},
     },
     {
@@ -1092,7 +1090,6 @@ image_metrics_series = [
         "model_hash": "ff994b70a30599287a332105396d5004",
         "model_name": "image_metrics_lpips_squeeze",
         "model_class": "diffsynth.models.lpips.LPIPSModel",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsLPIPSStateDictConverter",
         "extra_kwargs": {"net": "squeeze"},
     },
 ]

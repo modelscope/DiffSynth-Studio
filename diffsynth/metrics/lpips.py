@@ -31,7 +31,6 @@ class LPIPSMetric(Metric):
         model_config: ModelConfig = None,
         device: torch.device = get_device_type(),
         batch_size: int = 16,
-        num_workers: int = 0,
         target_size: int = 512,
         vram_limit: float = None,
     ):
@@ -52,7 +51,6 @@ class LPIPSMetric(Metric):
             model=backbone,
             device=device,
             batch_size=batch_size,
-            num_workers=num_workers,
             target_size=target_size,
         )
         return cls(compute_model)

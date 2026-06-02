@@ -1,4 +1,4 @@
-from diffsynth.metrics import LPIPSMetric
+from diffsynth.metrics import LPIPSMetric, ModelConfig
 from modelscope import dataset_snapshot_download
 
 dataset_snapshot_download(
@@ -6,8 +6,16 @@ dataset_snapshot_download(
     allow_file_pattern=["flux/FLUX.1-dev/*", "flux2/FLUX.2-dev/*"],
     local_dir="./data/diffsynth_example_dataset",
 )
+
+# net="alex" with LPIPS/alexnet.safetensors (default)
+# For VGG: net="vgg", model_config=ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="LPIPS/vgg.safetensors")
+# For SqueezeNet: net="squeeze", model_config=ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="LPIPS/squeezenet.safetensors")
 metric = LPIPSMetric.from_pretrained(
     net="alex",
+    model_config=ModelConfig(
+        model_id="DiffSynth-Studio/ImageMetrics",
+        origin_file_pattern="LPIPS/alexnet.safetensors",
+    ),
     device="cuda",
     target_size=512,
 )
