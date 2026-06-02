@@ -1,6 +1,7 @@
 from ..core import ModelConfig
 from .aesthetic import AestheticMetric
 from .base import Metric
+from .bioclip import BioCLIPMetric
 from .clip import CLIPMetric
 from .fid import FIDMetric
 from .hpsv2 import HPSv2Metric
@@ -17,6 +18,7 @@ __all__ = [
     "HPSv2Metric",
     "HPSv3Metric",
     "CLIPMetric",
+    "BioCLIPMetric",
     "AestheticMetric",
     "FIDMetric",
 ]

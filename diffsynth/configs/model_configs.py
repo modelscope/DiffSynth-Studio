@@ -1071,6 +1071,13 @@ image_metrics_series = [
         "model_class": "diffsynth.models.fid.FIDInceptionModel",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsFIDStateDictConverter",
     },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="BioCLIPv2/open_clip_model.safetensors")
+        "model_hash": "3a020a3e47afb7c5e21c52f2d0692c09",
+        "model_name": "image_metrics_bioclip_v2",
+        "model_class": "diffsynth.models.bioclip.BioCLIPv2Model",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsOpenCLIPStateDictConverter",
+    },
 ]
 
 hidream_o1_image_series = [
