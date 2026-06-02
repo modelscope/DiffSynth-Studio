@@ -7,6 +7,9 @@ from .hpsv2 import HPSv2Metric
 from .hpsv3 import HPSv3Metric
 from .image_reward import ImageRewardMetric
 from .pickscore import PickScoreMetric
+from .qwen_image_bench import QwenImageBenchMetric
+from .unified_reward_2 import UnifiedReward2Metric
+from .unified_reward_edit import UnifiedRewardEditMetric
 
 
 __all__ = [
@@ -19,4 +22,7 @@ __all__ = [
     "CLIPMetric",
     "AestheticMetric",
     "FIDMetric",
+    "QwenImageBenchMetric",
+    "UnifiedReward2Metric",
+    "UnifiedRewardEditMetric",
 ]
