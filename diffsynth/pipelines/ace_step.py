@@ -3,7 +3,7 @@ ACE-Step Pipeline for DiffSynth-Studio.
 
 Text-to-Music generation pipeline using ACE-Step 1.5 model.
 """
-import re, torch
+import re, torch, warnings
 from typing import Optional, Dict, Any, List, Tuple
 from tqdm import tqdm
 import random, math
@@ -556,6 +556,9 @@ class AceStepUnit_InputAudioEmbedder(PipelineUnit):
         input_latents = pipe.vae.encode(input_audio.to(dtype=pipe.torch_dtype, device=pipe.device)).transpose(1, 2)
         # prevent potential size mismatch between context_latents and input_latents by cropping input_latents to the same temporal length as noise
         input_latents = input_latents[:, :noise.shape[1]]
+        if input_latents.shape[1] < noise.shape[1]:
+            warnings.warn(f"The duration of `input_audio` is shorter than that of the generated audio, so the end of `input_audio` will be padded with zeros.")
+            input_latents = torch.concat([input_latents, torch.zeros_like(noise)[:, :noise.shape[1] - input_latents.shape[1]]], dim=1)
         if pipe.scheduler.training:
             return {"input_latents": input_latents, "latents": noise}
         else:
