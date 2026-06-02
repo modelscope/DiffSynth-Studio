@@ -309,7 +309,7 @@ wan_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.wans2v_audio_encoder.WanS2VAudioEncoderStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="Wan-AI/WanToDance-14B", origin_file_pattern="global_model.safetensors")
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.2-Dancer-14B", origin_file_pattern="global_model.safetensors")
         "model_hash": "eb18873fc0ba77b541eb7b62dbcd2059",
         "model_name": "wan_video_dit",
         "model_class": "diffsynth.models.wan_video_dit.WanModel",
@@ -835,20 +835,6 @@ ltx2_series = [
     },
     {
         # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="audio_vocoder.safetensors")
-        "model_hash": "7d7823dde8f1ea0b50fb07ac329dd4cb",
-        "model_name": "ltx2_audio_vae_decoder",
-        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2AudioDecoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2AudioDecoderStateDictConverter",
-    },
-    {
-        # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="audio_vae_encoder.safetensors")
-        "model_hash": "29338f3b95e7e312a3460a482e4f4554",
-        "model_name": "ltx2_audio_vae_encoder",
-        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2AudioEncoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2AudioEncoderStateDictConverter",
-    },
-    {
-        # Example: ModelConfig(model_id="DiffSynth-Studio/LTX-2.3-Repackage", origin_file_pattern="audio_vocoder.safetensors")
         "model_hash": "cd436c99e69ec5c80f050f0944f02a15",
         "model_name": "ltx2_audio_vocoder",
         "model_class": "diffsynth.models.ltx2_audio_vae.LTX2VocoderWithBWE",
@@ -965,6 +951,7 @@ joyai_image_series = [
     },
     {
         # Example: ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/model-*.safetensors")
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="UnifiedReward-Edit-qwen3vl-8b/model-*.safetensors")
         "model_hash": "2d11bf14bba8b4e87477c8199a895403",
         "model_name": "joyai_image_text_encoder",
         "model_class": "diffsynth.models.joyai_image_text_encoder.JoyAIImageTextEncoder",
@@ -1040,7 +1027,108 @@ ace_step_series = [
     },
 ]
 
+image_metrics_series = [
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="PickScore/model.safetensors")
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="CLIP-ViT-H-14-laion2B-s32B-b79K/model.safetensors")
+        "model_hash": "b5e2c0bfcbf4085ccdb2feb8f0ba408a",
+        "model_name": "image_metrics_clip_hf",
+        "model_class": "diffsynth.models.clip.ImageMetricsCLIPModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsCLIPStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="HPSv2/model.safetensors")
+        "model_hash": "f79e72cec8ae5a540cff0304bfb21b00",
+        "model_name": "image_metrics_hpsv2",
+        "model_class": "diffsynth.models.clip.ImageMetricsCLIPModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsOpenCLIPStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="HPSv3/model.safetensors")
+        "model_hash": "5655d9cde15b759cfeefe7432d7a912c",
+        "model_name": "image_metrics_hpsv3",
+        "model_class": "diffsynth.models.hpsv3.HPSv3Qwen2VLRewardModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsHPSv3StateDictConverter",
+        "extra_kwargs": {"vocab_size": 151658, "output_dim": 2, "reward_token": "special", "rm_head_type": "ranknet"},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="ImageReward/model.safetensors")
+        "model_hash": "b3cc8e10b76ca98cde653daa5cf63139",
+        "model_name": "image_metrics_image_reward",
+        "model_class": "diffsynth.models.image_reward.ImageRewardModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsImageRewardStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="Aesthetic/model.safetensors")
+        "model_hash": "306981222ec94302794e07cf676c84cc",
+        "model_name": "image_metrics_aesthetic",
+        "model_class": "diffsynth.models.aesthetic.AestheticModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsAestheticStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="FID/model.safetensors")
+        "model_hash": "d4e9549be726259b444d1f62db4ce413",
+        "model_name": "image_metrics_fid_inception",
+        "model_class": "diffsynth.models.fid.FIDInceptionModel",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsFIDStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="BioCLIPv2/open_clip_model.safetensors")
+        "model_hash": "3a020a3e47afb7c5e21c52f2d0692c09",
+        "model_name": "image_metrics_bioclip_v2",
+        "model_class": "diffsynth.models.bioclip.BioCLIPv2Model",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsOpenCLIPStateDictConverter",
+    },
+    {    
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="LPIPS/alexnet.safetensors")
+        "model_hash": "08a75c660c9b2e775c530a0955857f1f",
+        "model_name": "image_metrics_lpips_alex",
+        "model_class": "diffsynth.models.lpips.LPIPSModel",
+        "extra_kwargs": {"net": "alex"},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="LPIPS/vgg.safetensors")
+        "model_hash": "5740953aaa8aba2ecd9b9c23da813591",
+        "model_name": "image_metrics_lpips_vgg",
+        "model_class": "diffsynth.models.lpips.LPIPSModel",
+        "extra_kwargs": {"net": "vgg"},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="LPIPS/squeezenet.safetensors")
+        "model_hash": "ff994b70a30599287a332105396d5004",
+        "model_name": "image_metrics_lpips_squeeze",
+        "model_class": "diffsynth.models.lpips.LPIPSModel",
+        "extra_kwargs": {"net": "squeeze"},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="UnifiedReward-2.0-qwen35-9b/model-*.safetensors")
+        "model_hash": "f9786d06eca5c0f1ece89843b2c4cc66",
+        "model_name": "image_metrics_unified_reward_2",
+        "model_class": "diffsynth.models.unified_reward_2.UnifiedReward2Qwen35ForConditionalGeneration",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsUnifiedRewardStateDictConverter",
+        "extra_kwargs": {"variant": "qwen35_9b"},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="Qwen-Image-Bench/model-*.safetensors")
+        "model_hash": "ff4ad0463675e96738483611f6dd551b",
+        "model_name": "image_metrics_qwen_image_bench",
+        "model_class": "diffsynth.models.qwen_image_bench.QwenImageBenchQwen35ForConditionalGeneration",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsUnifiedRewardStateDictConverter",
+        "extra_kwargs": {"variant": "qwen35"},
+    },
+]
+
+hidream_o1_image_series = [
+    {
+        # Example: ModelConfig(model_id="HiDream-ai/HiDream-O1-Image", origin_file_pattern="model-*.safetensors")
+        "model_hash": "58a7c1073d79556bfc61e05e6061b771",
+        "model_name": "hidream_o1_image_dit",
+        "model_class": "diffsynth.models.hidream_o1_image_dit.HiDreamO1ImageModel",
+    },
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
-    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series
+    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series + hidream_o1_image_series
+    + image_metrics_series
 )

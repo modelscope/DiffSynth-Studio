@@ -33,3 +33,7 @@ We support two loading methods for LoRA models. See [LoRA Loading](./Pipeline_Us
 
 * Cold Loading: When [VRAM Management](./Pipeline_Usage/VRAM_management.md) is not enabled for the base model, LoRA will be fused into the base model weights. In this case, inference speed remains unchanged, and LoRA cannot be unloaded after loading.
 * Hot Loading: When [VRAM Management](./Pipeline_Usage/VRAM_management.md) is enabled for the base model, LoRA will not be fused into the base model weights. In this case, inference speed will slow down, and LoRA can be unloaded after loading via `pipe.clear_lora()`.
+
+## How to reduce VRAM usage during training?
+
+The framework supports multiple methods to reduce VRAM usage during training, including Gradient Checkpointing, DeepSpeed, FP8, Two-Stage Split Training, and CPU Offload. Please refer to [Low VRAM Training](./Pipeline_Usage/Model_Training.md#low-vram-training).

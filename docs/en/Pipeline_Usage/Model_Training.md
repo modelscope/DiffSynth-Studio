@@ -17,6 +17,7 @@ Training scripts typically include the following parameters:
     * `--model_id_with_origin_paths`: Model IDs with original paths, for example `"Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors"`. Separated by commas.
     * `--extra_inputs`: Extra input parameters required by the model Pipeline, for example, training image editing model Qwen-Image-Edit requires extra parameter `edit_image`, separated by `,`.
     * `--fp8_models`: Models loaded in FP8 format, consistent with the format of `--model_paths` or `--model_id_with_origin_paths`. Currently only supports models whose parameters are not updated by gradients (no gradient backpropagation, or gradients only update their LoRA).
+    * `--resume_from_checkpoint`: Load model weights from a checkpoint file and resume training. Currently only supports single model loading without LoRA.
 * Training base configuration
     * `--learning_rate`: Learning rate.
     * `--num_epochs`: Number of epochs.
@@ -39,6 +40,10 @@ Training scripts typically include the following parameters:
     * `--use_gradient_checkpointing`: Whether to enable gradient checkpointing.
     * `--use_gradient_checkpointing_offload`: Whether to offload gradient checkpointing to memory.
     * `--gradient_accumulation_steps`: Number of gradient accumulation steps.
+* CPU Offload training configuration
+    * `--cpu_offload`: Enable CPU offload training. Weights are kept on CPU and loaded to GPU one layer at a time.
+    * `--optimize_on_cpu`: When `--cpu_offload` is enabled, run optimizer on CPU. All params are offloaded to CPU. Default is False (trainable params stay on GPU, optimizer on GPU).
+    * `--param_size_threshold`: (Experimental) When `--cpu_offload` is enabled, modules with total params above this threshold (in MB) are recursively split into children. None means offload every leaf module directly. Default: None.
 * Image dimension configuration (applicable to image generation models and video generation models)
     * `--height`: Height of images or videos. Leave `height` and `width` blank to enable dynamic resolution.
     * `--width`: Width of images or videos. Leave `height` and `width` blank to enable dynamic resolution.
@@ -230,118 +235,17 @@ accelerate launch --config_file examples/qwen_image/model_training/full/accelera
 * Some models contain redundant parameters. For example, the text encoding part of the last layer of Qwen-Image's DiT part. When training these models, `--find_unused_parameters` needs to be set to avoid errors in multi-GPU training. For compatibility with community models, we do not intend to remove these redundant parameters.
 * The loss function value of Diffusion models has little relationship with actual effects. Therefore, we do not record loss function values during training. We recommend setting `--num_epochs` to a sufficiently large value, testing while training, and manually closing the training program after the effect converges.
 * `--use_gradient_checkpointing` is usually enabled unless GPU VRAM is sufficient; `--use_gradient_checkpointing_offload` is enabled as needed. See [`diffsynth.core.gradient`](../API_Reference/core/gradient.md) for details.
+* To load a previously trained model checkpoint and resume training, use `--lora_checkpoint` to load a LoRA checkpoint, or use `--resume_from_checkpoint` to load a base model checkpoint. Currently only supports single model loading.
 
 ## Low VRAM Training
 
-If you want to complete LoRA model training on GPU with low vram, you can combine [Two-Stage Split Training](../Training/Split_Training.md) with `deepspeed_zero3_offload` training. First, split the preprocessing steps into the first stage and store the computed results onto the hard disk. Second, read these results from the disk and train the denoising model. By using `deepspeed_zero3_offload`, the training parameters and optimizer states are offloaded to the CPU or disk. We provide examples for some models, primarily by specifying the `deepspeed` configuration via `--config_file`.
+The framework supports multiple methods to reduce VRAM usage during training:
 
-Please note that the `deepspeed_zero3_offload` mode is incompatible with PyTorch's native gradient checkpointing mechanism. To address this, we have adapted the `checkpointing` interface of `deepspeed`. Users need to fill the `activation_checkpointing` field in the `deepspeed` configuration to enable gradient checkpointing.
-
-Below is the script for low VRAM model training for the Qwen-Image model:
-
-```shell
-accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata.csv \
-  --max_pixels 1048576 \
-  --dataset_repeat 1 \
-  --model_id_with_origin_paths "Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors" \
-  --learning_rate 1e-4 \
-  --num_epochs 5 \
-  --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/Qwen-Image_lora-splited-cache" \
-  --lora_base_model "dit" \
-  --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_out.0,to_add_out,img_mlp.net.2,img_mod.1,txt_mlp.net.2,txt_mod.1" \
-  --lora_rank 32 \
-  --task "sft:data_process" \
-  --use_gradient_checkpointing \
-  --dataset_num_workers 8 \
-  --find_unused_parameters
-
-accelerate launch --config_file examples/qwen_image/model_training/special/low_vram_training/deepspeed_zero3_cpuoffload.yaml examples/qwen_image/model_training/train.py \
-  --dataset_base_path "./models/train/Qwen-Image_lora-splited-cache" \
-  --max_pixels 1048576 \
-  --dataset_repeat 50 \
-  --model_id_with_origin_paths "Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors" \
-  --learning_rate 1e-4 \
-  --num_epochs 5 \
-  --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/Qwen-Image_lora" \
-  --lora_base_model "dit" \
-  --lora_target_modules "to_q,to_k,to_v,add_q_proj,add_k_proj,add_v_proj,to_out.0,to_add_out,img_mlp.net.2,img_mod.1,txt_mlp.net.2,txt_mod.1" \
-  --lora_rank 32 \
-  --task "sft:train" \
-  --use_gradient_checkpointing \
-  --dataset_num_workers 8 \
-  --find_unused_parameters \
-  --initialize_model_on_cpu
-```
-
-The configurations for `accelerate` and `deepspeed` are as follows:
-
-```yaml
-compute_environment: LOCAL_MACHINE
-debug: true
-deepspeed_config:
-  deepspeed_config_file: examples/qwen_image/model_training/special/low_vram_training/ds_z3_cpuoffload.json
-  zero3_init_flag: true
-distributed_type: DEEPSPEED
-downcast_bf16: 'no'
-enable_cpu_affinity: false
-machine_rank: 0
-main_training_function: main
-num_machines: 1
-num_processes: 1
-rdzv_backend: static
-same_network: true
-tpu_env: []
-tpu_use_cluster: false
-tpu_use_sudo: false
-use_cpu: false
-```
-
-```json
-{
-    "fp16": {
-        "enabled": "auto",
-        "loss_scale": 0,
-        "loss_scale_window": 1000,
-        "initial_scale_power": 16,
-        "hysteresis": 2,
-        "min_loss_scale": 1
-    },
-    "bf16": {
-        "enabled": "auto"
-    },
-    "zero_optimization": {
-        "stage": 3,
-        "offload_optimizer": {
-            "device": "cpu",
-            "pin_memory": true
-        },
-        "offload_param": {
-            "device": "cpu",
-            "pin_memory": true
-        },
-        "overlap_comm": false,
-        "contiguous_gradients": true,
-        "sub_group_size": 1e9,
-        "reduce_bucket_size": 5e7,
-        "stage3_prefetch_bucket_size": 5e7,
-        "stage3_param_persistence_threshold": 1e5,
-        "stage3_max_live_parameters": 1e8,
-        "stage3_max_reuse_distance": 1e8,
-        "stage3_gather_16bit_weights_on_model_save": true
-    },
-    "activation_checkpointing": {
-        "partition_activations": false,
-        "cpu_checkpointing": false,
-        "contiguous_memory_optimization": false
-    },
-    "gradient_accumulation_steps": "auto",
-    "gradient_clipping": "auto",
-    "train_batch_size": "auto",
-    "train_micro_batch_size_per_gpu": "auto",
-    "wall_clock_breakdown": false
-}
-```
+|Name|How to Enable|Technical Principle|Effect|When to Enable|Reference|
+|-|-|-|-|-|-|
+|Gradient Checkpointing|Enable via `--use_gradient_checkpointing`|Does not retain gradient-related parameters during forward pass; recomputes them during backward pass|Significantly reduces VRAM usage, increases computation time|Recommended in most cases|[Docs](../API_Reference/core/gradient.md)|
+|Gradient Checkpointing Offload|Enable via `--use_gradient_checkpointing_offload`|On top of Gradient Checkpointing, moves checkpointed parameters from VRAM to RAM|Further reduces VRAM usage and increases computation time, also increases RAM usage|Only recommended for video generation model training|[Docs](../API_Reference/core/gradient.md)|
+|DeepSpeed|Configure interactively via `accelerate config`|DeepSpeed supports sharding gradients, optimizer states, etc. across multiple GPUs|Reduces VRAM usage, increases communication cost between GPUs and machines, increases computation time|Only recommended for multi-GPU and multi-node cluster training|[Docs](../Training/DeepSpeed.md)|
+|FP8 Training|Set which model components to switch to FP8 mode via `--fp8_models`|Stores model parameters in FP8 precision in VRAM, temporarily converts to higher precision during inference; only supports models that don't require gradient updates|Reduces VRAM usage, slightly increases computation time, introduces minor training error|Only recommended for non-training modules like `text_encoder` and `vae`; can also be enabled for `dit` during LoRA training|[Docs](../Training/FP8_Precision.md)|
+|Two-Stage Split Training|Complex setup, please refer to the [docs](../Training/Split_Training.md). Note that Wan series models have different activation methods, please refer to the corresponding code examples.|Splits training into two stages: first stage performs gradient-free computation and saves intermediate results to disk; second stage computes gradients and updates model parameters.|Reduces VRAM usage, increases computation speed, uses additional disk space|Some models' two-stage training has not been verified, use with caution|[Docs](../Training/Split_Training.md)|
+|CPU Offload|Enable via `--enable_model_cpu_offload`|Keeps model in RAM during training, moves layers to VRAM one by one for forward and backward passes|Reduces VRAM usage, increases computation time, increases RAM usage|Only recommended for single GPU with extremely limited VRAM|[Docs](../Training/Offload_Training.md)|

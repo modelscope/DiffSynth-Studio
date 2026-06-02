@@ -28,6 +28,7 @@ def add_model_config(parser: argparse.ArgumentParser):
     parser.add_argument("--extra_inputs", default=None, type=str, help="Additional model inputs, comma-separated.")
     parser.add_argument("--fp8_models", default=None, type=str, help="Models with FP8 precision, comma-separated.")
     parser.add_argument("--offload_models", default=None, type=str, help="Models with offload, comma-separated. Only used in splited training.")
+    parser.add_argument("--resume_from_checkpoint", default=None, type=str, help="Resume training from checkpoint file. Only single model training is supported.")
     return parser
 
 def add_training_config(parser: argparse.ArgumentParser):
@@ -37,6 +38,7 @@ def add_training_config(parser: argparse.ArgumentParser):
     parser.add_argument("--find_unused_parameters", default=False, action="store_true", help="Whether to find unused parameters in DDP.")
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay.")
     parser.add_argument("--task", type=str, default="sft", required=False, help="Task type.")
+    parser.add_argument("--customized_optimizer", type=str, default=None, help="Customized optimizer, e.g., `bitsandbytes.optim.Adam8bit` and `torch.optim.Adam`. The default optimizer is `torch.optim.AdamW`.")
     return parser
 
 def add_output_config(parser: argparse.ArgumentParser):
@@ -65,6 +67,20 @@ def add_template_model_config(parser: argparse.ArgumentParser):
     parser.add_argument("--enable_lora_hot_loading", default=False, action="store_true", help="Whether to enable LoRA hot-loading. Only available for image-to-lora models.")
     return parser
 
+def add_offload_training_config(parser: argparse.ArgumentParser):
+    parser.add_argument("--enable_model_cpu_offload", default=False, action="store_true", help="Enable layer offload training. Weights are kept on CPU and loaded to GPU one layer at a time.")
+    parser.add_argument("--enable_optimizer_cpu_offload", default=False, action="store_true", help="When --enable_model_cpu_offload is enabled, run optimizer on CPU. All params are offloaded to CPU. Default is False (trainable params stay on GPU, optimizer on GPU).")
+    parser.add_argument("--cpu_offload_split_threshold", type=int, default=None, help="Experimental! When --enable_model_cpu_offload is enabled, modules with total params above this threshold (in MB) are recursively split into children. None means offload every leaf module directly. Default: None.")
+    return parser
+
+def add_logger_config(parser: argparse.ArgumentParser):
+    parser.add_argument("--enable_tensorboard_log", default=False, action="store_true", help="Enable tensorboard for logging.")
+    parser.add_argument("--enable_swanlab_log", default=False, action="store_true", help="Enable swanlab for logging.")
+    parser.add_argument("--swanlab_project", type=str, default="DiffSynth-Studio", help="SwanLab project name.")
+    parser.add_argument("--enable_wandb_log", default=False, action="store_true", help="Enable wandb for logging.")
+    parser.add_argument("--wandb_project", type=str, default="DiffSynth-Studio", help="Wandb project name.")
+    return parser
+
 def add_general_config(parser: argparse.ArgumentParser):
     parser = add_dataset_base_config(parser)
     parser = add_model_config(parser)
@@ -73,4 +89,6 @@ def add_general_config(parser: argparse.ArgumentParser):
     parser = add_lora_config(parser)
     parser = add_gradient_config(parser)
     parser = add_template_model_config(parser)
+    parser = add_offload_training_config(parser)
+    parser = add_logger_config(parser)
     return parser

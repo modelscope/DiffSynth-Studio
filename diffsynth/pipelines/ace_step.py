@@ -3,7 +3,7 @@ ACE-Step Pipeline for DiffSynth-Studio.
 
 Text-to-Music generation pipeline using ACE-Step 1.5 model.
 """
-import re, torch
+import re, torch, warnings
 from typing import Optional, Dict, Any, List, Tuple
 from tqdm import tqdm
 import random, math
@@ -118,6 +118,8 @@ class AceStepPipeline(BasePipeline):
         rand_device: str = "cpu",
         # Steps
         num_inference_steps: int = 8,
+        # Input audio
+        input_audio: Optional[torch.Tensor] = None,
         # Scheduler-specific parameters
         shift: float = 3.0,
         # Progress
@@ -142,6 +144,7 @@ class AceStepPipeline(BasePipeline):
             "rand_device": rand_device,
             "num_inference_steps": num_inference_steps,
             "shift": shift,
+            "input_audio": input_audio,
         }
 
         for unit in self.units:
@@ -316,7 +319,7 @@ class AceStepUnit_ReferenceAudioEmbedder(PipelineUnit):
         else:
             reference_audios = [[torch.zeros(2, 30 * pipe.vae.sampling_rate).to(dtype=pipe.torch_dtype, device=pipe.device)]]
             reference_latents, refer_audio_order_mask = self.infer_refer_latent(pipe, reference_audios)
-        return {"reference_latents": reference_latents, "refer_audio_order_mask": refer_audio_order_mask}
+        return {"reference_latents": reference_latents.to(pipe.device), "refer_audio_order_mask": refer_audio_order_mask.to(pipe.device)}
 
     def process_reference_audio(self, audio) -> Optional[torch.Tensor]:
         if audio.ndim == 3 and audio.shape[0] == 1:
@@ -415,10 +418,10 @@ class AceStepUnit_ContextLatentBuilder(PipelineUnit):
     def _get_silence_latent_slice(self, pipe, length: int) -> torch.Tensor:
         available = pipe.silence_latent.shape[1]
         if length <= available:
-            return pipe.silence_latent[0, :length, :]
+            return pipe.silence_latent[0, :length, :].to(pipe.device)
         repeats = (length + available - 1) // available
         tiled = pipe.silence_latent[0].repeat(repeats, 1)
-        return tiled[:length, :]
+        return tiled[:length, :].to(pipe.device)
 
     def tokenize(self, tokenizer, x, silence_latent, pool_window_size):
         if x.shape[1] % pool_window_size != 0:
@@ -534,27 +537,33 @@ class AceStepUnit_NoiseInitializer(PipelineUnit):
 
 
 class AceStepUnit_InputAudioEmbedder(PipelineUnit):
-    """Only for training."""
     def __init__(self):
         super().__init__(
-            input_params=("noise", "input_audio"),
+            input_params=("noise", "input_audio", "denoising_strength"),
             output_params=("latents", "input_latents"),
             onload_model_names=("vae",),
         )
 
-    def process(self, pipe, noise, input_audio):
+    def process(self, pipe, noise, input_audio, denoising_strength):
         if input_audio is None:
             return {"latents": noise}
-        if pipe.scheduler.training:
-            pipe.load_models_to_device(self.onload_model_names)
+        pipe.load_models_to_device(self.onload_model_names)
+        if isinstance(input_audio, tuple):
             input_audio, sample_rate = input_audio
-            input_audio = torch.clamp(input_audio, -1.0, 1.0)
-            if input_audio.dim() == 2:
-                input_audio = input_audio.unsqueeze(0)
-            input_latents = pipe.vae.encode(input_audio.to(dtype=pipe.torch_dtype, device=pipe.device)).transpose(1, 2)
-            # prevent potential size mismatch between context_latents and input_latents by cropping input_latents to the same temporal length as noise
-            input_latents = input_latents[:, :noise.shape[1]]
-            return {"input_latents": input_latents}
+        input_audio = torch.clamp(input_audio, -1.0, 1.0)
+        if input_audio.dim() == 2:
+            input_audio = input_audio.unsqueeze(0)
+        input_latents = pipe.vae.encode(input_audio.to(dtype=pipe.torch_dtype, device=pipe.device)).transpose(1, 2)
+        # prevent potential size mismatch between context_latents and input_latents by cropping input_latents to the same temporal length as noise
+        input_latents = input_latents[:, :noise.shape[1]]
+        if input_latents.shape[1] < noise.shape[1]:
+            warnings.warn(f"The duration of `input_audio` is shorter than that of the generated audio, so the end of `input_audio` will be padded with zeros.")
+            input_latents = torch.concat([input_latents, torch.zeros_like(noise)[:, :noise.shape[1] - input_latents.shape[1]]], dim=1)
+        if pipe.scheduler.training:
+            return {"input_latents": input_latents, "latents": noise}
+        else:
+            latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
+            return {"latents": latents}
 
 
 def model_fn_ace_step(

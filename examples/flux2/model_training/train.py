@@ -19,6 +19,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         fp8_models=None,
         offload_models=None,
         template_model_id_or_path=None,
+        resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         enable_lora_hot_loading=False,
         device="cpu",
         task="sft",
@@ -28,8 +29,9 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
         tokenizer_config = self.parse_path_or_model_id(tokenizer_path, default_value=ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="tokenizer/"))
         self.pipe = Flux2ImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config)
-        self.pipe = self.load_training_template_model(self.pipe, template_model_id_or_path, args.use_gradient_checkpointing, args.use_gradient_checkpointing_offload)
+        self.pipe = self.load_training_template_model(self.pipe, template_model_id_or_path, use_gradient_checkpointing, use_gradient_checkpointing_offload)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model, remove_unnecessary_params=True)
+        self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
         if enable_lora_hot_loading: self.pipe.dit = self.pipe.enable_lora_hot_loading(self.pipe.dit)
 
         # Training mode
@@ -39,7 +41,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
             preset_lora_path, preset_lora_model,
             task=task,
         )
-        
+
         # Other configs
         self.use_gradient_checkpointing = use_gradient_checkpointing
         self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
@@ -54,7 +56,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
             "direct_distill": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(pipe, **inputs_shared, **inputs_posi),
             "direct_distill:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(pipe, **inputs_shared, **inputs_posi),
         }
-        
+
     def get_pipeline_inputs(self, data):
         inputs_posi = {"prompt": data["prompt"]}
         inputs_nega = {"negative_prompt": ""}
@@ -74,7 +76,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         }
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
         return inputs_shared, inputs_posi, inputs_nega
-    
+
     def forward(self, data, inputs=None):
         if inputs is None: inputs = self.get_pipeline_inputs(data)
         inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)
@@ -96,6 +98,7 @@ def flux2_parser():
 if __name__ == "__main__":
     parser = flux2_parser()
     args = parser.parse_args()
+
     accelerator = accelerate.Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         kwargs_handlers=[accelerate.DistributedDataParallelKwargs(find_unused_parameters=args.find_unused_parameters)],
@@ -131,13 +134,20 @@ if __name__ == "__main__":
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
         template_model_id_or_path=args.template_model_id_or_path,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+        remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         enable_lora_hot_loading=args.enable_lora_hot_loading,
         task=args.task,
-        device="cpu" if args.initialize_model_on_cpu else accelerator.device,
+        device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
     )
     model_logger = ModelLogger(
         args.output_path,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
+        enable_tensorboard_log=args.enable_tensorboard_log,
+        enable_swanlab_log=args.enable_swanlab_log,
+        swanlab_project=args.swanlab_project,
+        enable_wandb_log=args.enable_wandb_log,
+        wandb_project=args.wandb_project,
     )
     launcher_map = {
         "sft:data_process": launch_data_process_task,
