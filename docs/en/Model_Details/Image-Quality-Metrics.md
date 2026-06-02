@@ -47,12 +47,15 @@ print(f"PickScore score:: {score:.3f}")
 | HPSv2 | prompt + PIL Image | Preference Score | [code](../../../examples/image_quality_metric/hpsv2.py) |
 | HPSv3 | prompt + PIL Image | Preference Score | [code](../../../examples/image_quality_metric/hpsv3.py) |
 | CLIP Score | prompt + PIL Image | Text-Image Similarity | [code](../../../examples/image_quality_metric/clipscore.py) |
+| UnifiedReward 2.0 | prompt + PIL Image | multi-dimension scores | [code](../../../examples/image_quality_metric/unified_reward_2.py) |
+| Qwen-Image-Bench | prompt + PIL Image | Overall score and multi-level dimension scores | [code](../../../examples/image_quality_metric/qwen_image_bench.py) |
+| UnifiedReward Edit | editing instruction + source image + edited image | Image editing quality score | [code](../../../examples/image_quality_metric/unified_reward_edit.py) |
 | Aesthetic | PIL Image | Aesthetic Score | [code](../../../examples/image_quality_metric/aesthetic.py) |
 | FID | reference image directory + generated image directory | Distribution Distance | [code](../../../examples/image_quality_metric/fid.py) |
 
 ### Text-Image Alignment and Preference Evaluation
 
-Applicable metrics: **PickScore**, **ImageReward**, **HPSv2**, **HPSv3**, **CLIP Score**
+Applicable metrics: **PickScore**, **ImageReward**, **HPSv2**, **HPSv3**, **CLIP Score**, **UnifiedReward 2.0**, **Qwen-Image-Bench**
 
 These models are used to evaluate whether an image follows the prompt and aligns with human visual preferences. They must receive both the `prompt` and the `image` simultaneously.
 
@@ -73,6 +76,69 @@ scores = metric.compute(["a cat", "a dog"], [image_cat, image_dog])
 ```
 
 When prompt is a single string, the same prompt will be applied to every image. When prompt is a list of strings, the number of prompts must exactly match the number of images.
+
+### Multi-Dimensional Image Quality Evaluation
+
+Applicable metrics: **UnifiedReward 2.0**, **Qwen-Image-Bench**
+
+These metrics also receive a `prompt` and an `image`, but in addition to the primary score, `evaluate()` returns more detailed evaluation dimensions. They are useful when you need to analyze text-image alignment, visual coherence, style, or multi-level quality dimensions.
+
+**Qwen-Image-Bench**
+
+```python
+from diffsynth.metrics import ModelConfig, QwenImageBenchMetric
+
+metric = QwenImageBenchMetric.from_pretrained(
+    model_config=ModelConfig(
+        model_id="Qwen/Qwen-Image-Bench",
+        origin_file_pattern="model-*.safetensors",
+    ),
+    processor_config=ModelConfig(
+        model_id="Qwen/Qwen-Image-Bench",
+        origin_file_pattern="",
+    ),
+    device="cuda",
+)
+details = metric.evaluate(prompt, image)[0]
+score = details["total_score"]
+print(details["level1_scores"])
+print(details["level2_scores"])
+```
+
+If you only need the primary score, you can also call `metric.compute(prompt, image)`.
+
+### Image Editing Quality Evaluation
+
+Applicable metric: **UnifiedReward Edit**
+
+UnifiedReward Edit evaluates whether an edited image follows the editing instruction and whether it is over-edited. The input usually includes an editing instruction, a source image, and edited image candidates. It supports three tasks:
+
+* `edit_pointwise_score`: scores a single edited result with `[source_image, edited_image]`.
+* `edit_pairwise_rank`: compares two edited results and returns the winner with `[source_image, edited_image_1, edited_image_2]`.
+* `edit_pairwise_score`: returns separate scores for two edited results with `[source_image, edited_image_1, edited_image_2]`.
+
+```python
+from diffsynth.metrics import ModelConfig, UnifiedRewardEditMetric
+
+metric = UnifiedRewardEditMetric.from_pretrained(
+    model_config=ModelConfig(
+        model_id="DiffSynth-Studio/ImageMetrics",
+        origin_file_pattern="UnifiedReward-Edit-qwen3vl-8b/model-*.safetensors",
+    ),
+    processor_config=ModelConfig(
+        model_id="DiffSynth-Studio/ImageMetrics",
+        origin_file_pattern="UnifiedReward-Edit-qwen3vl-8b/",
+    ),
+    device="cuda",
+)
+
+details = metric.evaluate(
+    instruction,
+    [source_image, edited_image],
+    task="edit_pointwise_score",
+)[0]
+print(details["score"], details["editing_success"], details["overediting"])
+```
 
 ### Pure Image Aesthetics Evaluation
 
@@ -108,6 +174,6 @@ The baseline for FID is not fixed or unique. For general image generation, COCO 
 
 ## Important Notes
 
-* The scores from PickScore, ImageReward, HPSv2, HPSv3, CLIPScore, and Aesthetic are suitable for relative comparison within the same metric. It is not recommended to directly compare the numerical values across different metrics.
-* HPSv3 is based on Qwen2-VL and is a larger model, requiring significantly more VRAM than CLIP-based metrics.
+* The scores from PickScore, ImageReward, HPSv2, HPSv3, CLIPScore, UnifiedReward 2.0, Qwen-Image-Bench, UnifiedReward Edit, and Aesthetic are suitable for relative comparison within the same metric. It is not recommended to directly compare the numerical values across different metrics.
+* HPSv3, UnifiedReward 2.0, UnifiedReward Edit, and Qwen-Image-Bench are based on multimodal large models, requiring significantly more VRAM than CLIP-based metrics.
 * FID is sensitive to the choice of reference, the reference sample size, and the generated sample size.
