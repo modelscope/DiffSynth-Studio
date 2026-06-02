@@ -6,6 +6,7 @@ from .fid import FIDMetric
 from .hpsv2 import HPSv2Metric
 from .hpsv3 import HPSv3Metric
 from .image_reward import ImageRewardMetric
+from .lpips import LPIPSMetric
 from .pickscore import PickScoreMetric
 from .qwen_image_bench import QwenImageBenchMetric
 from .unified_reward_2 import UnifiedReward2Metric
@@ -22,6 +23,7 @@ __all__ = [
     "CLIPMetric",
     "AestheticMetric",
     "FIDMetric",
+    "LPIPSMetric",
     "QwenImageBenchMetric",
     "UnifiedReward2Metric",
     "UnifiedRewardEditMetric",
