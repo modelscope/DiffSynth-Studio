@@ -1073,6 +1073,13 @@ image_metrics_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsFIDStateDictConverter",
     },
     {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="BioCLIPv2/open_clip_model.safetensors")
+        "model_hash": "3a020a3e47afb7c5e21c52f2d0692c09",
+        "model_name": "image_metrics_bioclip_v2",
+        "model_class": "diffsynth.models.bioclip.BioCLIPv2Model",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.image_metrics.ImageMetricsOpenCLIPStateDictConverter",
+    },
+    {    
         # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="LPIPS/alexnet.safetensors")
         "model_hash": "08a75c660c9b2e775c530a0955857f1f",
         "model_name": "image_metrics_lpips_alex",
