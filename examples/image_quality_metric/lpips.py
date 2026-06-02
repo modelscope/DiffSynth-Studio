@@ -9,7 +9,7 @@ dataset_snapshot_download(
 metric = LPIPSMetric.from_pretrained(
     net="alex",
     device="cuda",
-    target=512,
+    target_size=512,
 )
 
 score = metric.compute(
