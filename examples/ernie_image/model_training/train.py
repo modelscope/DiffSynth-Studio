@@ -126,7 +126,9 @@ if __name__ == "__main__":
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         enable_tensorboard_log=args.enable_tensorboard_log,
         enable_swanlab_log=args.enable_swanlab_log,
+        swanlab_project=args.swanlab_project,
         enable_wandb_log=args.enable_wandb_log,
+        wandb_project=args.wandb_project,
     )
     launcher_map = {
         "sft:data_process": launch_data_process_task,
