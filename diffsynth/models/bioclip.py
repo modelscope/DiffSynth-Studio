@@ -1,5 +1,3 @@
-from typing import Union
-
 import torch
 from PIL import Image
 from torchvision import transforms
@@ -96,7 +94,7 @@ class BioCLIPv2Compute(torch.nn.Module):
         return torch.nn.functional.normalize(features, dim=-1)
 
     @torch.no_grad()
-    def forward(self, text: Union[str, list[str]], images):
+    def forward(self, text: str | list[str], images):
         if isinstance(text, str):
             text = [text]
         if isinstance(images, Image.Image):
@@ -112,7 +110,7 @@ class BioCLIPv2Compute(torch.nn.Module):
         return scores
 
     @torch.no_grad()
-    def similarity_matrix(self, text: Union[str, list[str]], images):
+    def similarity_matrix(self, text: str | list[str], images):
         image_features = self.get_image_features(images)
         text_features = self.get_text_features(text)
         scores = text_features @ image_features.T
