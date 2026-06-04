@@ -259,9 +259,8 @@ class LTX2AudioVideoUnit_PipelineChecker(PipelineUnit):
 
     def process(self, pipe: LTX2AudioVideoPipeline, inputs_shared, inputs_posi, inputs_nega):
         if inputs_shared.get("use_distilled_pipeline", False):
-            inputs_shared["use_two_stage_pipeline"] = True
             inputs_shared["cfg_scale"] = 1.0
-            print(f"Distilled pipeline requested, setting use_two_stage_pipeline to True, disable CFG by setting cfg_scale to 1.0.")
+            print(f"Distilled pipeline requested, disable CFG by setting cfg_scale to 1.0.")
         if inputs_shared.get("use_two_stage_pipeline", False):
             # distill pipeline also uses two-stage, but it does not needs lora
             if not inputs_shared.get("use_distilled_pipeline", False):
