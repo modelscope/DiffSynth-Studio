@@ -73,6 +73,9 @@ class HiDreamO1ImagePipeline(BasePipeline):
         edit_image: Union[Image.Image, list[Image.Image]] = None,
         keep_original_aspect: bool = True,
         layout_bboxes: list[list[float]] = None,
+        # LoRA
+        lora = None,
+        negative_lora = None,
         progress_bar_cmd=tqdm,
     ):
         # Scheduler
@@ -87,6 +90,8 @@ class HiDreamO1ImagePipeline(BasePipeline):
             "seed": seed, "rand_device": rand_device,
             "noise_scale": noise_scale,
             "edit_image": edit_image, "keep_original_aspect": keep_original_aspect, "layout_bboxes": layout_bboxes,
+            "positive_only_lora": lora,
+            "negative_only_lora": negative_lora,
         }
 
         # Units
