@@ -14,7 +14,7 @@ accelerate launch examples/ltx2/model_training/train.py \
   --learning_rate 1e-5 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/JoyAI-Echo-full-splited-cache" \
+  --output_path "./models/train/JoyAI-Echo-T2AV-full-splited-cache" \
   --trainable_models "dit" \
   --use_gradient_checkpointing \
   --task "sft:data_process"
