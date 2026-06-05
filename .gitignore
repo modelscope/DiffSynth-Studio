@@ -3,6 +3,7 @@
 /scripts
 /diffusers
 /.vscode
+/.opencode
 *.pkl
 *.safetensors
 *.pth
@@ -13,6 +14,7 @@
 *.msc
 *.mv
 log*.txt
+AGENTS.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

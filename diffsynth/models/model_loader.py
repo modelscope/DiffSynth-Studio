@@ -40,7 +40,8 @@ class ModelPool:
         module_map = self.fetch_module_map(config["model_class"], vram_config)
         model = load_model(
             model_class, path, model_config,
-            vram_config["computation_dtype"], vram_config["computation_device"],
+            vram_config["computation_dtype"] if not model_config.get("keep_original_dtype", False) else None,
+            vram_config["computation_device"],
             state_dict_converter,
             use_disk_map=True,
             vram_config=vram_config, module_map=module_map, vram_limit=vram_limit,

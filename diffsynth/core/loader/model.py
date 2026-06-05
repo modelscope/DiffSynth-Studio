@@ -59,7 +59,11 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
         # Why do we call `to()`?
         # Because some models override the behavior of `to()`,
         # especially those from libraries like Transformers.
-        model = model.to(dtype=torch_dtype, device=device)
+        if torch_dtype is not None:
+            # Preserve quantized weights
+            model = model.to(dtype=torch_dtype, device=device)
+        else:
+            model = model.to(device=device)
     if hasattr(model, "eval"):
         model = model.eval()
     return model
