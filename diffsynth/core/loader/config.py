@@ -24,7 +24,6 @@ class ModelConfig:
     computation_dtype: Optional[torch.dtype] = None
     clear_parameters: bool = False
     state_dict: Dict[str, torch.Tensor] = None
-    keep_original_dtype: bool = False
     
     def check_input(self):
         if self.path is None and self.model_id is None:
