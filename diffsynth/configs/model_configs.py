@@ -1127,8 +1127,41 @@ hidream_o1_image_series = [
     },
 ]
 
+ideogram4_series = [
+    {
+        # Example: ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors")
+        "model_hash": "6f56a1d28667f2ff98e1c79af88a7516",
+        "model_name": "ideogram4_dit",
+        "model_class": "diffsynth.models.ideogram4_dit.Ideogram4DiT",
+        "extra_kwargs": {"config": {"emb_dim": 4608, "num_layers": 34, "num_heads": 18, "intermediate_size": 12288, "adanln_dim": 512, "in_channels": 128, "llm_features_dim": 53248, "rope_theta": 5000000, "mrope_section": [24, 20, 20], "norm_eps": 1e-05}, "keep_original_dtype": True},
+    },
+    {
+        # Example: ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="text_encoder/model.safetensors")
+        "model_hash": "6d72a86d1027baff87e2cf8fc523aab1",
+        "model_name": "ideogram4_text_encoder",
+        "model_class": "diffsynth.models.ideogram4_text_encoder.Ideogram4TextEncoder",
+        "extra_kwargs": {"keep_original_dtype": True},
+    },
+    {
+        # Example: ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "c54288e3ee12ca215898840682337b95",
+        "model_name": "ideogram4_vae_encoder",
+        "model_class": "diffsynth.models.ideogram4_vae.Ideogram4VAEEncoder",
+        "state_dict_converter": "diffsynth.models.ideogram4_vae.Ideogram4VAEEncoderStateDictConverter",
+        "extra_kwargs": {"keep_original_dtype": True},
+    },
+    {
+        # Example: ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "c54288e3ee12ca215898840682337b95",
+        "model_name": "ideogram4_vae_decoder",
+        "model_class": "diffsynth.models.ideogram4_vae.Ideogram4VAEDecoder",
+        "state_dict_converter": "diffsynth.models.ideogram4_vae.Ideogram4VAEDecoderStateDictConverter",
+        "extra_kwargs": {"keep_original_dtype": True},
+    },
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series + hidream_o1_image_series
-    + image_metrics_series
+    + image_metrics_series + ideogram4_series
 )

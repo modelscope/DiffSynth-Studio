@@ -4,7 +4,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -16,6 +16,7 @@ class FlowMatchScheduler():
             "ERNIE-Image": FlowMatchScheduler.set_timesteps_ernie_image,
             "ACE-Step": FlowMatchScheduler.set_timesteps_ace_step,
             "HiDream-O1-Image": FlowMatchScheduler.set_timesteps_hidream_o1_image,
+            "Ideogram4": FlowMatchScheduler.set_timesteps_ideogram4,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -203,6 +204,34 @@ class FlowMatchScheduler():
             sigmas = shift * sigmas / (1 + (shift - 1) * sigmas)
             timesteps = sigmas * num_train_timesteps
             return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_ideogram4(num_inference_steps=50, denoising_strength=1.0, image_resolution=(1024, 1024), mu=0.0, std=1.5):
+        num_pixels = image_resolution[0] * image_resolution[1]
+        known_pixels = 512 * 512
+        mean = mu + 0.5 * math.log(num_pixels / known_pixels)
+        logsnr_min = -15.0
+        logsnr_max = 18.0
+        t_min = 1.0 / (1 + math.exp(0.5 * logsnr_max))
+        t_max = 1.0 / (1 + math.exp(0.5 * logsnr_min))
+        step_intervals = torch.linspace(0.0, 1.0, num_inference_steps + 1, dtype=torch.float64)
+        sigmas = []
+        for i in range(num_inference_steps + 1):
+            z = torch.special.ndtri(step_intervals[i])
+            y = mean + std * z
+            t_ = torch.special.expit(y)
+            t_ = 1 - t_
+            t_ = t_.clamp(t_min, t_max)
+            sigmas.append(float(t_.to(torch.float32)))
+        sigmas = torch.tensor(sigmas, dtype=torch.float32)
+        one_minus_t = (1 - sigmas)[:-1].flip(0)
+        sigma_start = one_minus_t[0] * denoising_strength
+        if one_minus_t[0] > 0:
+            one_minus_t = one_minus_t * (sigma_start / one_minus_t[0])
+        sigmas = sigmas.flip(dims=(0,))
+        timesteps = sigmas[:-1]
+        sigmas = 1 - sigmas
+        return sigmas, timesteps
 
     @staticmethod
     def set_timesteps_ltx2(num_inference_steps=100, denoising_strength=1.0, dynamic_shift_len=None, terminal=0.1, special_case=None):
