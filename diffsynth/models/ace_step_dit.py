@@ -34,141 +34,10 @@ from transformers.models.qwen3.modeling_qwen3 import (
     apply_rotary_pos_emb,
 )
 
-logger = logging.get_logger(__name__)
-
-
-def create_4d_mask(
-    seq_len: int,
-    dtype: torch.dtype,
-    device: torch.device,
-    attention_mask: Optional[torch.Tensor] = None,  # [Batch, Seq_Len]
-    sliding_window: Optional[int] = None,
-    is_sliding_window: bool = False,
-    is_causal: bool = True,
-) -> torch.Tensor:
-    """
-    General 4D Attention Mask generator compatible with CPU/Mac/SDPA and Eager mode.
-    Supports use cases:
-    1. Causal Full: is_causal=True, is_sliding_window=False (standard GPT)
-    2. Causal Sliding: is_causal=True, is_sliding_window=True (Mistral/Qwen local window)
-    3. Bidirectional Full: is_causal=False, is_sliding_window=False (BERT/Encoder)
-    4. Bidirectional Sliding: is_causal=False, is_sliding_window=True (Longformer local)
-
-    Returns:
-        [Batch, 1, Seq_Len, Seq_Len] additive mask (0.0 for keep, -inf for mask)
-    """
-    # ------------------------------------------------------
-    # 1. Construct basic geometry mask [Seq_Len, Seq_Len]
-    # ------------------------------------------------------
-
-    # Build index matrices
-    # i (Query): [0, 1, ..., L-1]
-    # j (Key):   [0, 1, ..., L-1]
-    indices = torch.arange(seq_len, device=device)
-    # diff = i - j
-    diff = indices.unsqueeze(1) - indices.unsqueeze(0)
-
-    # Initialize all True (all positions visible)
-    valid_mask = torch.ones((seq_len, seq_len), device=device, dtype=torch.bool)
-
-    # (A) Handle causality (Causal)
-    if is_causal:
-        # i >= j  =>  diff >= 0
-        valid_mask = valid_mask & (diff >= 0)
-
-    # (B) Handle sliding window
-    if is_sliding_window and sliding_window is not None:
-        if is_causal:
-            # Causal sliding: only attend to past window steps
-            # i - j <= window  =>  diff <= window
-            # (diff >= 0 already handled above)
-            valid_mask = valid_mask & (diff <= sliding_window)
-        else:
-            # Bidirectional sliding: attend past and future window steps
-            # |i - j| <= window  =>  abs(diff) <= sliding_window
-            valid_mask = valid_mask & (torch.abs(diff) <= sliding_window)
-
-    # Expand dimensions to [1, 1, Seq_Len, Seq_Len] for broadcasting
-    valid_mask = valid_mask.unsqueeze(0).unsqueeze(0)
-
-    # ------------------------------------------------------
-    # 2. Apply padding mask (Key Masking)
-    # ------------------------------------------------------
-    if attention_mask is not None:
-        # attention_mask shape: [Batch, Seq_Len] (1=valid, 0=padding)
-        # We want to mask out invalid keys (columns)
-        # Expand shape: [Batch, 1, 1, Seq_Len]
-        padding_mask_4d = attention_mask.view(attention_mask.shape[0], 1, 1, seq_len).to(torch.bool)
-
-        # Broadcasting: Geometry Mask [1, 1, L, L] & Padding Mask [B, 1, 1, L]
-        # Result shape: [B, 1, L, L]
-        valid_mask = valid_mask & padding_mask_4d
-
-    # ------------------------------------------------------
-    # 3. Convert to additive mask
-    # ------------------------------------------------------
-    # Get the minimal value for current dtype
-    min_dtype = torch.finfo(dtype).min
-
-    # Create result tensor filled with -inf by default
-    mask_tensor = torch.full(valid_mask.shape, min_dtype, dtype=dtype, device=device)
-
-    # Set valid positions to 0.0
-    mask_tensor.masked_fill_(valid_mask, 0.0)
-
-    return mask_tensor
-
-
-def pack_sequences(hidden1: torch.Tensor, hidden2: torch.Tensor, mask1: torch.Tensor, mask2: torch.Tensor):
-    """
-    Pack two sequences by concatenating and sorting them based on mask values.
-
-    Args:
-        hidden1: First hidden states tensor of shape [B, L1, D]
-        hidden2: Second hidden states tensor of shape [B, L2, D]
-        mask1: First mask tensor of shape [B, L1]
-        mask2: Second mask tensor of shape [B, L2]
-
-    Returns:
-        Tuple of (packed_hidden_states, new_mask) where:
-        - packed_hidden_states: Packed hidden states with valid tokens (mask=1) first, shape [B, L1+L2, D]
-        - new_mask: New mask tensor indicating valid positions, shape [B, L1+L2]
-    """
-    # Step 1: Concatenate hidden states and masks along sequence dimension
-    hidden_cat = torch.cat([hidden1, hidden2], dim=1)  # [B, L, D]
-    mask_cat = torch.cat([mask1, mask2], dim=1)  # [B, L]
-
-    B, L, D = hidden_cat.shape
-
-    # Step 2: Sort indices so that mask values of 1 come before 0
-    sort_idx = mask_cat.argsort(dim=1, descending=True, stable=True)  # [B, L]
-
-    # Step 3: Reorder hidden states using sorted indices
-    hidden_left = torch.gather(hidden_cat, 1, sort_idx.unsqueeze(-1).expand(B, L, D))
-
-    # Step 4: Create new mask based on valid sequence lengths
-    lengths = mask_cat.sum(dim=1)  # [B]
-    new_mask = (torch.arange(L, dtype=torch.long, device=hidden_cat.device).unsqueeze(0) < lengths.unsqueeze(1))
-
-    return hidden_left, new_mask
-
 
 class TimestepEmbedding(nn.Module):
-    """
-    Timestep embedding module for diffusion models.
-
-    Converts timestep values into high-dimensional embeddings using sinusoidal
-    positional encoding, followed by MLP layers. Used for conditioning diffusion
-    models on timestep information.
-    """
-    def __init__(
-        self,
-        in_channels: int,
-        time_embed_dim: int,
-        scale: float = 1,
-    ):
+    def __init__(self, in_channels, time_embed_dim, scale=1):
         super().__init__()
-
         self.linear_1 = nn.Linear(in_channels, time_embed_dim, bias=True)
         self.act1 = nn.SiLU()
         self.linear_2 = nn.Linear(time_embed_dim, time_embed_dim, bias=True)
@@ -179,17 +48,6 @@ class TimestepEmbedding(nn.Module):
         self.scale = scale
 
     def timestep_embedding(self, t, dim, max_period=10000):
-        """
-        Create sinusoidal timestep embeddings.
-
-        Args:
-            t: A 1-D tensor of N indices, one per batch element. These may be fractional.
-            dim: The dimension of the output embeddings.
-            max_period: Controls the minimum frequency of the embeddings.
-
-        Returns:
-            An (N, D) tensor of positional embeddings.
-        """
         t = t * self.scale
         half = dim // 2
         freqs = torch.exp(
@@ -211,15 +69,6 @@ class TimestepEmbedding(nn.Module):
 
 
 class AceStepAttention(nn.Module):
-    """
-    Multi-headed attention module for AceStep model.
-
-    Implements the attention mechanism from 'Attention Is All You Need' paper,
-    with support for both self-attention and cross-attention modes. Uses RMSNorm
-    for query and key normalization, and supports sliding window attention for
-    efficient long-sequence processing.
-    """
-
     def __init__(
         self,
         hidden_size: int,
@@ -259,190 +108,38 @@ class AceStepAttention(nn.Module):
         self,
         hidden_states: torch.Tensor,
         attention_mask: Optional[torch.Tensor],
-        past_key_value: Optional[Cache] = None,
-        cache_position: Optional[torch.LongTensor] = None,
         encoder_hidden_states: Optional[torch.Tensor] = None,
         position_embeddings: tuple[torch.Tensor, torch.Tensor] = None,
-        output_attentions: Optional[bool] = False,
         **kwargs: Unpack[FlashAttentionKwargs],
     ) -> tuple[torch.Tensor, Optional[torch.Tensor], Optional[tuple[torch.Tensor]]]:
+        # Project and normalize query states
         input_shape = hidden_states.shape[:-1]
         hidden_shape = (*input_shape, -1, self.head_dim)
-
-        # Project and normalize query states
         query_states = self.q_norm(self.q_proj(hidden_states).view(hidden_shape)).transpose(1, 2)
 
-        # Determine if this is cross-attention (requires encoder_hidden_states)
-        is_cross_attention = self.is_cross_attention and encoder_hidden_states is not None
-
-        # Cross-attention path: attend to encoder hidden states
-        if is_cross_attention:
+        # Process KV
+        if self.is_cross_attention:
             encoder_hidden_shape = (*encoder_hidden_states.shape[:-1], -1, self.head_dim)
-            if past_key_value is not None:
-                is_updated = past_key_value.is_updated.get(self.layer_idx)
-                # After the first generated token, we can reuse all key/value states from cache
-                curr_past_key_value = past_key_value.cross_attention_cache
-
-                # Conditions for calculating key and value states
-                if not is_updated:
-                    # Compute and cache K/V for the first time
-                    key_states = self.k_norm(self.k_proj(encoder_hidden_states).view(encoder_hidden_shape)).transpose(1, 2)
-                    value_states = self.v_proj(encoder_hidden_states).view(encoder_hidden_shape).transpose(1, 2)
-                    # Update cache: save all key/value states to cache for fast auto-regressive generation
-                    key_states, value_states = curr_past_key_value.update(key_states, value_states, self.layer_idx)
-                    # Set flag that this layer's cross-attention cache is updated
-                    past_key_value.is_updated[self.layer_idx] = True
-                else:
-                    # Reuse cached key/value states for subsequent tokens
-                    key_states = curr_past_key_value.layers[self.layer_idx].keys
-                    value_states = curr_past_key_value.layers[self.layer_idx].values
-            else:
-                # No cache used, compute K/V directly
-                key_states = self.k_norm(self.k_proj(encoder_hidden_states).view(encoder_hidden_shape)).transpose(1, 2)
-                value_states = self.v_proj(encoder_hidden_states).view(encoder_hidden_shape).transpose(1, 2)
-
-        # Self-attention path: attend to the same sequence
+            key_states = self.k_norm(self.k_proj(encoder_hidden_states).view(encoder_hidden_shape)).transpose(1, 2)
+            value_states = self.v_proj(encoder_hidden_states).view(encoder_hidden_shape).transpose(1, 2)
         else:
-            # Project and normalize key/value states for self-attention
             key_states = self.k_norm(self.k_proj(hidden_states).view(hidden_shape)).transpose(1, 2)
             value_states = self.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
-            # Apply rotary position embeddings (RoPE) if provided
             if position_embeddings is not None:
                 cos, sin = position_embeddings
                 query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
-
-            # Update cache for auto-regressive generation
-            if past_key_value is not None:
-                # Sin and cos are specific to RoPE models; cache_position needed for the static cache
-                cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
-                key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
-
-        # GGA expansion: if num_key_value_heads < num_attention_heads
-        if self.num_key_value_groups > 1:
-            key_states = key_states.unsqueeze(2).expand(-1, -1, self.num_key_value_groups, -1, -1).flatten(1, 2)
-            value_states = value_states.unsqueeze(2).expand(-1, -1, self.num_key_value_groups, -1, -1).flatten(1, 2)
-
+        
         # Use DiffSynth unified attention
-        # Tensors are already in (batch, heads, seq, dim) format -> "b n s d"
         attn_output = attention_forward(
             query_states, key_states, value_states,
-            q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d",
-            attn_mask=attention_mask,
+            q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b s (n d)",
+            window_size=None if attention_mask is None else attention_mask["window_size"],
         )
-
-        attn_weights = None  # attention_forward doesn't return weights
-
-        # Flatten and project output: (B, n_heads, seq, dim) -> (B, seq, n_heads*dim)
-        attn_output = attn_output.transpose(1, 2).flatten(2, 3).contiguous()
         attn_output = self.o_proj(attn_output)
-        return attn_output, attn_weights
-
-
-class AceStepEncoderLayer(nn.Module):
-    """
-    Encoder layer for AceStep model.
-
-    Consists of self-attention and MLP (feed-forward) sub-layers with residual connections.
-    """
-
-    def __init__(
-        self,
-        hidden_size: int,
-        num_attention_heads: int,
-        num_key_value_heads: int,
-        intermediate_size: int = 6144,
-        rms_norm_eps: float = 1e-6,
-        attention_bias: bool = False,
-        attention_dropout: float = 0.0,
-        layer_types: list = None,
-        head_dim: Optional[int] = None,
-        sliding_window: Optional[int] = None,
-        layer_idx: int = 0,
-    ):
-        super().__init__()
-        self.hidden_size = hidden_size
-        self.layer_idx = layer_idx
-
-        self.self_attn = AceStepAttention(
-            hidden_size=hidden_size,
-            num_attention_heads=num_attention_heads,
-            num_key_value_heads=num_key_value_heads,
-            rms_norm_eps=rms_norm_eps,
-            attention_bias=attention_bias,
-            attention_dropout=attention_dropout,
-            layer_types=layer_types,
-            head_dim=head_dim,
-            sliding_window=sliding_window,
-            layer_idx=layer_idx,
-            is_cross_attention=False,
-            is_causal=False,
-        )
-        self.input_layernorm = Qwen3RMSNorm(hidden_size, eps=rms_norm_eps)
-        self.post_attention_layernorm = Qwen3RMSNorm(hidden_size, eps=rms_norm_eps)
-
-        # MLP (feed-forward) sub-layer
-        self.mlp = Qwen3MLP(
-            config=type('Config', (), {
-                'hidden_size': hidden_size,
-                'intermediate_size': intermediate_size,
-                'hidden_act': 'silu',
-            })()
-        )
-        self.attention_type = layer_types[layer_idx]
-
-    def forward(
-        self,
-        hidden_states: torch.Tensor,
-        position_embeddings: tuple[torch.Tensor, torch.Tensor],
-        attention_mask: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        output_attentions: Optional[bool] = False,
-        **kwargs,
-    ) -> tuple[
-        torch.FloatTensor,
-        Optional[tuple[torch.FloatTensor, torch.FloatTensor]],
-    ]:
-        # Self-attention with residual connection
-        residual = hidden_states
-        hidden_states = self.input_layernorm(hidden_states)
-        hidden_states, self_attn_weights = self.self_attn(
-            hidden_states=hidden_states,
-            position_embeddings=position_embeddings,
-            attention_mask=attention_mask,
-            position_ids=position_ids,
-            output_attentions=output_attentions,
-            # Encoders don't use cache
-            use_cache=False,
-            past_key_value=None,
-            **kwargs,
-        )
-        hidden_states = residual + hidden_states
-
-        # MLP with residual connection
-        residual = hidden_states
-        hidden_states = self.post_attention_layernorm(hidden_states)
-        hidden_states = self.mlp(hidden_states)
-        hidden_states = residual + hidden_states
-
-        outputs = (hidden_states,)
-
-        if output_attentions:
-            outputs += (self_attn_weights,)
-
-        return outputs
+        return attn_output
 
 
 class AceStepDiTLayer(nn.Module):
-    """
-    DiT (Diffusion Transformer) layer for AceStep model.
-
-    Implements a transformer layer with three main components:
-    1. Self-attention with adaptive layer norm (AdaLN)
-    2. Cross-attention (optional) for conditioning on encoder outputs
-    3. Feed-forward MLP with adaptive layer norm
-
-    Uses scale-shift modulation from timestep embeddings for adaptive normalization.
-    """
     def __init__(
         self,
         hidden_size: int,
@@ -509,14 +206,8 @@ class AceStepDiTLayer(nn.Module):
         position_embeddings: tuple[torch.Tensor, torch.Tensor],
         temb: torch.Tensor,
         attention_mask: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        past_key_value: Optional[EncoderDecoderCache] = None,
-        output_attentions: Optional[bool] = False,
-        use_cache: Optional[bool] = False,
-        cache_position: Optional[torch.LongTensor] = None,
         encoder_hidden_states: Optional[torch.Tensor] = None,
         encoder_attention_mask: Optional[torch.Tensor] = None,
-        **kwargs,
     ) -> torch.Tensor:
 
         # Extract scale-shift parameters for adaptive layer norm from timestep embeddings
@@ -528,15 +219,10 @@ class AceStepDiTLayer(nn.Module):
         # Step 1: Self-attention with adaptive layer norm (AdaLN)
         # Apply adaptive normalization: norm(x) * (1 + scale) + shift
         norm_hidden_states = (self.self_attn_norm(hidden_states) * (1 + scale_msa) + shift_msa).type_as(hidden_states)
-        attn_output, self_attn_weights = self.self_attn(
+        attn_output = self.self_attn(
             hidden_states=norm_hidden_states,
             position_embeddings=position_embeddings,
             attention_mask=attention_mask,
-            position_ids=position_ids,
-            output_attentions=output_attentions,
-            use_cache=False,
-            past_key_value=None,
-            **kwargs,
         )
         # Apply gated residual connection: x = x + attn_output * gate
         hidden_states = (hidden_states + attn_output * gate_msa).type_as(hidden_states)
@@ -544,14 +230,10 @@ class AceStepDiTLayer(nn.Module):
         # Step 2: Cross-attention (if enabled) for conditioning on encoder outputs
         if self.use_cross_attention:
             norm_hidden_states = self.cross_attn_norm(hidden_states).type_as(hidden_states)
-            attn_output, cross_attn_weights = self.cross_attn(
+            attn_output = self.cross_attn(
                 hidden_states=norm_hidden_states,
                 encoder_hidden_states=encoder_hidden_states,
                 attention_mask=encoder_attention_mask,
-                past_key_value=past_key_value,
-                output_attentions=output_attentions,
-                use_cache=use_cache,
-                **kwargs,
             )
             # Standard residual connection for cross-attention
             hidden_states = hidden_states + attn_output
@@ -564,20 +246,11 @@ class AceStepDiTLayer(nn.Module):
         hidden_states = (hidden_states + ff_output * c_gate_msa).type_as(hidden_states)
 
         outputs = (hidden_states,)
-        if output_attentions:
-            outputs += (self_attn_weights, cross_attn_weights)
 
         return outputs
 
 
-
 class Lambda(nn.Module):
-    """
-    Wrapper module for arbitrary lambda functions.
-
-    Allows using lambda functions in nn.Sequential by wrapping them in a Module.
-    Useful for simple transformations like transpose operations.
-    """
     def __init__(self, func):
         super().__init__()
         self.func = func
@@ -587,13 +260,6 @@ class Lambda(nn.Module):
 
 
 class AceStepDiTModel(nn.Module):
-    """
-    DiT (Diffusion Transformer) model for AceStep.
-
-    Main diffusion model that generates audio latents conditioned on text, lyrics,
-    and timbre. Uses patch-based processing with transformer layers, timestep
-    conditioning, and cross-attention to encoder outputs.
-    """
     def __init__(
         self,
         hidden_size: int = 2048,
@@ -700,8 +366,6 @@ class AceStepDiTModel(nn.Module):
         )
         self.scale_shift_table = nn.Parameter(torch.randn(1, 2, hidden_size) / hidden_size**0.5)
 
-        self.gradient_checkpointing = False
-
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -721,24 +385,10 @@ class AceStepDiTModel(nn.Module):
         enable_early_exit: bool = False,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
+        residual = None,
+        output_residual = False,
         **flash_attn_kwargs: Unpack[FlashAttentionKwargs],
     ):
-
-        use_cache = use_cache if use_cache is not None else self.use_cache
-
-        # Disable cache during training or when gradient checkpointing is enabled
-        if self.gradient_checkpointing and self.training and use_cache:
-            logger.warning_once(
-                "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`."
-            )
-            use_cache = False
-        if self.training:
-            use_cache = False
-
-        # Initialize cache if needed (only during inference for auto-regressive generation)
-        if not self.training and use_cache and past_key_values is None:
-            past_key_values = EncoderDecoderCache(DynamicCache(), DynamicCache())
-
         # Compute timestep embeddings for diffusion conditioning
         # Two embeddings: one for timestep t, one for timestep difference (t - r)
         temb_t, timestep_proj_t = self.time_embed(timestep)
@@ -753,7 +403,6 @@ class AceStepDiTModel(nn.Module):
         original_seq_len = hidden_states.shape[1]
         # Apply padding if sequence length is not divisible by patch_size
         # This ensures proper patch extraction
-        pad_length = 0
         if hidden_states.shape[1] % self.patch_size != 0:
             pad_length = self.patch_size - (hidden_states.shape[1] % self.patch_size)
             hidden_states = F.pad(hidden_states, (0, 0, 0, pad_length), mode='constant', value=0)
@@ -762,106 +411,32 @@ class AceStepDiTModel(nn.Module):
         hidden_states = self.proj_in(hidden_states)
         encoder_hidden_states = self.condition_embedder(encoder_hidden_states)
 
-        # Cache positions
-        if cache_position is None:
-            past_seen_tokens = past_key_values.get_seq_length() if past_key_values is not None else 0
-            cache_position = torch.arange(
-                past_seen_tokens, past_seen_tokens + hidden_states.shape[1], device=hidden_states.device
-            )
-
-        # Position IDs
-        if position_ids is None:
-            position_ids = cache_position.unsqueeze(0)
-
-        seq_len = hidden_states.shape[1]
-        encoder_seq_len = encoder_hidden_states.shape[1]
-        dtype = hidden_states.dtype
-        device = hidden_states.device
-
-        # Initialize Mask variables
-        full_attn_mask = None
-        sliding_attn_mask = None
-        encoder_attn_mask = None
-        decoder_attn_mask = None
-        # Target library discards the passed-in attention_mask for 4D mask
-        # construction (line 1384: attention_mask = None)
-        attention_mask = None
-
-        # 1. Full Attention (Bidirectional, Global)
-        full_attn_mask = create_4d_mask(
-            seq_len=seq_len,
-            dtype=dtype,
-            device=device,
-            attention_mask=attention_mask,
-            sliding_window=None,
-            is_sliding_window=False,
-            is_causal=False
-        )
-        max_len = max(seq_len, encoder_seq_len)
-
-        encoder_attn_mask = create_4d_mask(
-            seq_len=max_len,
-            dtype=dtype,
-            device=device,
-            attention_mask=attention_mask,
-            sliding_window=None,
-            is_sliding_window=False,
-            is_causal=False
-        )
-        encoder_attn_mask = encoder_attn_mask[:, :, :seq_len, :encoder_seq_len]
-
-        # 2. Sliding Attention (Bidirectional, Local)
-        if self.use_sliding_window:
-            sliding_attn_mask = create_4d_mask(
-                seq_len=seq_len,
-                dtype=dtype,
-                device=device,
-                attention_mask=attention_mask,
-                sliding_window=self.sliding_window,
-                is_sliding_window=True,
-                is_causal=False
-            )
+        # Cache positions and Position IDs
+        cache_position = torch.arange(0, hidden_states.shape[1], device=hidden_states.device)
+        position_ids = cache_position.unsqueeze(0)
 
         # Build mask mapping
         self_attn_mask_mapping = {
-            "full_attention": full_attn_mask,
-            "sliding_attention": sliding_attn_mask,
-            "encoder_attention_mask": encoder_attn_mask,
+            "full_attention": None,
+            "sliding_attention": {"window_size": self.sliding_window},
+            "encoder_attention_mask": None,
         }
 
         # Create position embeddings to be shared across all decoder layers
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
-        all_cross_attentions = () if output_attentions else None
-
-        # Handle early exit for custom layer configurations
-        max_needed_layer = float('inf')
-        if custom_layers_config is not None and enable_early_exit:
-            max_needed_layer = max(custom_layers_config.keys())
-            output_attentions = True
-            if all_cross_attentions is None:
-                all_cross_attentions = ()
 
         # Process through transformer layers
+        generated_residual = []
         for index_block, layer_module in enumerate(self.layers):
-            # Early exit optimization
-            if index_block > max_needed_layer:
-                break
-
             # Prepare layer arguments
             layer_args = (
                 hidden_states,
                 position_embeddings,
                 timestep_proj,
                 self_attn_mask_mapping[layer_module.attention_type],
-                position_ids,
-                past_key_values,
-                output_attentions,
-                use_cache,
-                cache_position,
                 encoder_hidden_states,
                 self_attn_mask_mapping["encoder_attention_mask"],
             )
-            layer_kwargs = flash_attn_kwargs
 
             # Use gradient checkpointing if enabled
             layer_outputs = gradient_checkpoint_forward(
@@ -869,17 +444,24 @@ class AceStepDiTModel(nn.Module):
                 use_gradient_checkpointing,
                 use_gradient_checkpointing_offload,
                 *layer_args,
-                **layer_kwargs,
             )
             hidden_states = layer_outputs[0]
 
-            if output_attentions and self.layers[index_block].use_cross_attention:
-                # layer_outputs structure: (hidden_states, self_attn_weights, cross_attn_weights)
-                if len(layer_outputs) >= 3:
-                    all_cross_attentions += (layer_outputs[2],)
+            # Residual control
+            if residual is not None:
+                block_residual = residual[index_block]
+                if block_residual.shape[1] > hidden_states.shape[1]:
+                    block_residual = block_residual[:, :hidden_states.shape[1]]
+                elif block_residual.shape[1] < hidden_states.shape[1]:
+                    block_residual = torch.concat([block_residual, torch.zeros_like(hidden_states)[:, :hidden_states.shape[1] - block_residual.shape[1]]], dim=1)
+                hidden_states = hidden_states + block_residual
+            if output_residual:
+                generated_residual.append(hidden_states)
 
         if return_hidden_states:
             return hidden_states
+        if output_residual:
+            return generated_residual
 
         # Extract scale-shift parameters for adaptive output normalization
         shift, scale = (self.scale_shift_table.to(temb.device) + temb.unsqueeze(1)).chunk(2, dim=1)
@@ -895,7 +477,4 @@ class AceStepDiTModel(nn.Module):
         hidden_states = hidden_states[:, :original_seq_len, :]
 
         outputs = (hidden_states, past_key_values)
-
-        if output_attentions:
-            outputs += (all_cross_attentions,)
         return outputs

@@ -122,6 +122,9 @@ class AceStepPipeline(BasePipeline):
         input_audio: Optional[torch.Tensor] = None,
         # Scheduler-specific parameters
         shift: float = 3.0,
+        # Residual
+        residual = None,
+        negative_residual = None,
         # Progress
         progress_bar_cmd=tqdm,
     ):
@@ -129,8 +132,8 @@ class AceStepPipeline(BasePipeline):
         self.scheduler.set_timesteps(num_inference_steps=num_inference_steps, denoising_strength=denoising_strength, shift=shift)
 
         # Parameters
-        inputs_posi = {"prompt": prompt, "positive": True}
-        inputs_nega = {"positive": False}
+        inputs_posi = {"prompt": prompt, "positive": True, "residual": residual,}
+        inputs_nega = {"positive": False, "residual": negative_residual}
         inputs_shared = {
             "cfg_scale": cfg_scale,
             "lyrics": lyrics,
@@ -574,6 +577,7 @@ def model_fn_ace_step(
     encoder_attention_mask=None,
     context_latents=None,
     attention_mask=None,
+    residual=None,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     **kwargs,
@@ -586,6 +590,7 @@ def model_fn_ace_step(
         encoder_hidden_states=encoder_hidden_states,
         encoder_attention_mask=encoder_attention_mask,
         context_latents=context_latents,
+        residual=residual,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )[0]

@@ -1025,6 +1025,12 @@ ace_step_series = [
         "model_class": "diffsynth.models.ace_step_tokenizer.AceStepTokenizer",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_tokenizer.AceStepTokenizerStateDictConverter",
     },
+    {
+        # Example: ???
+        "model_hash": "ff74b1806e6a0b52e7bbd1d3df2d26d1",
+        "model_name": "demucs",
+        "model_class": "diffsynth.models.demucs.HTDemucs",
+    },
 ]
 
 image_metrics_series = [

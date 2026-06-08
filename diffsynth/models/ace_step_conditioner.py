@@ -17,7 +17,6 @@ from typing import Optional
 import torch
 import torch.nn.functional as F
 from torch import nn
-from einops import rearrange
 
 from ..core.attention import attention_forward
 from ..core.gradient import gradient_checkpoint_forward
@@ -168,14 +167,10 @@ class AceStepAttention(nn.Module):
                 cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
                 key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
 
-        if self.num_key_value_groups > 1:
-            key_states = key_states.unsqueeze(2).expand(-1, -1, self.num_key_value_groups, -1, -1).flatten(1, 2)
-            value_states = value_states.unsqueeze(2).expand(-1, -1, self.num_key_value_groups, -1, -1).flatten(1, 2)
-
         attn_output = attention_forward(
             query_states, key_states, value_states,
             q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d",
-            attn_mask=attention_mask,
+            window_size=None if attention_mask is None else attention_mask["window_size"],
         )
         attn_weights = None
 
@@ -374,18 +369,10 @@ class AceStepLyricEncoder(nn.Module):
         dtype = inputs_embeds.dtype
         device = inputs_embeds.device
 
-        full_attn_mask = create_4d_mask(
-            seq_len=seq_len, dtype=dtype, device=device,
-            attention_mask=attention_mask, sliding_window=None,
-            is_sliding_window=False, is_causal=False
-        )
+        full_attn_mask = None
         sliding_attn_mask = None
         if self.use_sliding_window:
-            sliding_attn_mask = create_4d_mask(
-                seq_len=seq_len, dtype=dtype, device=device,
-                attention_mask=attention_mask, sliding_window=self.sliding_window,
-                is_sliding_window=True, is_causal=False
-            )
+            sliding_attn_mask = {"window_size": self.sliding_window}
 
         self_attn_mask_mapping = {
             "full_attention": full_attn_mask,
@@ -546,18 +533,10 @@ class AceStepTimbreEncoder(nn.Module):
         dtype = inputs_embeds.dtype
         device = inputs_embeds.device
 
-        full_attn_mask = create_4d_mask(
-            seq_len=seq_len, dtype=dtype, device=device,
-            attention_mask=attention_mask, sliding_window=None,
-            is_sliding_window=False, is_causal=False
-        )
+        full_attn_mask = None
         sliding_attn_mask = None
         if self.use_sliding_window:
-            sliding_attn_mask = create_4d_mask(
-                seq_len=seq_len, dtype=dtype, device=device,
-                attention_mask=attention_mask, sliding_window=self.sliding_window,
-                is_sliding_window=True, is_causal=False
-            )
+            sliding_attn_mask = {"window_size": self.sliding_window}
 
         self_attn_mask_mapping = {
             "full_attention": full_attn_mask,
