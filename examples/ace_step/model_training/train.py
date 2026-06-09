@@ -94,6 +94,7 @@ def ace_step_parser():
     parser.add_argument("--tokenizer_path", type=str, default=None, help="Tokenizer path in format model_id:origin_pattern.")
     parser.add_argument("--silence_latent_path", type=str, default=None, help="Silence latent path in format model_id:origin_pattern.")
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
+    parser.add_argument("--max_audio_duration", type=int, default=None, help="Maximum audio length. Audio exceeding the length limit will be truncated.")
     return parser
 
 
@@ -109,7 +110,7 @@ if __name__ == "__main__":
         metadata_path=args.dataset_metadata_path,
         repeat=args.dataset_repeat,
         data_file_keys=args.data_file_keys.split(","),
-        main_data_operator=ToAbsolutePath(args.dataset_base_path) >> LoadPureAudioWithTorchaudio(target_sample_rate=48000),
+        main_data_operator=ToAbsolutePath(args.dataset_base_path) >> LoadPureAudioWithTorchaudio(target_sample_rate=48000, max_audio_duration=args.max_audio_duration),
     )
     model = AceStepTrainingModule(
         model_paths=args.model_paths,
