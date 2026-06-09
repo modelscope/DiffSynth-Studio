@@ -143,7 +143,7 @@ class ZImagePipeline(BasePipeline):
             "edit_image": edit_image, "edit_image_auto_resize": edit_image_auto_resize,
             "controlnet_inputs": controlnet_inputs,
             "image2lora_images": image2lora_images,
-            "positive_only_lora": lora or positive_only_lora,
+            "positive_only_lora": lora if lora is not None else positive_only_lora,
             "negative_only_lora": negative_lora,
         }
         for unit in self.units:
