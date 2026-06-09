@@ -118,6 +118,9 @@ class ZImagePipeline(BasePipeline):
         # Image to LoRA
         image2lora_images: List[Image.Image] = None,
         positive_only_lora: Dict[str, torch.Tensor] = None,
+        # LoRA
+        lora = None,
+        negative_lora = None,
         # Progress bar
         progress_bar_cmd = tqdm,
     ):
@@ -139,7 +142,9 @@ class ZImagePipeline(BasePipeline):
             "num_inference_steps": num_inference_steps,
             "edit_image": edit_image, "edit_image_auto_resize": edit_image_auto_resize,
             "controlnet_inputs": controlnet_inputs,
-            "image2lora_images": image2lora_images, "positive_only_lora": positive_only_lora,
+            "image2lora_images": image2lora_images,
+            "positive_only_lora": lora or positive_only_lora,
+            "negative_only_lora": negative_lora,
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
