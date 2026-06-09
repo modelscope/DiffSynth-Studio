@@ -119,8 +119,8 @@ class ZImagePipeline(BasePipeline):
         image2lora_images: List[Image.Image] = None,
         positive_only_lora: Dict[str, torch.Tensor] = None,
         # LoRA
-        lora = None,
-        negative_lora = None,
+        lora: Dict[str, torch.Tensor] = None,
+        negative_lora: Dict[str, torch.Tensor] = None,
         # Progress bar
         progress_bar_cmd = tqdm,
     ):
