@@ -23,6 +23,7 @@ class AceStepTrainingModule(DiffusionTrainingModule):
         extra_inputs=None,
         fp8_models=None,
         offload_models=None,
+        template_model_id_or_path=None,
         resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         device="cpu",
         task="sft",
@@ -35,6 +36,7 @@ class AceStepTrainingModule(DiffusionTrainingModule):
             torch_dtype=torch.bfloat16, device=device, model_configs=model_configs,
             text_tokenizer_config=text_tokenizer_config, silence_latent_config=silence_latent_config,
         )
+        self.pipe = self.load_training_template_model(self.pipe, template_model_id_or_path, use_gradient_checkpointing, use_gradient_checkpointing_offload)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
         self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
 
@@ -92,6 +94,7 @@ def ace_step_parser():
     parser.add_argument("--tokenizer_path", type=str, default=None, help="Tokenizer path in format model_id:origin_pattern.")
     parser.add_argument("--silence_latent_path", type=str, default=None, help="Silence latent path in format model_id:origin_pattern.")
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
+    parser.add_argument("--max_audio_duration", type=int, default=None, help="Maximum audio length. Audio exceeding the length limit will be truncated.")
     return parser
 
 
@@ -107,7 +110,7 @@ if __name__ == "__main__":
         metadata_path=args.dataset_metadata_path,
         repeat=args.dataset_repeat,
         data_file_keys=args.data_file_keys.split(","),
-        main_data_operator=ToAbsolutePath(args.dataset_base_path) >> LoadPureAudioWithTorchaudio(target_sample_rate=48000),
+        main_data_operator=ToAbsolutePath(args.dataset_base_path) >> LoadPureAudioWithTorchaudio(target_sample_rate=48000, max_audio_duration=args.max_audio_duration),
     )
     model = AceStepTrainingModule(
         model_paths=args.model_paths,
@@ -126,6 +129,7 @@ if __name__ == "__main__":
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
+        template_model_id_or_path=args.template_model_id_or_path,
         resume_from_checkpoint=args.resume_from_checkpoint,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         task=args.task,

@@ -283,22 +283,23 @@ class LoadAudioWithTorchaudio(DataProcessingOperator, FrameSamplerByRateMixin):
 
 class LoadPureAudioWithTorchaudio(DataProcessingOperator):
 
-    def __init__(self, target_sample_rate=None, target_duration=None):
+    def __init__(self, target_sample_rate=None, max_audio_duration=None, padding=False):
         self.target_sample_rate = target_sample_rate
-        self.target_duration = target_duration
+        self.max_audio_duration = max_audio_duration
         self.resample = True if target_sample_rate is not None else False
+        self.padding = padding
         from diffsynth.utils.data.audio import read_audio
         self.audio_loader = read_audio
 
     def __call__(self, data: str):
         try:
             waveform, sample_rate = self.audio_loader(data, resample=self.resample, resample_rate=self.target_sample_rate)
-            if self.target_duration is not None:
-                target_samples = int(self.target_duration * sample_rate)
+            if self.max_audio_duration is not None:
+                target_samples = int(self.max_audio_duration * sample_rate)
                 current_samples = waveform.shape[-1]
                 if current_samples > target_samples:
                     waveform = waveform[..., :target_samples]
-                elif current_samples < target_samples:
+                elif current_samples < target_samples and self.padding:
                     padding = target_samples - current_samples
                     waveform = torch.nn.functional.pad(waveform, (0, padding))
             return waveform, sample_rate
