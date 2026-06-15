@@ -18,7 +18,7 @@ template = TemplatePipeline.from_pretrained(
     device="cuda",
     model_configs=[ModelConfig(model_id="DiffSynth-Studio/HidreamO1-i2L-v2")],
 )
-template.models[0].load_state_dict(load_state_dict("models/train/HidreamO1-i2L-v2/epoch-1.safetensors"))
+template.models[0].load_state_dict(load_state_dict("models/train/HidreamO1-i2L-v2_full/epoch-1.safetensors"))
 snapshot_download("DiffSynth-Studio/HidreamO1-i2L-v2", allow_file_pattern="assets/*", local_dir="data")
 images = [Image.open(f"data/assets/multi_input_{i}.jpg") for i in range(4)]
 image = template(
