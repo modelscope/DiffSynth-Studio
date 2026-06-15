@@ -34,7 +34,7 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
-- **June 15, 2026** We have open-sourced Image-to-LoRA V2, compressing the hours-long training process for image style LoRAs into a single model inference step, thereby exploring a new paradigm for LoRA model training. This release includes three models:
+- **June 15, 2026** We have open-sourced Image-to-LoRA V2, compressing the hours-long training process for image style LoRAs into a single model inference step, thereby exploring a new paradigm for LoRA model training. The [technical report](https://arxiv.org/abs/2606.13809) has been released. This release includes three models:
     * [DiffSynth-Studio/ZImage-i2L-v2](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2): Adapted for the Z-Image model
     * [DiffSynth-Studio/KleinBase4B-i2L-v2](https://modelscope.cn/models/DiffSynth-Studio/KleinBase4B-i2L-v2): Adapted for the FLUX.2-klein-base-4B model
     * [DiffSynth-Studio/HidreamO1-i2L-v2](https://modelscope.cn/models/DiffSynth-Studio/HidreamO1-i2L-v2): Adapted for the Hidream-O1-Image model

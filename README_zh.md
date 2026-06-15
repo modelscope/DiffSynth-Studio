@@ -34,7 +34,7 @@ DiffSynth 目前包括两个开源项目：
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
-- **2026年6月15日** 我们开源了 Image-to-LoRA V2，将动辄数小时的图像风格 LoRA 训练压缩到一次模型推理中，探索 LoRA 模型训练的新方式。本次开源包括三个模型：
+- **2026年6月15日** 我们开源了 Image-to-LoRA V2，将动辄数小时的图像风格 LoRA 训练压缩到一次模型推理中，探索 LoRA 模型训练的新方式。[技术报告](https://arxiv.org/abs/2606.13809)已公开，本次开源包括三个模型：
     * [DiffSynth-Studio/ZImage-i2L-v2](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2)：适配模型 Z-Image
     * [DiffSynth-Studio/KleinBase4B-i2L-v2](https://modelscope.cn/models/DiffSynth-Studio/KleinBase4B-i2L-v2)：适配模型 FLUX.2-klein-base-4B
     * [DiffSynth-Studio/HidreamO1-i2L-v2](https://modelscope.cn/models/DiffSynth-Studio/HidreamO1-i2L-v2)：适配模型 Hidream-O1-Image
