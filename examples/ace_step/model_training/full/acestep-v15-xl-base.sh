@@ -1,5 +1,5 @@
 # Dataset: data/diffsynth_example_dataset/ace_step/acestep-v15-xl-base/
-# Download: modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "ace_step/acestep-v15-xl-base/*" --local_dir ./data/diffsynth_example_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "ace_step/acestep-v15-xl-base/*" --local_dir ./data/diffsynth_example_dataset
 
 accelerate launch examples/ace_step/model_training/train.py \
     --learning_rate 1e-5 \

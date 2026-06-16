@@ -26,6 +26,14 @@ try:
 except ModuleNotFoundError:
     XFORMERS_AVAILABLE = False
 
+try:
+    if "enable_gqa" in inspect.signature(torch.nn.functional.scaled_dot_product_attention).parameters:
+        TORCH_SUPPORT_GQA = True
+    else:
+        TORCH_SUPPORT_GQA = False
+except:
+    TORCH_SUPPORT_GQA = False
+
 
 def initialize_attention_priority():
     if os.environ.get('DIFFSYNTH_ATTENTION_IMPLEMENTATION') is not None:
@@ -68,7 +76,7 @@ def torch_sdpa(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n
     q, k, v = rearrange_qkv(q, k, v, q_pattern, k_pattern, v_pattern, required_in_pattern, dims)
     if q.shape[1] != k.shape[1] or q.shape[1] != v.shape[1]:
         # Grouped Query Attention
-        if "enable_gqa" in inspect.signature(torch.nn.functional.scaled_dot_product_attention).parameters:
+        if TORCH_SUPPORT_GQA:
             out = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask, scale=scale, is_causal=is_causal, enable_gqa=True)
         else:
             # In low-version torch, `enable_gqa` is not supported.

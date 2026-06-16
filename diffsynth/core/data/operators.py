@@ -2,6 +2,7 @@ import math, warnings
 import torch, torchvision, imageio, os
 import imageio.v3 as iio
 from PIL import Image
+from einops import repeat
 
 
 class DataProcessingPipeline:
@@ -283,7 +284,7 @@ class LoadAudioWithTorchaudio(DataProcessingOperator, FrameSamplerByRateMixin):
 
 class LoadPureAudioWithTorchaudio(DataProcessingOperator):
 
-    def __init__(self, target_sample_rate=None, max_audio_duration=None, padding=False):
+    def __init__(self, target_sample_rate=None, max_audio_duration=None, padding=False, channels=2):
         self.target_sample_rate = target_sample_rate
         self.max_audio_duration = max_audio_duration
         self.resample = True if target_sample_rate is not None else False
@@ -302,6 +303,8 @@ class LoadPureAudioWithTorchaudio(DataProcessingOperator):
                 elif current_samples < target_samples and self.padding:
                     padding = target_samples - current_samples
                     waveform = torch.nn.functional.pad(waveform, (0, padding))
+            if waveform.shape[0] == 1:
+                waveform = repeat(waveform, "C L -> (N C) L", N=2)
             return waveform, sample_rate
         except Exception as e:
             print(f"Cannot load audio in {data} due to {e}. The audio will be `None`.")
