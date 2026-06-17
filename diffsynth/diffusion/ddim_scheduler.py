@@ -66,8 +66,15 @@ class DDIMScheduler():
         return prev_sample
 
 
+    def _timestep_index(self, timestep):
+        # bfloat16 cannot represent 999 exactly and rounds it up to 1000, which
+        # would overflow alphas_cumprod (length num_train_timesteps); clamp it.
+        index = int(timestep.flatten().tolist()[0])
+        return min(max(index, 0), self.num_train_timesteps - 1)
+
+
     def step(self, model_output, timestep, sample, to_final=False):
-        alpha_prod_t = self.alphas_cumprod[int(timestep.flatten().tolist()[0])]
+        alpha_prod_t = self.alphas_cumprod[self._timestep_index(timestep)]
         if isinstance(timestep, torch.Tensor):
             timestep = timestep.cpu()
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
@@ -81,14 +88,14 @@ class DDIMScheduler():
 
 
     def return_to_timestep(self, timestep, sample, sample_stablized):
-        alpha_prod_t = self.alphas_cumprod[int(timestep.flatten().tolist()[0])]
+        alpha_prod_t = self.alphas_cumprod[self._timestep_index(timestep)]
         noise_pred = (sample - math.sqrt(alpha_prod_t) * sample_stablized) / math.sqrt(1 - alpha_prod_t)
         return noise_pred
     
     
     def add_noise(self, original_samples, noise, timestep):
-        sqrt_alpha_prod = math.sqrt(self.alphas_cumprod[int(timestep.flatten().tolist()[0])])
-        sqrt_one_minus_alpha_prod = math.sqrt(1 - self.alphas_cumprod[int(timestep.flatten().tolist()[0])])
+        sqrt_alpha_prod = math.sqrt(self.alphas_cumprod[self._timestep_index(timestep)])
+        sqrt_one_minus_alpha_prod = math.sqrt(1 - self.alphas_cumprod[self._timestep_index(timestep)])
         noisy_samples = sqrt_alpha_prod * original_samples + sqrt_one_minus_alpha_prod * noise
         return noisy_samples
     
@@ -97,8 +104,8 @@ class DDIMScheduler():
         if self.prediction_type == "epsilon":
             return noise
         else:
-            sqrt_alpha_prod = math.sqrt(self.alphas_cumprod[int(timestep.flatten().tolist()[0])])
-            sqrt_one_minus_alpha_prod = math.sqrt(1 - self.alphas_cumprod[int(timestep.flatten().tolist()[0])])
+            sqrt_alpha_prod = math.sqrt(self.alphas_cumprod[self._timestep_index(timestep)])
+            sqrt_one_minus_alpha_prod = math.sqrt(1 - self.alphas_cumprod[self._timestep_index(timestep)])
             target = sqrt_alpha_prod * noise - sqrt_one_minus_alpha_prod * sample
             return target
         
