@@ -1038,6 +1038,7 @@ Ideogram 4 的示例代码位于：[/examples/ideogram4/](/examples/ideogram4/)
 | 模型 ID | 推理 | 低显存推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
 |-|-|-|-|-|-|-|
 |[ideogram-ai/ideogram-4-fp8](https://www.modelscope.cn/models/ideogram-ai/ideogram-4-fp8)|[code](/examples/ideogram4/model_inference/ideogram-4-fp8.py)|-|-|-|-|-|
+|[DiffSynth-Studio/ideogram-4-bf16-repackage](https://www.modelscope.cn/models/DiffSynth-Studio/ideogram-4-bf16-repackage)|[code](/examples/ideogram4/model_inference/ideogram-4-bf16-repackage.py)|[code](/examples/ideogram4/model_inference_low_vram/ideogram-4-bf16-repackage.py)|[code](/examples/ideogram4/model_training/full/Ideogram-4-bf16-repackage.sh)|-|[code](/examples/ideogram4/model_training/lora/Ideogram-4-bf16-repackage.sh)|[code](/examples/ideogram4/model_training/validate_lora/Ideogram-4-bf16-repackage.py)|
 
 </details>
 

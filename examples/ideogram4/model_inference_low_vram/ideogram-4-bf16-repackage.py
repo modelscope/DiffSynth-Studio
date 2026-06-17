@@ -2,18 +2,28 @@ from diffsynth.pipelines.ideogram4 import Ideogram4Pipeline
 from diffsynth.core import ModelConfig
 import torch
 
-# This is a special FP8 format. DiffSynth-Studio VRAM management doesn't support this format.
+vram_config = {
+    "offload_dtype": torch.float8_e4m3fn,
+    "offload_device": "cpu",
+    "onload_dtype": torch.float8_e4m3fn,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
 pipe = Ideogram4Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors"),
+        ModelConfig(model_id="DiffSynth-Studio/ideogram-4-bf16-repackage", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors", **vram_config),
         # unconditional_transformer is optional. You can delete this line to reduce VRAM required.
-        ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="unconditional_transformer/diffusion_pytorch_model.safetensors"),
-        ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="text_encoder/model.safetensors"),
-        ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+        # ModelConfig(model_id="DiffSynth-Studio/ideogram-4-bf16-repackage", origin_file_pattern="unconditional_transformer/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/ideogram-4-bf16-repackage", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/ideogram-4-bf16-repackage", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
     ],
     tokenizer_config=ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="tokenizer/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 prompt = r"""
 {
@@ -49,4 +59,4 @@ prompt = r"""
 }
 """
 image = pipe(prompt=prompt, height=1024, width=1024, num_inference_steps=48, cfg_scale=7.0, seed=42)
-image.save("image_ideogram-4-fp8.jpg")
+image.save("image_ideogram-4-bf16-repackage.jpg")

@@ -1038,6 +1038,7 @@ Example code for Ideogram 4 is available at: [/examples/ideogram4/](/examples/id
 | Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
 |-|-|-|-|-|-|-|
 |[ideogram-ai/ideogram-4-fp8](https://www.modelscope.cn/models/ideogram-ai/ideogram-4-fp8)|[code](/examples/ideogram4/model_inference/ideogram-4-fp8.py)|-|-|-|-|-|
+|[DiffSynth-Studio/ideogram-4-bf16-repackage](https://www.modelscope.cn/models/DiffSynth-Studio/ideogram-4-bf16-repackage)|[code](/examples/ideogram4/model_inference/ideogram-4-bf16-repackage.py)|[code](/examples/ideogram4/model_inference_low_vram/ideogram-4-bf16-repackage.py)|[code](/examples/ideogram4/model_training/full/Ideogram-4-bf16-repackage.sh)|-|[code](/examples/ideogram4/model_training/lora/Ideogram-4-bf16-repackage.sh)|[code](/examples/ideogram4/model_training/validate_lora/Ideogram-4-bf16-repackage.py)|
 
 </details>
 
