@@ -214,7 +214,7 @@ class FlowMatchScheduler():
         logsnr_max = 18.0
         t_min = 1.0 / (1 + math.exp(0.5 * logsnr_max))
         t_max = 1.0 / (1 + math.exp(0.5 * logsnr_min))
-        step_intervals = torch.linspace(0.0, 1.0, num_inference_steps + 1, dtype=torch.float64)
+        step_intervals = torch.linspace(0.0, denoising_strength, num_inference_steps + 1, dtype=torch.float64)
         sigmas = []
         for i in range(num_inference_steps + 1):
             z = torch.special.ndtri(step_intervals[i])
@@ -230,7 +230,7 @@ class FlowMatchScheduler():
             one_minus_t = one_minus_t * (sigma_start / one_minus_t[0])
         sigmas = sigmas.flip(dims=(0,))
         timesteps = sigmas[:-1]
-        sigmas = 1 - sigmas
+        sigmas = (1 - sigmas)[:-1]
         return sigmas, timesteps
 
     @staticmethod
@@ -263,7 +263,7 @@ class FlowMatchScheduler():
 
     def set_training_weight(self):
         steps = 1000
-        x = self.timesteps
+        x = self.sigmas * self.num_train_timesteps
         y = torch.exp(-2 * ((x - steps / 2) / steps) ** 2)
         y_shifted = y - y.min()
         bsmntw_weighing = y_shifted * (steps / y_shifted.sum())

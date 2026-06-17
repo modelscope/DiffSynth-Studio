@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from ..core.gradient import gradient_checkpoint_forward
+
 LLM_TOKEN_INDICATOR = 3
 OUTPUT_IMAGE_INDICATOR = 2
 IMAGE_POSITION_OFFSET = 65536
@@ -140,7 +142,7 @@ class Ideogram4MRoPE(nn.Module):
         pos = position_ids.permute(2, 0, 1).to(dtype=torch.float32)
         inv_freq = self.inv_freq.to(dtype=torch.float32)[None, None, :, None].expand(
             3, batch_size, -1, 1
-        )
+        ).to(pos.device)
         freqs = inv_freq @ pos.unsqueeze(2)
         freqs = freqs.transpose(2, 3)
 
@@ -291,7 +293,7 @@ class Ideogram4EmbedScalar(nn.Module):
         scaled = 1e4 * (x - self.range_min) / (self.range_max - self.range_min)
         emb = _sinusoidal_embedding(scaled, self.dim)
         emb = emb.to(
-            getattr(self.mlp_in, "compute_dtype", None) or self.mlp_in.weight.dtype
+            getattr(self.mlp_in, "compute_dtype", None) or getattr(self.mlp_in, "computation_dtype", None) or self.mlp_in.weight.dtype
         )
         emb = F.silu(self.mlp_in(emb))
         return self.mlp_out(emb)
@@ -375,6 +377,8 @@ class Ideogram4DiT(nn.Module):
         position_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         indicator: torch.Tensor,
+        use_gradient_checkpointing: bool = False,
+        use_gradient_checkpointing_offload: bool = False,
     ) -> torch.Tensor:
         """Velocity prediction.
 
@@ -393,7 +397,7 @@ class Ideogram4DiT(nn.Module):
         assert in_channels == self.config.in_channels
 
         param_dtype = (
-            getattr(self.input_proj, "compute_dtype", None) or self.input_proj.weight.dtype
+            getattr(self.input_proj, "compute_dtype", None) or getattr(self.input_proj, "computation_dtype", None) or self.input_proj.weight.dtype
         )
         x = x.to(param_dtype)
         t = t.to(param_dtype)
@@ -428,7 +432,16 @@ class Ideogram4DiT(nn.Module):
         sin = sin.to(h.dtype)
 
         for layer in self.layers:
-            h = layer(h, segment_ids=segment_ids, cos=cos, sin=sin, adaln_input=adaln_input)
+            h = gradient_checkpoint_forward(
+                layer,
+                use_gradient_checkpointing=use_gradient_checkpointing,
+                use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+                x=h,
+                segment_ids=segment_ids,
+                cos=cos,
+                sin=sin,
+                adaln_input=adaln_input,
+            )
 
         out = self.final_layer(h, c=adaln_input)
         return out.to(torch.float32)

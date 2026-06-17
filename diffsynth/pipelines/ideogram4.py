@@ -10,7 +10,8 @@ from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..core import ModelConfig
 from ..models.ideogram4_dit import Ideogram4DiT, LLM_TOKEN_INDICATOR, OUTPUT_IMAGE_INDICATOR, IMAGE_POSITION_OFFSET
 from ..models.ideogram4_text_encoder import Ideogram4TextEncoder
-from ..models.ideogram4_vae import Ideogram4VAEEncoder, Ideogram4VAEDecoder
+from ..models.flux2_vae import Flux2VAE
+from ..models.ideogram4_vae import encode, decode
 from transformers import AutoTokenizer
 
 
@@ -25,8 +26,7 @@ class Ideogram4Pipeline(BasePipeline):
         self.text_encoder: Ideogram4TextEncoder = None
         self.dit: Ideogram4DiT = None
         self.dit_uncond: Ideogram4DiT = None
-        self.vae_encoder: Ideogram4VAEEncoder = None
-        self.vae_decoder: Ideogram4VAEDecoder = None
+        self.vae: Flux2VAE = None
         self.tokenizer: AutoTokenizer = None
         self.in_iteration_models = ("dit", "dit_uncond")
         self.units = [
@@ -55,8 +55,7 @@ class Ideogram4Pipeline(BasePipeline):
         else:
             pipe.dit = transformers
         pipe.text_encoder = model_pool.fetch_model("ideogram4_text_encoder")
-        pipe.vae_encoder = model_pool.fetch_model("ideogram4_vae_encoder")
-        pipe.vae_decoder = model_pool.fetch_model("ideogram4_vae_decoder")
+        pipe.vae = model_pool.fetch_model("flux2_vae")
 
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
@@ -112,16 +111,15 @@ class Ideogram4Pipeline(BasePipeline):
             if cfg_scale != 1:
                 models = {"dit": self.dit_uncond if self.dit_uncond is not None else self.dit}
                 noise_pred_nega = self.model_fn(timestep=timestep, **models, **inputs_shared, **inputs_nega)
-                # This is not a standard CFG implementation. We align it to the original version of Ideogram4.
-                noise_pred = cfg_scale * noise_pred_posi + (1.0 - cfg_scale) * noise_pred_nega
+                noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
             else:
                 noise_pred = noise_pred_posi
 
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
             
         # Decode
-        self.load_models_to_device(["vae_decoder"])
-        image = self.vae_decoder.decode(inputs_shared["latents"], inputs_shared["grid_h"], inputs_shared["grid_w"], self.dit.patch_size, self.torch_dtype)
+        self.load_models_to_device(["vae"])
+        image = decode(self.vae, inputs_shared["latents"], height, width, self.torch_dtype)
         image = self.vae_output_to_image(image)
         self.load_models_to_device([])
         return image
@@ -168,7 +166,7 @@ class Ideogram4Unit_PromptEmbedder(PipelineUnit):
                 f"prompt has {num_text_tokens} tokens, exceeds max_text_tokens={max_text_tokens}"
             )
 
-        patch = pipe.dit.patch_size * pipe.vae_encoder.ae_scale_factor
+        patch = pipe.dit.patch_size * 8
         grid_h = height // patch
         grid_w = width // patch
         num_image_tokens = grid_h * grid_w
@@ -239,7 +237,7 @@ class Ideogram4Unit_NoiseInitializer(PipelineUnit):
         )
 
     def process(self, pipe: "Ideogram4Pipeline", height, width, seed, rand_device):
-        patch = pipe.dit.patch_size * pipe.vae_encoder.ae_scale_factor
+        patch = pipe.dit.patch_size * 8
         grid_h = height // patch
         grid_w = width // patch
         num_image_tokens = grid_h * grid_w
@@ -251,18 +249,17 @@ class Ideogram4Unit_NoiseInitializer(PipelineUnit):
 class Ideogram4Unit_InputImageEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("input_image", "noise", "height", "width", "grid_h", "grid_w"),
+            input_params=("input_image", "noise", "height", "width"),
             output_params=("latents", "input_latents"),
-            onload_model_names=("vae_encoder",)
+            onload_model_names=("vae",)
         )
 
-    def process(self, pipe: "Ideogram4Pipeline", input_image, noise, height, width, grid_h, grid_w):
+    def process(self, pipe: "Ideogram4Pipeline", input_image, noise, height, width):
         if input_image is None:
             return {"latents": noise, "input_latents": None}
-        pipe.load_models_to_device(["vae_encoder"])
+        pipe.load_models_to_device(["vae"])
         image = pipe.preprocess_image(input_image)
-        input_latents = pipe.vae_encoder.encode(image, grid_h, grid_w, pipe.dit.patch_size)
-
+        input_latents = encode(pipe.vae, image, height, width, torch.bfloat16)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
         else:
@@ -279,6 +276,8 @@ def model_fn_ideogram4(
     segment_ids=None,
     indicator=None,
     max_text_tokens=0,
+    use_gradient_checkpointing=False,
+    use_gradient_checkpointing_offload=False,
     **kwargs,
 ):
     t_ideogram4 = timestep.to(torch.float32)
@@ -292,5 +291,7 @@ def model_fn_ideogram4(
     out = dit(
         llm_features=llm_features, x=z, t=t_ideogram4,
         position_ids=position_ids, segment_ids=segment_ids, indicator=indicator,
+        use_gradient_checkpointing=use_gradient_checkpointing,
+        use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
     return -out[:, max_text_tokens:]

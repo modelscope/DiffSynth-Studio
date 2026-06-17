@@ -1149,20 +1149,17 @@ ideogram4_series = [
         "extra_kwargs": {"keep_original_dtype": True},
     },
     {
-        # Example: ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
-        "model_hash": "c54288e3ee12ca215898840682337b95",
-        "model_name": "ideogram4_vae_encoder",
-        "model_class": "diffsynth.models.ideogram4_vae.Ideogram4VAEEncoder",
-        "state_dict_converter": "diffsynth.models.ideogram4_vae.Ideogram4VAEEncoderStateDictConverter",
-        "extra_kwargs": {"keep_original_dtype": True},
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ideogram-4-bf16-repackage", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors")
+        "model_hash": "291b300b11c8c8e11978bd85a9c5f80c",
+        "model_name": "ideogram4_dit",
+        "model_class": "diffsynth.models.ideogram4_dit.Ideogram4DiT",
+        "extra_kwargs": {"config": {"emb_dim": 4608, "num_layers": 34, "num_heads": 18, "intermediate_size": 12288, "adanln_dim": 512, "in_channels": 128, "llm_features_dim": 53248, "rope_theta": 5000000, "mrope_section": [24, 20, 20], "norm_eps": 1e-05}},
     },
     {
-        # Example: ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
-        "model_hash": "c54288e3ee12ca215898840682337b95",
-        "model_name": "ideogram4_vae_decoder",
-        "model_class": "diffsynth.models.ideogram4_vae.Ideogram4VAEDecoder",
-        "state_dict_converter": "diffsynth.models.ideogram4_vae.Ideogram4VAEDecoderStateDictConverter",
-        "extra_kwargs": {"keep_original_dtype": True},
+        # Example: ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="text_encoder/model.safetensors")
+        "model_hash": "6a269892c0757aacd46bd41b8d5a7aef",
+        "model_name": "ideogram4_text_encoder",
+        "model_class": "diffsynth.models.ideogram4_text_encoder.Ideogram4TextEncoder",
     },
 ]
 
