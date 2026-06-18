@@ -4,7 +4,7 @@ import torch
 
 pipe = Flux2ImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
-    device="cuda:2",
+    device="cuda",
     model_configs=[
         ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="text_encoder/*.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.2-klein-base-4B", origin_file_pattern="transformer/*.safetensors"),
