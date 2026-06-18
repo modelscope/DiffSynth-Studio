@@ -616,29 +616,129 @@ def model_fn_flux2(
     extra_text_embedding=None,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
+    feature_indices=None,
+    return_features=False,
     **kwargs,
 ):
+    feature_indices = set() if feature_indices is None else set(feature_indices)
     image_seq_len = latents.shape[1]
     if edit_latents is not None:
         image_seq_len = latents.shape[1]
         latents = torch.concat([latents, edit_latents], dim=1)
         image_ids = torch.concat([image_ids, edit_image_ids], dim=1)
-    embedded_guidance = torch.tensor([embedded_guidance], device=latents.device)
+    if embedded_guidance is None:
+        embedded_guidance = None
+    elif isinstance(embedded_guidance, torch.Tensor):
+        embedded_guidance = embedded_guidance.to(device=latents.device, dtype=latents.dtype).flatten()
+        if embedded_guidance.numel() == 1:
+            embedded_guidance = embedded_guidance.expand(latents.shape[0])
+        elif embedded_guidance.numel() != latents.shape[0]:
+            raise ValueError("`embedded_guidance` must be a scalar or match the latent batch size.")
+    else:
+        embedded_guidance = torch.full((latents.shape[0],), float(embedded_guidance), device=latents.device, dtype=latents.dtype)
     if extra_text_embedding is not None:
         extra_text_ids = torch.zeros((1, extra_text_embedding.shape[1], 4), dtype=text_ids.dtype, device=text_ids.device)
         extra_text_ids[:, :, -1] = torch.arange(prompt_embeds.shape[1], prompt_embeds.shape[1] + extra_text_embedding.shape[1])
         prompt_embeds = torch.concat([prompt_embeds, extra_text_embedding], dim=1)
         text_ids = torch.concat([text_ids, extra_text_ids], dim=1)
-    model_output = dit(
-        hidden_states=latents,
-        timestep=timestep / 1000,
-        guidance=embedded_guidance,
-        encoder_hidden_states=prompt_embeds,
-        txt_ids=text_ids,
-        img_ids=image_ids,
-        kv_cache=kv_cache,
-        use_gradient_checkpointing=use_gradient_checkpointing,
-        use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+    if not return_features:
+        model_output = dit(
+            hidden_states=latents,
+            timestep=timestep / 1000,
+            guidance=embedded_guidance,
+            encoder_hidden_states=prompt_embeds,
+            txt_ids=text_ids,
+            img_ids=image_ids,
+            kv_cache=kv_cache,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+        )
+        model_output = model_output[:, :image_seq_len]
+        return model_output
+
+    height, width = kwargs.get("height"), kwargs.get("width")
+    if height is not None and width is not None:
+        feature_height, feature_width = int(height) // 16, int(width) // 16
+    else:
+        feature_height = int(math.sqrt(image_seq_len))
+        feature_width = image_seq_len // feature_height if feature_height > 0 else 0
+    if feature_height * feature_width != image_seq_len:
+        raise ValueError("Flux2 feature extraction requires height/width or square latent tokens.")
+
+    features = []
+
+    def append_feature(feat):
+        feat = feat[:, :image_seq_len]
+        batch_size, _, channels = feat.shape
+        feat = feat.permute(0, 2, 1).reshape(batch_size, channels, feature_height, feature_width)
+        features.append(feat)
+        if len(features) == len(feature_indices):
+            return features
+        return None
+
+    num_txt_tokens = prompt_embeds.shape[1]
+    timestep = timestep.to(latents.dtype)
+    guidance = None if embedded_guidance is None else embedded_guidance.to(latents.dtype) * 1000
+    temb = dit.time_guidance_embed(timestep, guidance)
+
+    double_stream_mod_img = dit.double_stream_modulation_img(temb)
+    double_stream_mod_txt = dit.double_stream_modulation_txt(temb)
+    single_stream_mod = dit.single_stream_modulation(temb)[0]
+
+    hidden_states = dit.x_embedder(latents)
+    encoder_hidden_states = dit.context_embedder(prompt_embeds)
+
+    if image_ids.ndim == 3:
+        image_ids = image_ids[0]
+    if text_ids.ndim == 3:
+        text_ids = text_ids[0]
+
+    image_rotary_emb = dit.pos_embed(image_ids)
+    text_rotary_emb = dit.pos_embed(text_ids)
+    concat_rotary_emb = (
+        torch.cat([text_rotary_emb[0], image_rotary_emb[0]], dim=0),
+        torch.cat([text_rotary_emb[1], image_rotary_emb[1]], dim=0),
     )
-    model_output = model_output[:, :image_seq_len]
-    return model_output
+
+    for block_id, block in enumerate(dit.transformer_blocks):
+        encoder_hidden_states, hidden_states = gradient_checkpoint_forward(
+            block,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+            hidden_states=hidden_states,
+            encoder_hidden_states=encoder_hidden_states,
+            temb_mod_params_img=double_stream_mod_img,
+            temb_mod_params_txt=double_stream_mod_txt,
+            image_rotary_emb=concat_rotary_emb,
+            joint_attention_kwargs=None,
+            kv_cache=None if kv_cache is None else kv_cache.get(f"double_{block_id}"),
+        )
+        if block_id in feature_indices:
+            selected_features = append_feature(hidden_states)
+            if selected_features is not None:
+                return selected_features
+
+    hidden_states = torch.cat([encoder_hidden_states, hidden_states], dim=1)
+    num_double_blocks = len(dit.transformer_blocks)
+
+    for block_id, block in enumerate(dit.single_transformer_blocks):
+        hidden_states = gradient_checkpoint_forward(
+            block,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+            hidden_states=hidden_states,
+            encoder_hidden_states=None,
+            temb_mod_params=single_stream_mod,
+            image_rotary_emb=concat_rotary_emb,
+            joint_attention_kwargs=None,
+            kv_cache=None if kv_cache is None else kv_cache.get(f"single_{block_id}"),
+        )
+        feature_id = block_id + num_double_blocks
+        if feature_id in feature_indices:
+            selected_features = append_feature(hidden_states[:, num_txt_tokens:num_txt_tokens + image_seq_len])
+            if selected_features is not None:
+                return selected_features
+
+    if len(features) != len(feature_indices):
+        raise ValueError(f"Only collected {len(features)} feature maps for {len(feature_indices)} requested feature indices.")
+    return features
