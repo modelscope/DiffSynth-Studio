@@ -917,6 +917,14 @@ stable_diffusion_xl_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.stable_diffusion_vae.SDVAEStateDictConverter",
         "extra_kwargs": {"scaling_factor": 0.13025, "sample_size": 1024, "force_upcast": True},
     },
+    {
+        # Example: ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="sd_xl_base_1.0.safetensors")
+        "model_hash": "4cf64a799d04260df438c6f33c9a047e",
+        "model_name": "stable_diffusion_xl_unet",
+        "model_class": "diffsynth.models.stable_diffusion_xl_unet.SDXLUNet2DConditionModel",
+        "extra_kwargs": {"attention_head_dim": [5, 10, 20], "transformer_layers_per_block": [1, 2, 10], "use_linear_projection": True, "addition_embed_type": "text_time", "addition_time_embed_dim": 256, "projection_class_embeddings_input_dim": 2816},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl.SDXLUNetStateDictConverter_Original2Diffusers",
+    }
 ]
 
 stable_diffusion_series = [

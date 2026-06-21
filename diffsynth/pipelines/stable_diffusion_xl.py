@@ -13,6 +13,7 @@ from ..models.stable_diffusion_text_encoder import SDTextEncoder
 from ..models.stable_diffusion_xl_unet import SDXLUNet2DConditionModel
 from ..models.stable_diffusion_xl_text_encoder import SDXLTextEncoder2
 from ..models.stable_diffusion_vae import StableDiffusionVAE
+from ..utils.lora.sdxl import SdxlLoRALoader
 
 
 def rescale_noise_cfg(noise_cfg, noise_pred_text, guidance_rescale=0.0):
@@ -53,6 +54,7 @@ class StableDiffusionXLPipeline(BasePipeline):
         ]
         self.model_fn = model_fn_stable_diffusion_xl
         self.compilable_models = ["unet"]
+        self.lora_loader = SdxlLoRALoader
 
     @staticmethod
     def from_pretrained(
