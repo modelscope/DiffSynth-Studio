@@ -2,6 +2,7 @@ import torch, os, argparse, accelerate
 from diffsynth.core import UnifiedDataset
 from diffsynth.pipelines.stable_diffusion_xl import StableDiffusionXLPipeline, ModelConfig
 from diffsynth.diffusion import *
+from diffsynth.utils.lora.sdxl import SdxlLoRAConverter
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -88,6 +89,7 @@ def parser():
     parser = add_image_size_config(parser)
     parser.add_argument("--tokenizer_path", type=str, default=None, help="Path to tokenizer.")
     parser.add_argument("--tokenizer_2_path", type=str, default=None, help="Path to tokenizer 2.")
+    parser.add_argument("--align_to_opensource_format", default=False, action="store_true", help="Whether to align the lora format to opensource format.")
     return parser
 
 
@@ -136,6 +138,7 @@ if __name__ == "__main__":
     model_logger = ModelLogger(
         args.output_path,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
+        state_dict_converter=SdxlLoRAConverter.align_to_opensource_format if args.align_to_opensource_format else lambda x:x,
         enable_tensorboard_log=args.enable_tensorboard_log,
         enable_swanlab_log=args.enable_swanlab_log,
         swanlab_project=args.swanlab_project,

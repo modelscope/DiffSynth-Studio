@@ -87,8 +87,9 @@ class DDIMScheduler():
     
     
     def add_noise(self, original_samples, noise, timestep):
-        sqrt_alpha_prod = math.sqrt(self.alphas_cumprod[int(timestep.flatten().tolist()[0])])
-        sqrt_one_minus_alpha_prod = math.sqrt(1 - self.alphas_cumprod[int(timestep.flatten().tolist()[0])])
+        timestep_id = max(min(int(timestep.flatten().tolist()[0]), len(self.alphas_cumprod)-1), 0)
+        sqrt_alpha_prod = math.sqrt(self.alphas_cumprod[timestep_id])
+        sqrt_one_minus_alpha_prod = math.sqrt(1 - self.alphas_cumprod[timestep_id])
         noisy_samples = sqrt_alpha_prod * original_samples + sqrt_one_minus_alpha_prod * noise
         return noisy_samples
     
@@ -97,8 +98,9 @@ class DDIMScheduler():
         if self.prediction_type == "epsilon":
             return noise
         else:
-            sqrt_alpha_prod = math.sqrt(self.alphas_cumprod[int(timestep.flatten().tolist()[0])])
-            sqrt_one_minus_alpha_prod = math.sqrt(1 - self.alphas_cumprod[int(timestep.flatten().tolist()[0])])
+            timestep_id = max(min(int(timestep.flatten().tolist()[0]), len(self.alphas_cumprod)-1), 0)
+            sqrt_alpha_prod = math.sqrt(self.alphas_cumprod[timestep_id])
+            sqrt_one_minus_alpha_prod = math.sqrt(1 - self.alphas_cumprod[timestep_id])
             target = sqrt_alpha_prod * noise - sqrt_one_minus_alpha_prod * sample
             return target
         
