@@ -17,13 +17,8 @@ def get_optimizer_class(customized_optimizer=None):
 
 
 def save_training_args(args):
-    """Dump the parsed training arguments to ``output_path/training_args.json`` for reproducibility.
-
-    Saving is best-effort: a failure here (a non-serializable value, a permission error, a full disk, ...)
-    should never interrupt training, so any exception is caught and reported as a warning. ``default=str``
-    keeps the dump robust if a future argument holds a non-JSON-serializable value.
-    """
-    if (args is None) or (args.output_path is None):
+    output_path = getattr(args, "output_path", None) if args is not None else None
+    if output_path is None:
         return
     try:
         os.makedirs(args.output_path, exist_ok=True)
