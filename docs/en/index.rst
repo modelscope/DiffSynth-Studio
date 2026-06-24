@@ -38,7 +38,8 @@ Welcome to DiffSynth-Studio's Documentation
    Model_Details/Stable-Diffusion
    Model_Details/Stable-Diffusion-XL
    Model_Details/Image-Quality-Metrics
-   Model_Details/Ideogram-4
+    Model_Details/Ideogram-4
+    Model_Details/Krea-2
 
 .. toctree::
    :maxdepth: 2

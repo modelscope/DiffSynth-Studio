@@ -4,7 +4,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -17,6 +17,7 @@ class FlowMatchScheduler():
             "ACE-Step": FlowMatchScheduler.set_timesteps_ace_step,
             "HiDream-O1-Image": FlowMatchScheduler.set_timesteps_hidream_o1_image,
             "Ideogram4": FlowMatchScheduler.set_timesteps_ideogram4,
+            "Krea-2": FlowMatchScheduler.set_timesteps_krea2,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -231,6 +232,23 @@ class FlowMatchScheduler():
         sigmas = sigmas.flip(dims=(0,))
         timesteps = sigmas[:-1]
         sigmas = (1 - sigmas)[:-1]
+        return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_krea2(num_inference_steps=28, denoising_strength=1.0, dynamic_shift_len=None, y1=0.5, y2=1.15, mu=None):
+        x1 = 256
+        x2 = 6400
+        sigma = 1
+        ts = torch.linspace(denoising_strength, 0, num_inference_steps + 1)
+        if mu is None and dynamic_shift_len is None:
+            # Training
+            mu = 0.8
+        elif mu is None:
+            # Raw
+            slope = (y2 - y1) / (x2 - x1)
+            mu = slope * dynamic_shift_len + (y1 - slope * x1)
+        ts = math.exp(mu) / (math.exp(mu) + (1.0 / ts - 1.0) ** sigma)
+        sigmas, timesteps = ts[:-1], ts[:-1]
         return sigmas, timesteps
 
     @staticmethod
