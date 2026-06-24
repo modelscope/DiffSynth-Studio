@@ -150,7 +150,7 @@ class Krea2Unit_PromptEmbedder(PipelineUnit):
 
         prompt = [prompt_template_prefix + p for p in prompt]
         suffix_text = [prompt_template_suffix] * len(prompt)
-        suffix_inputs = pipe.processor(text=suffix_text, return_tensors="pt").to(pipe.device)
+        suffix_inputs = pipe.tokenizer(text=suffix_text, return_tensors="pt").to(pipe.device)
         suffix_ids = suffix_inputs["input_ids"]
         suffix_mask = suffix_inputs["attention_mask"].bool()
 
