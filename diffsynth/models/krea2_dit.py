@@ -85,6 +85,10 @@ class SingleMMDiTConfig:
     txtheads: int = 20
     txtkvheads: int = 20
 
+    def get(self, *args, **kwargs):
+        # For compatibility with low-version peft
+        return None
+
 
 class SimpleModulation(torch.nn.Module):
     def __init__(self, dim: int):
@@ -307,8 +311,6 @@ class SingleStreamBlock(nn.Module):
 
 
 class SingleStreamDiT(nn.Module):
-    _repeated_blocks = ["SingleStreamBlock"]
-
     def __init__(
         self,
         config={"features": 6144, "tdim": 256, "txtdim": 2560, "heads": 48, "kvheads": 12, "multiplier": 4, "layers": 28, "patch": 2, "channels": 16, "txtheads": 20, "txtkvheads": 20, "txtlayers": 12},
