@@ -54,9 +54,8 @@ class Krea2Pipeline(BasePipeline):
         pipe.vae = model_pool.fetch_model("qwen_image_vae")
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
-            from transformers import AutoTokenizer, Qwen2TokenizerFast
+            from transformers import AutoTokenizer
             pipe.tokenizer = AutoTokenizer.from_pretrained(tokenizer_config.path, max_length=512)
-            pipe.processor = Qwen2TokenizerFast.from_pretrained(tokenizer_config.path, max_length=512)
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
 
