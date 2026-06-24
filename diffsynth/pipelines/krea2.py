@@ -71,13 +71,14 @@ class Krea2Pipeline(BasePipeline):
         seed: int = None,
         rand_device: str = "cpu",
         num_inference_steps: int = 52,
-        mu=None,
+        mu: float = None,
+        context_pre_compute: bool = True,
         progress_bar_cmd = tqdm,
     ):
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=1.0, dynamic_shift_len=(height // 16) * (width // 16), mu=mu)
 
-        inputs_posi = {"prompt": prompt}
-        inputs_nega = {"negative_prompt": negative_prompt}
+        inputs_posi = {"prompt": prompt, "context_pre_compute": context_pre_compute}
+        inputs_nega = {"negative_prompt": negative_prompt, "context_pre_compute": context_pre_compute}
         inputs_shared = {
             "cfg_scale": cfg_scale,
             "height": height, "width": width,
@@ -207,14 +208,16 @@ class Krea2Unit_PromptEmbPreCompute(PipelineUnit):
     def __init__(self):
         super().__init__(
             seperate_cfg=True,
-            input_params_posi={"prompt_emb": "prompt_emb", "prompt_emb_mask": "prompt_emb_mask"},
-            input_params_nega={"prompt_emb": "prompt_emb", "prompt_emb_mask": "prompt_emb_mask"},
+            input_params_posi={"prompt_emb": "prompt_emb", "prompt_emb_mask": "prompt_emb_mask", "context_pre_compute": "context_pre_compute"},
+            input_params_nega={"prompt_emb": "prompt_emb", "prompt_emb_mask": "prompt_emb_mask", "context_pre_compute": "context_pre_compute"},
             input_params=("use_gradient_checkpointing", "use_gradient_checkpointing_offload"),
             output_params=("prompt_emb", "context_pre_compute"),
             onload_model_names=("dit",)
         )
 
-    def process(self, pipe: Krea2Pipeline, prompt_emb, prompt_emb_mask, use_gradient_checkpointing, use_gradient_checkpointing_offload) -> dict:
+    def process(self, pipe: Krea2Pipeline, prompt_emb, prompt_emb_mask, context_pre_compute, use_gradient_checkpointing, use_gradient_checkpointing_offload) -> dict:
+        if context_pre_compute is None or context_pre_compute == False:
+            return {}
         pipe.load_models_to_device(self.onload_model_names)
         if use_gradient_checkpointing is None: use_gradient_checkpointing = False
         if use_gradient_checkpointing_offload is None: use_gradient_checkpointing_offload = False
