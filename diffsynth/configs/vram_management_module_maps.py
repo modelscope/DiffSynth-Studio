@@ -393,6 +393,18 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.krea2_dit.SingleStreamDiT": {
+        "diffsynth.models.krea2_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "diffsynth.models.krea2_dit.DoubleSharedModulation": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.krea2_dit.SimpleModulation": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.krea2_text_encoder.Krea2TextEncoder": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
 }
 
 def QwenImageTextEncoder_Module_Map_Updater():
