@@ -128,3 +128,8 @@ modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --inclu
 ```
 
 We provide recommended training scripts for each model, please refer to the table in "Model Overview" above. For guidance on writing model training scripts, see [Model Training](../Pipeline_Usage/Model_Training.md); for more advanced training algorithms, see [Training Framework Overview](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/en/Training/).
+
+
+## License
+
+> **⚠️ Notice**: **Krea-2** weights (Raw and Turbo) are released under the [Krea 2 Community License](https://www.krea.ai/krea-2-licensing), **not** the Apache 2.0 license that governs DiffSynth-Studio itself.

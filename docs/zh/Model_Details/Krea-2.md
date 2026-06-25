@@ -128,3 +128,9 @@ modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --inclu
 ```
 
 我们为每个模型编写了推荐的训练脚本，请参考前文"模型总览"中的表格。关于如何编写模型训练脚本，请参考[模型训练](../Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/zh/Training/)。
+
+
+
+## 许可协议
+
+> **⚠️ 提示**：**Krea-2** 权重（Raw 与 Turbo）遵循 [Krea 2 Community License](https://www.krea.ai/krea-2-licensing)，**不同于** DiffSynth-Studio 本身的 Apache 2.0 协议。
