@@ -1,7 +1,7 @@
 import torch, math
 import numpy as np
 from PIL import Image
-from typing import Union
+from typing import List, Optional, Union
 from tqdm import tqdm
 
 from ..core.device.npu_compatible_device import get_device_type
@@ -11,6 +11,19 @@ from ..diffusion.flow_match import FlowMatchScheduler
 from ..models.boogu_image_dit import BooguImageDiT, BooguImageDoubleStreamRotaryPosEmbed
 from ..models.joyai_image_text_encoder import JoyAIImageTextEncoder
 from ..models.flux_vae import FluxVAEEncoder, FluxVAEDecoder
+
+
+def _resize_image_boogu(image, max_pixels=None, max_side_length=None, scale_factor=16):
+    h, w = image.height, image.width
+    ratio = 1.0
+    if max_side_length is not None:
+        ratio = min(ratio, max_side_length / max(h, w))
+    if max_pixels is not None:
+        ratio = min(ratio, (max_pixels / (h * w)) ** 0.5)
+    ratio = min(ratio, 1.0)
+    new_h = int(h * ratio) // scale_factor * scale_factor
+    new_w = int(w * ratio) // scale_factor * scale_factor
+    return image.resize((new_w, new_h))
 
 
 class BooguImagePipeline(BasePipeline):
@@ -28,6 +41,7 @@ class BooguImagePipeline(BasePipeline):
             BooguImageUnit_PromptEmbedder(),
             BooguImageUnit_NoiseInitializer(),
             BooguImageUnit_InputImageEmbedder(),
+            BooguImageUnit_EditImageEmbedder(),
             BooguImageUnit_FreqsCis(),
         ]
         self.model_fn = model_fn_boogu_image
@@ -61,6 +75,7 @@ class BooguImagePipeline(BasePipeline):
         negative_prompt: str = "",
         cfg_scale: float = 4.0,
         input_image: Image.Image = None,
+        edit_image: Image.Image = None,
         height: int = 1024,
         width: int = 1024,
         seed: int = None,
@@ -68,6 +83,10 @@ class BooguImagePipeline(BasePipeline):
         sigmas: list[float] = None,
         num_inference_steps: int = 20,
         max_sequence_length: int = 1280,
+        max_input_image_pixels: int = 4194304,
+        max_input_image_side_length: int = 4096,
+        max_vlm_input_pil_pixels: int = 147456,
+        max_vlm_input_pil_side_length: int = 768,
         rand_device: str = "cpu",
         progress_bar_cmd=tqdm,
     ):
@@ -79,8 +98,13 @@ class BooguImagePipeline(BasePipeline):
         inputs_shared = {
             "cfg_scale": cfg_scale,
             "input_image": input_image,
+            "edit_image": edit_image,
             "height": height, "width": width,
             "seed": seed, "max_sequence_length": max_sequence_length,
+            "max_input_image_pixels": max_input_image_pixels,
+            "max_input_image_side_length": max_input_image_side_length,
+            "max_vlm_input_pil_pixels": max_vlm_input_pil_pixels,
+            "max_vlm_input_pil_side_length": max_vlm_input_pil_side_length,
             "rand_device": rand_device,
         }
         for unit in self.units:
@@ -116,21 +140,35 @@ class BooguImageUnit_ShapeChecker(PipelineUnit):
         return {"height": height, "width": width}
 
 
+SYSTEM_PROMPT_TI2I = "Describe the key features of the input image (color, shape, size, texture, objects, background), then explain how the user's text instruction should alter or modify the image. Generate a new image that meets the user's requirements while maintaining consistency with the original input where appropriate."
+
+
 class BooguImageUnit_PromptEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             seperate_cfg=True,
             input_params_posi={"prompt": "prompt"},
             input_params_nega={"prompt": "negative_prompt"},
-            input_params=("max_sequence_length",),
+            input_params=(
+                "max_sequence_length",
+                "edit_image",
+                "max_vlm_input_pil_pixels",
+                "max_vlm_input_pil_side_length",
+            ),
             onload_model_names=("text_encoder",),
         )
 
-    def encode_prompt(self, pipe: BooguImagePipeline, prompt, max_sequence_length):
-        system_prompt = "You are a helpful assistant that generates high-quality images based on user instructions. The instructions are as follows."
+    def encode_prompt(self, pipe: BooguImagePipeline, prompt, max_sequence_length, edit_image=None, max_vlm_input_pil_pixels=147456, max_vlm_input_pil_side_length=768):
+        if edit_image is not None:
+            system_prompt = SYSTEM_PROMPT_TI2I
+            vlm_image = _resize_image_boogu(edit_image, max_pixels=max_vlm_input_pil_pixels, max_side_length=max_vlm_input_pil_side_length)
+            user_content = [{"type": "image", "image": vlm_image}, {"type": "text", "text": prompt}]
+        else:
+            system_prompt = "You are a helpful assistant that generates high-quality images based on user instructions. The instructions are as follows."
+            user_content = [{"type": "text", "text": prompt}]
         messages = [
             {"role": "system", "content": [{"type": "text", "text": system_prompt}]},
-            {"role": "user", "content": [{"type": "text", "text": prompt}]},
+            {"role": "user", "content": user_content},
         ]
         vlm_inputs = pipe.processor.apply_chat_template(
             [messages],
@@ -147,9 +185,9 @@ class BooguImageUnit_PromptEmbedder(PipelineUnit):
         instruction_attention_mask = vlm_inputs["attention_mask"].to(device=pipe.device)
         return instruction_hidden_states, instruction_attention_mask
 
-    def process(self, pipe: BooguImagePipeline, prompt, max_sequence_length):
+    def process(self, pipe: BooguImagePipeline, prompt, max_sequence_length, edit_image=None, max_vlm_input_pil_pixels=147456, max_vlm_input_pil_side_length=768):
         pipe.load_models_to_device(["text_encoder"])
-        instruction_hidden_states, instruction_attention_mask = self.encode_prompt(pipe, prompt, max_sequence_length)
+        instruction_hidden_states, instruction_attention_mask = self.encode_prompt(pipe, prompt, max_sequence_length, edit_image, max_vlm_input_pil_pixels, max_vlm_input_pil_side_length)
         return {"instruction_hidden_states": instruction_hidden_states, "instruction_attention_mask": instruction_attention_mask}
 
 
@@ -206,6 +244,24 @@ class BooguImageUnit_InputImageEmbedder(PipelineUnit):
             return {"latents": latents, "input_latents": None}
 
 
+class BooguImageUnit_EditImageEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("edit_image", "max_input_image_pixels", "max_input_image_side_length"),
+            output_params=("ref_image_hidden_states",),
+            onload_model_names=("vae_encoder",)
+        )
+
+    def process(self, pipe: BooguImagePipeline, edit_image, max_input_image_pixels, max_input_image_side_length):
+        if edit_image is None:
+            return {"ref_image_hidden_states": None}
+        pipe.load_models_to_device(["vae_encoder"])
+        image = _resize_image_boogu(edit_image, max_pixels=max_input_image_pixels, max_side_length=max_input_image_side_length)
+        image = pipe.preprocess_image(image).to(device=pipe.device, dtype=pipe.torch_dtype)
+        ref_latents = pipe.vae_encoder(image).squeeze(0)
+        return {"ref_image_hidden_states": [[ref_latents]]}
+
+
 def model_fn_boogu_image(
     dit,
     latents,
@@ -213,6 +269,7 @@ def model_fn_boogu_image(
     instruction_hidden_states,
     freqs_cis,
     instruction_attention_mask,
+    ref_image_hidden_states=None,
     **kwargs,
 ):
     output = dit(
@@ -221,5 +278,6 @@ def model_fn_boogu_image(
         instruction_hidden_states=instruction_hidden_states,
         freqs_cis=freqs_cis,
         instruction_attention_mask=instruction_attention_mask,
+        ref_image_hidden_states=ref_image_hidden_states,
     )
     return -output
