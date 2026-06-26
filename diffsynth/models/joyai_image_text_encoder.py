@@ -67,16 +67,11 @@ class JoyAIImageTextEncoder(torch.nn.Module):
         image_grid_thw: Optional[torch.LongTensor] = None,
         **kwargs,
     ):
-        pre_norm_output = [None]
-        def hook_fn(module, args, kwargs_output=None):
-            pre_norm_output[0] = args[0]
-        self.model.model.language_model.norm.register_forward_hook(hook_fn)
-        _ = self.model(
+        output = self.model.model(
             input_ids=input_ids,
             pixel_values=pixel_values,
             image_grid_thw=image_grid_thw,
             attention_mask=attention_mask,
-            output_hidden_states=True,
             **kwargs,
         )
-        return pre_norm_output[0]
+        return output[0]
