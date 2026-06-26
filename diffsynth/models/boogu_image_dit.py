@@ -2699,7 +2699,7 @@ class BooguImageDiT(torch.nn.Module):
             for j, ref_img_len in enumerate(l_effective_ref_img_len[i]):
                 ref_image_hidden_states[i, shift : shift + ref_img_len, :] = (
                     ref_image_hidden_states[i, shift : shift + ref_img_len, :]
-                    + self.image_index_embedding[j]
+                    + self.image_index_embedding[j].to(dtype=ref_image_hidden_states.dtype, device=ref_image_hidden_states.device)
                 )
                 shift += ref_img_len
 
