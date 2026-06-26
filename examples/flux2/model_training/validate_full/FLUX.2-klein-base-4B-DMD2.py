@@ -12,9 +12,9 @@ pipe = Flux2ImagePipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="tokenizer/"),
 )
-state_dict = load_state_dict("./models/train/FLUX.2-klein-base-4B_dmd2-4steps/step-2000.safetensors", torch_dtype=torch.bfloat16)
+state_dict = load_state_dict("./models/train/FLUX.2-klein-base-4B_dmd2/step-3000.safetensors", torch_dtype=torch.bfloat16)
 pipe.dit.load_state_dict(state_dict)
 
 prompt = "a dog"
 image = pipe(prompt=prompt, seed=0, num_inference_steps=4, height=512, width=512)
-image.save("image_FLUX.2-klein-base-4B-DMD2-4steps.jpg")
+image.save("FLUX.2-klein-base-4B_dmd2.jpg")

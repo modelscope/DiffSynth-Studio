@@ -18,11 +18,9 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         extra_inputs=None,
         fp8_models=None,
         offload_models=None,
-        embedded_guidance=1.0,
         template_model_id_or_path=None,
         resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         enable_lora_hot_loading=False,
-        dmd2_config=None,
         device="cpu",
         task="sft",
     ):
@@ -49,10 +47,7 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
         self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
         self.extra_inputs = extra_inputs.split(",") if extra_inputs is not None else []
         self.fp8_models = fp8_models
-        self.embedded_guidance = embedded_guidance
         self.task = task
-        self.dmd2_config = None
-        self.task_to_input_processor = {}
         self.task_to_loss = {
             "sft:data_process": lambda pipe, *args: args,
             "direct_distill:data_process": lambda pipe, *args: args,
@@ -61,9 +56,6 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
             "direct_distill": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(pipe, **inputs_shared, **inputs_posi),
             "direct_distill:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: DirectDistillLoss(pipe, **inputs_shared, **inputs_posi),
         }
-        self.task_to_state_dict_exporter = {}
-        if task == "dmd2":
-            setup_dmd2_training(self, self.pipe, dmd2_config)
 
     def get_pipeline_inputs(self, data):
         inputs_posi = {"prompt": data["prompt"]}
@@ -76,38 +68,29 @@ class Flux2ImageTrainingModule(DiffusionTrainingModule):
             "width": data["image"].size[0],
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
-            "embedded_guidance": self.embedded_guidance,
+            "embedded_guidance": 1.0,
             "cfg_scale": 1,
             "rand_device": self.pipe.device,
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
         }
-        if self.task in self.task_to_input_processor:
-            inputs_shared = self.task_to_input_processor[self.task](inputs_shared)
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
         return inputs_shared, inputs_posi, inputs_nega
 
-    def forward(self, data, inputs=None, iteration=None):
+    def forward(self, data, inputs=None):
         if inputs is None: inputs = self.get_pipeline_inputs(data)
         inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)
         for unit in self.pipe.units:
             inputs = self.pipe.unit_runner(unit, self.pipe, *inputs)
-        loss = self.task_to_loss[self.task](self.pipe, *inputs, iteration=iteration)
+        loss = self.task_to_loss[self.task](self.pipe, *inputs)
         return loss
-
-    def export_trainable_state_dict(self, state_dict, remove_prefix=None):
-        if self.task in self.task_to_state_dict_exporter:
-            return self.task_to_state_dict_exporter[self.task](state_dict, remove_prefix=remove_prefix)
-        return super().export_trainable_state_dict(state_dict, remove_prefix=remove_prefix)
 
 
 def flux2_parser():
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser = add_general_config(parser)
     parser = add_image_size_config(parser)
-    parser = add_dmd2_config(parser)
     parser.add_argument("--tokenizer_path", type=str, default=None, help="Path to tokenizer.")
-    parser.add_argument("--embedded_guidance", type=float, default=1.0, help="Flux.2 embedded guidance value.")
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
     return parser
 
@@ -115,8 +98,6 @@ def flux2_parser():
 if __name__ == "__main__":
     parser = flux2_parser()
     args = parser.parse_args()
-    if args.task == "dmd2":
-        args.find_unused_parameters = True
 
     accelerator = accelerate.Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
@@ -152,12 +133,10 @@ if __name__ == "__main__":
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
-        embedded_guidance=args.embedded_guidance,
         template_model_id_or_path=args.template_model_id_or_path,
         resume_from_checkpoint=args.resume_from_checkpoint,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         enable_lora_hot_loading=args.enable_lora_hot_loading,
-        dmd2_config=DMD2Config.from_args(args),
         task=args.task,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
     )
@@ -177,6 +156,5 @@ if __name__ == "__main__":
         "sft:train": launch_training_task,
         "direct_distill": launch_training_task,
         "direct_distill:train": launch_training_task,
-        "dmd2": launch_dmd2_training_task,
     }
     launcher_map[args.task](accelerator, dataset, model, model_logger, args=args)
