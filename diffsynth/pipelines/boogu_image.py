@@ -158,6 +158,10 @@ class BooguImageUnit_PromptEmbedder(PipelineUnit):
             onload_model_names=("text_encoder",),
         )
 
+    def process_text_encoder(self, pipe, **inputs):
+        output = pipe.text_encoder.model.model(**inputs)
+        return output[0]
+
     def encode_prompt(self, pipe: BooguImagePipeline, prompt, max_sequence_length, edit_image=None, max_vlm_input_pil_pixels=147456, max_vlm_input_pil_side_length=768):
         if edit_image is not None:
             system_prompt = SYSTEM_PROMPT_TI2I
@@ -180,7 +184,7 @@ class BooguImageUnit_PromptEmbedder(PipelineUnit):
             return_dict=True,
         )
         vlm_inputs = {k: v.to(pipe.device) if isinstance(v, torch.Tensor) else v for k, v in vlm_inputs.items()}
-        instruction_hidden_states = pipe.text_encoder(**vlm_inputs)
+        instruction_hidden_states = self.process_text_encoder(pipe, **vlm_inputs)
         instruction_hidden_states = instruction_hidden_states.to(dtype=pipe.torch_dtype, device=pipe.device)
         instruction_attention_mask = vlm_inputs["attention_mask"].to(device=pipe.device)
         return instruction_hidden_states, instruction_attention_mask
@@ -270,6 +274,8 @@ def model_fn_boogu_image(
     freqs_cis,
     instruction_attention_mask,
     ref_image_hidden_states=None,
+    use_gradient_checkpointing=False,
+    use_gradient_checkpointing_offload=False,
     **kwargs,
 ):
     output = dit(
@@ -279,5 +285,7 @@ def model_fn_boogu_image(
         freqs_cis=freqs_cis,
         instruction_attention_mask=instruction_attention_mask,
         ref_image_hidden_states=ref_image_hidden_states,
+        use_gradient_checkpointing=use_gradient_checkpointing,
+        use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
     return -output

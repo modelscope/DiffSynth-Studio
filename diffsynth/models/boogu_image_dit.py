@@ -12,6 +12,8 @@ import torch.nn.functional as F
 from einops import repeat
 from dataclasses import dataclass
 
+from ..core.gradient import gradient_checkpoint_forward
+
 
 class Attention(nn.Module):
     def __init__(
@@ -2944,6 +2946,8 @@ class BooguImageDiT(torch.nn.Module):
         ref_image_hidden_states: Optional[List[List[torch.Tensor]]] = None,
         attention_kwargs: Optional[Dict[str, Any]] = None,
         return_dict: bool = False,
+        use_gradient_checkpointing: bool = False,
+        use_gradient_checkpointing_offload: bool = False,
     ) -> Union[torch.Tensor, torch.Tensor]:
         """
         Forward pass:
@@ -3140,33 +3144,20 @@ class BooguImageDiT(torch.nn.Module):
                     else:
                         layer.enable_taylorseer = False
 
-                    if torch.is_grad_enabled() and self.gradient_checkpointing:
-                        img_hidden_states, instruct_hidden_states = (
-                            self._gradient_checkpointing_func(
-                                layer,
-                                img_hidden_states,
-                                instruct_hidden_states,
-                                img_attention_mask,
-                                joint_attention_mask,
-                                combined_img_rotary_emb,
-                                rotary_emb,
-                                temb,
-                                encoder_seq_lengths,
-                                seq_lengths,
-                            )
-                        )
-                    else:
-                        img_hidden_states, instruct_hidden_states = layer(
-                            img_hidden_states,
-                            instruct_hidden_states,
-                            img_attention_mask,
-                            joint_attention_mask,
-                            combined_img_rotary_emb,
-                            rotary_emb,
-                            temb,
-                            encoder_seq_lengths,
-                            seq_lengths,
-                        )
+                    img_hidden_states, instruct_hidden_states = gradient_checkpoint_forward(
+                        layer,
+                        use_gradient_checkpointing,
+                        use_gradient_checkpointing_offload,
+                        img_hidden_states,
+                        instruct_hidden_states,
+                        img_attention_mask,
+                        joint_attention_mask,
+                        combined_img_rotary_emb,
+                        rotary_emb,
+                        temb,
+                        encoder_seq_lengths,
+                        seq_lengths,
+                    )
 
                 if enable_double_stream_teacache:
                     self.teacache_params.previous_double_residual = (
@@ -3240,9 +3231,15 @@ class BooguImageDiT(torch.nn.Module):
                     layer.enable_taylorseer = True
                     self.current["layer"] = self.num_double_stream_layers + layer_idx
 
-                if torch.is_grad_enabled() and self.gradient_checkpointing:
-                    hidden_states = self._gradient_checkpointing_func(
-                        layer, hidden_states, joint_attention_mask, rotary_emb, temb
+                if torch.is_grad_enabled() and use_gradient_checkpointing:
+                    hidden_states = gradient_checkpoint_forward(
+                        layer,
+                        use_gradient_checkpointing,
+                        use_gradient_checkpointing_offload,
+                        hidden_states,
+                        joint_attention_mask,
+                        rotary_emb,
+                        temb,
                     )
                 else:
                     hidden_states = layer(
