@@ -1,8 +1,30 @@
-import math, warnings
+import math, warnings, time
 import torch, torchvision, imageio, os
 import imageio.v3 as iio
+import urllib.request
+from io import BytesIO
 from PIL import Image
 from einops import repeat
+
+
+def _is_url(path):
+    return isinstance(path, str) and path.startswith(("http://", "https://"))
+
+
+def _load_image_from_url(url, timeout=30, max_retries=3):
+    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; DiffSynth-Studio)"})
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                image = Image.open(BytesIO(response.read()))
+                image.load()
+            return image
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+    raise RuntimeError(f"Failed to load image from URL '{url}' after {max_retries} attempts: {last_error}") from last_error
 
 
 class DataProcessingPipeline:
@@ -55,12 +77,17 @@ class ToStr(DataProcessingOperator):
 
 
 class LoadImage(DataProcessingOperator):
-    def __init__(self, convert_RGB=True, convert_RGBA=False):
+    def __init__(self, convert_RGB=True, convert_RGBA=False, url_timeout=30, url_max_retries=3):
         self.convert_RGB = convert_RGB
         self.convert_RGBA = convert_RGBA
-    
+        self.url_timeout = url_timeout
+        self.url_max_retries = url_max_retries
+
     def __call__(self, data: str):
-        image = Image.open(data)
+        if _is_url(data):
+            image = _load_image_from_url(data, timeout=self.url_timeout, max_retries=self.url_max_retries)
+        else:
+            image = Image.open(data)
         if self.convert_RGB: image = image.convert("RGB")
         if self.convert_RGBA: image = image.convert("RGBA")
         return image
@@ -242,6 +269,9 @@ class ToAbsolutePath(DataProcessingOperator):
         self.base_path = base_path
         
     def __call__(self, data):
+        # A remote URL is already absolute; joining it with base_path would corrupt it.
+        if _is_url(data):
+            return data
         return os.path.join(self.base_path, data)
 
 

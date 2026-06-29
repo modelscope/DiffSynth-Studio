@@ -917,6 +917,14 @@ stable_diffusion_xl_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.stable_diffusion_vae.SDVAEStateDictConverter",
         "extra_kwargs": {"scaling_factor": 0.13025, "sample_size": 1024, "force_upcast": True},
     },
+    {
+        # Example: ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="sd_xl_base_1.0.safetensors")
+        "model_hash": "4cf64a799d04260df438c6f33c9a047e",
+        "model_name": "stable_diffusion_xl_unet",
+        "model_class": "diffsynth.models.stable_diffusion_xl_unet.SDXLUNet2DConditionModel",
+        "extra_kwargs": {"attention_head_dim": [5, 10, 20], "transformer_layers_per_block": [1, 2, 10], "use_linear_projection": True, "addition_embed_type": "text_time", "addition_time_embed_dim": 256, "projection_class_embeddings_input_dim": 2816},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl.SDXLUNetStateDictConverter_Original2Diffusers",
+    }
 ]
 
 stable_diffusion_series = [
@@ -1172,8 +1180,38 @@ ideogram4_series = [
     },
 ]
 
+krea2_series = [
+    {
+        # Example: ModelConfig(model_id="AI-ModelScope/Krea-2", origin_file_pattern="raw.safetensors"),
+        "model_hash": "4be51f0ecc9b9dfc9825abb3f7a0b4ae",
+        "model_name": "krea2_dit",
+        "model_class": "diffsynth.models.krea2_dit.SingleStreamDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.krea2_dit.Krea2DiTStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="krea/Krea-2-Raw", origin_file_pattern="raw.safetensors")
+        "model_hash": "2a05e69084a6d608516ee47c8ad03334",
+        "model_name": "krea2_dit",
+        "model_class": "diffsynth.models.krea2_dit.SingleStreamDiT",
+    },
+    {
+        # Example: ModelConfig(model_id="krea/Krea-2-Raw", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "cddb3118d9f8250bf7b08c331c5c55aa",
+        "model_name": "krea2_dit",
+        "model_class": "diffsynth.models.krea2_dit.SingleStreamDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.krea2_dit.Krea2DiTStateDictConverter_Diffusers",
+    },
+    {
+        # Example: ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors")
+        "model_hash": "b8750c24f732c87797f551196c4cef78",
+        "model_name": "krea2_text_encoder",
+        "model_class": "diffsynth.models.krea2_text_encoder.Krea2TextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.krea2_text_encoder.Krea2TextEncoderStateDictConverter",
+    },
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
-    + image_metrics_series + ideogram4_series
+    + image_metrics_series + ideogram4_series + krea2_series
 )
