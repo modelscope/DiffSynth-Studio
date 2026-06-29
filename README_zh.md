@@ -34,6 +34,8 @@ DiffSynth 目前包括两个开源项目：
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年6月29日** Boogu-Image 开源，已支持支持文生图推理、图像编辑、低显存推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/Boogu-Image.md)和[示例代码](/examples/boogu_image/)。
+
 - **2026年6月16日** 我们为 ACE-Step 新增了 Template 模型：[vocals2music](https://www.modelscope.cn/models/DiffSynth-Studio/acestep15xlsft-vocals2music)。详情请参考[文档](/docs/zh/Model_Details/ACE-Step.md)和[示例代码](/examples/ace_step/)。
 
 - **2026年6月15日** 我们开源了 Image-to-LoRA V2，将动辄数小时的图像风格 LoRA 训练压缩到一次模型推理中，探索 LoRA 模型训练的新方式。[技术报告](https://arxiv.org/abs/2606.13809)已公开，本次开源包括三个模型：
@@ -1039,6 +1041,70 @@ Ideogram 4 的示例代码位于：[/examples/ideogram4/](/examples/ideogram4/)
 |-|-|-|-|-|-|-|
 |[ideogram-ai/ideogram-4-fp8](https://www.modelscope.cn/models/ideogram-ai/ideogram-4-fp8)|[code](/examples/ideogram4/model_inference/ideogram-4-fp8.py)|-|-|-|-|-|
 |[DiffSynth-Studio/ideogram-4-bf16-repackage](https://www.modelscope.cn/models/DiffSynth-Studio/ideogram-4-bf16-repackage)|[code](/examples/ideogram4/model_inference/ideogram-4-bf16-repackage.py)|[code](/examples/ideogram4/model_inference_low_vram/ideogram-4-bf16-repackage.py)|[code](/examples/ideogram4/model_training/full/Ideogram-4-bf16-repackage.sh)|-|[code](/examples/ideogram4/model_training/lora/Ideogram-4-bf16-repackage.sh)|[code](/examples/ideogram4/model_training/validate_lora/Ideogram-4-bf16-repackage.py)|
+
+</details>
+
+#### Boogu-Image：[/docs/zh/Model_Details/Boogu-Image.md](/docs/zh/Model_Details/Boogu-Image.md)
+
+<details>
+
+<summary>快速开始</summary>
+
+运行以下代码可以快速加载 [Boogu/Boogu-Image-0.1-Base](https://modelscope.cn/models/Boogu/Boogu-Image-0.1-Base) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 8G 显存即可运行。
+
+```python
+from diffsynth.pipelines.boogu_image import BooguImagePipeline, ModelConfig
+import torch
+
+
+vram_config = {
+    "offload_dtype": torch.float8_e4m3fn,
+    "offload_device": "cpu",
+    "onload_dtype": torch.float8_e4m3fn,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+
+pipe = BooguImagePipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="Boogu/Boogu-Image-0.1-Base", origin_file_pattern="transformer/*.safetensors", **vram_config),
+        ModelConfig(model_id="Boogu/Boogu-Image-0.1-Base", origin_file_pattern="mllm/*.safetensors", **vram_config),
+        ModelConfig(model_id="Boogu/Boogu-Image-0.1-Base", origin_file_pattern="vae/*.safetensors", **vram_config),
+    ],
+    processor_config=ModelConfig(model_id="Boogu/Boogu-Image-0.1-Base", origin_file_pattern="mllm/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+)
+
+output = pipe(
+    prompt="a cat",
+    negative_prompt="",
+    height=1024,
+    width=1024,
+    seed=42,
+    num_inference_steps=50,
+    cfg_scale=4.0,
+)
+output.save("image_Boogu-Image-0.1-Base.jpg")
+```
+
+</details>
+
+<details>
+
+<summary>示例代码</summary>
+
+Boogu-Image 的示例代码位于：[/examples/boogu_image/](/examples/boogu_image/)
+
+|模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
+|-|-|-|-|-|-|-|
+|[Boogu/Boogu-Image-0.1-Base](https://modelscope.cn/models/Boogu/Boogu-Image-0.1-Base)|[code](/examples/boogu_image/model_inference/Boogu-Image-0.1-Base.py)|[code](/examples/boogu_image/model_inference_low_vram/Boogu-Image-0.1-Base.py)|[code](/examples/boogu_image/model_training/full/Boogu-Image-0.1-Base.sh)|[code](/examples/boogu_image/model_training/validate_full/Boogu-Image-0.1-Base.py)|[code](/examples/boogu_image/model_training/lora/Boogu-Image-0.1-Base.sh)|[code](/examples/boogu_image/model_training/validate_lora/Boogu-Image-0.1-Base.py)|
+|[Boogu/Boogu-Image-0.1-Turbo](https://modelscope.cn/models/Boogu/Boogu-Image-0.1-Turbo)|[code](/examples/boogu_image/model_inference/Boogu-Image-0.1-Turbo.py)|[code](/examples/boogu_image/model_inference_low_vram/Boogu-Image-0.1-Turbo.py)|[code](/examples/boogu_image/model_training/full/Boogu-Image-0.1-Turbo.sh)|[code](/examples/boogu_image/model_training/validate_full/Boogu-Image-0.1-Turbo.py)|[code](/examples/boogu_image/model_training/lora/Boogu-Image-0.1-Turbo.sh)|[code](/examples/boogu_image/model_training/validate_lora/Boogu-Image-0.1-Turbo.py)|
+|[Boogu/Boogu-Image-0.1-Edit](https://modelscope.cn/models/Boogu/Boogu-Image-0.1-Edit)|[code](/examples/boogu_image/model_inference/Boogu-Image-0.1-Edit.py)|[code](/examples/boogu_image/model_inference_low_vram/Boogu-Image-0.1-Edit.py)|[code](/examples/boogu_image/model_training/full/Boogu-Image-0.1-Edit.sh)|[code](/examples/boogu_image/model_training/validate_full/Boogu-Image-0.1-Edit.py)|[code](/examples/boogu_image/model_training/lora/Boogu-Image-0.1-Edit.sh)|[code](/examples/boogu_image/model_training/validate_lora/Boogu-Image-0.1-Edit.py)|
 
 </details>
 
