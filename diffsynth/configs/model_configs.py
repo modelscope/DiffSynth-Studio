@@ -967,6 +967,15 @@ joyai_image_series = [
     },
 ]
 
+boogu_image_series = [
+    {
+        # Example: ModelConfig(model_id="Boogu/Boogu-Image-0.1-Base", origin_file_pattern="transformer/diffusion_pytorch_model-*.safetensors")
+        "model_hash": "8e29d2d28b83530320ae1d2c5eb323b3",
+        "model_name": "boogu_image_dit",
+        "model_class": "diffsynth.models.boogu_image_dit.BooguImageDiT",
+    },
+]
+
 ace_step_series = [
     {
         # Example: ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors")
@@ -1203,6 +1212,6 @@ krea2_series = [
 
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
-    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + ace_step_series + hidream_o1_image_series
+    + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
     + image_metrics_series + ideogram4_series + krea2_series
 )

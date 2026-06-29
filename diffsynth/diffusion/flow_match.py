@@ -1,10 +1,11 @@
 import torch, math
+import numpy as np
 from typing_extensions import Literal
 
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -18,6 +19,7 @@ class FlowMatchScheduler():
             "HiDream-O1-Image": FlowMatchScheduler.set_timesteps_hidream_o1_image,
             "Ideogram4": FlowMatchScheduler.set_timesteps_ideogram4,
             "Krea-2": FlowMatchScheduler.set_timesteps_krea2,
+            "Boogu": FlowMatchScheduler.set_timesteps_boogu,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -232,6 +234,25 @@ class FlowMatchScheduler():
         sigmas = sigmas.flip(dims=(0,))
         timesteps = sigmas[:-1]
         sigmas = (1 - sigmas)[:-1]
+        return sigmas, timesteps
+    
+    def set_timesteps_boogu(num_inference_steps=50, denoising_strength=1.0, sigmas=None):
+        if sigmas is not None:
+            sigmas = torch.tensor(sigmas, dtype=torch.float32)
+            timesteps = 1 - sigmas
+            return sigmas, timesteps
+        t_arr = np.linspace(1-denoising_strength, 1, num_inference_steps + 1, dtype=np.float32)
+        mu = 1.15
+        sigma = 1
+        eps = 1e-8
+        t1 = 1.0 - t_arr
+        t1 = np.clip(t1, eps, 1.0 - eps)
+        num = math.exp(mu)
+        denom = num + np.power(1.0 / t1 - 1.0, sigma)
+        y = num / denom
+        t_arr = 1.0 - y
+        timesteps = torch.from_numpy(t_arr).float()[:-1]
+        sigmas = 1 - timesteps
         return sigmas, timesteps
 
     @staticmethod
