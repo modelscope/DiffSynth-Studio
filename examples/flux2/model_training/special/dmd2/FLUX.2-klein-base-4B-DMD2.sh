@@ -16,7 +16,6 @@ accelerate launch examples/flux2/model_training/special/dmd2/train.py \
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/FLUX.2-klein-base-4B_dmd2" \
   --trainable_models "dit" \
-  --task dmd2 \
   --dmd2_student_sample_steps 4 \
   --dmd2_student_sample_type sde \
   --dmd2_student_update_freq 5 \

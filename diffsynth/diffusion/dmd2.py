@@ -379,7 +379,7 @@ class DMD2Loss:
                 inputs_shared,
                 inputs_posi,
             )
-            fake_logits_gen = get_dmd2_discriminator(module)(module.pipe, fake_feat)
+            fake_logits_gen = get_dmd2_discriminator(module)(fake_feat)
             gan_loss_gen = _gan_loss_generator(fake_logits_gen)
         else:
             gan_loss_gen = torch.zeros((), device=real_data.device, dtype=torch.float32)
@@ -434,8 +434,8 @@ class DMD2Loss:
                     module, real_data, timestep, sigma, eps, inputs_shared, inputs_posi
                 )
             discriminator = get_dmd2_discriminator(module)
-            real_logits = discriminator(module.pipe, real_feat)
-            fake_logits = discriminator(module.pipe, fake_feat)
+            real_logits = discriminator(real_feat)
+            fake_logits = discriminator(fake_feat)
             gan_loss_disc = _gan_loss_discriminator(real_logits, fake_logits)
             if self.config.gan_r1_reg_weight > 0:
                 perturbed_real_alpha = real_data + self.config.gan_r1_reg_alpha * torch.randn_like(real_data)
@@ -449,7 +449,7 @@ class DMD2Loss:
                         inputs_shared,
                         inputs_posi,
                     )
-                real_logits_alpha = discriminator(module.pipe, real_feat_alpha)
+                real_logits_alpha = discriminator(real_feat_alpha)
                 gan_loss_ar1 = F.mse_loss(real_logits, real_logits_alpha, reduction="mean")
 
         loss = (
@@ -515,7 +515,7 @@ def launch_dmd2_training_task(
         customized_optimizer = args.customized_optimizer
 
     optimizer_class = get_optimizer_class(customized_optimizer)
-    config = model.dmd2_loss.config
+    config = model.dmd2_config
     fake_score_lr = config.fake_score_learning_rate or learning_rate
     discriminator_lr = config.discriminator_learning_rate or learning_rate
 
