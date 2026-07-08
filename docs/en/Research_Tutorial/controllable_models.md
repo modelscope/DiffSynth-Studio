@@ -1,16 +1,16 @@
-# 魔搭社区 AIGC 系列课程 - 可控生成技术
+# ModelScope AIGC Series Course - Controllable Generation Technology
 
-本实验以 **Diffusion-Templates** 为框架，系统介绍图像生成模型的多种可控生成技术，并演示如何自行训练一个可控生成模块。
+This experiment uses **Diffusion-Templates** as the framework to systematically introduce various controllable generation techniques for image generation models, and demonstrate how to train a controllable generation module from scratch.
 
-相关资料：
+Related Resources:
 
-* 开源代码：[DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio)
-* 技术报告：[arXiv](https://arxiv.org/abs/2604.24351)
-* 项目主页：[GitHub](https://modelscope.github.io/diffusion-templates-web/)
-* 文档参考：[English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)
-* 在线体验：[魔搭社区创空间](https://modelscope.cn/studios/DiffSynth-Studio/Diffusion-Templates)
-* 模型集：[ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/KleinBase4B-Templates)、[ModelScope 国际站](https://modelscope.ai/collections/DiffSynth-Studio/KleinBase4B-Templates)、[HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/kleinbase4b-templates)
-* 数据集：[ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2)、[ModelScope 国际站](https://modelscope.ai/collections/DiffSynth-Studio/ImagePulseV2)、[HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/imagepulsev2)
+* Open Source Code: [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio)
+* Technical Report: [arXiv](https://arxiv.org/abs/2604.24351)
+* Project Homepage: [GitHub](https://modelscope.github.io/diffusion-templates-web/)
+* Documentation: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)、[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)
+* Online Demo: [ModelScope Studio](https://modelscope.cn/studios/DiffSynth-Studio/Diffusion-Templates)
+* Model Collection: [ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/KleinBase4B-Templates)、[ModelScope International](https://modelscope.ai/collections/DiffSynth-Studio/KleinBase4B-Templates)、[HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/kleinbase4b-templates)
+* Dataset: [ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2)、[ModelScope International](https://modelscope.ai/collections/DiffSynth-Studio/ImagePulseV2)、[HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/imagepulsev2)
 
 ```python
 !pip install diffsynth==2.0.15 transformers==5.8.1
@@ -43,9 +43,9 @@ def show_images(images, resolution):
     return images
 ```
 
-## 图像结构控制
+## Image Structure Control
 
-首先，加载基础模型 [black-forest-labs/FLUX.2-klein-base-4B](https://modelscope.cn/models/black-forest-labs/FLUX.2-klein-base-4B)。这是一个参数量为 4B 的图像生成模型，本实验后续所有可控生成模块都会挂载到这个基础模型之上。
+First, load the base model [black-forest-labs/FLUX.2-klein-base-4B](https://modelscope.cn/models/black-forest-labs/FLUX.2-klein-base-4B). This is a 4B-parameter image generation model, and all controllable generation modules in this experiment will be mounted on top of this base model.
 
 ```python
 pipe = Flux2ImagePipeline.from_pretrained(
@@ -61,9 +61,9 @@ pipe = Flux2ImagePipeline.from_pretrained(
 )
 ```
 
-[ControlNet](https://arxiv.org/abs/2302.05543) 是最早的一批 Diffusion 可控生成技术，可用**深度图、边缘图、姿态图**等结构性条件对生成画面进行**逐像素级**的控制。
+[ControlNet](https://arxiv.org/abs/2302.05543) is one of the earliest controllable generation techniques for Diffusion models. It uses structural conditions such as **depth maps, edge maps, and pose maps** to achieve **pixel-level** control over the generated image.
 
-以 Template 格式加载 [DiffSynth-Studio/Template-KleinBase4B-ControlNet](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ControlNet)，即可在保留输入结构的前提下，用不同的提示词生成不同风格的画面。
+By loading [DiffSynth-Studio/Template-KleinBase4B-ControlNet](https://modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ControlNet) in Template format, you can generate images with different styles using different prompts while preserving the input structure.
 
 ```python
 template = TemplatePipeline.from_pretrained(
@@ -119,11 +119,11 @@ show_images([
 ```
 ![Image](https://github.com/user-attachments/assets/048ee1d4-6f84-4edc-beb7-49bb5ec2d53d)
 
-## 数值属性控制
+## Attribute Value Control
 
-[AttriCtrl](https://arxiv.org/abs/2508.02151) 是一类**数值型**可控生成模型，能够将连续的数值属性作为控制条件注入生成过程。
+[AttriCtrl](https://arxiv.org/abs/2508.02151) is a type of controllable generation model capable of injecting continuous value attributes as control conditions into the generation process.
 
-运行以下代码，加载 [DiffSynth-Studio/Template-KleinBase4B-SoftRGB](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-SoftRGB)，通过输入 R/G/B 数值精确控制画面的整体色调。
+Run the following code to load [DiffSynth-Studio/Template-KleinBase4B-SoftRGB](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-SoftRGB) and precisely control the overall color tone of the image by inputting R/G/B values.
 
 ```python
 template = TemplatePipeline.from_pretrained(
@@ -167,11 +167,11 @@ show_images([
 ```
 ![Image](https://github.com/user-attachments/assets/025ce94d-fe43-4166-8967-2acfbc76ada3)
 
-## 图像编辑
+## Image Editing
 
-图像编辑模型是一类**通用性较强**的可控生成模型：给定一张原图和一段编辑指令，即可对原图进行局部或整体修改。
+Image editing models are a type of **highly versatile** controllable generation model: given an original image and an editing instruction, the model can make partial or overall modifications to the original image.
 
-运行以下代码，加载 [DiffSynth-Studio/Template-KleinBase4B-Edit](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Edit)。该模型通过 **KV-Cache** 复用输入图像的注意力键值，从而快速完成编辑，推理速度较快。
+Run the following code to load [DiffSynth-Studio/Template-KleinBase4B-Edit](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Edit). This model uses **KV-Cache** to reuse the attention key-value pairs of the input image, enabling fast editing with quick inference speed.
 
 ```python
 template = TemplatePipeline.from_pretrained(
@@ -225,13 +225,13 @@ show_images([
     Image.open("image_Edit_head.jpg"),
 ], resolution=256)
 ```
-![Image](https://github.com/user-attachments/assets/73140bc8-e510-4832-b3f3-40c00281e136)
+![Image](https://github.com/user-attachments/assets/5cc0d8c3-6b4e-4fec-a36f-e58b6b00fe1a)
 
-## 风格控制
+## Style Control
 
-实现图像风格控制的最直接方式，是训练一个风格 [LoRA](https://arxiv.org/abs/2106.09685)——但每种风格都需要单独训练，成本较高。为此我们训练了一个特殊的 [Image-to-LoRA](https://arxiv.org/abs/2606.13809) 模型，它可以**根据输入的参考图像即时生成一份 LoRA 权重**，免去了传统的风格训练过程。
+The most straightforward way to achieve image style control is to train a style [LoRA](https://arxiv.org/abs/2106.09685) — however, each style requires separate training, which is costly. To address this, we trained a special [Image-to-LoRA](https://arxiv.org/abs/2606.13809) model that can **generate LoRA weights on-demand from input reference images**, eliminating the traditional style training process.
 
-运行以下代码，加载 [DiffSynth-Studio/KleinBase4B-i2L-v2](https://www.modelscope.cn/models/DiffSynth-Studio/KleinBase4B-i2L-v2)，用参考图像动态生成 LoRA，从而控制画面风格。
+Run the following code to load [DiffSynth-Studio/KleinBase4B-i2L-v2](https://www.modelscope.cn/models/DiffSynth-Studio/KleinBase4B-i2L-v2) and dynamically generate LoRA from reference images to control the image style.
 
 ```python
 from modelscope import snapshot_download
@@ -274,13 +274,13 @@ show_images([
     Image.open("image_KleinBase4B-i2L-v2_2.jpg"),
 ], resolution=256)
 ```
-![Image](https://github.com/user-attachments/assets/783748e7-90fc-494f-a939-70ea45e1486a)
+![Image](https://github.com/user-attachments/assets/2eb8abf6-4b7c-4f59-9f7e-69b4c3d3ce3a)
 
-## 训练可控生成模型
+## Training Controllable Generation Models
 
-**Diffusion-Templates 框架允许开发者训练任意结构的可控生成模型**——只要给定模型定义、数据处理逻辑和数据集，即可接入统一的训练流程。下面我们从零训练一个**亮度控制模型**，让画面按指定的亮度数值生成。
+**The Diffusion-Templates framework allows developers to train controllable generation models of any structure** — as long as you provide the model definition, data processing logic, and dataset, you can integrate into a unified training workflow. Below, we train a **brightness control model** from scratch, allowing images to be generated with specified brightness values.
 
-第一步，编写模型结构代码（包含数值编码器、KV-Cache 生成主干和数据标注器）：
+Step 1: Write the model structure code (including the numerical encoder, KV-Cache generation backbone, and data annotator):
 
 ```python
 code = """
@@ -312,7 +312,7 @@ class SingleValueEncoder(torch.nn.Module):
         return learned_embeddings
 
 
-# 主干模型结构（将输入的数值转换为 KV-Cache 向量）
+# Backbone model structure (converts input values into KV-Cache vectors)
 class ValueFormatModel(torch.nn.Module):
     def __init__(self, num_double_blocks=5, num_single_blocks=20, dim=3072, num_heads=24, length=512):
         super().__init__()
@@ -337,7 +337,7 @@ class ValueFormatModel(torch.nn.Module):
         return {"kv_cache": kv_cache}
 
 
-# 将图像数据转换为模型输入（根据图像中的 RGB 数值计算亮度）
+# Converts image data to model input (calculates brightness from RGB values in the image)
 class DataAnnotator(torch.nn.Module):
     def __init__(self):
         pass
@@ -360,24 +360,24 @@ with open("models/template_brightness/model.py", "w", encoding="utf-8") as f:
     f.write(code.strip())
 ```
 
-第二步，下载并预处理数据集，同时生成训练所需的 metadata：
+Step 2: Download and preprocess the dataset, while generating the metadata required for training:
 
 ```python
 import json, os
 from modelscope import dataset_snapshot_download
 
-# 下载数据集
+# Download dataset
 dataset_snapshot_download(
     "DiffSynth-Studio/ImagePulseV2-TextImage",
     local_dir="data/ImagePulseV2-TextImage",
     allow_file_pattern="data/1770381050168240056.tar.gz"
 )
 
-# 解压数据集
+# Extract dataset
 os.makedirs("data/dataset", exist_ok=True)
 os.system("tar zxvf data/ImagePulseV2-TextImage/data/1770381050168240056.tar.gz -C data/dataset")
 
-# 生成数据集 metadata
+# Generate dataset metadata
 dataset_path = "data/dataset/1770381050168240056"
 metadata = []
 for file_name in os.listdir(dataset_path):
@@ -390,12 +390,12 @@ with open("data/dataset/metadata.json", "w") as f:
     json.dump(metadata, f, indent=4, ensure_ascii=False)
 ```
 
-第三步，启动训练：
+Step 3: Start training:
 
 ```python
 import os
 
-# 训练脚本
+# Training script
 code = """
 import torch, os, argparse, accelerate
 from diffsynth.core import UnifiedDataset
@@ -561,7 +561,7 @@ if __name__ == "__main__":
 with open("train.py", "w", encoding="utf-8") as f:
     f.write(code)
 
-# 启动训练任务
+# Start training task
 cmd = """
 accelerate launch train.py \
   --dataset_base_path data/dataset/1770381050168240056 \
@@ -584,7 +584,7 @@ accelerate launch train.py \
 os.system(cmd)
 ```
 
-训练完成后，将得到的权重与前面写好的模型定义一起打包到 `models/template_brightness` 目录，形成一个完整的 Template 模型：
+After training is complete, package the obtained weights together with the model definition written earlier into the `models/template_brightness` directory to form a complete Template model:
 
 ```python
 import shutil
@@ -595,7 +595,7 @@ shutil.copy(
 )
 ```
 
-加载训练好的模型，通过传入不同的 `scale` 数值生成明暗不同的图像：
+Load the trained model and generate images with different brightness by passing different `scale` values:
 
 ```python
 template = TemplatePipeline.from_pretrained(
@@ -631,4 +631,4 @@ show_images([
     Image.open("image_Brightness_dark.jpg"),
 ], resolution=256)
 ```
-![Image](https://github.com/user-attachments/assets/f3b72cb5-4d7d-46ca-82c8-1ede4d71af1e)
+![Image](https://github.com/user-attachments/assets/ef15b73b-3c7a-4bb8-9b8e-1c4c37d9f3a1)
