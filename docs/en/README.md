@@ -100,7 +100,7 @@ This section introduces how to use `DiffSynth-Studio` to train new models, helpi
 
 * [Training models from scratch](./Research_Tutorial/train_from_scratch.md)
 * [Inference improvement techniques](./Research_Tutorial/inference_time_scaling.md)
-* Designing controllable generation models 【coming soon】
+* [Designing controllable generation models](./Research_Tutorial/controllable_models.md)
 * Creating new training paradigms 【coming soon】
 
 ## Section 8: Frequently Asked Questions
