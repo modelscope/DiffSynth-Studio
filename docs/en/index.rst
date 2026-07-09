@@ -89,6 +89,7 @@ Welcome to DiffSynth-Studio's Documentation
 
    Research_Tutorial/train_from_scratch
    Research_Tutorial/inference_time_scaling
+   Research_Tutorial/controllable_models
 
 .. toctree::
    :maxdepth: 2
