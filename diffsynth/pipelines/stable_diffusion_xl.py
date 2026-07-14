@@ -91,6 +91,7 @@ class StableDiffusionXLPipeline(BasePipeline):
         self,
         prompt: str,
         negative_prompt: str = "",
+        clip_skip = 2,
         cfg_scale: float = 5.0,
         height: int = 1024,
         width: int = 1024,
@@ -105,10 +106,10 @@ class StableDiffusionXLPipeline(BasePipeline):
 
         # 2. Three-dict input preparation
         inputs_posi = {
-            "prompt": prompt,
+            "prompt": prompt, "clip_skip": clip_skip,
         }
         inputs_nega = {
-            "prompt": negative_prompt,
+            "prompt": negative_prompt, "clip_skip": clip_skip,
         }
         inputs_shared = {
             "cfg_scale": cfg_scale,
@@ -181,8 +182,8 @@ class SDXLUnit_PromptEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             seperate_cfg=True,
-            input_params_posi={"prompt": "prompt"},
-            input_params_nega={"prompt": "prompt"},
+            input_params_posi={"prompt": "prompt", "clip_skip": "clip_skip"},
+            input_params_nega={"prompt": "prompt", "clip_skip": "clip_skip"},
             output_params=("prompt_embeds", "pooled_prompt_embeds"),
             onload_model_names=("text_encoder", "text_encoder_2")
         )
@@ -192,6 +193,7 @@ class SDXLUnit_PromptEmbedder(PipelineUnit):
         pipe: StableDiffusionXLPipeline,
         prompt: str,
         device: torch.device,
+        clip_skip: int = 2,
     ) -> tuple:
         """Encode prompt using both text encoders (same prompt for both).
 
@@ -209,7 +211,7 @@ class SDXLUnit_PromptEmbedder(PipelineUnit):
         ).input_ids.to(device)
         prompt_embeds_1 = pipe.text_encoder(text_input_ids_1)
         if isinstance(prompt_embeds_1, tuple):
-            prompt_embeds_1 = prompt_embeds_1[0]
+            prompt_embeds_1 = prompt_embeds_1[1][-(clip_skip + 1)]
 
         # Text Encoder 2 (CLIP-bigG, 1280-dim) — uses penultimate hidden states + pooled
         text_input_ids_2 = pipe.tokenizer_2(
@@ -229,9 +231,10 @@ class SDXLUnit_PromptEmbedder(PipelineUnit):
 
         return prompt_embeds, pooled_prompt_embeds
 
-    def process(self, pipe: StableDiffusionXLPipeline, prompt):
+    def process(self, pipe: StableDiffusionXLPipeline, prompt, clip_skip):
         pipe.load_models_to_device(self.onload_model_names)
-        prompt_embeds, pooled_prompt_embeds = self.encode_prompt(pipe, prompt, pipe.device)
+        if clip_skip is None: clip_skip = 2
+        prompt_embeds, pooled_prompt_embeds = self.encode_prompt(pipe, prompt, pipe.device, clip_skip)
         return {"prompt_embeds": prompt_embeds, "pooled_prompt_embeds": pooled_prompt_embeds}
 
 
