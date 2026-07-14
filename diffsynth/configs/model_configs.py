@@ -924,7 +924,119 @@ stable_diffusion_xl_series = [
         "model_class": "diffsynth.models.stable_diffusion_xl_unet.SDXLUNet2DConditionModel",
         "extra_kwargs": {"attention_head_dim": [5, 10, 20], "transformer_layers_per_block": [1, 2, 10], "use_linear_projection": True, "addition_embed_type": "text_time", "addition_time_embed_dim": 256, "projection_class_embeddings_input_dim": 2816},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl.SDXLUNetStateDictConverter_Original2Diffusers",
-    }
+    },
+    {
+        # Example: ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="sd_xl_base_1.0.safetensors")
+        "model_hash": "4cf64a799d04260df438c6f33c9a047e",
+        "model_name": "stable_diffusion_text_encoder",
+        "model_class": "diffsynth.models.stable_diffusion_text_encoder.SDTextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl_text_encoder.SDXLTextEncoderStateDictConverter_Original2Diffusers",
+    },
+    {
+        # Example: ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="sd_xl_base_1.0.safetensors")
+        "model_hash": "4cf64a799d04260df438c6f33c9a047e",
+        "model_name": "stable_diffusion_xl_text_encoder",
+        "model_class": "diffsynth.models.stable_diffusion_xl_text_encoder.SDXLTextEncoder2",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl_text_encoder_2.SDXLTextEncoder2StateDictConverter_Original2Diffusers",
+    },
+    {
+        # Example: ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="sd_xl_base_1.0.safetensors")
+        "model_hash": "4cf64a799d04260df438c6f33c9a047e",
+        "model_name": "stable_diffusion_xl_vae",
+        "model_class": "diffsynth.models.stable_diffusion_vae.StableDiffusionVAE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl_vae.SDXLVAEStateDictConverter_Original2Diffusers",
+        "extra_kwargs": {"scaling_factor": 0.13025, "sample_size": 1024, "force_upcast": True},
+    },
+    {
+        # Example: Non-mainstream format 1
+        "model_hash": "d34167ecd389f17d58f6c907b65173fa",
+        "model_name": "stable_diffusion_xl_unet",
+        "model_class": "diffsynth.models.stable_diffusion_xl_unet.SDXLUNet2DConditionModel",
+        "extra_kwargs": {"attention_head_dim": [5, 10, 20], "transformer_layers_per_block": [1, 2, 10], "use_linear_projection": True, "addition_embed_type": "text_time", "addition_time_embed_dim": 256, "projection_class_embeddings_input_dim": 2816},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl.SDXLUNetStateDictConverter_Original2Diffusers",
+    },
+    {
+        # Example: Non-mainstream format 1
+        "model_hash": "d34167ecd389f17d58f6c907b65173fa",
+        "model_name": "stable_diffusion_text_encoder",
+        "model_class": "diffsynth.models.stable_diffusion_text_encoder.SDTextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl_text_encoder.SDXLTextEncoderStateDictConverter_Original2Diffusers",
+    },
+    {
+        # Example: Non-mainstream format 1
+        "model_hash": "d34167ecd389f17d58f6c907b65173fa",
+        "model_name": "stable_diffusion_xl_text_encoder",
+        "model_class": "diffsynth.models.stable_diffusion_xl_text_encoder.SDXLTextEncoder2",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl_text_encoder_2.SDXLTextEncoder2StateDictConverter_Original2Diffusers",
+    },
+    {
+        # Example: Non-mainstream format 1
+        "model_hash": "d34167ecd389f17d58f6c907b65173fa",
+        "model_name": "stable_diffusion_xl_vae",
+        "model_class": "diffsynth.models.stable_diffusion_vae.StableDiffusionVAE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl_vae.SDXLVAEStateDictConverter_Original2Diffusers",
+        "extra_kwargs": {"scaling_factor": 0.13025, "sample_size": 1024, "force_upcast": True},
+    },
+    {
+        # Example: Non-mainstream format 2
+        "model_hash": "c906695c0d35ec8547ebdd70d2e6a19b",
+        "model_name": "stable_diffusion_xl_unet",
+        "model_class": "diffsynth.models.stable_diffusion_xl_unet.SDXLUNet2DConditionModel",
+        "extra_kwargs": {"attention_head_dim": [5, 10, 20], "transformer_layers_per_block": [1, 2, 10], "use_linear_projection": True, "addition_embed_type": "text_time", "addition_time_embed_dim": 256, "projection_class_embeddings_input_dim": 2816},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl.SDXLUNetStateDictConverter_Original2Diffusers",
+    },
+    {
+        # Example: Non-mainstream format 2
+        "model_hash": "c906695c0d35ec8547ebdd70d2e6a19b",
+        "model_name": "stable_diffusion_text_encoder",
+        "model_class": "diffsynth.models.stable_diffusion_text_encoder.SDTextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl_text_encoder.SDXLTextEncoderStateDictConverter_Original2Diffusers",
+    },
+    {
+        # Example: Non-mainstream format 2
+        "model_hash": "c906695c0d35ec8547ebdd70d2e6a19b",
+        "model_name": "stable_diffusion_xl_text_encoder",
+        "model_class": "diffsynth.models.stable_diffusion_xl_text_encoder.SDXLTextEncoder2",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl_text_encoder_2.SDXLTextEncoder2StateDictConverter_Original2Diffusers",
+    },
+    {
+        # Example: Non-mainstream format 2
+        "model_hash": "c906695c0d35ec8547ebdd70d2e6a19b",
+        "model_name": "stable_diffusion_xl_vae",
+        "model_class": "diffsynth.models.stable_diffusion_vae.StableDiffusionVAE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl_vae.SDXLVAEStateDictConverter_Original2Diffusers",
+        "extra_kwargs": {"scaling_factor": 0.13025, "sample_size": 1024, "force_upcast": True},
+    },
+    {
+        # Example: Non-mainstream format 3
+        "model_hash": "1a9744a6f0c0e54ef40805c9d2b79ec6",
+        "model_name": "stable_diffusion_xl_unet",
+        "model_class": "diffsynth.models.stable_diffusion_xl_unet.SDXLUNet2DConditionModel",
+        "extra_kwargs": {"attention_head_dim": [5, 10, 20], "transformer_layers_per_block": [1, 2, 10], "use_linear_projection": True, "addition_embed_type": "text_time", "addition_time_embed_dim": 256, "projection_class_embeddings_input_dim": 2816},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl.SDXLUNetStateDictConverter_Original2Diffusers",
+    },
+    {
+        # Example: Non-mainstream format 3
+        "model_hash": "1a9744a6f0c0e54ef40805c9d2b79ec6",
+        "model_name": "stable_diffusion_text_encoder",
+        "model_class": "diffsynth.models.stable_diffusion_text_encoder.SDTextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl_text_encoder.SDXLTextEncoderStateDictConverter_Original2Diffusers",
+    },
+    {
+        # Example: Non-mainstream format 3
+        "model_hash": "1a9744a6f0c0e54ef40805c9d2b79ec6",
+        "model_name": "stable_diffusion_xl_text_encoder",
+        "model_class": "diffsynth.models.stable_diffusion_xl_text_encoder.SDXLTextEncoder2",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl_text_encoder_2.SDXLTextEncoder2StateDictConverter_Original2Diffusers",
+    },
+    {
+        # Example: Non-mainstream format 3
+        "model_hash": "1a9744a6f0c0e54ef40805c9d2b79ec6",
+        "model_name": "stable_diffusion_xl_vae",
+        "model_class": "diffsynth.models.stable_diffusion_vae.StableDiffusionVAE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sdxl_vae.SDXLVAEStateDictConverter_Original2Diffusers",
+        "extra_kwargs": {"scaling_factor": 0.13025, "sample_size": 1024, "force_upcast": True},
+    },
 ]
 
 stable_diffusion_series = [
