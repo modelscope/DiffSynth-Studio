@@ -330,13 +330,8 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         input = input.reshape(-1, origin_shape[-1])
 
         x_max = torch.max(torch.abs(input), dim=-1, keepdim=True).values
-        fp8_max = 448.0
-        # For float8_e4m3fnuz, the maximum representable value is half of that of e4m3fn.
-        # To avoid overflow and ensure numerical compatibility during FP8 computation,
-        # we scale down the input by 2.0 in advance.
-        # This scaling will be compensated later during the final result scaling.
-        if self.computation_dtype == torch.float8_e4m3fnuz:
-            fp8_max = fp8_max / 2.0
+        # Use the maximum finite value defined by the selected FP8 dtype.
+        fp8_max = torch.finfo(self.computation_dtype).max
         scale_a = torch.clamp(x_max / fp8_max, min=1.0).float().to(device=device)
         scale_b = torch.ones((weight.shape[0], 1)).to(device=device)
         input = input / (scale_a + 1e-8)
