@@ -27,7 +27,7 @@ from ..models.wan_video_animate_adapter import WanAnimateAdapter
 from ..models.wan_video_mot import MotWanModel
 from ..models.wav2vec import WanS2VAudioEncoder
 from ..models.longcat_video_dit import LongCatVideoTransformer3DModel
-from ..models.wan_animate_2_dit import WanAnimate2Transformer, _animate2_get_i2v_mask
+from ..models.wan_animate_2_dit import WanAnimate2Transformer
 
 
 class WanVideoPipeline(BasePipeline):
@@ -79,13 +79,14 @@ class WanVideoPipeline(BasePipeline):
             WanVideoUnit_WanToDance_ProcessInputs(),
             WanVideoUnit_WanToDance_RefImageEmbedder(),
             WanVideoUnit_WanToDance_ImageKeyframesEmbedder(),
-            WanVideoUnit_Animate2RefPrompt(),
-            WanVideoUnit_Animate2Clip(),
+            WanVideoUnit_Animate2RefPromptEmbedder(),
+            WanVideoUnit_Animate2CLIPEmbedder(),
             WanVideoUnit_Animate2VAEEmbedder(),
-            WanVideoUnit_Animate2RefKVCache(),
+            WanVideoUnit_Animate2RefKVCacheEmbedder(),
         ]
         self.post_units = [
             WanVideoPostUnit_S2V(),
+            WanVideoPostUnit_Animate2(),
         ]
         self.model_fn = model_fn_wan_video
         self.compilable_models = ["dit", "dit2"]
@@ -228,7 +229,7 @@ class WanVideoPipeline(BasePipeline):
         animate_face_video: list[Image.Image] = None,
         animate_inpaint_video: list[Image.Image] = None,
         animate_mask_video: list[Image.Image] = None,
-        # Wan-Animate-2 (in-context reference KV-cache)
+        # Wan-Animate-2
         animate2_prompt_ref: str = " ",
         animate2_reference_image: Image.Image = None,
         animate2_reference_video: list[Image.Image] = None,
@@ -354,9 +355,6 @@ class WanVideoPipeline(BasePipeline):
             else:
                 f = 1
             inputs_shared["latents"] = inputs_shared["latents"][:, :, f:]
-        # Wan-Animate-2: drop the leading reference latent slot before decoding #TODO: remove it
-        if animate2_reference_video is not None:
-            inputs_shared["latents"] = inputs_shared["latents"][:, :, 1:].to(dtype=self.torch_dtype)
         # post-denoising, pre-decoding processing logic
         for unit in self.post_units:
             inputs_shared, _, _ = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
@@ -398,7 +396,6 @@ class WanVideoUnit_NoiseInitializer(PipelineUnit):
     def process(self, pipe: WanVideoPipeline, height, width, num_frames, seed, rand_device, vace_reference_image, animate2_reference_video):
         length = (num_frames - 1) // 4 + 1
         if animate2_reference_video is not None:
-            # Wan-Animate-2 prepends one in-context reference latent frame.
             length += 1
         if vace_reference_image is not None:
             f = len(vace_reference_image) if isinstance(vace_reference_image, list) else 1
@@ -1169,8 +1166,7 @@ class WanVideoUnit_WanToDance_ImageKeyframesEmbedder(PipelineUnit):
         return {"clip_feature": clip_context, "y": y}
 
 
-class WanVideoUnit_Animate2RefPrompt(PipelineUnit):
-    # Wan-Animate-2: T5 embedding of the reference-branch prompt (pipeline_single.py:274).
+class WanVideoUnit_Animate2RefPromptEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("animate2_prompt_ref", "animate2_reference_video"),
@@ -1186,9 +1182,7 @@ class WanVideoUnit_Animate2RefPrompt(PipelineUnit):
         return {"context_ref": context_ref}
 
 
-class WanVideoUnit_Animate2Clip(PipelineUnit):
-    # Wan-Animate-2: CLIP features for the reference image and the reference video first frame
-    # (pipeline_single.py:211 / :252).
+class WanVideoUnit_Animate2CLIPEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("animate2_reference_image", "animate2_reference_video", "height", "width"),
@@ -1208,8 +1202,6 @@ class WanVideoUnit_Animate2Clip(PipelineUnit):
 
 
 class WanVideoUnit_Animate2VAEEmbedder(PipelineUnit):
-    # Wan-Animate-2: all VAE encodings + conditioning packing for the single-clip path
-    # (pipeline_single.py:204-269, :276-278). Only the VAE model is used here.
     def __init__(self):
         super().__init__(
             input_params=("animate2_reference_image", "animate2_reference_video", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride"),
@@ -1217,51 +1209,53 @@ class WanVideoUnit_Animate2VAEEmbedder(PipelineUnit):
             onload_model_names=("vae",)
         )
 
+    @staticmethod
+    def animate2_get_i2v_mask(lat_t, lat_h, lat_w, mask_len=1, device="cuda"):
+        msk = torch.zeros(1, (lat_t - 1) * 4 + 1, lat_h, lat_w, device=device)
+        msk[:, :mask_len] = 1
+        msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
+        msk = msk.view(1, msk.shape[1] // 4, 4, lat_h, lat_w)
+        msk = msk.transpose(1, 2)[0]
+        return msk
+
+
     def process(self, pipe: WanVideoPipeline, animate2_reference_image, animate2_reference_video, num_frames, height, width, tiled, tile_size, tile_stride):
         if animate2_reference_image is None or animate2_reference_video is None:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
         device, dtype = pipe.device, pipe.torch_dtype
         H, W = height, width
-        clip_len = num_frames
-        T = clip_len + 1
+        T = num_frames + 1
         lat_h, lat_w = H // 8, W // 8
         lat_t = T // 4 + 1 + 1
 
-        grid_sizes = torch.stack([torch.tensor([lat_t, lat_h // 2, lat_w // 2], dtype=torch.long)])
-
-        # Reference image -> y_ref (mask + latent), single latent frame (:204-208)
+        # Reference image -> y_ref (mask + latent), single latent frame
         ref_img = pipe.preprocess_image(animate2_reference_image.resize((W, H))).to(device)  # (1, C, H, W)
         ref_pixel = ref_img.transpose(0, 1)  # (C, 1, H, W)
         ref_latents = pipe.vae.encode([ref_pixel.to(dtype)], device=device).to(dtype=dtype, device=device)  # (1, 16, 1, lat_h, lat_w)
-        mask_ref = _animate2_get_i2v_mask(1, lat_h, lat_w, mask_len=1, device=device)
+        mask_ref = self.animate2_get_i2v_mask(1, lat_h, lat_w, mask_len=1, device=device)
         y_ref = torch.concat([mask_ref, ref_latents[0]]).to(dtype=dtype, device=device)  # (20, 1, lat_h, lat_w)
 
-        # Reference-temporal slot: zeros for the single-clip case, mask_reft_len == 0 (:228-241)
+        # Reference-temporal slot: zeros for the single-clip case, mask_reft_len == 0
+        # TODO: check reft
         zeros_vid = torch.zeros(3, T - 1, H, W, device=device, dtype=dtype)
         y_reft = pipe.vae.encode([zeros_vid], device=device)[0].to(dtype=dtype, device=device)  # (16, lat_t-1, lat_h, lat_w)
-        msk_reft = _animate2_get_i2v_mask(lat_t - 1, lat_h, lat_w, mask_len=0, device=device)
+        msk_reft = self.animate2_get_i2v_mask(lat_t - 1, lat_h, lat_w, mask_len=0, device=device)
         y_reft = torch.concat([msk_reft, y_reft]).to(dtype=dtype, device=device)
         y = torch.concat([y_ref, y_reft], dim=1)  # (20, lat_t, lat_h, lat_w)
 
-        # Reference video -> condition_latents (:243-249)
-        ref_video = pipe.preprocess_video([f.resize((W, H)) for f in animate2_reference_video[:clip_len]]).to(device)  # (1, C, clip_len, H, W)
+        # Reference video -> condition_latents
+        ref_video = pipe.preprocess_video([f.resize((W, H)) for f in animate2_reference_video[:num_frames]]).to(device)  # (1, C, num_frames, H, W)
         condition_latents = pipe.vae.encode([ref_video[0].to(dtype)], device=device).to(dtype=dtype, device=device)  # (1, 16, lat_t_c, lat_h, lat_w)
+        # Reference video -> condition_y (mask + latent), mask_len = T
+        _, _, lat_t_c, lat_h_c, lat_w_c = condition_latents.shape
+        condition_y = condition_latents.clone()[0]
+        condition_msk_y = self.animate2_get_i2v_mask(lat_t_c, lat_h_c, lat_w_c, mask_len=ref_video.shape[2], device=device)
+        condition_y = torch.concat([condition_msk_y, condition_y]).to(dtype=dtype, device=device)  # (20, lat_t_c, lat_h_c, lat_w_c)
 
-        B, C, T, H, W = ref_video.shape
-        B, C, lat_t_c, lat_h, lat_w = condition_latents.shape
-        grid_sizes_ref = torch.stack([torch.tensor([lat_t_c, lat_h // 2, lat_w // 2], dtype=torch.long)])
-
-        # Reference video -> condition_y (mask + latent), mask_len = T (:254-269)
-        mask_len = T
-        cond_y_input = torch.nn.functional.interpolate(ref_video[0][:, :mask_len].to("cpu"), size=(H, W), mode="bicubic")
-        if T - mask_len > 0:
-            cond_y_input = torch.concat([cond_y_input, torch.zeros(3, T - mask_len, H, W)], dim=1)
-        condition_y = pipe.vae.encode([cond_y_input.to(device=device, dtype=dtype)], device=device)[0].to(dtype=dtype, device=device)
-        condition_msk_y = _animate2_get_i2v_mask(lat_t_c, lat_h, lat_w, mask_len=mask_len, device=device)
-        condition_y = torch.concat([condition_msk_y, condition_y]).to(dtype=dtype, device=device)  # (20, lat_t_c, lat_h, lat_w)
-
-        # Gen grid + sequence lengths (:173, :276-278)
+        # sequence lengths
+        grid_sizes = torch.stack([torch.tensor([lat_t, lat_h // 2, lat_w // 2], dtype=torch.long)])
+        grid_sizes_ref = torch.stack([torch.tensor([lat_t_c, lat_h_c // 2, lat_w_c // 2], dtype=torch.long)])
         seq_len = int(math.ceil(lat_t * lat_h * lat_w / 4))
         seq_len_ref = int(math.ceil(lat_t_c * lat_h * lat_w / 4))
 
@@ -1273,22 +1267,20 @@ class WanVideoUnit_Animate2VAEEmbedder(PipelineUnit):
             "grid_sizes_ref": grid_sizes_ref,
             "seq_len": seq_len,
             "seq_len_ref": seq_len_ref,
-            "origin_len": clip_len,
+            "origin_len": num_frames,
             "origin_area": [W, H],
         }
 
 
-class WanVideoUnit_Animate2RefKVCache(PipelineUnit):
-    # Wan-Animate-2: prefill the reference KV-cache once per clip via DiT forward_ref
-    # (pipeline_single.py:315-321). Only the DiT model is used here.
+class WanVideoUnit_Animate2RefKVCacheEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("animate2_reference_video", "condition_latents", "condition_y", "context_ref", "clip_fea_ref", "grid_sizes", "seq_len_ref"),
+            input_params=("animate2_reference_video", "condition_latents", "condition_y", "context_ref", "clip_fea_ref", "grid_sizes", "seq_len_ref", "use_gradient_checkpointing", "use_gradient_checkpointing_offload"),
             output_params=("animate2_k_cache", "animate2_v_cache"),
             onload_model_names=("dit",)
         )
 
-    def process(self, pipe: WanVideoPipeline, animate2_reference_video, condition_latents, condition_y, context_ref, clip_fea_ref, grid_sizes, seq_len_ref):
+    def process(self, pipe: WanVideoPipeline, animate2_reference_video, condition_latents, condition_y, context_ref, clip_fea_ref, grid_sizes, seq_len_ref, use_gradient_checkpointing, use_gradient_checkpointing_offload):
         if animate2_reference_video is None:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
@@ -1296,19 +1288,30 @@ class WanVideoUnit_Animate2RefKVCache(PipelineUnit):
         t = pipe.scheduler.timesteps[0]
         timestep = t.unsqueeze(0).to(dtype=pipe.torch_dtype, device=pipe.device)
         with torch.autocast(device_type=pipe.device.split(":")[0], dtype=pipe.torch_dtype, enabled=True):
-            pipe.dit(
+            pipe.dit.forward_ref(
                 condition_latents,
                 grid_sizes=grid_sizes.to(pipe.device),
-                animate2_k_cache=animate2_k_cache,
-                animate2_v_cache=animate2_v_cache,
+                k_cache=animate2_k_cache,
+                v_cache=animate2_v_cache,
                 clip_fea_ref=clip_fea_ref,
                 y_ref=[condition_y],
                 context_ref=[context_ref[0]],
                 seq_len_ref=seq_len_ref,
                 t=timestep,
-                method="forward_ref",
+                use_gradient_checkpointing=use_gradient_checkpointing,
+                use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
             )
         return {"animate2_k_cache": animate2_k_cache, "animate2_v_cache": animate2_v_cache}
+
+
+class WanVideoPostUnit_Animate2(PipelineUnit):
+    def __init__(self):
+        super().__init__(input_params=("latents", "animate2_reference_video"))
+
+    def process(self, pipe: WanVideoPipeline, latents, animate2_reference_video):
+        if animate2_reference_video is None:
+            return {}
+        return {"latents": latents[:, :, 1:].to(pipe.torch_dtype)}
 
 
 class TeaCache:
@@ -1920,6 +1923,7 @@ def model_fn_wananimate(
             origin_len=origin_len,
             origin_area=origin_area,
             is_uncondtion=is_uncondtion,
-            method="forward_gen",
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
         )
     return out[0].unsqueeze(0)

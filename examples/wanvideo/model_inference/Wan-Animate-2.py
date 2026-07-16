@@ -32,7 +32,7 @@ reference_image = Image.open("/mnt/nas1/zhanghong/project26/main_project/opencod
 reference_video = VideoData("/mnt/nas1/zhanghong/project26/main_project/opencode/packages/wan2.2/Wan-Animate-2/examples/video_640x352.mp4").raw_data()
 
 
-num_frames = 81
+num_frames = 41
 video = pipe(
     prompt="人物外观描述：一名长黑发女性，穿着白色半透明蕾丝长袖上衣，衣身带有花卉刺绣，下身搭配白色百褶短裙和黑色腰带，脚穿米白色厚底运动鞋。 背景描述：背景为现代室内空间，墙面和柜体以浅灰色为主，后方设有两扇深色落地窗或玻璃门，顶部安装长条形灯具，中央有一块浅色长方形台面。",
     negative_prompt="色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
