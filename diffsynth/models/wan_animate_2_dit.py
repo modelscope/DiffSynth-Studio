@@ -6,6 +6,7 @@ from torch.nn.attention.flex_attention import create_block_mask
 from torch.nn.attention.flex_attention import flex_attention as flex_attention_func
 from .wan_video_dit import sinusoidal_embedding_1d, RMSNorm, MLP
 from ..core.attention.attention import attention_forward
+from ..core.gradient import gradient_checkpoint_forward
 
 
 flex_attention_func = torch.compile(
@@ -553,7 +554,6 @@ class WanAnimate2Transformer(nn.Module):
         if use_img_emb:
             self.img_emb = MLP(1280, dim, has_pos_emb=False)
 
-        self.gradient_checkpointing = True
         self.block_masks = dict()
         self.block_mask_grid_sizes = dict()
 
@@ -619,7 +619,9 @@ class WanAnimate2Transformer(nn.Module):
         y_ref,
         context_ref,
         seq_len_ref,
-        t
+        t,
+        use_gradient_checkpointing: bool = False,
+        use_gradient_checkpointing_offload: bool = False,
     ):
         device = self.patch_embedding.weight.device
         # [reference]
@@ -682,7 +684,12 @@ class WanAnimate2Transformer(nn.Module):
         )
 
         for idx, block in enumerate(self.blocks):
-            x_ref = block(x_ref, idx, k_cache, v_cache, method='forward_ref', **kwargs)
+            x_ref = gradient_checkpoint_forward(
+                block,
+                use_gradient_checkpointing,
+                use_gradient_checkpointing_offload,
+                x_ref, idx, k_cache, v_cache, method='forward_ref', **kwargs
+            )
 
 
     def forward_gen(
@@ -699,6 +706,8 @@ class WanAnimate2Transformer(nn.Module):
         origin_len,
         origin_area,
         is_uncondtion=False,
+        use_gradient_checkpointing: bool = False,
+        use_gradient_checkpointing_offload: bool = False,
     ):
         # params
         device = self.patch_embedding.weight.device
@@ -780,7 +789,12 @@ class WanAnimate2Transformer(nn.Module):
         for idx, block in enumerate(self.blocks):
             if is_uncondtion and idx==9:
                 continue
-            x = block(x, idx, k_cache, v_cache,  method='forward_gen', **kwargs)
+            x = gradient_checkpoint_forward(
+                block,
+                use_gradient_checkpointing,
+                use_gradient_checkpointing_offload,
+                x, idx, k_cache, v_cache, method='forward_gen', **kwargs
+            )
 
         # head
         x = self.head(x, e)
