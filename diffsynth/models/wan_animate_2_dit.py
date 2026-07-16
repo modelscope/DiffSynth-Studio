@@ -2,79 +2,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import math
-from torch.nn.attention.flex_attention import create_block_mask
-from torch.nn.attention.flex_attention import flex_attention as flex_attention_func
 from .wan_video_dit import sinusoidal_embedding_1d, RMSNorm, MLP
 from ..core.attention.attention import attention_forward
 from ..core.gradient import gradient_checkpoint_forward
-
-
-flex_attention_func = torch.compile(
-    flex_attention_func,
-    dynamic=False,
-    mode="max-autotune",
-    fullgraph=True,
-    backend="inductor"
-)
-
-
-def flex_attention(
-    q,
-    k,
-    v,
-    q_lens=None,
-    k_lens=None,
-    block_mask=None,
-    kernel_options=None,
-    dtype=torch.bfloat16,
-    score_mod=None
-):
-    """
-    q:              [B, Lq, Nq, C1].
-    k:              [B, Lk, Nk, C1].
-    v:              [B, Lk, Nk, C2]. Nq must be divisible by Nk.
-    q_lens:         [B].
-    k_lens:         [B].
-    dtype:          torch.dtype. Apply when dtype of q/k/v is not float16/bfloat16.
-    """
-    half_dtypes = (torch.float16, torch.bfloat16)
-    assert dtype in half_dtypes
-    assert q.device.type == 'cuda'
-    # params
-    b, lq, lk, out_dtype = q.size(0), q.size(1), k.size(1), q.dtype
-    def half(x): return x if x.dtype in half_dtypes else x.to(dtype)
-
-    assert lq % 128 == 0, "q_len must be divisible by 128."
-    assert lk % 128 == 0, "k_len must be divisible by 128."
-
-    # preprocess query
-    if q_lens is None:
-        q = half(q)
-    else:
-        q = half(q)
-        assert q_lens.max() == q_lens.min(), 'varlen of query is not supported'
-
-    # preprocess key, value
-    if k_lens is None:
-        k, v = half(k), half(v)
-    else:
-        k, v = half(k), half(v)
-        assert k_lens.max() == k_lens.min(), 'varlen of key is not supported'
-
-    q = q.to(v.dtype)
-    k = k.to(v.dtype)
-
-
-    x = flex_attention_func(
-        query=q.transpose(2,1),
-        key=k.transpose(2,1),
-        value=v.transpose(2,1),
-        block_mask=block_mask,
-        kernel_options=kernel_options,
-        score_mod=score_mod
-    ).transpose(2, 1)
-
-    return x.type(out_dtype)
 
 
 @torch.amp.autocast(device_type='cuda', enabled=False)
@@ -371,7 +301,7 @@ class Incontext_AttentionBlock(nn.Module):
 
         return x_ref
 
-    def forward_gen(self, x, index, k_cache, v_cache, block_mask, context, freqs, freqs_ref, grid_sizes, grid_sizes_ref,
+    def forward_gen(self, x, index, k_cache, v_cache, attn_mask, context, freqs, freqs_ref, grid_sizes, grid_sizes_ref,
                     origin_len, origin_area, e, context_lens):
 
         origin_latent_f    = origin_len // 4 + 1
@@ -424,12 +354,10 @@ class Incontext_AttentionBlock(nn.Module):
         v_incontext[:, target_q_len : target_q_len + ref_f * origin_latent_hw]\
             .view(B, ref_f, origin_latent_hw, N, C)[:, :, :ref_hw] = v_ref_src
 
-        xout_full = flex_attention(
-            q=q_incontext,
-            k=k_incontext,
-            v=v_incontext,
-            block_mask=block_mask,
-            kernel_options=None
+        xout_full = attention_forward(
+            q_incontext, k_incontext, v_incontext,
+            q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
+            attn_mask=attn_mask,
         )
 
         xout_valid = xout_full[:, :f * origin_latent_hw]
@@ -594,16 +522,12 @@ class WanAnimate2Transformer(nn.Module):
 
             return q_valid & (is_base_attention | is_cond_attention)
 
-        block_mask = create_block_mask(
-            attention_mask_logic,
-            B=None,
-            H=None,
-            Q_LEN=q_len_total,
-            KV_LEN=k_len_total,
-            device=device,
-            _compile=True
-        )
-        return block_mask
+        # Materialize the flex mask_fn as a dense boolean mask for torch SDPA.
+        # True => attention allowed (same convention as flex block_mask / SDPA bool attn_mask).
+        q_idx = torch.arange(q_len_total, device=device)[:, None]
+        kv_idx = torch.arange(k_len_total, device=device)[None, :]
+        attn_mask = attention_mask_logic(None, None, q_idx, kv_idx)
+        return attn_mask[None, None]  # [1, 1, q_len_total, k_len_total]
 
 
     def forward(self, *args, method, **kwargs):
@@ -770,12 +694,12 @@ class WanAnimate2Transformer(nn.Module):
         block_mask_id = (origin_len, origin_area[0], origin_area[1])
         if block_mask_id not in self.block_masks:
             self.block_masks[block_mask_id] = self.create_mask(origin_len, origin_area, x.device)
-        block_mask = self.block_masks[block_mask_id]
+        attn_mask = self.block_masks[block_mask_id]
 
         # arguments
         kwargs = dict(
             e=e0,
-            block_mask=block_mask,
+            attn_mask=attn_mask,
             grid_sizes=grid_sizes,
             freqs=self.freqs,
             context=context,
