@@ -1,30 +1,12 @@
-# Author: Guangyuan Wang
-# Faithfully ported from Wan-Animate-2 (wanxiang/models/wan_animate_2_model.py + attention.py).
-# Modifications vs. source are limited to: (1) inlining the attention helpers,
-# (2) dropping the `wanxiang.ops` context-parallel branches (single-GPU integration).
 import numpy as np
 import torch
 import torch.nn as nn
 import math
 from torch.nn.attention.flex_attention import create_block_mask
 from torch.nn.attention.flex_attention import flex_attention as flex_attention_func
+from .wan_video_dit import sinusoidal_embedding_1d, RMSNorm, MLP
+from ..core.attention.attention import attention_forward
 
-
-try:
-    from flash_attn_interface import flash_attn_varlen_func
-
-    FLASH_VER = 3
-
-except ModuleNotFoundError:
-    try:
-        from flash_attn import flash_attn_varlen_func
-
-        FLASH_VER = 2
-    except ModuleNotFoundError:
-        flash_attn_varlen_func = None  # in compatible with CPU machines
-        FLASH_VER = None
-
-print(f"[PreInfo] Use flash attention={FLASH_VER}")
 
 flex_attention_func = torch.compile(
     flex_attention_func,
@@ -33,112 +15,6 @@ flex_attention_func = torch.compile(
     fullgraph=True,
     backend="inductor"
 )
-
-
-def flash_attention(
-    q,
-    k,
-    v,
-    q_lens=None,
-    k_lens=None,
-    dropout_p=0.0,
-    softmax_scale=None,
-    q_scale=None,
-    causal=False,
-    window_size=(-1, -1),
-    deterministic=False,
-    dtype=torch.bfloat16,
-):
-    """
-    q:              [B, Lq, Nq, C1].
-    k:              [B, Lk, Nk, C1].
-    v:              [B, Lk, Nk, C2]. Nq must be divisible by Nk.
-    q_lens:         [B].
-    k_lens:         [B].
-    dropout_p:      float. Dropout probability.
-    softmax_scale:  float. The scaling of QK^T before applying softmax.
-    causal:         bool. Whether to apply causal attention mask.
-    window_size:    (left right). If not (-1, -1), apply sliding window local attention.
-    deterministic:  bool. If True, slightly slower and uses more memory.
-    dtype:          torch.dtype. Apply when dtype of q/k/v is not float16/bfloat16.
-    """
-    half_dtypes = (torch.float16, torch.bfloat16)
-    assert dtype in half_dtypes
-    assert q.device.type == "cuda" and q.size(-1) <= 256
-
-    # params
-    b, lq, lk, out_dtype = q.size(0), q.size(1), k.size(1), q.dtype
-
-    def half(x):
-        return x if x.dtype in half_dtypes else x.to(dtype)
-
-    # preprocess query
-    if q_lens is None:
-        q = half(q.flatten(0, 1))
-        q_lens = torch.tensor([lq] * b, dtype=torch.int32).to(
-            device=q.device, non_blocking=True
-        )
-    else:
-        q = half(torch.cat([u[:v] for u, v in zip(q, q_lens)]))
-
-    # preprocess key, value
-    if k_lens is None:
-        k = half(k.flatten(0, 1))
-        v = half(v.flatten(0, 1))
-        k_lens = torch.tensor([lk] * b, dtype=torch.int32).to(
-            device=k.device, non_blocking=True
-        )
-    else:
-        k = half(torch.cat([u[:v] for u, v in zip(k, k_lens)]))
-        v = half(torch.cat([u[:v] for u, v in zip(v, k_lens)]))
-
-    q = q.to(v.dtype)
-    k = k.to(v.dtype)
-
-    if q_scale is not None:
-        q = q * q_scale
-    # apply attention
-    if FLASH_VER == 3:
-        # Note: dropout_p, window_size are not supported in FA3 now.
-        x = flash_attn_varlen_func(
-            q=q,
-            k=k,
-            v=v,
-            cu_seqlens_q=torch.cat([q_lens.new_zeros([1]), q_lens])
-            .cumsum(0, dtype=torch.int32)
-            .to(q.device, non_blocking=True),
-            cu_seqlens_k=torch.cat([k_lens.new_zeros([1]), k_lens])
-            .cumsum(0, dtype=torch.int32)
-            .to(q.device, non_blocking=True),
-            max_seqlen_q=lq,
-            max_seqlen_k=lk,
-            softmax_scale=softmax_scale,
-            causal=causal,
-            deterministic=deterministic,
-        )[0].unflatten(0, (b, lq))
-    else:
-        assert FLASH_VER == 2
-        x = flash_attn_varlen_func(
-            q=q,
-            k=k,
-            v=v,
-            cu_seqlens_q=torch.cat([q_lens.new_zeros([1]), q_lens])
-            .cumsum(0, dtype=torch.int32)
-            .to(q.device, non_blocking=True),
-            cu_seqlens_k=torch.cat([k_lens.new_zeros([1]), k_lens])
-            .cumsum(0, dtype=torch.int32)
-            .to(q.device, non_blocking=True),
-            max_seqlen_q=lq,
-            max_seqlen_k=lk,
-            dropout_p=dropout_p,
-            softmax_scale=softmax_scale,
-            causal=causal,
-            window_size=window_size,
-            deterministic=deterministic,
-        ).unflatten(0, (b, lq))
-
-    # output
-    return x.type(out_dtype)
 
 
 def flex_attention(
@@ -200,20 +76,6 @@ def flex_attention(
     return x.type(out_dtype)
 
 
-def sinusoidal_embedding_1d(dim, position):
-    # preprocess
-    assert dim % 2 == 0
-    half = dim // 2
-    position = position.type(torch.float64)
-
-    # calculation
-    sinusoid = torch.outer(
-        position, torch.pow(10000, -torch.arange(half).to(position).div(half))
-    )
-    x = torch.cat([torch.cos(sinusoid), torch.sin(sinusoid)], dim=1)
-    return x
-
-
 @torch.amp.autocast(device_type='cuda', enabled=False)
 def rope_params(max_seq_len, dim, theta=10000, offset=0):
     assert dim % 2 == 0
@@ -266,21 +128,6 @@ def pad_freqs(original_tensor, target_len):
         device=original_tensor.device)
     padded_tensor = torch.cat([original_tensor, padding_tensor], dim=0)
     return padded_tensor
-
-
-class RMSNorm(nn.Module):
-
-    def __init__(self, dim, eps=1e-5):
-        super().__init__()
-        self.dim = dim
-        self.eps = eps
-        self.weight = nn.Parameter(torch.ones(dim))
-
-    def forward(self, x):
-        return self._norm(x.float()).type_as(x) * self.weight
-
-    def _norm(self, x):
-        return x * torch.rsqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
 
 
 class LayerNorm(nn.LayerNorm):
@@ -377,9 +224,15 @@ class CrossAttention(SelfAttention):
         if self.use_img_emb:
             k_img = self.norm_k_img(self.k_img(context_img)).view(b, -1, n, d)
             v_img = self.v_img(context_img).view(b, -1, n, d)
-            img_x = flash_attention(q, k_img, v_img, k_lens=None)
+            img_x = attention_forward(
+                q, k_img, v_img,
+                q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
+            )
         # compute attention
-        x = flash_attention(q, k, v, k_lens=context_lens)
+        x = attention_forward(
+            q, k, v,
+            q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
+        )
 
         # output
         x = x.flatten(2)
@@ -499,15 +352,14 @@ class Incontext_AttentionBlock(nn.Module):
         k_ref_add_rope = rope_apply(k_ref, grid_sizes_ref, freqs_ref, self.refer_stride)
 
         ref_f, ref_h, ref_w = grid_sizes_ref[0].tolist()
-        ref_vail_len        = ref_f * ref_h * ref_w
+        ref_vail_len = ref_f * ref_h * ref_w
 
-        xout_ref = flash_attention(
-                q=q_ref_add_rope,
-                k=k_ref_add_rope,
-                v=v_ref,
-                k_lens=torch.tensor([ref_vail_len], dtype=torch.long),
-                window_size=self.window_size
-        )
+        xout_ref = attention_forward(
+                q_ref_add_rope.to(v_ref.dtype),
+                k_ref_add_rope[:, :ref_vail_len].to(v_ref.dtype),
+                v_ref[:, :ref_vail_len],
+                q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
+        ).to(q_ref_add_rope.dtype)
 
         y_ref = self.block(xout_ref, method='post_self_attention')
 
@@ -619,23 +471,6 @@ class Head(nn.Module):
         return x
 
 
-class MLPProj(torch.nn.Module):
-    def __init__(self, in_dim, out_dim):
-        super().__init__()
-
-        self.proj = torch.nn.Sequential(
-            torch.nn.LayerNorm(in_dim),
-            torch.nn.Linear(in_dim, in_dim),
-            torch.nn.GELU(),
-            torch.nn.Linear(in_dim, out_dim),
-            torch.nn.LayerNorm(out_dim),
-        )
-
-    def forward(self, image_embeds):
-        clip_extra_context_tokens = self.proj(image_embeds)
-        return clip_extra_context_tokens
-
-
 class WanAnimate2Transformer(nn.Module):
 
     def __init__(
@@ -716,10 +551,8 @@ class WanAnimate2Transformer(nn.Module):
         self.head = Head(dim, out_dim, patch_size, eps)
 
         if use_img_emb:
-            self.img_emb = MLPProj(1280, dim)
+            self.img_emb = MLP(1280, dim, has_pos_emb=False)
 
-        # initialize weights
-        self.init_weights()
         self.gradient_checkpointing = True
         self.block_masks = dict()
         self.block_mask_grid_sizes = dict()
@@ -867,7 +700,6 @@ class WanAnimate2Transformer(nn.Module):
         origin_area,
         is_uncondtion=False,
     ):
-        # [denoising]
         # params
         device = self.patch_embedding.weight.device
         x = [torch.cat([u, v], dim=0) for u, v in zip(x, y)]
@@ -957,147 +789,6 @@ class WanAnimate2Transformer(nn.Module):
         x = self.unpatchify(x, grid_sizes)
         return [u.float() for u in x]
 
-    def forward_origin(
-        self,
-        x,
-        clip_fea,
-        y,
-        context,
-        seq_len,
-        x_ref,
-        clip_fea_ref,
-        y_ref,
-        context_ref,
-        seq_len_ref,
-        t,
-        is_uncondition=False,
-    ):
-        """
-        x:              A list of videos each with shape [C, T, H, W].
-        context:        A list of text embeddings each with shape [L, C].
-        x_ref:          A list of reference videos each with shape [C, T, H, W].
-        context_ref:    A list of reference text embeddings each with shape [L, C].
-        t:              [B].
-        """
-
-        # [denoising]
-        # params
-        device = self.patch_embedding.weight.device
-        x = [torch.cat([u, v], dim=0) for u, v in zip(x, y)]
-        # embeddings
-        x = [self.patch_embedding(u.unsqueeze(0)) for u in x]
-        grid_sizes = torch.stack([
-            torch.tensor(u.shape[2:], dtype=torch.long) for u in x
-        ])
-        x = [u.flatten(2).transpose(1, 2) for u in x]
-        seq_lens = torch.tensor([u.size(1) for u in x], dtype=torch.long)
-        assert seq_lens.max() <= seq_len
-        x = torch.cat([torch.cat([
-            u, u.new_zeros(1, seq_len - u.size(1), u.size(2))
-        ], dim=1) for u in x])
-
-        # [reference]
-        # params
-        x_ref = [torch.cat([u, v], dim=0) for u, v in zip(x_ref, y_ref)]
-        # embeddings
-        x_ref = [self.patch_embedding(u.unsqueeze(0)) for u in x_ref]
-        grid_sizes_ref = torch.stack([
-            torch.tensor(u.shape[2:], dtype=torch.long) for u in x_ref
-        ])
-        x_ref = [u.flatten(2).transpose(1, 2) for u in x_ref]
-        seq_lens_ref = torch.tensor([u.size(1) for u in x_ref], dtype=torch.long)
-        assert seq_lens_ref.max() <= seq_len_ref
-        x_ref = torch.cat([torch.cat([
-            u, u.new_zeros(1, seq_len_ref - u.size(1), u.size(2))
-        ], dim=1) for u in x_ref])
-
-        assert (self.dim % self.num_heads) == 0 and (self.dim // self.num_heads) % 2 == 0
-        d = self.dim // self.num_heads
-        self.freqs = torch.cat([
-            rope_params(512, d - 4 * (d // 6)),
-            rope_params(512, 2 * (d // 6)),
-            rope_params(512, 2 * (d // 6))
-        ], dim=1)
-        if self.freqs.device != device:
-            self.freqs = self.freqs.to(device)
-
-        if self.refer_offset_t < 0:
-            self.refer_offset_t = grid_sizes[0][0].item()
-        if self.refer_offset_h < 0:
-            self.refer_offset_h = grid_sizes[0][1].item()
-        if self.refer_offset_w < 0:
-            self.refer_offset_w = grid_sizes[0][2].item()
-
-        self.freqs_ref = torch.cat([
-            rope_params(512, d - 4 * (d // 6), offset=self.refer_offset_t),
-            rope_params(512, 2 * (d // 6), offset=self.refer_offset_h),
-            rope_params(512, 2 * (d // 6), offset=self.refer_offset_w)
-        ], dim=1)
-        if self.freqs_ref.device != device:
-            self.freqs_ref = self.freqs_ref.to(device)
-
-        # time embeddings
-        with torch.amp.autocast(device_type='cuda', dtype=torch.float32):
-            e = self.time_embedding(
-                sinusoidal_embedding_1d(self.freq_dim, t).float()
-            )
-            e0 = self.time_projection(e).unflatten(1, (6, self.dim))
-            assert e.dtype == torch.float32 and e0.dtype == torch.float32
-
-        # time embeddings ref
-        with torch.amp.autocast(device_type='cuda', dtype=torch.float32):
-            e_ref = self.time_embedding(
-                sinusoidal_embedding_1d(self.freq_dim, t*0+1).float()
-            )
-            e0_ref = self.time_projection(e_ref).unflatten(1, (6, self.dim))
-            assert e_ref.dtype == torch.float32 and e0_ref.dtype == torch.float32
-
-        # [context]
-        context_lens = None
-        context = self.text_embedding(torch.stack([torch.cat([
-            u, u.new_zeros(self.text_len - u.size(0), u.size(1))
-        ]) for u in context]))
-
-        if self.use_img_emb:
-            context_clip = self.img_emb(clip_fea) # bs x 257 x dim
-            context = torch.concat([context_clip, context], dim=1)
-
-        # [context_ref]
-        context_ref = self.text_embedding(torch.stack([torch.cat([
-            u, u.new_zeros(self.text_len - u.size(0), u.size(1))
-        ]) for u in context_ref]))
-
-        if self.use_img_emb:
-            context_clip_ref = self.img_emb(clip_fea_ref) # bs x 257 x dim
-            context_ref = torch.concat([context_clip_ref, context_ref], dim=1)
-
-        # arguments
-        kwargs = dict(
-            e=e0,
-            seq_lens=seq_lens,
-            grid_sizes=grid_sizes,
-            freqs=self.freqs,
-            context=context,
-            e_ref=e0_ref,
-            seq_lens_ref=seq_lens_ref,
-            grid_sizes_ref=grid_sizes_ref,
-            freqs_ref=self.freqs_ref,
-            context_ref=context_ref,
-            context_lens=context_lens
-        )
-
-        for idx, block in enumerate(self.blocks):
-            if is_uncondition and idx==9:
-                continue
-            x, x_ref = block(x, x_ref, method='forward_origin', **kwargs)
-
-        # head
-        x = self.head(x, e)
-
-        # unpatchify
-        x = self.unpatchify(x, grid_sizes)
-        return [u.float() for u in x]
-
     def unpatchify(self, x, grid_sizes):
         c = self.out_dim
         out = []
@@ -1107,26 +798,3 @@ class WanAnimate2Transformer(nn.Module):
             u = u.reshape(c, *[i * j for i, j in zip(v, self.patch_size)])
             out.append(u)
         return out
-
-    def init_weights(self):
-        # basic init
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
-
-        # init embeddings
-        nn.init.xavier_uniform_(self.patch_embedding.weight.flatten(1))
-        for m in self.text_embedding.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, std=.02)
-        for m in self.time_embedding.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, std=.02)
-
-        # init output layer
-        nn.init.zeros_(self.head.head.weight)
-
-
-Transformer = WanAnimate2Transformer
