@@ -62,9 +62,6 @@ def pad_freqs(original_tensor, target_len):
 
 
 class LayerNorm(nn.LayerNorm):
-    """
-    LayerNorm without learnable affine parameters.
-    """
 
     def __init__(self, dim, eps=1e-6, elementwise_affine=False):
         super().__init__(dim, elementwise_affine=elementwise_affine, eps=eps)
@@ -529,7 +526,6 @@ class WanAnimate2Transformer(nn.Module):
         attn_mask = attention_mask_logic(None, None, q_idx, kv_idx)
         return attn_mask[None, None]  # [1, 1, q_len_total, k_len_total]
 
-
     def forward(self, *args, method, **kwargs):
         return getattr(self, method)(*args, **kwargs)
 
@@ -736,3 +732,13 @@ class WanAnimate2Transformer(nn.Module):
             u = u.reshape(c, *[i * j for i, j in zip(v, self.patch_size)])
             out.append(u)
         return out
+
+
+def _animate2_get_i2v_mask(lat_t, lat_h, lat_w, mask_len=1, device="cuda"):
+    # Mirror of wanxiang.eval_i2v.get_i2v_mask (Wan-Animate-2 target library).
+    msk = torch.zeros(1, (lat_t - 1) * 4 + 1, lat_h, lat_w, device=device)
+    msk[:, :mask_len] = 1
+    msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
+    msk = msk.view(1, msk.shape[1] // 4, 4, lat_h, lat_w)
+    msk = msk.transpose(1, 2)[0]
+    return msk

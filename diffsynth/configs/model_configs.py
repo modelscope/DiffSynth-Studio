@@ -84,7 +84,7 @@ wan_series = [
     {
         # Example: ModelConfig(model_id="Wan-AI/Wan-Animate-2-14B", origin_file_pattern="wan_animate_2/wan_animate_2_bf16.safetensors")
         "model_hash": "4536c21ad8740ba78367af4216ae85bf",
-        "model_name": "wan_animate_2_dit",
+        "model_name": "wan_video_dit",
         "model_class": "diffsynth.models.wan_animate_2_dit.WanAnimate2Transformer",
         "extra_kwargs": {},
     },
