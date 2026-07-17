@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import math
+from torch.nn.attention.flex_attention import create_block_mask
 from .wan_video_dit import sinusoidal_embedding_1d, RMSNorm, MLP
 from ..core.attention.attention import attention_forward
 from ..core.gradient import gradient_checkpoint_forward
@@ -347,7 +348,7 @@ class Incontext_AttentionBlock(nn.Module):
         xout_full = attention_forward(
             q_incontext, k_incontext, v_incontext,
             q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
-            attn_mask=attn_mask,
+            use_flex=True, attn_mask=attn_mask,
         )
 
         xout_valid = xout_full[:, :f * origin_latent_hw]
@@ -472,7 +473,6 @@ class WanAnimate2Transformer(nn.Module):
         self.block_masks = dict()
         self.block_mask_grid_sizes = dict()
 
-    # Author: Guangyuan Wang
     def create_mask(self, origin_len, origin_area, device):
         origin_latent_f = origin_len // 4 + 1
         hw = int(np.prod(origin_area).item() // 256)
@@ -509,12 +509,16 @@ class WanAnimate2Transformer(nn.Module):
 
             return q_valid & (is_base_attention | is_cond_attention)
 
-        # Materialize the flex mask_fn as a dense boolean mask for torch SDPA.
-        # True => attention allowed (same convention as flex block_mask / SDPA bool attn_mask).
-        q_idx = torch.arange(q_len_total, device=device)[:, None]
-        kv_idx = torch.arange(k_len_total, device=device)[None, :]
-        attn_mask = attention_mask_logic(None, None, q_idx, kv_idx)
-        return attn_mask[None, None]  # [1, 1, q_len_total, k_len_total]
+        block_mask = create_block_mask(
+            attention_mask_logic,
+            B=None,
+            H=None,
+            Q_LEN=q_len_total,
+            KV_LEN=k_len_total,
+            device=device,
+            _compile=True
+        )
+        return block_mask
 
     def forward_ref(
         self,
