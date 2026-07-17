@@ -7,7 +7,6 @@ from ..core.attention.attention import attention_forward
 from ..core.gradient import gradient_checkpoint_forward
 
 
-@torch.amp.autocast(device_type='cuda', enabled=False)
 def rope_params(max_seq_len, dim, theta=10000, offset=0):
     assert dim % 2 == 0
     freqs = torch.outer(
@@ -18,7 +17,6 @@ def rope_params(max_seq_len, dim, theta=10000, offset=0):
     return freqs
 
 
-@torch.amp.autocast(device_type='cuda', enabled=False)
 def rope_apply(x, grid_sizes, freqs, time_stride=1):
     n, c = x.size(2), x.size(3) // 2
 
@@ -46,7 +44,8 @@ def rope_apply(x, grid_sizes, freqs, time_stride=1):
 
         # append to collection
         output.append(x_i)
-    return torch.stack(output).float()
+    return torch.stack(output).to(x.dtype)
+
 
 def pad_freqs(original_tensor, target_len):
     seq_len, s1, s2 = original_tensor.shape
@@ -67,7 +66,7 @@ class LayerNorm(nn.LayerNorm):
         super().__init__(dim, elementwise_affine=elementwise_affine, eps=eps)
 
     def forward(self, x):
-        return super().forward(x.float()).type_as(x)
+        return super().forward(x).type_as(x)
 
 
 class SelfAttention(nn.Module):
@@ -217,12 +216,8 @@ class AttentionBlock(nn.Module):
         return getattr(self, method)(*args, **kwargs)
 
     def pre_self_attention(self, x, e):
-        assert e.dtype == torch.float32
-        with torch.amp.autocast(device_type='cuda', dtype=torch.float32):
-            e = (self.modulation + e).chunk(6, dim=1)
-        assert e[0].dtype == torch.float32
-
-        q, k, v = self.self_attn(self.norm1(x).float() * (1 + e[1]) + e[0], method="pre_attention")
+        e = (self.modulation.to(x.device) + e).chunk(6, dim=1)
+        q, k, v = self.self_attn(self.norm1(x) * (1 + e[1]) + e[0], method="pre_attention")
         return q, k, v, e
 
     def post_self_attention(self, x):
@@ -231,9 +226,8 @@ class AttentionBlock(nn.Module):
 
     def cross_attention(self, x, context, context_lens, e):
         x = x + self.cross_attn(self.norm3(x), context, context_lens)
-        y = self.ffn(self.norm2(x).float() * (1 + e[4]) + e[3])
-        with torch.amp.autocast(device_type='cuda', dtype=torch.float32):
-            x = x + y * e[5]
+        y = self.ffn(self.norm2(x) * (1 + e[4]) + e[3])
+        x = x + y * e[5]
         return x
 
 
@@ -271,11 +265,11 @@ class Incontext_AttentionBlock(nn.Module):
     def forward(self, *args, method, **kwargs):
         return getattr(self, method)(*args, **kwargs)
 
-    def forward_ref(self, x_ref, index, k_cache, v_cache, context_ref, freqs_ref, grid_sizes_ref,  e_ref, context_lens):
+    def forward_ref(self, x_ref, index, k_cache, v_cache, context_ref, freqs_ref, grid_sizes_ref,  e_ref, context_lens, animate2_offload_kv):
         q_ref, k_ref, v_ref, e_ref = self.block(x_ref, e_ref, method='pre_self_attention')
 
-        k_cache[index] = k_ref
-        v_cache[index] = v_ref
+        k_cache[index] = k_ref if not animate2_offload_kv else k_ref.to('cpu')
+        v_cache[index] = v_ref if not animate2_offload_kv else v_ref.to('cpu')
         q_ref_add_rope = rope_apply(q_ref, grid_sizes_ref, freqs_ref, self.refer_stride)
         k_ref_add_rope = rope_apply(k_ref, grid_sizes_ref, freqs_ref, self.refer_stride)
 
@@ -291,8 +285,7 @@ class Incontext_AttentionBlock(nn.Module):
 
         y_ref = self.block(xout_ref, method='post_self_attention')
 
-        with torch.amp.autocast(device_type='cuda', dtype=torch.float32):
-            x_ref = x_ref + y_ref * e_ref[2]
+        x_ref = x_ref + y_ref * e_ref[2]
 
         x_ref = self.block(x_ref, context_ref, context_lens, e_ref, method='cross_attention')
 
@@ -306,19 +299,19 @@ class Incontext_AttentionBlock(nn.Module):
         origin_max_len     = (origin_latent_f + 1) * origin_latent_hw
         origin_ref_max_len = origin_latent_f * origin_latent_hw
 
-        f,     h,     w     = grid_sizes[0].tolist()
-        vail_len            = f * h * w
-        hw                  = h * w
+        f, h, w = grid_sizes[0].tolist()
+        vail_len = f * h * w
+        hw = h * w
 
         ref_f, ref_h, ref_w = grid_sizes_ref[0].tolist()
-        ref_vail_len        = ref_f * ref_h * ref_w
-        ref_hw              = ref_h * ref_w
+        ref_vail_len = ref_f * ref_h * ref_w
+        ref_hw = ref_h * ref_w
 
         q, k, v, e = self.block(x, e, method='pre_self_attention')
 
-        q     = rope_apply(q,     grid_sizes,     freqs)
-        k     = rope_apply(k,     grid_sizes,     freqs)
-        k_ref, v_ref = k_cache[index], v_cache[index]
+        q = rope_apply(q, grid_sizes, freqs)
+        k = rope_apply(k, grid_sizes, freqs)
+        k_ref, v_ref = k_cache[index].to(x.device), v_cache[index].to(x.device)
         k_ref = rope_apply(k_ref, grid_sizes_ref, freqs_ref, self.refer_stride)
 
         B, _, N, C = q.shape
@@ -358,15 +351,14 @@ class Incontext_AttentionBlock(nn.Module):
         )
 
         xout_valid = xout_full[:, :f * origin_latent_hw]
-        xout_valid  = xout_valid.view(B, f, origin_latent_hw, N, C)
-        xout_vail   = xout_valid[:, :, :hw]
-        xout_vail   = xout_vail.reshape(B, f * hw, N, C)          # [B, f*hw, N, C]
-        xout        = torch.cat([xout_vail, q_padding], dim=1)
+        xout_valid = xout_valid.view(B, f, origin_latent_hw, N, C)
+        xout_vail = xout_valid[:, :, :hw]
+        xout_vail = xout_vail.reshape(B, f * hw, N, C)  # [B, f*hw, N, C]
+        xout = torch.cat([xout_vail, q_padding], dim=1)
 
         y = self.block(xout, method='post_self_attention')
 
-        with torch.amp.autocast(device_type='cuda', dtype=torch.float32):
-            x = x + y * e[2]
+        x = x + y * e[2]
 
         x = self.block(x, context, context_lens, e, method='cross_attention')
         return x
@@ -390,10 +382,8 @@ class Head(nn.Module):
         self.modulation = nn.Parameter(torch.randn(1, 2, dim) / dim**0.5)
 
     def forward(self, x, e):
-        assert e.dtype == torch.float32
-        with torch.amp.autocast(device_type='cuda', dtype=torch.float32):
-            e = (self.modulation + e.unsqueeze(1)).chunk(2, dim=1)
-            x = self.head(self.norm(x) * (1 + e[1]) + e[0])
+        e = (self.modulation + e.unsqueeze(1)).chunk(2, dim=1)
+        x = self.head(self.norm(x) * (1 + e[1]) + e[0])
         return x
 
 
@@ -537,10 +527,10 @@ class WanAnimate2Transformer(nn.Module):
         context_ref,
         seq_len_ref,
         t,
+        animate2_offload_kv,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
     ):
-        device = self.patch_embedding.weight.device
         # [reference]
         x_ref = [torch.cat([u, v], dim=0) for u, v in zip(x_ref, y_ref)]
         # embeddings
@@ -569,17 +559,11 @@ class WanAnimate2Transformer(nn.Module):
             rope_params(512, d - 4 * (d // 6), offset=self.refer_offset_t),
             rope_params(512, 2 * (d // 6), offset=self.refer_offset_h),
             rope_params(512, 2 * (d // 6), offset=self.refer_offset_w)
-        ], dim=1)
-        if self.freqs_ref.device != device:
-            self.freqs_ref = self.freqs_ref.to(device)
+        ], dim=1).to(x_ref.device)
 
         # time embeddings ref
-        with torch.amp.autocast(device_type='cuda', dtype=torch.float32):
-            e_ref = self.time_embedding(
-                sinusoidal_embedding_1d(self.freq_dim, t*0+1).float()
-            )
-            e0_ref = self.time_projection(e_ref).unflatten(1, (6, self.dim))
-            assert e_ref.dtype == torch.float32 and e0_ref.dtype == torch.float32
+        e_ref = self.time_embedding(sinusoidal_embedding_1d(self.freq_dim, t*0+1).to(x_ref.dtype))
+        e0_ref = self.time_projection(e_ref).unflatten(1, (6, self.dim))
 
         # [context_ref]
         context_ref = self.text_embedding(torch.stack([torch.cat([
@@ -597,7 +581,8 @@ class WanAnimate2Transformer(nn.Module):
             grid_sizes_ref=grid_sizes_ref,
             freqs_ref=self.freqs_ref,
             context_ref=context_ref,
-            context_lens=context_lens
+            context_lens=context_lens,
+            animate2_offload_kv=animate2_offload_kv
         )
 
         for idx, block in enumerate(self.blocks):
@@ -647,9 +632,7 @@ class WanAnimate2Transformer(nn.Module):
             rope_params(512, d - 4 * (d // 6)),
             rope_params(512, 2 * (d // 6)),
             rope_params(512, 2 * (d // 6))
-        ], dim=1)
-        if self.freqs.device != device:
-            self.freqs = self.freqs.to(device)
+        ], dim=1).to(x.device)
 
         if self.refer_offset_t < 0:
             self.refer_offset_t = grid_sizes[0][0].item()
@@ -662,17 +645,11 @@ class WanAnimate2Transformer(nn.Module):
             rope_params(512, d - 4 * (d // 6), offset=self.refer_offset_t),
             rope_params(512, 2 * (d // 6), offset=self.refer_offset_h),
             rope_params(512, 2 * (d // 6), offset=self.refer_offset_w)
-        ], dim=1)
-        if self.freqs_ref.device != device:
-            self.freqs_ref = self.freqs_ref.to(device)
+        ], dim=1).to(x.device)
 
         # time embeddings
-        with torch.amp.autocast(device_type='cuda', dtype=torch.float32):
-            e = self.time_embedding(
-                sinusoidal_embedding_1d(self.freq_dim, t).float()
-            )
-            e0 = self.time_projection(e).unflatten(1, (6, self.dim))
-            assert e.dtype == torch.float32 and e0.dtype == torch.float32
+        e = self.time_embedding(sinusoidal_embedding_1d(self.freq_dim, t).to(x.dtype))
+        e0 = self.time_projection(e).unflatten(1, (6, self.dim))
 
         # [context]
         context_lens = None
@@ -718,7 +695,7 @@ class WanAnimate2Transformer(nn.Module):
 
         # unpatchify
         x = self.unpatchify(x, grid_sizes)
-        return [u.float() for u in x]
+        return [u for u in x]
 
     def unpatchify(self, x, grid_sizes):
         c = self.out_dim

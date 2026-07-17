@@ -233,6 +233,7 @@ class WanVideoPipeline(BasePipeline):
         animate2_prompt_ref: str = " ",
         animate2_reference_image: Image.Image = None,
         animate2_reference_video: list[Image.Image] = None,
+        animate2_offload_kv: bool = False,
         # VAP
         vap_video: list[Image.Image] = None,
         vap_prompt: str = " ",
@@ -310,7 +311,7 @@ class WanVideoPipeline(BasePipeline):
             "sliding_window_size": sliding_window_size, "sliding_window_stride": sliding_window_stride,
             "input_audio": input_audio, "audio_sample_rate": audio_sample_rate, "s2v_pose_video": s2v_pose_video, "audio_embeds": audio_embeds, "s2v_pose_latents": s2v_pose_latents, "motion_video": motion_video,
             "animate_pose_video": animate_pose_video, "animate_face_video": animate_face_video, "animate_inpaint_video": animate_inpaint_video, "animate_mask_video": animate_mask_video,
-            "animate2_prompt_ref": animate2_prompt_ref, "animate2_reference_image": animate2_reference_image, "animate2_reference_video": animate2_reference_video,
+            "animate2_prompt_ref": animate2_prompt_ref, "animate2_reference_image": animate2_reference_image, "animate2_reference_video": animate2_reference_video, "animate2_offload_kv": animate2_offload_kv,
             "vap_video": vap_video, 
             "wantodance_music_path": wantodance_music_path, "wantodance_reference_image": wantodance_reference_image, "wantodance_fps": wantodance_fps,
             "wantodance_keyframes": wantodance_keyframes, "wantodance_keyframes_mask": wantodance_keyframes_mask,
@@ -1275,32 +1276,32 @@ class WanVideoUnit_Animate2VAEEmbedder(PipelineUnit):
 class WanVideoUnit_Animate2RefKVCacheEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("animate2_reference_video", "condition_latents", "condition_y", "context_ref", "clip_fea_ref", "grid_sizes", "seq_len_ref", "use_gradient_checkpointing", "use_gradient_checkpointing_offload"),
+            input_params=("animate2_reference_video", "condition_latents", "condition_y", "context_ref", "clip_fea_ref", "grid_sizes", "seq_len_ref", "animate2_offload_kv", "use_gradient_checkpointing", "use_gradient_checkpointing_offload"),
             output_params=("animate2_k_cache", "animate2_v_cache"),
             onload_model_names=("dit",)
         )
 
-    def process(self, pipe: WanVideoPipeline, animate2_reference_video, condition_latents, condition_y, context_ref, clip_fea_ref, grid_sizes, seq_len_ref, use_gradient_checkpointing, use_gradient_checkpointing_offload):
+    def process(self, pipe: WanVideoPipeline, animate2_reference_video, condition_latents, condition_y, context_ref, clip_fea_ref, grid_sizes, seq_len_ref, animate2_offload_kv, use_gradient_checkpointing, use_gradient_checkpointing_offload):
         if animate2_reference_video is None:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
         animate2_k_cache, animate2_v_cache = {}, {}
         t = pipe.scheduler.timesteps[0]
         timestep = t.unsqueeze(0).to(dtype=pipe.torch_dtype, device=pipe.device)
-        with torch.autocast(device_type=pipe.device.split(":")[0], dtype=pipe.torch_dtype, enabled=True):
-            pipe.dit.forward_ref(
-                condition_latents,
-                grid_sizes=grid_sizes.to(pipe.device),
-                k_cache=animate2_k_cache,
-                v_cache=animate2_v_cache,
-                clip_fea_ref=clip_fea_ref,
-                y_ref=[condition_y],
-                context_ref=[context_ref[0]],
-                seq_len_ref=seq_len_ref,
-                t=timestep,
-                use_gradient_checkpointing=use_gradient_checkpointing,
-                use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
-            )
+        pipe.dit.forward_ref(
+            condition_latents,
+            grid_sizes=grid_sizes.to(pipe.device),
+            k_cache=animate2_k_cache,
+            v_cache=animate2_v_cache,
+            clip_fea_ref=clip_fea_ref,
+            y_ref=[condition_y],
+            context_ref=[context_ref[0]],
+            seq_len_ref=seq_len_ref,
+            t=timestep,
+            animate2_offload_kv=animate2_offload_kv,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+        )
         return {"animate2_k_cache": animate2_k_cache, "animate2_v_cache": animate2_v_cache}
 
 
@@ -1909,21 +1910,20 @@ def model_fn_wananimate(
     **kwargs,
 ):
     is_uncondtion = not positive
-    with torch.autocast(device_type=latents.device.type, dtype=next(dit.parameters()).dtype, enabled=True):
-        out = dit(
-            [latents[0]],
-            k_cache=animate2_k_cache,
-            v_cache=animate2_v_cache,
-            clip_fea=clip_feature,
-            y=[y[0]],
-            context=[context[0]],
-            seq_len=seq_len,
-            t=timestep,
-            grid_sizes_ref=grid_sizes_ref.to(latents.device),
-            origin_len=origin_len,
-            origin_area=origin_area,
-            is_uncondtion=is_uncondtion,
-            use_gradient_checkpointing=use_gradient_checkpointing,
-            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
-        )
+    out = dit(
+        [latents[0]],
+        k_cache=animate2_k_cache,
+        v_cache=animate2_v_cache,
+        clip_fea=clip_feature,
+        y=[y[0]],
+        context=[context[0]],
+        seq_len=seq_len,
+        t=timestep,
+        grid_sizes_ref=grid_sizes_ref.to(latents.device),
+        origin_len=origin_len,
+        origin_area=origin_area,
+        is_uncondtion=is_uncondtion,
+        use_gradient_checkpointing=use_gradient_checkpointing,
+        use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+    )
     return out[0].unsqueeze(0)
