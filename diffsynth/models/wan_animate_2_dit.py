@@ -266,8 +266,30 @@ class Incontext_AttentionBlock(nn.Module):
     def forward(self, *args, method, **kwargs):
         return getattr(self, method)(*args, **kwargs)
 
-    def forward_ref(self, x_ref, index, k_cache, v_cache, context_ref, freqs_ref, grid_sizes_ref,  e_ref, context_lens, animate2_offload_kv):
+    def forward_ref(
+        self,
+        x_ref,
+        index,
+        k_cache,
+        v_cache,
+        context_ref,
+        freqs_ref,
+        grid_sizes_ref,
+        e_ref,
+        context_lens,
+        animate2_offload_kv,
+        use_context_parallel=False,
+    ):
         q_ref, k_ref, v_ref, e_ref = self.block(x_ref, e_ref, method='pre_self_attention')
+
+        if use_context_parallel:
+            from ..utils.xfuser import all_to_all_4d, is_evenly_divisible, get_sequence_parallel_world_size
+            assert is_evenly_divisible(q_ref.shape[2]), (
+                f"num_heads ({q_ref.shape[2]}) must be divisible by sequence parallel world size ({get_sequence_parallel_world_size()}) "
+            )
+            qkv_ref = torch.cat([q_ref, k_ref, v_ref], dim=0)
+            qkv_ref = all_to_all_4d(qkv_ref, scatter_dim=2, gather_dim=1)
+            q_ref, k_ref, v_ref = qkv_ref.chunk(3, dim=0)
 
         k_cache[index] = k_ref if not animate2_offload_kv else k_ref.to('cpu')
         v_cache[index] = v_ref if not animate2_offload_kv else v_ref.to('cpu')
@@ -284,6 +306,9 @@ class Incontext_AttentionBlock(nn.Module):
                 q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
         ).to(q_ref_add_rope.dtype)
 
+        if use_context_parallel:
+            xout_ref = all_to_all_4d(xout_ref, scatter_dim=1, gather_dim=2)
+
         y_ref = self.block(xout_ref, method='post_self_attention')
 
         x_ref = x_ref + y_ref * e_ref[2]
@@ -292,8 +317,24 @@ class Incontext_AttentionBlock(nn.Module):
 
         return x_ref
 
-    def forward_gen(self, x, index, k_cache, v_cache, attn_mask, context, freqs, freqs_ref, grid_sizes, grid_sizes_ref,
-                    origin_len, origin_area, e, context_lens):
+    def forward_gen(
+        self,
+        x,
+        index,
+        k_cache,
+        v_cache,
+        attn_mask,
+        context,
+        freqs,
+        freqs_ref,
+        grid_sizes,
+        grid_sizes_ref,
+        origin_len,
+        origin_area,
+        e,
+        context_lens,
+        use_context_parallel,
+    ):
 
         origin_latent_f    = origin_len // 4 + 1
         origin_latent_hw   = origin_area[0] * origin_area[1] // 256
@@ -309,6 +350,14 @@ class Incontext_AttentionBlock(nn.Module):
         ref_hw = ref_h * ref_w
 
         q, k, v, e = self.block(x, e, method='pre_self_attention')
+        if use_context_parallel:
+            from ..utils.xfuser import all_to_all_4d, is_evenly_divisible, get_sequence_parallel_world_size
+            assert is_evenly_divisible(q.shape[2]), (
+                f"num_heads ({q.shape[2]}) must be divisible by sequence parallel world size ({get_sequence_parallel_world_size()}) "
+            )
+            qkv = torch.cat([q, k, v], dim=0)
+            qkv = all_to_all_4d(qkv, scatter_dim=2, gather_dim=1)
+            q, k, v = qkv.chunk(3, dim=0)
 
         q = rope_apply(q, grid_sizes, freqs)
         k = rope_apply(k, grid_sizes, freqs)
@@ -356,6 +405,8 @@ class Incontext_AttentionBlock(nn.Module):
         xout_vail = xout_valid[:, :, :hw]
         xout_vail = xout_vail.reshape(B, f * hw, N, C)  # [B, f*hw, N, C]
         xout = torch.cat([xout_vail, q_padding], dim=1)
+        if use_context_parallel:
+            xout = all_to_all_4d(xout, scatter_dim=1, gather_dim=2)
 
         y = self.block(xout, method='post_self_attention')
 
@@ -532,6 +583,7 @@ class WanAnimate2Transformer(nn.Module):
         seq_len_ref,
         t,
         animate2_offload_kv,
+        use_unified_sequence_parallel: bool = False,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
     ):
@@ -586,9 +638,15 @@ class WanAnimate2Transformer(nn.Module):
             freqs_ref=self.freqs_ref,
             context_ref=context_ref,
             context_lens=context_lens,
-            animate2_offload_kv=animate2_offload_kv
+            animate2_offload_kv=animate2_offload_kv,
+            use_context_parallel=use_unified_sequence_parallel,
         )
-
+        if use_unified_sequence_parallel:
+            from ..utils.xfuser import get_current_chunk, is_evenly_divisible, get_sequence_parallel_world_size
+            assert is_evenly_divisible(x_ref.shape[1]), (
+                f"x_ref sequence length ({x_ref.shape[1]}) must be divisible by sequence parallel world size ({get_sequence_parallel_world_size()}) "
+            )
+            x_ref = get_current_chunk(x_ref, dim=1)
         for idx, block in enumerate(self.blocks):
             x_ref = gradient_checkpoint_forward(
                 block,
@@ -612,6 +670,7 @@ class WanAnimate2Transformer(nn.Module):
         origin_len,
         origin_area,
         is_uncondtion=False,
+        use_unified_sequence_parallel: bool = False,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
     ):
@@ -681,8 +740,15 @@ class WanAnimate2Transformer(nn.Module):
             freqs_ref=self.freqs_ref,
             context_lens=context_lens,
             origin_area=origin_area,
-            origin_len=origin_len
+            origin_len=origin_len,
+            use_context_parallel=use_unified_sequence_parallel,
         )
+        if use_unified_sequence_parallel:
+            from ..utils.xfuser import get_current_chunk, is_evenly_divisible, get_sequence_parallel_world_size
+            assert is_evenly_divisible(x.shape[1]), (
+                f"sequence length ({x.shape[1]}) must be divisible by sequence parallel world size ({get_sequence_parallel_world_size()}) "
+            )
+            x = get_current_chunk(x, dim=1)
 
         for idx, block in enumerate(self.blocks):
             if is_uncondtion and idx==9:
@@ -696,6 +762,9 @@ class WanAnimate2Transformer(nn.Module):
 
         # head
         x = self.head(x, e)
+        if use_unified_sequence_parallel:
+            from ..utils.xfuser import gather_all_chunks
+            x = gather_all_chunks(x, dim=1)
 
         # unpatchify
         x = self.unpatchify(x, grid_sizes)

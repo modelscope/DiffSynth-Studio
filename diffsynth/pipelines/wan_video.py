@@ -94,6 +94,10 @@ class WanVideoPipeline(BasePipeline):
 
     def enable_usp(self):
         from ..utils.xfuser import get_sequence_parallel_world_size, usp_attn_forward, usp_dit_forward, usp_vace_forward
+        self.sp_size = get_sequence_parallel_world_size()
+        self.use_unified_sequence_parallel = True
+        if isinstance(self.dit, WanAnimate2Transformer):
+            return
 
         for block in self.dit.blocks:
             block.self_attn.forward = types.MethodType(usp_attn_forward, block.self_attn)
@@ -110,8 +114,6 @@ class WanVideoPipeline(BasePipeline):
             for block in self.vace2.vace_blocks:
                 block.self_attn.forward = types.MethodType(usp_attn_forward, block.self_attn)
             self.vace2.forward = types.MethodType(usp_vace_forward, self.vace2)
-        self.sp_size = get_sequence_parallel_world_size()
-        self.use_unified_sequence_parallel = True
 
 
     @staticmethod
@@ -1299,6 +1301,7 @@ class WanVideoUnit_Animate2RefKVCacheEmbedder(PipelineUnit):
             seq_len_ref=seq_len_ref,
             t=timestep,
             animate2_offload_kv=animate2_offload_kv,
+            use_unified_sequence_parallel=pipe.use_unified_sequence_parallel,
             use_gradient_checkpointing=use_gradient_checkpointing,
             use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
         )
@@ -1477,7 +1480,6 @@ def model_fn_wan_video(
     skip_9th_layer: bool = False,
     **kwargs,
 ):
-    # Wan-Animate-2 (in-context KV-cache, two-pass forward_ref/forward_gen)
     if sliding_window_size is not None and sliding_window_stride is not None:
         model_kwargs = dict(
             dit=dit,
@@ -1518,7 +1520,7 @@ def model_fn_wan_video(
     if isinstance(dit, WanAnimate2Transformer):
         return model_fn_wananimate(
             dit=dit, latents=latents, timestep=timestep, context=context,
-            clip_feature=clip_feature, y=y,
+            clip_feature=clip_feature, y=y, use_unified_sequence_parallel=use_unified_sequence_parallel,
             use_gradient_checkpointing=use_gradient_checkpointing,
             use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
             **kwargs,
@@ -1905,8 +1907,9 @@ def model_fn_wananimate(
     origin_area: list = None,
     seq_len: int = None,
     positive: bool = True,
-    use_gradient_checkpointing_offload=False,
-    use_gradient_checkpointing=False,
+    use_unified_sequence_parallel: bool = False,
+    use_gradient_checkpointing_offload: bool = False,
+    use_gradient_checkpointing: bool = False,
     **kwargs,
 ):
     is_uncondtion = not positive
@@ -1923,6 +1926,7 @@ def model_fn_wananimate(
         origin_len=origin_len,
         origin_area=origin_area,
         is_uncondtion=is_uncondtion,
+        use_unified_sequence_parallel=use_unified_sequence_parallel,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )

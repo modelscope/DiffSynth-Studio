@@ -2,6 +2,7 @@ import torch
 from typing import Optional
 from einops import rearrange
 from yunchang.kernels import AttnType
+from yunchang.comm.all_to_all import SeqAllToAll4D
 from xfuser.core.distributed import (get_sequence_parallel_rank,
                                      get_sequence_parallel_world_size,
                                      get_sp_group)
@@ -204,3 +205,17 @@ def gather_all_chunks(x, seq_len=None, dim=1):
         slices[dim] = slice(0, seq_len)
         x = x[tuple(slices)]
     return x
+
+
+def all_to_all_4d(x, scatter_dim, gather_dim):
+    world_size = get_sequence_parallel_world_size()
+    if world_size == 1:
+        return x
+    return SeqAllToAll4D.apply(get_sp_group().ulysses_group, x, scatter_dim, gather_dim)
+
+
+def is_evenly_divisible(seq_len):
+    world_size = get_sequence_parallel_world_size()
+    return seq_len % world_size == 0
+
+
