@@ -409,18 +409,17 @@ class WanVideoUnit_NoiseInitializer(PipelineUnit):
         if vace_reference_image is not None:
             noise = torch.concat((noise[:, :, -f:], noise[:, :, :-f]), dim=2)
         return {"noise": noise}
-    
 
 
 class WanVideoUnit_InputVideoEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("input_video", "noise", "tiled", "tile_size", "tile_stride", "vace_reference_image", "framewise_decoding"),
+            input_params=("input_video", "noise", "tiled", "tile_size", "tile_stride", "vace_reference_image", "framewise_decoding", "animate2_reference_image", "animate2_reference_video"),
             output_params=("latents", "input_latents"),
             onload_model_names=("vae",)
         )
 
-    def process(self, pipe: WanVideoPipeline, input_video, noise, tiled, tile_size, tile_stride, vace_reference_image, framewise_decoding):
+    def process(self, pipe: WanVideoPipeline, input_video, noise, tiled, tile_size, tile_stride, vace_reference_image, framewise_decoding, animate2_reference_image, animate2_reference_video):
         if input_video is None:
             return {"latents": noise}
         pipe.load_models_to_device(self.onload_model_names)
@@ -436,6 +435,12 @@ class WanVideoUnit_InputVideoEmbedder(PipelineUnit):
             vace_reference_latents = pipe.vae.encode(vace_reference_image, device=pipe.device).to(dtype=pipe.torch_dtype, device=pipe.device)
             input_latents = torch.concat([vace_reference_latents, input_latents], dim=2)
         if pipe.scheduler.training:
+            if animate2_reference_image is not None and animate2_reference_video is not None:
+                vh, vw = input_video.shape[-2], input_video.shape[-1]
+                ref_img = pipe.preprocess_image(animate2_reference_image.resize((vw, vh))).to(pipe.device)  # (1, C, H, W)
+                ref_pixel = ref_img.transpose(0, 1)  # (C, 1, H, W)
+                ref_latent = pipe.vae.encode([ref_pixel.to(pipe.torch_dtype)], device=pipe.device).to(dtype=pipe.torch_dtype, device=pipe.device)
+                input_latents = torch.concat([ref_latent, input_latents], dim=2)
             return {"latents": noise, "input_latents": input_latents}
         else:
             latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
@@ -1285,7 +1290,7 @@ class WanVideoUnit_Animate2RefKVCacheEmbedder(PipelineUnit):
         )
 
     def process(self, pipe: WanVideoPipeline, animate2_reference_video, condition_latents, condition_y, context_ref, clip_fea_ref, grid_sizes, seq_len_ref, animate2_offload_kv, use_gradient_checkpointing, use_gradient_checkpointing_offload, use_unified_sequence_parallel):
-        if animate2_reference_video is None:
+        if animate2_reference_video is None or pipe.scheduler.training:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
         animate2_k_cache, animate2_v_cache = {}, {}
@@ -1303,8 +1308,6 @@ class WanVideoUnit_Animate2RefKVCacheEmbedder(PipelineUnit):
             t=timestep,
             animate2_offload_kv=animate2_offload_kv,
             use_unified_sequence_parallel=use_unified_sequence_parallel,
-            use_gradient_checkpointing=use_gradient_checkpointing,
-            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
         )
         return {"animate2_k_cache": animate2_k_cache, "animate2_v_cache": animate2_v_cache}
 
@@ -1908,6 +1911,11 @@ def model_fn_wananimate(
     origin_area: list = None,
     seq_len: int = None,
     positive: bool = True,
+    condition_latents: torch.Tensor = None,
+    clip_fea_ref: torch.Tensor = None,
+    condition_y: torch.Tensor = None,
+    context_ref: torch.Tensor = None,
+    seq_len_ref: int = None,
     use_unified_sequence_parallel: bool = False,
     animate2_log_scale: float = 0.0,
     use_gradient_checkpointing_offload: bool = False,
@@ -1915,22 +1923,42 @@ def model_fn_wananimate(
     **kwargs,
 ):
     is_uncondtion = not positive
-    out = dit(
-        [latents[0]],
-        k_cache=animate2_k_cache,
-        v_cache=animate2_v_cache,
-        clip_fea=clip_feature,
-        y=[y[0]],
-        context=[context[0]],
-        seq_len=seq_len,
-        t=timestep,
-        grid_sizes_ref=grid_sizes_ref.to(latents.device),
-        origin_len=origin_len,
-        origin_area=origin_area,
-        is_uncondtion=is_uncondtion,
-        use_unified_sequence_parallel=use_unified_sequence_parallel,
-        log_scale=animate2_log_scale,
-        use_gradient_checkpointing=use_gradient_checkpointing,
-        use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
-    )
+    if animate2_k_cache is None or animate2_v_cache is None:
+        # training
+        out = dit.forward_origin(
+            x=[latents[0]],
+            clip_fea=clip_feature,
+            y=[y[0]],
+            context=[context[0]],
+            seq_len=seq_len,
+            x_ref=condition_latents,
+            clip_fea_ref=clip_fea_ref,
+            y_ref=[condition_y],
+            context_ref=[context_ref[0]],
+            seq_len_ref=seq_len_ref,
+            t=timestep,
+            origin_len=origin_len,
+            origin_area=origin_area,
+            log_scale=animate2_log_scale,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+        )
+    else:
+        # inference
+        out = dit.forward_gen(
+            x=[latents[0]],
+            k_cache=animate2_k_cache,
+            v_cache=animate2_v_cache,
+            clip_fea=clip_feature,
+            y=[y[0]],
+            context=[context[0]],
+            seq_len=seq_len,
+            t=timestep,
+            grid_sizes_ref=grid_sizes_ref.to(latents.device),
+            origin_len=origin_len,
+            origin_area=origin_area,
+            is_uncondtion=is_uncondtion,
+            use_unified_sequence_parallel=use_unified_sequence_parallel,
+            log_scale=animate2_log_scale,
+        )
     return out[0].unsqueeze(0)

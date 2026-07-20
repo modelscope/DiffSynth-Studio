@@ -288,7 +288,7 @@ class Incontext_AttentionBlock(nn.Module):
         grid_sizes_ref,
         e_ref,
         context_lens,
-        animate2_offload_kv,
+        animate2_offload_kv=False,
         use_context_parallel=False,
     ):
         q_ref, k_ref, v_ref, e_ref = self.block(x_ref, e_ref, method='pre_self_attention')
@@ -344,7 +344,7 @@ class Incontext_AttentionBlock(nn.Module):
         origin_area,
         e,
         context_lens,
-        use_context_parallel,
+        use_context_parallel=False,
         log_scale=0.0,
     ):
 
@@ -428,6 +428,12 @@ class Incontext_AttentionBlock(nn.Module):
 
         x = self.block(x, context, context_lens, e, method='cross_attention')
         return x
+
+    def forward_origin(self, x, x_ref, ref_args, gen_args):
+        k_cache, v_cache = {}, {}
+        x_ref = self.forward_ref(x_ref, 0, k_cache, v_cache, **ref_args)
+        x = self.forward_gen(x, 0, k_cache, v_cache, **gen_args)
+        return x, x_ref
 
 
 class Head(nn.Module):
@@ -596,10 +602,8 @@ class WanAnimate2Transformer(nn.Module):
         context_ref,
         seq_len_ref,
         t,
-        animate2_offload_kv,
+        animate2_offload_kv=False,
         use_unified_sequence_parallel: bool = False,
-        use_gradient_checkpointing: bool = False,
-        use_gradient_checkpointing_offload: bool = False,
     ):
         # [reference]
         x_ref = [torch.cat([u, v], dim=0) for u, v in zip(x_ref, y_ref)]
@@ -662,15 +666,10 @@ class WanAnimate2Transformer(nn.Module):
             )
             x_ref = get_current_chunk(x_ref, dim=1)
         for idx, block in enumerate(self.blocks):
-            x_ref = gradient_checkpoint_forward(
-                block,
-                use_gradient_checkpointing,
-                use_gradient_checkpointing_offload,
-                x_ref, idx, k_cache, v_cache, method='forward_ref', **kwargs
-            )
+            x_ref = block(x_ref, idx, k_cache, v_cache, method='forward_ref', **kwargs)
 
 
-    def forward(
+    def forward_gen(
         self,
         x,
         k_cache,
@@ -686,11 +685,8 @@ class WanAnimate2Transformer(nn.Module):
         is_uncondtion=False,
         use_unified_sequence_parallel: bool = False,
         log_scale=0.0,
-        use_gradient_checkpointing: bool = False,
-        use_gradient_checkpointing_offload: bool = False,
     ):
         # params
-        device = self.patch_embedding.weight.device
         x = [torch.cat([u, v], dim=0) for u, v in zip(x, y)]
         # embeddings
         x = [self.patch_embedding(u.unsqueeze(0)) for u in x]
@@ -769,12 +765,7 @@ class WanAnimate2Transformer(nn.Module):
         for idx, block in enumerate(self.blocks):
             if is_uncondtion and idx==9:
                 continue
-            x = gradient_checkpoint_forward(
-                block,
-                use_gradient_checkpointing,
-                use_gradient_checkpointing_offload,
-                x, idx, k_cache, v_cache, method='forward_gen', **kwargs
-            )
+            x = block(x, idx, k_cache, v_cache, method='forward_gen', **kwargs)
 
         # head
         x = self.head(x, e)
@@ -785,6 +776,149 @@ class WanAnimate2Transformer(nn.Module):
         # unpatchify
         x = self.unpatchify(x, grid_sizes)
         return [u for u in x]
+
+    def forward_origin(
+        self,
+        x,
+        clip_fea,
+        y,
+        context,
+        seq_len,
+        x_ref,
+        clip_fea_ref,
+        y_ref,
+        context_ref,
+        seq_len_ref,
+        t,
+        origin_len,
+        origin_area,
+        log_scale=0.0,
+        use_gradient_checkpointing: bool = False,
+        use_gradient_checkpointing_offload: bool = False,
+    ):
+        # params
+        x = [torch.cat([u, v], dim=0) for u, v in zip(x, y)]
+        # embeddings
+        x = [self.patch_embedding(u.unsqueeze(0)) for u in x]
+        grid_sizes = torch.stack([
+            torch.tensor(u.shape[2:], dtype=torch.long) for u in x
+        ])
+        x = [u.flatten(2).transpose(1, 2) for u in x]
+        seq_lens = torch.tensor([u.size(1) for u in x], dtype=torch.long)
+        assert seq_lens.max() <= seq_len
+        x = torch.cat([torch.cat([
+            u, u.new_zeros(1, seq_len - u.size(1), u.size(2))
+        ], dim=1) for u in x])
+        
+        # [reference]
+        # params
+        x_ref = [torch.cat([u, v], dim=0) for u, v in zip(x_ref, y_ref)]
+        # embeddings
+        x_ref = [self.patch_embedding(u.unsqueeze(0)) for u in x_ref]
+        grid_sizes_ref = torch.stack([
+            torch.tensor(u.shape[2:], dtype=torch.long) for u in x_ref
+        ])
+        x_ref = [u.flatten(2).transpose(1, 2) for u in x_ref]
+        seq_lens_ref = torch.tensor([u.size(1) for u in x_ref], dtype=torch.long)
+        assert seq_lens_ref.max() <= seq_len_ref
+        x_ref = torch.cat([torch.cat([
+            u, u.new_zeros(1, seq_len_ref - u.size(1), u.size(2))
+        ], dim=1) for u in x_ref])
+
+        assert (self.dim % self.num_heads) == 0 and (self.dim // self.num_heads) % 2 == 0
+        d = self.dim // self.num_heads
+        self.freqs = torch.cat([
+            rope_params(512, d - 4 * (d // 6)),
+            rope_params(512, 2 * (d // 6)),
+            rope_params(512, 2 * (d // 6))
+        ], dim=1).to(x.device)
+
+        if self.refer_offset_t < 0:
+            self.refer_offset_t = grid_sizes[0][0].item()
+        if self.refer_offset_h < 0:
+            self.refer_offset_h = grid_sizes[0][1].item()
+        if self.refer_offset_w < 0:
+            self.refer_offset_w = grid_sizes[0][2].item()
+
+        self.freqs_ref = torch.cat([
+            rope_params(512, d - 4 * (d // 6), offset=self.refer_offset_t),
+            rope_params(512, 2 * (d // 6), offset=self.refer_offset_h),
+            rope_params(512, 2 * (d // 6), offset=self.refer_offset_w)
+        ], dim=1).to(x.device)
+
+        # time embeddings
+        e = self.time_embedding(sinusoidal_embedding_1d(self.freq_dim, t).to(x.dtype))
+        e0 = self.time_projection(e).unflatten(1, (6, self.dim))
+        
+        # time embeddings ref
+        e_ref = self.time_embedding(sinusoidal_embedding_1d(self.freq_dim, t*0+1).to(x.dtype))
+        e0_ref = self.time_projection(e_ref).unflatten(1, (6, self.dim))
+            
+        # [context]
+        context_lens = None
+        context = self.text_embedding(torch.stack([torch.cat([
+            u, u.new_zeros(self.text_len - u.size(0), u.size(1))
+        ]) for u in context]))
+
+        if self.use_img_emb:
+            context_clip = self.img_emb(clip_fea) # bs x 257 x dim
+            context = torch.concat([context_clip, context], dim=1)
+
+        # [context_ref]
+        context_ref = self.text_embedding(torch.stack([torch.cat([
+            u, u.new_zeros(self.text_len - u.size(0), u.size(1))
+        ]) for u in context_ref]))
+        
+        if self.use_img_emb:
+            context_clip_ref = self.img_emb(clip_fea_ref) # bs x 257 x dim
+            context_ref = torch.concat([context_clip_ref, context_ref], dim=1)
+
+        block_mask_id = (origin_len, origin_area[0], origin_area[1])
+        if block_mask_id not in self.block_masks:
+            self.block_masks[block_mask_id] = self.create_mask(origin_len, origin_area, x.device)
+        attn_mask = self.block_masks[block_mask_id]
+
+        # arguments
+        ref_args = dict(
+            e_ref=e0_ref,
+            grid_sizes_ref=grid_sizes_ref,
+            freqs_ref=self.freqs_ref,
+            context_ref=context_ref,
+            context_lens=context_lens,
+        )
+        gen_args = dict(
+            e=e0,
+            attn_mask=attn_mask,
+            grid_sizes=grid_sizes,
+            freqs=self.freqs,
+            context=context,
+            grid_sizes_ref=grid_sizes_ref,
+            freqs_ref=self.freqs_ref,
+            context_lens=context_lens,
+            origin_area=origin_area,
+            origin_len=origin_len,
+            log_scale=log_scale,
+        )
+        for idx, block in enumerate(self.blocks):
+            x, x_ref = gradient_checkpoint_forward(
+                block,
+                use_gradient_checkpointing,
+                use_gradient_checkpointing_offload,
+                x, x_ref, ref_args, gen_args, method='forward_origin'
+            )
+
+        # head
+        x = self.head(x, e)
+
+        # Context Parallel
+        if self.use_context_parallel:
+            x = ops.gather_forward_split_backward(
+                x, dim=1, group=sp_group, grad_scale="up"
+            )
+
+        # unpatchify
+        x = self.unpatchify(x, grid_sizes)
+        return [u.float() for u in x]
 
     def unpatchify(self, x, grid_sizes):
         c = self.out_dim
