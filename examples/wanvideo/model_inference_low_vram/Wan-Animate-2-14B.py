@@ -2,12 +2,13 @@ import torch
 from PIL import Image
 from diffsynth.utils.data import save_video, VideoData
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
+from modelscope import dataset_snapshot_download
 
 vram_config = {
-    "offload_dtype": torch.bfloat16,
-    "offload_device": "cpu",
+    "offload_dtype": "disk",
+    "offload_device": "disk",
     "onload_dtype": torch.bfloat16,
-    "onload_device": "cuda",
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
@@ -17,7 +18,6 @@ vram_config = {
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
-    redirect_common_files=False,
     model_configs=[
         ModelConfig(model_id="Wan-AI/Wan-Animate-2-14B", origin_file_pattern="wan_animate_2/wan_animate_2_bf16.safetensors", **vram_config),
         ModelConfig(model_id="Wan-AI/Wan-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/models_t5_umt5-xxl-enc-bf16.pth", **vram_config),
@@ -25,14 +25,17 @@ pipe = WanVideoPipeline.from_pretrained(
         ModelConfig(model_id="Wan-AI/Wan2.1-T2V-14B", origin_file_pattern="Wan2.1_VAE.pth", **vram_config),
     ],
     tokenizer_config=ModelConfig(model_id="Wan-AI/Wan-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/umt5-xxl/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
 # Character animation: reference image (identity) + reference video (motion) -> animated video.
-# reference_image = Image.open("/mnt/nas1/zhanghong/project26/main_project/opencode/packages/wan2.2/Wan-Animate-2/examples/refimage_640x352.jpg").convert("RGB")
-# reference_video = VideoData("/mnt/nas1/zhanghong/project26/main_project/opencode/packages/wan2.2/Wan-Animate-2/examples/video_640x352.mp4").raw_data()
-reference_image = Image.open("/mnt/nas1/zhanghong/project26/main_project/opencode/packages/wan2.2/Wan-Animate-2/examples/refimage.jpg").convert("RGB")
-reference_video = VideoData("/mnt/nas1/zhanghong/project26/main_project/opencode/packages/wan2.2/Wan-Animate-2/examples/video.mp4").raw_data()
-
+dataset_snapshot_download(
+    "DiffSynth-Studio/diffsynth_example_dataset",
+    local_dir="data/diffsynth_example_dataset",
+    allow_file_pattern="wanvideo/Wan-Animate-2-14B/*"
+)
+reference_image = Image.open("data/diffsynth_example_dataset/wanvideo/Wan-Animate-2-14B/refimage.jpg").convert("RGB")
+reference_video = VideoData("data/diffsynth_example_dataset/wanvideo/Wan-Animate-2-14B/refvideo.mp4").raw_data()
 num_frames = 81
 video = pipe(
     prompt="人物外观描述：一名长黑发女性，穿着白色半透明蕾丝长袖上衣，衣身带有花卉刺绣，下身搭配白色百褶短裙和黑色腰带，脚穿米白色厚底运动鞋。 背景描述：背景为现代室内空间，墙面和柜体以浅灰色为主，后方设有两扇深色落地窗或玻璃门，顶部安装长条形灯具，中央有一块浅色长方形台面。",
@@ -41,8 +44,8 @@ video = pipe(
     animate2_reference_image=reference_image,
     animate2_reference_video=reference_video[:num_frames],
     animate2_offload_kv=True,
-    num_frames=num_frames, height=640, width=352,
-    num_inference_steps=40, cfg_scale=3.0, sigma_shift=5.0,
-    seed=0, tiled=False,
+    num_frames=num_frames, height=1280, width=720,
+    num_inference_steps=40, cfg_scale=3.0,
+    seed=0, tiled=True,
 )
-save_video(video, "video_Wan-Animate-2.mp4", fps=24, quality=5)
+save_video(video, "video_Wan-Animate-2-14B.mp4", fps=24, quality=5)

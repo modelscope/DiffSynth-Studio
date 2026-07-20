@@ -6,6 +6,17 @@ from torch.nn.attention.flex_attention import create_block_mask
 from .wan_video_dit import sinusoidal_embedding_1d, RMSNorm, MLP
 from ..core.attention.attention import attention_forward
 from ..core.gradient import gradient_checkpoint_forward
+from functools import lru_cache, partial
+
+
+def _score_mod_impl(score, b_idx, h_idx, q_idx, kv_idx, hw: int, log_scale: float):
+    condition = (kv_idx >= hw) & (kv_idx < 2 * hw)
+    return torch.where(condition, score + log_scale, score)
+
+
+@lru_cache(maxsize=32)
+def _get_score_mod(hw: int, log_scale: float = -1.0):
+    return partial(_score_mod_impl, hw=hw, log_scale=log_scale)
 
 
 def rope_params(max_seq_len, dim, theta=10000, offset=0):
@@ -245,7 +256,7 @@ class Incontext_AttentionBlock(nn.Module):
         refer_stride=1,
         use_img_emb=True,
         use_context_parallel=False,
-        sparse_type=0
+        sparse_type=0,
     ):
         super().__init__()
         self.dim = dim
@@ -334,6 +345,7 @@ class Incontext_AttentionBlock(nn.Module):
         e,
         context_lens,
         use_context_parallel,
+        log_scale=0.0,
     ):
 
         origin_latent_f    = origin_len // 4 + 1
@@ -394,10 +406,12 @@ class Incontext_AttentionBlock(nn.Module):
         v_incontext[:, target_q_len : target_q_len + ref_f * origin_latent_hw]\
             .view(B, ref_f, origin_latent_hw, N, C)[:, :, :ref_hw] = v_ref_src
 
+        score_mod = _get_score_mod(hw=int(origin_latent_hw), log_scale=log_scale)
+
         xout_full = attention_forward(
             q_incontext, k_incontext, v_incontext,
             q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
-            use_flex=True, attn_mask=attn_mask,
+            use_flex=True, attn_mask=attn_mask, score_mod=score_mod
         )
 
         xout_valid = xout_full[:, :f * origin_latent_hw]
@@ -463,7 +477,7 @@ class WanAnimate2Transformer(nn.Module):
         refer_offset_w=-1,
         refer_stride=1,
         sparse_type=0,
-        use_context_parallel=False
+        use_context_parallel=False,
     ):
         super().__init__()
         self.patch_size = patch_size
@@ -512,7 +526,7 @@ class WanAnimate2Transformer(nn.Module):
         # blocks
         self.blocks = nn.ModuleList([Incontext_AttentionBlock(
             dim, ffn_dim, num_heads, window_size, qk_norm, cross_attn_norm, eps, refer_stride, use_img_emb=use_img_emb, use_context_parallel=self.use_context_parallel,
-           sparse_type=self.sparse_type
+            sparse_type=self.sparse_type
         ) for _ in range(num_layers)])
 
         # head
@@ -671,6 +685,7 @@ class WanAnimate2Transformer(nn.Module):
         origin_area,
         is_uncondtion=False,
         use_unified_sequence_parallel: bool = False,
+        log_scale=0.0,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
     ):
@@ -742,6 +757,7 @@ class WanAnimate2Transformer(nn.Module):
             origin_area=origin_area,
             origin_len=origin_len,
             use_context_parallel=use_unified_sequence_parallel,
+            log_scale=log_scale,
         )
         if use_unified_sequence_parallel:
             from ..utils.xfuser import get_current_chunk, is_evenly_divisible, get_sequence_parallel_world_size

@@ -236,6 +236,7 @@ class WanVideoPipeline(BasePipeline):
         animate2_reference_image: Image.Image = None,
         animate2_reference_video: list[Image.Image] = None,
         animate2_offload_kv: bool = False,
+        animate2_log_scale: float = 0.0,
         # VAP
         vap_video: list[Image.Image] = None,
         vap_prompt: str = " ",
@@ -313,7 +314,7 @@ class WanVideoPipeline(BasePipeline):
             "sliding_window_size": sliding_window_size, "sliding_window_stride": sliding_window_stride,
             "input_audio": input_audio, "audio_sample_rate": audio_sample_rate, "s2v_pose_video": s2v_pose_video, "audio_embeds": audio_embeds, "s2v_pose_latents": s2v_pose_latents, "motion_video": motion_video,
             "animate_pose_video": animate_pose_video, "animate_face_video": animate_face_video, "animate_inpaint_video": animate_inpaint_video, "animate_mask_video": animate_mask_video,
-            "animate2_prompt_ref": animate2_prompt_ref, "animate2_reference_image": animate2_reference_image, "animate2_reference_video": animate2_reference_video, "animate2_offload_kv": animate2_offload_kv,
+            "animate2_prompt_ref": animate2_prompt_ref, "animate2_reference_image": animate2_reference_image, "animate2_reference_video": animate2_reference_video, "animate2_offload_kv": animate2_offload_kv, "animate2_log_scale": animate2_log_scale,
             "vap_video": vap_video, 
             "wantodance_music_path": wantodance_music_path, "wantodance_reference_image": wantodance_reference_image, "wantodance_fps": wantodance_fps,
             "wantodance_keyframes": wantodance_keyframes, "wantodance_keyframes_mask": wantodance_keyframes_mask,
@@ -1278,12 +1279,12 @@ class WanVideoUnit_Animate2VAEEmbedder(PipelineUnit):
 class WanVideoUnit_Animate2RefKVCacheEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("animate2_reference_video", "condition_latents", "condition_y", "context_ref", "clip_fea_ref", "grid_sizes", "seq_len_ref", "animate2_offload_kv", "use_gradient_checkpointing", "use_gradient_checkpointing_offload"),
+            input_params=("animate2_reference_video", "condition_latents", "condition_y", "context_ref", "clip_fea_ref", "grid_sizes", "seq_len_ref", "animate2_offload_kv", "use_gradient_checkpointing", "use_gradient_checkpointing_offload", "use_unified_sequence_parallel"),
             output_params=("animate2_k_cache", "animate2_v_cache"),
             onload_model_names=("dit",)
         )
 
-    def process(self, pipe: WanVideoPipeline, animate2_reference_video, condition_latents, condition_y, context_ref, clip_fea_ref, grid_sizes, seq_len_ref, animate2_offload_kv, use_gradient_checkpointing, use_gradient_checkpointing_offload):
+    def process(self, pipe: WanVideoPipeline, animate2_reference_video, condition_latents, condition_y, context_ref, clip_fea_ref, grid_sizes, seq_len_ref, animate2_offload_kv, use_gradient_checkpointing, use_gradient_checkpointing_offload, use_unified_sequence_parallel):
         if animate2_reference_video is None:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
@@ -1301,7 +1302,7 @@ class WanVideoUnit_Animate2RefKVCacheEmbedder(PipelineUnit):
             seq_len_ref=seq_len_ref,
             t=timestep,
             animate2_offload_kv=animate2_offload_kv,
-            use_unified_sequence_parallel=pipe.use_unified_sequence_parallel,
+            use_unified_sequence_parallel=use_unified_sequence_parallel,
             use_gradient_checkpointing=use_gradient_checkpointing,
             use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
         )
@@ -1908,6 +1909,7 @@ def model_fn_wananimate(
     seq_len: int = None,
     positive: bool = True,
     use_unified_sequence_parallel: bool = False,
+    animate2_log_scale: float = 0.0,
     use_gradient_checkpointing_offload: bool = False,
     use_gradient_checkpointing: bool = False,
     **kwargs,
@@ -1927,6 +1929,7 @@ def model_fn_wananimate(
         origin_area=origin_area,
         is_uncondtion=is_uncondtion,
         use_unified_sequence_parallel=use_unified_sequence_parallel,
+        log_scale=animate2_log_scale,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
