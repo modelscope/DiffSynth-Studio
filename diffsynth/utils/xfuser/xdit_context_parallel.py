@@ -217,5 +217,3 @@ def all_to_all_4d(x, scatter_dim, gather_dim):
 def is_evenly_divisible(seq_len):
     world_size = get_sequence_parallel_world_size()
     return seq_len % world_size == 0
-
-

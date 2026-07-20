@@ -142,16 +142,9 @@ class CrossAttention(SelfAttention):
             self.norm_k_img = RMSNorm(dim, eps=eps) if qk_norm else nn.Identity()
 
     def forward(self, x, context, context_lens, counter=0):
-        """
-        x:              [B, L1, C].
-        context:        [B, L2, C].
-        context_lens:   [B].
-        """
         if self.use_img_emb:
             context_img = context[:, :257]
             context = context[:, 257:]
-        else:
-            context = context
 
         b, n, d = x.size(0), self.num_heads, self.head_dim
 
@@ -379,7 +372,6 @@ class Incontext_AttentionBlock(nn.Module):
         B, _, N, C = q.shape
         device, dtype = q.device, q.dtype
 
-
         target_q_len   = math.ceil(origin_max_len     / 128) * 128
         target_ref_len = math.ceil(origin_ref_max_len / 128) * 128
         target_kv_len  = target_q_len + target_ref_len
@@ -483,7 +475,6 @@ class WanAnimate2Transformer(nn.Module):
         refer_offset_w=-1,
         refer_stride=1,
         sparse_type=0,
-        use_context_parallel=False,
     ):
         super().__init__()
         self.patch_size = patch_size
@@ -505,8 +496,7 @@ class WanAnimate2Transformer(nn.Module):
         self.refer_offset_h = refer_offset_h
         self.refer_offset_w = refer_offset_w
         self.refer_stride = refer_stride
-        self.sparse_type=sparse_type
-        self.use_context_parallel = use_context_parallel
+        self.sparse_type = sparse_type
 
         # [Denoising Transformer]
         # embeddings
@@ -531,8 +521,7 @@ class WanAnimate2Transformer(nn.Module):
 
         # blocks
         self.blocks = nn.ModuleList([Incontext_AttentionBlock(
-            dim, ffn_dim, num_heads, window_size, qk_norm, cross_attn_norm, eps, refer_stride, use_img_emb=use_img_emb, use_context_parallel=self.use_context_parallel,
-            sparse_type=self.sparse_type
+            dim, ffn_dim, num_heads, window_size, qk_norm, cross_attn_norm, eps, refer_stride, use_img_emb=use_img_emb, sparse_type=self.sparse_type
         ) for _ in range(num_layers)])
 
         # head
@@ -667,7 +656,6 @@ class WanAnimate2Transformer(nn.Module):
             x_ref = get_current_chunk(x_ref, dim=1)
         for idx, block in enumerate(self.blocks):
             x_ref = block(x_ref, idx, k_cache, v_cache, method='forward_ref', **kwargs)
-
 
     def forward_gen(
         self,
@@ -809,7 +797,7 @@ class WanAnimate2Transformer(nn.Module):
         x = torch.cat([torch.cat([
             u, u.new_zeros(1, seq_len - u.size(1), u.size(2))
         ], dim=1) for u in x])
-        
+
         # [reference]
         # params
         x_ref = [torch.cat([u, v], dim=0) for u, v in zip(x_ref, y_ref)]
@@ -849,11 +837,11 @@ class WanAnimate2Transformer(nn.Module):
         # time embeddings
         e = self.time_embedding(sinusoidal_embedding_1d(self.freq_dim, t).to(x.dtype))
         e0 = self.time_projection(e).unflatten(1, (6, self.dim))
-        
+
         # time embeddings ref
         e_ref = self.time_embedding(sinusoidal_embedding_1d(self.freq_dim, t*0+1).to(x.dtype))
         e0_ref = self.time_projection(e_ref).unflatten(1, (6, self.dim))
-            
+
         # [context]
         context_lens = None
         context = self.text_embedding(torch.stack([torch.cat([
@@ -868,7 +856,7 @@ class WanAnimate2Transformer(nn.Module):
         context_ref = self.text_embedding(torch.stack([torch.cat([
             u, u.new_zeros(self.text_len - u.size(0), u.size(1))
         ]) for u in context_ref]))
-        
+
         if self.use_img_emb:
             context_clip_ref = self.img_emb(clip_fea_ref) # bs x 257 x dim
             context_ref = torch.concat([context_clip_ref, context_ref], dim=1)
@@ -909,12 +897,6 @@ class WanAnimate2Transformer(nn.Module):
 
         # head
         x = self.head(x, e)
-
-        # Context Parallel
-        if self.use_context_parallel:
-            x = ops.gather_forward_split_backward(
-                x, dim=1, group=sp_group, grad_scale="up"
-            )
 
         # unpatchify
         x = self.unpatchify(x, grid_sizes)

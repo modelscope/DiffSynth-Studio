@@ -1,8 +1,8 @@
 import torch
+import torch.distributed as dist
 from PIL import Image
 from diffsynth.utils.data import save_video, VideoData
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
-import torch.distributed as dist
 from modelscope import dataset_snapshot_download
 
 vram_config = {
@@ -37,7 +37,7 @@ dataset_snapshot_download(
 )
 reference_image = Image.open("data/diffsynth_example_dataset/wanvideo/Wan-Animate-2-14B/refimage.jpg").convert("RGB")
 reference_video = VideoData("data/diffsynth_example_dataset/wanvideo/Wan-Animate-2-14B/refvideo.mp4").raw_data()
-# ===== Example 1: single-clip generation (direct pipeline call) =====
+# Example 1: single-clip generation
 num_frames = 81
 video = pipe(
     prompt="人物外观描述：一名长黑发女性，穿着白色半透明蕾丝长袖上衣，衣身带有花卉刺绣，下身搭配白色百褶短裙和黑色腰带，脚穿米白色厚底运动鞋。 背景描述：背景为现代室内空间，墙面和柜体以浅灰色为主，后方设有两扇深色落地窗或玻璃门，顶部安装长条形灯具，中央有一块浅色长方形台面。",
@@ -54,7 +54,7 @@ if dist.get_rank() == 0:
     save_video(video, "video_Wan-Animate-2-14B.mp4", fps=24, quality=5)
 
 
-# ===== Example 2: multi-clip long-video generation =====
+# Example 2: multi-clip long-video generation
 def generate_long_video(pipe, reference_image, cond_images, clip_len, first_num=1, **kwargs):
     assert clip_len > first_num, "clip_len must be greater than first_num"
 

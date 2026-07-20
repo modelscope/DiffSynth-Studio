@@ -1228,7 +1228,6 @@ class WanVideoUnit_Animate2VAEEmbedder(PipelineUnit):
         msk = msk.transpose(1, 2)[0]
         return msk
 
-
     def process(self, pipe: WanVideoPipeline, animate2_reference_image, animate2_reference_video, animate2_refert_images, num_frames, height, width, tiled, tile_size, tile_stride):
         if animate2_reference_image is None or animate2_reference_video is None:
             return {}

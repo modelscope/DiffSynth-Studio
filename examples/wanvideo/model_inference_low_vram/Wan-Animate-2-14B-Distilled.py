@@ -37,7 +37,7 @@ dataset_snapshot_download(
 reference_image = Image.open("data/diffsynth_example_dataset/wanvideo/Wan-Animate-2-14B-Distilled/refimage.jpg").convert("RGB")
 reference_video = VideoData("data/diffsynth_example_dataset/wanvideo/Wan-Animate-2-14B-Distilled/refvideo.mp4").raw_data()
 
-# ===== Example 1: single-clip generation (direct pipeline call) =====
+# Example 1: single-clip generation
 num_frames = 81
 # For distilled model, set animate2_log_scale to -1.3, num_inference_steps to 10, and cfg_scale to 1.0.
 video = pipe(
@@ -54,7 +54,7 @@ video = pipe(
 save_video(video, "video_Wan-Animate-2-14B-Distilled.mp4", fps=24, quality=5)
 
 
-# ===== Example 2: multi-clip long-video generation =====
+# Example 2: multi-clip long-video generation
 def generate_long_video(pipe, reference_image, cond_images, clip_len, first_num=1, **kwargs):
     assert clip_len > first_num, "clip_len must be greater than first_num"
 
