@@ -28,11 +28,6 @@ pipe = WanVideoPipeline.from_pretrained(
 )
 pipe.load_lora(pipe.dit, "models/train/Wan-Animate-2-14B_lora/epoch-4.safetensors", alpha=1)
 
-dataset_snapshot_download(
-    "DiffSynth-Studio/diffsynth_example_dataset",
-    local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="wanvideo/Wan-Animate-2-14B/*"
-)
 reference_image = Image.open("data/diffsynth_example_dataset/wanvideo/Wan-Animate-2-14B/refimage.jpg").convert("RGB")
 reference_video = VideoData("data/diffsynth_example_dataset/wanvideo/Wan-Animate-2-14B/refvideo.mp4").raw_data()
 num_frames = 81

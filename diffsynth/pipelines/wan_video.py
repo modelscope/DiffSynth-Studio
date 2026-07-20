@@ -235,6 +235,7 @@ class WanVideoPipeline(BasePipeline):
         animate2_prompt_ref: str = " ",
         animate2_reference_image: Image.Image = None,
         animate2_reference_video: list[Image.Image] = None,
+        animate2_refert_images: list[Image.Image] = None,
         animate2_offload_kv: bool = False,
         animate2_log_scale: float = 0.0,
         # VAP
@@ -314,7 +315,7 @@ class WanVideoPipeline(BasePipeline):
             "sliding_window_size": sliding_window_size, "sliding_window_stride": sliding_window_stride,
             "input_audio": input_audio, "audio_sample_rate": audio_sample_rate, "s2v_pose_video": s2v_pose_video, "audio_embeds": audio_embeds, "s2v_pose_latents": s2v_pose_latents, "motion_video": motion_video,
             "animate_pose_video": animate_pose_video, "animate_face_video": animate_face_video, "animate_inpaint_video": animate_inpaint_video, "animate_mask_video": animate_mask_video,
-            "animate2_prompt_ref": animate2_prompt_ref, "animate2_reference_image": animate2_reference_image, "animate2_reference_video": animate2_reference_video, "animate2_offload_kv": animate2_offload_kv, "animate2_log_scale": animate2_log_scale,
+            "animate2_prompt_ref": animate2_prompt_ref, "animate2_reference_image": animate2_reference_image, "animate2_reference_video": animate2_reference_video, "animate2_refert_images": animate2_refert_images, "animate2_offload_kv": animate2_offload_kv, "animate2_log_scale": animate2_log_scale,
             "vap_video": vap_video, 
             "wantodance_music_path": wantodance_music_path, "wantodance_reference_image": wantodance_reference_image, "wantodance_fps": wantodance_fps,
             "wantodance_keyframes": wantodance_keyframes, "wantodance_keyframes_mask": wantodance_keyframes_mask,
@@ -1213,7 +1214,7 @@ class WanVideoUnit_Animate2CLIPEmbedder(PipelineUnit):
 class WanVideoUnit_Animate2VAEEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("animate2_reference_image", "animate2_reference_video", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride"),
+            input_params=("animate2_reference_image", "animate2_reference_video", "animate2_refert_images", "num_frames", "height", "width", "tiled", "tile_size", "tile_stride"),
             output_params=("y", "condition_latents", "condition_y", "grid_sizes", "grid_sizes_ref", "seq_len", "seq_len_ref", "origin_len", "origin_area"),
             onload_model_names=("vae",)
         )
@@ -1228,7 +1229,7 @@ class WanVideoUnit_Animate2VAEEmbedder(PipelineUnit):
         return msk
 
 
-    def process(self, pipe: WanVideoPipeline, animate2_reference_image, animate2_reference_video, num_frames, height, width, tiled, tile_size, tile_stride):
+    def process(self, pipe: WanVideoPipeline, animate2_reference_image, animate2_reference_video, animate2_refert_images, num_frames, height, width, tiled, tile_size, tile_stride):
         if animate2_reference_image is None or animate2_reference_video is None:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
@@ -1241,21 +1242,29 @@ class WanVideoUnit_Animate2VAEEmbedder(PipelineUnit):
         # Reference image -> y_ref (mask + latent), single latent frame
         ref_img = pipe.preprocess_image(animate2_reference_image.resize((W, H))).to(device)  # (1, C, H, W)
         ref_pixel = ref_img.transpose(0, 1)  # (C, 1, H, W)
-        ref_latents = pipe.vae.encode([ref_pixel.to(dtype)], device=device).to(dtype=dtype, device=device)  # (1, 16, 1, lat_h, lat_w)
+        ref_latents = pipe.vae.encode([ref_pixel.to(dtype)], device, tiled, tile_size, tile_stride).to(dtype=dtype, device=device)  # (1, 16, 1, lat_h, lat_w)
         mask_ref = self.animate2_get_i2v_mask(1, lat_h, lat_w, mask_len=1, device=device)
         y_ref = torch.concat([mask_ref, ref_latents[0]]).to(dtype=dtype, device=device)  # (20, 1, lat_h, lat_w)
 
-        # Reference-temporal slot: zeros for the single-clip case, mask_reft_len == 0
-        # TODO: check reft
-        zeros_vid = torch.zeros(3, T - 1, H, W, device=device, dtype=dtype)
-        y_reft = pipe.vae.encode([zeros_vid], device=device)[0].to(dtype=dtype, device=device)  # (16, lat_t-1, lat_h, lat_w)
-        msk_reft = self.animate2_get_i2v_mask(lat_t - 1, lat_h, lat_w, mask_len=0, device=device)
+        # Reference-temporal slot: for multi-clip long video, the first `mask_reft_len` temporal
+        # positions carry the previous clip's tail frames (continuation); the rest are zeros.
+        # Single/first clip: animate2_refert_images is None -> mask_reft_len == 0 (all zeros).
+        if animate2_refert_images is not None and len(animate2_refert_images) > 0:
+            mask_reft_len = len(animate2_refert_images)
+            refert = pipe.preprocess_video([f.resize((W, H)) for f in animate2_refert_images]).to(device)  # (1, 3, mask_reft_len, H, W)
+            zeros_tail = torch.zeros(3, T - 1 - mask_reft_len, H, W, device=device, dtype=dtype)
+            reft_vid = torch.concat([refert[0].to(dtype), zeros_tail], dim=1)  # (3, T-1, H, W)
+        else:
+            mask_reft_len = 0
+            reft_vid = torch.zeros(3, T - 1, H, W, device=device, dtype=dtype)
+        y_reft = pipe.vae.encode([reft_vid], device, tiled, tile_size, tile_stride)[0].to(dtype=dtype, device=device)  # (16, lat_t-1, lat_h, lat_w)
+        msk_reft = self.animate2_get_i2v_mask(lat_t - 1, lat_h, lat_w, mask_len=mask_reft_len, device=device)
         y_reft = torch.concat([msk_reft, y_reft]).to(dtype=dtype, device=device)
         y = torch.concat([y_ref, y_reft], dim=1)  # (20, lat_t, lat_h, lat_w)
 
         # Reference video -> condition_latents
         ref_video = pipe.preprocess_video([f.resize((W, H)) for f in animate2_reference_video[:num_frames]]).to(device)  # (1, C, num_frames, H, W)
-        condition_latents = pipe.vae.encode([ref_video[0].to(dtype)], device=device).to(dtype=dtype, device=device)  # (1, 16, lat_t_c, lat_h, lat_w)
+        condition_latents = pipe.vae.encode([ref_video[0].to(dtype)], device, tiled, tile_size, tile_stride).to(dtype=dtype, device=device)  # (1, 16, lat_t_c, lat_h, lat_w)
         # Reference video -> condition_y (mask + latent), mask_len = T
         _, _, lat_t_c, lat_h_c, lat_w_c = condition_latents.shape
         condition_y = condition_latents.clone()[0]
