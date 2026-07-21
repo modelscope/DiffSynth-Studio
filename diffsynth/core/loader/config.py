@@ -131,7 +131,7 @@ class ModelConfig:
         if os.environ.get('DIFFSYNTH_SKIP_DOWNLOAD', "").lower() == "true":
             behavior = 3
         elif download_source == "modelscope":
-            if os.environ.get("MODELSCOPE_ENDPOINT", "") == "https://modelscope.ai" or os.environ.get("MODELSCOPE_DOMAIN", "") == "https://modelscope.ai":
+            if "modelscope.ai" in os.environ.get("MODELSCOPE_ENDPOINT", "") or "modelscope.ai" in os.environ.get("MODELSCOPE_DOMAIN", ""):
                 behavior = 1
             else:
                 behavior = 0
