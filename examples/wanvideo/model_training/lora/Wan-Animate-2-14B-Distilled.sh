@@ -14,7 +14,7 @@ accelerate launch examples/wanvideo/model_training/train.py \
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/Wan-Animate-2-14B-Distilled_lora_splited_cache" \
   --lora_base_model "dit" \
-  --lora_target_modules "q,k,v,o,ffn.0,ffn.2" \
+  --lora_target_modules "self_attn.q,self_attn.k,self_attn.v" \
   --lora_rank 32 \
   --extra_inputs "animate2_prompt_ref,animate2_reference_image,animate2_reference_video" \
   --use_gradient_checkpointing \
@@ -33,7 +33,7 @@ accelerate launch --config_file examples/wanvideo/model_training/full/accelerate
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/Wan-Animate-2-14B-Distilled_lora" \
   --lora_base_model "dit" \
-  --lora_target_modules "q,k,v,o,ffn.0,ffn.2" \
+  --lora_target_modules "self_attn.q,self_attn.k,self_attn.v" \
   --lora_rank 32 \
   --extra_inputs "animate2_prompt_ref,animate2_reference_image,animate2_reference_video" \
   --use_gradient_checkpointing \
