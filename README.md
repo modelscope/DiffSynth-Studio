@@ -267,7 +267,7 @@ DiffSynth-Studio redesigns the inference and training pipelines for mainstream D
 >
 > ```python
 > import os
-> os.environ["MODELSCOPE_DOMAIN"] = "www.modelscope.ai"
+> os.environ["MODELSCOPE_ENDPOINT"] = "https://modelscope.ai"
 > ```
 >
 > To download models from other sources, please modify the environment variable [DIFFSYNTH_DOWNLOAD_SOURCE](/docs/en/Pipeline_Usage/Environment_Variables.md#diffsynth_download_source).

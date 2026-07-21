@@ -1,9 +1,42 @@
-import torch, glob, os
+import torch, glob, os, sys
 from typing import Optional, Union, Dict
 from dataclasses import dataclass
 from modelscope import snapshot_download
 from huggingface_hub import snapshot_download as hf_snapshot_download
 from typing import Optional
+
+_download_tips_printed = False
+
+if sys.platform.startswith('win'):
+    DOWNLOADING_TIPS = """
+┌──────────────────────────────────────────────────────────────────────┐
+│ DiffSynth-Studio Model Downloader Configuration:                     │
+│                                                                      │
+│ [0] Download from https://modelscope.cn/                             │
+│     (default behavior)                                               │
+│ [1] Download from https://modelscope.ai/                             │
+│     (enabled via `$env:MODELSCOPE_ENDPOINT="https://modelscope.ai"`) │
+│ [2] Download from https://huggingface.co/                            │
+│     (enabled via `$env:DIFFSYNTH_DOWNLOAD_SOURCE="HuggingFace"`)     │
+│ [3] Skip download and load only pre-downloaded model files           │
+│     (enabled via `$env:DIFFSYNTH_SKIP_DOWNLOAD="True"`)              │
+└──────────────────────────────────────────────────────────────────────┘
+""".strip()
+else:
+    DOWNLOADING_TIPS = """
+┌──────────────────────────────────────────────────────────────────────┐
+│ DiffSynth-Studio Model Downloader Configuration:                     │
+│                                                                      │
+│ [0] Download from https://modelscope.cn/                             │
+│     (default behavior)                                               │
+│ [1] Download from https://modelscope.ai/                             │
+│     (enabled via `export MODELSCOPE_ENDPOINT=https://modelscope.ai`) │
+│ [2] Download from https://huggingface.co/                            │
+│     (enabled via `export DIFFSYNTH_DOWNLOAD_SOURCE=HuggingFace`)     │
+│ [3] Skip download and load only pre-downloaded model files           │
+│     (enabled via `export DIFFSYNTH_SKIP_DOWNLOAD=True`)              │
+└──────────────────────────────────────────────────────────────────────┘
+""".strip()
 
 
 @dataclass
@@ -93,7 +126,30 @@ class ModelConfig:
         elif self.local_model_path is None:
             self.local_model_path = "./models"
 
+    def check_download_source(self):
+        download_source = self.parse_download_source().lower()
+        if os.environ.get('DIFFSYNTH_SKIP_DOWNLOAD', "").lower() == "true":
+            behavior = 3
+        elif download_source == "modelscope":
+            if "modelscope.ai" in os.environ.get("MODELSCOPE_ENDPOINT", "") or "modelscope.ai" in os.environ.get("MODELSCOPE_DOMAIN", ""):
+                behavior = 1
+            else:
+                behavior = 0
+        else:
+            behavior = 2
+        tips = DOWNLOADING_TIPS
+        for i in range(4): tips = tips.replace(f"[{i}]", ["[ ]", "[√]"][i==behavior])
+        global _download_tips_printed
+        if not _download_tips_printed:
+            is_main_process = True
+            if torch.distributed.is_initialized():
+                is_main_process = torch.distributed.get_rank() == 0
+            if is_main_process:
+                print(tips)
+                _download_tips_printed = True
+
     def download_if_necessary(self):
+        self.check_download_source()
         self.check_input()
         self.reset_local_model_path()
         if self.require_downloading():
