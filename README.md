@@ -36,6 +36,8 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
+- **July 21, 2026** We have open-sourced [DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills). This is a composable collection of Agent Skills that automates the entire workflow of integrating external diffusion models into DiffSynth-Studio, significantly improving the standardization and efficiency of model integration. Get started with the [example](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1)!
+
 - **June 29, 2026** Boogu-Image open-sourced. Support includes text-to-image generation, image editing, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/Boogu-Image.md) and [example code](/examples/boogu_image/).
 
 - **June 24, 2026** Krea-2 is now open-source, and we have provided full support. For more details, please refer to the [documentation](/docs/en/Model_Details/Krea-2.md) and [example code](/examples/krea2/).
