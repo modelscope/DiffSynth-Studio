@@ -75,6 +75,8 @@ This section introduces how to integrate models into `DiffSynth-Studio` to utili
 * [Enabling Fine-Grained VRAM Management](./Developer_Guide/Enabling_VRAM_management.md)
 * [Model Training Integration](./Developer_Guide/Training_Diffusion_Models.md)
 
+We have open-sourced [**DiffSynth-Studio Model Integration Skills**](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills). This is a composable collection of Agent Skills that automates the entire workflow of integrating external diffusion models (image / video / audio) into DiffSynth-Studio. It distills and defines the model integration standards of DiffSynth-Studio, consolidating best practices such as codebase analysis, model code integration, Pipeline design, low-VRAM management, and training support into reusable standard procedures. Following these standards can significantly lower the integration barrier, reduce repetitive debugging, and greatly improve the efficiency of integrating new models. We recommend starting from the [`diffsynth-integrator`](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator) [example](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1) to get started quickly and accelerate model integration.
+
 ## Section 5: API Reference
 
 This section introduces the independent core module `diffsynth.core` in `DiffSynth-Studio`, explaining how internal functions are designed and operate. Developers can use these functional modules in other codebase developments if needed.

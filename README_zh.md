@@ -14,6 +14,8 @@
 ## 简介
 
 > DiffSynth-Studio 文档：[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/)、[English version](https://diffsynth-studio-doc.readthedocs.io/en/latest/)
+> 
+> DiffSynth-Studio Skills：[DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills)
 
 欢迎来到 Diffusion 模型的魔法世界！DiffSynth-Studio 是由[魔搭社区](https://www.modelscope.cn/)团队开发和维护的开源 Diffusion 模型引擎。我们期望以框架建设孵化技术创新，凝聚开源社区的力量，探索生成式模型技术的边界！
 
@@ -33,6 +35,8 @@ DiffSynth 目前包括两个开源项目：
 > DiffSynth-Studio 经历了大版本更新，部分旧功能已停止维护，如需使用旧版功能，请切换到大版本更新前的[最后一个历史版本](https://github.com/modelscope/DiffSynth-Studio/tree/afd101f3452c9ecae0c87b79adfa2e22d65ffdc3)。
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
+
+- **2026年7月21日** 我们开源了 [DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills)。这是一套可组合的 Agent Skill 合集，将外部扩散模型接入 DiffSynth-Studio 的全流程自动化，大幅提升模型接入标准化程度与效率。从[使用示例](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1)开始体验吧！
 
 - **2026年6月29日** Boogu-Image 开源，已支持文生图推理、图像编辑、低显存推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/Boogu-Image.md)和[示例代码](/examples/boogu_image/)。
 
