@@ -11,6 +11,7 @@ from ..diffusion import FlowMatchScheduler
 from ..core import ModelConfig, gradient_checkpoint_forward, load_state_dict
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit, ControlNetInput
 from ..utils.lora.flux import FluxLoRALoader
+from ..utils.lora.flux_timestep import FluxTimestepLoRALoader
 
 from ..models.flux_dit import FluxDiT
 from ..models.flux_text_encoder_clip import FluxTextEncoderClip
@@ -115,6 +116,11 @@ class FluxImagePipeline(BasePipeline):
                     merger_name = name.replace(".", "___")
                     if merger_name in self.lora_patcher.model_dict:
                         module.lora_merger = self.lora_patcher.model_dict[merger_name]
+
+    def load_timestep_lora(self, lora_config, alpha=1):
+        loader = FluxTimestepLoRALoader(torch_dtype=self.torch_dtype, device=self.device)
+        loader.load(self.dit, lora_config, alpha=alpha)
+        self.model_fn = loader.wrap_model_fn(self.model_fn)
 
     @staticmethod
     def from_pretrained(
