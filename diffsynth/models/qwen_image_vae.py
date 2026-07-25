@@ -707,6 +707,8 @@ class QwenImageVAE(torch.nn.Module):
         self.std = 1 / torch.tensor(std).view(1, 16, 1, 1, 1)
 
     def encode(self, x, **kwargs):
+        if x.ndim == 5:
+            return self.encode_video(x)
         x = x.unsqueeze(2)
         x = self.encoder(x)
         x = self.quant_conv(x)
@@ -715,8 +717,10 @@ class QwenImageVAE(torch.nn.Module):
         x = (x - mean) * std
         x = x.squeeze(2)
         return x
-    
+
     def decode(self, x, **kwargs):
+        if x.ndim == 5:
+            return self.decode_video(x)
         x = x.unsqueeze(2)
         mean, std = self.mean.to(dtype=x.dtype, device=x.device), self.std.to(dtype=x.dtype, device=x.device)
         x = x / std + mean
@@ -724,3 +728,40 @@ class QwenImageVAE(torch.nn.Module):
         x = self.decoder(x)
         x = x.squeeze(2)
         return x
+
+    def count_conv3d(self, model):
+        return sum(1 for m in model.modules() if isinstance(m, QwenImageCausalConv3d))
+
+    def encode_video(self, x, **kwargs):
+        # x: (B, C, T, H, W). Temporal chunking with a persistent causal feature
+        # cache — mathematically equivalent to encoding the whole clip at once, but
+        # bounded in memory. Chunk layout (1 + 4k frames) matches the WanVAE-derived
+        # temporal downsampling (temperal_downsample=[False, True, True]).
+        t = x.shape[2]
+        iter_ = 1 + (t - 1) // 4
+        feat_cache = [None] * self.count_conv3d(self.encoder)
+        out = None
+        for i in range(iter_):
+            feat_idx = [0]
+            chunk = x[:, :, :1, :, :] if i == 0 else x[:, :, 1 + 4 * (i - 1): 1 + 4 * i, :, :]
+            out_ = self.encoder(chunk, feat_cache=feat_cache, feat_idx=feat_idx)
+            out = out_ if out is None else torch.cat([out, out_], dim=2)
+        x = self.quant_conv(out)
+        x = x[:, :16]
+        mean, std = self.mean.to(dtype=x.dtype, device=x.device), self.std.to(dtype=x.dtype, device=x.device)
+        x = (x - mean) * std
+        return x
+
+    def decode_video(self, x, **kwargs):
+        # x: (B, 16, T', H, W) in DiT latent space. Denormalize, then decode one
+        # latent frame at a time through the persistent causal feature cache.
+        mean, std = self.mean.to(dtype=x.dtype, device=x.device), self.std.to(dtype=x.dtype, device=x.device)
+        x = x / std + mean
+        x = self.post_quant_conv(x)
+        feat_cache = [None] * self.count_conv3d(self.decoder)
+        out = None
+        for i in range(x.shape[2]):
+            feat_idx = [0]
+            out_ = self.decoder(x[:, :, i:i + 1, :, :], feat_cache=feat_cache, feat_idx=feat_idx)
+            out = out_ if out is None else torch.cat([out, out_], dim=2)
+        return out

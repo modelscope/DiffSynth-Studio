@@ -1322,8 +1322,34 @@ krea2_series = [
     },
 ]
 
+lingbot_video_series = [
+    {
+        # Example: ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors")
+        # Dense 1.3B DiT (num_experts=0 -> pure SwiGLU MLP FFN). Model __init__
+        # defaults already match transformer/config.json, so no extra_kwargs.
+        "model_hash": "2bcf511fe5e0000519394d242b4d8abd",
+        "model_name": "lingbot_video_dit",
+        "model_class": "diffsynth.models.lingbot_video_dit.LingBotVideoDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.lingbot_video_dit.LingBotVideoDiTStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="text_encoder/*.safetensors")
+        # Qwen3-VL text encoder (2 shards). Hash is over the merged key set of both
+        # shards. The checkpoint stores only the `model.*` submodule (713 tensors,
+        # no tied lm_head), matching a bare Qwen3VLModel exactly -> identity converter.
+        "model_hash": "b8750c24f732c87797f551196c4cef78",
+        "model_name": "lingbot_video_text_encoder",
+        "model_class": "diffsynth.models.lingbot_video_text_encoder.LingBotVideoTextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.lingbot_video_text_encoder.LingBotVideoTextEncoderStateDictConverter",
+    },
+    # VAE: the LingBot-Video VAE (vae/*.safetensors) is byte-structurally identical
+    # to QwenImageVAE (hash ed4ea5824d55ec3107b09815e318123a, registered in
+    # qwen_image_series). It is loaded via that existing entry as model_name
+    # "qwen_image_vae"; the pipeline fetches it and uses the 5D-video code path.
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
-    + image_metrics_series + ideogram4_series + krea2_series
+    + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series
 )
