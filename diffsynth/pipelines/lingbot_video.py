@@ -13,6 +13,7 @@ from ..diffusion.flow_match import LingBotVideoUniPCScheduler
 from ..models.lingbot_video_dit import LingBotVideoDiT
 from ..models.lingbot_video_text_encoder import LingBotVideoTextEncoder
 from ..models.qwen_image_vae import QwenImageVAE
+from .lingbot_video_prompt_rewriter import normalize_caption
 
 
 # Number of tokens the Qwen3-VL processor truncates the prompt to. Copied verbatim
@@ -141,9 +142,10 @@ class LingBotVideoPipeline(BasePipeline):
     @torch.no_grad()
     def __call__(
         self,
-        # Prompt
-        prompt: str = "",
-        negative_prompt: str = DEFAULT_NEGATIVE_PROMPT,
+        # Prompt. Accepts a structured caption (dict / list), a path to a prompt.json,
+        # or a plain string; see normalize_caption / the prompt rewriter.
+        prompt: Union[str, dict, list] = "",
+        negative_prompt: Union[str, dict, list] = DEFAULT_NEGATIVE_PROMPT,
         # Video-to-video
         input_video: list[Image.Image] = None,
         denoising_strength: float = 1.0,
@@ -164,6 +166,14 @@ class LingBotVideoPipeline(BasePipeline):
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
+
+        # Normalise the caption to the structured-JSON string the DiT was trained on.
+        # A dict/list caption or a path to a prompt.json is serialised via the model's
+        # compact-JSON convention; a plain string (already a caption / prose) is left
+        # untouched, so this is a no-op for existing callers. DEFAULT_NEGATIVE_PROMPT is
+        # already such a JSON string and passes through unchanged.
+        prompt = normalize_caption(prompt)
+        negative_prompt = normalize_caption(negative_prompt)
 
         # Inputs
         inputs_posi = {"prompt": prompt}

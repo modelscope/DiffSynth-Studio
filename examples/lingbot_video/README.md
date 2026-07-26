@@ -54,7 +54,28 @@ save_video(video, "output.mp4", fps=15, quality=5)
 
 The pipeline ships a default (T2V) negative prompt, so `negative_prompt` is optional. Video-to-video is supported by passing `input_video=` (a list of frames or a `VideoData`) together with `denoising_strength < 1`.
 
-**Low VRAM:** pass `vram_limit=<GB>` to `from_pretrained` to enable layer-by-layer offloading — see `model_inference/lingbot-video-dense-1.3b_low_vram.py`.
+**Low VRAM:** pass `vram_limit=<GB>` to `from_pretrained` to enable layer-by-layer offloading — see `model_inference_low_vram/lingbot-video-dense-1.3b.py`.
+
+## Prompt rewriting (important for quality)
+
+LingBot-Video is trained on **structured-JSON captions**, not free-form prose. Feeding a flat sentence is out-of-distribution and visibly degrades quality (softer, less coherent motion); feeding the structured caption the model expects restores it. The pipeline accepts a caption as a `dict`, a path to a `prompt.json`, or a plain string, and normalises it to the exact compact-JSON format the DiT was trained on — a plain string is passed through unchanged, so existing scripts keep working.
+
+```python
+# All three are equivalent once normalised, and all are accepted by pipe(prompt=...):
+pipe(prompt={"caption": {"comprehensive_description": {...}}, "duration": 5})   # dict
+pipe(prompt="assets/cases/t2v/example_1/prompt.json")                          # prompt.json path
+pipe(prompt='{"comprehensive_description":{...}}')                             # already-serialised string
+```
+
+To turn a **brief idea** into that structured caption, use the bundled two-stage rewriter (`diffsynth/pipelines/lingbot_video_prompt_rewriter.py`), a faithful port of the original: stage 1 *expands* the idea into a natural-language caption, stage 2 *maps* it into structured JSON.
+
+```python
+from diffsynth.pipelines.lingbot_video_prompt_rewriter import rewrite_prompt
+caption = rewrite_prompt("a puppy running across a meadow", mode="t2v", duration=5)
+video = pipe(prompt=caption, height=480, width=832, num_frames=81, cfg_scale=3.0)
+```
+
+The rewriter is a **separate VLM + stage-2 LoRA adapter** (not the DiT). Point it at the weights via `REWRITER_BASE_MODEL` / `REWRITER_ADAPTER` (or `base=`/`adapter=`). If you serve the rewriter behind a hosted / OpenAI-compatible endpoint instead of loading it locally, pass a custom object exposing `generate(text, image, use_lora)` as `backend=`. See `model_inference/lingbot-video-dense-1.3b_rewrite.py`.
 
 ## Training (LoRA SFT)
 
@@ -64,9 +85,16 @@ The pipeline ships a default (T2V) negative prompt, so `negative_prompt` is opti
 bash examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b.sh
 ```
 
+The launch script first downloads the example video-SFT dataset used across DiffSynth-Studio, then trains on it:
+
+```bash
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset \
+    --include "wanvideo/Wan2.1-T2V-1.3B/*" --local_dir ./data/diffsynth_example_dataset
+```
+
 ### Dataset format
 
-A metadata CSV (or JSONL) with a `video` column (path relative to `--dataset_base_path`) and a `prompt` column:
+Bring your own data by pointing `--dataset_base_path` / `--dataset_metadata_path` at a metadata CSV (or JSONL) with a `video` column (path relative to `--dataset_base_path`) and a `prompt` column — the same layout as the example dataset above:
 
 ```
 video,prompt
@@ -75,6 +103,16 @@ videos/001.mp4,A serene lake at sunrise, mist rising from the water ...
 ```
 
 Pass `--data_file_keys "video"` so the loader treats the `video` column as a file to load.
+
+For best results the `prompt` column should hold **structured-JSON captions** (the same in-distribution format used at inference — see [Prompt rewriting](#prompt-rewriting-important-for-quality)). `train.py` runs each prompt through `normalize_caption`, so a `dict`-valued prompt (in JSONL) or a path to a `prompt.json` is serialised automatically, and a plain string is used as-is. If your dataset stores raw prose, rewrite it once offline before training:
+
+```bash
+python examples/lingbot_video/model_training/rewrite_captions.py \
+    --metadata metadata.csv --output metadata_rewritten.csv \
+    --base /path/to/rewriter-base --adapter /path/to/rewriter-step2-lora --duration 5
+```
+
+then train on `metadata_rewritten.csv`. (This is done offline because running the rewriter VLM inside the dataloader on every step would be prohibitively slow.)
 
 ### Attention-only LoRA (default scope)
 

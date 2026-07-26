@@ -21,7 +21,7 @@ pipe = LingBotVideoPipeline.from_pretrained(
 video = pipe(
     prompt="A playful puppy runs across a lush green meadow, its golden fur shining in the bright sunlight, ears perked up, chasing after a red ball. Wildflowers dot the grass, and a clear blue sky with a few white clouds stretches out behind it. Dynamic side-tracking camera.",
     height=480, width=832, num_frames=81,
-    num_inference_steps=40, cfg_scale=6.0,
+    num_inference_steps=40, cfg_scale=3.0,
     seed=0,
 )
-save_video(video, "video_lingbot-video-dense-1.3b_low_vram.mp4", fps=15, quality=5)
+save_video(video, "video_lingbot-video-dense-1.3b_low_vram.mp4", fps=15, quality=10)
