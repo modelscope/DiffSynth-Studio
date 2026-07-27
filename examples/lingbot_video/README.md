@@ -52,7 +52,7 @@ video = pipe(prompt="A playful puppy runs across a lush green meadow ...", heigh
 save_video(video, "output.mp4", fps=15, quality=5)
 ```
 
-The pipeline ships a default (T2V) negative prompt, so `negative_prompt` is optional. Video-to-video is supported by passing `input_video=` (a list of frames or a `VideoData`) together with `denoising_strength < 1`.
+The pipeline ships the official T2V negative prompt as `pipe.default_negative_prompt`; pass it via `negative_prompt=pipe.default_negative_prompt` (the parameter defaults to empty). Video-to-video is supported by passing `input_video=` (a list of frames or a `VideoData`) together with `denoising_strength < 1`.
 
 **Low VRAM:** pass `vram_limit=<GB>` to `from_pretrained` to enable layer-by-layer offloading — see `model_inference_low_vram/lingbot-video-dense-1.3b.py` (t2v), `_ti2v.py`, and `_t2i.py`.
 
@@ -144,7 +144,7 @@ videos/001.mp4,A serene lake at sunrise, mist rising from the water ...
 
 Pass `--data_file_keys "video"` so the loader treats the `video` column as a file to load.
 
-For best results the `prompt` column should hold **structured-JSON captions** (the same in-distribution format used at inference — see [Prompt rewriting](#prompt-rewriting-important-for-quality)). `train.py` runs each prompt through `normalize_caption`, so a `dict`-valued prompt (in JSONL) or a path to a `prompt.json` is serialised automatically, and a plain string is used as-is. If your dataset stores raw prose, rewrite it once offline before training:
+For best results the `prompt` column should hold **structured-JSON captions** (the same in-distribution format used at inference — see [Prompt rewriting](#prompt-rewriting-important-for-quality)). The pipeline's prompt embedder normalises each prompt, so a `dict`-valued prompt (in JSONL) is serialised automatically and a plain string is used as-is. If your dataset stores raw prose, rewrite it once offline before training:
 
 ```bash
 python examples/lingbot_video/model_training/rewrite_captions.py \

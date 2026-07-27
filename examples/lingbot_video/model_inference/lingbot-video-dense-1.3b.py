@@ -1,7 +1,8 @@
+import json
 import os
 import torch
 from diffsynth.utils.data import save_video, VideoData
-from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig, normalize_caption
+from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
 
 
 # LingBot-Video is trained on structured-JSON captions, not free-form prose. This example
@@ -20,11 +21,13 @@ pipe = LingBotVideoPipeline.from_pretrained(
 )
 
 # --- Text-to-video -------------------------------------------------------------------
-# prompts/t2v_example_*.json are released in-distribution captions. The pipeline calls
-# normalize_caption internally, so pipe(prompt="prompts/t2v_example_1.json") also works.
-caption = normalize_caption(os.path.join(os.path.dirname(__file__), "prompts", "t2v_example_1.json"))
+# prompts/t2v_example_*.json are released in-distribution captions. The pipeline accepts
+# a plain string or a structured caption dict, so the json is loaded here.
+with open(os.path.join(os.path.dirname(__file__), "prompts", "t2v_example_1.json"), "r", encoding="utf-8") as f:
+    caption = json.load(f)
 video = pipe(
     prompt=caption,
+    negative_prompt=pipe.default_negative_prompt,
     height=480, width=832, num_frames=81,
     num_inference_steps=40, cfg_scale=3.0,
     seed=0,
@@ -36,6 +39,7 @@ save_video(video, "video_lingbot-video-dense-1.3b.mp4", fps=15, quality=10)
 input_video = VideoData("video_lingbot-video-dense-1.3b.mp4", height=480, width=832)
 video = pipe(
     prompt=caption,
+    negative_prompt=pipe.default_negative_prompt,
     input_video=input_video, denoising_strength=0.7,
     height=480, width=832, num_frames=81,
     num_inference_steps=40, cfg_scale=3.0,

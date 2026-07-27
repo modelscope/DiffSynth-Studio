@@ -3,9 +3,9 @@
 rewrite_prompt turns a brief idea into the structured JSON caption the DiT expects:
 stage 1 expands the idea into a natural-language caption (base model), stage 2 maps it
 into structured JSON (base model + stage-2 LoRA). This is a separate VLM + LoRA adapter,
-not the DiT, and is not downloaded with the pipeline -- hence it lives with the examples,
-while the core keeps only normalize_caption. TransformersBackend loads the rewriter VLM
-locally; make_backend also accepts any object exposing generate(text, image, use_lora).
+not the DiT, and is not downloaded with the pipeline -- hence it lives with the examples.
+TransformersBackend loads the rewriter VLM locally; make_backend also accepts any object
+exposing generate(text, image, use_lora).
 
     from prompt_rewriter import rewrite_prompt
     caption = rewrite_prompt("a puppy running across a meadow", mode="t2v", duration=5)
@@ -36,7 +36,6 @@ except ImportError:
 from system_prompts import (
     VIDEO_STEP1_EXPAND, VIDEO_STEP2_MAP, IMAGE_STEP1_EXPAND, IMAGE_STEP2_MAP,
 )
-from diffsynth.pipelines.lingbot_video import normalize_caption
 
 
 # mode -> (step1 system prompt, step2 system prompt, feed image?, add duration?)
@@ -200,7 +199,10 @@ def rewrite_prompt(prompt, mode="t2v", first_frame=None, duration=5,
     """
     rw = Rewriter(make_backend(backend, base, adapter))
     result = rw.rewrite(prompt, mode=mode, first_frame=first_frame, duration=duration)
-    caption = normalize_caption(result["json"]) if result["json"] is not None else result["json_raw"]
+    if result["json"] is not None:
+        caption = json.dumps(result["json"], ensure_ascii=False, separators=(",", ":"))
+    else:
+        caption = result["json_raw"]
     if return_result:
         return caption, result
     return caption

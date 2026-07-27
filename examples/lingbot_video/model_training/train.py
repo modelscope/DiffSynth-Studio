@@ -1,6 +1,6 @@
 import torch, os, argparse, accelerate, warnings
 from diffsynth.core import UnifiedDataset
-from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig, normalize_caption
+from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
 from diffsynth.diffusion import *
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -65,9 +65,9 @@ class LingBotVideoTrainingModule(DiffusionTrainingModule):
         self.min_timestep_boundary = min_timestep_boundary
 
     def get_pipeline_inputs(self, data):
-        # Normalise the metadata "prompt" column to the structured-JSON caption so LoRA
-        # trains in-distribution. Use rewrite_captions.py offline if it stores raw prose.
-        inputs_posi = {"prompt": normalize_caption(data["prompt"])}
+        # The metadata "prompt" column stores the serialised structured-JSON caption
+        # (see rewrite_captions.py); the pipeline's PromptEmbedder consumes it as-is.
+        inputs_posi = {"prompt": data["prompt"]}
         inputs_nega = {}
         inputs_shared = {
             # Assume you are using this pipeline for inference,

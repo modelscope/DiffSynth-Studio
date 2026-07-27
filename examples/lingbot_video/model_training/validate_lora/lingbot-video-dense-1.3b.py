@@ -17,6 +17,7 @@ pipe.load_lora(pipe.dit, "models/train/lingbot-video-dense-1.3b_lora/epoch-19.sa
 
 video = pipe(
     prompt="from sunset to night, a small town, light, house, river",
+    negative_prompt=pipe.default_negative_prompt,
     height=480, width=832, num_frames=169,
     num_inference_steps=40, cfg_scale=3.0,
     seed=0,

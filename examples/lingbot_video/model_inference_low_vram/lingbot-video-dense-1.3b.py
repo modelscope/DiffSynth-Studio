@@ -1,7 +1,8 @@
+import json
 import os
 import torch
 from diffsynth.utils.data import save_video
-from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig, normalize_caption
+from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
 
 
 # Low-VRAM inference. offload_dtype / offload_device on each ModelConfig turn on VRAM
@@ -30,11 +31,14 @@ pipe = LingBotVideoPipeline.from_pretrained(
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
 
-# Released in-distribution structured caption (shared with the model_inference example).
-caption = normalize_caption(os.path.join(
-    os.path.dirname(__file__), "..", "model_inference", "prompts", "t2v_example_1.json"))
+# Released in-distribution structured caption (shared with the model_inference example);
+# the pipeline accepts a plain string or a caption dict, so the json is loaded here.
+with open(os.path.join(
+        os.path.dirname(__file__), "..", "model_inference", "prompts", "t2v_example_1.json"), "r", encoding="utf-8") as f:
+    caption = json.load(f)
 video = pipe(
     prompt=caption,
+    negative_prompt=pipe.default_negative_prompt,
     height=480, width=832, num_frames=81,
     num_inference_steps=40, cfg_scale=3.0,
     seed=0,

@@ -46,6 +46,7 @@ video = pipe(
     # A plain sentence is a minimal smoke test only — it is out-of-distribution.
     # For real quality, pass a structured caption instead (see "Prompt rewriting").
     prompt="A playful puppy runs across a lush green meadow, its golden fur shining in the bright sunlight. Wildflowers dot the grass, and a clear blue sky with a few white clouds stretches out behind it. Dynamic side-tracking camera.",
+    negative_prompt=pipe.default_negative_prompt,
     height=480, width=832, num_frames=81,
     num_inference_steps=40, cfg_scale=3.0, seed=0,
 )
@@ -66,9 +67,8 @@ The model is loaded via `LingBotVideoPipeline.from_pretrained`, see [Loading Mod
 
 Input parameters for `LingBotVideoPipeline` inference include:
 
-* `prompt`: Prompt describing the content appearing in the video. Accepts a structured caption (`dict` / `list`), a path to a `prompt.json`, or a plain string; see [Prompt rewriting](#prompt-rewriting-important-for-quality).
-* `negative_prompt`: Negative prompt describing content that should not appear in the video. A default (T2V) negative prompt is built into the pipeline, so this can be left unset.
-* `input_image`: A `PIL.Image` first frame for image-to-video (TI2V); the model animates it. See [Image-to-video (TI2V)](#image-to-video-ti2v).
+* `prompt`: Prompt describing the content appearing in the video. Accepts a structured caption (`dict`) or a plain string; see [Prompt rewriting](#prompt-rewriting-important-for-quality).
+* `negative_prompt`: Negative prompt describing content that should not appear in the video, default value is `""`. The official T2V negative prompt ships as `pipe.default_negative_prompt` and can be passed via `negative_prompt=pipe.default_negative_prompt`.
 * `input_video`: Input video (a list of frames or a `VideoData`) for video-to-video generation, used together with `denoising_strength`.
 * `denoising_strength`: Denoising strength, range 0~1, default value is 1.0. Lower values keep more of the input video structure. Only effective when `input_video` is provided.
 * `height`: Video height, default 480. Must be a multiple of 16.
@@ -85,7 +85,7 @@ When running low on VRAM, please refer to [VRAM Management](../Pipeline_Usage/VR
 
 ## Prompt rewriting (important for quality)
 
-LingBot-Video is trained on **structured-JSON captions**, not free-form prose. Feeding a flat sentence is out-of-distribution and visibly degrades quality; feeding the structured caption the model expects restores it. The pipeline accepts a caption as a `dict`, a path to a `prompt.json`, or a plain string, and normalises it (via `normalize_caption`) to the exact compact-JSON format the DiT was trained on — a plain string is passed through unchanged, so existing scripts keep working.
+LingBot-Video is trained on **structured-JSON captions**, not free-form prose. Feeding a flat sentence is out-of-distribution and visibly degrades quality; feeding the structured caption the model expects restores it. The pipeline accepts a caption as a `dict` or a plain string and normalises it to the exact compact-JSON format the DiT was trained on — a `dict` is serialised automatically, a plain string is passed through unchanged, so existing scripts keep working.
 
 To turn a **brief idea** into that structured caption, use the two-stage rewriter shipped with the examples (`examples/lingbot_video/model_inference/prompt_rewriter.py`): stage 1 *expands* the idea into a natural-language caption, stage 2 *maps* it into structured JSON.
 
@@ -117,48 +117,7 @@ video = pipe(prompt=caption, height=480, width=832, num_frames=81, cfg_scale=3.0
 
 Instead of the env vars you can pass `base=` / `adapter=` to `rewrite_prompt`, or skip the local VLM entirely and drive a hosted / OpenAI-compatible endpoint by passing a custom object exposing `generate(text, image, use_lora)` as `backend=`. See the optional rewrite section at the bottom of `examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py`.
 
-If you don't have the rewriter model, three released LingBot-Video t2v captions ship with the repo as ready-to-use examples: `examples/lingbot_video/model_inference/prompts/t2v_example_{1,2,3}.json`. Pass one straight to the pipeline (`video = pipe(prompt="path/to/t2v_example_1.json", ...)`), or copy one as a template for writing your own structured caption.
-
-## Image-to-video (TI2V)
-
-The pipeline can condition generation on a **first frame**: pass a `PIL.Image` as `input_image` and the model animates it. Dense-1.3B reuses the **same T2V checkpoint** — there is no separate i2v weight to download, and the DiT is unchanged (`in_channels` stays 16).
-
-Matching the original LingBot-Video i2v pipeline, the condition frame is used twice:
-
-- it is fed to the Qwen3-VL text encoder as a visual reference (its image tokens are prepended to the prompt), so the caption and the frame are interpreted together;
-- it is VAE-encoded to a clean latent that is pinned into the first temporal slot of the diffusion latent before sampling and re-applied after every scheduler step, so the model only generates the frames that follow.
-
-```python
-from PIL import Image
-
-input_image = Image.open("first_frame.png").convert("RGB")
-video = pipe(
-    prompt=caption,               # describe the motion that unfolds from the first frame
-    input_image=input_image,
-    height=480, width=832, num_frames=81,
-    num_inference_steps=40, cfg_scale=3.0, seed=0,
-)
-```
-
-The condition frame is aspect-ratio-preserving cover-resized and center-cropped to `height`×`width`, so it need not match the target resolution exactly. A runnable example ships at [`lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py) (low-VRAM variant: [`model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py)), using the released first frame (`assets/ti2v_first_frame.png`) and its paired caption (`prompts/ti2v_example.json`). The caption should describe the motion that unfolds from the frame; as with T2V it is most in-distribution as a structured-JSON caption. `input_image` and `input_video` are mutually exclusive — pass at most one. To fine-tune an image-to-video LoRA, see [TI2V LoRA](#ti2v-lora) below.
-
-## Text-to-image (t2i)
-
-Text-to-image is text-to-video with a single frame — the same pipeline and DiT, just `num_frames=1`. There is no separate image checkpoint. The only image-specific knob is the negative prompt: `DEFAULT_NEGATIVE_PROMPT_IMAGE` (exported from `diffsynth.pipelines.lingbot_video`) drops the temporal/motion terms that cannot apply to a still frame. The pipeline returns a 1-element list, i.e. a single `PIL.Image`.
-
-```python
-from diffsynth.pipelines.lingbot_video import DEFAULT_NEGATIVE_PROMPT_IMAGE
-
-frames = pipe(
-    prompt=caption,
-    negative_prompt=DEFAULT_NEGATIVE_PROMPT_IMAGE,
-    height=480, width=832, num_frames=1,
-    num_inference_steps=40, cfg_scale=3.0, seed=0,
-)
-frames[0].save("image.png")
-```
-
-A runnable example ships at [`lingbot-video-dense-1.3b_t2i.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py) (low-VRAM variant: [`model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py)), using the released still-image caption `prompts/t2i_example.json`.
+If you don't have the rewriter model, three released LingBot-Video t2v captions ship with the repo as ready-to-use examples: `examples/lingbot_video/model_inference/prompts/t2v_example_{1,2,3}.json`. Load one with `json.load` and pass the resulting `dict` to the pipeline (see the inference example script), or copy one as a template for writing your own structured caption.
 
 ## Model Training
 
@@ -218,11 +177,7 @@ The recommended launch script patches LoRA on the joint text+video self-attentio
 
 The MoE / FFN experts (`gate_proj`, `up_proj`, `down_proj`) and the router are left frozen. To also adapt the FFN, add those module names to `--lora_target_modules`.
 
-For best results the `prompt` column should hold **structured-JSON captions** (the same in-distribution format used at inference — see [Prompt rewriting](#prompt-rewriting-important-for-quality)). `train.py` runs each prompt through `normalize_caption`. If your dataset stores raw prose, rewrite it once offline with `examples/lingbot_video/model_training/rewrite_captions.py` before training.
-
-### TI2V LoRA
-
-To train an **image-to-video** LoRA, add `--first_frame_as_condition` (see [`lora/lingbot-video-dense-1.3b_ti2v.sh`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh)). It conditions each clip on its **own first frame**: the frame is VAE-encoded to a clean latent pinned into the first temporal slot (and fed to the Qwen3-VL text encoder), and excluded from the flow-matching loss, so the LoRA learns to animate frames 2..N from frame 1. The dataset, LoRA scope, and DiT are identical to t2v — no condition column is required. Validate with [`validate_lora/lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py). If your dataset ships a *distinct* condition frame instead, drop the flag and pass that column via `--extra_inputs input_image` (adding it to `--data_file_keys`).
+For best results the `prompt` column should hold **structured-JSON captions** (the same in-distribution format used at inference — see [Prompt rewriting](#prompt-rewriting-important-for-quality)). The pipeline normalises each prompt internally. If your dataset stores raw prose, rewrite it once offline with `examples/lingbot_video/model_training/rewrite_captions.py` before training.
 
 We have written recommended training scripts, please refer to the table in the "Model Overview" section above. For how to write model training scripts, please refer to [Model Training](../Pipeline_Usage/Model_Training.md); for more advanced training algorithms, please refer to [Training Framework Detailed Explanation](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/en/Training/).
 

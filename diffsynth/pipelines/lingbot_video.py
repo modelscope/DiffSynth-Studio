@@ -1,6 +1,4 @@
 import json
-import math
-import os
 
 import torch
 import torch.nn.functional as F
@@ -18,82 +16,6 @@ from ..diffusion.flow_match import FlowMatchScheduler
 from ..models.lingbot_video_dit import LingBotVideoDiT
 from ..models.lingbot_video_text_encoder import LingBotVideoTextEncoder
 from ..models.qwen_image_vae import QwenImageVAE
-
-
-# LingBot-Video is trained on structured JSON captions. normalize_caption serialises a
-# dict/list caption (or a prompt.json path) into the compact-JSON string the DiT expects;
-# a plain string is passed through. Kept module-level so train.py / rewrite_captions.py
-# can reuse it without importing the pipeline. The prompt rewriter that turns a brief idea
-# into such a caption lives in examples/lingbot_video/model_inference/prompt_rewriter.py.
-_RUNTIME_KEYS = {"duration", "fps", "height", "width", "num_frames", "resolution", "ratio"}
-
-
-def _serialize_caption(caption) -> str:
-    if isinstance(caption, (dict, list)):
-        return json.dumps(caption, ensure_ascii=False, separators=(",", ":"))
-    return str(caption)
-
-
-def _caption_from_sample(sample) -> str:
-    if isinstance(sample, dict):
-        if "caption" in sample:
-            caption = sample["caption"]
-        else:
-            caption = {k: v for k, v in sample.items() if k not in _RUNTIME_KEYS}
-    else:
-        caption = sample
-    return _serialize_caption(caption)
-
-
-def normalize_caption(prompt):
-    if prompt is None:
-        return prompt
-    if isinstance(prompt, str):
-        if prompt.endswith(".json") and os.path.isfile(prompt):
-            with open(prompt, "r", encoding="utf-8") as f:
-                prompt = json.load(f)
-            return _caption_from_sample(prompt)
-        return prompt
-    if isinstance(prompt, (dict, list)):
-        return _caption_from_sample(prompt)
-    return str(prompt)
-
-
-# Prompt truncation length for the Qwen3-VL processor.
-TOKEN_LENGTH = 37698
-# Hidden-state layer used as the prompt embedding: 0 -> the last layer.
-HIDDEN_STATE_SKIP_LAYER = 0
-
-# Prompt-enhancement chat template wrapping the user prompt.
-PROMPT_TEMPLATE = (
-    "<|im_start|>system\nGiven a user input that may include a text prompt alone, "
-    "a text prompt with an image reference, or a text prompt with a video reference "
-    "or a video reference alone, generate an \"Enhanced prompt\" that provides detailed "
-    "visual descriptions suitable for video generation. Evaluate the level of detail "
-    "in the user's input: if it is simple, enrich it by adding specifics about colors, "
-    "shapes, sizes, textures, lighting, motion dynamics, camera movement, temporal "
-    "progression, and spatial relationships to create vivid, concrete, and temporally "
-    "coherent scenes to create vivid and concrete scenes. Please generate only the "
-    "enhanced description for the prompt below and avoid including any additional "
-    "commentary or evaluations:<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n"
-    "<|im_start|>assistant\n"
-)
-
-# Default T2V negative prompt (structured JSON string), copied verbatim.
-DEFAULT_NEGATIVE_PROMPT = (
-    '{"universal_negative": {"visual_quality": ["low quality", "worst quality", "blurry", "pixelated", "jpeg artifacts", "low resolution", "unstable color", "color flicker", "underexposed", "overexposed", "invisible subject", "subject hidden in darkness"], "artistic_style": ["painting", "illustration", "drawing", "cartoon", "3d render", "cgi", "sketch", "digital art"], "composition_and_content": ["text", "watermark", "signature", "logo", "subtitles", "pillarboxed", "side bars", "portrait image in landscape frame"], "temporal_and_motion_stability": ["flickering", "jittery", "motion blur", "temporal inconsistency", "warping", "morphing", "incoherent motion", "unnatural movement", "static object with sudden jump", "frame-to-frame inconsistency"], "material_and_structure": ["plastic-like glass", "unrealistic texture", "deformed bottle", "liquid freezing improperly", "distorted reflections"]}}'
-)
-
-# Still-image (t2i) default negative prompt, copied verbatim from the official pipeline.
-# Drops the whole temporal/motion block and the video-only codec/temporal terms that
-# cannot apply to a single frame. Pass this as negative_prompt when num_frames=1.
-DEFAULT_NEGATIVE_PROMPT_IMAGE = (
-    '{"universal_negative": {"visual_quality": ["low quality", "worst quality", "blurry", "pixelated", "jpeg artifacts", "low resolution", "underexposed", "overexposed", "invisible subject", "subject hidden in darkness"], "artistic_style": ["painting", "illustration", "drawing", "cartoon", "3d render", "cgi", "sketch", "digital art"], "composition_and_content": ["text", "watermark", "signature", "logo", "pillarboxed", "side bars", "portrait image in landscape frame"], "material_and_structure": ["plastic-like glass", "unrealistic texture", "deformed bottle", "distorted reflections"]}}'
-)
-
-# VAE downsample factors (QwenImageVAE / Wan-VAE): 8x spatial, 4x temporal.
-VAE_SCALE_FACTOR_SPATIAL = 8
-VAE_SCALE_FACTOR_TEMPORAL = 4
 
 # --- TI2V (image-to-video) ---------------------------------------------------
 # The condition frame is used twice: (1) as visual input to the Qwen3-VL text
@@ -183,6 +105,14 @@ class LingBotVideoPipeline(BasePipeline):
         ]
         self.model_fn = model_fn_lingbot_video
         self.compilable_models = ["dit"]
+        self.default_negative_prompt = (
+            '{"universal_negative": {'
+            '"visual_quality": ["low quality", "worst quality", "blurry", "pixelated", "jpeg artifacts", "low resolution", "unstable color", "color flicker", "underexposed", "overexposed", "invisible subject", "subject hidden in darkness"], '
+            '"artistic_style": ["painting", "illustration", "drawing", "cartoon", "3d render", "cgi", "sketch", "digital art"], '
+            '"composition_and_content": ["text", "watermark", "signature", "logo", "subtitles", "pillarboxed", "side bars", "portrait image in landscape frame"], '
+            '"temporal_and_motion_stability": ["flickering", "jittery", "motion blur", "temporal inconsistency", "warping", "morphing", "incoherent motion", "unnatural movement", "static object with sudden jump", "frame-to-frame inconsistency"], '
+            '"material_and_structure": ["plastic-like glass", "unrealistic texture", "deformed bottle", "liquid freezing improperly", "distorted reflections"]}}'
+        )
 
     @staticmethod
     def from_pretrained(
@@ -214,11 +144,9 @@ class LingBotVideoPipeline(BasePipeline):
     @torch.no_grad()
     def __call__(
         self,
-        # Structured caption (dict / list), a prompt.json path, or a plain string.
-        prompt: Union[str, dict, list] = "",
-        negative_prompt: Union[str, dict, list] = DEFAULT_NEGATIVE_PROMPT,
-        # Image-to-video (TI2V): condition on a single first frame.
-        input_image: Image.Image = None,
+        # Structured caption (dict) or a plain string.
+        prompt: Union[str, dict] = "",
+        negative_prompt: Union[str, dict] = "",
         # Video-to-video
         input_video: list[Image.Image] = None,
         denoising_strength: float = 1.0,
@@ -239,11 +167,6 @@ class LingBotVideoPipeline(BasePipeline):
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
-
-        # Serialise dict/list/prompt.json captions to the structured-JSON string; plain
-        # strings pass through unchanged.
-        prompt = normalize_caption(prompt)
-        negative_prompt = normalize_caption(negative_prompt)
 
         # Inputs
         inputs_posi = {"prompt": prompt}
@@ -312,10 +235,11 @@ class LingBotVideoUnit_NoiseInitializer(PipelineUnit):
         )
 
     def process(self, pipe: LingBotVideoPipeline, height, width, num_frames, seed, rand_device):
-        length = (num_frames - 1) // VAE_SCALE_FACTOR_TEMPORAL + 1
+        # VAE downsample factors (QwenImageVAE / Wan-VAE): 8x spatial, 4x temporal.
+        length = (num_frames - 1) // 4 + 1
         shape = (
             1, pipe.dit.in_channels, length,
-            height // VAE_SCALE_FACTOR_SPATIAL, width // VAE_SCALE_FACTOR_SPATIAL,
+            height // 8, width // 8,
         )
         # fp32 noise: the flow-matching sampler accumulates state in fp32.
         noise = pipe.generate_noise(shape, seed=seed, rand_device=rand_device, torch_dtype=torch.float32)
@@ -323,6 +247,32 @@ class LingBotVideoUnit_NoiseInitializer(PipelineUnit):
 
 
 class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
+    # Prompt truncation length for the Qwen3-VL processor.
+    TOKEN_LENGTH = 37698
+    # Hidden-state layer used as the prompt embedding: 0 -> the last layer.
+    HIDDEN_STATE_SKIP_LAYER = 0
+
+    # Prompt-enhancement chat template wrapping the user prompt.
+    PROMPT_TEMPLATE = (
+        "<|im_start|>system\nGiven a user input that may include a text prompt alone, "
+        "a text prompt with an image reference, or a text prompt with a video reference "
+        "or a video reference alone, generate an \"Enhanced prompt\" that provides detailed "
+        "visual descriptions suitable for video generation. Evaluate the level of detail "
+        "in the user's input: if it is simple, enrich it by adding specifics about colors, "
+        "shapes, sizes, textures, lighting, motion dynamics, camera movement, temporal "
+        "progression, and spatial relationships to create vivid, concrete, and temporally "
+        "coherent scenes to create vivid and concrete scenes. Please generate only the "
+        "enhanced description for the prompt below and avoid including any additional "
+        "commentary or evaluations:<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n"
+        "<|im_start|>assistant\n"
+    )
+
+    # LingBot-Video is trained on structured JSON captions. normalize_caption serialises a
+    # dict caption into the compact-JSON string the DiT expects; a plain string is passed
+    # through. The prompt rewriter that turns a brief idea into such a caption lives in
+    # examples/lingbot_video/model_inference/prompt_rewriter.py.
+    _RUNTIME_KEYS = {"duration", "fps", "height", "width", "num_frames", "resolution", "ratio"}
+
     def __init__(self):
         super().__init__(
             seperate_cfg=True,
@@ -335,11 +285,25 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
         # Cached number of template-prefix tokens to crop from the prompt embedding.
         self._crop_start: Optional[int] = None
 
+    @classmethod
+    def normalize_caption(cls, prompt):
+        # A dict caption is serialised to the compact-JSON string the DiT expects;
+        # a plain string passes through unchanged.
+        if isinstance(prompt, dict):
+            if "caption" in prompt:
+                caption = prompt["caption"]
+            else:
+                caption = {k: v for k, v in prompt.items() if k not in cls._RUNTIME_KEYS}
+            if isinstance(caption, (dict, list)):
+                return json.dumps(caption, ensure_ascii=False, separators=(",", ":"))
+            return str(caption)
+        return prompt
+
     def _compute_crop_start(self, pipe: LingBotVideoPipeline) -> int:
         # Token count of the template prefix (everything before the user prompt), computed once.
         if self._crop_start is None:
             marker = "<|USER_INPUT_MARKER|>"
-            marked = PROMPT_TEMPLATE.format(marker)
+            marked = self.PROMPT_TEMPLATE.format(marker)
             marker_pos = marked.find(marker)
             if marker_pos < 0:
                 self._crop_start = 0
@@ -353,26 +317,24 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
                 self._crop_start = int(prefix["input_ids"].shape[1])
         return self._crop_start
 
-    def encode_prompt(self, pipe: LingBotVideoPipeline, prompt, vlm_image=None):
-        # T2V: visual_template is empty. TI2V: prepend the image-token block to the
-        # prompt and pass the condition image so the encoder attends to it. The image
-        # tokens land after the template prefix, so crop_start is unaffected.
-        visual_template = IMG_PROMPT_TEMPLATE if vlm_image is not None else ""
-        text = PROMPT_TEMPLATE.format(visual_template + prompt)
+    def encode_prompt(self, pipe: LingBotVideoPipeline, prompt):
+        prompt = self.normalize_caption(prompt)
+        # T2V: visual_template is empty, so the text is simply the templated prompt.
+        text = self.PROMPT_TEMPLATE.format(prompt)
         inputs = pipe.processor(
             text=[text],
             images=[vlm_image] if vlm_image is not None else None,
             videos=None,
             do_resize=False,
             truncation=True,
-            max_length=TOKEN_LENGTH,
+            max_length=self.TOKEN_LENGTH,
             padding="longest",
             return_tensors="pt",
         )
         inputs = inputs.to(pipe.device)
         # The text encoder returns the tuple of per-layer hidden states.
         hidden_states = pipe.text_encoder(**inputs)
-        prompt_embeds = hidden_states[-(HIDDEN_STATE_SKIP_LAYER + 1)]
+        prompt_embeds = hidden_states[-(self.HIDDEN_STATE_SKIP_LAYER + 1)]
         prompt_mask = inputs["attention_mask"]
 
         # Crop the prompt-enhancement template prefix.
@@ -405,7 +367,6 @@ class LingBotVideoUnit_InputVideoEmbedder(PipelineUnit):
 
     def process(self, pipe: LingBotVideoPipeline, input_video, noise):
         if input_video is None:
-            # Text-to-video: start from pure noise.
             return {"latents": noise}
         pipe.load_models_to_device(self.onload_model_names)
         video = pipe.preprocess_video(input_video)

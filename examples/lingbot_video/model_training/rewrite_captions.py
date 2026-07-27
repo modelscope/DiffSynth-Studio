@@ -17,11 +17,10 @@ import json
 import os
 import sys
 
-# The two-stage rewriter engine lives with the inference examples (the diffsynth core
-# keeps only normalize_caption), so training and inference share one implementation.
+# The two-stage rewriter engine lives with the inference examples, so training and
+# inference share one implementation.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "model_inference"))
 from prompt_rewriter import Rewriter, make_backend
-from diffsynth.pipelines.lingbot_video import normalize_caption
 
 
 def _load_rows(path):
@@ -77,7 +76,7 @@ def main():
         first_frame = row.get(args.first_frame_column) if args.first_frame_column else None
         result = rewriter.rewrite(raw, mode=args.mode, first_frame=first_frame, duration=args.duration)
         if result["json"] is not None:
-            row[args.prompt_column] = normalize_caption(result["json"])
+            row[args.prompt_column] = json.dumps(result["json"], ensure_ascii=False, separators=(",", ":"))
             ok += 1
         else:
             failed += 1

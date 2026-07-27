@@ -46,6 +46,7 @@ video = pipe(
     # 普通句子仅用于最简单的跑通验证，属于分布外输入。
     # 正式使用请改传结构化 caption（见"提示词改写"章节）。
     prompt="A playful puppy runs across a lush green meadow, its golden fur shining in the bright sunlight. Wildflowers dot the grass, and a clear blue sky with a few white clouds stretches out behind it. Dynamic side-tracking camera.",
+    negative_prompt=pipe.default_negative_prompt,
     height=480, width=832, num_frames=81,
     num_inference_steps=40, cfg_scale=3.0, seed=0,
 )
@@ -66,9 +67,8 @@ save_video(video, "video.mp4", fps=15, quality=10)
 
 `LingBotVideoPipeline` 推理的输入参数包括：
 
-* `prompt`: 描述视频内容的提示词。支持结构化 caption（`dict` / `list`）、`prompt.json` 路径，或普通字符串；详见[提示词改写](#提示词改写对质量很重要)。
-* `negative_prompt`: 负向提示词，描述不希望出现在视频中的内容。Pipeline 内置了默认（T2V）负向提示词，因此可以不设置。
-* `input_image`: 图生视频（TI2V）的首帧，传入一个 `PIL.Image`，模型会以它为第一帧生成后续画面。详见[图生视频（TI2V）](#图生视频ti2v)。
+* `prompt`: 描述视频内容的提示词。支持结构化 caption（`dict`）或普通字符串；详见[提示词改写](#提示词改写对质量很重要)。
+* `negative_prompt`: 负向提示词，描述不希望出现在视频中的内容，默认值为 `""`。官方 T2V 负向提示词内置在 `pipe.default_negative_prompt` 中，可通过 `negative_prompt=pipe.default_negative_prompt` 传入。
 * `input_video`: 输入视频（帧列表或 `VideoData`），用于视频生视频，需与 `denoising_strength` 配合使用。
 * `denoising_strength`: 降噪强度，取值范围 0~1，默认为 1.0。值越小，越保留输入视频的结构。仅在提供 `input_video` 时生效。
 * `height`: 视频高度，默认为 480，需能被 16 整除。
@@ -85,7 +85,7 @@ save_video(video, "video.mp4", fps=15, quality=10)
 
 ## 提示词改写（对质量很重要）
 
-LingBot-Video 使用**结构化 JSON caption** 训练，而非自由文本。喂入一句普通句子属于分布外（out-of-distribution）输入，会明显降低质量；喂入模型期望的结构化 caption 则能恢复质量。Pipeline 接受 `dict`、`prompt.json` 路径或普通字符串形式的 caption，并将其（通过 `normalize_caption`）归一化为 DiT 训练时使用的紧凑 JSON 格式——普通字符串会原样透传，因此已有脚本无需改动。
+LingBot-Video 使用**结构化 JSON caption** 训练，而非自由文本。喂入一句普通句子属于分布外（out-of-distribution）输入，会明显降低质量；喂入模型期望的结构化 caption 则能恢复质量。Pipeline 接受 `dict` 或普通字符串形式的 caption，并将其归一化为 DiT 训练时使用的紧凑 JSON 格式——`dict` 会自动序列化，普通字符串会原样透传，因此已有脚本无需改动。
 
 若要把一个**简短想法**转成该结构化 caption，可使用随示例发布的两阶段改写器（`examples/lingbot_video/model_inference/prompt_rewriter.py`）：阶段一将想法*扩写*为自然语言 caption，阶段二将其*映射*为结构化 JSON。
 
@@ -117,48 +117,7 @@ video = pipe(prompt=caption, height=480, width=832, num_frames=81, cfg_scale=3.0
 
 除了 env var，也可以给 `rewrite_prompt` 传 `base=` / `adapter=`；或者完全不下载本地 VLM，改为传入一个暴露 `generate(text, image, use_lora)` 方法的自定义对象作为 `backend=`，来驱动托管的 / OpenAI 兼容的推理端点。详见 `examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py` 文件末尾的可选改写小节。
 
-如果没有改写器模型，仓库自带 3 个官方 LingBot-Video t2v 结构化 caption 作为开箱即用的示例：`examples/lingbot_video/model_inference/prompts/t2v_example_{1,2,3}.json`。可直接按路径传给 pipeline（`video = pipe(prompt="path/to/t2v_example_1.json", ...)`），也可以复制一个作为编写自己 caption 的模板。
-
-## 图生视频（TI2V）
-
-Pipeline 支持以一张**首帧**为条件生成视频：把一个 `PIL.Image` 传给 `input_image`，模型会以它为第一帧生成后续画面。Dense-1.3B **复用同一份 T2V 权重**——无需额外下载 i2v 权重，DiT 也保持不变（`in_channels` 仍为 16）。
-
-与官方 LingBot-Video i2v pipeline 一致，首帧会被使用两次：
-
-- 作为视觉参考喂给 Qwen3-VL 文本编码器（其图像 token 会前插到提示词里），让 caption 与首帧被联合理解；
-- 经 VAE 编码为一个干净 latent，在采样前钉入扩散 latent 的第一个时间槽，并在每个调度步之后重新钉入，因此模型只生成首帧之后的画面。
-
-```python
-from PIL import Image
-
-input_image = Image.open("first_frame.png").convert("RGB")
-video = pipe(
-    prompt=caption,               # 描述从首帧开始展开的运动
-    input_image=input_image,
-    height=480, width=832, num_frames=81,
-    num_inference_steps=40, cfg_scale=3.0, seed=0,
-)
-```
-
-首帧会按保持宽高比的方式 cover-resize 并中心裁剪到 `height`×`width`，因此不必与目标分辨率完全一致。可直接运行的示例见 [`lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py)（低显存版本：[`model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py)），它使用随仓库发布的首帧（`assets/ti2v_first_frame.png`）及其配对 caption（`prompts/ti2v_example.json`）。caption 应描述从首帧开始展开的运动；与 T2V 一样，写成结构化 JSON caption 最贴近训练分布。`input_image` 与 `input_video` 互斥，至多传一个。图生视频 LoRA 训练见下文 [TI2V LoRA](#ti2v-lora)。
-
-## 文生图（t2i）
-
-文生图就是只生成一帧的文生视频——同一条 pipeline、同一个 DiT，只需设 `num_frames=1`，无需额外的图像权重。唯一与图像相关的开关是负向提示词：`DEFAULT_NEGATIVE_PROMPT_IMAGE`（从 `diffsynth.pipelines.lingbot_video` 导出）去掉了不适用于单帧的时序/运动类词条。此时 pipeline 返回只含一个元素的列表，即一张 `PIL.Image`。
-
-```python
-from diffsynth.pipelines.lingbot_video import DEFAULT_NEGATIVE_PROMPT_IMAGE
-
-frames = pipe(
-    prompt=caption,
-    negative_prompt=DEFAULT_NEGATIVE_PROMPT_IMAGE,
-    height=480, width=832, num_frames=1,
-    num_inference_steps=40, cfg_scale=3.0, seed=0,
-)
-frames[0].save("image.png")
-```
-
-可直接运行的示例见 [`lingbot-video-dense-1.3b_t2i.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py)（低显存版本：[`model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py)），它使用随仓库发布的静态图 caption `prompts/t2i_example.json`。
+如果没有改写器模型，仓库自带 3 个官方 LingBot-Video t2v 结构化 caption 作为开箱即用的示例：`examples/lingbot_video/model_inference/prompts/t2v_example_{1,2,3}.json`。用 `json.load` 读入后作为 `dict` 传给 pipeline（见推理示例脚本），也可以复制一个作为编写自己 caption 的模板。
 
 ## 模型训练
 
@@ -218,11 +177,7 @@ modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset \
 
 MoE / FFN 专家（`gate_proj`、`up_proj`、`down_proj`）与 router 保持冻结。若要同时微调 FFN，可将这些模块名加入 `--lora_target_modules`。
 
-为获得最佳效果，`prompt` 列应存放**结构化 JSON caption**（与推理时一致的分布内格式——见[提示词改写](#提示词改写对质量很重要)）。`train.py` 会对每条 prompt 调用 `normalize_caption`。若数据集存放的是原始文本，请在训练前用 `examples/lingbot_video/model_training/rewrite_captions.py` 离线改写一次。
-
-### TI2V LoRA
-
-训练**图生视频** LoRA 只需加上 `--first_frame_as_condition`（见 [`lora/lingbot-video-dense-1.3b_ti2v.sh`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh)）。它以每个片段**自身的首帧**为条件：首帧经 VAE 编码为干净 latent，钉入第一个时间槽（并作为视觉输入喂给 Qwen3-VL 文本编码器），且从 flow-matching loss 中剔除，因此 LoRA 学习的是"以首帧为条件生成第 2..N 帧"。数据集、LoRA 范围、DiT 均与 t2v 完全一致，无需额外的条件帧列。验证脚本见 [`validate_lora/lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py)。若数据集提供的是**另一张**条件帧（而非复用首帧），去掉该开关，改用 `--extra_inputs input_image` 传入该列（并把它加进 `--data_file_keys`）。
+为获得最佳效果，`prompt` 列应存放**结构化 JSON caption**（与推理时一致的分布内格式——见[提示词改写](#提示词改写对质量很重要)）。Pipeline 会在内部对每条 prompt 做归一化。若数据集存放的是原始文本，请在训练前用 `examples/lingbot_video/model_training/rewrite_captions.py` 离线改写一次。
 
 我们编写了推荐的训练脚本，请参考前文"模型总览"中的表格。关于如何编写模型训练脚本，请参考[模型训练](../Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/zh/Training/)。
 
