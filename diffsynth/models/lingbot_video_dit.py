@@ -652,9 +652,10 @@ class LingBotVideoDiT(nn.Module):
 
         # Timestep -> per-token modulation.
         timestep_proj = self.time_proj(timestep.float())
-        # time_proj always returns fp32; cast to the compute dtype (joint) before the MLP,
-        # since under low-VRAM offload the wrapper computes in bf16 but does not cast inputs.
-        t_emb = self.time_embedder(timestep_proj.to(joint.dtype))  # (B, D)
+        # time_proj always returns fp32; match the time_embedder's own weight dtype
+        # (fp32 under standard load via the custom `to()` override; bf16 under low-VRAM
+        # offload, where the wrapper wholesale-casts all params).
+        t_emb = self.time_embedder(timestep_proj.to(self.time_embedder.linear_1.weight.dtype))  # (B, D)
         if packed_batch:
             temb_input = torch.cat(
                 [t_emb[i:i + 1].unsqueeze(1).expand(1, sample_seq_lens[i], -1) for i in range(B)], dim=1
