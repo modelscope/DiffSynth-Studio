@@ -653,7 +653,12 @@ class LingBotVideoDiT(nn.Module):
 
         # Timestep -> per-token modulation.
         timestep_proj = self.time_proj(timestep.float())
-        t_emb = self.time_embedder(timestep_proj)  # (B, D)
+        # time_proj is a parameter-free sinusoidal embedding and always returns fp32
+        # (get_timestep_embedding upcasts). Cast to the running compute dtype -- joint is
+        # the bf16 hidden state (or fp32 in a full-precision run) -- before the MLP: under
+        # low-VRAM offload the wrapper computes weights in bf16 but does not cast inputs,
+        # so feeding fp32 here raises "mat1 and mat2 must have the same dtype".
+        t_emb = self.time_embedder(timestep_proj.to(joint.dtype))  # (B, D)
         if packed_batch:
             temb_input = torch.cat(
                 [t_emb[i:i + 1].unsqueeze(1).expand(1, sample_seq_lens[i], -1) for i in range(B)], dim=1
@@ -675,7 +680,10 @@ class LingBotVideoDiT(nn.Module):
         final_mod = self.norm_out_modulation(temb_input.reshape(joint.shape[0] * joint.shape[1], -1))
         shift, scale = final_mod.reshape(joint.shape[0], joint.shape[1], -1).chunk(2, dim=-1)
         final_hidden = self.norm_out(joint) * (1.0 + scale) + shift
-        projected = self.proj_out(final_hidden.to(self.proj_out.weight.dtype))
+        # Match the running compute dtype (joint), not self.proj_out.weight.dtype: under
+        # low-VRAM offload the resident weight is fp8 (bf16 only at compute time), so
+        # reading .weight.dtype here would cast the input to fp8 and mismatch the wrapper.
+        projected = self.proj_out(final_hidden.to(joint.dtype))
 
         if packed_batch:
             split_lengths = []
