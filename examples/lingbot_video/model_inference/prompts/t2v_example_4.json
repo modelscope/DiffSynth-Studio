@@ -1,0 +1,77 @@
+{
+  "caption": {
+    "comprehensive_description": {
+      "scene_content_description": "A small, fluffy golden puppy is joyfully running across a lush green meadow on a bright, sunny day. The puppy is chasing a small red ball, which it eventually catches in its mouth. The background is a soft-focus blur of green grass and distant trees, creating a shallow depth of field that emphasizes the puppy's movement. The lighting is warm and natural, casting a gentle glow on the puppy's fur and highlighting the vibrant green of the grass. The overall atmosphere is playful, energetic, and heartwarming.",
+      "camera_movement_description": "The camera performs a smooth tracking shot, panning right to follow the puppy's movement across the field. It maintains a low-angle perspective, keeping the puppy centered in the frame. The shot size remains a medium-close-up throughout, with a slight zoom-in as the puppy catches the ball, enhancing the sense of action and focus."
+    },
+    "camera_info": {
+      "color": "Warm",
+      "frame_size": "Wide",
+      "shot_type_angle": "Low angle",
+      "lens_size": "Long Lens",
+      "composition": "Center",
+      "lighting": "Hard light",
+      "lighting_type": "Daylight"
+    },
+    "world_knowledge": [],
+    "prominent_elements": [
+      {
+        "name": "golden puppy",
+        "description": "A small, fluffy puppy with golden-brown fur, likely a Golden Retriever or similar breed.",
+        "actions": [
+          {
+            "timestamp": "[0.0s - 3.5s]",
+            "action": "runs right across the grassy field"
+          },
+          {
+            "timestamp": "[3.5s - 4.0s]",
+            "action": "catches a red ball in its mouth"
+          },
+          {
+            "timestamp": "[4.0s - 5.0s]",
+            "action": "continues running right while holding the ball"
+          }
+        ],
+        "location": "center of the frame, moving from left to right",
+        "relative_size": "large",
+        "shape_and_color": "organic shape with golden-brown fur",
+        "texture": "furry and soft",
+        "appearance_details": "floppy ears, dark eyes, and a black nose",
+        "relationship": "the main subject chasing and catching the red ball",
+        "orientation": "facing right",
+        "pose": "running and leaping",
+        "expression": "joyful and focused",
+        "clothing": "",
+        "is_cluster": false,
+        "number_of_objects": ""
+      },
+      {
+        "name": "red ball",
+        "description": "A small, bright red spherical object used as a toy.",
+        "actions": [
+          {
+            "timestamp": "[0.0s - 3.5s]",
+            "action": "rolls right across the grass ahead of the puppy"
+          },
+          {
+            "timestamp": "[3.5s - 5.0s]",
+            "action": "is caught and held in the puppy's mouth"
+          }
+        ],
+        "location": "lower center of the frame, moving right",
+        "relative_size": "small",
+        "shape_and_color": "spherical and bright red",
+        "texture": "smooth",
+        "appearance_details": "solid red color",
+        "relationship": "the object being chased by the puppy",
+        "orientation": "rolling",
+        "pose": "",
+        "expression": "",
+        "clothing": "",
+        "is_cluster": false,
+        "number_of_objects": ""
+      }
+    ]
+  },
+  "duration": 5
+}
