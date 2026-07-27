@@ -66,7 +66,18 @@ class FluxTimestepLoRALoader:
         self.device = device
         self.torch_dtype = torch_dtype
 
-    def load_adapter_scaling(self, lora_file, state_dict):
+    @staticmethod
+    def resolve_lora_file(lora_config):
+        lora_config.download_if_necessary()
+        paths = lora_config.path
+        lora_paths = [Path(path) for path in paths]
+        lora_files = []
+        for path in lora_paths:
+            if path.suffix == ".safetensors":
+                lora_files.append(path)
+        return lora_files[0]
+
+    def load_adapter_scaling(self, lora_file):
         config_path = lora_file.parent / "adapter_config.json"
         with config_path.open("r", encoding="utf-8") as file:
             config = json.load(file)
@@ -139,11 +150,10 @@ class FluxTimestepLoRALoader:
 
         return model_fn_with_timestep_lora
 
-    def load(self, dit, lora_config, alpha=1.0):
-        lora_config.download_if_necessary()
-        lora_file = lora_config.path[0] if isinstance(lora_config.path, list) else lora_config.path
-        state_dict = load_state_dict(lora_file, torch_dtype=self.torch_dtype, device=self.device)
-        scaling = self.load_adapter_scaling(Path(lora_file), state_dict) * alpha
+    def load(self, dit, lora_config, alpha=1):
+        lora_file = self.resolve_lora_file(lora_config)
+        state_dict = load_state_dict(str(lora_file), torch_dtype=self.torch_dtype, device=self.device)
+        scaling = self.load_adapter_scaling(lora_file) * alpha
 
         for block_id in range(len(dit.blocks)):
             source_prefix = f"transformer_blocks.{block_id}"
