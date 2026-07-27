@@ -1,29 +1,27 @@
 """Offline: rewrite a training metadata file's raw prompts into structured JSON captions.
 
-LingBot-Video is trained on structured-JSON captions. If your dataset's ``prompt``
-column holds free-form prose, run this ONCE before training to rewrite every prompt
-into the structured caption the DiT expects, and train on the rewritten metadata. This
-is done offline on purpose — running the (large) rewriter VLM inside the dataloader on
-every step would be prohibitively slow.
-
-The rewriter is a separate VLM + stage-2 LoRA adapter (NOT the DiT). Provide it via
-``--base``/``--adapter`` or the ``REWRITER_BASE_MODEL`` / ``REWRITER_ADAPTER`` env vars.
+Run this once before training if your dataset's prompt column holds free-form prose, then
+train on the rewritten metadata. The rewriter is a separate VLM + stage-2 LoRA adapter
+(not the DiT); provide it via --base/--adapter or REWRITER_BASE_MODEL/REWRITER_ADAPTER.
 
 Usage:
     python rewrite_captions.py --metadata metadata.csv --output metadata_rewritten.csv \
         --base /path/to/rewriter-base --adapter /path/to/rewriter-step2-lora --duration 5
 
-Supports .csv / .json / .jsonl metadata (same formats as the training dataset loader).
-The output keeps every other column and replaces the ``--prompt-column`` with the
-compact-JSON caption string. Rows whose stage-2 output fails to parse are kept with
-their original prompt and logged, so training never silently trains on a broken row.
+Supports .csv / .json / .jsonl. Rows whose stage-2 output fails to parse keep their
+original prompt and are logged, so training never silently uses a broken row.
 """
 
 import argparse
 import json
 import os
+import sys
 
-from diffsynth.pipelines.lingbot_video_prompt_rewriter import Rewriter, make_backend, normalize_caption
+# The two-stage rewriter engine lives with the inference examples (the diffsynth core
+# keeps only normalize_caption), so training and inference share one implementation.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "model_inference"))
+from prompt_rewriter import Rewriter, make_backend
+from diffsynth.pipelines.lingbot_video import normalize_caption
 
 
 def _load_rows(path):

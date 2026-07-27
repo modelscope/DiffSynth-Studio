@@ -1,3 +1,6 @@
+import json
+import os
+
 import torch
 import numpy as np
 from PIL import Image
@@ -8,22 +11,58 @@ from typing_extensions import Literal
 from ..core.device.npu_compatible_device import get_device_type
 from ..core import ModelConfig
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
-from ..diffusion.flow_match import LingBotVideoUniPCScheduler
+from ..diffusion.flow_match import FlowMatchScheduler
 
 from ..models.lingbot_video_dit import LingBotVideoDiT
 from ..models.lingbot_video_text_encoder import LingBotVideoTextEncoder
-from ..models.qwen_image_vae import QwenImageVAE
-from .lingbot_video_prompt_rewriter import normalize_caption
+from ..models.qwen_image_vae import QwenImageVAE, QwenImageCausalConv3d
 
 
-# Number of tokens the Qwen3-VL processor truncates the prompt to. Copied verbatim
-# from the original lingbot-video pipeline so the encoded prompt matches.
+# LingBot-Video is trained on structured JSON captions. normalize_caption serialises a
+# dict/list caption (or a prompt.json path) into the compact-JSON string the DiT expects;
+# a plain string is passed through. Kept module-level so train.py / rewrite_captions.py
+# can reuse it without importing the pipeline. The prompt rewriter that turns a brief idea
+# into such a caption lives in examples/lingbot_video/model_inference/prompt_rewriter.py.
+_RUNTIME_KEYS = {"duration", "fps", "height", "width", "num_frames", "resolution", "ratio"}
+
+
+def _serialize_caption(caption) -> str:
+    if isinstance(caption, (dict, list)):
+        return json.dumps(caption, ensure_ascii=False, separators=(",", ":"))
+    return str(caption)
+
+
+def _caption_from_sample(sample) -> str:
+    if isinstance(sample, dict):
+        if "caption" in sample:
+            caption = sample["caption"]
+        else:
+            caption = {k: v for k, v in sample.items() if k not in _RUNTIME_KEYS}
+    else:
+        caption = sample
+    return _serialize_caption(caption)
+
+
+def normalize_caption(prompt):
+    if prompt is None:
+        return prompt
+    if isinstance(prompt, str):
+        if prompt.endswith(".json") and os.path.isfile(prompt):
+            with open(prompt, "r", encoding="utf-8") as f:
+                prompt = json.load(f)
+            return _caption_from_sample(prompt)
+        return prompt
+    if isinstance(prompt, (dict, list)):
+        return _caption_from_sample(prompt)
+    return str(prompt)
+
+
+# Prompt truncation length for the Qwen3-VL processor.
 TOKEN_LENGTH = 37698
-# Which hidden-state layer to use as the prompt embedding: 0 -> the last layer.
+# Hidden-state layer used as the prompt embedding: 0 -> the last layer.
 HIDDEN_STATE_SKIP_LAYER = 0
 
-# Chat template that wraps the user prompt inside the prompt-enhancement system
-# prompt. `apply_text_to_template(prompt) == PROMPT_TEMPLATE.format(prompt)`.
+# Prompt-enhancement chat template wrapping the user prompt.
 PROMPT_TEMPLATE = (
     "<|im_start|>system\nGiven a user input that may include a text prompt alone, "
     "a text prompt with an image reference, or a text prompt with a video reference "
@@ -49,26 +88,10 @@ VAE_SCALE_FACTOR_TEMPORAL = 4
 
 
 class LingBotVideoPipeline(BasePipeline):
-    """
-    Text-to-video pipeline for LingBot-Video.
-
-    Follows the DiffSynth ``PipelineUnit`` + ``model_fn`` pattern (see
-    :class:`~diffsynth.pipelines.wan_video.WanVideoPipeline`). Components:
-
-    - ``dit``: :class:`~diffsynth.models.lingbot_video_dit.LingBotVideoDiT` (MoE /
-      Dense video DiT), conditioned on ``timestep`` and ``encoder_attention_mask``.
-    - ``text_encoder``:
-      :class:`~diffsynth.models.lingbot_video_text_encoder.LingBotVideoTextEncoder`
-      (Qwen3-VL). The prompt is wrapped in :data:`PROMPT_TEMPLATE`, encoded, and the
-      template-prefix tokens are cropped (``crop_start``).
-    - ``vae``: :class:`~diffsynth.models.qwen_image_vae.QwenImageVAE` (byte-identical
-      to the LingBot-Video VAE). Latent normalisation is baked into the VAE's
-      ``encode``/``decode`` 5D-video code path, so the pipeline never re-applies
-      ``latents_mean`` / ``latents_std``.
-
-    Sampling uses :class:`~diffsynth.diffusion.flow_match.LingBotVideoUniPCScheduler`
-    (UniPC multistep). Classifier-free guidance runs as two independent forwards.
-    """
+    """Text-to-video pipeline for LingBot-Video (DiT + Qwen3-VL text encoder + QwenImageVAE),
+    following the DiffSynth PipelineUnit + model_fn pattern. Sampling uses FlowMatchScheduler
+    (Wan template). The 5D-video VAE encode/decode lives here (encode_video / decode_video)
+    so QwenImageVAE stays identical to its image use elsewhere."""
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
@@ -76,7 +99,7 @@ class LingBotVideoPipeline(BasePipeline):
             height_division_factor=16, width_division_factor=16,
             time_division_factor=4, time_division_remainder=1,
         )
-        self.scheduler = LingBotVideoUniPCScheduler()
+        self.scheduler = FlowMatchScheduler(template="Wan")
         self.text_encoder: LingBotVideoTextEncoder = None
         self.dit: LingBotVideoDiT = None
         self.vae: QwenImageVAE = None
@@ -94,8 +117,7 @@ class LingBotVideoPipeline(BasePipeline):
         self.compilable_models = ["dit"]
 
     def _compute_crop_start(self) -> int:
-        # Number of tokens contributed by the template prefix (everything before the
-        # user prompt). Computed once by tokenising the template up to a marker.
+        # Token count of the template prefix (everything before the user prompt), computed once.
         if self._crop_start is None:
             marker = "<|USER_INPUT_MARKER|>"
             marked = PROMPT_TEMPLATE.format(marker)
@@ -142,8 +164,7 @@ class LingBotVideoPipeline(BasePipeline):
     @torch.no_grad()
     def __call__(
         self,
-        # Prompt. Accepts a structured caption (dict / list), a path to a prompt.json,
-        # or a plain string; see normalize_caption / the prompt rewriter.
+        # Structured caption (dict / list), a prompt.json path, or a plain string.
         prompt: Union[str, dict, list] = "",
         negative_prompt: Union[str, dict, list] = DEFAULT_NEGATIVE_PROMPT,
         # Video-to-video
@@ -167,11 +188,8 @@ class LingBotVideoPipeline(BasePipeline):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
 
-        # Normalise the caption to the structured-JSON string the DiT was trained on.
-        # A dict/list caption or a path to a prompt.json is serialised via the model's
-        # compact-JSON convention; a plain string (already a caption / prose) is left
-        # untouched, so this is a no-op for existing callers. DEFAULT_NEGATIVE_PROMPT is
-        # already such a JSON string and passes through unchanged.
+        # Serialise dict/list/prompt.json captions to the structured-JSON string; plain
+        # strings pass through unchanged.
         prompt = normalize_caption(prompt)
         negative_prompt = normalize_caption(negative_prompt)
 
@@ -191,12 +209,9 @@ class LingBotVideoPipeline(BasePipeline):
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
-            # The DiT is conditioned on sigma * 1000 (== the raw scheduler timestep).
-            # Pass it as fp32 so the integer inference timesteps are represented
-            # exactly (bf16 cannot represent values > 256 without rounding).
+            # fp32 so the integer timestep is represented exactly (bf16 rounds values > 256).
             timestep_input = timestep.unsqueeze(0).to(dtype=torch.float32, device=self.device)
 
-            # Inference (two independent forwards for CFG).
             noise_pred_posi = self.model_fn(**models, **inputs_shared, **inputs_posi, timestep=timestep_input)
             if cfg_scale != 1.0:
                 noise_pred_nega = self.model_fn(**models, **inputs_shared, **inputs_nega, timestep=timestep_input)
@@ -204,18 +219,51 @@ class LingBotVideoPipeline(BasePipeline):
             else:
                 noise_pred = noise_pred_posi
 
-            # Scheduler step (UniPC multistep). Uses the raw scheduler timestep to
-            # locate its internal step index, so pass it unmodified.
             inputs_shared["latents"] = self.scheduler.step(noise_pred, timestep, inputs_shared["latents"])
 
-        # Decode. The VAE's 5D-video path already un-normalises the latents, so no
-        # manual latents_mean / latents_std handling is needed here.
         self.load_models_to_device(['vae'])
         latents = inputs_shared["latents"].to(dtype=self.torch_dtype, device=self.device)
-        video = self.vae.decode(latents)
+        video = self.decode_video(latents)
         video = self.vae_output_to_video(video)
         self.load_models_to_device([])
         return video
+
+    def _count_conv3d(self, model):
+        return sum(1 for m in model.modules() if isinstance(m, QwenImageCausalConv3d))
+
+    def encode_video(self, x):
+        # x: (B, C, T, H, W). Temporal chunking (1 + 4k frames) through a persistent causal
+        # feature cache — equivalent to encoding the whole clip at once, bounded in memory.
+        vae = self.vae
+        t = x.shape[2]
+        iter_ = 1 + (t - 1) // 4
+        feat_cache = [None] * self._count_conv3d(vae.encoder)
+        out = None
+        for i in range(iter_):
+            feat_idx = [0]
+            chunk = x[:, :, :1, :, :] if i == 0 else x[:, :, 1 + 4 * (i - 1): 1 + 4 * i, :, :]
+            out_ = vae.encoder(chunk, feat_cache=feat_cache, feat_idx=feat_idx)
+            out = out_ if out is None else torch.cat([out, out_], dim=2)
+        x = vae.quant_conv(out)
+        x = x[:, :16]
+        mean, std = vae.mean.to(dtype=x.dtype, device=x.device), vae.std.to(dtype=x.dtype, device=x.device)
+        x = (x - mean) * std
+        return x
+
+    def decode_video(self, x):
+        # x: (B, 16, T', H, W) in latent space. Denormalize, then decode one latent frame
+        # at a time through the causal feature cache.
+        vae = self.vae
+        mean, std = vae.mean.to(dtype=x.dtype, device=x.device), vae.std.to(dtype=x.dtype, device=x.device)
+        x = x / std + mean
+        x = vae.post_quant_conv(x)
+        feat_cache = [None] * self._count_conv3d(vae.decoder)
+        out = None
+        for i in range(x.shape[2]):
+            feat_idx = [0]
+            out_ = vae.decoder(x[:, :, i:i + 1, :, :], feat_cache=feat_cache, feat_idx=feat_idx)
+            out = out_ if out is None else torch.cat([out, out_], dim=2)
+        return out
 
 
 class LingBotVideoUnit_ShapeChecker(PipelineUnit):
@@ -243,8 +291,7 @@ class LingBotVideoUnit_NoiseInitializer(PipelineUnit):
             1, pipe.dit.in_channels, length,
             height // VAE_SCALE_FACTOR_SPATIAL, width // VAE_SCALE_FACTOR_SPATIAL,
         )
-        # fp32 noise: the UniPC sampler accumulates state in fp32 for stability
-        # (matches the original pipeline's fp32 latents).
+        # fp32 noise: the flow-matching sampler accumulates state in fp32.
         noise = pipe.generate_noise(shape, seed=seed, rand_device=rand_device, torch_dtype=torch.float32)
         return {"noise": noise}
 
@@ -313,8 +360,8 @@ class LingBotVideoUnit_InputVideoEmbedder(PipelineUnit):
         pipe.load_models_to_device(self.onload_model_names)
         # preprocess_video -> (B, C, T, H, W) in [-1, 1], in pipe.torch_dtype.
         video = pipe.preprocess_video(input_video)
-        # QwenImageVAE.encode (5D path) already applies latent normalisation.
-        input_latents = pipe.vae.encode(video).to(dtype=torch.float32, device=pipe.device)
+        # encode_video applies latent normalisation on the 5D-video path.
+        input_latents = pipe.encode_video(video).to(dtype=torch.float32, device=pipe.device)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
         else:
@@ -332,8 +379,7 @@ def model_fn_lingbot_video(
     use_gradient_checkpointing_offload: bool = False,
     **kwargs,
 ):
-    # Cast the latent / text inputs to the DiT's bulk compute dtype (e.g. bf16).
-    # The DiT keeps its AdaLN / norm / router paths in fp32 internally.
+    # Cast inputs to the DiT's compute dtype (e.g. bf16); the DiT keeps AdaLN/norm in fp32.
     dit_dtype = dit.patch_embedder.weight.dtype
     hidden_states = latents.to(dtype=dit_dtype)
     encoder_hidden_states = context.to(dtype=dit_dtype)
@@ -345,5 +391,4 @@ def model_fn_lingbot_video(
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
-    # Return fp32 so the UniPC sampler / MSE loss run in full precision.
     return noise_pred.float()

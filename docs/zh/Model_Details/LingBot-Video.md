@@ -7,7 +7,7 @@ LingBot-Video 是一个基于 flow-matching 的文生视频生成模型。本文
 - **DiT** — `LingBotVideoDiT`（`diffsynth/models/lingbot_video_dit.py`），视频去噪器。同一个类同时覆盖两个版本：Dense-1.3B 使用普通 FFN（`num_experts=0`），MoE-30B-A3B 使用稀疏 MoE FFN。
 - **文本编码器** — `LingBotVideoTextEncoder`（Qwen3-VL）。提示词会被包裹进提示增强的对话模板中编码，随后裁剪掉模板前缀 token。
 - **VAE** — 复用 DiffSynth 的 `QwenImageVAE`（与 LingBot-Video 的 VAE 逐字节一致），空间 8× / 时间 4× 压缩。
-- **调度器** — `LingBotVideoUniPCScheduler`：推理时使用 UniPC 多步调度；训练时回退到完整分辨率的 flow-matching 调度。
+- **调度器** — DiffSynth 的 `FlowMatchScheduler`（Wan 模板）：推理时使用一阶 flow-matching Euler；训练时使用完整分辨率的 1000 步 flow-matching 调度。
 
 ## 安装
 
@@ -25,6 +25,8 @@ LingBot-Video 还额外依赖 `transformers >= 5.x`（用于 Qwen3-VL）以及 `
 
 运行以下代码可以快速加载 [Robbyant/lingbot-video-dense-1.3b](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) 模型并进行文生视频推理。首次运行时会自动下载所需文件。
 
+> **⚠️ 推理前请先把提示词改写为结构化 caption。** LingBot-Video 使用**结构化 JSON caption** 训练，而非自由文本。下面代码里的普通句子能跑通，但属于分布外输入，生成结果会明显偏"糊"、质量偏低。这是模型的预期行为，并非 bug —— 正式推理前，请先把想法转成模型期望的结构化 caption。详见下文[提示词改写](#提示词改写对质量很重要)；可直接运行的 [`lingbot-video-dense-1.3b.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py) 示例默认使用随仓库发布的结构化 caption，并在文件末尾给出可选的改写流程。
+
 ```python
 import torch
 from diffsynth.utils.data import save_video
@@ -41,6 +43,8 @@ pipe = LingBotVideoPipeline.from_pretrained(
     processor_config=ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="processor/"),
 )
 video = pipe(
+    # 普通句子仅用于最简单的跑通验证，属于分布外输入。
+    # 正式使用请改传结构化 caption（见"提示词改写"章节）。
     prompt="A playful puppy runs across a lush green meadow, its golden fur shining in the bright sunlight. Wildflowers dot the grass, and a clear blue sky with a few white clouds stretches out behind it. Dynamic side-tracking camera.",
     height=480, width=832, num_frames=81,
     num_inference_steps=40, cfg_scale=3.0, seed=0,
@@ -48,7 +52,7 @@ video = pipe(
 save_video(video, "video.mp4", fps=15, quality=10)
 ```
 
-**低显存：** 在每个 `ModelConfig` 上设置 `offload_dtype` / `offload_device` 即可开启逐层 offload，可再配合 `vram_limit=<GB>`，详见下表中的低显存示例。
+**低显存：** 在每个 `ModelConfig` 上设置 `offload_dtype` / `offload_device` 才能开启逐层 offload；单独传 `vram_limit` 没有效果（它只在 offload 已开启时限制常驻显存上限）。详见下表中的低显存示例。
 
 ## MoE-30B-A3B
 
@@ -108,15 +112,37 @@ MoE 版本的注意事项：
 
 LingBot-Video 使用**结构化 JSON caption** 训练，而非自由文本。喂入一句普通句子属于分布外（out-of-distribution）输入，会明显降低质量；喂入模型期望的结构化 caption 则能恢复质量。Pipeline 接受 `dict`、`prompt.json` 路径或普通字符串形式的 caption，并将其（通过 `normalize_caption`）归一化为 DiT 训练时使用的紧凑 JSON 格式——普通字符串会原样透传，因此已有脚本无需改动。
 
-若要把一个**简短想法**转成该结构化 caption，可使用内置的两阶段改写器（`diffsynth/pipelines/lingbot_video_prompt_rewriter.py`）：阶段一将想法*扩写*为自然语言 caption，阶段二将其*映射*为结构化 JSON。
+若要把一个**简短想法**转成该结构化 caption，可使用随示例发布的两阶段改写器（`examples/lingbot_video/model_inference/prompt_rewriter.py`）：阶段一将想法*扩写*为自然语言 caption，阶段二将其*映射*为结构化 JSON。
+
+改写器是**独立的 VLM + 阶段二 LoRA 适配器**（不是 DiT），**不会自动下载**——运行改写前，需要先自行下载这两个权重：
+
+| 角色 | 模型 ID | 大小 |
+|-|-|-|
+| 改写器 base VLM（阶段一 + 二） | [`Qwen/Qwen3.6-27B`](https://modelscope.cn/models/Qwen/Qwen3.6-27B) | ~55 GB |
+| 改写器阶段二 LoRA 适配器 | [`Robbyant/lingbot-video-rewriter-lora`](https://modelscope.cn/models/Robbyant/lingbot-video-rewriter-lora) | ~0.5 GB |
+
+```shell
+# 1. 下载改写器 base VLM 及其阶段二 LoRA 适配器。
+modelscope download --model Qwen/Qwen3.6-27B --local_dir ./models/Qwen/Qwen3.6-27B
+modelscope download --model Robbyant/lingbot-video-rewriter-lora --local_dir ./models/Robbyant/lingbot-video-rewriter-lora
+```
 
 ```python
-from diffsynth.pipelines.lingbot_video_prompt_rewriter import rewrite_prompt
+# 2. 让改写器指向已下载的权重，再改写并推理。
+import os
+os.environ["REWRITER_BASE_MODEL"] = "./models/Qwen/Qwen3.6-27B"
+os.environ["REWRITER_ADAPTER"] = "./models/Robbyant/lingbot-video-rewriter-lora"
+
+# 改写器随推理示例一起发布；请在 examples/lingbot_video/model_inference 目录下运行
+# （或将该目录加入 sys.path），此 import 才能解析。
+from prompt_rewriter import rewrite_prompt
 caption = rewrite_prompt("a puppy running across a meadow", mode="t2v", duration=5)
 video = pipe(prompt=caption, height=480, width=832, num_frames=81, cfg_scale=3.0)
 ```
 
-改写器是**独立的 VLM + 阶段二 LoRA 适配器**（不是 DiT）。可通过 `REWRITER_BASE_MODEL` / `REWRITER_ADAPTER`（或 `base=` / `adapter=`）指向权重，也可以通过传入一个暴露 `generate(text, image, use_lora)` 方法的自定义对象作为 `backend=`，来驱动托管的 / OpenAI 兼容的推理端点。详见 `examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_rewrite.py`。
+除了 env var，也可以给 `rewrite_prompt` 传 `base=` / `adapter=`；或者完全不下载本地 VLM，改为传入一个暴露 `generate(text, image, use_lora)` 方法的自定义对象作为 `backend=`，来驱动托管的 / OpenAI 兼容的推理端点。详见 `examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py` 文件末尾的可选改写小节。
+
+如果没有改写器模型，仓库自带 3 个官方 LingBot-Video t2v 结构化 caption 作为开箱即用的示例：`examples/lingbot_video/model_inference/prompts/t2v_example_{1,2,3}.json`。可直接按路径传给 pipeline（`video = pipe(prompt="path/to/t2v_example_1.json", ...)`），也可以复制一个作为编写自己 caption 的模板。
 
 ## 模型训练
 
@@ -183,4 +209,4 @@ MoE / FFN 专家（`gate_proj`、`up_proj`、`down_proj`）与 router 保持冻�
 ## 注意事项
 
 - 文本编码器与已有的 `krea2_text_encoder` 共享同一 checkpoint 指纹（Qwen3-VL 架构相同），因此模型加载器在加载 LingBot-Video 时会同时实例化两者。这只是冗余的加载耗时——Pipeline 会按名称取用正确的编码器，另一个会被释放。
-- Latent 归一化在 VAE 的 5D 视频代码路径内部处理；Pipeline 不会再额外应用 `latents_mean` / `latents_std`。
+- 5D 视频的 VAE 编码/解码及其 latent 归一化都在 Pipeline 内实现（`LingBotVideoPipeline.encode_video` / `decode_video`），因此 `QwenImageVAE` 与它在图像场景下的用法保持逐字节一致；Pipeline 不会再额外应用 `latents_mean` / `latents_std`。

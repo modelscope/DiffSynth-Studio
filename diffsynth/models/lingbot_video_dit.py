@@ -10,9 +10,8 @@ from ..core.gradient import gradient_checkpoint_forward
 from ..core.device.npu_compatible_device import get_device_type
 
 
-# Modules kept in fp32 regardless of the model's bulk compute dtype. The custom
-# `to()` below honours this list so the sensitive AdaLN / norm / router paths stay
-# in full precision, matching the original lingbot-video precision policy.
+# Modules kept in fp32 regardless of the bulk compute dtype (sensitive AdaLN / norm /
+# router paths); the custom `to()` below honours this list.
 LINGBOT_VIDEO_FP32_MODULES = (
     "time_embedder",
     "time_modulation",

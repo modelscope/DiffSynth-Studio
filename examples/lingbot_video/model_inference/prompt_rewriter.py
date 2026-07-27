@@ -1,30 +1,15 @@
-"""Prompt handling for LingBot-Video.
+"""Two-stage prompt rewriter for LingBot-Video (example-side helper).
 
-The LingBot-Video DiT is trained on **structured JSON captions**, not free-form
-prose. Feeding a flat sentence is out-of-distribution and noticeably degrades
-quality; feeding the structured caption the model expects restores it. This module
-provides the two pieces needed to keep prompts in-distribution:
+rewrite_prompt turns a brief idea into the structured JSON caption the DiT expects:
+stage 1 expands the idea into a natural-language caption (base model), stage 2 maps it
+into structured JSON (base model + stage-2 LoRA). This is a separate VLM + LoRA adapter,
+not the DiT, and is not downloaded with the pipeline -- hence it lives with the examples,
+while the core keeps only normalize_caption. TransformersBackend loads the rewriter VLM
+locally; make_backend also accepts any object exposing generate(text, image, use_lora).
 
-1. :func:`normalize_caption` — the lightweight, dependency-free path used by the
-   pipeline and the training module. It turns a caption expressed as a ``dict`` /
-   ``list`` / path to a ``prompt.json`` into the exact compact-JSON string the DiT
-   consumes (a plain string is passed through untouched). This mirrors the original
-   ``lingbot_video.utils.caption_from_sample`` byte-for-byte.
-
-2. :class:`Rewriter` — a faithful port of the original two-stage prompt rewriter
-   (``rewriter/rewriter_core.py`` + ``rewriter/inference.py``). Stage 1 *expands* a
-   brief idea into a natural-language caption; stage 2 *maps* that caption into the
-   structured JSON. Stage 1 runs the base model, stage 2 runs the base model with a
-   LoRA adapter active. The bundled :class:`TransformersBackend` loads the rewriter
-   VLM locally; :func:`make_backend` also accepts a custom backend object (anything
-   exposing ``generate(text, image, use_lora) -> str``) so the rewriter can be driven
-   by a hosted / OpenAI-compatible endpoint without shipping the weights.
-
-Typical use::
-
-    from diffsynth.pipelines.lingbot_video_prompt_rewriter import rewrite_prompt
+    from prompt_rewriter import rewrite_prompt
     caption = rewrite_prompt("a puppy running across a meadow", mode="t2v", duration=5)
-    video = pipe(prompt=caption, ...)              # caption is the structured JSON string
+    video = pipe(prompt=caption, ...)
 """
 
 import io
@@ -32,8 +17,7 @@ import json
 import os
 import re
 
-# Optional deps: only needed for the local rewriter backend / image loading, never
-# for normalize_caption (the common path).
+# Optional deps: only needed for the local rewriter backend / image loading.
 try:
     import requests
 except ImportError:
@@ -49,76 +33,11 @@ try:
 except ImportError:
     repair_json = None
 
-from .lingbot_video_system_prompts import (
+from system_prompts import (
     VIDEO_STEP1_EXPAND, VIDEO_STEP2_MAP, IMAGE_STEP1_EXPAND, IMAGE_STEP2_MAP,
 )
+from diffsynth.pipelines.lingbot_video import normalize_caption
 
-
-# ---------------------------------------------------------------------------
-# Layer 1: caption -> in-distribution prompt string
-# ---------------------------------------------------------------------------
-
-# Keys that describe how to *render* the clip rather than its content. When a full
-# sample dict is given without an explicit "caption" key, these are stripped before
-# serialisation (kept identical to the original ``caption_from_sample``).
-_RUNTIME_KEYS = {"duration", "fps", "height", "width", "num_frames", "resolution", "ratio"}
-
-
-def _serialize_caption(caption) -> str:
-    """dict/list -> compact JSON (the exact model format); anything else -> ``str()``."""
-    if isinstance(caption, (dict, list)):
-        return json.dumps(caption, ensure_ascii=False, separators=(",", ":"))
-    return str(caption)
-
-
-def _caption_from_sample(sample) -> str:
-    """Port of ``lingbot_video.utils.caption_from_sample``.
-
-    A *sample* dict either carries the structured caption under ``"caption"`` or IS
-    the caption once the runtime keys are dropped.
-    """
-    if isinstance(sample, dict):
-        if "caption" in sample:
-            caption = sample["caption"]
-        else:
-            caption = {k: v for k, v in sample.items() if k not in _RUNTIME_KEYS}
-    else:
-        caption = sample
-    return _serialize_caption(caption)
-
-
-def normalize_caption(prompt):
-    """Normalise a caption into the compact-JSON string the LingBot DiT expects.
-
-    Accepts:
-
-    - ``dict`` / ``list`` — a structured caption (or a full sample dict with a
-      ``"caption"`` key), serialised via the original compact-JSON convention.
-    - a path to a ``prompt.json`` file (``str`` ending in ``.json`` that exists) —
-      loaded, then handled as the dict/list case.
-    - any other ``str`` — returned unchanged (already a caption string, or free-form
-      prose the caller intentionally wants to feed as-is).
-    - ``None`` — returned unchanged.
-
-    Plain strings are passed through, so this is safe to call unconditionally on
-    prompts that are already in the right format.
-    """
-    if prompt is None:
-        return prompt
-    if isinstance(prompt, str):
-        if prompt.endswith(".json") and os.path.isfile(prompt):
-            with open(prompt, "r", encoding="utf-8") as f:
-                prompt = json.load(f)
-            return _caption_from_sample(prompt)
-        return prompt
-    if isinstance(prompt, (dict, list)):
-        return _caption_from_sample(prompt)
-    return str(prompt)
-
-
-# ---------------------------------------------------------------------------
-# Layer 2: raw idea -> structured caption (the two-stage rewriter)
-# ---------------------------------------------------------------------------
 
 # mode -> (step1 system prompt, step2 system prompt, feed image?, add duration?)
 MODES = {
@@ -162,11 +81,8 @@ def _step2_text(mode, detailed, dur):
 
 
 def parse_json(raw):
-    """Parse the stage-2 output into a dict, or ``None`` if it cannot be parsed.
-
-    VLMs occasionally emit unstable JSON (missing quotes, trailing commas, ``` fences),
-    so we strip any code fence, then try the stdlib parser first and fall back to
-    ``json_repair`` when it is installed (recommended for messy outputs)."""
+    """Parse the stage-2 output into a dict, or None. Strips any code fence, tries the
+    stdlib parser, then falls back to json_repair (if installed) for messy output."""
     s = (raw or "").strip()
     m = re.search(r"```(?:json)?\s*(\{.*\})\s*```", s, re.DOTALL)
     if m:
@@ -187,9 +103,8 @@ def parse_json(raw):
 
 
 def save_caption(result, duration, path):
-    """Save as ``{"caption": <structured JSON caption>, "duration": <seconds|null>}`` —
-    exactly the ``prompt.json`` the pipeline / runner consume. ``duration`` is integer
-    seconds for T2V/TI2V and ``None`` for T2I (a still image has no duration)."""
+    """Save as {"caption": <caption>, "duration": <seconds|null>} -- the prompt.json the
+    pipeline consumes. duration is integer seconds for T2V/TI2V, None for T2I."""
     dur = int(round(duration)) if MODES[result["mode"]]["duration"] else None
     with open(path, "w", encoding="utf-8") as f:
         json.dump({"caption": result["json"], "duration": dur}, f, ensure_ascii=False, indent=2)
@@ -197,10 +112,8 @@ def save_caption(result, duration, path):
 
 
 class TransformersBackend:
-    """Local rewriter VLM + LoRA adapter (peft). stage1 = base (adapter disabled),
-    stage2 = base + LoRA. Loads the rewriter model into memory; the weights are NOT
-    the DiT — set ``base``/``adapter`` (or ``REWRITER_BASE_MODEL``/``REWRITER_ADAPTER``)
-    to the rewriter VLM and its stage-2 adapter."""
+    """Local rewriter VLM + LoRA adapter (peft): stage1 = base (adapter disabled),
+    stage2 = base + LoRA. Set base/adapter (or REWRITER_BASE_MODEL/REWRITER_ADAPTER)."""
 
     def __init__(self, base=None, adapter=None, device="auto", max_new_tokens=6144):
         import contextlib
@@ -243,13 +156,8 @@ class TransformersBackend:
 
 
 def make_backend(backend="transformers", base=None, adapter=None):
-    """Build a rewriter backend.
-
-    - ``"transformers"`` — the bundled local :class:`TransformersBackend`.
-    - a custom object / callable — returned as-is if it already exposes
-      ``generate(text, image, use_lora) -> str``. Use this to drive the rewriter from
-      a hosted or OpenAI-compatible endpoint without downloading the VLM locally.
-    """
+    """Build a rewriter backend: "transformers" for the local TransformersBackend, or any
+    object already exposing generate(text, image, use_lora) -> str (e.g. a hosted endpoint)."""
     if backend == "transformers":
         return TransformersBackend(base, adapter)
     if hasattr(backend, "generate"):
