@@ -56,6 +56,25 @@ The pipeline ships a default (T2V) negative prompt, so `negative_prompt` is opti
 
 **Low VRAM:** pass `vram_limit=<GB>` to `from_pretrained` to enable layer-by-layer offloading — see `model_inference_low_vram/lingbot-video-dense-1.3b.py`.
 
+### Image-to-video (TI2V)
+
+Condition on a **first frame** by passing a `PIL.Image` as `input_image`; the model animates it. Dense-1.3B reuses the same T2V checkpoint (no separate i2v weight). The frame is used twice — as a visual reference for the Qwen3-VL text encoder, and as a clean latent pinned into the first frame of the diffusion latent before sampling and after every step, so only the following frames are generated.
+
+```bash
+python examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py
+```
+
+```python
+from PIL import Image
+video = pipe(
+    prompt=caption,                                  # describes the motion from the first frame
+    input_image=Image.open("first_frame.png").convert("RGB"),
+    height=480, width=832, num_frames=81, cfg_scale=3.0, seed=0,
+)
+```
+
+The runnable example uses the released first frame + caption in `model_inference/assets/ti2v_first_frame.png` and `model_inference/prompts/ti2v_example.json`. `input_image` and `input_video` are mutually exclusive.
+
 ## Prompt rewriting (important for quality)
 
 LingBot-Video is trained on **structured-JSON captions**, not free-form prose. Feeding a flat sentence is out-of-distribution and visibly degrades quality (softer, less coherent motion); feeding the structured caption the model expects restores it. The pipeline accepts a caption as a `dict`, a path to a `prompt.json`, or a plain string, and normalises it to the exact compact-JSON format the DiT was trained on — a plain string is passed through unchanged, so existing scripts keep working.

@@ -68,6 +68,7 @@ save_video(video, "video.mp4", fps=15, quality=10)
 
 * `prompt`: 描述视频内容的提示词。支持结构化 caption（`dict` / `list`）、`prompt.json` 路径，或普通字符串；详见[提示词改写](#提示词改写对质量很重要)。
 * `negative_prompt`: 负向提示词，描述不希望出现在视频中的内容。Pipeline 内置了默认（T2V）负向提示词，因此可以不设置。
+* `input_image`: 图生视频（TI2V）的首帧，传入一个 `PIL.Image`，模型会以它为第一帧生成后续画面。详见[图生视频（TI2V）](#图生视频ti2v)。
 * `input_video`: 输入视频（帧列表或 `VideoData`），用于视频生视频，需与 `denoising_strength` 配合使用。
 * `denoising_strength`: 降噪强度，取值范围 0~1，默认为 1.0。值越小，越保留输入视频的结构。仅在提供 `input_video` 时生效。
 * `height`: 视频高度，默认为 480，需能被 16 整除。
@@ -117,6 +118,29 @@ video = pipe(prompt=caption, height=480, width=832, num_frames=81, cfg_scale=3.0
 除了 env var，也可以给 `rewrite_prompt` 传 `base=` / `adapter=`；或者完全不下载本地 VLM，改为传入一个暴露 `generate(text, image, use_lora)` 方法的自定义对象作为 `backend=`，来驱动托管的 / OpenAI 兼容的推理端点。详见 `examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py` 文件末尾的可选改写小节。
 
 如果没有改写器模型，仓库自带 3 个官方 LingBot-Video t2v 结构化 caption 作为开箱即用的示例：`examples/lingbot_video/model_inference/prompts/t2v_example_{1,2,3}.json`。可直接按路径传给 pipeline（`video = pipe(prompt="path/to/t2v_example_1.json", ...)`），也可以复制一个作为编写自己 caption 的模板。
+
+## 图生视频（TI2V）
+
+Pipeline 支持以一张**首帧**为条件生成视频：把一个 `PIL.Image` 传给 `input_image`，模型会以它为第一帧生成后续画面。Dense-1.3B **复用同一份 T2V 权重**——无需额外下载 i2v 权重，DiT 也保持不变（`in_channels` 仍为 16）。
+
+与官方 LingBot-Video i2v pipeline 一致，首帧会被使用两次：
+
+- 作为视觉参考喂给 Qwen3-VL 文本编码器（其图像 token 会前插到提示词里），让 caption 与首帧被联合理解；
+- 经 VAE 编码为一个干净 latent，在采样前钉入扩散 latent 的第一个时间槽，并在每个调度步之后重新钉入，因此模型只生成首帧之后的画面。
+
+```python
+from PIL import Image
+
+input_image = Image.open("first_frame.png").convert("RGB")
+video = pipe(
+    prompt=caption,               # 描述从首帧开始展开的运动
+    input_image=input_image,
+    height=480, width=832, num_frames=81,
+    num_inference_steps=40, cfg_scale=3.0, seed=0,
+)
+```
+
+首帧会按保持宽高比的方式 cover-resize 并中心裁剪到 `height`×`width`，因此不必与目标分辨率完全一致。可直接运行的示例见 [`lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py)，它使用随仓库发布的首帧（`assets/ti2v_first_frame.png`）及其配对 caption（`prompts/ti2v_example.json`）。caption 应描述从首帧开始展开的运动；与 T2V 一样，写成结构化 JSON caption 最贴近训练分布。`input_image` 与 `input_video` 互斥，至多传一个。
 
 ## 模型训练
 

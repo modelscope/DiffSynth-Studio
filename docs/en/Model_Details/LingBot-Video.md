@@ -68,6 +68,7 @@ Input parameters for `LingBotVideoPipeline` inference include:
 
 * `prompt`: Prompt describing the content appearing in the video. Accepts a structured caption (`dict` / `list`), a path to a `prompt.json`, or a plain string; see [Prompt rewriting](#prompt-rewriting-important-for-quality).
 * `negative_prompt`: Negative prompt describing content that should not appear in the video. A default (T2V) negative prompt is built into the pipeline, so this can be left unset.
+* `input_image`: A `PIL.Image` first frame for image-to-video (TI2V); the model animates it. See [Image-to-video (TI2V)](#image-to-video-ti2v).
 * `input_video`: Input video (a list of frames or a `VideoData`) for video-to-video generation, used together with `denoising_strength`.
 * `denoising_strength`: Denoising strength, range 0~1, default value is 1.0. Lower values keep more of the input video structure. Only effective when `input_video` is provided.
 * `height`: Video height, default 480. Must be a multiple of 16.
@@ -117,6 +118,29 @@ video = pipe(prompt=caption, height=480, width=832, num_frames=81, cfg_scale=3.0
 Instead of the env vars you can pass `base=` / `adapter=` to `rewrite_prompt`, or skip the local VLM entirely and drive a hosted / OpenAI-compatible endpoint by passing a custom object exposing `generate(text, image, use_lora)` as `backend=`. See the optional rewrite section at the bottom of `examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py`.
 
 If you don't have the rewriter model, three released LingBot-Video t2v captions ship with the repo as ready-to-use examples: `examples/lingbot_video/model_inference/prompts/t2v_example_{1,2,3}.json`. Pass one straight to the pipeline (`video = pipe(prompt="path/to/t2v_example_1.json", ...)`), or copy one as a template for writing your own structured caption.
+
+## Image-to-video (TI2V)
+
+The pipeline can condition generation on a **first frame**: pass a `PIL.Image` as `input_image` and the model animates it. Dense-1.3B reuses the **same T2V checkpoint** — there is no separate i2v weight to download, and the DiT is unchanged (`in_channels` stays 16).
+
+Matching the original LingBot-Video i2v pipeline, the condition frame is used twice:
+
+- it is fed to the Qwen3-VL text encoder as a visual reference (its image tokens are prepended to the prompt), so the caption and the frame are interpreted together;
+- it is VAE-encoded to a clean latent that is pinned into the first temporal slot of the diffusion latent before sampling and re-applied after every scheduler step, so the model only generates the frames that follow.
+
+```python
+from PIL import Image
+
+input_image = Image.open("first_frame.png").convert("RGB")
+video = pipe(
+    prompt=caption,               # describe the motion that unfolds from the first frame
+    input_image=input_image,
+    height=480, width=832, num_frames=81,
+    num_inference_steps=40, cfg_scale=3.0, seed=0,
+)
+```
+
+The condition frame is aspect-ratio-preserving cover-resized and center-cropped to `height`×`width`, so it need not match the target resolution exactly. A runnable example ships at [`lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py), using the released first frame (`assets/ti2v_first_frame.png`) and its paired caption (`prompts/ti2v_example.json`). The caption should describe the motion that unfolds from the frame; as with T2V it is most in-distribution as a structured-JSON caption. `input_image` and `input_video` are mutually exclusive — pass at most one.
 
 ## Model Training
 
