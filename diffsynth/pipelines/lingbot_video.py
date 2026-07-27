@@ -17,7 +17,7 @@ from ..diffusion.flow_match import FlowMatchScheduler
 
 from ..models.lingbot_video_dit import LingBotVideoDiT
 from ..models.lingbot_video_text_encoder import LingBotVideoTextEncoder
-from ..models.qwen_image_vae import QwenImageVAE, QwenImageCausalConv3d
+from ..models.qwen_image_vae import QwenImageVAE
 
 
 # LingBot-Video is trained on structured JSON captions. normalize_caption serialises a
@@ -157,8 +157,8 @@ def _pixel_tensor_to_pil(pixel: torch.Tensor) -> Image.Image:
 class LingBotVideoPipeline(BasePipeline):
     """Text-to-video pipeline for LingBot-Video (DiT + Qwen3-VL text encoder + QwenImageVAE),
     following the DiffSynth PipelineUnit + model_fn pattern. Sampling uses FlowMatchScheduler
-    (Wan template). The 5D-video VAE encode/decode lives here (encode_video / decode_video)
-    so QwenImageVAE stays identical to its image use elsewhere."""
+    (Wan template). The 5D-video VAE encode/decode lives in QwenImageVAE
+    (encode_video / decode_video); the 4D image paths stay untouched."""
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
@@ -171,8 +171,6 @@ class LingBotVideoPipeline(BasePipeline):
         self.dit: LingBotVideoDiT = None
         self.vae: QwenImageVAE = None
         self.processor = None
-        # Cached number of template-prefix tokens to crop from the prompt embedding.
-        self._crop_start: Optional[int] = None
         self.in_iteration_models = ("dit",)
         self.units = [
             LingBotVideoUnit_ShapeChecker(),
@@ -185,24 +183,6 @@ class LingBotVideoPipeline(BasePipeline):
         ]
         self.model_fn = model_fn_lingbot_video
         self.compilable_models = ["dit"]
-
-    def _compute_crop_start(self) -> int:
-        # Token count of the template prefix (everything before the user prompt), computed once.
-        if self._crop_start is None:
-            marker = "<|USER_INPUT_MARKER|>"
-            marked = PROMPT_TEMPLATE.format(marker)
-            marker_pos = marked.find(marker)
-            if marker_pos < 0:
-                self._crop_start = 0
-            else:
-                prefix = self.processor(
-                    text=marked[:marker_pos],
-                    images=None,
-                    videos=None,
-                    return_tensors="pt",
-                )
-                self._crop_start = int(prefix["input_ids"].shape[1])
-        return self._crop_start
 
     @staticmethod
     def from_pretrained(
@@ -306,84 +286,10 @@ class LingBotVideoPipeline(BasePipeline):
 
         self.load_models_to_device(['vae'])
         latents = inputs_shared["latents"].to(dtype=self.torch_dtype, device=self.device)
-        video = self.decode_video(latents)
+        video = self.vae.decode_video(latents)
         video = self.vae_output_to_video(video)
         self.load_models_to_device([])
         return video
-
-    def _count_conv3d(self, model):
-        return sum(1 for m in model.modules() if isinstance(m, QwenImageCausalConv3d))
-
-    def encode_video(self, x):
-        # x: (B, C, T, H, W). Temporal chunking (1 + 4k frames) through a persistent causal
-        # feature cache — equivalent to encoding the whole clip at once, bounded in memory.
-        vae = self.vae
-        t = x.shape[2]
-        iter_ = 1 + (t - 1) // 4
-        feat_cache = [None] * self._count_conv3d(vae.encoder)
-        out = None
-        for i in range(iter_):
-            feat_idx = [0]
-            chunk = x[:, :, :1, :, :] if i == 0 else x[:, :, 1 + 4 * (i - 1): 1 + 4 * i, :, :]
-            out_ = vae.encoder(chunk, feat_cache=feat_cache, feat_idx=feat_idx)
-            out = out_ if out is None else torch.cat([out, out_], dim=2)
-        x = vae.quant_conv(out)
-        x = x[:, :16]
-        mean, std = vae.mean.to(dtype=x.dtype, device=x.device), vae.std.to(dtype=x.dtype, device=x.device)
-        x = (x - mean) * std
-        return x
-
-    def decode_video(self, x):
-        # x: (B, 16, T', H, W) in latent space. Denormalize, then decode one latent frame
-        # at a time through the causal feature cache.
-        vae = self.vae
-        mean, std = vae.mean.to(dtype=x.dtype, device=x.device), vae.std.to(dtype=x.dtype, device=x.device)
-        x = x / std + mean
-        x = vae.post_quant_conv(x)
-        feat_cache = [None] * self._count_conv3d(vae.decoder)
-        out = None
-        for i in range(x.shape[2]):
-            feat_idx = [0]
-            out_ = vae.decoder(x[:, :, i:i + 1, :, :], feat_cache=feat_cache, feat_idx=feat_idx)
-            out = out_ if out is None else torch.cat([out, out_], dim=2)
-        return out
-
-    def preprocess_cond_image(self, image: Image.Image, height, width):
-        # TI2V condition frame -> (1, C, 1, H, W) pixel tensor in [0, 1], aspect-ratio
-        # preserving cover-resize + center-crop to (height, width). Ported from the
-        # official i2v pipeline's preprocess_image.
-        raw = torch.from_numpy(np.array(image.convert("RGB"))).permute(2, 0, 1).unsqueeze(0).contiguous()
-        old_h, old_w = raw.shape[-2:]
-        scale = max(height / old_h, width / old_w)
-        new_h = max(math.ceil(old_h * scale), height)
-        new_w = max(math.ceil(old_w * scale), width)
-        resized = F.interpolate(raw.float(), size=(new_h, new_w), mode="bilinear", align_corners=False)
-        top = int(round((new_h - height) / 2.0))
-        left = int(round((new_w - width) / 2.0))
-        cropped = resized[:, :, top: top + height, left: left + width] / 255.0
-        return cropped.unsqueeze(2)
-
-    def _vision_patch_size(self) -> int:
-        # Resolve the Qwen3-VL vision patch size (used with SPATIAL_MERGE_SIZE to pick
-        # the smart-resize grid factor). Falls back to 16 like the official pipeline.
-        for obj in (
-            getattr(getattr(self.text_encoder, "config", None), "vision_config", None),
-            getattr(getattr(self.processor, "image_processor", None), "config", None),
-            getattr(self.processor, "image_processor", None),
-        ):
-            patch = getattr(obj, "patch_size", None)
-            if patch is not None:
-                return int(patch)
-        return 16
-
-    def _vlm_image(self, pixel: torch.Tensor) -> Image.Image:
-        # Build the PIL image handed to the text encoder from the condition pixel tensor,
-        # smart-resized to the Qwen3-VL patch grid.
-        image = _pixel_tensor_to_pil(pixel)
-        patch_factor = self._vision_patch_size() * SPATIAL_MERGE_SIZE
-        w, h = image.size
-        resized_height, resized_width = smart_resize(h, w, factor=patch_factor)
-        return image.resize((resized_width, resized_height))
 
 
 class LingBotVideoUnit_ShapeChecker(PipelineUnit):
@@ -426,6 +332,26 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
             output_params=("context", "encoder_attention_mask"),
             onload_model_names=("text_encoder",),
         )
+        # Cached number of template-prefix tokens to crop from the prompt embedding.
+        self._crop_start: Optional[int] = None
+
+    def _compute_crop_start(self, pipe: LingBotVideoPipeline) -> int:
+        # Token count of the template prefix (everything before the user prompt), computed once.
+        if self._crop_start is None:
+            marker = "<|USER_INPUT_MARKER|>"
+            marked = PROMPT_TEMPLATE.format(marker)
+            marker_pos = marked.find(marker)
+            if marker_pos < 0:
+                self._crop_start = 0
+            else:
+                prefix = pipe.processor(
+                    text=marked[:marker_pos],
+                    images=None,
+                    videos=None,
+                    return_tensors="pt",
+                )
+                self._crop_start = int(prefix["input_ids"].shape[1])
+        return self._crop_start
 
     def encode_prompt(self, pipe: LingBotVideoPipeline, prompt, vlm_image=None):
         # T2V: visual_template is empty. TI2V: prepend the image-token block to the
@@ -450,7 +376,7 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
         prompt_mask = inputs["attention_mask"]
 
         # Crop the prompt-enhancement template prefix.
-        crop_start = pipe._compute_crop_start()
+        crop_start = self._compute_crop_start(pipe)
         if crop_start > 0:
             prompt_embeds = prompt_embeds[:, crop_start:]
             prompt_mask = prompt_mask[:, crop_start:]
@@ -482,10 +408,8 @@ class LingBotVideoUnit_InputVideoEmbedder(PipelineUnit):
             # Text-to-video: start from pure noise.
             return {"latents": noise}
         pipe.load_models_to_device(self.onload_model_names)
-        # preprocess_video -> (B, C, T, H, W) in [-1, 1], in pipe.torch_dtype.
         video = pipe.preprocess_video(input_video)
-        # encode_video applies latent normalisation on the 5D-video path.
-        input_latents = pipe.encode_video(video).to(dtype=torch.float32, device=pipe.device)
+        input_latents = pipe.vae.encode_video(video).to(dtype=torch.float32, device=pipe.device)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
         else:
