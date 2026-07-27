@@ -1,7 +1,3 @@
-# Download the LingBot-Video Dense-1.3B weights (DiT + text encoder + VAE + processor).
-# This fetches the whole repo once into ./models so the paths below resolve locally.
-modelscope download --model Robbyant/lingbot-video-dense-1.3b --local_dir ./models/Robbyant/lingbot-video-dense-1.3b
-
 # Download the example video-SFT dataset (a small text-to-video set with a `video` +
 # `prompt` metadata.csv), the same DiffSynth-Studio example dataset the other training
 # scripts use. NOTE: its prompts are plain prose; for best quality rewrite them into
@@ -21,15 +17,8 @@ accelerate launch examples/lingbot_video/model_training/train.py \
   --width 832 \
   --num_frames 169 \
   --dataset_repeat 200 \
-  --model_paths '[
-    [
-      "./models/Robbyant/lingbot-video-dense-1.3b/text_encoder/model-00001-of-00002.safetensors",
-      "./models/Robbyant/lingbot-video-dense-1.3b/text_encoder/model-00002-of-00002.safetensors"
-    ],
-    "./models/Robbyant/lingbot-video-dense-1.3b/transformer/diffusion_pytorch_model.safetensors",
-    "./models/Robbyant/lingbot-video-dense-1.3b/vae/diffusion_pytorch_model.safetensors"
-  ]' \
-  --processor_path "./models/Robbyant/lingbot-video-dense-1.3b/processor" \
+  --model_id_with_origin_paths "Robbyant/lingbot-video-dense-1.3b:transformer/diffusion_pytorch_model.safetensors,Robbyant/lingbot-video-dense-1.3b:text_encoder/model*.safetensors,Robbyant/lingbot-video-dense-1.3b:vae/diffusion_pytorch_model.safetensors" \
+  --processor_path "Robbyant/lingbot-video-dense-1.3b:processor/" \
   --learning_rate 1e-4 \
   --num_epochs 20 \
   --remove_prefix_in_ckpt "pipe.dit." \

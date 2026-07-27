@@ -39,9 +39,10 @@ class LingBotVideoTrainingModule(DiffusionTrainingModule):
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
         self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
 
-        # Training mode. The UniPC scheduler falls back to the full-resolution
-        # flow-matching schedule during training (see LingBotVideoUniPCScheduler).
-        # Attention-only LoRA is the default scope: pass
+        # Training mode. switch_pipe_to_training_mode puts FlowMatchScheduler (Wan
+        # template) on the full 1000-step flow-matching schedule via
+        # set_timesteps(1000, training=True); the SFT loss samples a random timestep
+        # from it. Attention-only LoRA is the default scope: pass
         # `--lora_target_modules "to_q,to_k,to_v,to_out"` to leave the MoE / FFN
         # (gate_proj / up_proj / down_proj) and the router untouched.
         self.switch_pipe_to_training_mode(

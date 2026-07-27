@@ -1,0 +1,101 @@
+{
+  "caption": {
+    "comprehensive_description": {
+      "scene_content_description": "A young child with short brown hair is outdoors on a bright, sunny day, playing with bubbles. The child is wearing a colorful striped shirt with horizontal bands of red, yellow, green, and blue. They are holding a small bottle of bubble solution and a wand, dipping the wand into the bottle and then blowing to create a stream of shimmering, iridescent bubbles. The background is a soft-focus outdoor setting with greenery and a hint of a building, creating a warm and joyful atmosphere. The lighting is bright and natural, highlighting the child's focused expression and the delicate, translucent nature of the bubbles.",
+      "camera_movement_description": "The camera is essentially stationary throughout the video, maintaining a medium close-up shot of the child from an eye-level angle. There is a very slight handheld tremor, but no intentional panning, tilting, or zooming occurs."
+    },
+    "camera_info": {
+      "color": "Saturated",
+      "frame_size": "Medium Close Up",
+      "shot_type_angle": "Low angle",
+      "lens_size": "Long Lens",
+      "composition": "Center",
+      "lighting": "Hard light",
+      "lighting_type": "Daylight"
+    },
+    "world_knowledge": [],
+    "prominent_elements": [
+      {
+        "name": "young child",
+        "description": "A young child with short brown hair and a joyful expression, focused on playing with bubbles.",
+        "actions": [
+          {
+            "timestamp": "[0.0s - 1.5s]",
+            "action": "Dips the bubble wand into the solution bottle and lifts it out."
+          },
+          {
+            "timestamp": "[1.5s - 2.5s]",
+            "action": "Brings the wand to their lips and blows to create bubbles."
+          },
+          {
+            "timestamp": "[2.5s - 5.0s]",
+            "action": "Watches the bubbles float away, smiling slightly."
+          }
+        ],
+        "location": "Center of the frame",
+        "relative_size": "dominant",
+        "shape_and_color": "Human form; wearing a multi-colored striped shirt (red, yellow, green, blue).",
+        "texture": "Soft skin, fine hair, fabric texture of the shirt.",
+        "appearance_details": "Short brown hair, bright eyes, colorful horizontal stripes on the shirt.",
+        "relationship": "Holding the bubble wand and bottle, interacting with the bubbles.",
+        "orientation": "Facing forward and slightly to the right.",
+        "pose": "Standing or sitting upright, arms raised to hold the bubble wand.",
+        "expression": "Focused and happy.",
+        "clothing": "A short-sleeved shirt with horizontal stripes in red, yellow, green, and blue.",
+        "gender": "Male",
+        "skin_tone_and_texture": "Fair skin with a smooth texture."
+      },
+      {
+        "name": "bubble wand and bottle",
+        "description": "A small plastic bottle containing bubble solution and a wand with a circular loop.",
+        "actions": [
+          {
+            "timestamp": "[0.0s - 1.5s]",
+            "action": "The wand is dipped into the bottle and then lifted out."
+          },
+          {
+            "timestamp": "[1.5s - 2.5s]",
+            "action": "The wand is held at the child's mouth as bubbles are blown."
+          }
+        ],
+        "location": "Lower center of the frame, held by the child.",
+        "relative_size": "small",
+        "shape_and_color": "Cylindrical bottle with a blue cap; circular wand loop.",
+        "texture": "Smooth plastic.",
+        "appearance_details": "The bottle is partially filled with clear liquid; the wand has a thin handle.",
+        "relationship": "Held by the child's hands.",
+        "orientation": "Vertical bottle, horizontal wand loop.",
+        "pose": "",
+        "expression": "",
+        "clothing": "",
+        "gender": "",
+        "skin_tone_and_texture": ""
+      },
+      {
+        "name": "bubbles",
+        "description": "A cluster of small, iridescent, translucent bubbles floating in the air.",
+        "actions": [
+          {
+            "timestamp": "[1.5s - 5.0s]",
+            "action": "The bubbles are blown from the wand and float upwards and towards the right side of the frame."
+          }
+        ],
+        "location": "Upper center and right side of the frame.",
+        "relative_size": "medium",
+        "shape_and_color": "Spherical and iridescent with rainbow-like reflections.",
+        "texture": "Glossy and translucent.",
+        "appearance_details": "Shimmering surfaces that catch the sunlight.",
+        "relationship": "Created by the child's blowing action.",
+        "orientation": "Floating in various directions.",
+        "pose": "",
+        "expression": "",
+        "clothing": "",
+        "gender": "",
+        "skin_tone_and_texture": "",
+        "is_cluster": true,
+        "number_of_objects": "many"
+      }
+    ]
+  },
+  "duration": 5
+}

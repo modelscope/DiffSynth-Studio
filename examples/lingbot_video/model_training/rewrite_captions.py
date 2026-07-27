@@ -22,8 +22,13 @@ their original prompt and logged, so training never silently trains on a broken 
 import argparse
 import json
 import os
+import sys
 
-from diffsynth.pipelines.lingbot_video_prompt_rewriter import Rewriter, make_backend, normalize_caption
+# The two-stage rewriter engine lives with the inference examples (the diffsynth core
+# keeps only normalize_caption), so training and inference share one implementation.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "model_inference"))
+from prompt_rewriter import Rewriter, make_backend
+from diffsynth.pipelines.lingbot_video_prompt_rewriter import normalize_caption
 
 
 def _load_rows(path):

@@ -7,7 +7,7 @@ The integration is built on the standard DiffSynth pipeline stack:
 - **DiT** — `LingBotVideoDiT` (`diffsynth/models/lingbot_video_dit.py`), the video denoiser. The Dense-1.3B build uses a plain FFN; the architecture also supports an MoE FFN.
 - **Text encoder** — `LingBotVideoTextEncoder` (Qwen3-VL). Prompts are wrapped in a prompt-enhancement chat template, encoded, and the template-prefix tokens are cropped.
 - **VAE** — reuses DiffSynth's `QwenImageVAE` (byte-identical to the LingBot-Video VAE), 8× spatial / 4× temporal.
-- **Scheduler** — `LingBotVideoUniPCScheduler`: UniPC multistep for inference; it falls back to the full-resolution flow-matching schedule for training.
+- **Scheduler** — DiffSynth's `FlowMatchScheduler` (Wan template): first-order flow-matching Euler for inference; training uses the full-resolution 1000-step flow-matching schedule.
 
 ## Installation
 
@@ -23,7 +23,7 @@ pip install -e .
 modelscope download --model Robbyant/lingbot-video-dense-1.3b --local_dir ./models/Robbyant/lingbot-video-dense-1.3b
 ```
 
-The inference examples below use `ModelConfig(model_id=...)`, which downloads the required files automatically the first time they run. You can also point `ModelConfig(path=...)` at local files (see the training script).
+Both the inference and training examples use `model_id`-based configs, which download the required files automatically the first time they run, so the manual download above is optional. You can also point `ModelConfig(path=...)` at local files if you already have them.
 
 ## Inference
 
@@ -67,15 +67,17 @@ pipe(prompt="assets/cases/t2v/example_1/prompt.json")                          #
 pipe(prompt='{"comprehensive_description":{...}}')                             # already-serialised string
 ```
 
-To turn a **brief idea** into that structured caption, use the bundled two-stage rewriter (`diffsynth/pipelines/lingbot_video_prompt_rewriter.py`), a faithful port of the original: stage 1 *expands* the idea into a natural-language caption, stage 2 *maps* it into structured JSON.
+To turn a **brief idea** into that structured caption, use the two-stage rewriter shipped here (`model_inference/prompt_rewriter.py`), a faithful port of the original: stage 1 *expands* the idea into a natural-language caption, stage 2 *maps* it into structured JSON.
 
 ```python
-from diffsynth.pipelines.lingbot_video_prompt_rewriter import rewrite_prompt
+# The rewriter lives in model_inference/; run from that directory (or add it to
+# sys.path) so this sibling import resolves.
+from prompt_rewriter import rewrite_prompt
 caption = rewrite_prompt("a puppy running across a meadow", mode="t2v", duration=5)
 video = pipe(prompt=caption, height=480, width=832, num_frames=81, cfg_scale=3.0)
 ```
 
-The rewriter is a **separate VLM + stage-2 LoRA adapter** (not the DiT). Point it at the weights via `REWRITER_BASE_MODEL` / `REWRITER_ADAPTER` (or `base=`/`adapter=`). If you serve the rewriter behind a hosted / OpenAI-compatible endpoint instead of loading it locally, pass a custom object exposing `generate(text, image, use_lora)` as `backend=`. See `model_inference/lingbot-video-dense-1.3b_rewrite.py`.
+The rewriter is a **separate VLM + stage-2 LoRA adapter** (not the DiT). Point it at the weights via `REWRITER_BASE_MODEL` / `REWRITER_ADAPTER` (or `base=`/`adapter=`). If you serve the rewriter behind a hosted / OpenAI-compatible endpoint instead of loading it locally, pass a custom object exposing `generate(text, image, use_lora)` as `backend=`. See the optional rewrite section at the bottom of `model_inference/lingbot-video-dense-1.3b.py`.
 
 ## Training (LoRA SFT)
 
@@ -141,4 +143,4 @@ Trained LoRA checkpoints are written to `--output_path` with the `pipe.dit.` pre
 ## Notes
 
 - The text encoder shares its checkpoint fingerprint with the existing `krea2_text_encoder` (identical Qwen3-VL architecture), so the model loader instantiates both when loading LingBot-Video. This is redundant load time only — the pipeline fetches the correct encoder by name and the other is released.
-- Latent normalisation is handled inside the VAE's 5D-video code path; the pipeline does not re-apply `latents_mean` / `latents_std`.
+- The 5D-video VAE encode/decode and its latent normalisation live in the pipeline (`LingBotVideoPipeline.encode_video` / `decode_video`), so `QwenImageVAE` stays byte-identical to its image use elsewhere; the pipeline does not separately re-apply `latents_mean` / `latents_std`.

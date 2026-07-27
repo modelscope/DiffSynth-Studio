@@ -7,7 +7,7 @@ The integration is built on the standard DiffSynth pipeline stack:
 - **DiT** — `LingBotVideoDiT` (`diffsynth/models/lingbot_video_dit.py`), the video denoiser. The Dense-1.3B build uses a plain FFN; the architecture also supports an MoE FFN.
 - **Text encoder** — `LingBotVideoTextEncoder` (Qwen3-VL). Prompts are wrapped in a prompt-enhancement chat template, encoded, and the template-prefix tokens are cropped.
 - **VAE** — reuses DiffSynth's `QwenImageVAE` (byte-identical to the LingBot-Video VAE), 8× spatial / 4× temporal compression.
-- **Scheduler** — `LingBotVideoUniPCScheduler`: UniPC multistep for inference; it falls back to the full-resolution flow-matching schedule for training.
+- **Scheduler** — DiffSynth's `FlowMatchScheduler` (Wan template): first-order flow-matching Euler for inference; training uses the full-resolution 1000-step flow-matching schedule.
 
 ## Installation
 
@@ -25,6 +25,8 @@ LingBot-Video additionally requires `transformers >= 5.x` (for Qwen3-VL) and `im
 
 Run the following code to quickly load the [Robbyant/lingbot-video-dense-1.3b](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) model and perform text-to-video inference. The required files are downloaded automatically the first time the code runs.
 
+> **⚠️ Rewrite your prompt into a structured caption first.** LingBot-Video is trained on **structured-JSON captions**, not free-form prose. The plain sentence in the snippet below runs, but it is out-of-distribution and the result will look noticeably soft / low quality. This is expected model behaviour, not a bug — before doing real inference, turn your idea into the structured caption the model expects. See [Prompt rewriting](#prompt-rewriting-important-for-quality) below; the runnable [`lingbot-video-dense-1.3b.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py) example defaults to a released structured caption and shows the optional rewrite path at the bottom.
+
 ```python
 import torch
 from diffsynth.utils.data import save_video
@@ -41,6 +43,8 @@ pipe = LingBotVideoPipeline.from_pretrained(
     processor_config=ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="processor/"),
 )
 video = pipe(
+    # A plain sentence is a minimal smoke test only — it is out-of-distribution.
+    # For real quality, pass a structured caption instead (see "Prompt rewriting").
     prompt="A playful puppy runs across a lush green meadow, its golden fur shining in the bright sunlight. Wildflowers dot the grass, and a clear blue sky with a few white clouds stretches out behind it. Dynamic side-tracking camera.",
     height=480, width=832, num_frames=81,
     num_inference_steps=40, cfg_scale=3.0, seed=0,
@@ -48,7 +52,7 @@ video = pipe(
 save_video(video, "video.mp4", fps=15, quality=10)
 ```
 
-**Low VRAM:** pass `vram_limit=<GB>` to `from_pretrained` to enable layer-by-layer offloading — see the low-VRAM example in the table below.
+**Low VRAM:** set `offload_dtype` / `offload_device` on each `ModelConfig` to enable layer-by-layer offloading; `vram_limit` alone has no effect (it only caps resident VRAM once offloading is on). See the low-VRAM example in the table below.
 
 ## Model Overview
 
@@ -82,15 +86,37 @@ When running low on VRAM, please refer to [VRAM Management](../Pipeline_Usage/VR
 
 LingBot-Video is trained on **structured-JSON captions**, not free-form prose. Feeding a flat sentence is out-of-distribution and visibly degrades quality; feeding the structured caption the model expects restores it. The pipeline accepts a caption as a `dict`, a path to a `prompt.json`, or a plain string, and normalises it (via `normalize_caption`) to the exact compact-JSON format the DiT was trained on — a plain string is passed through unchanged, so existing scripts keep working.
 
-To turn a **brief idea** into that structured caption, use the bundled two-stage rewriter (`diffsynth/pipelines/lingbot_video_prompt_rewriter.py`): stage 1 *expands* the idea into a natural-language caption, stage 2 *maps* it into structured JSON.
+To turn a **brief idea** into that structured caption, use the two-stage rewriter shipped with the examples (`examples/lingbot_video/model_inference/prompt_rewriter.py`): stage 1 *expands* the idea into a natural-language caption, stage 2 *maps* it into structured JSON.
+
+The rewriter is a **separate VLM + stage-2 LoRA adapter** (not the DiT), so it is **not downloaded automatically** — you must fetch both weights yourself before running the rewrite:
+
+| Role | Model ID | Size |
+|-|-|-|
+| Rewriter base VLM (stage 1 + 2) | [`Qwen/Qwen3.6-27B`](https://modelscope.cn/models/Qwen/Qwen3.6-27B) | ~55 GB |
+| Rewriter stage-2 LoRA adapter | [`Robbyant/lingbot-video-rewriter-lora`](https://modelscope.cn/models/Robbyant/lingbot-video-rewriter-lora) | ~0.5 GB |
+
+```shell
+# 1. Download the rewriter base VLM and its stage-2 LoRA adapter.
+modelscope download --model Qwen/Qwen3.6-27B --local_dir ./models/Qwen/Qwen3.6-27B
+modelscope download --model Robbyant/lingbot-video-rewriter-lora --local_dir ./models/Robbyant/lingbot-video-rewriter-lora
+```
 
 ```python
-from diffsynth.pipelines.lingbot_video_prompt_rewriter import rewrite_prompt
+# 2. Point the rewriter at the downloaded weights, then rewrite and run inference.
+import os
+os.environ["REWRITER_BASE_MODEL"] = "./models/Qwen/Qwen3.6-27B"
+os.environ["REWRITER_ADAPTER"] = "./models/Robbyant/lingbot-video-rewriter-lora"
+
+# The rewriter ships with the inference examples; run from
+# examples/lingbot_video/model_inference (or add it to sys.path) for this import.
+from prompt_rewriter import rewrite_prompt
 caption = rewrite_prompt("a puppy running across a meadow", mode="t2v", duration=5)
 video = pipe(prompt=caption, height=480, width=832, num_frames=81, cfg_scale=3.0)
 ```
 
-The rewriter is a **separate VLM + stage-2 LoRA adapter** (not the DiT). Point it at the weights via `REWRITER_BASE_MODEL` / `REWRITER_ADAPTER` (or `base=` / `adapter=`), or drive a hosted / OpenAI-compatible endpoint by passing a custom object exposing `generate(text, image, use_lora)` as `backend=`. See `examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_rewrite.py`.
+Instead of the env vars you can pass `base=` / `adapter=` to `rewrite_prompt`, or skip the local VLM entirely and drive a hosted / OpenAI-compatible endpoint by passing a custom object exposing `generate(text, image, use_lora)` as `backend=`. See the optional rewrite section at the bottom of `examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py`.
+
+If you don't have the rewriter model, three released LingBot-Video t2v captions ship with the repo as ready-to-use examples: `examples/lingbot_video/model_inference/prompts/t2v_example_{1,2,3}.json`. Pass one straight to the pipeline (`video = pipe(prompt="path/to/t2v_example_1.json", ...)`), or copy one as a template for writing your own structured caption.
 
 ## Model Training
 
@@ -157,4 +183,4 @@ We have written recommended training scripts, please refer to the table in the "
 ## Notes
 
 - The text encoder shares its checkpoint fingerprint with the existing `krea2_text_encoder` (identical Qwen3-VL architecture), so the model loader instantiates both when loading LingBot-Video. This is redundant load time only — the pipeline fetches the correct encoder by name and the other is released.
-- Latent normalisation is handled inside the VAE's 5D-video code path; the pipeline does not re-apply `latents_mean` / `latents_std`.
+- The 5D-video VAE encode/decode and its latent normalisation live in the pipeline (`LingBotVideoPipeline.encode_video` / `decode_video`), so `QwenImageVAE` stays byte-identical to its image use elsewhere; the pipeline does not separately re-apply `latents_mean` / `latents_std`.

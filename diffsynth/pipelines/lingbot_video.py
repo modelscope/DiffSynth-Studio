@@ -8,11 +8,11 @@ from typing_extensions import Literal
 from ..core.device.npu_compatible_device import get_device_type
 from ..core import ModelConfig
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
-from ..diffusion.flow_match import LingBotVideoUniPCScheduler
+from ..diffusion.flow_match import FlowMatchScheduler
 
 from ..models.lingbot_video_dit import LingBotVideoDiT
 from ..models.lingbot_video_text_encoder import LingBotVideoTextEncoder
-from ..models.qwen_image_vae import QwenImageVAE
+from ..models.qwen_image_vae import QwenImageVAE, QwenImageCausalConv3d
 from .lingbot_video_prompt_rewriter import normalize_caption
 
 
@@ -62,12 +62,13 @@ class LingBotVideoPipeline(BasePipeline):
       (Qwen3-VL). The prompt is wrapped in :data:`PROMPT_TEMPLATE`, encoded, and the
       template-prefix tokens are cropped (``crop_start``).
     - ``vae``: :class:`~diffsynth.models.qwen_image_vae.QwenImageVAE` (byte-identical
-      to the LingBot-Video VAE). Latent normalisation is baked into the VAE's
-      ``encode``/``decode`` 5D-video code path, so the pipeline never re-applies
-      ``latents_mean`` / ``latents_std``.
+      to the LingBot-Video VAE). The 5D-video encode/decode and its latent
+      normalisation live in this pipeline (:meth:`encode_video` / :meth:`decode_video`),
+      so the VAE itself stays identical to its image use elsewhere.
 
-    Sampling uses :class:`~diffsynth.diffusion.flow_match.LingBotVideoUniPCScheduler`
-    (UniPC multistep). Classifier-free guidance runs as two independent forwards.
+    Sampling uses :class:`~diffsynth.diffusion.flow_match.FlowMatchScheduler` (Wan
+    template; first-order flow-matching Euler). Classifier-free guidance runs as two
+    independent forwards.
     """
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
@@ -76,7 +77,7 @@ class LingBotVideoPipeline(BasePipeline):
             height_division_factor=16, width_division_factor=16,
             time_division_factor=4, time_division_remainder=1,
         )
-        self.scheduler = LingBotVideoUniPCScheduler()
+        self.scheduler = FlowMatchScheduler(template="Wan")
         self.text_encoder: LingBotVideoTextEncoder = None
         self.dit: LingBotVideoDiT = None
         self.vae: QwenImageVAE = None
@@ -204,18 +205,58 @@ class LingBotVideoPipeline(BasePipeline):
             else:
                 noise_pred = noise_pred_posi
 
-            # Scheduler step (UniPC multistep). Uses the raw scheduler timestep to
-            # locate its internal step index, so pass it unmodified.
+            # Scheduler step (first-order flow-matching Euler). Uses the raw scheduler
+            # timestep to locate its internal step index, so pass it unmodified.
             inputs_shared["latents"] = self.scheduler.step(noise_pred, timestep, inputs_shared["latents"])
 
-        # Decode. The VAE's 5D-video path already un-normalises the latents, so no
+        # Decode. decode_video un-normalises the latents on the 5D-video path, so no
         # manual latents_mean / latents_std handling is needed here.
         self.load_models_to_device(['vae'])
         latents = inputs_shared["latents"].to(dtype=self.torch_dtype, device=self.device)
-        video = self.vae.decode(latents)
+        video = self.decode_video(latents)
         video = self.vae_output_to_video(video)
         self.load_models_to_device([])
         return video
+
+    def _count_conv3d(self, model):
+        return sum(1 for m in model.modules() if isinstance(m, QwenImageCausalConv3d))
+
+    def encode_video(self, x):
+        # x: (B, C, T, H, W). Temporal chunking with a persistent causal feature cache
+        # — mathematically equivalent to encoding the whole clip at once, but bounded
+        # in memory. Chunk layout (1 + 4k frames) matches the WanVAE-derived temporal
+        # downsampling (temperal_downsample=[False, True, True]). Kept here in the
+        # pipeline (not on the VAE) so QwenImageVAE stays identical to its image use.
+        vae = self.vae
+        t = x.shape[2]
+        iter_ = 1 + (t - 1) // 4
+        feat_cache = [None] * self._count_conv3d(vae.encoder)
+        out = None
+        for i in range(iter_):
+            feat_idx = [0]
+            chunk = x[:, :, :1, :, :] if i == 0 else x[:, :, 1 + 4 * (i - 1): 1 + 4 * i, :, :]
+            out_ = vae.encoder(chunk, feat_cache=feat_cache, feat_idx=feat_idx)
+            out = out_ if out is None else torch.cat([out, out_], dim=2)
+        x = vae.quant_conv(out)
+        x = x[:, :16]
+        mean, std = vae.mean.to(dtype=x.dtype, device=x.device), vae.std.to(dtype=x.dtype, device=x.device)
+        x = (x - mean) * std
+        return x
+
+    def decode_video(self, x):
+        # x: (B, 16, T', H, W) in DiT latent space. Denormalize, then decode one latent
+        # frame at a time through the persistent causal feature cache.
+        vae = self.vae
+        mean, std = vae.mean.to(dtype=x.dtype, device=x.device), vae.std.to(dtype=x.dtype, device=x.device)
+        x = x / std + mean
+        x = vae.post_quant_conv(x)
+        feat_cache = [None] * self._count_conv3d(vae.decoder)
+        out = None
+        for i in range(x.shape[2]):
+            feat_idx = [0]
+            out_ = vae.decoder(x[:, :, i:i + 1, :, :], feat_cache=feat_cache, feat_idx=feat_idx)
+            out = out_ if out is None else torch.cat([out, out_], dim=2)
+        return out
 
 
 class LingBotVideoUnit_ShapeChecker(PipelineUnit):
@@ -243,7 +284,7 @@ class LingBotVideoUnit_NoiseInitializer(PipelineUnit):
             1, pipe.dit.in_channels, length,
             height // VAE_SCALE_FACTOR_SPATIAL, width // VAE_SCALE_FACTOR_SPATIAL,
         )
-        # fp32 noise: the UniPC sampler accumulates state in fp32 for stability
+        # fp32 noise: the flow-matching sampler accumulates state in fp32 for stability
         # (matches the original pipeline's fp32 latents).
         noise = pipe.generate_noise(shape, seed=seed, rand_device=rand_device, torch_dtype=torch.float32)
         return {"noise": noise}
@@ -313,8 +354,8 @@ class LingBotVideoUnit_InputVideoEmbedder(PipelineUnit):
         pipe.load_models_to_device(self.onload_model_names)
         # preprocess_video -> (B, C, T, H, W) in [-1, 1], in pipe.torch_dtype.
         video = pipe.preprocess_video(input_video)
-        # QwenImageVAE.encode (5D path) already applies latent normalisation.
-        input_latents = pipe.vae.encode(video).to(dtype=torch.float32, device=pipe.device)
+        # encode_video applies latent normalisation on the 5D-video path.
+        input_latents = pipe.encode_video(video).to(dtype=torch.float32, device=pipe.device)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
         else:
@@ -345,5 +386,5 @@ def model_fn_lingbot_video(
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
-    # Return fp32 so the UniPC sampler / MSE loss run in full precision.
+    # Return fp32 so the flow-matching sampler / MSE loss run in full precision.
     return noise_pred.float()
