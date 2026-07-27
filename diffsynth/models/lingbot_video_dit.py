@@ -34,6 +34,24 @@ def should_keep_in_fp32(name: str) -> bool:
     return any(module_name in name.split(".") for module_name in LINGBOT_VIDEO_FP32_MODULES)
 
 
+def resolve_bulk_dtype(linear: nn.Module) -> torch.dtype:
+    """Dtype the bulk Linear path will actually compute in.
+
+    Reading `linear.weight.dtype` is wrong under DiffSynth's VRAM management: the
+    wrapped layer holds its weight in the offload dtype (e.g. float8) between
+    forwards, and on `meta` when offloaded to disk, casting to `computation_dtype`
+    only inside its own forward. `computation_dtype` is the value to feed the
+    activations, so prefer it whenever the layer is wrapped.
+    """
+    computation_dtype = getattr(linear, "computation_dtype", None)
+    if isinstance(computation_dtype, torch.dtype):
+        # fp8 compute still takes bf16 activations; AutoWrappedLinear quantises internally.
+        if computation_dtype in (torch.float8_e4m3fn, torch.float8_e4m3fnuz, torch.float8_e5m2):
+            return torch.bfloat16
+        return computation_dtype
+    return linear.weight.dtype
+
+
 def get_timestep_embedding(
     timesteps: torch.Tensor,
     embedding_dim: int,
@@ -367,7 +385,10 @@ class LingBotVideoSparseMoeBlock(nn.Module):
         return unpermuted[:-1]
 
     def _run_grouped_experts(self, tokens, counts):
-        if not hasattr(torch, "_grouped_mm"):
+        # `torch._grouped_mm` exists as a symbol on every backend but only has a CUDA
+        # kernel, so probing with `hasattr` alone would crash on CPU (and on NPU).
+        # Fall back to the mathematically equivalent per-expert loop off CUDA.
+        if not hasattr(torch, "_grouped_mm") or tokens.device.type != "cuda":
             return self._run_experts_for_loop(tokens, counts)
         input_shape, padded_tokens, permuted_indices, aligned_counts = self._pad_grouped_tokens(tokens, counts)
         offsets = torch.cumsum(aligned_counts, dim=0, dtype=torch.int32)
@@ -451,7 +472,7 @@ class LingBotVideoBlock(nn.Module):
             self.ffn = LingBotVideoMLP(h, intermediate_size)
         self.norm_post_ffn = LingBotVideoRMSNorm(h, norm_eps)
 
-    def forward(self, x, temb6, rotary_emb, attention_mask=None, moe_padding_mask=None):
+    def forward(self, x, temb6, rotary_emb, attention_mask=None, moe_padding_mask=None, bulk_dtype=None):
         expected_tokens = x.shape[0] * x.shape[1]
         if temb6.ndim != 2 or temb6.shape[0] != expected_tokens:
             raise ValueError(
@@ -459,13 +480,17 @@ class LingBotVideoBlock(nn.Module):
                 f"got {tuple(temb6.shape)} for hidden states {tuple(x.shape)}."
             )
         # AdaLN modulation / norms run in fp32 (sensitive path); cast to the bulk
-        # compute dtype only at the bf16 Linear boundary.
+        # compute dtype only at the bf16 Linear boundary. `bulk_dtype` is supplied
+        # by the parent module: under VRAM management the attention weights are
+        # held in the offload dtype (or on `meta` for disk offload), so their
+        # `.dtype` is not the dtype the Linear will actually compute in.
+        if bulk_dtype is None:
+            bulk_dtype = resolve_bulk_dtype(self.attn.to_q)
         mod = temb6.view(x.shape[0], x.shape[1], -1) + self.scale_shift_table.unsqueeze(0)
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = mod.chunk(6, dim=-1)
         gate_msa, gate_mlp = gate_msa.tanh(), gate_mlp.tanh()
         scale_msa, scale_mlp = 1.0 + scale_msa, 1.0 + scale_mlp
 
-        bulk_dtype = self.attn.to_q.weight.dtype
         attn_in = (self.norm1(x) * scale_msa + shift_msa).to(bulk_dtype)
         attn_out = self.attn(attn_in, rotary_emb, attention_mask)
         x = x + (gate_msa * self.norm_post_attn(attn_out)).to(x.dtype)
@@ -651,9 +676,12 @@ class LingBotVideoDiT(nn.Module):
                 attention_mask = key_mask[:, None, None, :]      # (B,1,1,S) -> SDPA broadcast
                 moe_padding_mask = key_mask.reshape(-1).float()  # (B*S,)
 
-        # Timestep -> per-token modulation.
+        # Timestep -> per-token modulation. The timestep MLP is one of the fp32-pinned
+        # modules, so its input is fp32 -- but VRAM management wraps every `nn.Linear`
+        # at `computation_dtype` regardless of that policy, so resolve the dtype from
+        # the layer itself instead of assuming fp32.
         timestep_proj = self.time_proj(timestep.float())
-        t_emb = self.time_embedder(timestep_proj)  # (B, D)
+        t_emb = self.time_embedder(timestep_proj.to(resolve_bulk_dtype(self.time_embedder.linear_1)))  # (B, D)
         if packed_batch:
             temb_input = torch.cat(
                 [t_emb[i:i + 1].unsqueeze(1).expand(1, sample_seq_lens[i], -1) for i in range(B)], dim=1
@@ -661,8 +689,10 @@ class LingBotVideoDiT(nn.Module):
         else:
             temb_input = t_emb.unsqueeze(1).expand(B, joint_seq_len, -1)  # (B, S, D)
         b_eff, s_eff = temb_input.shape[0], temb_input.shape[1]
-        temb6 = self.time_modulation(temb_input.reshape(b_eff * s_eff, -1))  # (B*S, 6D)
+        mod_dtype = resolve_bulk_dtype(self.time_modulation[1])
+        temb6 = self.time_modulation(temb_input.reshape(b_eff * s_eff, -1).to(mod_dtype))  # (B*S, 6D)
 
+        bulk_dtype = resolve_bulk_dtype(self.patch_embedder)
         for block in self.blocks:
             joint = gradient_checkpoint_forward(
                 block,
@@ -670,12 +700,16 @@ class LingBotVideoDiT(nn.Module):
                 use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
                 x=joint, temb6=temb6, rotary_emb=rotary,
                 attention_mask=attention_mask, moe_padding_mask=moe_padding_mask,
+                bulk_dtype=bulk_dtype,
             )
 
-        final_mod = self.norm_out_modulation(temb_input.reshape(joint.shape[0] * joint.shape[1], -1))
+        out_mod_dtype = resolve_bulk_dtype(self.norm_out_modulation[1])
+        final_mod = self.norm_out_modulation(
+            temb_input.reshape(joint.shape[0] * joint.shape[1], -1).to(out_mod_dtype)
+        )
         shift, scale = final_mod.reshape(joint.shape[0], joint.shape[1], -1).chunk(2, dim=-1)
         final_hidden = self.norm_out(joint) * (1.0 + scale) + shift
-        projected = self.proj_out(final_hidden.to(self.proj_out.weight.dtype))
+        projected = self.proj_out(final_hidden.to(resolve_bulk_dtype(self.proj_out)))
 
         if packed_batch:
             split_lengths = []

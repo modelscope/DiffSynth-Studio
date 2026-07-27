@@ -1333,6 +1333,22 @@ lingbot_video_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.lingbot_video_dit.LingBotVideoDiTStateDictConverter",
     },
     {
+        # Example: ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        # MoE 30B-A3B DiT (128 experts, top-8 with group-limited routing, 1 shared
+        # expert). The released package also ships a `refiner/` DiT with the exact
+        # same architecture and key set, so it hashes identically and is loaded
+        # through this entry too; the pipeline separates them by load order.
+        "model_hash": "65b83aa625cd362ff5ff3409fb367a6f",
+        "model_name": "lingbot_video_dit",
+        "model_class": "diffsynth.models.lingbot_video_dit.LingBotVideoDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.lingbot_video_dit.LingBotVideoDiTStateDictConverter",
+        "extra_kwargs": {
+            "depth": 48, "axes_lens": (4096, 512, 512), "num_experts": 128,
+            "moe_intermediate_size": 768, "n_group": 4, "topk_group": 2,
+            "n_shared_experts": 1, "routed_scaling_factor": 2.5,
+        },
+    },
+    {
         # Example: ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="text_encoder/*.safetensors")
         # Qwen3-VL text encoder (2 shards). Hash is over the merged key set of both
         # shards. The checkpoint stores only the `model.*` submodule (713 tensors,

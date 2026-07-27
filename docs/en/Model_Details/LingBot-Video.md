@@ -1,10 +1,10 @@
 # LingBot-Video
 
-LingBot-Video is a flow-matching text-to-video generation model. This document covers DiffSynth-Studio's inference and LoRA SFT training support for the **Dense-1.3B** text-to-video checkpoint.
+LingBot-Video is a flow-matching text-to-video generation model. This document covers DiffSynth-Studio's inference support for the **Dense-1.3B** and **MoE-30B-A3B** text-to-video checkpoints, and LoRA SFT training support for Dense-1.3B.
 
 The integration is built on the standard DiffSynth pipeline stack:
 
-- **DiT** — `LingBotVideoDiT` (`diffsynth/models/lingbot_video_dit.py`), the video denoiser. The Dense-1.3B build uses a plain FFN; the architecture also supports an MoE FFN.
+- **DiT** — `LingBotVideoDiT` (`diffsynth/models/lingbot_video_dit.py`), the video denoiser. A single class covers both variants: Dense-1.3B uses a plain FFN (`num_experts=0`), MoE-30B-A3B a sparse MoE FFN.
 - **Text encoder** — `LingBotVideoTextEncoder` (Qwen3-VL). Prompts are wrapped in a prompt-enhancement chat template, encoded, and the template-prefix tokens are cropped.
 - **VAE** — reuses DiffSynth's `QwenImageVAE` (byte-identical to the LingBot-Video VAE), 8× spatial / 4× temporal compression.
 - **Scheduler** — `LingBotVideoUniPCScheduler`: UniPC multistep for inference; it falls back to the full-resolution flow-matching schedule for training.
@@ -48,13 +48,39 @@ video = pipe(
 save_video(video, "video.mp4", fps=15, quality=10)
 ```
 
-**Low VRAM:** pass `vram_limit=<GB>` to `from_pretrained` to enable layer-by-layer offloading — see the low-VRAM example in the table below.
+**Low VRAM:** set `offload_dtype` / `offload_device` on each `ModelConfig` to enable layer-by-layer offloading, optionally with `vram_limit=<GB>` — see the low-VRAM example in the table below.
+
+## MoE-30B-A3B
+
+[Robbyant/lingbot-video-moe-30b-a3b](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b) is the larger variant: 30B total parameters with ~3B active per token. Each MoE layer holds 128 routed experts plus 1 shared expert, and routes each token to 8 experts using group-limited top-k (4 groups, top-2 groups).
+
+It loads through the same pipeline; only the model ID and the shard glob change (the checkpoint is split across 13 shards):
+
+```python
+pipe = LingBotVideoPipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
+        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="text_encoder/model*.safetensors"),
+        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+    ],
+    processor_config=ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="processor/"),
+)
+```
+
+Notes specific to the MoE variant:
+
+- The expert matmuls use `torch._grouped_mm` on CUDA, falling back to an equivalent per-expert loop elsewhere.
+- The experts store their weights as grouped `nn.Parameter` tensors rather than `nn.Linear`, so VRAM management wraps the expert container itself. Since the experts are the bulk of the model, the low-VRAM path is what keeps resident VRAM near the ~3B active footprint instead of the full 30B.
+- The released package also ships a second-stage `refiner/` DiT (same architecture, used to upscale a base result). It is not wired into the pipeline yet.
 
 ## Model Overview
 
 | Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
 |-|-|-|-|-|-|-|
 |[Robbyant/lingbot-video-dense-1.3b](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b.py)|
+|[Robbyant/lingbot-video-moe-30b-a3b](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b.py)|-|-|-|-|
 
 ## Model Inference
 
@@ -69,7 +95,7 @@ Input parameters for `LingBotVideoPipeline` inference include:
 * `height`: Video height, default 480. Must be a multiple of 16.
 * `width`: Video width, default 480. Must be a multiple of 16.
 * `num_frames`: Number of video frames, default 81. Must satisfy `4k+1` (the VAE compresses time by 4×).
-* `cfg_scale`: Classifier-free guidance scale, default 6.0. A value of 3.0 is recommended for the Dense-1.3B model.
+* `cfg_scale`: Classifier-free guidance scale, default 6.0. A value of 3.0 is recommended for LingBot-Video.
 * `num_inference_steps`: Number of inference steps, default 40.
 * `sigma_shift`: Flow-matching timestep shift, default 3.0.
 * `seed`: Random seed. Default is `None`, meaning completely random.
