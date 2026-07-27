@@ -45,7 +45,7 @@ except ImportError:
 from system_prompts import (
     VIDEO_STEP1_EXPAND, VIDEO_STEP2_MAP, IMAGE_STEP1_EXPAND, IMAGE_STEP2_MAP,
 )
-from diffsynth.pipelines.lingbot_video_prompt_rewriter import normalize_caption
+from diffsynth.pipelines.lingbot_video import normalize_caption
 
 
 # mode -> (step1 system prompt, step2 system prompt, feed image?, add duration?)

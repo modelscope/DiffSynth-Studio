@@ -1,3 +1,6 @@
+import json
+import os
+
 import torch
 import numpy as np
 from PIL import Image
@@ -13,7 +16,79 @@ from ..diffusion.flow_match import FlowMatchScheduler
 from ..models.lingbot_video_dit import LingBotVideoDiT
 from ..models.lingbot_video_text_encoder import LingBotVideoTextEncoder
 from ..models.qwen_image_vae import QwenImageVAE, QwenImageCausalConv3d
-from .lingbot_video_prompt_rewriter import normalize_caption
+
+
+# ---------------------------------------------------------------------------
+# Caption normalization
+#
+# LingBot-Video is trained on **structured JSON captions**, not free-form prose;
+# feeding a flat sentence is out-of-distribution and degrades quality. The pipeline
+# calls ``normalize_caption`` internally (see ``__call__``) so a caption given as a
+# ``dict`` / ``list`` / path to a ``prompt.json`` is serialised to the exact
+# compact-JSON string the DiT consumes, while a plain string is passed through
+# untouched. It is a module-level function (not a method) so the training data-prep
+# scripts -- train.py and rewrite_captions.py -- can import the identical
+# serialisation without instantiating the pipeline. Turning a *brief idea* into that
+# structured caption is a separate, heavier VLM step that lives with the examples
+# (examples/lingbot_video/model_inference/prompt_rewriter.py), out of the core.
+# ---------------------------------------------------------------------------
+
+# Keys that describe how to *render* the clip rather than its content. When a full
+# sample dict is given without an explicit "caption" key, these are stripped before
+# serialisation (kept identical to the original ``caption_from_sample``).
+_RUNTIME_KEYS = {"duration", "fps", "height", "width", "num_frames", "resolution", "ratio"}
+
+
+def _serialize_caption(caption) -> str:
+    """dict/list -> compact JSON (the exact model format); anything else -> ``str()``."""
+    if isinstance(caption, (dict, list)):
+        return json.dumps(caption, ensure_ascii=False, separators=(",", ":"))
+    return str(caption)
+
+
+def _caption_from_sample(sample) -> str:
+    """Port of ``lingbot_video.utils.caption_from_sample``.
+
+    A *sample* dict either carries the structured caption under ``"caption"`` or IS
+    the caption once the runtime keys are dropped.
+    """
+    if isinstance(sample, dict):
+        if "caption" in sample:
+            caption = sample["caption"]
+        else:
+            caption = {k: v for k, v in sample.items() if k not in _RUNTIME_KEYS}
+    else:
+        caption = sample
+    return _serialize_caption(caption)
+
+
+def normalize_caption(prompt):
+    """Normalise a caption into the compact-JSON string the LingBot DiT expects.
+
+    Accepts:
+
+    - ``dict`` / ``list`` -- a structured caption (or a full sample dict with a
+      ``"caption"`` key), serialised via the original compact-JSON convention.
+    - a path to a ``prompt.json`` file (``str`` ending in ``.json`` that exists) --
+      loaded, then handled as the dict/list case.
+    - any other ``str`` -- returned unchanged (already a caption string, or free-form
+      prose the caller intentionally wants to feed as-is).
+    - ``None`` -- returned unchanged.
+
+    Plain strings are passed through, so this is safe to call unconditionally on
+    prompts that are already in the right format.
+    """
+    if prompt is None:
+        return prompt
+    if isinstance(prompt, str):
+        if prompt.endswith(".json") and os.path.isfile(prompt):
+            with open(prompt, "r", encoding="utf-8") as f:
+                prompt = json.load(f)
+            return _caption_from_sample(prompt)
+        return prompt
+    if isinstance(prompt, (dict, list)):
+        return _caption_from_sample(prompt)
+    return str(prompt)
 
 
 # Number of tokens the Qwen3-VL processor truncates the prompt to. Copied verbatim

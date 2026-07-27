@@ -28,7 +28,7 @@ import sys
 # keeps only normalize_caption), so training and inference share one implementation.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "model_inference"))
 from prompt_rewriter import Rewriter, make_backend
-from diffsynth.pipelines.lingbot_video_prompt_rewriter import normalize_caption
+from diffsynth.pipelines.lingbot_video import normalize_caption
 
 
 def _load_rows(path):

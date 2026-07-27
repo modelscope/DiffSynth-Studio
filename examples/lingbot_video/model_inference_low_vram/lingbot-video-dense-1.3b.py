@@ -1,8 +1,7 @@
 import os
 import torch
 from diffsynth.utils.data import save_video
-from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
-from diffsynth.pipelines.lingbot_video_prompt_rewriter import normalize_caption
+from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig, normalize_caption
 
 
 # Low-VRAM inference. Setting `offload_dtype` / `offload_device` on each ModelConfig is
