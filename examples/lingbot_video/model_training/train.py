@@ -38,12 +38,9 @@ class LingBotVideoTrainingModule(DiffusionTrainingModule):
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
         self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
 
-        # Training mode. switch_pipe_to_training_mode puts FlowMatchScheduler (Wan
-        # template) on the full 1000-step flow-matching schedule via
-        # set_timesteps(1000, training=True); the SFT loss samples a random timestep
-        # from it. Attention-only LoRA is the default scope: pass
-        # `--lora_target_modules "to_q,to_k,to_v,to_out"` to leave the MoE / FFN
-        # (gate_proj / up_proj / down_proj) and the router untouched.
+        # Training mode: FlowMatchScheduler (Wan template) runs the full 1000-step
+        # schedule and the SFT loss samples a random timestep. Attention-only LoRA is the
+        # default; pass --lora_target_modules "to_q,to_k,to_v,to_out" to skip MoE/router.
         self.switch_pipe_to_training_mode(
             self.pipe, trainable_models,
             lora_base_model, lora_target_modules, lora_rank, lora_checkpoint,
@@ -66,10 +63,8 @@ class LingBotVideoTrainingModule(DiffusionTrainingModule):
         self.min_timestep_boundary = min_timestep_boundary
 
     def get_pipeline_inputs(self, data):
-        # LingBot-Video is trained on structured-JSON captions. Normalise the metadata
-        # "prompt" column (dict / prompt.json path -> compact JSON; plain string kept
-        # as-is) so LoRA trains in-distribution. Prepare captions offline with
-        # model_training/rewrite_captions.py if your dataset stores raw prose.
+        # Normalise the metadata "prompt" column to the structured-JSON caption so LoRA
+        # trains in-distribution. Use rewrite_captions.py offline if it stores raw prose.
         inputs_posi = {"prompt": normalize_caption(data["prompt"])}
         inputs_nega = {}
         inputs_shared = {

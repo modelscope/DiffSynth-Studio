@@ -10,9 +10,8 @@ from ..core.gradient import gradient_checkpoint_forward
 from ..core.device.npu_compatible_device import get_device_type
 
 
-# Modules kept in fp32 regardless of the model's bulk compute dtype. The custom
-# `to()` below honours this list so the sensitive AdaLN / norm / router paths stay
-# in full precision, matching the original lingbot-video precision policy.
+# Modules kept in fp32 regardless of the bulk compute dtype (sensitive AdaLN / norm /
+# router paths); the custom `to()` below honours this list.
 LINGBOT_VIDEO_FP32_MODULES = (
     "time_embedder",
     "time_modulation",
@@ -653,11 +652,8 @@ class LingBotVideoDiT(nn.Module):
 
         # Timestep -> per-token modulation.
         timestep_proj = self.time_proj(timestep.float())
-        # time_proj is a parameter-free sinusoidal embedding and always returns fp32
-        # (get_timestep_embedding upcasts). Cast to the running compute dtype -- joint is
-        # the bf16 hidden state (or fp32 in a full-precision run) -- before the MLP: under
-        # low-VRAM offload the wrapper computes weights in bf16 but does not cast inputs,
-        # so feeding fp32 here raises "mat1 and mat2 must have the same dtype".
+        # time_proj always returns fp32; cast to the compute dtype (joint) before the MLP,
+        # since under low-VRAM offload the wrapper computes in bf16 but does not cast inputs.
         t_emb = self.time_embedder(timestep_proj.to(joint.dtype))  # (B, D)
         if packed_batch:
             temb_input = torch.cat(
@@ -680,9 +676,7 @@ class LingBotVideoDiT(nn.Module):
         final_mod = self.norm_out_modulation(temb_input.reshape(joint.shape[0] * joint.shape[1], -1))
         shift, scale = final_mod.reshape(joint.shape[0], joint.shape[1], -1).chunk(2, dim=-1)
         final_hidden = self.norm_out(joint) * (1.0 + scale) + shift
-        # Match the running compute dtype (joint), not self.proj_out.weight.dtype: under
-        # low-VRAM offload the resident weight is fp8 (bf16 only at compute time), so
-        # reading .weight.dtype here would cast the input to fp8 and mismatch the wrapper.
+        # Cast to joint's dtype, not proj_out.weight.dtype (which is fp8 under offload).
         projected = self.proj_out(final_hidden.to(joint.dtype))
 
         if packed_batch:

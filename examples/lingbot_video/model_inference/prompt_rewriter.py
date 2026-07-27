@@ -1,24 +1,15 @@
 """Two-stage prompt rewriter for LingBot-Video (example-side helper).
 
-The LingBot-Video DiT is trained on **structured JSON captions**, not free-form prose.
-:func:`rewrite_prompt` turns a brief idea into that structured caption via a faithful
-port of the original two-stage rewriter (``rewriter/rewriter_core.py`` +
-``rewriter/inference.py``): stage 1 *expands* the idea into a natural-language caption
-(base model, no LoRA), stage 2 *maps* it into the structured JSON (base model + a
-stage-2 LoRA adapter).
+rewrite_prompt turns a brief idea into the structured JSON caption the DiT expects:
+stage 1 expands the idea into a natural-language caption (base model), stage 2 maps it
+into structured JSON (base model + stage-2 LoRA). This is a separate VLM + LoRA adapter,
+not the DiT, and is not downloaded with the pipeline -- hence it lives with the examples,
+while the core keeps only normalize_caption. TransformersBackend loads the rewriter VLM
+locally; make_backend also accepts any object exposing generate(text, image, use_lora).
 
-This is a separate VLM + LoRA adapter, NOT the DiT — it is not shipped or downloaded
-with the pipeline, which is why it lives here with the examples rather than in the
-diffsynth core (the core keeps only ``normalize_caption``). The bundled
-:class:`TransformersBackend` loads the rewriter VLM locally; :func:`make_backend` also
-accepts any object exposing ``generate(text, image, use_lora) -> str`` so the rewriter
-can be driven by a hosted / OpenAI-compatible endpoint without shipping the weights.
-
-Typical use::
-
-    from prompt_rewriter import rewrite_prompt          # sibling module in this dir
+    from prompt_rewriter import rewrite_prompt
     caption = rewrite_prompt("a puppy running across a meadow", mode="t2v", duration=5)
-    video = pipe(prompt=caption, ...)                    # caption is the structured JSON string
+    video = pipe(prompt=caption, ...)
 """
 
 import io
@@ -90,11 +81,8 @@ def _step2_text(mode, detailed, dur):
 
 
 def parse_json(raw):
-    """Parse the stage-2 output into a dict, or ``None`` if it cannot be parsed.
-
-    VLMs occasionally emit unstable JSON (missing quotes, trailing commas, ``` fences),
-    so we strip any code fence, then try the stdlib parser first and fall back to
-    ``json_repair`` when it is installed (recommended for messy outputs)."""
+    """Parse the stage-2 output into a dict, or None. Strips any code fence, tries the
+    stdlib parser, then falls back to json_repair (if installed) for messy output."""
     s = (raw or "").strip()
     m = re.search(r"```(?:json)?\s*(\{.*\})\s*```", s, re.DOTALL)
     if m:
@@ -115,9 +103,8 @@ def parse_json(raw):
 
 
 def save_caption(result, duration, path):
-    """Save as ``{"caption": <structured JSON caption>, "duration": <seconds|null>}`` —
-    exactly the ``prompt.json`` the pipeline / runner consume. ``duration`` is integer
-    seconds for T2V/TI2V and ``None`` for T2I (a still image has no duration)."""
+    """Save as {"caption": <caption>, "duration": <seconds|null>} -- the prompt.json the
+    pipeline consumes. duration is integer seconds for T2V/TI2V, None for T2I."""
     dur = int(round(duration)) if MODES[result["mode"]]["duration"] else None
     with open(path, "w", encoding="utf-8") as f:
         json.dump({"caption": result["json"], "duration": dur}, f, ensure_ascii=False, indent=2)
@@ -125,10 +112,8 @@ def save_caption(result, duration, path):
 
 
 class TransformersBackend:
-    """Local rewriter VLM + LoRA adapter (peft). stage1 = base (adapter disabled),
-    stage2 = base + LoRA. Loads the rewriter model into memory; the weights are NOT
-    the DiT — set ``base``/``adapter`` (or ``REWRITER_BASE_MODEL``/``REWRITER_ADAPTER``)
-    to the rewriter VLM and its stage-2 adapter."""
+    """Local rewriter VLM + LoRA adapter (peft): stage1 = base (adapter disabled),
+    stage2 = base + LoRA. Set base/adapter (or REWRITER_BASE_MODEL/REWRITER_ADAPTER)."""
 
     def __init__(self, base=None, adapter=None, device="auto", max_new_tokens=6144):
         import contextlib
@@ -171,13 +156,8 @@ class TransformersBackend:
 
 
 def make_backend(backend="transformers", base=None, adapter=None):
-    """Build a rewriter backend.
-
-    - ``"transformers"`` — the bundled local :class:`TransformersBackend`.
-    - a custom object / callable — returned as-is if it already exposes
-      ``generate(text, image, use_lora) -> str``. Use this to drive the rewriter from
-      a hosted or OpenAI-compatible endpoint without downloading the VLM locally.
-    """
+    """Build a rewriter backend: "transformers" for the local TransformersBackend, or any
+    object already exposing generate(text, image, use_lora) -> str (e.g. a hosted endpoint)."""
     if backend == "transformers":
         return TransformersBackend(base, adapter)
     if hasattr(backend, "generate"):
