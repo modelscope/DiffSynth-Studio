@@ -13,7 +13,7 @@ pipe = FluxImagePipeline.from_pretrained(
     ],
 )
 
-pipe.load_timestep_lora(ModelConfig(model_id="DiffSynth-Studio/MultiAlign-FLUX.1-dev", origin_file_pattern="adapter_*"))
+pipe.load_timestep_lora(ModelConfig(model_id="DiffSynth-Studio/MultiAlign-FLUX.1-dev", origin_file_pattern="adapter_model.safetensors"))
 
 prompt = "A moonlit Venetian canal scene with a gondola floating on the left, a candlelit table for two on a stone terrace to the right, and flower boxes under arched windows in the peach-colored building behind, with shimmering reflections in dark water; romantic cinematic mood and the restaurant sign reading 'NOTTE SERENA'"
 

@@ -1,6 +1,4 @@
-import json, math
 from functools import wraps
-from pathlib import Path
 import torch
 import torch.nn.functional as F
 from ...core import load_state_dict
@@ -65,14 +63,6 @@ class FluxTimestepLoRALoader:
     def __init__(self, device="cpu", torch_dtype=torch.float32):
         self.device = device
         self.torch_dtype = torch_dtype
-
-    def load_adapter_scaling(self, lora_file):
-        config_path = lora_file.parent / "adapter_config.json"
-        with config_path.open("r", encoding="utf-8") as file:
-            config = json.load(file)
-        rank = int(config["r"])
-        denominator = math.sqrt(rank) if config.get("use_rslora", False) else rank
-        return float(config["lora_alpha"]) / denominator
 
     @staticmethod
     def fetch_tensor(state_dict, layer_name, suffix):
@@ -139,12 +129,10 @@ class FluxTimestepLoRALoader:
 
         return model_fn_with_timestep_lora
 
-    def load(self, dit, lora_config, alpha=1.0):
+    def load(self, dit, lora_config, alpha=2.0):
         lora_config.download_if_necessary()
-        paths = lora_config.path
-        lora_file = next(path for path in paths if path.endswith(".safetensors"))
-        state_dict = load_state_dict(lora_file, torch_dtype=self.torch_dtype, device=self.device)
-        scaling = self.load_adapter_scaling(Path(lora_file)) * alpha
+        state_dict = load_state_dict(lora_config.path, torch_dtype=self.torch_dtype, device=self.device)
+        scaling = alpha
 
         for block_id in range(len(dit.blocks)):
             source_prefix = f"transformer_blocks.{block_id}"
@@ -160,4 +148,3 @@ class FluxTimestepLoRALoader:
 
         for block_id in range(len(dit.single_blocks)):
             self.add_qkv_components(dit, state_dict, f"single_transformer_blocks.{block_id}.attn", f"single_blocks.{block_id}.to_qkv_mlp", scaling, ("to_q", "to_k", "to_v"))
-            
