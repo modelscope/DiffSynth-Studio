@@ -142,6 +142,24 @@ video = pipe(
 
 首帧会按保持宽高比的方式 cover-resize 并中心裁剪到 `height`×`width`，因此不必与目标分辨率完全一致。可直接运行的示例见 [`lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py)，它使用随仓库发布的首帧（`assets/ti2v_first_frame.png`）及其配对 caption（`prompts/ti2v_example.json`）。caption 应描述从首帧开始展开的运动；与 T2V 一样，写成结构化 JSON caption 最贴近训练分布。`input_image` 与 `input_video` 互斥，至多传一个。
 
+## 文生图（t2i）
+
+文生图就是只生成一帧的文生视频——同一条 pipeline、同一个 DiT，只需设 `num_frames=1`，无需额外的图像权重。唯一与图像相关的开关是负向提示词：`DEFAULT_NEGATIVE_PROMPT_IMAGE`（从 `diffsynth.pipelines.lingbot_video` 导出）去掉了不适用于单帧的时序/运动类词条。此时 pipeline 返回只含一个元素的列表，即一张 `PIL.Image`。
+
+```python
+from diffsynth.pipelines.lingbot_video import DEFAULT_NEGATIVE_PROMPT_IMAGE
+
+frames = pipe(
+    prompt=caption,
+    negative_prompt=DEFAULT_NEGATIVE_PROMPT_IMAGE,
+    height=480, width=832, num_frames=1,
+    num_inference_steps=40, cfg_scale=3.0, seed=0,
+)
+frames[0].save("image.png")
+```
+
+可直接运行的示例见 [`lingbot-video-dense-1.3b_t2i.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py)，它使用随仓库发布的静态图 caption `prompts/t2i_example.json`。
+
 ## 模型训练
 
 LingBot-Video 通过 [`examples/lingbot_video/model_training/train.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/train.py) 进行训练，使用 flow-matching SFT 目标对 DiT 做 LoRA 微调。脚本的参数包括：

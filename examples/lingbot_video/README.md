@@ -75,6 +75,25 @@ video = pipe(
 
 The runnable example uses the released first frame + caption in `model_inference/assets/ti2v_first_frame.png` and `model_inference/prompts/ti2v_example.json`. `input_image` and `input_video` are mutually exclusive.
 
+### Text-to-image (t2i)
+
+Text-to-image is just text-to-video with `num_frames=1` — same pipeline and DiT, no separate image weight. Pass `DEFAULT_NEGATIVE_PROMPT_IMAGE` (the still-image negative prompt) and save the single returned frame as an image.
+
+```bash
+python examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py
+```
+
+```python
+from diffsynth.pipelines.lingbot_video import DEFAULT_NEGATIVE_PROMPT_IMAGE
+frames = pipe(
+    prompt=caption, negative_prompt=DEFAULT_NEGATIVE_PROMPT_IMAGE,
+    height=480, width=832, num_frames=1, cfg_scale=3.0, seed=0,
+)
+frames[0].save("image.png")
+```
+
+The runnable example uses the released still-image caption `model_inference/prompts/t2i_example.json`.
+
 ## Prompt rewriting (important for quality)
 
 LingBot-Video is trained on **structured-JSON captions**, not free-form prose. Feeding a flat sentence is out-of-distribution and visibly degrades quality (softer, less coherent motion); feeding the structured caption the model expects restores it. The pipeline accepts a caption as a `dict`, a path to a `prompt.json`, or a plain string, and normalises it to the exact compact-JSON format the DiT was trained on — a plain string is passed through unchanged, so existing scripts keep working.

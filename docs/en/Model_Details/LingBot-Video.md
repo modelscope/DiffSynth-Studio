@@ -142,6 +142,24 @@ video = pipe(
 
 The condition frame is aspect-ratio-preserving cover-resized and center-cropped to `height`×`width`, so it need not match the target resolution exactly. A runnable example ships at [`lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py), using the released first frame (`assets/ti2v_first_frame.png`) and its paired caption (`prompts/ti2v_example.json`). The caption should describe the motion that unfolds from the frame; as with T2V it is most in-distribution as a structured-JSON caption. `input_image` and `input_video` are mutually exclusive — pass at most one.
 
+## Text-to-image (t2i)
+
+Text-to-image is text-to-video with a single frame — the same pipeline and DiT, just `num_frames=1`. There is no separate image checkpoint. The only image-specific knob is the negative prompt: `DEFAULT_NEGATIVE_PROMPT_IMAGE` (exported from `diffsynth.pipelines.lingbot_video`) drops the temporal/motion terms that cannot apply to a still frame. The pipeline returns a 1-element list, i.e. a single `PIL.Image`.
+
+```python
+from diffsynth.pipelines.lingbot_video import DEFAULT_NEGATIVE_PROMPT_IMAGE
+
+frames = pipe(
+    prompt=caption,
+    negative_prompt=DEFAULT_NEGATIVE_PROMPT_IMAGE,
+    height=480, width=832, num_frames=1,
+    num_inference_steps=40, cfg_scale=3.0, seed=0,
+)
+frames[0].save("image.png")
+```
+
+A runnable example ships at [`lingbot-video-dense-1.3b_t2i.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py), using the released still-image caption `prompts/t2i_example.json`.
+
 ## Model Training
 
 LingBot-Video is trained through [`examples/lingbot_video/model_training/train.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/train.py), which fine-tunes the DiT with LoRA using the flow-matching SFT objective. The script parameters include:

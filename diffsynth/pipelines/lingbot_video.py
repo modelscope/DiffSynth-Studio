@@ -84,6 +84,13 @@ DEFAULT_NEGATIVE_PROMPT = (
     '{"universal_negative": {"visual_quality": ["low quality", "worst quality", "blurry", "pixelated", "jpeg artifacts", "low resolution", "unstable color", "color flicker", "underexposed", "overexposed", "invisible subject", "subject hidden in darkness"], "artistic_style": ["painting", "illustration", "drawing", "cartoon", "3d render", "cgi", "sketch", "digital art"], "composition_and_content": ["text", "watermark", "signature", "logo", "subtitles", "pillarboxed", "side bars", "portrait image in landscape frame"], "temporal_and_motion_stability": ["flickering", "jittery", "motion blur", "temporal inconsistency", "warping", "morphing", "incoherent motion", "unnatural movement", "static object with sudden jump", "frame-to-frame inconsistency"], "material_and_structure": ["plastic-like glass", "unrealistic texture", "deformed bottle", "liquid freezing improperly", "distorted reflections"]}}'
 )
 
+# Still-image (t2i) default negative prompt, copied verbatim from the official pipeline.
+# Drops the whole temporal/motion block and the video-only codec/temporal terms that
+# cannot apply to a single frame. Pass this as negative_prompt when num_frames=1.
+DEFAULT_NEGATIVE_PROMPT_IMAGE = (
+    '{"universal_negative": {"visual_quality": ["low quality", "worst quality", "blurry", "pixelated", "jpeg artifacts", "low resolution", "underexposed", "overexposed", "invisible subject", "subject hidden in darkness"], "artistic_style": ["painting", "illustration", "drawing", "cartoon", "3d render", "cgi", "sketch", "digital art"], "composition_and_content": ["text", "watermark", "signature", "logo", "pillarboxed", "side bars", "portrait image in landscape frame"], "material_and_structure": ["plastic-like glass", "unrealistic texture", "deformed bottle", "distorted reflections"]}}'
+)
+
 # VAE downsample factors (QwenImageVAE / Wan-VAE): 8x spatial, 4x temporal.
 VAE_SCALE_FACTOR_SPATIAL = 8
 VAE_SCALE_FACTOR_TEMPORAL = 4
