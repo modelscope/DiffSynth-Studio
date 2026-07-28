@@ -1,6 +1,9 @@
 import json
+import math
 
 import torch
+import torch.nn.functional as F
+import numpy as np
 from PIL import Image
 from tqdm import tqdm
 from typing import Optional, Union
@@ -136,6 +139,7 @@ class LingBotVideoPipeline(BasePipeline):
         prompt: Union[str, dict] = "",
         negative_prompt: Union[str, dict] = "",
         # Video-to-video
+        input_image: Image.Image = None,
         input_video: list[Image.Image] = None,
         denoising_strength: float = 1.0,
         # Randomness
@@ -188,6 +192,8 @@ class LingBotVideoPipeline(BasePipeline):
                 **models, timestep=timestep, progress_id=progress_id
             )
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
+            if first_frame_latents is not None:
+                inputs_shared["latents"][:, :, :cond_t] = first_frame_latents
 
         self.load_models_to_device(['vae'])
         latents = inputs_shared["latents"].to(dtype=self.torch_dtype, device=self.device)
@@ -195,6 +201,42 @@ class LingBotVideoPipeline(BasePipeline):
         video = self.vae_output_to_video(video)
         self.load_models_to_device([])
         return video
+
+    def preprocess_cond_image(self, image: Image.Image, height, width):
+        # TI2V condition frame -> (1, C, 1, H, W) pixel tensor in [0, 1], aspect-ratio
+        # preserving cover-resize + center-crop to (height, width).
+        raw = torch.from_numpy(np.array(image.convert("RGB"))).permute(2, 0, 1).unsqueeze(0).contiguous()
+        old_h, old_w = raw.shape[-2:]
+        scale = max(height / old_h, width / old_w)
+        new_h = max(math.ceil(old_h * scale), height)
+        new_w = max(math.ceil(old_w * scale), width)
+        resized = F.interpolate(raw.float(), size=(new_h, new_w), mode="bilinear", align_corners=False)
+        top = int(round((new_h - height) / 2.0))
+        left = int(round((new_w - width) / 2.0))
+        cropped = resized[:, :, top: top + height, left: left + width] / 255.0
+        return cropped.unsqueeze(2)
+
+    def _vision_patch_size(self) -> int:
+        # Resolve the Qwen3-VL vision patch size, used with SPATIAL_MERGE_SIZE to pick
+        # the smart-resize grid factor.
+        for obj in (
+            getattr(getattr(self.text_encoder, "config", None), "vision_config", None),
+            getattr(getattr(self.processor, "image_processor", None), "config", None),
+            getattr(self.processor, "image_processor", None),
+        ):
+            patch = getattr(obj, "patch_size", None)
+            if patch is not None:
+                return int(patch)
+        return 16
+
+    def _vlm_image(self, pixel: torch.Tensor) -> Image.Image:
+        # Build the PIL image handed to the text encoder from the condition pixel tensor,
+        # smart-resized to the Qwen3-VL patch grid.
+        image = _pixel_tensor_to_pil(pixel)
+        patch_factor = self._vision_patch_size() * SPATIAL_MERGE_SIZE
+        w, h = image.size
+        resized_height, resized_width = smart_resize(h, w, factor=patch_factor)
+        return image.resize((resized_width, resized_height))
 
 
 class LingBotVideoUnit_ShapeChecker(PipelineUnit):
@@ -284,9 +326,13 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
                 self._crop_start = int(prefix["input_ids"].shape[1])
         return self._crop_start
 
-    def encode_prompt(self, pipe: LingBotVideoPipeline, prompt):
+    def encode_prompt(self, pipe: LingBotVideoPipeline, prompt, vlm_image=None):
         prompt = self.normalize_caption(prompt)
-        text = self.PROMPT_TEMPLATE.format(prompt)
+        # TI2V: prepend the image-token block so the encoder attends to the condition
+        # frame. The image tokens land after the template prefix, so crop_start is
+        # unaffected.
+        visual_template = IMG_PROMPT_TEMPLATE if vlm_image is not None else ""
+        text = self.PROMPT_TEMPLATE.format(visual_template + prompt)
         inputs = pipe.processor(
             text=[text],
             images=[vlm_image] if vlm_image is not None else None,
@@ -362,7 +408,7 @@ class LingBotVideoUnit_ImageEmbedder(PipelineUnit):
         # was trained to inpaint on.
         pixel = pipe.preprocess_cond_image(input_image, height, width)
         pixel = pixel.to(dtype=pipe.torch_dtype, device=pipe.device)
-        first_frame_latents = pipe.encode_video(pixel * 2.0 - 1.0).to(dtype=torch.float32, device=pipe.device)
+        first_frame_latents = pipe.vae.encode_video(pixel * 2.0 - 1.0).to(dtype=pipe.torch_dtype, device=pipe.device)
         vlm_image = pipe._vlm_image(pixel)
         return {"first_frame_latents": first_frame_latents, "vlm_image": vlm_image}
 
