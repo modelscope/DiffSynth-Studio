@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ..core.gradient import gradient_checkpoint_forward
-from ..core.quant import QuantBackend, register_quant_backend, register_quant_preset
+from ..core.quant import DtypeGuardedLinear, QuantBackend, register_quant_backend, register_quant_preset
 
 LLM_TOKEN_INDICATOR = 3
 OUTPUT_IMAGE_INDICATOR = 2
@@ -17,8 +17,10 @@ FP8_E4M3_MAX = 448.0
 FP8_WEIGHT_DTYPE = torch.float8_e4m3fn
 
 
-class Fp8Linear(nn.Module):
+class Fp8Linear(DtypeGuardedLinear):
     """Linear layer holding an e4m3 float8 weight + per-row float32 scale."""
+
+    dtype_guarded_tensor_names = ("weight", "weight_scale")
 
     weight: torch.Tensor
     weight_scale: torch.Tensor
@@ -31,9 +33,7 @@ class Fp8Linear(nn.Module):
         bias: bool,
         compute_dtype: torch.dtype,
     ) -> None:
-        super().__init__()
-        self.in_features = in_features
-        self.out_features = out_features
+        super().__init__(in_features, out_features)
         self.compute_dtype = compute_dtype
         self.register_buffer(
             "weight",

@@ -2,6 +2,7 @@ from ..vram.initialization import skip_model_initialization
 from ..vram.disk_map import DiskMap
 from ..vram.layers import enable_vram_management
 from .file import load_state_dict, load_state_dict_metadata
+from ..quant import quantize_model_weights, dequantize_model_weights, replace_linear_for_quantized_load
 import torch
 from contextlib import contextmanager
 from transformers.integrations import is_deepspeed_zero3_enabled
@@ -32,21 +33,49 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
         else:
             disk_map = DiskMap(path, device, state_dict_converter=state_dict_converter)
             model = enable_vram_management(model, module_map, vram_config=vram_config, disk_map=disk_map, vram_limit=vram_limit)
+    elif quantize is not None:
+        # Weight-only quantization (see `diffsynth.core.quant`), isolated from the normal path below.
+        online_quantize = not quantize.load_prequantized
+        if online_quantize:
+            load_device, load_dtype = "cpu", torch_dtype
+        else:
+            load_device, load_dtype = device, None
+
+        if state_dict is not None:
+            pass
+        elif use_disk_map:
+            state_dict = DiskMap(path, load_device, torch_dtype=load_dtype)
+        else:
+            state_dict = load_state_dict(path, load_dtype, load_device)
+
+        if state_dict_converter is not None:
+            state_dict = state_dict_converter(state_dict)
+        else:
+            state_dict = {i: state_dict[i] for i in state_dict}
+
+        if quantize.load_prequantized:
+            model = replace_linear_for_quantized_load(model, quantize)
+            backend, _ = quantize.resolve()
+            state_dict = backend.unflatten_state_dict(state_dict, load_state_dict_metadata(path))
+
+        model.load_state_dict(state_dict, assign=True)
+
+        if online_quantize:
+            model = quantize_model_weights(model, quantize, compute_dtype=torch_dtype, device=device)
+        if quantize.mode == "dequant_once":
+            model = dequantize_model_weights(model, quantize, compute_dtype=torch_dtype or torch.bfloat16)
+        model = model.to(dtype=torch_dtype, device=device)
     else:
         # Why do we use `DiskMap`?
         # Sometimes a model file contains multiple models,
         # and DiskMap can load only the parameters of a single model,
         # avoiding the need to load all parameters in the file.
-        # When online quantization is requested, keep the fp weights on CPU so that
-        # `quantize_model_weights` can stream them to the target device layer by layer.
-        online_quantize = quantize is not None and not quantize.load_prequantized
-        load_device = "cpu" if online_quantize else device
         if state_dict is not None:
             pass
         elif use_disk_map:
-            state_dict = DiskMap(path, load_device, torch_dtype=torch_dtype)
+            state_dict = DiskMap(path, device, torch_dtype=torch_dtype)
         else:
-            state_dict = load_state_dict(path, torch_dtype, load_device)
+            state_dict = load_state_dict(path, torch_dtype, device)
         # Why do we use `state_dict_converter`?
         # Some models are saved in complex formats,
         # and we need to convert the state dict into the appropriate format.
@@ -54,11 +83,6 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
             state_dict = state_dict_converter(state_dict)
         else:
             state_dict = {i: state_dict[i] for i in state_dict}
-        if quantize is not None and quantize.load_prequantized:
-            from ..quant import replace_linear_for_quantized_load
-            model = replace_linear_for_quantized_load(model, quantize)
-            backend, _ = quantize.resolve()
-            state_dict = backend.unflatten_state_dict(state_dict, load_state_dict_metadata(path))
         # Why does DeepSpeed ZeRO Stage 3 need to be handled separately?
         # Because at this stage, model parameters are partitioned across multiple GPUs.
         # Loading them directly could lead to excessive GPU memory consumption.
@@ -70,20 +94,7 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
         # Why do we call `to()`?
         # Because some models override the behavior of `to()`,
         # especially those from libraries like Transformers.
-        if torch_dtype is not None and not (quantize is not None and quantize.load_prequantized):
-            # Preserve quantized weights
-            model = model.to(dtype=torch_dtype, device=load_device)
-        else:
-            # Device-only move: packed quantized weights must not be dtype-cast.
-            model = model.to(device=load_device)
-        # Online weight-only quantization of the fp model (see `diffsynth.core.quant`).
-        if online_quantize:
-            from ..quant import quantize_model_weights
-            model = quantize_model_weights(model, quantize, default_compute_dtype=torch_dtype, device=device)
-        elif quantize is not None and quantize.mode == "dequant_once":
-            # The checkpoint was quantized; run at full precision from here on.
-            from ..quant import dequantize_model_weights
-            model = dequantize_model_weights(model, quantize, default_compute_dtype=torch_dtype)
+        model = model.to(dtype=torch_dtype, device=device)
     if hasattr(model, "eval"):
         model = model.eval()
     return model

@@ -1,6 +1,5 @@
-import torch
 from dataclasses import dataclass, field, fields
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional
 from .base import QUANT_BACKENDS
 
 
@@ -31,8 +30,9 @@ class QuantizeConfig:
           on every forward; "dequant_once" instead dequantizes to a plain fp `nn.Linear` as
           soon as the weights are quantized or loaded, so the model runs at full precision
           while carrying the quantization error once.
-    target_modules / exclude_modules: substring patterns matched against dotted module names.
-    compute_dtype: dtype for computation (defaults to the model loading dtype).
+    target_modules / exclude_modules: list of module names, matched the way peft LoRA's
+          `target_modules` list is -- exact dotted name, or dot-boundary suffix
+          (e.g. "img_mod.1" matches "transformer_blocks.0.img_mod.1").
     overrides: advanced users may override preset backend kwargs (e.g. nf4 blocksize).
     load_prequantized: the checkpoint already holds quantized weights, so load them
           directly instead of quantizing fp weights online. The backend supplies the
@@ -42,9 +42,8 @@ class QuantizeConfig:
     """
     preset: str = None
     mode: str = "dynamic"                   # dynamic | dequant_once
-    target_modules: Optional[Union[str, list]] = None
-    exclude_modules: Optional[Union[str, list]] = None
-    compute_dtype: Optional[torch.dtype] = None
+    target_modules: Optional[list] = None
+    exclude_modules: Optional[list] = None
     overrides: dict = field(default_factory=dict)
     load_prequantized: bool = False
 
@@ -70,6 +69,10 @@ class QuantizeConfig:
             raise ValueError("`QuantizeConfig.preset` is required.")
         if self.preset not in QUANT_PRESETS:
             raise ValueError(f"Unknown quantization preset: {self.preset}. Available presets: {sorted(QUANT_PRESETS)}.")
+        for field_name in ("target_modules", "exclude_modules"):
+            value = getattr(self, field_name)
+            if value is not None and not isinstance(value, list):
+                raise ValueError(f"`QuantizeConfig.{field_name}` should be a list of module names, but got `{type(value).__name__}`.")
         spec = QUANT_PRESETS[self.preset]
         if spec.backend not in QUANT_BACKENDS:
             raise ValueError(f"Quantization backend `{spec.backend}` (required by preset `{self.preset}`) is not registered.")
