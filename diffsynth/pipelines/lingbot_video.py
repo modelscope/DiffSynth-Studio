@@ -146,8 +146,9 @@ class LingBotVideoPipeline(BasePipeline):
         # Structured caption (dict) or a plain string.
         prompt: Union[str, dict] = "",
         negative_prompt: Union[str, dict] = "",
-        # Video-to-video
+        # Image-to-video (TI2V)
         input_image: Image.Image = None,
+        # Video-to-video
         input_video: list[Image.Image] = None,
         denoising_strength: float = 1.0,
         # Randomness
