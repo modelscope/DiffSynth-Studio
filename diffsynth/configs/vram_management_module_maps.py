@@ -418,13 +418,6 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
-        # TI2V feeds the condition frame through the Qwen3-VL vision tower, so its modules
-        # need managing too. Without these, the vision LayerNorm / patch-embed weights are
-        # never onloaded (they stay on `meta`) and the vision RoPE `inv_freq` -- a
-        # non-persistent buffer, absent from the checkpoint -- stays on CPU, so a TI2V run
-        # dies with a cuda/cpu device mismatch. T2V never hits this path.
-        # PatchEmbed is wrapped as a whole rather than its inner Conv3d: its forward reads
-        # `self.proj.weight.dtype` to cast the input, which would pick up the offload dtype.
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionPatchEmbed": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
