@@ -1,8 +1,8 @@
-modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "lingbot_video/lingbot-video-dense-1.3b/*" --local_dir ./data/diffsynth_example_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "lingbot_video/lingbot-video-dense-1.3b_t2v/*" --local_dir ./data/diffsynth_example_dataset
 
 accelerate launch examples/lingbot_video/model_training/train.py \
-  --dataset_base_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b \
-  --dataset_metadata_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b/metadata.json \
+  --dataset_base_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2v \
+  --dataset_metadata_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2v/metadata.json \
   --data_file_keys "video" \
   --height 480 \
   --width 832 \
@@ -13,6 +13,6 @@ accelerate launch examples/lingbot_video/model_training/train.py \
   --learning_rate 1e-5 \
   --num_epochs 2 \
   --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/lingbot-video-dense-1.3b_full" \
+  --output_path "./models/train/lingbot-video-dense-1.3b_t2v_full" \
   --trainable_models "dit" \
   --use_gradient_checkpointing

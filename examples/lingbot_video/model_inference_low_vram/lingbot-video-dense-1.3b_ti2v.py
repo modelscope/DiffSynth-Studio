@@ -4,13 +4,8 @@ import torch
 from PIL import Image
 from diffsynth.utils.data import save_video
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
+from modelscope import dataset_snapshot_download
 
-
-# Low-VRAM image-to-video (TI2V). Uses the reviewer's disk-offload VRAM profile from the
-# low-VRAM t2v example: weights live on disk, stream to CPU (fp8) then to GPU (bf16 compute)
-# one layer at a time. The TI2V delta over t2v is just `input_image` -- the condition-frame
-# VAE encode / text-encoder vision pass run under the same offloading, so peak VRAM matches
-# the low-VRAM t2v run.
 vram_config = {
     "offload_dtype": "disk",
     "offload_device": "disk",
@@ -34,12 +29,16 @@ pipe = LingBotVideoPipeline.from_pretrained(
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
-# Released first frame + paired caption, shared with the model_inference TI2V example.
-here = os.path.dirname(__file__)
-inference_dir = os.path.join(here, "..", "model_inference")
-with open(os.path.join(inference_dir, "prompts", "ti2v_example.json"), "r", encoding="utf-8") as f:
+# The condition first frame and its paired caption ship in the example dataset.
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
+    local_dir="data/diffsynth_example_dataset",
+    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b_ti2v/*",
+)
+base = "data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_ti2v"
+with open(os.path.join(base, "ti2v_example.json"), "r", encoding="utf-8") as f:
     caption = json.load(f)
-input_image = Image.open(os.path.join(inference_dir, "assets", "ti2v_first_frame.png")).convert("RGB")
+input_image = Image.open(os.path.join(base, "ti2v_first_frame.png")).convert("RGB")
 
 video = pipe(
     prompt=caption,

@@ -15,13 +15,13 @@ pipe = LingBotVideoPipeline.from_pretrained(
     ],
     processor_config=ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="processor/"),
 )
-pipe.load_lora(pipe.dit, "models/train/lingbot-video-dense-1.3b_lora/epoch-4.safetensors", alpha=1)
+pipe.load_lora(pipe.dit, "models/train/lingbot-video-dense-1.3b_t2v_lora/epoch-4.safetensors", alpha=1)
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b/*",
+    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b_t2v/*",
 )
-with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b/t2v_example_1.json", "r", encoding="utf-8") as f:
+with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2v/t2v_example_1.json", "r", encoding="utf-8") as f:
     caption = json.load(f)
 
 video = pipe(
@@ -31,4 +31,4 @@ video = pipe(
     num_inference_steps=40, cfg_scale=3.0,
     seed=0,
 )
-save_video(video, "video_lingbot-video-dense-1.3b.mp4", fps=15, quality=10)
+save_video(video, "video_lingbot-video-dense-1.3b_t2v.mp4", fps=15, quality=10)

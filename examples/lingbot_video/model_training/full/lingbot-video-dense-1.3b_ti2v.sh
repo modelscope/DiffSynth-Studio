@@ -1,15 +1,8 @@
-# Image-to-video (TI2V) full-parameter SFT.
-#
-# Same DiT + dataset as the t2v full-parameter script; adds `--first_frame_as_condition`
-# to condition each clip on its OWN first frame (VAE-encoded latent pinned into the first
-# temporal slot and excluded from the flow-matching loss). Dense-1.3B reuses the T2V
-# weights, so there is no separate i2v checkpoint to load. `--trainable_models "dit"`
-# unfreezes the whole DiT for a full-parameter update.
-modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "lingbot_video/lingbot-video-dense-1.3b/*" --local_dir ./data/diffsynth_example_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "lingbot_video/lingbot-video-dense-1.3b_ti2v/*" --local_dir ./data/diffsynth_example_dataset
 
 accelerate launch examples/lingbot_video/model_training/train.py \
-  --dataset_base_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b \
-  --dataset_metadata_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b/metadata.json \
+  --dataset_base_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_ti2v \
+  --dataset_metadata_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_ti2v/metadata.json \
   --data_file_keys "video" \
   --height 480 \
   --width 832 \

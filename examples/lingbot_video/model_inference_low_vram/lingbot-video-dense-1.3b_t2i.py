@@ -1,13 +1,8 @@
-import os
 import json
 import torch
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
+from modelscope import dataset_snapshot_download
 
-
-# Low-VRAM text-to-image (t2i). t2i is text-to-video with num_frames=1 through the same
-# pipeline and DiT (no separate image weight); the only image-specific knob is the negative
-# prompt (`pipe.default_negative_prompt_image` drops temporal/motion terms). Uses the same
-# disk-offload VRAM profile as the low-VRAM t2v/ti2v examples.
 vram_config = {
     "offload_dtype": "disk",
     "offload_device": "disk",
@@ -31,7 +26,12 @@ pipe = LingBotVideoPipeline.from_pretrained(
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
-with open(os.path.join(os.path.dirname(__file__), "..", "model_inference", "prompts", "t2i_example.json"), "r", encoding="utf-8") as f:
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
+    local_dir="data/diffsynth_example_dataset",
+    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b_t2i/*",
+)
+with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2i/t2i_example.json", "r", encoding="utf-8") as f:
     caption = json.load(f)
 
 frames = pipe(

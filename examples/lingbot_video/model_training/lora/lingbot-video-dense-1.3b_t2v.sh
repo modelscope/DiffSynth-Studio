@@ -1,10 +1,8 @@
-modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "lingbot_video/lingbot-video-dense-1.3b/*" --local_dir ./data/diffsynth_example_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "lingbot_video/lingbot-video-dense-1.3b_t2v/*" --local_dir ./data/diffsynth_example_dataset
 
-# `--lora_target_modules "to_q,to_k,to_v,to_out"` patches LoRA on the joint
-# text+video self-attention only, leaving the MoE / FFN experts and the router frozen.
 accelerate launch examples/lingbot_video/model_training/train.py \
-  --dataset_base_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b \
-  --dataset_metadata_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b/metadata.json \
+  --dataset_base_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2v \
+  --dataset_metadata_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2v/metadata.json \
   --data_file_keys "video" \
   --height 480 \
   --width 832 \
@@ -15,7 +13,7 @@ accelerate launch examples/lingbot_video/model_training/train.py \
   --learning_rate 1e-4 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \
-  --output_path "./models/train/lingbot-video-dense-1.3b_lora" \
+  --output_path "./models/train/lingbot-video-dense-1.3b_t2v_lora" \
   --lora_base_model "dit" \
   --lora_target_modules "to_q,to_k,to_v,to_out" \
   --lora_rank 32 \
