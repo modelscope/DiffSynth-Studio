@@ -140,7 +140,7 @@ video = pipe(
 )
 ```
 
-The condition frame is aspect-ratio-preserving cover-resized and center-cropped to `height`×`width`, so it need not match the target resolution exactly. A runnable example ships at [`lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py), using the released first frame (`assets/ti2v_first_frame.png`) and its paired caption (`prompts/ti2v_example.json`). The caption should describe the motion that unfolds from the frame; as with T2V it is most in-distribution as a structured-JSON caption. `input_image` and `input_video` are mutually exclusive — pass at most one.
+The condition frame is aspect-ratio-preserving cover-resized and center-cropped to `height`×`width`, so it need not match the target resolution exactly. A runnable example ships at [`lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py) (low-VRAM variant: [`model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py)), using the released first frame (`assets/ti2v_first_frame.png`) and its paired caption (`prompts/ti2v_example.json`). The caption should describe the motion that unfolds from the frame; as with T2V it is most in-distribution as a structured-JSON caption. `input_image` and `input_video` are mutually exclusive — pass at most one. To fine-tune an image-to-video LoRA, see [TI2V LoRA](#ti2v-lora) below.
 
 ## Text-to-image (t2i)
 
@@ -158,7 +158,7 @@ frames = pipe(
 frames[0].save("image.png")
 ```
 
-A runnable example ships at [`lingbot-video-dense-1.3b_t2i.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py), using the released still-image caption `prompts/t2i_example.json`.
+A runnable example ships at [`lingbot-video-dense-1.3b_t2i.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py) (low-VRAM variant: [`model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py)), using the released still-image caption `prompts/t2i_example.json`.
 
 ## Model Training
 
@@ -219,6 +219,10 @@ The recommended launch script patches LoRA on the joint text+video self-attentio
 The MoE / FFN experts (`gate_proj`, `up_proj`, `down_proj`) and the router are left frozen. To also adapt the FFN, add those module names to `--lora_target_modules`.
 
 For best results the `prompt` column should hold **structured-JSON captions** (the same in-distribution format used at inference — see [Prompt rewriting](#prompt-rewriting-important-for-quality)). `train.py` runs each prompt through `normalize_caption`. If your dataset stores raw prose, rewrite it once offline with `examples/lingbot_video/model_training/rewrite_captions.py` before training.
+
+### TI2V LoRA
+
+To train an **image-to-video** LoRA, add `--first_frame_as_condition` (see [`lora/lingbot-video-dense-1.3b_ti2v.sh`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh)). It conditions each clip on its **own first frame**: the frame is VAE-encoded to a clean latent pinned into the first temporal slot (and fed to the Qwen3-VL text encoder), and excluded from the flow-matching loss, so the LoRA learns to animate frames 2..N from frame 1. The dataset, LoRA scope, and DiT are identical to t2v — no condition column is required. Validate with [`validate_lora/lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py). If your dataset ships a *distinct* condition frame instead, drop the flag and pass that column via `--extra_inputs input_image` (adding it to `--data_file_keys`).
 
 We have written recommended training scripts, please refer to the table in the "Model Overview" section above. For how to write model training scripts, please refer to [Model Training](../Pipeline_Usage/Model_Training.md); for more advanced training algorithms, please refer to [Training Framework Detailed Explanation](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/en/Training/).
 

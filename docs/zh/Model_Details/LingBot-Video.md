@@ -140,7 +140,7 @@ video = pipe(
 )
 ```
 
-首帧会按保持宽高比的方式 cover-resize 并中心裁剪到 `height`×`width`，因此不必与目标分辨率完全一致。可直接运行的示例见 [`lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py)，它使用随仓库发布的首帧（`assets/ti2v_first_frame.png`）及其配对 caption（`prompts/ti2v_example.json`）。caption 应描述从首帧开始展开的运动；与 T2V 一样，写成结构化 JSON caption 最贴近训练分布。`input_image` 与 `input_video` 互斥，至多传一个。
+首帧会按保持宽高比的方式 cover-resize 并中心裁剪到 `height`×`width`，因此不必与目标分辨率完全一致。可直接运行的示例见 [`lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py)（低显存版本：[`model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py)），它使用随仓库发布的首帧（`assets/ti2v_first_frame.png`）及其配对 caption（`prompts/ti2v_example.json`）。caption 应描述从首帧开始展开的运动；与 T2V 一样，写成结构化 JSON caption 最贴近训练分布。`input_image` 与 `input_video` 互斥，至多传一个。图生视频 LoRA 训练见下文 [TI2V LoRA](#ti2v-lora)。
 
 ## 文生图（t2i）
 
@@ -158,7 +158,7 @@ frames = pipe(
 frames[0].save("image.png")
 ```
 
-可直接运行的示例见 [`lingbot-video-dense-1.3b_t2i.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py)，它使用随仓库发布的静态图 caption `prompts/t2i_example.json`。
+可直接运行的示例见 [`lingbot-video-dense-1.3b_t2i.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py)（低显存版本：[`model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py)），它使用随仓库发布的静态图 caption `prompts/t2i_example.json`。
 
 ## 模型训练
 
@@ -219,6 +219,10 @@ modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset \
 MoE / FFN 专家（`gate_proj`、`up_proj`、`down_proj`）与 router 保持冻结。若要同时微调 FFN，可将这些模块名加入 `--lora_target_modules`。
 
 为获得最佳效果，`prompt` 列应存放**结构化 JSON caption**（与推理时一致的分布内格式——见[提示词改写](#提示词改写对质量很重要)）。`train.py` 会对每条 prompt 调用 `normalize_caption`。若数据集存放的是原始文本，请在训练前用 `examples/lingbot_video/model_training/rewrite_captions.py` 离线改写一次。
+
+### TI2V LoRA
+
+训练**图生视频** LoRA 只需加上 `--first_frame_as_condition`（见 [`lora/lingbot-video-dense-1.3b_ti2v.sh`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh)）。它以每个片段**自身的首帧**为条件：首帧经 VAE 编码为干净 latent，钉入第一个时间槽（并作为视觉输入喂给 Qwen3-VL 文本编码器），且从 flow-matching loss 中剔除，因此 LoRA 学习的是"以首帧为条件生成第 2..N 帧"。数据集、LoRA 范围、DiT 均与 t2v 完全一致，无需额外的条件帧列。验证脚本见 [`validate_lora/lingbot-video-dense-1.3b_ti2v.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py)。若数据集提供的是**另一张**条件帧（而非复用首帧），去掉该开关，改用 `--extra_inputs input_image` 传入该列（并把它加进 `--data_file_keys`）。
 
 我们编写了推荐的训练脚本，请参考前文"模型总览"中的表格。关于如何编写模型训练脚本，请参考[模型训练](../Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/zh/Training/)。
 

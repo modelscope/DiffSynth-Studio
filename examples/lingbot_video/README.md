@@ -54,7 +54,7 @@ save_video(video, "output.mp4", fps=15, quality=5)
 
 The pipeline ships a default (T2V) negative prompt, so `negative_prompt` is optional. Video-to-video is supported by passing `input_video=` (a list of frames or a `VideoData`) together with `denoising_strength < 1`.
 
-**Low VRAM:** pass `vram_limit=<GB>` to `from_pretrained` to enable layer-by-layer offloading — see `model_inference_low_vram/lingbot-video-dense-1.3b.py`.
+**Low VRAM:** pass `vram_limit=<GB>` to `from_pretrained` to enable layer-by-layer offloading — see `model_inference_low_vram/lingbot-video-dense-1.3b.py` (t2v), `_ti2v.py`, and `_t2i.py`.
 
 ### Image-to-video (TI2V)
 
@@ -173,6 +173,12 @@ The MoE / FFN experts (`gate_proj`, `up_proj`, `down_proj`) and the router are l
 - `--num_frames`, `--height`, `--width` — training clip shape (`num_frames` must satisfy `4k+1`; H/W divisible by 16).
 - `--max_timestep_boundary` / `--min_timestep_boundary` — restrict the sampled training timesteps to a sub-range of the schedule.
 - `--lora_checkpoint <path>` — resume / continue from a previously trained LoRA.
+
+### Image-to-video (TI2V) LoRA
+
+To train an image-to-video LoRA, add `--first_frame_as_condition` — see `model_training/lora/lingbot-video-dense-1.3b_ti2v.sh`. It conditions each clip on its **own first frame**: the frame is VAE-encoded to a clean latent pinned into the first temporal slot (and fed to the text encoder), and excluded from the flow-matching loss, so the LoRA learns to animate frames 2..N from frame 1. Everything else — dataset, LoRA scope, DiT — is identical to t2v, and no condition column is needed. Validate with `model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py`.
+
+(If your dataset ships a *distinct* condition frame rather than reusing frame 1, drop the flag and pass that column via `--extra_inputs input_image`, adding it to `--data_file_keys`.)
 
 ### Applying a trained LoRA
 
