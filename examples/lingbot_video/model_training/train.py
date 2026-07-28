@@ -1,6 +1,6 @@
 import torch, os, argparse, accelerate, warnings
 from diffsynth.core import UnifiedDataset
-from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
+from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline
 from diffsynth.diffusion import *
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 

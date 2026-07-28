@@ -33,8 +33,6 @@ try:
 except ImportError:
     repair_json = None
 
-# Support both package-style import (from the repo root) and top-level import (when
-# this directory itself is on sys.path, e.g. from rewrite_captions.py).
 try:
     from .system_prompts import (
         VIDEO_STEP1_EXPAND, VIDEO_STEP2_MAP, IMAGE_STEP1_EXPAND, IMAGE_STEP2_MAP,
