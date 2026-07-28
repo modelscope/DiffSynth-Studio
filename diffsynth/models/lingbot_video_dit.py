@@ -59,7 +59,7 @@ def get_timestep_embedding(
     scale: float = 1.0,
     max_period: int = 10000,
 ) -> torch.Tensor:
-    """Sinusoidal timestep embedding (matches diffusers.get_timestep_embedding)."""
+    """Sinusoidal timestep embedding."""
     assert timesteps.ndim == 1
     half_dim = embedding_dim // 2
     exponent = -math.log(max_period) * torch.arange(
@@ -78,7 +78,7 @@ def get_timestep_embedding(
 
 
 class Timesteps(nn.Module):
-    """Parameter-free sinusoidal timestep projection (matches diffusers.Timesteps)."""
+    """Parameter-free sinusoidal timestep projection."""
 
     def __init__(self, num_channels: int, flip_sin_to_cos: bool = True, downscale_freq_shift: float = 0.0, scale: int = 1):
         super().__init__()
@@ -98,12 +98,7 @@ class Timesteps(nn.Module):
 
 
 class TimestepEmbedding(nn.Module):
-    """Two-layer timestep MLP (matches diffusers.TimestepEmbedding, act_fn='silu').
-
-    Submodule names `linear_1` / `linear_2` are kept identical so the original
-    checkpoint keys (`time_embedder.linear_1.*`, `time_embedder.linear_2.*`) load
-    without renaming.
-    """
+    """Two-layer timestep MLP (act_fn='silu')."""
 
     def __init__(self, in_channels: int, time_embed_dim: int, sample_proj_bias: bool = True):
         super().__init__()
@@ -116,7 +111,7 @@ class TimestepEmbedding(nn.Module):
 
 
 class LingBotVideoRMSNorm(nn.Module):
-    """RMSNorm with fp32 accumulation (ported verbatim from lingbot-video)."""
+    """RMSNorm with fp32 accumulation."""
 
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
@@ -196,7 +191,7 @@ def _cat_interleave(a: torch.Tensor, len_a: list, b: torch.Tensor, len_b: list) 
 
 
 class LingBotVideoTextEmbedder(nn.Module):
-    """CondProjection: RMSNorm(text_dim) -> Linear -> SiLU -> Linear."""
+    """RMSNorm(text_dim) -> Linear -> SiLU -> Linear."""
 
     def __init__(self, text_dim: int, hidden_size: int):
         super().__init__()
@@ -227,7 +222,7 @@ class LingBotVideoAttention(nn.Module):
         v = self.to_v(x).unflatten(2, (self.num_heads, self.head_dim))
         q = apply_rotary_emb(self.norm_q(q), rotary_emb)
         k = apply_rotary_emb(self.norm_k(k), rotary_emb)
-        # q/k/v are (B, S, H, D); DiffSynth's attention_forward handles the layout.
+        # q/k/v are (B, S, H, D).
         out = attention_forward(
             q, k, v,
             q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
@@ -248,12 +243,6 @@ class LingBotVideoMLP(nn.Module):
 
 
 class LingBotVideoRouter(nn.Module):
-    """TokenChoiceTopKRouter inference path (no capacity / jitter / load stats).
-
-    The asymmetry is preserved: selection uses the bias-added score, while the
-    gating weights gather the bias-free score.
-    """
-
     def __init__(self, hidden_size, num_experts, top_k, score_func, norm_topk_prob, n_group, topk_group, route_scale):
         super().__init__()
         self.num_experts = num_experts
@@ -298,7 +287,7 @@ class LingBotVideoRouter(nn.Module):
 
 
 class LingBotVideoGroupedExperts(nn.Module):
-    """Weight layout matches GroupedExperts: w1 [E,I,H], w2 [E,H,I], w3 [E,I,H]."""
+    """Weight layout: w1 [E,I,H], w2 [E,H,I], w3 [E,I,H]."""
 
     def __init__(self, num_experts, hidden_size, intermediate_size):
         super().__init__()
@@ -313,10 +302,7 @@ def _round_up_to_multiple(value: int, multiple: int) -> int:
 
 
 class LingBotVideoSparseMoeBlock(nn.Module):
-    """MoE FFN. Keeps only the portable eager expert path (grouped_mm with a
-    per-expert for-loop fallback); the sglang / triton / fp8 / context-parallel
-    backends from the source are intentionally dropped for the DiffSynth port.
-    """
+    """MoE FFN with a grouped_mm expert path and a per-expert for-loop fallback."""
 
     def __init__(self, hidden_size, intermediate_size, num_experts, top_k, moe_intermediate_size,
                  score_func, norm_topk_prob, n_group, topk_group, routed_scaling_factor, n_shared_experts):
@@ -461,7 +447,7 @@ class LingBotVideoBlock(nn.Module):
         self.attn = LingBotVideoAttention(h, num_attention_heads, norm_eps, qkv_bias, out_bias)
         self.norm_post_attn = LingBotVideoRMSNorm(h, norm_eps)
         self.norm2 = LingBotVideoRMSNorm(h, norm_eps)
-        # Sparsity decision matches the source MoEBlock: mlp_only_layers + decoder_sparse_step + num_experts.
+        # Sparsity decision: mlp_only_layers + decoder_sparse_step + num_experts.
         if layer_idx not in mlp_only_layers and (num_experts > 0 and (layer_idx + 1) % decoder_sparse_step == 0):
             self.ffn = LingBotVideoSparseMoeBlock(
                 h, intermediate_size, num_experts, num_experts_per_tok, moe_intermediate_size,
@@ -504,43 +490,15 @@ class LingBotVideoBlock(nn.Module):
 
 
 class LingBotVideoDiT(nn.Module):
-    """LingBot-Video MoE DiT ported for DiffSynth-Studio.
+    """LingBot-Video MoE DiT.
 
     Supports both the Dense (`num_experts=0`, FFN = MLP) and MoE
-    (`num_experts>0`, FFN = sparse MoE) variants from a single class. The bulk of
-    the network runs in the model's compute dtype (e.g. bf16) while the modules in
-    `LINGBOT_VIDEO_FP32_MODULES` are pinned to fp32 by the custom `to()`.
+    (`num_experts>0`, FFN = sparse MoE) variants from a single class.
     """
 
     _supports_gradient_checkpointing = True
     _no_split_modules = ["LingBotVideoBlock"]
     _repeated_blocks = ["LingBotVideoBlock"]
-
-    def to(self, *args, **kwargs):
-        device, dtype, non_blocking, _ = torch._C._nn._parse_to(*args, **kwargs)
-        if dtype is None or dtype == torch.float32:
-            return super().to(*args, **kwargs)
-        if not torch.is_floating_point(torch.empty((), dtype=dtype)):
-            return super().to(*args, **kwargs)
-
-        if device is not None:
-            super().to(device=device, non_blocking=non_blocking)
-
-        for name, param in self.named_parameters():
-            if not torch.is_floating_point(param):
-                continue
-            target_dtype = torch.float32 if should_keep_in_fp32(name) else dtype
-            param.data = param.data.to(dtype=target_dtype, non_blocking=non_blocking)
-            if param.grad is not None:
-                param.grad.data = param.grad.data.to(dtype=target_dtype, non_blocking=non_blocking)
-
-        for name, buffer in self.named_buffers():
-            if not torch.is_floating_point(buffer):
-                continue
-            target_dtype = torch.float32 if should_keep_in_fp32(name) else dtype
-            buffer.data = buffer.data.to(dtype=target_dtype, non_blocking=non_blocking)
-
-        return self
 
     def __init__(
         self,
@@ -631,7 +589,7 @@ class LingBotVideoDiT(nn.Module):
         text_lens_list = [int(v) for v in text_lens.detach().cpu().tolist()]
         packed_batch = B > 1
 
-        # patchify: token order (f h w), feature order (pf ph pw c) -- matches patchify_and_embed
+        # patchify: token order (f h w), feature order (pf ph pw c)
         patch_tokens = hidden_states.reshape(B, C, gt, pF, gh, pH, gw, pW)
         patch_tokens = patch_tokens.permute(0, 2, 4, 6, 3, 5, 7, 1).reshape(B, n_video, pF * pH * pW * C)
 
@@ -656,8 +614,7 @@ class LingBotVideoDiT(nn.Module):
         attention_mask = None
         moe_padding_mask = None
         if packed_batch:
-            # Block-diagonal mask so packed samples only attend within their own block
-            # (replaces the source's flash varlen path; numerically equivalent, no flash dep).
+            # Block-diagonal mask so packed samples only attend within their own block.
             sample_seq_lens = [n_video + tl for tl in text_lens_list]
             total = sum(sample_seq_lens)
             block_mask = torch.zeros((total, total), dtype=torch.bool, device=device)
@@ -719,7 +676,7 @@ class LingBotVideoDiT(nn.Module):
         else:
             x = projected[:, :n_video]
 
-        # unpatchify (matches the rearrange in postprocess)
+        # unpatchify
         Cout = self.out_channels
         x = x.reshape(B, gt, gh, gw, pF, pH, pW, Cout)
         x = x.permute(0, 7, 1, 4, 2, 5, 3, 6).reshape(B, Cout, T, H, W)

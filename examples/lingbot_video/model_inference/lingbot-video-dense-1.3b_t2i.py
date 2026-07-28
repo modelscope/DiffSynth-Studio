@@ -1,9 +1,14 @@
-import torch
+import os
 import json
-from diffsynth.utils.data import save_video
+import torch
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
-from modelscope import dataset_snapshot_download
 
+
+# Text-to-image (t2i). t2i is text-to-video with a single frame: pass num_frames=1 through
+# the same pipeline and DiT (no separate image weight). The only image-specific knob is the
+# negative prompt -- `pipe.default_negative_prompt_image` drops the temporal/motion terms
+# that cannot apply to a still frame. The pipeline returns a 1-frame list, i.e. one PIL
+# image.
 
 pipe = LingBotVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -15,20 +20,15 @@ pipe = LingBotVideoPipeline.from_pretrained(
     ],
     processor_config=ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="processor/"),
 )
-pipe.load_lora(pipe.dit, "models/train/lingbot-video-dense-1.3b_lora/epoch-4.safetensors", alpha=1)
-dataset_snapshot_download(
-    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
-    local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b/*",
-)
-with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b/t2v_example_1.json", "r", encoding="utf-8") as f:
+
+with open(os.path.join(os.path.dirname(__file__), "prompts", "t2i_example.json"), "r", encoding="utf-8") as f:
     caption = json.load(f)
 
-video = pipe(
+frames = pipe(
     prompt=caption,
-    negative_prompt=pipe.default_negative_prompt,
-    height=480, width=832, num_frames=81,
+    negative_prompt=pipe.default_negative_prompt_image,
+    height=480, width=832, num_frames=1,
     num_inference_steps=40, cfg_scale=3.0,
     seed=0,
 )
-save_video(video, "video_lingbot-video-dense-1.3b.mp4", fps=15, quality=10)
+frames[0].save("image_lingbot-video-dense-1.3b_t2i.png")

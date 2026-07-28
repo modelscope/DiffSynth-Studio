@@ -2,6 +2,7 @@ import torch
 import json
 from diffsynth.utils.data import save_video
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
+from diffsynth import load_state_dict
 from modelscope import dataset_snapshot_download
 
 
@@ -15,7 +16,8 @@ pipe = LingBotVideoPipeline.from_pretrained(
     ],
     processor_config=ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="processor/"),
 )
-pipe.load_lora(pipe.dit, "models/train/lingbot-video-dense-1.3b_lora/epoch-4.safetensors", alpha=1)
+state_dict = load_state_dict("models/train/lingbot-video-dense-1.3b_full/epoch-1.safetensors")
+pipe.dit.load_state_dict(state_dict)
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",

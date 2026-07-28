@@ -3,21 +3,8 @@ from typing import Optional
 
 
 class LingBotVideoTextEncoder(torch.nn.Module):
-    """
-    Text encoder for LingBot-Video.
-
-    The checkpoint (``text_encoder/*.safetensors``) is a
-    ``Qwen3VLForConditionalGeneration`` exported by transformers, but only the
-    ``model.*`` submodule (language_model + visual, 713 tensors) is stored — the
-    tied ``lm_head`` is absent because ``tie_word_embeddings=True``. Wrapping a
-    bare ``Qwen3VLModel`` therefore matches the checkpoint keys exactly (0 missing
-    / 0 unexpected), so the state-dict converter is the identity.
-
-    ``forward`` mirrors :class:`QwenImageTextEncoder`: it forces
-    ``output_hidden_states=True`` and returns the tuple of per-layer hidden
-    states. The pipeline selects ``hidden_states[-1]`` (the original
-    ``HIDDEN_STATE_SKIP_LAYER == 0``) as the prompt embedding.
-    """
+    """Qwen3-VL text encoder for LingBot-Video. `forward` returns the tuple of
+    per-layer hidden states."""
 
     def __init__(self):
         super().__init__()

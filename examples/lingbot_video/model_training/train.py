@@ -1,6 +1,6 @@
 import torch, os, argparse, accelerate, warnings
 from diffsynth.core import UnifiedDataset
-from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig, normalize_caption
+from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline
 from diffsynth.diffusion import *
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -15,6 +15,7 @@ class LingBotVideoTrainingModule(DiffusionTrainingModule):
         preset_lora_path=None, preset_lora_model=None,
         use_gradient_checkpointing=True,
         use_gradient_checkpointing_offload=False,
+        first_frame_as_condition=False,
         extra_inputs=None,
         fp8_models=None,
         offload_models=None,
@@ -51,6 +52,7 @@ class LingBotVideoTrainingModule(DiffusionTrainingModule):
         # Store other configs
         self.use_gradient_checkpointing = use_gradient_checkpointing
         self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
+        self.first_frame_as_condition = first_frame_as_condition
         self.extra_inputs = extra_inputs.split(",") if extra_inputs is not None else []
         self.fp8_models = fp8_models
         self.task = task
@@ -63,9 +65,9 @@ class LingBotVideoTrainingModule(DiffusionTrainingModule):
         self.min_timestep_boundary = min_timestep_boundary
 
     def get_pipeline_inputs(self, data):
-        # Normalise the metadata "prompt" column to the structured-JSON caption so LoRA
-        # trains in-distribution. Use rewrite_captions.py offline if it stores raw prose.
-        inputs_posi = {"prompt": normalize_caption(data["prompt"])}
+        # The metadata "prompt" column stores the serialised structured-JSON caption
+        # (see rewrite_captions.py); the pipeline's PromptEmbedder consumes it as-is.
+        inputs_posi = {"prompt": data["prompt"]}
         inputs_nega = {}
         inputs_shared = {
             # Assume you are using this pipeline for inference,
@@ -84,6 +86,15 @@ class LingBotVideoTrainingModule(DiffusionTrainingModule):
             "max_timestep_boundary": self.max_timestep_boundary,
             "min_timestep_boundary": self.min_timestep_boundary,
         }
+        if self.first_frame_as_condition:
+            # Image-to-video (TI2V) LoRA: condition on the clip's own first frame. The
+            # ImageEmbedder unit VAE-encodes it to first_frame_latents and feeds it to the
+            # text encoder as vlm_image; FlowMatchSFTLoss then pins that clean latent into
+            # the first temporal slot and excludes it from the loss (see diffsynth/diffusion/
+            # loss.py). No separate condition column or core change is needed. If your
+            # dataset instead ships a distinct condition frame, drop this flag and pass it via
+            # --extra_inputs input_image (with the column added to --data_file_keys).
+            inputs_shared["input_image"] = data["video"][0]
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
         return inputs_shared, inputs_posi, inputs_nega
 
@@ -101,6 +112,7 @@ def lingbot_video_parser():
     parser = add_general_config(parser)
     parser = add_video_size_config(parser)
     parser.add_argument("--processor_path", type=str, default=None, help="Path to the Qwen3-VL processor directory (or `model_id:origin_file_pattern`). Used to tokenize prompts.")
+    parser.add_argument("--first_frame_as_condition", default=False, action="store_true", help="Image-to-video (TI2V) LoRA: condition on each clip's own first frame (pinned as a clean latent and excluded from the loss).")
     parser.add_argument("--max_timestep_boundary", type=float, default=1.0, help="Max timestep boundary (fraction of the training schedule, in [0, 1]).")
     parser.add_argument("--min_timestep_boundary", type=float, default=0.0, help="Min timestep boundary (fraction of the training schedule, in [0, 1]).")
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
@@ -144,6 +156,7 @@ if __name__ == "__main__":
         preset_lora_model=args.preset_lora_model,
         use_gradient_checkpointing=args.use_gradient_checkpointing,
         use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
+        first_frame_as_condition=args.first_frame_as_condition,
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,

@@ -1,9 +1,13 @@
-import torch
+import os
 import json
-from diffsynth.utils.data import save_video, VideoData
+import torch
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
-from modelscope import dataset_snapshot_download
 
+
+# Low-VRAM text-to-image (t2i). t2i is text-to-video with num_frames=1 through the same
+# pipeline and DiT (no separate image weight); the only image-specific knob is the negative
+# prompt (`pipe.default_negative_prompt_image` drops temporal/motion terms). Uses the same
+# disk-offload VRAM profile as the low-VRAM t2v/ti2v examples.
 vram_config = {
     "offload_dtype": "disk",
     "offload_device": "disk",
@@ -27,32 +31,14 @@ pipe = LingBotVideoPipeline.from_pretrained(
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
-# --- Text-to-video -------------------------------------------------------------------
-dataset_snapshot_download(
-    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
-    local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b/*",
-)
-with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b/t2v_example_1.json", "r", encoding="utf-8") as f:
+with open(os.path.join(os.path.dirname(__file__), "..", "model_inference", "prompts", "t2i_example.json"), "r", encoding="utf-8") as f:
     caption = json.load(f)
 
-video = pipe(
+frames = pipe(
     prompt=caption,
-    negative_prompt=pipe.default_negative_prompt,
-    height=480, width=832, num_frames=81,
+    negative_prompt=pipe.default_negative_prompt_image,
+    height=480, width=832, num_frames=1,
     num_inference_steps=40, cfg_scale=3.0,
     seed=0,
 )
-save_video(video, "video_lingbot-video-dense-1.3b.mp4", fps=15, quality=10)
-
-# --- Video-to-video ------------------------------------------------------------------
-input_video = VideoData("video_lingbot-video-dense-1.3b.mp4", height=480, width=832)
-video = pipe(
-    prompt=caption,
-    negative_prompt=pipe.default_negative_prompt,
-    input_video=input_video, denoising_strength=0.7,
-    height=480, width=832, num_frames=81,
-    num_inference_steps=40, cfg_scale=3.0,
-    seed=1,
-)
-save_video(video, "video_lingbot-video-dense-1.3b_v2v.mp4", fps=15, quality=10)
+frames[0].save("image_lingbot-video-dense-1.3b_t2i_low_vram.png")

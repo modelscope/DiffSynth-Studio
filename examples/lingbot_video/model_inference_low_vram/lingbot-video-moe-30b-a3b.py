@@ -33,8 +33,10 @@ pipe = LingBotVideoPipeline.from_pretrained(
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
 
+# --- Text-to-video -------------------------------------------------------------------
 video = pipe(
     prompt="A playful puppy runs across a lush green meadow, its golden fur shining in the bright sunlight, ears perked up, chasing after a red ball. Wildflowers dot the grass, and a clear blue sky with a few white clouds stretches out behind it. Dynamic side-tracking camera.",
+    negative_prompt=pipe.default_negative_prompt,
     height=480, width=832, num_frames=81,
     num_inference_steps=40, cfg_scale=3.0,
     seed=0,
