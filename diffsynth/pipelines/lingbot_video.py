@@ -17,64 +17,6 @@ from ..models.lingbot_video_dit import LingBotVideoDiT
 from ..models.lingbot_video_text_encoder import LingBotVideoTextEncoder
 from ..models.qwen_image_vae import QwenImageVAE
 
-# --- TI2V (image-to-video) ---------------------------------------------------
-# The condition frame is used twice: (1) as visual input to the Qwen3-VL text
-# encoder — its image tokens are prepended to the prompt via IMG_PROMPT_TEMPLATE;
-# (2) VAE-encoded to a clean latent written into the first temporal slot of the
-# diffusion latent before sampling and after every scheduler step (inpainting).
-# The DiT is unchanged (in_channels stays 16); Dense-1.3B reuses its T2V weights.
-IMG_PROMPT_TEMPLATE = "<|vision_start|><|image_pad|><|vision_end|>"
-
-# Qwen3-VL vision token-budget bounds used by smart_resize (official defaults).
-IMAGE_MIN_TOKEN_NUM = 4
-IMAGE_MAX_TOKEN_NUM = 16384
-MAX_RATIO = 200
-SPATIAL_MERGE_SIZE = 2
-
-
-def _round_by_factor(number: float, factor: int) -> int:
-    return round(number / factor) * factor
-
-
-def _ceil_by_factor(number: float, factor: int) -> int:
-    return math.ceil(number / factor) * factor
-
-
-def _floor_by_factor(number: float, factor: int) -> int:
-    return math.floor(number / factor) * factor
-
-
-def smart_resize(height: int, width: int, factor: int,
-                 min_pixels: Optional[int] = None, max_pixels: Optional[int] = None):
-    # Resize so both sides are multiples of `factor` and the token count stays in
-    # [min_pixels, max_pixels] while preserving aspect ratio. Ported verbatim from
-    # the official LingBot-Video i2v pipeline (Qwen3-VL smart-resize).
-    max_pixels = max_pixels if max_pixels is not None else IMAGE_MAX_TOKEN_NUM * factor**2
-    min_pixels = min_pixels if min_pixels is not None else IMAGE_MIN_TOKEN_NUM * factor**2
-    if max_pixels < min_pixels:
-        raise ValueError("max_pixels must be greater than or equal to min_pixels.")
-    if max(height, width) / min(height, width) > MAX_RATIO:
-        raise ValueError(f"absolute aspect ratio must be smaller than {MAX_RATIO}.")
-    resized_height = max(factor, _round_by_factor(height, factor))
-    resized_width = max(factor, _round_by_factor(width, factor))
-    if resized_height * resized_width > max_pixels:
-        beta = math.sqrt((height * width) / max_pixels)
-        resized_height = _floor_by_factor(height / beta, factor)
-        resized_width = _floor_by_factor(width / beta, factor)
-    elif resized_height * resized_width < min_pixels:
-        beta = math.sqrt(min_pixels / (height * width))
-        resized_height = _ceil_by_factor(height * beta, factor)
-        resized_width = _ceil_by_factor(width * beta, factor)
-    return resized_height, resized_width
-
-
-def _pixel_tensor_to_pil(pixel: torch.Tensor) -> Image.Image:
-    # Match torchvision.transforms.ToPILImage for a float CHW image in [0, 1].
-    # pixel: (B, C, T, H, W); take batch 0, temporal slot 0.
-    frame = pixel[0, :, 0].detach().cpu().clamp(0, 1)
-    array = frame.permute(1, 2, 0).mul(255).byte().numpy()
-    return Image.fromarray(array, mode="RGB")
-
 
 class LingBotVideoPipeline(BasePipeline):
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
@@ -92,11 +34,12 @@ class LingBotVideoPipeline(BasePipeline):
         self.units = [
             LingBotVideoUnit_ShapeChecker(),
             LingBotVideoUnit_NoiseInitializer(),
-            # ImageEmbedder must run before PromptEmbedder: it produces the vlm_image
-            # that PromptEmbedder feeds to the text encoder (TI2V only; no-op for T2V).
+            LingBotVideoUnit_InputVideoEmbedder(),
+            # ImageEmbedder runs after InputVideoEmbedder (it pins the condition latent into
+            # `latents`) and before PromptEmbedder (it produces the vlm_image the text encoder
+            # consumes). No-op for T2V/V2V.
             LingBotVideoUnit_ImageEmbedder(),
             LingBotVideoUnit_PromptEmbedder(),
-            LingBotVideoUnit_InputVideoEmbedder(),
         ]
         self.model_fn = model_fn_lingbot_video
         self.compilable_models = ["dit"]
@@ -182,13 +125,11 @@ class LingBotVideoPipeline(BasePipeline):
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
 
-        # TI2V: the clean condition latent (if any) is pinned into the first temporal
-        # slot(s) both before sampling and after every scheduler step, so the DiT only
-        # ever denoises the frames after the given first frame.
+        # TI2V: the ImageEmbedder unit has already pinned the clean condition latent into the
+        # first temporal slot(s); re-pin it after every scheduler step so the DiT only ever
+        # denoises the frames after the given first frame.
         first_frame_latents = inputs_shared.get("first_frame_latents")
-        if first_frame_latents is not None:
-            cond_t = first_frame_latents.shape[2]
-            inputs_shared["latents"][:, :, :cond_t] = first_frame_latents
+        cond_t = first_frame_latents.shape[2] if first_frame_latents is not None else None
 
         # Denoise
         self.load_models_to_device(self.in_iteration_models)
@@ -210,42 +151,6 @@ class LingBotVideoPipeline(BasePipeline):
         video = self.vae_output_to_video(video)
         self.load_models_to_device([])
         return video
-
-    def preprocess_cond_image(self, image: Image.Image, height, width):
-        # TI2V condition frame -> (1, C, 1, H, W) pixel tensor in [0, 1], aspect-ratio
-        # preserving cover-resize + center-crop to (height, width).
-        raw = torch.from_numpy(np.array(image.convert("RGB"))).permute(2, 0, 1).unsqueeze(0).contiguous()
-        old_h, old_w = raw.shape[-2:]
-        scale = max(height / old_h, width / old_w)
-        new_h = max(math.ceil(old_h * scale), height)
-        new_w = max(math.ceil(old_w * scale), width)
-        resized = F.interpolate(raw.float(), size=(new_h, new_w), mode="bilinear", align_corners=False)
-        top = int(round((new_h - height) / 2.0))
-        left = int(round((new_w - width) / 2.0))
-        cropped = resized[:, :, top: top + height, left: left + width] / 255.0
-        return cropped.unsqueeze(2)
-
-    def _vision_patch_size(self) -> int:
-        # Resolve the Qwen3-VL vision patch size, used with SPATIAL_MERGE_SIZE to pick
-        # the smart-resize grid factor.
-        for obj in (
-            getattr(getattr(self.text_encoder, "config", None), "vision_config", None),
-            getattr(getattr(self.processor, "image_processor", None), "config", None),
-            getattr(self.processor, "image_processor", None),
-        ):
-            patch = getattr(obj, "patch_size", None)
-            if patch is not None:
-                return int(patch)
-        return 16
-
-    def _vlm_image(self, pixel: torch.Tensor) -> Image.Image:
-        # Build the PIL image handed to the text encoder from the condition pixel tensor,
-        # smart-resized to the Qwen3-VL patch grid.
-        image = _pixel_tensor_to_pil(pixel)
-        patch_factor = self._vision_patch_size() * SPATIAL_MERGE_SIZE
-        w, h = image.size
-        resized_height, resized_width = smart_resize(h, w, factor=patch_factor)
-        return image.resize((resized_width, resized_height))
 
 
 class LingBotVideoUnit_ShapeChecker(PipelineUnit):
@@ -274,9 +179,153 @@ class LingBotVideoUnit_NoiseInitializer(PipelineUnit):
         return {"noise": noise}
 
 
+class LingBotVideoUnit_InputVideoEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("input_video", "noise"),
+            output_params=("latents", "input_latents"),
+            onload_model_names=("vae",),
+        )
+
+    def process(self, pipe: LingBotVideoPipeline, input_video, noise):
+        if input_video is None:
+            return {"latents": noise}
+        pipe.load_models_to_device(self.onload_model_names)
+        video = pipe.preprocess_video(input_video)
+        input_latents = pipe.vae.encode_video(video).to(dtype=pipe.torch_dtype, device=pipe.device)
+        if pipe.scheduler.training:
+            return {"latents": noise, "input_latents": input_latents}
+        else:
+            latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
+            return {"latents": latents}
+
+
+class LingBotVideoUnit_ImageEmbedder(PipelineUnit):
+    """TI2V (image-to-video): the condition first frame is used twice — (1) VAE-encoded to a
+    clean latent pinned into the diffusion latent's first temporal slot (here before sampling,
+    re-pinned after every scheduler step in ``__call__``), so the DiT only denoises the frames
+    after it; (2) smart-resized to a PIL image handed to the Qwen3-VL text encoder as
+    ``vlm_image`` (its image tokens are prepended to the prompt). Runs after InputVideoEmbedder
+    (it needs ``latents`` to pin into) and before PromptEmbedder (which consumes ``vlm_image``).
+    No-op (returns ``{}``) for T2V/V2V. The DiT is unchanged (in_channels stays 16); Dense-1.3B
+    reuses its T2V weights."""
+
+    # Qwen3-VL vision token-budget bounds used by smart_resize (official defaults).
+    IMAGE_MIN_TOKEN_NUM = 4
+    IMAGE_MAX_TOKEN_NUM = 16384
+    MAX_RATIO = 200
+    SPATIAL_MERGE_SIZE = 2
+
+    def __init__(self):
+        super().__init__(
+            input_params=("input_image", "latents", "height", "width"),
+            output_params=("latents", "first_frame_latents", "vlm_image"),
+            onload_model_names=("vae",),
+        )
+
+    def process(self, pipe: LingBotVideoPipeline, input_image, latents, height, width):
+        if input_image is None:
+            return {}
+        pipe.load_models_to_device(self.onload_model_names)
+        # (1, C, 1, H, W) in [0, 1] -> [-1, 1] to match the VAE input range; encode_video applies
+        # the latent normalisation, giving the clean cond latent the DiT was trained to inpaint on.
+        pixel = self.preprocess_cond_image(input_image, height, width)
+        pixel = pixel.to(dtype=pipe.torch_dtype, device=pipe.device)
+        first_frame_latents = pipe.vae.encode_video(pixel * 2.0 - 1.0).to(dtype=pipe.torch_dtype, device=pipe.device)
+        vlm_image = self.vlm_image(pipe, pixel)
+        # Pin the clean condition latent into the first temporal slot before sampling.
+        cond_t = first_frame_latents.shape[2]
+        latents[:, :, :cond_t] = first_frame_latents
+        return {"latents": latents, "first_frame_latents": first_frame_latents, "vlm_image": vlm_image}
+
+    @staticmethod
+    def preprocess_cond_image(image: Image.Image, height, width) -> torch.Tensor:
+        # TI2V condition frame -> (1, C, 1, H, W) pixel tensor in [0, 1], aspect-ratio
+        # preserving cover-resize + center-crop to (height, width).
+        raw = torch.from_numpy(np.array(image.convert("RGB"))).permute(2, 0, 1).unsqueeze(0).contiguous()
+        old_h, old_w = raw.shape[-2:]
+        scale = max(height / old_h, width / old_w)
+        new_h = max(math.ceil(old_h * scale), height)
+        new_w = max(math.ceil(old_w * scale), width)
+        resized = F.interpolate(raw.float(), size=(new_h, new_w), mode="bilinear", align_corners=False)
+        top = int(round((new_h - height) / 2.0))
+        left = int(round((new_w - width) / 2.0))
+        cropped = resized[:, :, top: top + height, left: left + width] / 255.0
+        return cropped.unsqueeze(2)
+
+    def vlm_image(self, pipe: LingBotVideoPipeline, pixel: torch.Tensor) -> Image.Image:
+        # Build the PIL image handed to the text encoder from the condition pixel tensor,
+        # smart-resized to the Qwen3-VL patch grid.
+        image = self._pixel_tensor_to_pil(pixel)
+        patch_factor = self._vision_patch_size(pipe) * self.SPATIAL_MERGE_SIZE
+        w, h = image.size
+        resized_height, resized_width = self.smart_resize(h, w, factor=patch_factor)
+        return image.resize((resized_width, resized_height))
+
+    @staticmethod
+    def _vision_patch_size(pipe: LingBotVideoPipeline) -> int:
+        # Resolve the Qwen3-VL vision patch size, used with SPATIAL_MERGE_SIZE to pick the
+        # smart-resize grid factor.
+        for obj in (
+            getattr(getattr(pipe.text_encoder, "config", None), "vision_config", None),
+            getattr(getattr(pipe.processor, "image_processor", None), "config", None),
+            getattr(pipe.processor, "image_processor", None),
+        ):
+            patch = getattr(obj, "patch_size", None)
+            if patch is not None:
+                return int(patch)
+        return 16
+
+    @staticmethod
+    def _pixel_tensor_to_pil(pixel: torch.Tensor) -> Image.Image:
+        # Match torchvision.transforms.ToPILImage for a float CHW image in [0, 1].
+        # pixel: (B, C, T, H, W); take batch 0, temporal slot 0.
+        frame = pixel[0, :, 0].detach().cpu().clamp(0, 1)
+        array = frame.permute(1, 2, 0).mul(255).byte().numpy()
+        return Image.fromarray(array, mode="RGB")
+
+    @classmethod
+    def smart_resize(cls, height: int, width: int, factor: int,
+                     min_pixels: Optional[int] = None, max_pixels: Optional[int] = None):
+        # Resize so both sides are multiples of `factor` and the token count stays in
+        # [min_pixels, max_pixels] while preserving aspect ratio. Ported verbatim from the
+        # official LingBot-Video i2v pipeline (Qwen3-VL smart-resize).
+        max_pixels = max_pixels if max_pixels is not None else cls.IMAGE_MAX_TOKEN_NUM * factor**2
+        min_pixels = min_pixels if min_pixels is not None else cls.IMAGE_MIN_TOKEN_NUM * factor**2
+        if max_pixels < min_pixels:
+            raise ValueError("max_pixels must be greater than or equal to min_pixels.")
+        if max(height, width) / min(height, width) > cls.MAX_RATIO:
+            raise ValueError(f"absolute aspect ratio must be smaller than {cls.MAX_RATIO}.")
+        resized_height = max(factor, cls._round_by_factor(height, factor))
+        resized_width = max(factor, cls._round_by_factor(width, factor))
+        if resized_height * resized_width > max_pixels:
+            beta = math.sqrt((height * width) / max_pixels)
+            resized_height = cls._floor_by_factor(height / beta, factor)
+            resized_width = cls._floor_by_factor(width / beta, factor)
+        elif resized_height * resized_width < min_pixels:
+            beta = math.sqrt(min_pixels / (height * width))
+            resized_height = cls._ceil_by_factor(height * beta, factor)
+            resized_width = cls._ceil_by_factor(width * beta, factor)
+        return resized_height, resized_width
+
+    @staticmethod
+    def _round_by_factor(number: float, factor: int) -> int:
+        return round(number / factor) * factor
+
+    @staticmethod
+    def _ceil_by_factor(number: float, factor: int) -> int:
+        return math.ceil(number / factor) * factor
+
+    @staticmethod
+    def _floor_by_factor(number: float, factor: int) -> int:
+        return math.floor(number / factor) * factor
+
+
 class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
     TOKEN_LENGTH = 37698
     HIDDEN_STATE_SKIP_LAYER = 0
+    # Token block prepended to the prompt (TI2V) so the encoder attends to the condition frame.
+    IMG_PROMPT_TEMPLATE = "<|vision_start|><|image_pad|><|vision_end|>"
     PROMPT_TEMPLATE = (
         "<|im_start|>system\nGiven a user input that may include a text prompt alone, "
         "a text prompt with an image reference, or a text prompt with a video reference "
@@ -337,10 +386,9 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
 
     def encode_prompt(self, pipe: LingBotVideoPipeline, prompt, vlm_image=None):
         prompt = self.normalize_caption(prompt)
-        # TI2V: prepend the image-token block so the encoder attends to the condition
-        # frame. The image tokens land after the template prefix, so crop_start is
-        # unaffected.
-        visual_template = IMG_PROMPT_TEMPLATE if vlm_image is not None else ""
+        # TI2V: prepend the image-token block so the encoder attends to the condition frame.
+        # The image tokens land after the template prefix, so crop_start is unaffected.
+        visual_template = self.IMG_PROMPT_TEMPLATE if vlm_image is not None else ""
         text = self.PROMPT_TEMPLATE.format(visual_template + prompt)
         inputs = pipe.processor(
             text=[text],
@@ -373,53 +421,6 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
         pipe.load_models_to_device(self.onload_model_names)
         prompt_embeds, prompt_mask = self.encode_prompt(pipe, prompt, vlm_image=vlm_image)
         return {"context": prompt_embeds, "encoder_attention_mask": prompt_mask}
-
-
-class LingBotVideoUnit_InputVideoEmbedder(PipelineUnit):
-    def __init__(self):
-        super().__init__(
-            input_params=("input_video", "noise"),
-            output_params=("latents", "input_latents"),
-            onload_model_names=("vae",),
-        )
-
-    def process(self, pipe: LingBotVideoPipeline, input_video, noise):
-        if input_video is None:
-            return {"latents": noise}
-        pipe.load_models_to_device(self.onload_model_names)
-        video = pipe.preprocess_video(input_video)
-        input_latents = pipe.vae.encode_video(video).to(dtype=pipe.torch_dtype, device=pipe.device)
-        if pipe.scheduler.training:
-            return {"latents": noise, "input_latents": input_latents}
-        else:
-            latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
-            return {"latents": latents}
-
-
-class LingBotVideoUnit_ImageEmbedder(PipelineUnit):
-    """TI2V: turn the condition first frame into (a) a clean VAE latent pinned into
-    the diffusion latent's first temporal slot and (b) a smart-resized PIL image for
-    the Qwen3-VL text encoder. No-op (returns {}) when input_image is None (T2V/V2V)."""
-
-    def __init__(self):
-        super().__init__(
-            input_params=("input_image", "height", "width"),
-            output_params=("first_frame_latents", "vlm_image"),
-            onload_model_names=("vae",),
-        )
-
-    def process(self, pipe: LingBotVideoPipeline, input_image, height, width):
-        if input_image is None:
-            return {}
-        pipe.load_models_to_device(self.onload_model_names)
-        # (1, C, 1, H, W) in [0, 1] -> [-1, 1] to match the VAE input range; encode_video
-        # applies the latent normalisation, giving the same clean cond latent the DiT
-        # was trained to inpaint on.
-        pixel = pipe.preprocess_cond_image(input_image, height, width)
-        pixel = pixel.to(dtype=pipe.torch_dtype, device=pipe.device)
-        first_frame_latents = pipe.vae.encode_video(pixel * 2.0 - 1.0).to(dtype=pipe.torch_dtype, device=pipe.device)
-        vlm_image = pipe._vlm_image(pixel)
-        return {"first_frame_latents": first_frame_latents, "vlm_image": vlm_image}
 
 
 def model_fn_lingbot_video(
