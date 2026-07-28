@@ -7,7 +7,7 @@ not the DiT, and is not downloaded with the pipeline -- hence it lives with the 
 TransformersBackend loads the rewriter VLM locally; make_backend also accepts any object
 exposing generate(text, image, use_lora).
 
-    from prompt_rewriter import rewrite_prompt
+    from examples.lingbot_video.model_training.scripts.prompt_rewriter import rewrite_prompt
     caption = rewrite_prompt("a puppy running across a meadow", mode="t2v", duration=5)
     video = pipe(prompt=caption, ...)
 """
@@ -33,9 +33,16 @@ try:
 except ImportError:
     repair_json = None
 
-from system_prompts import (
-    VIDEO_STEP1_EXPAND, VIDEO_STEP2_MAP, IMAGE_STEP1_EXPAND, IMAGE_STEP2_MAP,
-)
+# Support both package-style import (from the repo root) and top-level import (when
+# this directory itself is on sys.path, e.g. from rewrite_captions.py).
+try:
+    from .system_prompts import (
+        VIDEO_STEP1_EXPAND, VIDEO_STEP2_MAP, IMAGE_STEP1_EXPAND, IMAGE_STEP2_MAP,
+    )
+except ImportError:
+    from system_prompts import (
+        VIDEO_STEP1_EXPAND, VIDEO_STEP2_MAP, IMAGE_STEP1_EXPAND, IMAGE_STEP2_MAP,
+    )
 
 
 # mode -> (step1 system prompt, step2 system prompt, feed image?, add duration?)

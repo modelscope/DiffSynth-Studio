@@ -87,7 +87,7 @@ When running low on VRAM, please refer to [VRAM Management](../Pipeline_Usage/VR
 
 LingBot-Video is trained on **structured-JSON captions**, not free-form prose. Feeding a flat sentence is out-of-distribution and visibly degrades quality; feeding the structured caption the model expects restores it. The pipeline accepts a caption as a `dict` or a plain string and normalises it to the exact compact-JSON format the DiT was trained on — a `dict` is serialised automatically, a plain string is passed through unchanged, so existing scripts keep working.
 
-To turn a **brief idea** into that structured caption, use the two-stage rewriter shipped with the examples (`examples/lingbot_video/model_inference/prompt_rewriter.py`): stage 1 *expands* the idea into a natural-language caption, stage 2 *maps* it into structured JSON.
+To turn a **brief idea** into that structured caption, use the two-stage rewriter shipped with the examples (`examples/lingbot_video/model_training/scripts/prompt_rewriter.py`): stage 1 *expands* the idea into a natural-language caption, stage 2 *maps* it into structured JSON.
 
 The rewriter is a **separate VLM + stage-2 LoRA adapter** (not the DiT), so it is **not downloaded automatically** — you must fetch both weights yourself before running the rewrite:
 
@@ -108,16 +108,15 @@ import os
 os.environ["REWRITER_BASE_MODEL"] = "./models/Qwen/Qwen3.6-27B"
 os.environ["REWRITER_ADAPTER"] = "./models/Robbyant/lingbot-video-rewriter-lora"
 
-# The rewriter ships with the inference examples; run from
-# examples/lingbot_video/model_inference (or add it to sys.path) for this import.
-from prompt_rewriter import rewrite_prompt
+# Run from the repo root so the package-style import resolves.
+from examples.lingbot_video.model_training.scripts.prompt_rewriter import rewrite_prompt
 caption = rewrite_prompt("a puppy running across a meadow", mode="t2v", duration=5)
 video = pipe(prompt=caption, height=480, width=832, num_frames=81, cfg_scale=3.0)
 ```
 
 Instead of the env vars you can pass `base=` / `adapter=` to `rewrite_prompt`, or skip the local VLM entirely and drive a hosted / OpenAI-compatible endpoint by passing a custom object exposing `generate(text, image, use_lora)` as `backend=`. See the optional rewrite section at the bottom of `examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py`.
 
-If you don't have the rewriter model, three released LingBot-Video t2v captions ship with the repo as ready-to-use examples: `examples/lingbot_video/model_inference/prompts/t2v_example_{1,2,3}.json`. Load one with `json.load` and pass the resulting `dict` to the pipeline (see the inference example script), or copy one as a template for writing your own structured caption.
+If you don't have the rewriter model, released LingBot-Video t2v structured captions ship in the example dataset as ready-to-use samples (`t2v_example_*.json` under `DiffSynth-Studio/diffsynth_example_dataset`, downloaded automatically by the inference example scripts). Load one with `json.load` and pass the resulting `dict` to the pipeline, or copy one as a template for writing your own structured caption.
 
 ## Model Training
 
@@ -177,7 +176,7 @@ The recommended launch script patches LoRA on the joint text+video self-attentio
 
 The MoE / FFN experts (`gate_proj`, `up_proj`, `down_proj`) and the router are left frozen. To also adapt the FFN, add those module names to `--lora_target_modules`.
 
-For best results the `prompt` column should hold **structured-JSON captions** (the same in-distribution format used at inference — see [Prompt rewriting](#prompt-rewriting-important-for-quality)). The pipeline normalises each prompt internally. If your dataset stores raw prose, rewrite it once offline with `examples/lingbot_video/model_training/rewrite_captions.py` before training.
+For best results the `prompt` column should hold **structured-JSON captions** (the same in-distribution format used at inference — see [Prompt rewriting](#prompt-rewriting-important-for-quality)). The pipeline normalises each prompt internally. If your dataset stores raw prose, rewrite it once offline with `examples/lingbot_video/model_training/scripts/rewrite_captions.py` before training.
 
 We have written recommended training scripts, please refer to the table in the "Model Overview" section above. For how to write model training scripts, please refer to [Model Training](../Pipeline_Usage/Model_Training.md); for more advanced training algorithms, please refer to [Training Framework Detailed Explanation](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/en/Training/).
 

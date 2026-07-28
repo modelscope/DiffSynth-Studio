@@ -122,22 +122,18 @@ class LingBotVideoPipeline(BasePipeline):
         processor_config: ModelConfig = None,
         vram_limit: float = None,
     ):
-        # Initialize pipeline
         pipe = LingBotVideoPipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
 
-        # Fetch models by name (registered in diffsynth/configs/model_configs.py).
         pipe.text_encoder = model_pool.fetch_model("lingbot_video_text_encoder")
         pipe.dit = model_pool.fetch_model("lingbot_video_dit")
         pipe.vae = model_pool.fetch_model("qwen_image_vae")
 
-        # Initialize the Qwen3-VL processor (tokenizer + image/video processor).
         if processor_config is not None:
             processor_config.download_if_necessary()
             from transformers import AutoProcessor
             pipe.processor = AutoProcessor.from_pretrained(processor_config.path)
 
-        # VRAM Management
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
 
@@ -158,7 +154,7 @@ class LingBotVideoPipeline(BasePipeline):
         width: int = 480,
         num_frames: int = 81,
         # Classifier-free guidance
-        cfg_scale: float = 6.0,
+        cfg_scale: float = 3.0,
         # Scheduler
         num_inference_steps: int = 40,
         sigma_shift: float = 3.0,
@@ -193,19 +189,13 @@ class LingBotVideoPipeline(BasePipeline):
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
-            # fp32 so the integer timestep is represented exactly (bf16 rounds values > 256).
-            timestep_input = timestep.unsqueeze(0).to(dtype=torch.float32, device=self.device)
-
-            noise_pred_posi = self.model_fn(**models, **inputs_shared, **inputs_posi, timestep=timestep_input)
-            if cfg_scale != 1.0:
-                noise_pred_nega = self.model_fn(**models, **inputs_shared, **inputs_nega, timestep=timestep_input)
-                noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
-            else:
-                noise_pred = noise_pred_posi
-
-            inputs_shared["latents"] = self.scheduler.step(noise_pred, timestep, inputs_shared["latents"])
-            if first_frame_latents is not None:
-                inputs_shared["latents"][:, :, :cond_t] = first_frame_latents
+            timestep = timestep.unsqueeze(0).to(dtype=torch.float32, device=self.device)
+            noise_pred = self.cfg_guided_model_fn(
+                self.model_fn, cfg_scale,
+                inputs_shared, inputs_posi, inputs_nega,
+                **models, timestep=timestep, progress_id=progress_id
+            )
+            inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
 
         self.load_models_to_device(['vae'])
         latents = inputs_shared["latents"].to(dtype=self.torch_dtype, device=self.device)
@@ -235,13 +225,8 @@ class LingBotVideoUnit_NoiseInitializer(PipelineUnit):
         )
 
     def process(self, pipe: LingBotVideoPipeline, height, width, num_frames, seed, rand_device):
-        # VAE downsample factors (QwenImageVAE / Wan-VAE): 8x spatial, 4x temporal.
         length = (num_frames - 1) // 4 + 1
-        shape = (
-            1, pipe.dit.in_channels, length,
-            height // 8, width // 8,
-        )
-        # fp32 noise: the flow-matching sampler accumulates state in fp32.
+        shape = (1, pipe.dit.in_channels, length, height // 8, width // 8)
         noise = pipe.generate_noise(shape, seed=seed, rand_device=rand_device, torch_dtype=torch.float32)
         return {"noise": noise}
 
@@ -270,7 +255,7 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
     # LingBot-Video is trained on structured JSON captions. normalize_caption serialises a
     # dict caption into the compact-JSON string the DiT expects; a plain string is passed
     # through. The prompt rewriter that turns a brief idea into such a caption lives in
-    # examples/lingbot_video/model_inference/prompt_rewriter.py.
+    # examples/lingbot_video/model_training/scripts/prompt_rewriter.py.
     _RUNTIME_KEYS = {"duration", "fps", "height", "width", "num_frames", "resolution", "ratio"}
 
     def __init__(self):
@@ -280,7 +265,7 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
             input_params_nega={"prompt": "negative_prompt"},
             input_params=("vlm_image",),
             output_params=("context", "encoder_attention_mask"),
-            onload_model_names=("text_encoder",),
+            onload_model_names=("text_encoder", ),
         )
         # Cached number of template-prefix tokens to crop from the prompt embedding.
         self._crop_start: Optional[int] = None
@@ -297,7 +282,10 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
             if isinstance(caption, (dict, list)):
                 return json.dumps(caption, ensure_ascii=False, separators=(",", ":"))
             return str(caption)
-        return prompt
+        elif isinstance(prompt, str):
+            return prompt
+        else:
+            raise TypeError(f"prompt must be a str or a dict, not {type(prompt)}")
 
     def _compute_crop_start(self, pipe: LingBotVideoPipeline) -> int:
         # Token count of the template prefix (everything before the user prompt), computed once.

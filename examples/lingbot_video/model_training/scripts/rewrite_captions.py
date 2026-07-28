@@ -17,9 +17,9 @@ import json
 import os
 import sys
 
-# The two-stage rewriter engine lives with the inference examples, so training and
+# The two-stage rewriter engine lives alongside this script, so training and
 # inference share one implementation.
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "model_inference"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from prompt_rewriter import Rewriter, make_backend
 
 

@@ -105,12 +105,11 @@ pipe(prompt="assets/cases/t2v/example_1/prompt.json")                          #
 pipe(prompt='{"comprehensive_description":{...}}')                             # already-serialised string
 ```
 
-To turn a **brief idea** into that structured caption, use the two-stage rewriter shipped here (`model_inference/prompt_rewriter.py`), a faithful port of the original: stage 1 *expands* the idea into a natural-language caption, stage 2 *maps* it into structured JSON.
+To turn a **brief idea** into that structured caption, use the two-stage rewriter shipped here (`model_training/scripts/prompt_rewriter.py`), a faithful port of the original: stage 1 *expands* the idea into a natural-language caption, stage 2 *maps* it into structured JSON.
 
 ```python
-# The rewriter lives in model_inference/; run from that directory (or add it to
-# sys.path) so this sibling import resolves.
-from prompt_rewriter import rewrite_prompt
+# Run from the repo root so the package-style import resolves.
+from examples.lingbot_video.model_training.scripts.prompt_rewriter import rewrite_prompt
 caption = rewrite_prompt("a puppy running across a meadow", mode="t2v", duration=5)
 video = pipe(prompt=caption, height=480, width=832, num_frames=81, cfg_scale=3.0)
 ```
@@ -147,7 +146,7 @@ Pass `--data_file_keys "video"` so the loader treats the `video` column as a fil
 For best results the `prompt` column should hold **structured-JSON captions** (the same in-distribution format used at inference — see [Prompt rewriting](#prompt-rewriting-important-for-quality)). The pipeline's prompt embedder normalises each prompt, so a `dict`-valued prompt (in JSONL) is serialised automatically and a plain string is used as-is. If your dataset stores raw prose, rewrite it once offline before training:
 
 ```bash
-python examples/lingbot_video/model_training/rewrite_captions.py \
+python examples/lingbot_video/model_training/scripts/rewrite_captions.py \
     --metadata metadata.csv --output metadata_rewritten.csv \
     --base /path/to/rewriter-base --adapter /path/to/rewriter-step2-lora --duration 5
 ```

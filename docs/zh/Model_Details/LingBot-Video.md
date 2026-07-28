@@ -87,7 +87,7 @@ save_video(video, "video.mp4", fps=15, quality=10)
 
 LingBot-Video 使用**结构化 JSON caption** 训练，而非自由文本。喂入一句普通句子属于分布外（out-of-distribution）输入，会明显降低质量；喂入模型期望的结构化 caption 则能恢复质量。Pipeline 接受 `dict` 或普通字符串形式的 caption，并将其归一化为 DiT 训练时使用的紧凑 JSON 格式——`dict` 会自动序列化，普通字符串会原样透传，因此已有脚本无需改动。
 
-若要把一个**简短想法**转成该结构化 caption，可使用随示例发布的两阶段改写器（`examples/lingbot_video/model_inference/prompt_rewriter.py`）：阶段一将想法*扩写*为自然语言 caption，阶段二将其*映射*为结构化 JSON。
+若要把一个**简短想法**转成该结构化 caption，可使用随示例发布的两阶段改写器（`examples/lingbot_video/model_training/scripts/prompt_rewriter.py`）：阶段一将想法*扩写*为自然语言 caption，阶段二将其*映射*为结构化 JSON。
 
 改写器是**独立的 VLM + 阶段二 LoRA 适配器**（不是 DiT），**不会自动下载**——运行改写前，需要先自行下载这两个权重：
 
@@ -108,16 +108,15 @@ import os
 os.environ["REWRITER_BASE_MODEL"] = "./models/Qwen/Qwen3.6-27B"
 os.environ["REWRITER_ADAPTER"] = "./models/Robbyant/lingbot-video-rewriter-lora"
 
-# 改写器随推理示例一起发布；请在 examples/lingbot_video/model_inference 目录下运行
-# （或将该目录加入 sys.path），此 import 才能解析。
-from prompt_rewriter import rewrite_prompt
+# 在仓库根目录下运行，此包式 import 才能解析。
+from examples.lingbot_video.model_training.scripts.prompt_rewriter import rewrite_prompt
 caption = rewrite_prompt("a puppy running across a meadow", mode="t2v", duration=5)
 video = pipe(prompt=caption, height=480, width=832, num_frames=81, cfg_scale=3.0)
 ```
 
 除了 env var，也可以给 `rewrite_prompt` 传 `base=` / `adapter=`；或者完全不下载本地 VLM，改为传入一个暴露 `generate(text, image, use_lora)` 方法的自定义对象作为 `backend=`，来驱动托管的 / OpenAI 兼容的推理端点。详见 `examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py` 文件末尾的可选改写小节。
 
-如果没有改写器模型，仓库自带 3 个官方 LingBot-Video t2v 结构化 caption 作为开箱即用的示例：`examples/lingbot_video/model_inference/prompts/t2v_example_{1,2,3}.json`。用 `json.load` 读入后作为 `dict` 传给 pipeline（见推理示例脚本），也可以复制一个作为编写自己 caption 的模板。
+如果没有改写器模型，官方 LingBot-Video t2v 结构化 caption 已随样例数据集发布（`DiffSynth-Studio/diffsynth_example_dataset` 中的 `t2v_example_*.json`，推理示例脚本会自动下载）。用 `json.load` 读入后作为 `dict` 传给 pipeline，也可以复制一个作为编写自己 caption 的模板。
 
 ## 模型训练
 
@@ -177,7 +176,7 @@ modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset \
 
 MoE / FFN 专家（`gate_proj`、`up_proj`、`down_proj`）与 router 保持冻结。若要同时微调 FFN，可将这些模块名加入 `--lora_target_modules`。
 
-为获得最佳效果，`prompt` 列应存放**结构化 JSON caption**（与推理时一致的分布内格式——见[提示词改写](#提示词改写对质量很重要)）。Pipeline 会在内部对每条 prompt 做归一化。若数据集存放的是原始文本，请在训练前用 `examples/lingbot_video/model_training/rewrite_captions.py` 离线改写一次。
+为获得最佳效果，`prompt` 列应存放**结构化 JSON caption**（与推理时一致的分布内格式——见[提示词改写](#提示词改写对质量很重要)）。Pipeline 会在内部对每条 prompt 做归一化。若数据集存放的是原始文本，请在训练前用 `examples/lingbot_video/model_training/scripts/rewrite_captions.py` 离线改写一次。
 
 我们编写了推荐的训练脚本，请参考前文"模型总览"中的表格。关于如何编写模型训练脚本，请参考[模型训练](../Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/zh/Training/)。
 

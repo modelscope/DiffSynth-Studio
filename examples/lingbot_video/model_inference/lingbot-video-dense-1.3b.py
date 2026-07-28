@@ -3,11 +3,7 @@ import os
 import torch
 from diffsynth.utils.data import save_video, VideoData
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
-
-
-# LingBot-Video is trained on structured-JSON captions, not free-form prose. This example
-# runs on a released in-distribution caption; see the bottom for turning a brief idea into
-# such a caption with the two-stage prompt rewriter.
+from modelscope import dataset_snapshot_download
 
 pipe = LingBotVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -21,10 +17,18 @@ pipe = LingBotVideoPipeline.from_pretrained(
 )
 
 # --- Text-to-video -------------------------------------------------------------------
-# prompts/t2v_example_*.json are released in-distribution captions. The pipeline accepts
-# a plain string or a structured caption dict, so the json is loaded here.
-with open(os.path.join(os.path.dirname(__file__), "prompts", "t2v_example_1.json"), "r", encoding="utf-8") as f:
+# Download dataset
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
+    local_dir="data/diffsynth_example_dataset",
+    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b/*",
+)
+# LingBot-Video is trained on structured-JSON captions, not free-form prose. This example
+# runs on a released in-distribution caption; see the bottom for turning a brief idea into
+# such a caption with the two-stage prompt rewriter.
+with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b/t2v_example_1.json", "r", encoding="utf-8") as f:
     caption = json.load(f)
+
 video = pipe(
     prompt=caption,
     negative_prompt=pipe.default_negative_prompt,
@@ -48,7 +52,7 @@ video = pipe(
 save_video(video, "video_lingbot-video-dense-1.3b_v2v.mp4", fps=15, quality=10)
 
 # --- Optional: rewrite a brief idea into a structured caption ------------------------
-# The two-stage rewriter (prompt_rewriter.py, a sibling module) is a separate VLM +
+# The two-stage rewriter (model_training/scripts/prompt_rewriter.py) is a separate VLM +
 # stage-2 LoRA adapter (NOT the DiT) and is not downloaded automatically. Fetch both
 # weights and point the env vars at them:
 #     modelscope download --model Qwen/Qwen3.6-27B --local_dir ./models/Qwen/Qwen3.6-27B
@@ -56,7 +60,7 @@ save_video(video, "video_lingbot-video-dense-1.3b_v2v.mp4", fps=15, quality=10)
 #     export REWRITER_BASE_MODEL=./models/Qwen/Qwen3.6-27B
 #     export REWRITER_ADAPTER=./models/Robbyant/lingbot-video-rewriter-lora
 #
-# from prompt_rewriter import rewrite_prompt
+# from examples.lingbot_video.model_training.scripts.prompt_rewriter import rewrite_prompt
 # caption = rewrite_prompt(
 #     "A playful puppy runs across a lush green meadow, chasing a red ball. "
 #     "Dynamic side-tracking camera.",
