@@ -4,14 +4,12 @@ import torch
 from PIL import Image
 from diffsynth.utils.data import save_video
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
+from diffsynth import load_state_dict
 
 
-# Image-to-video (TI2V). Dense-1.3B reuses the SAME T2V checkpoint -- there is no separate
-# i2v weight. The condition first frame is used twice: as visual input to the Qwen3-VL text
-# encoder, and VAE-encoded to a clean latent pinned into the first frame of the diffusion
-# latent (and re-pinned after every denoising step) so the model only generates the frames
-# that follow. Pass a first frame via `input_image`.
-
+# TI2V full-parameter validation: load the freshly-trained DiT weights and generate from
+# the same caption + first frame the TI2V inference example uses. Adjust
+# `epoch-N.safetensors` to whichever epoch you want to validate.
 pipe = LingBotVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
@@ -22,13 +20,13 @@ pipe = LingBotVideoPipeline.from_pretrained(
     ],
     processor_config=ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="processor/"),
 )
+state_dict = load_state_dict("models/train/lingbot-video-dense-1.3b_ti2v_full/epoch-1.safetensors")
+pipe.dit.load_state_dict(state_dict)
 
-# In-tree released ti2v caption + paired first frame; the reviewer will move these to the
-# diffsynth_example_dataset repo in a follow-up pass.
-here = os.path.dirname(__file__)
-with open(os.path.join(here, "prompts", "ti2v_example.json"), "r", encoding="utf-8") as f:
+inference_dir = os.path.join(os.path.dirname(__file__), "..", "..", "model_inference")
+with open(os.path.join(inference_dir, "prompts", "ti2v_example.json"), "r", encoding="utf-8") as f:
     caption = json.load(f)
-input_image = Image.open(os.path.join(here, "assets", "ti2v_first_frame.png")).convert("RGB")
+input_image = Image.open(os.path.join(inference_dir, "assets", "ti2v_first_frame.png")).convert("RGB")
 
 video = pipe(
     prompt=caption,

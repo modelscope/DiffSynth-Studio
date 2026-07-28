@@ -108,6 +108,14 @@ class LingBotVideoPipeline(BasePipeline):
             '"temporal_and_motion_stability": ["flickering", "jittery", "motion blur", "temporal inconsistency", "warping", "morphing", "incoherent motion", "unnatural movement", "static object with sudden jump", "frame-to-frame inconsistency"], '
             '"material_and_structure": ["plastic-like glass", "unrealistic texture", "deformed bottle", "liquid freezing improperly", "distorted reflections"]}}'
         )
+        # T2I variant: video-only temporal/motion group dropped (cannot apply to a still).
+        self.default_negative_prompt_image = (
+            '{"universal_negative": {'
+            '"visual_quality": ["low quality", "worst quality", "blurry", "pixelated", "jpeg artifacts", "low resolution", "unstable color", "underexposed", "overexposed", "invisible subject", "subject hidden in darkness"], '
+            '"artistic_style": ["painting", "illustration", "drawing", "cartoon", "3d render", "cgi", "sketch", "digital art"], '
+            '"composition_and_content": ["text", "watermark", "signature", "logo", "subtitles", "pillarboxed", "side bars", "portrait image in landscape frame"], '
+            '"material_and_structure": ["plastic-like glass", "unrealistic texture", "deformed bottle", "liquid freezing improperly", "distorted reflections"]}}'
+        )
 
     @staticmethod
     def from_pretrained(

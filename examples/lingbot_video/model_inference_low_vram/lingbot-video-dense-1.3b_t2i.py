@@ -1,19 +1,16 @@
 import os
+import json
 import torch
-from diffsynth.pipelines.lingbot_video import (
-    LingBotVideoPipeline, ModelConfig, normalize_caption, DEFAULT_NEGATIVE_PROMPT_IMAGE,
-)
+from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
 
 
 # Low-VRAM text-to-image (t2i). t2i is text-to-video with num_frames=1 through the same
 # pipeline and DiT (no separate image weight); the only image-specific knob is the negative
-# prompt (DEFAULT_NEGATIVE_PROMPT_IMAGE drops temporal/motion terms). offload_dtype /
-# offload_device on each ModelConfig turn on VRAM management: weights stay on CPU in fp8 and
-# stream to the GPU layer-by-layer, computed in bf16. vram_limit only caps resident VRAM once
-# offloading is enabled by those two fields.
+# prompt (`pipe.default_negative_prompt_image` drops temporal/motion terms). Uses the same
+# disk-offload VRAM profile as the low-VRAM t2v/ti2v examples.
 vram_config = {
-    "offload_dtype": torch.float8_e4m3fn,
-    "offload_device": "cpu",
+    "offload_dtype": "disk",
+    "offload_device": "disk",
     "onload_dtype": torch.float8_e4m3fn,
     "onload_device": "cpu",
     "preparing_dtype": torch.float8_e4m3fn,
@@ -31,15 +28,15 @@ pipe = LingBotVideoPipeline.from_pretrained(
         ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
     ],
     processor_config=ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="processor/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
-# prompts/t2i_example.json is a released in-distribution still-image caption.
-caption = normalize_caption(os.path.join(
-    os.path.dirname(__file__), "..", "model_inference", "prompts", "t2i_example.json"))
+with open(os.path.join(os.path.dirname(__file__), "..", "model_inference", "prompts", "t2i_example.json"), "r", encoding="utf-8") as f:
+    caption = json.load(f)
+
 frames = pipe(
     prompt=caption,
-    negative_prompt=DEFAULT_NEGATIVE_PROMPT_IMAGE,
+    negative_prompt=pipe.default_negative_prompt_image,
     height=480, width=832, num_frames=1,
     num_inference_steps=40, cfg_scale=3.0,
     seed=0,
