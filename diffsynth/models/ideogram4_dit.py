@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ..core.gradient import gradient_checkpoint_forward
+from ..core.quant import QuantBackend, register_quant_backend, register_quant_preset
 
 LLM_TOKEN_INDICATOR = 3
 OUTPUT_IMAGE_INDICATOR = 2
@@ -14,7 +15,6 @@ QWEN3_VL_ACTIVATION_LAYERS = (0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 35)
 
 FP8_E4M3_MAX = 448.0
 FP8_WEIGHT_DTYPE = torch.float8_e4m3fn
-FP8_SCALE_SUFFIX = ".weight_scale"
 
 
 class Fp8Linear(nn.Module):
@@ -51,36 +51,34 @@ class Fp8Linear(nn.Module):
         return F.linear(x, w, bias)
 
 
-def is_fp8_state_dict(state_dict: dict[str, torch.Tensor]) -> bool:
-    return any(k.endswith(FP8_SCALE_SUFFIX) for k in state_dict) or any(
-        v.dtype == FP8_WEIGHT_DTYPE for v in state_dict.values()
-    )
+# Backend for the released fp8 checkpoints, whose quantized Linears follow the
+# compressed-tensors layout: `X.weight` in float8_e4m3 plus one float32 scale per output
+# channel in `X.weight_scale`. `Fp8Linear` names its buffers accordingly, so loading such a
+# checkpoint is a pure structure replacement.
+@register_quant_backend("ideogram4_fp8")
+class Ideogram4Fp8QuantBackend(QuantBackend):
+    def create_quantized_linear_for_load(self, in_features, out_features, bias, config):
+        with torch.device("meta"):
+            return Fp8Linear(in_features, out_features, bias=bias, compute_dtype=config["compute_dtype"])
+
+    def quantized_linear_classes(self) -> tuple:
+        return (Fp8Linear,)
+
+    def dequantize_to_linear(self, module, compute_dtype):
+        fp_weight = (module.weight.to(compute_dtype) * module.weight_scale.to(compute_dtype).unsqueeze(1))
+        linear = nn.Linear(module.in_features, module.out_features, bias=module.bias is not None, device="meta")
+        linear.weight = nn.Parameter(fp_weight, requires_grad=False)
+        if module.bias is not None:
+            linear.bias = nn.Parameter(module.bias.to(dtype=compute_dtype, device=fp_weight.device), requires_grad=False)
+        return linear
 
 
-def swap_linears_to_fp8(
-    module: nn.Module,
-    state_dict: dict[str, torch.Tensor],
-    compute_dtype: torch.dtype,
-    *,
-    prefix: str = "",
-) -> None:
-    for name, child in list(module.named_children()):
-        child_prefix = f"{prefix}{name}"
-        if (
-            isinstance(child, nn.Linear) and f"{child_prefix}{FP8_SCALE_SUFFIX}" in state_dict
-        ):
-            setattr(
-                module,
-                name,
-                Fp8Linear(
-                    child.in_features,
-                    child.out_features,
-                    bias=child.bias is not None,
-                    compute_dtype=compute_dtype,
-                ),
-            )
-        else:
-            swap_linears_to_fp8(child, state_dict, compute_dtype, prefix=f"{child_prefix}.")
+register_quant_preset(
+    "ideogram4_fp8",
+    "ideogram4_fp8",
+    lambda overrides: {"compute_dtype": torch.bfloat16, **overrides},
+    label="ideogram-4 fp8 weight-only (compressed-tensors layout, per-channel scale)",
+)
 
 
 @dataclass
@@ -357,12 +355,6 @@ class Ideogram4DiT(nn.Module):
             out_channels=config.in_channels,
             adanln_dim=config.adanln_dim,
         )
-
-    def load_state_dict(self, state_dict, strict=True, assign=False):
-        if is_fp8_state_dict(state_dict):
-            swap_linears_to_fp8(self, state_dict, torch.bfloat16)
-            return super().load_state_dict(state_dict, strict=False, assign=assign)
-        return super().load_state_dict(state_dict, strict=strict, assign=assign)
 
     @property
     def device(self) -> torch.device:

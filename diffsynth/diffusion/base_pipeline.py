@@ -307,6 +307,7 @@ class BasePipeline(torch.nn.Module):
                 vram_limit=vram_limit,
                 clear_parameters=model_config.clear_parameters,
                 state_dict=model_config.state_dict,
+                quantize=model_config.quantize,
             )
         return model_pool
     

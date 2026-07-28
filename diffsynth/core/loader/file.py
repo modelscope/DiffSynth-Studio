@@ -33,6 +33,19 @@ def load_state_dict_from_safetensors(file_path, torch_dtype=None, device="cpu"):
     return state_dict
 
 
+def load_state_dict_metadata(file_path):
+    # The `__metadata__` header of safetensors files, which quantized checkpoints use to
+    # describe how to rebuild composite weights.
+    metadata = {}
+    file_paths = file_path if isinstance(file_path, list) else [file_path]
+    for path in file_paths:
+        if not isinstance(path, str) or not path.endswith(".safetensors"):
+            continue
+        with safe_open(path, framework="pt", device="cpu") as f:
+            metadata.update(f.metadata() or {})
+    return metadata
+
+
 def load_state_dict_from_bin(file_path, torch_dtype=None, device="cpu"):
     state_dict = torch.load(file_path, map_location=device, weights_only=True)
     if len(state_dict) == 1:

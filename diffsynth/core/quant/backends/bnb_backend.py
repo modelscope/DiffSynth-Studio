@@ -1,0 +1,151 @@
+import torch
+from ..base import QuantBackend, register_quant_backend
+from ..config import register_quant_preset
+
+
+def _assign_params_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+    # Assigns the incoming tensors as-is, without the shape check a packed weight cannot pass.
+    local_names = set()
+    for name, current in list(self._parameters.items()) + list(self._buffers.items()):
+        if current is None:
+            continue
+        local_names.add(name)
+        key = prefix + name
+        if key in state_dict:
+            value = state_dict[key]
+            if name in self._parameters:
+                self._parameters[name] = value if isinstance(value, torch.nn.Parameter) else torch.nn.Parameter(value, requires_grad=False)
+            else:
+                self._buffers[name] = value
+        elif strict:
+            missing_keys.append(key)
+    if strict:
+        for key in state_dict:
+            if key.startswith(prefix) and key[len(prefix):].split(".", 1)[0] not in local_names:
+                unexpected_keys.append(key)
+
+
+@register_quant_backend("bnb")
+class BnbQuantBackend(QuantBackend):
+    """
+    Thin adapter over `bitsandbytes.nn.Linear4bit` (NF4 / FP4, weight-only).
+    The quantized Linear is a backend-native `nn.Linear` subclass; its forward
+    performs dequant + matmul with bnb's own kernels.
+    """
+
+    def validate_environment(self, config):
+        try:
+            import bitsandbytes  # noqa: F401
+        except ImportError:
+            raise ImportError(
+                "bitsandbytes is required for bnb quantization presets. "
+                'Please install it via `pip install bitsandbytes` or `pip install "diffsynth[quant]"`.'
+            )
+        if not torch.cuda.is_available():
+            raise RuntimeError("bitsandbytes 4bit quantization requires a CUDA device.")
+
+    def capabilities(self, config):
+        return {
+            "is_serializable": True,
+            "is_trainable": True,       # forward supports grad w.r.t. input
+            "is_compileable": False,
+            "requires_calibration": False,
+        }
+
+    def quantized_linear_classes(self):
+        try:
+            import bitsandbytes as bnb
+        except ImportError:
+            return ()
+        return (bnb.nn.Linear4bit,)
+
+    def quantize_linear_from_fp(self, linear, config, compute_dtype, device=None):
+        import bitsandbytes as bnb
+
+        source_device = linear.weight.device
+        if device is not None:
+            target_device = torch.device(device)
+        elif source_device.type == "cuda":
+            target_device = source_device
+        else:
+            target_device = torch.device("cuda")
+        quant_type = config.get("quant_type", "nf4")
+        compress_statistics = config.get("compress_statistics", True)
+        blocksize = config.get("blocksize", 64)
+        quant_storage = config.get("quant_storage", torch.uint8)
+
+        # Build the shell on `meta` so that the fp weight `Linear4bit.__init__` would
+        # allocate (and that we replace right below) is never materialized.
+        with torch.device("meta"):
+            quant_linear = bnb.nn.Linear4bit(
+                linear.in_features,
+                linear.out_features,
+                bias=linear.bias is not None,
+                compute_dtype=compute_dtype,
+                compress_statistics=compress_statistics,
+                quant_type=quant_type,
+                quant_storage=quant_storage,
+            )
+        # `Params4bit.to("cuda")` triggers the actual quantization; the fp source may
+        # live on CPU, so only one layer's fp copy transits through the GPU at a time.
+        weight = bnb.nn.Params4bit(
+            linear.weight.data.to(compute_dtype).contiguous(),
+            requires_grad=False,
+            compress_statistics=compress_statistics,
+            blocksize=blocksize,
+            quant_type=quant_type,
+            quant_storage=quant_storage,
+        )
+        quant_linear.weight = weight.to(target_device)
+        if linear.bias is not None:
+            quant_linear.bias = torch.nn.Parameter(
+                linear.bias.data.to(dtype=compute_dtype, device=target_device), requires_grad=False
+            )
+        return quant_linear
+
+    def create_quantized_linear_for_load(self, in_features, out_features, bias, config):
+        import bitsandbytes as bnb
+        with torch.device("meta"):
+            shell = bnb.nn.Linear4bit(
+                in_features,
+                out_features,
+                bias=bias,
+                compute_dtype=config.get("compute_dtype", torch.bfloat16),
+                compress_statistics=config.get("compress_statistics", True),
+                quant_type=config.get("quant_type", "nf4"),
+                quant_storage=config.get("quant_storage", torch.uint8),
+            )
+        shell._load_from_state_dict = _assign_params_from_state_dict.__get__(shell)
+        return shell
+
+    def unflatten_state_dict(self, state_dict, metadata):
+        import bitsandbytes as bnb
+        rebuilt = {}
+        quant_state = {}
+        for key, value in state_dict.items():
+            weight_key = key.rsplit(".weight.", 1)[0] + ".weight" if ".weight." in key else None
+            if weight_key is not None:
+                quant_state.setdefault(weight_key, {})[key] = value
+            else:
+                rebuilt[key] = value
+        for weight_key, stats in quant_state.items():
+            if weight_key not in rebuilt:
+                raise ValueError(f"Found quant state for `{weight_key}` but no packed weight.")
+            rebuilt[weight_key] = bnb.nn.Params4bit.from_prequantized(
+                data=rebuilt[weight_key], quantized_stats=stats, requires_grad=False,
+            )
+        return rebuilt
+
+    def dequantize_to_linear(self, module, compute_dtype):
+        import bitsandbytes as bnb
+        weight = module.weight
+        fp_weight = bnb.functional.dequantize_4bit(weight.data, weight.quant_state).to(compute_dtype)
+        linear = torch.nn.Linear(module.in_features, module.out_features, bias=module.bias is not None, device="meta")
+        linear.weight = torch.nn.Parameter(fp_weight, requires_grad=False)
+        if module.bias is not None:
+            linear.bias = torch.nn.Parameter(module.bias.data.to(dtype=compute_dtype, device=fp_weight.device), requires_grad=False)
+        return linear
+
+
+register_quant_preset("bnb_nf4", "bnb", lambda o: {"quant_type": "nf4", **o}, label="4bit NF4 weight-only")
+register_quant_preset("bnb_fp4", "bnb", lambda o: {"quant_type": "fp4", **o}, label="4bit FP4 weight-only")
