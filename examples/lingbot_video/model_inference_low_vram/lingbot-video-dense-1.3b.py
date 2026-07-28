@@ -1,5 +1,5 @@
-import json
 import torch
+import json
 from diffsynth.utils.data import save_video, VideoData
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download

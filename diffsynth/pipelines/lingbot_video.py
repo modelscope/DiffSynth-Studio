@@ -74,11 +74,6 @@ def _pixel_tensor_to_pil(pixel: torch.Tensor) -> Image.Image:
 
 
 class LingBotVideoPipeline(BasePipeline):
-    """Text-to-video pipeline for LingBot-Video (DiT + Qwen3-VL text encoder + QwenImageVAE),
-    following the DiffSynth PipelineUnit + model_fn pattern. Sampling uses FlowMatchScheduler
-    (Wan template). The 5D-video VAE encode/decode lives in QwenImageVAE
-    (encode_video / decode_video); the 4D image paths stay untouched."""
-
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(
             device=device, torch_dtype=torch_dtype,
@@ -229,12 +224,8 @@ class LingBotVideoUnit_NoiseInitializer(PipelineUnit):
 
 
 class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
-    # Prompt truncation length for the Qwen3-VL processor.
     TOKEN_LENGTH = 37698
-    # Hidden-state layer used as the prompt embedding: 0 -> the last layer.
     HIDDEN_STATE_SKIP_LAYER = 0
-
-    # Prompt-enhancement chat template wrapping the user prompt.
     PROMPT_TEMPLATE = (
         "<|im_start|>system\nGiven a user input that may include a text prompt alone, "
         "a text prompt with an image reference, or a text prompt with a video reference "
@@ -248,11 +239,6 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
         "commentary or evaluations:<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n"
         "<|im_start|>assistant\n"
     )
-
-    # LingBot-Video is trained on structured JSON captions. normalize_caption serialises a
-    # dict caption into the compact-JSON string the DiT expects; a plain string is passed
-    # through. The prompt rewriter that turns a brief idea into such a caption lives in
-    # examples/lingbot_video/model_training/scripts/prompt_rewriter.py.
     _RUNTIME_KEYS = {"duration", "fps", "height", "width", "num_frames", "resolution", "ratio"}
 
     def __init__(self):
@@ -264,13 +250,10 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
             output_params=("context", "encoder_attention_mask"),
             onload_model_names=("text_encoder", ),
         )
-        # Cached number of template-prefix tokens to crop from the prompt embedding.
         self._crop_start: Optional[int] = None
 
     @classmethod
     def normalize_caption(cls, prompt):
-        # A dict caption is serialised to the compact-JSON string the DiT expects;
-        # a plain string passes through unchanged.
         if isinstance(prompt, dict):
             if "caption" in prompt:
                 caption = prompt["caption"]
@@ -285,7 +268,6 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
             raise TypeError(f"prompt must be a str or a dict, not {type(prompt)}")
 
     def _compute_crop_start(self, pipe: LingBotVideoPipeline) -> int:
-        # Token count of the template prefix (everything before the user prompt), computed once.
         if self._crop_start is None:
             marker = "<|USER_INPUT_MARKER|>"
             marked = self.PROMPT_TEMPLATE.format(marker)
@@ -304,7 +286,6 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
 
     def encode_prompt(self, pipe: LingBotVideoPipeline, prompt):
         prompt = self.normalize_caption(prompt)
-        # T2V: visual_template is empty, so the text is simply the templated prompt.
         text = self.PROMPT_TEMPLATE.format(prompt)
         inputs = pipe.processor(
             text=[text],
@@ -317,18 +298,15 @@ class LingBotVideoUnit_PromptEmbedder(PipelineUnit):
             return_tensors="pt",
         )
         inputs = inputs.to(pipe.device)
-        # The text encoder returns the tuple of per-layer hidden states.
         hidden_states = pipe.text_encoder(**inputs)
         prompt_embeds = hidden_states[-(self.HIDDEN_STATE_SKIP_LAYER + 1)]
         prompt_mask = inputs["attention_mask"]
 
-        # Crop the prompt-enhancement template prefix.
         crop_start = self._compute_crop_start(pipe)
         if crop_start > 0:
             prompt_embeds = prompt_embeds[:, crop_start:]
             prompt_mask = prompt_mask[:, crop_start:]
 
-        # Batch=1: drop the right padding before the DiT forward.
         if prompt_embeds.shape[0] == 1:
             true_len = int(prompt_mask[0].sum().item())
             prompt_embeds = prompt_embeds[:, :true_len]
