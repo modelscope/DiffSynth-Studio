@@ -10,29 +10,6 @@ from ..core.gradient import gradient_checkpoint_forward
 from ..core.device.npu_compatible_device import get_device_type
 
 
-# Modules kept in fp32 regardless of the bulk compute dtype (sensitive AdaLN / norm /
-# router paths); the custom `to()` below honours this list.
-LINGBOT_VIDEO_FP32_MODULES = (
-    "time_embedder",
-    "time_modulation",
-    "scale_shift_table",
-    "norm",
-    "norm1",
-    "norm2",
-    "norm_q",
-    "norm_k",
-    "norm_post_attn",
-    "norm_post_ffn",
-    "norm_out",
-    "norm_out_modulation",
-    "router",
-)
-
-
-def should_keep_in_fp32(name: str) -> bool:
-    return any(module_name in name.split(".") for module_name in LINGBOT_VIDEO_FP32_MODULES)
-
-
 def get_timestep_embedding(
     timesteps: torch.Tensor,
     embedding_dim: int,
@@ -457,14 +434,12 @@ class LingBotVideoBlock(nn.Module):
                 "LingBotVideoBlock expects token-level temb6 with shape (B*S, 6D); "
                 f"got {tuple(temb6.shape)} for hidden states {tuple(x.shape)}."
             )
-        # AdaLN modulation / norms run in fp32 (sensitive path); cast to the bulk
-        # compute dtype only at the bf16 Linear boundary.
         mod = temb6.view(x.shape[0], x.shape[1], -1) + self.scale_shift_table.unsqueeze(0)
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = mod.chunk(6, dim=-1)
         gate_msa, gate_mlp = gate_msa.tanh(), gate_mlp.tanh()
         scale_msa, scale_mlp = 1.0 + scale_msa, 1.0 + scale_mlp
 
-        bulk_dtype = self.attn.to_q.weight.dtype
+        bulk_dtype = x.dtype
         attn_in = (self.norm1(x) * scale_msa + shift_msa).to(bulk_dtype)
         attn_out = self.attn(attn_in, rotary_emb, attention_mask)
         x = x + (gate_msa * self.norm_post_attn(attn_out)).to(x.dtype)
@@ -482,40 +457,12 @@ class LingBotVideoDiT(nn.Module):
     """LingBot-Video MoE DiT ported for DiffSynth-Studio.
 
     Supports both the Dense (`num_experts=0`, FFN = MLP) and MoE
-    (`num_experts>0`, FFN = sparse MoE) variants from a single class. The bulk of
-    the network runs in the model's compute dtype (e.g. bf16) while the modules in
-    `LINGBOT_VIDEO_FP32_MODULES` are pinned to fp32 by the custom `to()`.
+    (`num_experts>0`, FFN = sparse MoE) variants from a single class.
     """
 
     _supports_gradient_checkpointing = True
     _no_split_modules = ["LingBotVideoBlock"]
     _repeated_blocks = ["LingBotVideoBlock"]
-
-    def to(self, *args, **kwargs):
-        device, dtype, non_blocking, _ = torch._C._nn._parse_to(*args, **kwargs)
-        if dtype is None or dtype == torch.float32:
-            return super().to(*args, **kwargs)
-        if not torch.is_floating_point(torch.empty((), dtype=dtype)):
-            return super().to(*args, **kwargs)
-
-        if device is not None:
-            super().to(device=device, non_blocking=non_blocking)
-
-        for name, param in self.named_parameters():
-            if not torch.is_floating_point(param):
-                continue
-            target_dtype = torch.float32 if should_keep_in_fp32(name) else dtype
-            param.data = param.data.to(dtype=target_dtype, non_blocking=non_blocking)
-            if param.grad is not None:
-                param.grad.data = param.grad.data.to(dtype=target_dtype, non_blocking=non_blocking)
-
-        for name, buffer in self.named_buffers():
-            if not torch.is_floating_point(buffer):
-                continue
-            target_dtype = torch.float32 if should_keep_in_fp32(name) else dtype
-            buffer.data = buffer.data.to(dtype=target_dtype, non_blocking=non_blocking)
-
-        return self
 
     def __init__(
         self,
@@ -652,10 +599,7 @@ class LingBotVideoDiT(nn.Module):
 
         # Timestep -> per-token modulation.
         timestep_proj = self.time_proj(timestep.float())
-        # time_proj always returns fp32; match the time_embedder's own weight dtype
-        # (fp32 under standard load via the custom `to()` override; bf16 under low-VRAM
-        # offload, where the wrapper wholesale-casts all params).
-        t_emb = self.time_embedder(timestep_proj.to(self.time_embedder.linear_1.weight.dtype))  # (B, D)
+        t_emb = self.time_embedder(timestep_proj.to(joint.dtype))  # (B, D)
         if packed_batch:
             temb_input = torch.cat(
                 [t_emb[i:i + 1].unsqueeze(1).expand(1, sample_seq_lens[i], -1) for i in range(B)], dim=1
@@ -677,7 +621,6 @@ class LingBotVideoDiT(nn.Module):
         final_mod = self.norm_out_modulation(temb_input.reshape(joint.shape[0] * joint.shape[1], -1))
         shift, scale = final_mod.reshape(joint.shape[0], joint.shape[1], -1).chunk(2, dim=-1)
         final_hidden = self.norm_out(joint) * (1.0 + scale) + shift
-        # Cast to joint's dtype, not proj_out.weight.dtype (which is fp8 under offload).
         projected = self.proj_out(final_hidden.to(joint.dtype))
 
         if packed_batch:

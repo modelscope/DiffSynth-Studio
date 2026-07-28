@@ -1,12 +1,9 @@
 import json
 
 import torch
-import torch.nn.functional as F
-import numpy as np
 from PIL import Image
 from tqdm import tqdm
 from typing import Optional, Union
-from typing_extensions import Literal
 
 from ..core.device.npu_compatible_device import get_device_type
 from ..core import ModelConfig
@@ -227,7 +224,7 @@ class LingBotVideoUnit_NoiseInitializer(PipelineUnit):
     def process(self, pipe: LingBotVideoPipeline, height, width, num_frames, seed, rand_device):
         length = (num_frames - 1) // 4 + 1
         shape = (1, pipe.dit.in_channels, length, height // 8, width // 8)
-        noise = pipe.generate_noise(shape, seed=seed, rand_device=rand_device, torch_dtype=torch.float32)
+        noise = pipe.generate_noise(shape, seed=seed, rand_device=rand_device)
         return {"noise": noise}
 
 
@@ -358,7 +355,7 @@ class LingBotVideoUnit_InputVideoEmbedder(PipelineUnit):
             return {"latents": noise}
         pipe.load_models_to_device(self.onload_model_names)
         video = pipe.preprocess_video(input_video)
-        input_latents = pipe.vae.encode_video(video).to(dtype=torch.float32, device=pipe.device)
+        input_latents = pipe.vae.encode_video(video).to(dtype=pipe.torch_dtype, device=pipe.device)
         if pipe.scheduler.training:
             return {"latents": noise, "input_latents": input_latents}
         else:
@@ -402,16 +399,12 @@ def model_fn_lingbot_video(
     use_gradient_checkpointing_offload: bool = False,
     **kwargs,
 ):
-    # Cast inputs to the DiT's compute dtype (e.g. bf16); the DiT keeps AdaLN/norm in fp32.
-    dit_dtype = dit.patch_embedder.weight.dtype
-    hidden_states = latents.to(dtype=dit_dtype)
-    encoder_hidden_states = context.to(dtype=dit_dtype)
     noise_pred = dit(
-        hidden_states=hidden_states,
+        hidden_states=latents,
         timestep=timestep,
-        encoder_hidden_states=encoder_hidden_states,
+        encoder_hidden_states=context,
         encoder_attention_mask=encoder_attention_mask,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
-    return noise_pred.float()
+    return noise_pred

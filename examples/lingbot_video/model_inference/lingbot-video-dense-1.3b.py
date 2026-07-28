@@ -17,7 +17,6 @@ pipe = LingBotVideoPipeline.from_pretrained(
 )
 
 # --- Text-to-video -------------------------------------------------------------------
-# Download dataset
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
