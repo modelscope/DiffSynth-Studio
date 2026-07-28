@@ -35,9 +35,6 @@ class LingBotVideoPipeline(BasePipeline):
             LingBotVideoUnit_ShapeChecker(),
             LingBotVideoUnit_NoiseInitializer(),
             LingBotVideoUnit_InputVideoEmbedder(),
-            # ImageEmbedder runs after InputVideoEmbedder (it pins the condition latent into
-            # `latents`) and before PromptEmbedder (it produces the vlm_image the text encoder
-            # consumes). No-op for T2V/V2V.
             LingBotVideoUnit_ImageEmbedder(),
             LingBotVideoUnit_PromptEmbedder(),
         ]
@@ -51,7 +48,6 @@ class LingBotVideoPipeline(BasePipeline):
             '"temporal_and_motion_stability": ["flickering", "jittery", "motion blur", "temporal inconsistency", "warping", "morphing", "incoherent motion", "unnatural movement", "static object with sudden jump", "frame-to-frame inconsistency"], '
             '"material_and_structure": ["plastic-like glass", "unrealistic texture", "deformed bottle", "liquid freezing improperly", "distorted reflections"]}}'
         )
-        # T2I variant: video-only temporal/motion group dropped (cannot apply to a still).
         self.default_negative_prompt_image = (
             '{"universal_negative": {'
             '"visual_quality": ["low quality", "worst quality", "blurry", "pixelated", "jpeg artifacts", "low resolution", "unstable color", "underexposed", "overexposed", "invisible subject", "subject hidden in darkness"], '
@@ -125,12 +121,6 @@ class LingBotVideoPipeline(BasePipeline):
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
 
-        # TI2V: the ImageEmbedder unit has already pinned the clean condition latent into the
-        # first temporal slot(s); re-pin it after every scheduler step so the DiT only ever
-        # denoises the frames after the given first frame.
-        first_frame_latents = inputs_shared.get("first_frame_latents")
-        cond_t = first_frame_latents.shape[2] if first_frame_latents is not None else None
-
         # Denoise
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
@@ -142,8 +132,6 @@ class LingBotVideoPipeline(BasePipeline):
                 **models, timestep=timestep, progress_id=progress_id
             )
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
-            if first_frame_latents is not None:
-                inputs_shared["latents"][:, :, :cond_t] = first_frame_latents
 
         self.load_models_to_device(['vae'])
         latents = inputs_shared["latents"].to(dtype=self.torch_dtype, device=self.device)
@@ -201,15 +189,6 @@ class LingBotVideoUnit_InputVideoEmbedder(PipelineUnit):
 
 
 class LingBotVideoUnit_ImageEmbedder(PipelineUnit):
-    """TI2V (image-to-video): the condition first frame is used twice — (1) VAE-encoded to a
-    clean latent pinned into the diffusion latent's first temporal slot (here before sampling,
-    re-pinned after every scheduler step in ``__call__``), so the DiT only denoises the frames
-    after it; (2) smart-resized to a PIL image handed to the Qwen3-VL text encoder as
-    ``vlm_image`` (its image tokens are prepended to the prompt). Runs after InputVideoEmbedder
-    (it needs ``latents`` to pin into) and before PromptEmbedder (which consumes ``vlm_image``).
-    No-op (returns ``{}``) for T2V/V2V. The DiT is unchanged (in_channels stays 16); Dense-1.3B
-    reuses its T2V weights."""
-
     # Qwen3-VL vision token-budget bounds used by smart_resize (official defaults).
     IMAGE_MIN_TOKEN_NUM = 4
     IMAGE_MAX_TOKEN_NUM = 16384
@@ -429,10 +408,13 @@ def model_fn_lingbot_video(
     timestep: torch.Tensor = None,
     context: torch.Tensor = None,
     encoder_attention_mask: Optional[torch.Tensor] = None,
+    first_frame_latents: Optional[torch.Tensor] = None,
     use_gradient_checkpointing: bool = False,
     use_gradient_checkpointing_offload: bool = False,
     **kwargs,
 ):
+    if first_frame_latents is not None:
+        latents[:, :, :first_frame_latents.shape[2]] = first_frame_latents
     noise_pred = dit(
         hidden_states=latents,
         timestep=timestep,
