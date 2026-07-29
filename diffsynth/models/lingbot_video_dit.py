@@ -221,7 +221,7 @@ class LingBotVideoRouter(nn.Module):
         self.topk_group = topk_group
         self.route_scale = route_scale
         self.weight = nn.Parameter(torch.empty(num_experts, hidden_size))
-        self.register_buffer("e_score_correction_bias", torch.zeros(num_experts), persistent=True)
+        self.e_score_correction_bias = nn.Parameter(torch.zeros(num_experts), requires_grad=False)
 
     def _group_limited_topk(self, scores_for_choice):
         seq_len = scores_for_choice.shape[0]
@@ -242,7 +242,7 @@ class LingBotVideoRouter(nn.Module):
             scores = F.softmax(logits, dim=-1)
         else:
             scores = logits.sigmoid()
-        scores_for_choice = scores + self.e_score_correction_bias.unsqueeze(0)
+        scores_for_choice = scores + self.e_score_correction_bias.float().unsqueeze(0)
         if self.n_group is not None and self.n_group > 1:
             top_indices = self._group_limited_topk(scores_for_choice)
         else:
@@ -431,7 +431,7 @@ class LingBotVideoBlock(nn.Module):
             )
         if bulk_dtype is None:
             bulk_dtype = resolve_bulk_dtype(self.attn.to_q)
-        mod = temb6.view(x.shape[0], x.shape[1], -1) + self.scale_shift_table.unsqueeze(0)
+        mod = temb6.view(x.shape[0], x.shape[1], -1) + self.scale_shift_table.to(dtype=temb6.dtype, device=temb6.device).unsqueeze(0)
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = mod.chunk(6, dim=-1)
         gate_msa, gate_mlp = gate_msa.tanh(), gate_mlp.tanh()
         scale_msa, scale_mlp = 1.0 + scale_msa, 1.0 + scale_mlp
