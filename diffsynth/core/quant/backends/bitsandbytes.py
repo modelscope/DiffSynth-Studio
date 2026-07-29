@@ -4,7 +4,7 @@ from ..config import register_quant_method
 
 
 def _assign_params_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
-    # Assigns the incoming tensors as-is, without the shape check a packed weight cannot pass.
+    """`_load_from_state_dict` replacement for shells: assigns tensors as-is, since packed weights do not pass the standard shape check."""
     local_names = set()
     for name, current in list(self._parameters.items()) + list(self._buffers.items()):
         if current is None:
@@ -27,11 +27,7 @@ def _assign_params_from_state_dict(self, state_dict, prefix, local_metadata, str
 
 @register_quant_backend("bitsandbytes")
 class BitsAndBytesQuantBackend(QuantBackend):
-    """
-    Thin adapter over `bitsandbytes.nn.Linear4bit` (NF4 / FP4, weight-only).
-    The quantized Linear is a backend-native `nn.Linear` subclass; its forward
-    performs dequant + matmul with bitsandbytes' own kernels.
-    """
+    """Adapter over `bitsandbytes.nn.Linear4bit` (NF4 / FP4, weight-only)."""
 
     def validate_environment(self):
         try:
@@ -47,7 +43,7 @@ class BitsAndBytesQuantBackend(QuantBackend):
     def capabilities(self):
         return {
             "is_serializable": True,
-            "is_trainable": True,       # forward supports grad w.r.t. input
+            "is_trainable": True,
             "is_compileable": False,
             "requires_calibration": False,
         }
@@ -60,6 +56,7 @@ class BitsAndBytesQuantBackend(QuantBackend):
         return (bnb.nn.Linear4bit,)
 
     def create_quantized_linear(self, linear, compute_dtype, device=None):
+        """The `meta` shell avoids allocating an fp weight; bnb quantizes while `Params4bit` moves to the target device."""
         import bitsandbytes as bnb
 
         source_device = linear.weight.device
@@ -74,8 +71,6 @@ class BitsAndBytesQuantBackend(QuantBackend):
         blocksize = self.config.get("blocksize")
         quant_storage = self.config.get("quant_storage", torch.uint8)
 
-        # Build the shell on `meta` so that the fp weight `Linear4bit.__init__` would
-        # allocate (and that we replace right below) is never materialized.
         with torch.device("meta"):
             quant_linear = bnb.nn.Linear4bit(
                 linear.in_features,
@@ -86,8 +81,6 @@ class BitsAndBytesQuantBackend(QuantBackend):
                 quant_type=quant_type,
                 quant_storage=quant_storage,
             )
-        # `Params4bit.to("cuda")` triggers the actual quantization; the fp source may
-        # live on CPU, so only one layer's fp copy transits through the GPU at a time.
         weight = bnb.nn.Params4bit(
             linear.weight.data.to(compute_dtype).contiguous(),
             requires_grad=False,
@@ -152,7 +145,7 @@ def _linear4bit_config(quant_type):
         return {
             "quant_type": quant_type,
             "compress_statistics": True,
-            "blocksize": None,   # None -> bnb's platform default (64 on CUDA, 128 on ROCm)
+            "blocksize": None,
             "quant_storage": torch.uint8,
             **backend_config_kwargs,
         }

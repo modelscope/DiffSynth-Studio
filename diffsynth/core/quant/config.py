@@ -4,16 +4,13 @@ import torch
 from .base import QUANT_BACKENDS
 
 
-# Global registry of quantization methods: {method_name -> QuantMethodSpec}.
-# A method binds a backend and its concrete quantization config, so users never
-# combine `backend` and `scheme` manually (which could produce invalid pairs).
 QUANT_METHODS = {}
 
 
 @dataclass
 class QuantMethodSpec:
-    backend: str                            # key into QUANT_BACKENDS
-    config_factory: Callable[[dict], Any]   # backend_config_kwargs -> backend-specific config
+    backend: str
+    config_factory: Callable[[dict], Any]
     label: str = ""
 
 
@@ -22,12 +19,7 @@ def register_quant_method(name, backend, config_factory, label=""):
 
 
 def describe_quant_method(name):
-    """
-    Print one method's registration info: its backend, what it does, and what its
-    `backend_config_kwargs` feed. The backend config is built with the default kwargs
-    and introspected, so the printout shows its concrete type and per-field defaults;
-    a dataclass config (e.g. torchao's) accepts any of its constructor kwargs.
-    """
+    """Print a method's backend, label, and the accepted `backend_config_kwargs` with defaults."""
     if name not in QUANT_METHODS:
         raise ValueError(f"Unknown quantization method: {name}. Available methods:\n{_available_methods()}")
     spec = QUANT_METHODS[name]
@@ -53,8 +45,6 @@ def describe_quant_method(name):
 
 
 def _available_methods():
-    # Boxed, column-aligned list of the registered methods (same style as the
-    # model downloader tips): name, its backend and its human-readable detail.
     methods = sorted(QUANT_METHODS.items())
     if len(methods) == 0:
         return "  (no method registered)"
@@ -67,75 +57,42 @@ def _available_methods():
     return f"┌{'─' * (width + 2)}┐\n{body}\n└{'─' * (width + 2)}┘"
 
 
-def _name_matches(full_name, patterns):
-    if patterns is None:
-        return False
-    if full_name in patterns:
-        return True
-    return any(full_name.endswith(f".{pattern}") for pattern in patterns)
-
-
-def _should_quantize(full_name, module, quantize_config):
-    if not isinstance(module, torch.nn.Linear):
-        return False
-    if quantize_config.target_modules is not None and not _name_matches(full_name, quantize_config.target_modules):
-        return False
-    if _name_matches(full_name, quantize_config.exclude_modules):
-        return False
-    return True
-
-
-def _replace_target_linears(model, quantize_config, transform):
-    # Snapshot via `list(...)` so replacements do not disturb the iteration.
-    # Returns the full names of the replaced Linears.
-    replaced = []
-    for full_name, module in list(model.named_modules()):
-        if full_name == "" or not _should_quantize(full_name, module, quantize_config):
-            continue
-        parent_name, _, leaf_name = full_name.rpartition(".")
-        parent = model.get_submodule(parent_name) if parent_name else model
-        setattr(parent, leaf_name, transform(module))
-        replaced.append(full_name)
-    return replaced
-
-
-def _dequantize_linears(model, backend, compute_dtype):
-    # Returns the full names of the restored Linears.
-    restored = []
-    for full_name, module in list(model.named_modules()):
-        # Only the backend can tell: torchao keeps `nn.Linear`, bnb subclasses it.
-        if full_name == "" or not backend.is_quantized_linear(module):
-            continue
-        parent_name, _, leaf_name = full_name.rpartition(".")
-        parent = model.get_submodule(parent_name) if parent_name else model
-        setattr(parent, leaf_name, backend.dequantize_to_linear(module, compute_dtype))
-        restored.append(full_name)
-    return restored
-
-
 @dataclass
 class QuantizeConfig:
     """
-    User-facing quantization config, attached to `ModelConfig(quantize=...)`.
+    Quantization config and entry points for any `nn.Module`.
 
-    method: name from QUANT_METHODS, determines backend + scheme + backend config.
-        Resolved at construction: `self.backend` holds a ready-to-use `QuantBackend`
-        instance that owns its backend-specific config.
-    mode: "dynamic" keeps the backend-native quantized Linear, which dequantizes its weight
-          on every forward; "dequant_once" instead dequantizes to a plain fp `nn.Linear` as
-          soon as the weights are quantized or loaded, so the model runs at full precision
-          while carrying the quantization error once.
-    target_modules / exclude_modules: list of module names, matched the way peft LoRA's
-          `target_modules` list is -- exact dotted name, or dot-boundary suffix
-          (e.g. "img_mod.1" matches "transformer_blocks.0.img_mod.1").
-    backend_config_kwargs: advanced users may pass extra kwargs of the method's backend
-          config (e.g. nf4 blocksize); `describe_quant_method(name)` prints what a
-          method accepts.
-    load_prequantized: the checkpoint already holds quantized weights, so load them
-          directly instead of quantizing fp weights online. The backend supplies the
-          quantized Linear that matches the checkpoint's layout; a checkpoint with a
-          different layout is supported by registering a small custom backend, as done for
-          `diffsynth.models.ideogram4_dit`.
+    Online (dynamic) quantization -- quantize an fp model whose weights are loaded:
+
+        cfg = QuantizeConfig(method="bitsandbytes_nf4")
+        model.load_state_dict(fp_state_dict)
+        cfg.quantize_model(model, compute_dtype=torch.bfloat16, device="cuda")
+
+    Loading a pre-quantized checkpoint -- swap in quantized shells before loading:
+
+        cfg = QuantizeConfig(method="bitsandbytes_nf4", load_prequantized=True)
+        cfg.prepare_for_prequantized_load(model, compute_dtype=torch.bfloat16)
+        state_dict = cfg.unflatten_state_dict(state_dict, metadata)
+        model.load_state_dict(state_dict, assign=True)
+
+    Dequantize-once -- after either flow above, back to plain fp Linears that carry
+    the quantization error:
+
+        cfg.dequantize_model(model, compute_dtype=torch.bfloat16)
+
+    Fields:
+        method: name from QUANT_METHODS, determines backend + scheme + backend config.
+        mode: "dynamic" keeps the backend-native quantized Linear, which dequantizes
+            its weight on every forward; "dequant_once" dequantizes to a plain fp
+            `nn.Linear` right after the weights are quantized or loaded.
+        target_modules / exclude_modules: list of module names; a layer is matched if
+            its full dotted name equals an entry, or ends with "." + entry
+            (e.g. "img_mod.1" matches "transformer_blocks.0.img_mod.1").
+        backend_config_kwargs: passed through to the method's backend config factory
+            (e.g. nf4 blocksize); `describe_quant_method(name)` prints what a method
+            accepts.
+        load_prequantized: the checkpoint already holds quantized weights; load them
+            directly instead of quantizing fp weights online.
     """
     method: str = None
     mode: str = "dynamic"
@@ -163,73 +120,95 @@ class QuantizeConfig:
             raise ValueError(f"Quantization backend `{spec.backend}` (required by method `{self.method}`) is not registered.")
         return QUANT_BACKENDS[spec.backend](spec.config_factory(dict(self.backend_config_kwargs)))
 
-    # The methods below are the only quantization entry points for external code
-    # (loader, user scripts); `self.backend` stays an internal detail.
-
     def quantize_model(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16, device=None):
         """
-        Quantize the target `nn.Linear` layers of an fp model in place (call AFTER `load_state_dict`).
-
-        model: the fp model to quantize.
-        compute_dtype: computation dtype of the quantized layers.
-        device: target device of the quantized layers; the fp model may stay on CPU so that
-            each layer transits through the device one by one. `None` quantizes in place.
+        Quantize the targeted `nn.Linear` layers of an fp model in place. Call AFTER
+        `load_state_dict`. `device` is the target device of the quantized layers
+        (`None` quantizes in place); the fp model may stay on another device.
         """
         self.backend.validate_environment()
 
         def quantize(linear):
             return self.backend.create_quantized_linear(linear, compute_dtype, device=device)
 
-        replaced = _replace_target_linears(model, self, quantize)
+        replaced = self._replace_target_linears(model, quantize)
         print(f"{len(replaced)} nn.Linear layers quantized (method: {self.method}).")
         return model
 
     def dequantize_model(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16):
-        """
-        Replace every quantized Linear in the model by a plain fp `nn.Linear`.
-
-        model: a model holding quantized Linears (from online quantization or a checkpoint).
-        compute_dtype: dtype of the restored fp weights.
-        """
-        _dequantize_linears(model, self.backend, compute_dtype)
+        """Replace every quantized Linear in the model by a plain fp `nn.Linear`."""
+        self._dequantize_linears(model, compute_dtype)
         return model
 
     def prepare_for_prequantized_load(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16):
         """
-        Replace the target `nn.Linear` layers by empty quantized Linears matching a
-        pre-quantized checkpoint (call BEFORE `load_state_dict(assign=True)`).
-
-        model: the freshly constructed fp model.
-        compute_dtype: computation dtype of the quantized layers.
+        Replace the targeted `nn.Linear` layers with empty quantized Linears matching a
+        pre-quantized checkpoint. Call BEFORE `load_state_dict(assign=True)`.
         """
         self.backend.validate_environment()
 
         def build_shell(linear):
             return self.backend.create_quantized_linear_shell(linear, compute_dtype)
 
-        replaced = _replace_target_linears(model, self, build_shell)
+        replaced = self._replace_target_linears(model, build_shell)
         print(f"{len(replaced)} nn.Linear layers replaced for loading the pre-quantized checkpoint (method: {self.method}).")
         return model
 
     def unflatten_state_dict(self, state_dict: dict, metadata: dict):
-        """
-        Rebuild the backend's composite quantized tensors from a flat (safetensors)
-        state dict, ready for `load_state_dict(assign=True)` after `prepare_for_prequantized_load`.
-        """
+        """Rebuild composite quantized tensors from a flat (safetensors) state dict, for `load_state_dict(assign=True)`."""
         return self.backend.unflatten_state_dict(state_dict, metadata)
 
     def flatten_state_dict(self, state_dict: dict):
         """
-        Inverse of `unflatten_state_dict`: flatten a quantized model's state dict into
-        plain tensors + string metadata in the backend's own serialization layout, ready
-        for `safetensors.torch.save_file(tensors, path, metadata=metadata)` or any custom
-        writer (sharding, other containers).
-
-        state_dict: the quantized model's state dict (`model.state_dict()`).
-        Returns (state_dict, metadata), both safetensors-ready.
+        Inverse of `unflatten_state_dict`. Returns (state_dict, metadata), ready for
+        `safetensors.torch.save_file(tensors, path, metadata=metadata)`.
         """
+        if not self.backend.capabilities().get("is_serializable", False):
+            raise NotImplementedError(
+                f"Backend `{self.backend.name}` (method `{self.method}`) does not declare "
+                'serialization support (`capabilities()["is_serializable"]`), so its quantized '
+                "state dict cannot be flattened for saving."
+            )
         tensors, metadata = self.backend.flatten_state_dict(state_dict)
         tensors = {key: value.contiguous() for key, value in tensors.items()}
-        # safetensors headers hold strings only.
         metadata = {"format": "pt", **{key: value if isinstance(value, str) else str(value) for key, value in metadata.items()}}
         return tensors, metadata
+
+    @staticmethod
+    def _name_matches(full_name, patterns):
+        if patterns is None:
+            return False
+        if full_name in patterns:
+            return True
+        return any(full_name.endswith(f".{pattern}") for pattern in patterns)
+
+    def _should_quantize(self, full_name, module):
+        if not isinstance(module, torch.nn.Linear):
+            return False
+        if self.target_modules is not None and not self._name_matches(full_name, self.target_modules):
+            return False
+        if self._name_matches(full_name, self.exclude_modules):
+            return False
+        return True
+
+    def _replace_target_linears(self, model, transform):
+        replaced = []
+        for full_name, module in list(model.named_modules()):
+            if full_name == "" or not self._should_quantize(full_name, module):
+                continue
+            parent_name, _, leaf_name = full_name.rpartition(".")
+            parent = model.get_submodule(parent_name) if parent_name else model
+            setattr(parent, leaf_name, transform(module))
+            replaced.append(full_name)
+        return replaced
+
+    def _dequantize_linears(self, model, compute_dtype):
+        restored = []
+        for full_name, module in list(model.named_modules()):
+            if full_name == "" or not self.backend.is_quantized_linear(module):
+                continue
+            parent_name, _, leaf_name = full_name.rpartition(".")
+            parent = model.get_submodule(parent_name) if parent_name else model
+            setattr(parent, leaf_name, self.backend.dequantize_to_linear(module, compute_dtype))
+            restored.append(full_name)
+        return restored

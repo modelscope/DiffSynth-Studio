@@ -76,6 +76,9 @@ class Fp8Linear(torch.nn.Module):
 # checkpoint is a pure structure replacement.
 @register_quant_backend("ideogram4_fp8")
 class Ideogram4Fp8QuantBackend(QuantBackend):
+    def capabilities(self):
+        return {**super().capabilities(), "is_serializable": True}
+
     def create_quantized_linear_shell(self, linear, compute_dtype):
         with torch.device("meta"):
             return Fp8Linear(linear.in_features, linear.out_features, bias=linear.bias is not None, compute_dtype=compute_dtype)

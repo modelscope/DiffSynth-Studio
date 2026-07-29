@@ -7,12 +7,7 @@ from ..config import register_quant_method
 
 @register_quant_backend("torchao")
 class TorchaoQuantBackend(QuantBackend):
-    """
-    Thin adapter over torchao `quantize_` (weight-only configs).
-    The quantized module keeps the `nn.Linear` class; only its weight is swapped
-    to a torchao tensor subclass, whose dispatch performs dequant + matmul.
-    Therefore identification relies on the weight type, not the module class.
-    """
+    """Adapter over torchao `quantize_` (weight-only configs); the quantization lives in the weight tensor subclass, not the module class."""
 
     def validate_environment(self):
         try:
@@ -25,7 +20,7 @@ class TorchaoQuantBackend(QuantBackend):
 
     def capabilities(self):
         return {
-            "is_serializable": True,    # safetensors flatten requires torchao >= 0.15
+            "is_serializable": True,
             "is_trainable": False,
             "is_compileable": True,
             "requires_calibration": False,
@@ -42,17 +37,13 @@ class TorchaoQuantBackend(QuantBackend):
         if linear.weight.dtype != compute_dtype:
             to_kwargs["dtype"] = compute_dtype
         if device is not None and linear.weight.device != torch.device(device):
-            # Move this single layer to the target device before quantizing, so only
-            # one layer's fp copy transits through the GPU at a time.
             to_kwargs["device"] = device
         if to_kwargs:
             linear = linear.to(**to_kwargs)
-        # In-place: swaps `linear.weight` to a torchao quantized tensor subclass.
         quantize_(linear, self.config)
         return linear
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
-        # The quantization lives in the weight tensor subclass, so the shell is a plain Linear.
         return torch.nn.Linear(linear.in_features, linear.out_features, bias=linear.bias is not None, device="meta")
 
     def flatten_state_dict(self, state_dict):
@@ -111,15 +102,12 @@ def _int8_weight_only(backend_config_kwargs):
 
 def _int4_weight_only(backend_config_kwargs):
     from torchao.quantization import Int4WeightOnlyConfig
-    backend_config_kwargs.setdefault("group_size", 128)
-    # torchao's default packing format (`plain`, like `preshuffled`) is backed by the
-    # external `mslk` kernel library, which also appears to be limited to Hopper or newer.
     packing_format = backend_config_kwargs.get("int4_packing_format", "plain")
     if packing_format in ("plain", "preshuffled") and importlib.util.find_spec("mslk") is None:
         raise ImportError(
             f'The int4 packing format "{packing_format}" requires `mslk` '
-            "(https://github.com/meta-pytorch/MSLK). Install it, or select a packing format "
-            'shipped with torch, e.g. backend_config_kwargs={"int4_packing_format": "tile_packed_to_4d"} '
+            "(https://github.com/meta-pytorch/MSLK, install the build matching your torch version), "
+            'or select a packing format shipped with torch, e.g. backend_config_kwargs={"int4_packing_format": "tile_packed_to_4d"} '
             "(runs on any CUDA device, but much slower on large-token workloads)."
         )
     return Int4WeightOnlyConfig(**backend_config_kwargs)
