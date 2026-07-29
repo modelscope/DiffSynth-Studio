@@ -2,7 +2,7 @@ from abc import ABC
 import torch
 
 
-# Global registry of quantization backends: {name -> QuantBackend instance}.
+# Global registry of quantization backends: {name -> QuantBackend subclass}.
 # The framework only depends on this registry and the abstract interface below.
 # It never imports bitsandbytes / torchao directly.
 QUANT_BACKENDS = {}
@@ -31,10 +31,18 @@ class QuantBackend(ABC):
 
     name: str = ""
 
-    def capabilities(self, config) -> dict:
-        # Report what this backend can do under the given scheme, so the framework can refuse
-        # an unsupported request up front instead of failing mid-run. The flags depend on the
-        # concrete `config`, and are checked before saving, training and compiling.
+    def __init__(self, config=None):
+        # The backend-specific quantization config (the method factory's product, e.g. a
+        # torchao config object or a bnb kwargs dict). Owned by the instance, so the
+        # per-Linear methods below do not take it as a parameter.
+        self.config = config
+
+    def capabilities(self) -> dict:
+        """
+        Report what this backend can do under its scheme, so the framework can refuse
+        an unsupported request up front instead of failing mid-run. The flags depend on
+        `self.config`, and are checked before saving, training and compiling.
+        """
         return {
             "is_serializable": True,
             "is_trainable": False,
@@ -42,71 +50,86 @@ class QuantBackend(ABC):
             "requires_calibration": False,
         }
 
-    def validate_environment(self, config):
-        # Check that whatever this scheme needs -- the backend library, its version, the GPU
-        # architecture -- is actually available, and raise an actionable error if not. Called
-        # before any weight is touched, so an unusable setup is reported immediately rather
-        # than after the cost of loading or quantizing has been paid.
+    def validate_environment(self):
+        """
+        Check that whatever this scheme needs -- the backend library, its version, the GPU
+        architecture -- is actually available, and raise an actionable error if not. Called
+        before any weight is touched, so an unusable setup is reported immediately rather
+        than after the cost of loading or quantizing has been paid.
+        """
         return
 
-    def quantize_linear_from_fp(self, linear: torch.nn.Linear, config, compute_dtype: torch.dtype, device=None) -> torch.nn.Module:
-        # Quantize one Linear whose fp weights are already loaded, and return the module
-        # that replaces it. This is the online quantization path: values are transformed,
-        # not just re-shaped. `device` is where the quantized layer should end up; the fp
-        # source may still live on CPU, so only one layer's fp copy transits through the GPU
-        # at a time.
+    def create_quantized_linear(self, linear: torch.nn.Linear, compute_dtype: torch.dtype, device=None) -> torch.nn.Module:
+        """
+        Quantize one Linear whose fp weights are already loaded, and return the module
+        that replaces it. This is the online quantization path: values are transformed,
+        not just re-shaped. `device` is where the quantized layer should end up; the fp
+        source may still live on CPU, so only one layer's fp copy transits through the GPU
+        at a time.
+        """
         raise NotImplementedError(
-            f"Backend `{self.name}` cannot quantize an fp model online. Use a preset whose "
+            f"Backend `{self.name}` cannot quantize an fp model online. Use a method whose "
             "backend supports it, or load an already quantized checkpoint."
         )
 
-    def create_quantized_linear_for_load(self, in_features: int, out_features: int, bias: bool, config) -> torch.nn.Module:
-        # Build an empty quantized Linear whose state dict keys and shapes match a
-        # pre-quantized checkpoint, and return it. Called before `load_state_dict` when
-        # reading such a checkpoint: this pass only puts the right structure in place, and
-        # `load_state_dict(assign=True)` then fills in the packed weights and quant state.
+    def create_quantized_linear_shell(self, linear: torch.nn.Linear, compute_dtype: torch.dtype) -> torch.nn.Module:
+        """
+        Build an empty quantized Linear (a shell: right structure, no values) matching
+        `linear`'s shape, whose state dict keys and shapes match a pre-quantized
+        checkpoint. Called before `load_state_dict` when reading such a checkpoint, and
+        `load_state_dict(assign=True)` then fills in the packed weights and quant state.
+        """
         raise NotImplementedError(
             f"Backend `{self.name}` cannot load pre-quantized checkpoints. Use "
             "`load_prequantized=False` to quantize an fp model online instead."
         )
 
     def dequantize_to_linear(self, module: torch.nn.Module, compute_dtype: torch.dtype) -> torch.nn.Linear:
-        # Reconstruct a plain fp `nn.Linear` from a quantized one, so the model runs at full
-        # precision afterwards while carrying the quantization error it already went through.
-        # This backs `mode="dequant_once"`.
+        """
+        Reconstruct a plain fp `nn.Linear` from a quantized one, so the model runs at full
+        precision afterwards while carrying the quantization error it already went through.
+        This backs `mode="dequant_once"`.
+        """
         raise NotImplementedError(
             f"Backend `{self.name}` cannot dequantize back to `nn.Linear`, so "
             '`mode="dequant_once"` is unavailable.'
         )
 
     def quantized_linear_classes(self) -> tuple:
-        # Report the classes of this backend's quantized Linear, which is how the framework
-        # recognizes an already quantized layer (VRAM wrapping, dequantization, saving).
-        # Backends whose quantized module keeps the `nn.Linear` class (e.g. torchao) cannot
-        # be identified this way and override `is_quantized_linear` instead.
+        """
+        Report the classes of this backend's quantized Linear, which is how the framework
+        recognizes an already quantized layer (VRAM wrapping, dequantization, saving).
+        Backends whose quantized module keeps the `nn.Linear` class (e.g. torchao) cannot
+        be identified this way and override `is_quantized_linear` instead.
+        """
         return ()
 
     def is_quantized_linear(self, module) -> bool:
-        # Decide whether a module is one of this backend's quantized Linears.
+        """Decide whether a module is one of this backend's quantized Linears."""
         classes = self.quantized_linear_classes()
         return len(classes) > 0 and isinstance(module, classes)
 
     # ---- Serialization adapters (default no-op; only tensor-subclass backends need these) ----
     def flatten_state_dict(self, state_dict: dict):
-        # Turn a state dict that holds composite quantized tensors into plain tensors plus
-        # the metadata needed to rebuild them, so it can be written to safetensors.
+        """
+        Turn a state dict that holds composite quantized tensors into plain tensors plus
+        the metadata needed to rebuild them, so it can be written to safetensors.
+        """
         return state_dict, {}
 
     def unflatten_state_dict(self, state_dict: dict, metadata: dict):
-        # Inverse of `flatten_state_dict`: rebuild the composite quantized tensors from the
-        # plain tensors and their metadata.
+        """
+        Inverse of `flatten_state_dict`: rebuild the composite quantized tensors from the
+        plain tensors and their metadata.
+        """
         return state_dict
 
 
 def register_quant_backend(name):
-    # Built-in and user-defined backends are registered through the same path.
+    # Built-in and user-defined backends are registered through the same path. The registry
+    # holds the class; `QuantizeConfig` instantiates it with the method's backend config.
     def decorator(cls):
         cls.name = name
-        QUANT_BACKENDS[name] = cls()
+        QUANT_BACKENDS[name] = cls
         return cls
     return decorator

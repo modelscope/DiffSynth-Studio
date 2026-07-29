@@ -53,12 +53,18 @@ audio = [
     "torchcodec",
     "librosa"
 ]
+quant = [
+    "bitsandbytes",
+    "torchao"
+]
 all = [
     "av",
     "torchaudio",
     "torchcodec",
     "librosa",
-    "streamlit"
+    "streamlit",
+    "bitsandbytes",
+    "torchao"
 ]
 
 [tool.setuptools]

@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ..core.gradient import gradient_checkpoint_forward
-from ..core.quant import QuantBackend, register_quant_backend, register_quant_preset
+from ..core.quant import QuantBackend, register_quant_backend, register_quant_method
 
 LLM_TOKEN_INDICATOR = 3
 OUTPUT_IMAGE_INDICATOR = 2
@@ -76,9 +76,9 @@ class Fp8Linear(torch.nn.Module):
 # checkpoint is a pure structure replacement.
 @register_quant_backend("ideogram4_fp8")
 class Ideogram4Fp8QuantBackend(QuantBackend):
-    def create_quantized_linear_for_load(self, in_features, out_features, bias, config):
+    def create_quantized_linear_shell(self, linear, compute_dtype):
         with torch.device("meta"):
-            return Fp8Linear(in_features, out_features, bias=bias, compute_dtype=config["compute_dtype"])
+            return Fp8Linear(linear.in_features, linear.out_features, bias=linear.bias is not None, compute_dtype=compute_dtype)
 
     def quantized_linear_classes(self) -> tuple:
         return (Fp8Linear,)
@@ -92,11 +92,11 @@ class Ideogram4Fp8QuantBackend(QuantBackend):
         return linear
 
 
-register_quant_preset(
+register_quant_method(
     "ideogram4_fp8",
     "ideogram4_fp8",
-    lambda overrides: {"compute_dtype": torch.bfloat16, **overrides},
-    label="ideogram-4 fp8 weight-only (compressed-tensors layout, per-channel scale)",
+    lambda o: dict(o),
+    label="8bit, fp8 (compressed-tensors layout, per-channel scale), weight-only",
 )
 
 

@@ -1,5 +1,6 @@
 from ..core.loader import load_model, hash_model_file
 from ..core.vram import AutoWrappedModule
+from ..core.quant import QuantizeConfig
 from ..configs import MODEL_CONFIGS, VRAM_MANAGEMENT_MODULE_MAPS, VERSION_CHECKER_MAPS
 import importlib, json, torch
 
@@ -32,6 +33,10 @@ class ModelPool:
     
     def load_model_file(self, config, path, vram_config, vram_limit=None, state_dict=None, quantize=None):
         model_class = self.import_model_class(config["model_class"])
+        # Resolve the quant config only after the model class import: a model file may
+        # register its own method/backend at import time (e.g. `ideogram4_fp8`), and
+        # `QuantizeConfig` looks the method up at construction.
+        quantize = self.resolve_quant_config(config, quantize)
         model_config = config.get("extra_kwargs", {})
         if "state_dict_converter" in config:
             state_dict_converter = self.import_model_class(config["state_dict_converter"])
@@ -64,12 +69,13 @@ class ModelPool:
         return vram_config
     
     def resolve_quant_config(self, config, quantize):
-        # A published quantized variant states its quantization in MODEL_CONFIGS; that entry is
-        # the base, and an explicit `ModelConfig(quantize=...)` overrides only the fields it sets.
-        if "quant_config" not in config:
+        # No merging: an explicit user config wins wholesale; otherwise the registry
+        # `quant_config` of a published quantized variant is instantiated as-is.
+        if quantize is not None:
             return quantize
-        from ..core.quant import QuantizeConfig
-        return (quantize or QuantizeConfig()).merged_with_defaults(config["quant_config"])
+        if "quant_config" not in config:
+            return None
+        return QuantizeConfig(**config["quant_config"])
 
     def auto_load_model(self, path, vram_config=None, vram_limit=None, clear_parameters=False, state_dict=None, quantize=None):
         print(f"Loading models from: {json.dumps(path, indent=4)}")
@@ -79,8 +85,7 @@ class ModelPool:
         loaded = False
         for config in MODEL_CONFIGS:
             if config["model_hash"] == model_hash:
-                quant_config = self.resolve_quant_config(config, quantize)
-                model = self.load_model_file(config, path, vram_config, vram_limit=vram_limit, state_dict=state_dict, quantize=quant_config)
+                model = self.load_model_file(config, path, vram_config, vram_limit=vram_limit, state_dict=state_dict, quantize=quantize)
                 if clear_parameters: self.clear_parameters(model)
                 self.model.append(model)
                 model_name = config["model_name"]

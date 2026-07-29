@@ -1,6 +1,6 @@
 import torch
 from ..base import QuantBackend, register_quant_backend
-from ..config import register_quant_preset
+from ..config import register_quant_method
 
 
 def _assign_params_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
@@ -25,26 +25,26 @@ def _assign_params_from_state_dict(self, state_dict, prefix, local_metadata, str
                 unexpected_keys.append(key)
 
 
-@register_quant_backend("bnb")
-class BnbQuantBackend(QuantBackend):
+@register_quant_backend("bitsandbytes")
+class BitsAndBytesQuantBackend(QuantBackend):
     """
     Thin adapter over `bitsandbytes.nn.Linear4bit` (NF4 / FP4, weight-only).
     The quantized Linear is a backend-native `nn.Linear` subclass; its forward
-    performs dequant + matmul with bnb's own kernels.
+    performs dequant + matmul with bitsandbytes' own kernels.
     """
 
-    def validate_environment(self, config):
+    def validate_environment(self):
         try:
             import bitsandbytes  # noqa: F401
         except ImportError:
             raise ImportError(
-                "bitsandbytes is required for bnb quantization presets. "
+                "bitsandbytes is required for bitsandbytes quantization methods. "
                 'Please install it via `pip install bitsandbytes` or `pip install "diffsynth[quant]"`.'
             )
         if not torch.cuda.is_available():
             raise RuntimeError("bitsandbytes 4bit quantization requires a CUDA device.")
 
-    def capabilities(self, config):
+    def capabilities(self):
         return {
             "is_serializable": True,
             "is_trainable": True,       # forward supports grad w.r.t. input
@@ -59,7 +59,7 @@ class BnbQuantBackend(QuantBackend):
             return ()
         return (bnb.nn.Linear4bit,)
 
-    def quantize_linear_from_fp(self, linear, config, compute_dtype, device=None):
+    def create_quantized_linear(self, linear, compute_dtype, device=None):
         import bitsandbytes as bnb
 
         source_device = linear.weight.device
@@ -69,10 +69,10 @@ class BnbQuantBackend(QuantBackend):
             target_device = source_device
         else:
             target_device = torch.device("cuda")
-        quant_type = config.get("quant_type", "nf4")
-        compress_statistics = config.get("compress_statistics", True)
-        blocksize = config.get("blocksize", 64)
-        quant_storage = config.get("quant_storage", torch.uint8)
+        quant_type = self.config.get("quant_type", "nf4")
+        compress_statistics = self.config.get("compress_statistics", True)
+        blocksize = self.config.get("blocksize")
+        quant_storage = self.config.get("quant_storage", torch.uint8)
 
         # Build the shell on `meta` so that the fp weight `Linear4bit.__init__` would
         # allocate (and that we replace right below) is never materialized.
@@ -103,17 +103,17 @@ class BnbQuantBackend(QuantBackend):
             )
         return quant_linear
 
-    def create_quantized_linear_for_load(self, in_features, out_features, bias, config):
+    def create_quantized_linear_shell(self, linear, compute_dtype):
         import bitsandbytes as bnb
         with torch.device("meta"):
             shell = bnb.nn.Linear4bit(
-                in_features,
-                out_features,
-                bias=bias,
-                compute_dtype=config.get("compute_dtype", torch.bfloat16),
-                compress_statistics=config.get("compress_statistics", True),
-                quant_type=config.get("quant_type", "nf4"),
-                quant_storage=config.get("quant_storage", torch.uint8),
+                linear.in_features,
+                linear.out_features,
+                bias=linear.bias is not None,
+                compute_dtype=compute_dtype,
+                compress_statistics=self.config.get("compress_statistics", True),
+                quant_type=self.config.get("quant_type", "nf4"),
+                quant_storage=self.config.get("quant_storage", torch.uint8),
             )
         shell._load_from_state_dict = _assign_params_from_state_dict.__get__(shell)
         return shell
@@ -147,5 +147,17 @@ class BnbQuantBackend(QuantBackend):
         return linear
 
 
-register_quant_preset("bnb_nf4", "bnb", lambda o: {"quant_type": "nf4", **o}, label="4bit NF4 weight-only")
-register_quant_preset("bnb_fp4", "bnb", lambda o: {"quant_type": "fp4", **o}, label="4bit FP4 weight-only")
+def _linear4bit_config(quant_type):
+    def factory(backend_config_kwargs):
+        return {
+            "quant_type": quant_type,
+            "compress_statistics": True,
+            "blocksize": None,   # None -> bnb's platform default (64 on CUDA, 128 on ROCm)
+            "quant_storage": torch.uint8,
+            **backend_config_kwargs,
+        }
+    return factory
+
+
+register_quant_method("bitsandbytes_nf4", "bitsandbytes", _linear4bit_config("nf4"), label="4bit, nf4, weight-only")
+register_quant_method("bitsandbytes_fp4", "bitsandbytes", _linear4bit_config("fp4"), label="4bit, fp4, weight-only")

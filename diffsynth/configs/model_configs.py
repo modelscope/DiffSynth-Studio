@@ -1270,7 +1270,7 @@ ideogram4_series = [
         "model_class": "diffsynth.models.ideogram4_dit.Ideogram4DiT",
         # The checkpoint already holds fp8 weights; the backend that reads its layout is
         # registered next to the model, in `diffsynth.models.ideogram4_dit`.
-        "quant_config": {"preset": "ideogram4_fp8", "load_prequantized": True},
+        "quant_config": {"method": "ideogram4_fp8", "load_prequantized": True},
         "extra_kwargs": {"config": {"emb_dim": 4608, "num_layers": 34, "num_heads": 18, "intermediate_size": 12288, "adanln_dim": 512, "in_channels": 128, "llm_features_dim": 53248, "rope_theta": 5000000, "mrope_section": [24, 20, 20], "norm_eps": 1e-05}},
     },
     {
@@ -1280,7 +1280,7 @@ ideogram4_series = [
         "model_class": "diffsynth.models.ideogram4_text_encoder.Ideogram4TextEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ideogram4_text_encoder.Ideogram4TextEncoderStateDictConverter",
         # Quantized just like the DiT of the same release, and read by the same backend.
-        "quant_config": {"preset": "ideogram4_fp8", "load_prequantized": True},
+        "quant_config": {"method": "ideogram4_fp8", "load_prequantized": True},
     },
     {
         # Example: ModelConfig(model_id="ideogram-ai/ideogram-4-nf4", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors")
@@ -1289,7 +1289,7 @@ ideogram4_series = [
         "model_name": "ideogram4_dit",
         "model_class": "diffsynth.models.ideogram4_dit.Ideogram4DiT",
         # bnb's own 4bit layout, written without double quantization.
-        "quant_config": {"preset": "bnb_nf4", "load_prequantized": True, "overrides": {"compress_statistics": False}},
+        "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "backend_config_kwargs": {"compress_statistics": False}},
         "extra_kwargs": {"config": {"emb_dim": 4608, "num_layers": 34, "num_heads": 18, "intermediate_size": 12288, "adanln_dim": 512, "in_channels": 128, "llm_features_dim": 53248, "rope_theta": 5000000, "mrope_section": [24, 20, 20], "norm_eps": 1e-05}},
     },
     {
@@ -1298,7 +1298,7 @@ ideogram4_series = [
         "model_name": "ideogram4_text_encoder",
         "model_class": "diffsynth.models.ideogram4_text_encoder.Ideogram4TextEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ideogram4_text_encoder.Ideogram4TextEncoderStateDictConverter",
-        "quant_config": {"preset": "bnb_nf4", "load_prequantized": True, "overrides": {"compress_statistics": False}},
+        "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "backend_config_kwargs": {"compress_statistics": False}},
     },
     {
         # Example: ModelConfig(model_id="DiffSynth-Studio/ideogram-4-bf16-repackage", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors")

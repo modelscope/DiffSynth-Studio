@@ -1,8 +1,7 @@
 from ..vram.initialization import skip_model_initialization
 from ..vram.disk_map import DiskMap
 from ..vram.layers import enable_vram_management
-from .file import load_state_dict, load_state_dict_metadata
-from ..quant import quantize_model_weights, dequantize_model_weights, replace_linear_for_quantized_load
+from .file import load_state_dict, load_metadata_from_safetensors
 import torch
 from contextlib import contextmanager
 from transformers.integrations import is_deepspeed_zero3_enabled
@@ -54,16 +53,15 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
             state_dict = {i: state_dict[i] for i in state_dict}
 
         if quantize.load_prequantized:
-            model = replace_linear_for_quantized_load(model, quantize)
-            backend, _ = quantize.resolve()
-            state_dict = backend.unflatten_state_dict(state_dict, load_state_dict_metadata(path))
+            model = quantize.prepare_for_prequantized_load(model, compute_dtype=torch_dtype or torch.bfloat16)
+            state_dict = quantize.unflatten_state_dict(state_dict, load_metadata_from_safetensors(path))
 
         model.load_state_dict(state_dict, assign=True)
 
         if online_quantize:
-            model = quantize_model_weights(model, quantize, compute_dtype=torch_dtype, device=device)
+            model = quantize.quantize_model(model, compute_dtype=torch_dtype, device=device)
         if quantize.mode == "dequant_once":
-            model = dequantize_model_weights(model, quantize, compute_dtype=torch_dtype or torch.bfloat16)
+            model = quantize.dequantize_model(model, compute_dtype=torch_dtype or torch.bfloat16)
         model = model.to(dtype=torch_dtype, device=device)
     else:
         # Why do we use `DiskMap`?
