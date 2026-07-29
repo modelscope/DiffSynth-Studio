@@ -160,7 +160,8 @@ class QuantizeConfig:
 
     def flatten_state_dict(self, state_dict: dict):
         """
-        Inverse of `unflatten_state_dict`. Returns (state_dict, metadata), ready for
+        Flatten a quantized model's state dict into plain tensors and string-only
+        metadata. Returns (state_dict, metadata), ready for
         `safetensors.torch.save_file(tensors, path, metadata=metadata)`.
         """
         if not self.backend.capabilities().get("is_serializable", False):
@@ -212,3 +213,133 @@ class QuantizeConfig:
             setattr(parent, leaf_name, self.backend.dequantize_to_linear(module, compute_dtype))
             restored.append(full_name)
         return restored
+
+
+@dataclass
+class MixedQuantizeConfig:
+    """
+    Combines multiple `QuantizeConfig` passes, one per disjoint layer set, behind the
+    same interface as a single `QuantizeConfig`. Mixed quantization assigns different
+    methods to different layers, e.g. nf4 for attention/MLP and int8 for the
+    quantization-sensitive modulation layers:
+
+        mod_layers = ["img_mod.1", "txt_mod.1", ...]
+        cfg = MixedQuantizeConfig(configs=[
+            QuantizeConfig(method="bitsandbytes_nf4", exclude_modules=mod_layers),
+            QuantizeConfig(method="torchao_int8_w8a16", target_modules=mod_layers),
+        ])
+        cfg.quantize_model(model, compute_dtype=torch.bfloat16, device="cuda")
+
+    The passes run in `configs` order. Their matched layer sets must be pairwise
+    disjoint; `quantize_model` and `prepare_for_prequantized_load` verify this on the
+    fp model and raise before touching it.
+
+    Fields:
+        configs: list of `QuantizeConfig`, one per layer set; all must share the same
+            `mode`, and their `load_prequantized` must stay False.
+        load_prequantized: set on this wrapper (not on the children) to load a mixed
+            pre-quantized checkpoint.
+    """
+    configs: list = None
+    load_prequantized: bool = False
+
+    def __post_init__(self):
+        if not self.configs:
+            raise ValueError("`MixedQuantizeConfig.configs` requires at least one `QuantizeConfig`.")
+        for config in self.configs:
+            if not isinstance(config, QuantizeConfig):
+                raise ValueError(f"`MixedQuantizeConfig.configs` should contain `QuantizeConfig` instances, but got `{type(config).__name__}`.")
+            if config.load_prequantized:
+                raise ValueError(
+                    "Set `load_prequantized=True` on `MixedQuantizeConfig` itself, not on its "
+                    "child configs; the children only describe method + layer set."
+                )
+        modes = {config.mode for config in self.configs}
+        if len(modes) > 1:
+            raise ValueError(f"All configs in `MixedQuantizeConfig` should share the same `mode`, but got {sorted(modes)}.")
+
+    @property
+    def method(self):
+        return " + ".join(config.method for config in self.configs)
+
+    @property
+    def mode(self):
+        return self.configs[0].mode
+
+    def quantize_model(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16, device=None):
+        """Run every config's quantization pass in order, after verifying their layer sets are disjoint."""
+        self._validate_disjoint(model)
+        for config in self.configs:
+            config.quantize_model(model, compute_dtype=compute_dtype, device=device)
+        return model
+
+    def dequantize_model(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16):
+        """Replace every quantized Linear of every config's backend by a plain fp `nn.Linear`."""
+        for config in self.configs:
+            config.dequantize_model(model, compute_dtype=compute_dtype)
+        return model
+
+    def prepare_for_prequantized_load(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16):
+        """Replace each config's targeted Linears by that backend's shells, after verifying the layer sets are disjoint."""
+        self._validate_disjoint(model)
+        for config in self.configs:
+            config.prepare_for_prequantized_load(model, compute_dtype=compute_dtype)
+        return model
+
+    def unflatten_state_dict(self, state_dict: dict, metadata: dict):
+        """
+        Rebuild composite quantized tensors from a flat (safetensors) state dict,
+        running each distinct backend's `unflatten_state_dict` once.
+        """
+        for config in self._distinct_backend_configs():
+            state_dict = config.unflatten_state_dict(state_dict, metadata)
+        return state_dict
+
+    def flatten_state_dict(self, state_dict: dict):
+        """
+        Flatten the mixed model's state dict into plain tensors and string-only
+        metadata, running each distinct backend's `flatten_state_dict` once. Returns
+        (state_dict, metadata), ready for `safetensors.torch.save_file(tensors, path,
+        metadata=metadata)`.
+        """
+        for config in self.configs:
+            if not config.backend.capabilities().get("is_serializable", False):
+                raise NotImplementedError(
+                    f"Backend `{config.backend.name}` (method `{config.method}`) does not declare "
+                    'serialization support (`capabilities()["is_serializable"]`), so the mixed '
+                    "state dict cannot be flattened for saving."
+                )
+        merged_metadata = {}
+        for config in self._distinct_backend_configs():
+            state_dict, metadata = config.backend.flatten_state_dict(state_dict)
+            merged_metadata.update(metadata)
+        tensors = {key: value.contiguous() for key, value in state_dict.items()}
+        metadata = {"format": "pt", **{key: value if isinstance(value, str) else str(value) for key, value in merged_metadata.items()}}
+        return tensors, metadata
+
+    def _distinct_backend_configs(self):
+        seen = set()
+        distinct = []
+        for config in self.configs:
+            if config.backend.name not in seen:
+                seen.add(config.backend.name)
+                distinct.append(config)
+        return distinct
+
+    def _validate_disjoint(self, model):
+        matched = [
+            {name for name, module in model.named_modules() if name and config._should_quantize(name, module)}
+            for config in self.configs
+        ]
+        for i in range(len(matched)):
+            for j in range(i + 1, len(matched)):
+                overlap = matched[i] & matched[j]
+                if overlap:
+                    samples = ", ".join(sorted(overlap)[:5])
+                    raise ValueError(
+                        f"Configs {i} (`{self.configs[i].method}`) and {j} (`{self.configs[j].method}`) "
+                        f"in `MixedQuantizeConfig` both match {len(overlap)} layers (e.g. {samples}). "
+                        "Layer sets must be pairwise disjoint, because re-quantizing an already "
+                        "quantized layer corrupts its packed weight silently. "
+                        "Adjust `target_modules` / `exclude_modules` so the sets are complementary."
+                    )

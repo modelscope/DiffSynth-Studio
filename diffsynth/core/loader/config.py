@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from modelscope import snapshot_download
 from huggingface_hub import snapshot_download as hf_snapshot_download
 from typing import Optional
-from ..quant import QuantizeConfig
+from ..quant import QuantizeConfig, MixedQuantizeConfig
 
 _download_tips_printed = False
 
@@ -58,7 +58,7 @@ class ModelConfig:
     computation_dtype: Optional[torch.dtype] = None
     clear_parameters: bool = False
     state_dict: Dict[str, torch.Tensor] = None
-    quantize: Optional[QuantizeConfig] = None
+    quantize: Optional[Union[QuantizeConfig, MixedQuantizeConfig]] = None
     
     def check_input(self):
         if self.path is None and self.model_id is None:
