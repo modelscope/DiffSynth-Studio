@@ -8,47 +8,6 @@ import torch
 QUANT_BACKENDS = {}
 
 
-class DtypeGuardedLinear(torch.nn.Linear):
-    """
-    An `nn.Linear`-typed base for a custom backend's quantized Linear built from plain
-    parameters / buffers. Subclasses register their own packed tensors; dtype casts
-    (`to(dtype)` / `half()` / `float()`) never re-type the tensors listed in
-    `dtype_guarded_tensor_names`, while device moves -- and every other tensor,
-    e.g. the bias -- behave as in a regular module.
-
-    Inheriting `nn.Linear` keeps contract guarantee (a) literal (`isinstance` checks see
-    a Linear), matching bnb (subclass) and torchao (original class). One optional way to
-    satisfy guarantee (b); backends whose packed storage is already immune (non-float
-    dtypes, tensor subclasses) do not need it. See `Fp8Linear` in
-    `diffsynth.models.ideogram4_dit` for a usage example.
-    """
-
-    # Names of the attributes holding packed weights / quant state.
-    dtype_guarded_tensor_names: tuple = ()
-
-    def __init__(self, in_features: int, out_features: int):
-        # Deliberately skip `nn.Linear.__init__`: it would allocate and randomly
-        # initialize an fp weight that the subclass replaces with packed tensors anyway.
-        torch.nn.Module.__init__(self)
-        self.in_features = in_features
-        self.out_features = out_features
-
-    def _apply(self, fn, recurse=True):
-        # All dtype/device conversions funnel through `_apply`; wrap `fn` so that a
-        # conversion which would change a protected tensor's dtype is redone as a
-        # device-only move.
-        protected = {id(tensor) for name in self.dtype_guarded_tensor_names
-                     if (tensor := getattr(self, name, None)) is not None}
-
-        def guard(tensor):
-            converted = fn(tensor)
-            if id(tensor) in protected and converted.dtype != tensor.dtype:
-                return tensor.to(device=converted.device)
-            return converted
-
-        return super()._apply(guard, recurse)
-
-
 class QuantBackend(ABC):
     """
     Adapter between the framework and a quantization library (bnb / torchao / custom).
@@ -63,7 +22,8 @@ class QuantBackend(ABC):
         a dtype cast (`.to(dtype)` / `.half()` / `.float()`) must leave their storage
         format and values intact. Non-float packed storage (bnb uint8) satisfies this
         structurally; tensor subclasses intercept the cast (torchao); quantized Linears
-        built from plain parameters/buffers may inherit `DtypeGuardedLinear` to get it.
+        built from plain float parameters/buffers must guard the module's `_apply`
+        themselves (see `Fp8Linear` in `diffsynth.models.ideogram4_dit`).
     (c) `state_dict()` / `load_state_dict(assign=True)` round-trips (optionally via
         `flatten_state_dict` / `unflatten_state_dict`).
     (d) (Training branch only) `forward` is differentiable w.r.t. its input.

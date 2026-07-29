@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ..core.gradient import gradient_checkpoint_forward
-from ..core.quant import DtypeGuardedLinear, QuantBackend, register_quant_backend, register_quant_preset
+from ..core.quant import QuantBackend, register_quant_backend, register_quant_preset
 
 LLM_TOKEN_INDICATOR = 3
 OUTPUT_IMAGE_INDICATOR = 2
@@ -17,10 +17,11 @@ FP8_E4M3_MAX = 448.0
 FP8_WEIGHT_DTYPE = torch.float8_e4m3fn
 
 
-class Fp8Linear(DtypeGuardedLinear):
+class Fp8Linear(torch.nn.Module):
     """Linear layer holding an e4m3 float8 weight + per-row float32 scale."""
 
-    dtype_guarded_tensor_names = ("weight", "weight_scale")
+    # Names of the packed tensors whose dtype must survive `to(dtype)` / `half()` / etc.
+    dtype_guarded_tensor_names: tuple = ("weight", "weight_scale")
 
     weight: torch.Tensor
     weight_scale: torch.Tensor
@@ -33,7 +34,9 @@ class Fp8Linear(DtypeGuardedLinear):
         bias: bool,
         compute_dtype: torch.dtype,
     ) -> None:
-        super().__init__(in_features, out_features)
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
         self.compute_dtype = compute_dtype
         self.register_buffer(
             "weight",
@@ -44,6 +47,22 @@ class Fp8Linear(DtypeGuardedLinear):
             self.register_buffer("bias", torch.empty(out_features, dtype=compute_dtype))
         else:
             self.bias = None
+
+    def _apply(self, fn, recurse=True):
+        # All dtype/device conversions (`to` / `half` / `float` / ...) funnel through
+        # `_apply`; wrap `fn` so that a conversion which would change the dtype of a
+        # tensor listed in `dtype_guarded_tensor_names` is redone as a device-only move,
+        # keeping contract guarantee (b). The bias and everything else convert as usual.
+        protected = {id(tensor) for name in self.dtype_guarded_tensor_names
+                     if (tensor := getattr(self, name, None)) is not None}
+
+        def guard(tensor):
+            converted = fn(tensor)
+            if id(tensor) in protected and converted.dtype != tensor.dtype:
+                return tensor.to(device=converted.device)
+            return converted
+
+        return super()._apply(guard, recurse)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         w = self.weight.to(x.dtype) * self.weight_scale.to(x.dtype).unsqueeze(1)
