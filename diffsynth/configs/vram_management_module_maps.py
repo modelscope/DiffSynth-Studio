@@ -412,13 +412,6 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.lingbot_video_dit.LingBotVideoRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
-        # The MoE experts keep their weights as bare `nn.Parameter` (w1/w2/w3 of
-        # shape [E, I, H]) rather than `nn.Linear`, so `AutoWrappedLinear` cannot
-        # reach them. Wrapping the container itself is what makes the 30B-A3B
-        # checkpoint offloadable -- without this the experts, which are the bulk
-        # of the model, would stay resident. Wrapped fine-grained (not the whole
-        # LingBotVideoBlock) on purpose: AutoWrappedModule stops the walker from
-        # recursing, so wrapping the block would keep all experts resident together.
         "diffsynth.models.lingbot_video_dit.LingBotVideoGroupedExperts": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.lingbot_video_text_encoder.LingBotVideoTextEncoder": {

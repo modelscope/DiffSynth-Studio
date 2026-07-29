@@ -1,13 +1,6 @@
 # LingBot-Video
 
-LingBot-Video is a flow-matching video generation model developed by the LingBot team. This document covers DiffSynth-Studio's inference support for the **Dense-1.3B** and **MoE-30B-A3B** checkpoints, plus LoRA and full-parameter SFT training for Dense-1.3B. A single Dense-1.3B checkpoint serves text-to-video, image-to-video and text-to-image through the same pipeline.
-
-The integration is built on the standard DiffSynth pipeline stack:
-
-- **DiT** — `LingBotVideoDiT` (`diffsynth/models/lingbot_video_dit.py`), the video denoiser. A single class covers both variants: Dense-1.3B uses a plain FFN (`num_experts=0`), MoE-30B-A3B a sparse MoE FFN.
-- **Text encoder** — `LingBotVideoTextEncoder` (Qwen3-VL). Prompts are wrapped in a prompt-enhancement chat template, encoded, and the template-prefix tokens are cropped.
-- **VAE** — reuses DiffSynth's `QwenImageVAE` (byte-identical to the LingBot-Video VAE), 8× spatial / 4× temporal compression.
-- **Scheduler** — DiffSynth's `FlowMatchScheduler` (Wan template): first-order flow-matching Euler for inference; training uses the full-resolution 1000-step flow-matching schedule.
+LingBot-Video is a flow-matching video generation model developed by the LingBot team, supporting text-to-video, image-to-video and text-to-image tasks with a single checkpoint.
 
 ## Installation
 
@@ -73,36 +66,11 @@ video = pipe(
 save_video(video, "video.mp4", fps=15, quality=10)
 ```
 
-**Low VRAM:** set `offload_dtype` / `offload_device` on each `ModelConfig` to enable layer-by-layer offloading; `vram_limit` alone has no effect (it only caps resident VRAM once offloading is on). See the low-VRAM example in the table below.
-
-## MoE-30B-A3B
-
-[Robbyant/lingbot-video-moe-30b-a3b](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b) is the larger variant: 30B total parameters with ~3B active per token. Each MoE layer holds 128 routed experts plus 1 shared expert, and routes each token to 8 experts using group-limited top-k (4 groups, top-2 groups).
-
-It loads through the same pipeline; only the model ID and the shard glob change (the checkpoint is split across 13 shards):
-
-```python
-pipe = LingBotVideoPipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
-        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="text_encoder/model*.safetensors"),
-        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
-    ],
-    processor_config=ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="processor/"),
-)
-```
-
-Notes specific to the MoE variant:
-
-- The expert matmuls use `torch._grouped_mm` on CUDA, falling back to an equivalent per-expert loop elsewhere.
-- The experts store their weights as grouped `nn.Parameter` tensors rather than `nn.Linear`, so VRAM management wraps the expert container itself. Since the experts are the bulk of the model, the low-VRAM path is what keeps resident VRAM near the ~3B active footprint instead of the full 30B.
-- The released package also ships a second-stage `refiner/` DiT (same architecture, used to upscale a base result). It is not wired into the pipeline yet.
-
 ## Model Overview
 
 Dense-1.3B is a single checkpoint that serves three tasks — text-to-video, image-to-video, and text-to-image — through the same pipeline. Each task ships its own inference / low-VRAM / training / validation scripts.
+
+MoE-30B-A3B is the larger variant: 30B total parameters with ~3B active per token, where each MoE layer holds 128 routed experts plus 1 shared expert and routes every token to 8 experts with group-limited top-k (4 groups, top-2 groups). It loads through the same pipeline, only the model ID and the shard glob change.
 
 |Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
 |-|-|-|-|-|-|-|

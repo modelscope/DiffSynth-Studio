@@ -1,13 +1,6 @@
 # LingBot-Video
 
-LingBot-Video 是由 LingBot 团队研发的 flow-matching 视频生成模型。本文档介绍 DiffSynth-Studio 对 **Dense-1.3B** 与 **MoE-30B-A3B** 权重的推理支持，以及对 Dense-1.3B 的 LoRA 与全量 SFT 训练支持。同一份 Dense-1.3B checkpoint 通过同一条 Pipeline 支持文生视频、图生视频和文生图三种任务。
-
-该接入基于标准的 DiffSynth Pipeline 组件栈构建：
-
-- **DiT** — `LingBotVideoDiT`（`diffsynth/models/lingbot_video_dit.py`），视频去噪器。同一个类同时覆盖两个版本：Dense-1.3B 使用普通 FFN（`num_experts=0`），MoE-30B-A3B 使用稀疏 MoE FFN。
-- **文本编码器** — `LingBotVideoTextEncoder`（Qwen3-VL）。提示词会被包裹进提示增强的对话模板中编码，随后裁剪掉模板前缀 token。
-- **VAE** — 复用 DiffSynth 的 `QwenImageVAE`（与 LingBot-Video 的 VAE 逐字节一致），空间 8× / 时间 4× 压缩。
-- **调度器** — DiffSynth 的 `FlowMatchScheduler`（Wan 模板）：推理时使用一阶 flow-matching Euler；训练时使用完整分辨率的 1000 步 flow-matching 调度。
+LingBot-Video 是由 LingBot 团队研发的 flow-matching 视频生成模型，同一份 checkpoint 支持文生视频、图生视频和文生图三种任务。
 
 ## 安装
 
@@ -73,36 +66,11 @@ video = pipe(
 save_video(video, "video.mp4", fps=15, quality=10)
 ```
 
-**低显存：** 在每个 `ModelConfig` 上设置 `offload_dtype` / `offload_device` 才能开启逐层 offload；单独传 `vram_limit` 没有效果（它只在 offload 已开启时限制常驻显存上限）。详见下表中的低显存示例。
-
-## MoE-30B-A3B
-
-[Robbyant/lingbot-video-moe-30b-a3b](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b) 是更大的版本：总参数量 30B，每个 token 激活约 3B。每个 MoE 层包含 128 个路由专家和 1 个共享专家，并使用 group-limited top-k（4 组，取 top-2 组）将每个 token 路由到 8 个专家。
-
-它复用同一条 pipeline，只需更换模型 ID 与分片通配符（权重被切分为 13 个 shard）：
-
-```python
-pipe = LingBotVideoPipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
-        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="text_encoder/model*.safetensors"),
-        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
-    ],
-    processor_config=ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="processor/"),
-)
-```
-
-MoE 版本的注意事项：
-
-- 专家矩阵乘在 CUDA 上使用 `torch._grouped_mm`，在其他设备上回退到等价的逐专家循环。
-- 专家权重以分组的 `nn.Parameter` 而非 `nn.Linear` 存储，因此显存管理包装的是专家容器本身。由于专家占据了模型的绝大部分参数，低显存路径能让常驻显存接近约 3B 的激活规模，而不是完整的 30B。
-- 官方权重包中还提供了第二阶段的 `refiner/` DiT（架构相同，用于在 base 结果之上做超分精修），目前尚未接入 pipeline。
-
 ## 模型总览
 
 Dense-1.3B 是一份 checkpoint，通过同一个 Pipeline 支持文生视频、图生视频、文生图三种任务，每种任务都配有推理 / 低显存 / 训练 / 验证脚本。
+
+MoE-30B-A3B 是更大的版本：总参数量 30B，每个 token 激活约 3B，每个 MoE 层包含 128 个路由专家和 1 个共享专家，并使用 group-limited top-k（4 组，取 top-2 组）将每个 token 路由到 8 个专家。它复用同一条 Pipeline，只需更换模型 ID 与分片通配符。
 
 |模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
