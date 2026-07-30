@@ -14,9 +14,7 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
         model = model_class(**config)
     # What is `module_map`?
     # This is a module mapping table for VRAM management.
-    if module_map is not None:
-        if quantize is not None:
-            raise NotImplementedError("Quantization combined with VRAM offload is not supported yet. Please remove `offload_dtype`/`offload_device` from the quantized ModelConfig for now.")
+    if module_map is not None and quantize is None:
         devices = [vram_config["offload_device"], vram_config["onload_device"], vram_config["preparing_device"], vram_config["computation_device"]]
         device = [d for d in devices if d != "disk"][0]
         dtypes = [vram_config["offload_dtype"], vram_config["onload_dtype"], vram_config["preparing_dtype"], vram_config["computation_dtype"]]
@@ -32,13 +30,37 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
         else:
             disk_map = DiskMap(path, device, state_dict_converter=state_dict_converter)
             model = enable_vram_management(model, module_map, vram_config=vram_config, disk_map=disk_map, vram_limit=vram_limit)
+    elif quantize is not None and module_map is not None:
+        if "disk" in vram_config.values():
+            raise ValueError("Model quantization is incompatible with disk offload.")
+        offload_device = vram_config["offload_device"]
+        computation_device = vram_config["computation_device"]
+        computation_dtype = vram_config["computation_dtype"]
+        offload_dtype = vram_config["offload_dtype"]
+        load_dtype = None if quantize.load_prequantized else computation_dtype
+        if state_dict is None: state_dict = DiskMap(path, offload_device, torch_dtype=load_dtype)
+        if state_dict_converter is not None:
+            state_dict = state_dict_converter(state_dict)
+        else:
+            state_dict = {i: state_dict[i] for i in state_dict}
+
+        if quantize.load_prequantized:
+            model = quantize.prepare_for_prequantized_load(model, compute_dtype=computation_dtype)
+            state_dict = quantize.unflatten_state_dict(state_dict, load_metadata_from_safetensors(path))
+
+        model.load_state_dict(state_dict, assign=True)
+        state_dict = None
+
+        model = quantize.quantize_model(model, compute_device=computation_device, model_device=offload_device)
+        model = quantize.dequantize_model(model, compute_dtype=computation_dtype, compute_device=computation_device, model_device=offload_device)
+        model = model.to(dtype=offload_dtype, device=offload_device)
+        model = enable_vram_management(model, module_map, vram_config=vram_config, disk_map=None, vram_limit=vram_limit, quantize=quantize)
     elif quantize is not None:
         # Weight-only quantization (see `diffsynth.core.quant`), isolated from the normal path below.
-        online_quantize = not quantize.load_prequantized
-        if online_quantize:
-            load_device, load_dtype = "cpu", torch_dtype
-        else:
+        if quantize.load_prequantized:
             load_device, load_dtype = device, None
+        else:
+            load_device, load_dtype = "cpu", torch_dtype
 
         if state_dict is not None:
             pass
@@ -57,11 +79,8 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
             state_dict = quantize.unflatten_state_dict(state_dict, load_metadata_from_safetensors(path))
 
         model.load_state_dict(state_dict, assign=True)
-
-        if online_quantize:
-            model = quantize.quantize_model(model, compute_dtype=torch_dtype, device=device)
-        if quantize.mode == "dequant_once":
-            model = quantize.dequantize_model(model, compute_dtype=torch_dtype or torch.bfloat16)
+        model = quantize.quantize_model(model, compute_device=device, model_device=device)
+        model = quantize.dequantize_model(model, compute_dtype=torch_dtype or torch.bfloat16)
         model = model.to(dtype=torch_dtype, device=device)
     else:
         # Why do we use `DiskMap`?

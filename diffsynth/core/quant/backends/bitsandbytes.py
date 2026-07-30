@@ -43,7 +43,7 @@ class BitsAndBytesQuantBackend(QuantBackend):
     def capabilities(self):
         return {
             "is_serializable": True,
-            "is_trainable": True,
+            "is_differentiable": True,
             "is_compileable": False,
             "requires_calibration": False,
         }
@@ -55,17 +55,13 @@ class BitsAndBytesQuantBackend(QuantBackend):
             return ()
         return (bnb.nn.Linear4bit,)
 
-    def create_quantized_linear(self, linear, compute_dtype, device=None):
-        """The `meta` shell avoids allocating an fp weight; bnb quantizes while `Params4bit` moves to the target device."""
+    def create_quantized_linear(self, linear, compute_device=None, model_device=None):
+        """The `meta` shell avoids allocating an fp weight; bnb quantizes while `Params4bit` moves to `compute_device`."""
         import bitsandbytes as bnb
 
-        source_device = linear.weight.device
-        if device is not None:
-            target_device = torch.device(device)
-        elif source_device.type == "cuda":
-            target_device = source_device
-        else:
-            target_device = torch.device("cuda")
+        compute_dtype = linear.weight.dtype
+        if compute_device is None:
+            compute_device = linear.weight.device
         quant_type = self.config.get("quant_type", "nf4")
         compress_statistics = self.config.get("compress_statistics", True)
         blocksize = self.config.get("blocksize")
@@ -82,19 +78,17 @@ class BitsAndBytesQuantBackend(QuantBackend):
                 quant_storage=quant_storage,
             )
         weight = bnb.nn.Params4bit(
-            linear.weight.data.to(compute_dtype).contiguous(),
+            linear.weight.data.contiguous(),
             requires_grad=False,
             compress_statistics=compress_statistics,
             blocksize=blocksize,
             quant_type=quant_type,
             quant_storage=quant_storage,
         )
-        quant_linear.weight = weight.to(target_device)
+        quant_linear.weight = weight.to(compute_device)
         if linear.bias is not None:
-            quant_linear.bias = torch.nn.Parameter(
-                linear.bias.data.to(dtype=compute_dtype, device=target_device), requires_grad=False
-            )
-        return quant_linear
+            quant_linear.bias = torch.nn.Parameter(linear.bias.data.to(device=compute_device), requires_grad=False)
+        return quant_linear.to(device=model_device)
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
         import bitsandbytes as bnb
@@ -129,14 +123,18 @@ class BitsAndBytesQuantBackend(QuantBackend):
             )
         return rebuilt
 
-    def dequantize_to_linear(self, module, compute_dtype):
+    def dequantize_to_linear(self, module, compute_dtype, compute_device=None, model_device=None):
         import bitsandbytes as bnb
+        if compute_device is not None:
+            module = module.to(device=compute_device)
         weight = module.weight
         fp_weight = bnb.functional.dequantize_4bit(weight.data, weight.quant_state).to(compute_dtype)
         linear = torch.nn.Linear(module.in_features, module.out_features, bias=module.bias is not None, device="meta")
         linear.weight = torch.nn.Parameter(fp_weight, requires_grad=False)
         if module.bias is not None:
             linear.bias = torch.nn.Parameter(module.bias.data.to(dtype=compute_dtype, device=fp_weight.device), requires_grad=False)
+        if model_device is not None:
+            linear = linear.to(device=model_device)
         return linear
 
 

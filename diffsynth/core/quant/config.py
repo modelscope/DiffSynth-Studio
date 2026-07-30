@@ -66,7 +66,7 @@ class QuantizeConfig:
 
         cfg = QuantizeConfig(method="bitsandbytes_nf4")
         model.load_state_dict(fp_state_dict)
-        cfg.quantize_model(model, compute_dtype=torch.bfloat16, device="cuda")
+        cfg.quantize_model(model, compute_device="cuda")
 
     Loading a pre-quantized checkpoint -- swap in quantized shells before loading:
 
@@ -120,30 +120,60 @@ class QuantizeConfig:
             raise ValueError(f"Quantization backend `{spec.backend}` (required by method `{self.method}`) is not registered.")
         return QUANT_BACKENDS[spec.backend](spec.config_factory(dict(self.backend_config_kwargs)))
 
-    def quantize_model(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16, device=None):
+    def quantize_model(self, model: torch.nn.Module, compute_device=None, model_device=None):
         """
-        Quantize the targeted `nn.Linear` layers of an fp model in place. Call AFTER
-        `load_state_dict`. `device` is the target device of the quantized layers
-        (`None` quantizes in place); the fp model may stay on another device.
+        Quantize the targeted `nn.Linear` layers of an fp model in place, keeping each
+        layer's existing dtype. Call AFTER `load_state_dict`. Does nothing when
+        `load_prequantized` is set, since such a checkpoint is already quantized.
+
+        Parameters:
+            model: the fp model whose targeted layers are replaced by quantized ones.
+            compute_device: where quantization runs; `None` quantizes each layer in place.
+            model_device: where each quantized layer is stored afterwards; `None` leaves it
+                on `compute_device`. Combining an fp model on the CPU with
+                `compute_device="cuda", model_device="cpu"` streams the work layer by
+                layer, so the accelerator only ever holds one layer at a time.
         """
+        if self.load_prequantized:
+            return model
         self.backend.validate_environment()
 
         def quantize(linear):
-            return self.backend.create_quantized_linear(linear, compute_dtype, device=device)
+            return self.backend.create_quantized_linear(linear, compute_device=compute_device, model_device=model_device)
 
         replaced = self._replace_target_linears(model, quantize)
         print(f"{len(replaced)} nn.Linear layers quantized (method: {self.method}).")
         return model
 
-    def dequantize_model(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16):
-        """Replace every quantized Linear in the model by a plain fp `nn.Linear`."""
-        self._dequantize_linears(model, compute_dtype)
+    def dequantize_model(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16, compute_device=None, model_device=None):
+        """
+        Replace every quantized Linear in the model by a plain fp `nn.Linear`.
+        Does nothing unless `mode` is `"dequant_once"`.
+
+        Parameters:
+            model: the quantized model to restore in place.
+            compute_dtype: dtype of the restored fp weights.
+            compute_device: where dequantization runs; `None` restores each layer in place.
+            model_device: where each restored layer is stored afterwards; `None` leaves it
+                on `compute_device`.
+        """
+        if self.mode != "dequant_once":
+            return model
+        self._dequantize_linears(model, compute_dtype, compute_device, model_device)
         return model
+
+    def is_quantized_linear(self, module) -> bool:
+        """Whether `module` is one of this config's backend-native quantized Linears."""
+        return self.backend.is_quantized_linear(module)
 
     def prepare_for_prequantized_load(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16):
         """
         Replace the targeted `nn.Linear` layers with empty quantized Linears matching a
         pre-quantized checkpoint. Call BEFORE `load_state_dict(assign=True)`.
+
+        Parameters:
+            model: the freshly constructed model whose targeted layers become shells.
+            compute_dtype: dtype the quantized layers dequantize to at forward time.
         """
         self.backend.validate_environment()
 
@@ -155,14 +185,24 @@ class QuantizeConfig:
         return model
 
     def unflatten_state_dict(self, state_dict: dict, metadata: dict):
-        """Rebuild composite quantized tensors from a flat (safetensors) state dict, for `load_state_dict(assign=True)`."""
+        """
+        Rebuild composite quantized tensors from a flat (safetensors) state dict, so the
+        result can be given to `load_state_dict(assign=True)`.
+
+        Parameters:
+            state_dict: the flat tensors read from the checkpoint.
+            metadata: the string-only metadata stored alongside them.
+        """
         return self.backend.unflatten_state_dict(state_dict, metadata)
 
     def flatten_state_dict(self, state_dict: dict):
         """
-        Flatten a quantized model's state dict into plain tensors and string-only
-        metadata. Returns (state_dict, metadata), ready for
+        Flatten a quantized model's state dict into plain tensors and string-only metadata.
+        Returns `(tensors, metadata)`, ready for
         `safetensors.torch.save_file(tensors, path, metadata=metadata)`.
+
+        Parameters:
+            state_dict: the quantized model's state dict, holding composite tensors.
         """
         if not self.backend.capabilities().get("is_serializable", False):
             raise NotImplementedError(
@@ -193,25 +233,30 @@ class QuantizeConfig:
         return True
 
     def _replace_target_linears(self, model, transform):
-        replaced = []
-        for full_name, module in list(model.named_modules()):
-            if full_name == "" or not self._should_quantize(full_name, module):
-                continue
+        replaced = [
+            full_name
+            for full_name, module in model.named_modules()
+            if full_name != "" and self._should_quantize(full_name, module)
+        ]
+        for full_name in replaced:
             parent_name, _, leaf_name = full_name.rpartition(".")
             parent = model.get_submodule(parent_name) if parent_name else model
-            setattr(parent, leaf_name, transform(module))
-            replaced.append(full_name)
+            setattr(parent, leaf_name, transform(getattr(parent, leaf_name)))
         return replaced
 
-    def _dequantize_linears(self, model, compute_dtype):
-        restored = []
-        for full_name, module in list(model.named_modules()):
-            if full_name == "" or not self.backend.is_quantized_linear(module):
-                continue
+    def _dequantize_linears(self, model, compute_dtype, compute_device=None, model_device=None):
+        restored = [
+            full_name
+            for full_name, module in model.named_modules()
+            if full_name != "" and self.backend.is_quantized_linear(module)
+        ]
+        for full_name in restored:
             parent_name, _, leaf_name = full_name.rpartition(".")
             parent = model.get_submodule(parent_name) if parent_name else model
-            setattr(parent, leaf_name, self.backend.dequantize_to_linear(module, compute_dtype))
-            restored.append(full_name)
+            restored_linear = self.backend.dequantize_to_linear(
+                getattr(parent, leaf_name), compute_dtype, compute_device=compute_device, model_device=model_device
+            )
+            setattr(parent, leaf_name, restored_linear)
         return restored
 
 
@@ -228,7 +273,7 @@ class MixedQuantizeConfig:
             QuantizeConfig(method="bitsandbytes_nf4", exclude_modules=mod_layers),
             QuantizeConfig(method="torchao_int8_w8a16", target_modules=mod_layers),
         ])
-        cfg.quantize_model(model, compute_dtype=torch.bfloat16, device="cuda")
+        cfg.quantize_model(model, compute_device="cuda")
 
     The passes run in `configs` order. Their matched layer sets must be pairwise
     disjoint; `quantize_model` and `prepare_for_prequantized_load` verify this on the
@@ -266,21 +311,55 @@ class MixedQuantizeConfig:
     def mode(self):
         return self.configs[0].mode
 
-    def quantize_model(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16, device=None):
-        """Run every config's quantization pass in order, after verifying their layer sets are disjoint."""
+    def quantize_model(self, model: torch.nn.Module, compute_device=None, model_device=None):
+        """
+        Run every config's quantization pass in order, after verifying their layer sets
+        are disjoint. Does nothing when `load_prequantized` is set.
+
+        Parameters:
+            model: the fp model whose targeted layers are replaced by quantized ones.
+            compute_device: where quantization runs; `None` quantizes each layer in place.
+            model_device: where each quantized layer is stored afterwards; `None` leaves it
+                on `compute_device`.
+        """
+        if self.load_prequantized:
+            return model
         self._validate_disjoint(model)
         for config in self.configs:
-            config.quantize_model(model, compute_dtype=compute_dtype, device=device)
+            config.quantize_model(model, compute_device=compute_device, model_device=model_device)
         return model
 
-    def dequantize_model(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16):
-        """Replace every quantized Linear of every config's backend by a plain fp `nn.Linear`."""
+    def dequantize_model(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16, compute_device=None, model_device=None):
+        """
+        Replace every quantized Linear of every config's backend by a plain fp `nn.Linear`.
+        Does nothing unless `mode` is `"dequant_once"`.
+
+        Parameters:
+            model: the quantized model to restore in place.
+            compute_dtype: dtype of the restored fp weights.
+            compute_device: where dequantization runs; `None` restores each layer in place.
+            model_device: where each restored layer is stored afterwards; `None` leaves it
+                on `compute_device`.
+        """
+        if self.mode != "dequant_once":
+            return model
         for config in self.configs:
-            config.dequantize_model(model, compute_dtype=compute_dtype)
+            config.dequantize_model(model, compute_dtype=compute_dtype, compute_device=compute_device, model_device=model_device)
         return model
+
+    def is_quantized_linear(self, module) -> bool:
+        """Whether `module` is a quantized Linear of any config's backend."""
+        return any(config.is_quantized_linear(module) for config in self.configs)
 
     def prepare_for_prequantized_load(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16):
-        """Replace each config's targeted Linears by that backend's shells, after verifying the layer sets are disjoint."""
+        """
+        Replace each config's targeted Linears by that backend's shells, after verifying
+        the layer sets are disjoint.
+
+        Parameters:
+            model: the freshly constructed model whose targeted layers become shells.
+            compute_dtype: dtype the quantized layers dequantize to at forward time.
+        """
         self._validate_disjoint(model)
         for config in self.configs:
             config.prepare_for_prequantized_load(model, compute_dtype=compute_dtype)
@@ -343,3 +422,4 @@ class MixedQuantizeConfig:
                         "quantized layer corrupts its packed weight silently. "
                         "Adjust `target_modules` / `exclude_modules` so the sets are complementary."
                     )
+

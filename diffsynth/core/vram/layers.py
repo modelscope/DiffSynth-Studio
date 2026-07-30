@@ -268,7 +268,29 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
             return getattr(self.module, name)
 
 
-class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
+class LoRAHotLoadMixin:
+    # Hot-loaded LoRA weights are applied as an additive branch on top of the base
+    # module's output. Shared by `AutoWrappedLinear` and `AutoWrappedQuantizedModule`.
+
+    def init_lora_hotload(self):
+        self.lora_A_weights = []
+        self.lora_B_weights = []
+        self.lora_merger = None
+
+    def lora_forward(self, x, out):
+        if self.lora_merger is None:
+            for lora_A, lora_B in zip(self.lora_A_weights, self.lora_B_weights):
+                out = out + x @ lora_A.T.to(device=x.device, dtype=x.dtype) @ lora_B.T.to(device=x.device, dtype=x.dtype)
+        else:
+            lora_output = []
+            for lora_A, lora_B in zip(self.lora_A_weights, self.lora_B_weights):
+                lora_output.append(x @ lora_A.T @ lora_B.T)
+            lora_output = torch.stack(lora_output)
+            out = self.lora_merger(out, lora_output)
+        return out
+
+
+class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule, LoRAHotLoadMixin):
     def __init__(
         self,
         module: torch.nn.Linear,
@@ -306,9 +328,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         self.bias = module.bias
         self.state = 0
         self.name = name
-        self.lora_A_weights = []
-        self.lora_B_weights = []
-        self.lora_merger = None
+        self.init_lora_hotload()
         self.enable_fp8 = computation_dtype in [torch.float8_e4m3fn, torch.float8_e4m3fnuz]
         self.computation_device_type = parse_device_type(self.computation_device)
         
@@ -409,18 +429,6 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
             out = torch.nn.functional.linear(x, weight, bias)
         return out
 
-    def lora_forward(self, x, out):
-        if self.lora_merger is None:
-            for lora_A, lora_B in zip(self.lora_A_weights, self.lora_B_weights):
-                out = out + x @ lora_A.T.to(device=x.device, dtype=x.dtype) @ lora_B.T.to(device=x.device, dtype=x.dtype)
-        else:
-            lora_output = []
-            for lora_A, lora_B in zip(self.lora_A_weights, self.lora_B_weights):
-                lora_output.append(x @ lora_A.T @ lora_B.T)
-            lora_output = torch.stack(lora_output)
-            out = self.lora_merger(out, lora_output)
-        return out
-    
     def forward(self, x, *args, **kwargs):
         if self.state == 1 and (self.vram_limit is None or self.check_free_vram()):
             self.preparing()
@@ -431,20 +439,125 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule):
         return out
 
 
-def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict, vram_config: dict, vram_limit=None, name_prefix="", disk_map=None, **kwargs):
+class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
+    # Wraps a backend-native quantized Linear (see `diffsynth.core.quant`). Unlike
+    # `AutoWrappedLinear`, forward is delegated to the quantized module itself so the
+    # backend's dequant + matmul kernel is used, and all state transitions move the
+    # device only: the packed weight's storage dtype is owned by the backend.
+
+    def __init__(
+        self,
+        module: torch.nn.Module,
+        offload_dtype: torch.dtype = None,
+        offload_device: Union[str, torch.device] = None,
+        onload_dtype: torch.dtype = None,
+        onload_device: Union[str, torch.device] = None,
+        preparing_dtype: torch.dtype = None,
+        preparing_device: Union[str, torch.device] = None,
+        computation_dtype: torch.dtype = None,
+        computation_device: Union[str, torch.device] = None,
+        vram_limit: float = None,
+        name: str = "",
+        disk_map: DiskMap = None,
+        **kwargs
+    ):
+        if "disk" in (offload_dtype, offload_device, onload_dtype, onload_device):
+            raise ValueError(
+                "Layer quantization is incompatible with disk offload: DiskMap holds plain "
+                "tensors only and cannot rebuild packed weights with their quant state."
+            )
+        super().__init__(
+            offload_dtype,
+            offload_device,
+            onload_dtype,
+            onload_device,
+            preparing_dtype,
+            preparing_device,
+            computation_dtype,
+            computation_device,
+            vram_limit,
+        )
+        self.module = module
+        self.name = name
+        self.init_lora_hotload()
+
+    def _module_device(self):
+        # Introspection helper: the device the wrapped module's tensors actually sit on.
+        # Not used to drive `computation_module`, which follows the state machine like
+        # the other wrappers; it exists so tests can assert the `state -> device`
+        # invariant that decision relies on.
+        tensor = next(self.module.parameters(), None)
+        if tensor is None:
+            tensor = next(self.module.buffers(), None)
+        return tensor.device
+
+    def offload(self):
+        if self.state != 0:
+            self.module.to(device=self.offload_device)
+            self.state = 0
+
+    def onload(self):
+        if self.state < 1:
+            self.module.to(device=self.onload_device)
+            self.state = 1
+
+    def preparing(self):
+        if self.state != 2:
+            self.module.to(device=self.preparing_device)
+            self.state = 2
+
+    def computation_module(self):
+        # Same convention as `AutoWrappedModule.computation` and
+        # `AutoWrappedLinear.computation`: compare the device *declared* by the tier
+        # `state` points at against the *declared* computation device, never a device
+        # read back from a tensor. Both operands come from the same `vram_config`, so
+        # they compare as written and no `torch.device` normalization is involved
+        # (`torch.device("cuda") != torch.device("cuda:0")` would break that).
+        # Tier already on the computation device -> zero copy; otherwise a temporary
+        # copy transits through it (the degraded path under `vram_limit`).
+        device = self.preparing_device if self.state == 2 else self.onload_device
+        if device == self.computation_device:
+            return self.module
+        return copy.deepcopy(self.module).to(device=self.computation_device)
+
+    def forward(self, x, *args, **kwargs):
+        if self.state == 1 and (self.vram_limit is None or self.check_free_vram()):
+            self.preparing()
+        module = self.computation_module()
+        out = module(x, *args, **kwargs)
+        if len(self.lora_A_weights) > 0:
+            out = self.lora_forward(x, out)
+        return out
+
+    def __getattr__(self, name):
+        if name in self.__dict__ or name == "module":
+            return super().__getattr__(name)
+        else:
+            return getattr(self.module, name)
+
+
+def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict, vram_config: dict, vram_limit=None, name_prefix="", disk_map=None, quantize=None, **kwargs):
     if isinstance(model, AutoWrappedNonRecurseModule):
         model = model.module
     for name, module in model.named_children():
         layer_name = name if name_prefix == "" else name_prefix + "." + name
+        # Quantized layers are recognized by the quantize config's predicate, never by
+        # the class-keyed map: bnb's Linear4bit subclasses nn.Linear and torchao keeps
+        # the nn.Linear class, so the map would wrap them as AutoWrappedLinear and
+        # silently corrupt the packed weights.
+        if quantize is not None and quantize.is_quantized_linear(module):
+            module_ = AutoWrappedQuantizedModule(module, **vram_config, vram_limit=vram_limit, name=layer_name, disk_map=disk_map, **kwargs)
+            setattr(model, name, module_)
+            continue
         for source_module, target_module in module_map.items():
             if isinstance(module, source_module):
                 module_ = target_module(module, **vram_config, vram_limit=vram_limit, name=layer_name, disk_map=disk_map, **kwargs)
                 if isinstance(module_, AutoWrappedNonRecurseModule):
-                    enable_vram_management_recursively(module_, module_map, vram_config, vram_limit=vram_limit, name_prefix=layer_name, disk_map=disk_map, **kwargs)
+                    enable_vram_management_recursively(module_, module_map, vram_config, vram_limit=vram_limit, name_prefix=layer_name, disk_map=disk_map, quantize=quantize, **kwargs)
                 setattr(model, name, module_)
                 break
         else:
-            enable_vram_management_recursively(module, module_map, vram_config, vram_limit=vram_limit, name_prefix=layer_name, disk_map=disk_map, **kwargs)
+            enable_vram_management_recursively(module, module_map, vram_config, vram_limit=vram_limit, name_prefix=layer_name, disk_map=disk_map, quantize=quantize, **kwargs)
 
 
 def fill_vram_config(model, vram_config):
@@ -460,7 +573,7 @@ def fill_vram_config(model, vram_config):
     return vram_config_
 
 
-def enable_vram_management(model: torch.nn.Module, module_map: dict, vram_config: dict, vram_limit=None, disk_map=None, **kwargs):
+def enable_vram_management(model: torch.nn.Module, module_map: dict, vram_config: dict, vram_limit=None, disk_map=None, quantize=None, **kwargs):
     for source_module, target_module in module_map.items():
         # If no fine-grained VRAM configuration is provided, the entire model will be managed uniformly.
         if isinstance(model, source_module):
@@ -468,7 +581,7 @@ def enable_vram_management(model: torch.nn.Module, module_map: dict, vram_config
             model = target_module(model, **vram_config, vram_limit=vram_limit, disk_map=disk_map, **kwargs)
             break
     else:
-        enable_vram_management_recursively(model, module_map, vram_config, vram_limit=vram_limit, disk_map=disk_map, **kwargs)
+        enable_vram_management_recursively(model, module_map, vram_config, vram_limit=vram_limit, disk_map=disk_map, quantize=quantize, **kwargs)
     # `vram_management_enabled` is a flag that allows the pipeline to determine whether VRAM management is enabled.
     model.vram_management_enabled = True
     return model

@@ -21,7 +21,7 @@ class TorchaoQuantBackend(QuantBackend):
     def capabilities(self):
         return {
             "is_serializable": True,
-            "is_trainable": False,
+            "is_differentiable": False,
             "is_compileable": True,
             "requires_calibration": False,
         }
@@ -30,17 +30,14 @@ class TorchaoQuantBackend(QuantBackend):
         weight = getattr(module, "weight", None)
         return isinstance(module, torch.nn.Linear) and weight is not None and "torchao" in type(weight).__module__
 
-    def create_quantized_linear(self, linear, compute_dtype, device=None):
+    def create_quantized_linear(self, linear, compute_device=None, model_device=None):
         from torchao.quantization import quantize_
         linear.requires_grad_(False)
-        to_kwargs = {}
-        if linear.weight.dtype != compute_dtype:
-            to_kwargs["dtype"] = compute_dtype
-        if device is not None and linear.weight.device != torch.device(device):
-            to_kwargs["device"] = device
-        if to_kwargs:
-            linear = linear.to(**to_kwargs)
+        if compute_device is not None:
+            linear = linear.to(device=compute_device)
         quantize_(linear, self.config)
+        if model_device is not None:
+            linear = linear.to(device=model_device)
         return linear
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
@@ -83,15 +80,16 @@ class TorchaoQuantBackend(QuantBackend):
                 "`torchao.prototype.safetensors`."
             )
 
-    def dequantize_to_linear(self, module, compute_dtype):
+    def dequantize_to_linear(self, module, compute_dtype, compute_device=None, model_device=None):
+        if compute_device is not None:
+            module = module.to(device=compute_device)
         weight = module.weight
-        fp_weight = weight.dequantize() if hasattr(weight, "dequantize") else weight.data
-        fp_weight = fp_weight.to(compute_dtype)
+        fp_weight = (weight.dequantize() if hasattr(weight, "dequantize") else weight.data).to(compute_dtype)
         linear = torch.nn.Linear(module.in_features, module.out_features, bias=module.bias is not None, device="meta")
         linear.weight = torch.nn.Parameter(fp_weight, requires_grad=False)
         if module.bias is not None:
             linear.bias = torch.nn.Parameter(module.bias.data.to(dtype=compute_dtype, device=fp_weight.device), requires_grad=False)
-        return linear
+        return linear if model_device is None else linear.to(device=model_device)
 
 
 def _int8_weight_only(backend_config_kwargs):

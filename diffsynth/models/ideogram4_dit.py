@@ -86,12 +86,16 @@ class Ideogram4Fp8QuantBackend(QuantBackend):
     def quantized_linear_classes(self) -> tuple:
         return (Fp8Linear,)
 
-    def dequantize_to_linear(self, module, compute_dtype):
+    def dequantize_to_linear(self, module, compute_dtype, compute_device=None, model_device=None):
+        if compute_device is not None:
+            module = module.to(device=compute_device)
         fp_weight = (module.weight.to(compute_dtype) * module.weight_scale.to(compute_dtype).unsqueeze(1))
         linear = nn.Linear(module.in_features, module.out_features, bias=module.bias is not None, device="meta")
         linear.weight = nn.Parameter(fp_weight, requires_grad=False)
         if module.bias is not None:
             linear.bias = nn.Parameter(module.bias.to(dtype=compute_dtype, device=fp_weight.device), requires_grad=False)
+        if model_device is not None:
+            linear = linear.to(device=model_device)
         return linear
 
 
