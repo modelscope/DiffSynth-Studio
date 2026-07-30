@@ -212,7 +212,7 @@ class LingBotVideoRouter(nn.Module):
         self.topk_group = topk_group
         self.route_scale = route_scale
         self.weight = nn.Parameter(torch.empty(num_experts, hidden_size))
-        self.register_buffer("e_score_correction_bias", torch.zeros(num_experts), persistent=True)
+        self.e_score_correction_bias = nn.Parameter(torch.zeros(num_experts), requires_grad=False)
 
     def _group_limited_topk(self, scores_for_choice):
         seq_len = scores_for_choice.shape[0]
@@ -228,12 +228,12 @@ class LingBotVideoRouter(nn.Module):
 
     def forward(self, tokens: torch.Tensor):
         with torch.amp.autocast(tokens.device.type, enabled=False):
-            logits = F.linear(tokens.float(), self.weight.float())
+            logits = F.linear(tokens.float(), self.weight.to(device=tokens.device, dtype=torch.float32))
         if self.score_func == "softmax":
             scores = F.softmax(logits, dim=-1)
         else:
             scores = logits.sigmoid()
-        scores_for_choice = scores + self.e_score_correction_bias.unsqueeze(0)
+        scores_for_choice = scores + self.e_score_correction_bias.to(device=scores.device, dtype=scores.dtype).unsqueeze(0)
         if self.n_group is not None and self.n_group > 1:
             top_indices = self._group_limited_topk(scores_for_choice)
         else:
@@ -329,13 +329,14 @@ class LingBotVideoSparseMoeBlock(nn.Module):
         return unpermuted[:-1]
 
     def _run_grouped_experts(self, tokens, counts):
-        if not hasattr(torch, "_grouped_mm"):
+        if not hasattr(torch, "_grouped_mm") or tokens.device.type != "cuda":
             return self._run_experts_for_loop(tokens, counts)
         input_shape, padded_tokens, permuted_indices, aligned_counts = self._pad_grouped_tokens(tokens, counts)
         offsets = torch.cumsum(aligned_counts, dim=0, dtype=torch.int32)
-        h = F.silu(torch._grouped_mm(padded_tokens.bfloat16(), self.experts.w1.bfloat16().transpose(-2, -1), offs=offsets))
-        h = h * torch._grouped_mm(padded_tokens.bfloat16(), self.experts.w3.bfloat16().transpose(-2, -1), offs=offsets)
-        out = torch._grouped_mm(h, self.experts.w2.bfloat16().transpose(-2, -1), offs=offsets).type_as(padded_tokens)
+        w1, w2, w3 = (w.to(device=tokens.device, dtype=torch.bfloat16) for w in (self.experts.w1, self.experts.w2, self.experts.w3))
+        h = F.silu(torch._grouped_mm(padded_tokens.bfloat16(), w1.transpose(-2, -1), offs=offsets))
+        h = h * torch._grouped_mm(padded_tokens.bfloat16(), w3.transpose(-2, -1), offs=offsets)
+        out = torch._grouped_mm(h, w2.transpose(-2, -1), offs=offsets).type_as(padded_tokens)
         return self._unpad_grouped_tokens(out, input_shape, permuted_indices)
 
     def _run_experts_for_loop(self, tokens, counts):
@@ -345,9 +346,9 @@ class LingBotVideoSparseMoeBlock(nn.Module):
         for expert_idx, expert_tokens in enumerate(splits):
             if expert_tokens.numel() == 0:
                 continue
-            h = F.silu(expert_tokens @ self.experts.w1[expert_idx].transpose(-2, -1))
-            h = h * (expert_tokens @ self.experts.w3[expert_idx].transpose(-2, -1))
-            h = h @ self.experts.w2[expert_idx].transpose(-2, -1)
+            h = F.silu(expert_tokens @ self.experts.w1[expert_idx].to(device=expert_tokens.device, dtype=expert_tokens.dtype).transpose(-2, -1))
+            h = h * (expert_tokens @ self.experts.w3[expert_idx].to(device=expert_tokens.device, dtype=expert_tokens.dtype).transpose(-2, -1))
+            h = h @ self.experts.w2[expert_idx].to(device=expert_tokens.device, dtype=expert_tokens.dtype).transpose(-2, -1)
             outputs.append(h)
         if not outputs:
             return tokens.new_zeros(tokens.shape)
@@ -420,7 +421,7 @@ class LingBotVideoBlock(nn.Module):
                 "LingBotVideoBlock expects token-level temb6 with shape (B*S, 6D); "
                 f"got {tuple(temb6.shape)} for hidden states {tuple(x.shape)}."
             )
-        mod = temb6.view(x.shape[0], x.shape[1], -1) + self.scale_shift_table.unsqueeze(0)
+        mod = temb6.view(x.shape[0], x.shape[1], -1) + self.scale_shift_table.to(dtype=temb6.dtype, device=temb6.device).unsqueeze(0)
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = mod.chunk(6, dim=-1)
         gate_msa, gate_mlp = gate_msa.tanh(), gate_mlp.tanh()
         scale_msa, scale_mlp = 1.0 + scale_msa, 1.0 + scale_mlp

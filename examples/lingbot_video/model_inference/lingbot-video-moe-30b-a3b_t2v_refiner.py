@@ -1,0 +1,61 @@
+import torch
+import json
+from diffsynth.utils.data import save_video, VideoData
+from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
+from modelscope import dataset_snapshot_download
+
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
+    local_dir="data/diffsynth_example_dataset",
+    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b_t2v/*",
+)
+with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2v/t2v_example_1.json", "r", encoding="utf-8") as f:
+    caption = json.load(f)
+
+# --- Stage 1: base generation at 480x832 ---------------------------------------------
+pipe = LingBotVideoPipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
+        ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors"),
+        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+    ],
+    processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
+)
+
+video = pipe(
+    prompt=caption,
+    negative_prompt=pipe.default_negative_prompt,
+    height=480, width=832, num_frames=81,
+    num_inference_steps=40, cfg_scale=3.0,
+    seed=0,
+)
+save_video(video, "video_lingbot-video-moe-30b-a3b_t2v.mp4", fps=15, quality=10)
+
+del pipe
+torch.cuda.empty_cache()
+
+# --- Stage 2: refinement at 1088x1920 ------------------------------------------------
+pipe = LingBotVideoPipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="refiner/diffusion_pytorch_model*.safetensors"),
+        ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors"),
+        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+    ],
+    processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
+)
+
+input_video = VideoData("video_lingbot-video-moe-30b-a3b_t2v.mp4", height=1088, width=1920)
+video = pipe(
+    prompt=caption,
+    negative_prompt=pipe.default_negative_prompt,
+    input_video=input_video,
+    height=1088, width=1920, num_frames=81,
+    num_inference_steps=8, cfg_scale=3.0,
+    t_thresh=0.85, sigma_tail_steps=2,
+    seed=0,
+)
+save_video(video, "video_lingbot-video-moe-30b-a3b_t2v_refined.mp4", fps=15, quality=10)

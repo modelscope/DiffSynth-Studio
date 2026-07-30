@@ -70,11 +70,20 @@ save_video(video, "video.mp4", fps=15, quality=10)
 
 ## 模型总览
 
+MoE-30B-A3B 是更大的版本：总参数量 30B，每个 token 激活约 3B，每个 MoE 层包含 128 个路由专家和 1 个共享专家，并使用 group-limited top-k（4 组，取 top-2 组）将每个 token 路由到 8 个专家。它通过同一条 Pipeline 支持同样的三种任务，只需更换模型 ID 与分片通配符。
+
+MoE 版本还额外提供了 `refiner/` 目录下的 **refiner**：一份与 `transformer/` 架构相同的 30B-A3B 权重，专门微调用于对已生成视频做一次高分辨率精修。它没有出现在 `model_index.json` 中，通过同一条 Pipeline 加载，只需更换分片通配符。详见下方[两阶段精修](#两阶段精修)。
+
 |模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
 |[Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_t2v.py)|
 |[Robbyant/lingbot-video-dense-1.3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py)|
 |[Robbyant/lingbot-video-dense-1.3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py)|-|-|-|-|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_t2v.py)|
+|[Robbyant/lingbot-video-moe-30b-a3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_ti2v.py)|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2i.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2i.py)|-|-|-|-|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2V + Refinement](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v_refiner.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v_refiner.py)|-|-|-|-|
+|[Robbyant/lingbot-video-moe-30b-a3b: TI2V + Refinement](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v_refiner.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v_refiner.py)|-|-|-|-|
 
 ## 模型推理
 
@@ -93,11 +102,32 @@ save_video(video, "video.mp4", fps=15, quality=10)
 * `cfg_scale`: 无分类器指导强度，默认 `3.0`。
 * `num_inference_steps`: 推理步数，默认 `40`。
 * `sigma_shift`: Flow-matching 时间步 shift，默认 `3.0`。
+* `t_thresh`: 精修起始 sigma，默认 `None`（普通生成）。设置后调度会被截断，使采样从 `sigma=t_thresh` 开始，并把 `input_video` 加噪到该噪声水平。仅在提供 `input_video` 时有意义；TI2V 还会在每个采样步之后重新写入干净的首帧 latent。官方精修配置为 `0.85`。
+* `sigma_tail_steps`: 精修调度尾部追加的额外低噪声步数，默认 `2`。仅在设置了 `t_thresh` 时生效。
 * `seed`: 随机种子，默认 `None`（完全随机）。
 * `rand_device`: 生成初始噪声的设备，默认 `"cpu"`。
 * `progress_bar_cmd`: 进度条，默认 `tqdm`，可设为 `lambda x: x` 关闭。
 
 显存不足时请参考[显存管理](../Pipeline_Usage/VRAM_management.md)启用显存管理功能。我们在示例代码中提供了每个任务的推荐低显存配置，见上方"模型总览"中的表格。
+
+### 两阶段精修
+
+MoE 的 refiner 会在更高分辨率上执行一次短程精修：官方配置先以 480×832、40 步生成，再以 1088×1920、8 步精修。加载时把分片通配符从 `transformer/` 换成 `refiner/`，将基础阶段的视频以目标分辨率通过 `input_video` 传回，并设置 `t_thresh`：
+
+```python
+input_video = VideoData("video_base.mp4", height=1088, width=1920)
+video = pipe(
+    prompt=caption,
+    negative_prompt=pipe.default_negative_prompt,
+    input_video=input_video,
+    height=1088, width=1920, num_frames=81,
+    num_inference_steps=8, cfg_scale=3.0,
+    t_thresh=0.85, sigma_tail_steps=2,
+    seed=0,
+)
+```
+
+放大后的视频会被 VAE 编码并重新加噪到 `sigma=t_thresh`，因此这一阶段保留基础阶段的结构，并在目标分辨率上重新生成细节。请使用与基础阶段相同的 caption，并保持相同的宽高比。精修分辨率决定了主要开销——1088×1920 的序列长度约为 480×832 的 5 倍——建议开启显存管理运行该阶段。
 
 ### 提示词改写
 
@@ -182,5 +212,7 @@ modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --inclu
 ```
 
 训练时 `prompt` 字段应存放**结构化 JSON caption**（与推理时使用的分布内格式一致）。如果数据集里存的是原始散文，可先使用 [`examples/lingbot_video/model_training/scripts/rewrite_captions.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/scripts/rewrite_captions.py) 离线改写一次。
+
+MoE-30B-A3B 的训练脚本通过 [`examples/lingbot_video/model_training/full/accelerate_config_moe.yaml`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/accelerate_config_moe.yaml) 启动（DeepSpeed ZeRO-2、优化器状态 CPU offload、bf16），全量训练脚本还额外开启了 `--use_gradient_checkpointing_offload`。需要注意的是，`--lora_target_modules "to_q,to_k,to_v,to_out"` 只覆盖注意力投影层：路由专家与路由器以裸参数张量的形式存放以便做分组矩阵乘法，LoRA 不会训练它们。如需更新专家部分，请使用全量训练。
 
 我们为每个任务编写了推荐的训练脚本，请参考前文"模型总览"中的表格。关于如何编写模型训练脚本，请参考[模型训练](../Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/zh/Training/)。

@@ -70,11 +70,20 @@ save_video(video, "video.mp4", fps=15, quality=10)
 
 ## Model Overview
 
+MoE-30B-A3B is the larger variant: 30B total parameters with ~3B active per token, where each MoE layer holds 128 routed experts plus 1 shared expert and routes every token to 8 experts with group-limited top-k (4 groups, top-2 groups). It serves the same three tasks through the same pipeline, only the model ID and the shard glob change.
+
+The MoE release additionally ships a **refiner** under `refiner/`: a second 30B-A3B checkpoint with the same architecture as `transformer/`, fine-tuned for a short high-resolution second pass over an already generated clip. It is not listed in `model_index.json` and is loaded through the same pipeline, only the shard glob changes. See [Two-stage refinement](#two-stage-refinement) below.
+
 |Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
 |-|-|-|-|-|-|-|
 |[Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_t2v.py)|
 |[Robbyant/lingbot-video-dense-1.3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py)|
 |[Robbyant/lingbot-video-dense-1.3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py)|-|-|-|-|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_t2v.py)|
+|[Robbyant/lingbot-video-moe-30b-a3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_ti2v.py)|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2i.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2i.py)|-|-|-|-|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2V + Refinement](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v_refiner.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v_refiner.py)|-|-|-|-|
+|[Robbyant/lingbot-video-moe-30b-a3b: TI2V + Refinement](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v_refiner.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v_refiner.py)|-|-|-|-|
 
 ## Model Inference
 
@@ -93,11 +102,32 @@ The input parameters for `LingBotVideoPipeline` inference include:
 * `cfg_scale`: Classifier-free guidance scale, default `3.0`.
 * `num_inference_steps`: Number of inference steps, default `40`.
 * `sigma_shift`: Flow-matching timestep shift, default `3.0`.
+* `t_thresh`: Refinement start sigma, default `None` (plain generation). When set, the schedule is truncated so that sampling starts at `sigma=t_thresh` and `input_video` is noised to exactly that level. Only meaningful together with `input_video`; TI2V additionally re-pins the clean first-frame latent after every step. The official refiner setting is `0.85`.
+* `sigma_tail_steps`: Number of extra low-noise steps appended to the tail of the refinement schedule, default `2`. Only effective when `t_thresh` is set.
 * `seed`: Random seed. Default is `None`, meaning completely random.
 * `rand_device`: Device for generating the initial noise, default `"cpu"`.
 * `progress_bar_cmd`: Progress bar, default `tqdm`. Can be disabled by setting to `lambda x: x`.
 
 If VRAM is insufficient, please enable [VRAM Management](../Pipeline_Usage/VRAM_management.md). We provide recommended low-VRAM configurations for each task in the example code, see the table in the "Model Overview" section above.
+
+### Two-stage refinement
+
+The MoE refiner performs a short second pass at a higher resolution: the official setup generates at 480×832 with 40 steps, then refines at 1088×1920 with 8 steps. Load the pipeline with the `refiner/` shards instead of `transformer/`, feed the base clip back in through `input_video` at the higher resolution, and set `t_thresh`:
+
+```python
+input_video = VideoData("video_base.mp4", height=1088, width=1920)
+video = pipe(
+    prompt=caption,
+    negative_prompt=pipe.default_negative_prompt,
+    input_video=input_video,
+    height=1088, width=1920, num_frames=81,
+    num_inference_steps=8, cfg_scale=3.0,
+    t_thresh=0.85, sigma_tail_steps=2,
+    seed=0,
+)
+```
+
+The upscaled clip is VAE-encoded and noised back to `sigma=t_thresh`, so the pass keeps the structure of the base clip and regenerates detail at the target resolution. Pass the same caption as the base pass and keep the same aspect ratio. The refinement resolution dominates the cost — at 1088×1920 the sequence is ~5× longer than at 480×832 — so run this pass with VRAM management enabled.
 
 ### Prompt rewriting
 
@@ -182,5 +212,7 @@ modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --inclu
 ```
 
 Training captions should be **structured-JSON captions** (the same in-distribution format used at inference). If your dataset stores raw prose, rewrite it once offline with [`examples/lingbot_video/model_training/scripts/rewrite_captions.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/scripts/rewrite_captions.py) before training.
+
+The MoE-30B-A3B scripts launch with [`examples/lingbot_video/model_training/full/accelerate_config_moe.yaml`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/accelerate_config_moe.yaml) (DeepSpeed ZeRO-2, optimizer CPU offload, bf16), and the full-parameter scripts additionally enable `--use_gradient_checkpointing_offload`. Note that `--lora_target_modules "to_q,to_k,to_v,to_out"` only reaches the attention projections: the routed experts and the router are stored as bare parameter tensors for grouped matmul, so LoRA leaves them frozen. Use full-parameter training to update the expert stack.
 
 We provide recommended training scripts for each task, please refer to the table in "Model Overview" above. For guidance on writing model training scripts, see [Model Training](../Pipeline_Usage/Model_Training.md); for more advanced training algorithms, see [Training Framework Overview](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/en/Training/).

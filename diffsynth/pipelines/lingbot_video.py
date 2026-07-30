@@ -25,7 +25,7 @@ class LingBotVideoPipeline(BasePipeline):
             height_division_factor=16, width_division_factor=16,
             time_division_factor=4, time_division_remainder=1,
         )
-        self.scheduler = FlowMatchScheduler(template="Wan")
+        self.scheduler = FlowMatchScheduler(template="LingBot-Video")
         self.text_encoder: Krea2TextEncoder = None
         self.dit: LingBotVideoDiT = None
         self.vae: QwenImageVAE = None
@@ -102,11 +102,18 @@ class LingBotVideoPipeline(BasePipeline):
         # Scheduler
         num_inference_steps: int = 40,
         sigma_shift: float = 3.0,
+        # Refinement pass: start from a partially noised input video at sigma=t_thresh and
+        # append extra low-noise steps at the tail of the schedule.
+        t_thresh: float = None,
+        sigma_tail_steps: int = 2,
         # progress_bar
         progress_bar_cmd=tqdm,
     ):
         # Scheduler
-        self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
+        self.scheduler.set_timesteps(
+            num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift,
+            t_thresh=t_thresh, sigma_tail_steps=sigma_tail_steps,
+        )
 
         # Inputs
         inputs_posi = {"prompt": prompt}
@@ -116,7 +123,7 @@ class LingBotVideoPipeline(BasePipeline):
             "input_video": input_video, "denoising_strength": denoising_strength,
             "seed": seed, "rand_device": rand_device,
             "height": height, "width": width, "num_frames": num_frames,
-            "cfg_scale": cfg_scale,
+            "cfg_scale": cfg_scale, "t_thresh": t_thresh,
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
@@ -132,6 +139,11 @@ class LingBotVideoPipeline(BasePipeline):
                 **models, timestep=timestep, progress_id=progress_id
             )
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
+            if t_thresh is not None and inputs_shared.get("first_frame_latents") is not None:
+                # The refiner re-pins the clean condition latent after every step, keeping frame 0
+                # identical to the input image while the rest of the clip denoises against it.
+                first_frame_latents = inputs_shared["first_frame_latents"]
+                inputs_shared["latents"][:, :, :first_frame_latents.shape[2]] = first_frame_latents
 
         self.load_models_to_device(['vae'])
         latents = inputs_shared["latents"].to(dtype=self.torch_dtype, device=self.device)
@@ -197,12 +209,12 @@ class LingBotVideoUnit_ImageEmbedder(PipelineUnit):
 
     def __init__(self):
         super().__init__(
-            input_params=("input_image", "latents", "height", "width"),
+            input_params=("input_image", "latents", "height", "width", "t_thresh"),
             output_params=("latents", "first_frame_latents", "vlm_image"),
             onload_model_names=("vae",),
         )
 
-    def process(self, pipe: LingBotVideoPipeline, input_image, latents, height, width):
+    def process(self, pipe: LingBotVideoPipeline, input_image, latents, height, width, t_thresh=None):
         if input_image is None:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
@@ -211,7 +223,8 @@ class LingBotVideoUnit_ImageEmbedder(PipelineUnit):
         pixel = self.preprocess_cond_image(input_image, height, width)
         pixel = pixel.to(dtype=pipe.torch_dtype, device=pipe.device)
         first_frame_latents = pipe.vae.encode_video(pixel * 2.0 - 1.0).to(dtype=pipe.torch_dtype, device=pipe.device)
-        vlm_image = self.vlm_image(pipe, pixel)
+        # The refiner conditions on text only and re-pins the frame-0 latent every step instead.
+        vlm_image = None if t_thresh is not None else self.vlm_image(pipe, pixel)
         # Pin the clean condition latent into the first temporal slot before sampling.
         cond_t = first_frame_latents.shape[2]
         latents[:, :, :cond_t] = first_frame_latents
