@@ -585,6 +585,7 @@ class AceStepConditionEncoder(nn.Module):
         timbre_hidden_dim: int = 64,
         num_lyric_encoder_hidden_layers: int = 8,
         num_timbre_encoder_hidden_layers: int = 4,
+        placeholder_shape=None,
         **kwargs,
     ):
         super().__init__()
@@ -648,6 +649,8 @@ class AceStepConditionEncoder(nn.Module):
             timbre_hidden_dim=timbre_hidden_dim,
             num_timbre_encoder_hidden_layers=num_timbre_encoder_hidden_layers,
         )
+        if placeholder_shape is not None:
+            self.placeholder_audio = torch.nn.Parameter(torch.zeros(placeholder_shape))
 
     def forward(
         self,
@@ -658,6 +661,9 @@ class AceStepConditionEncoder(nn.Module):
         reference_latents: Optional[torch.Tensor] = None,
         refer_audio_order_mask: Optional[torch.LongTensor] = None,
     ):
+        if reference_latents is None:
+            reference_latents = self.placeholder_audio[:, :750, :].to(device=text_hidden_states.device, dtype=text_hidden_states.dtype)
+            refer_audio_order_mask = torch.tensor([0], device=text_hidden_states.device, dtype=torch.long)
         text_hidden_states = self.text_projector(text_hidden_states)
         lyric_encoder_outputs = self.lyric_encoder(
             inputs_embeds=lyric_hidden_states,

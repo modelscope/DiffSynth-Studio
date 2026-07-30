@@ -400,7 +400,9 @@ class HTDemucs(nn.Module):
         out = out * (ref.std() + 1e-8) + ref.mean()
         out = out / max(1.01 * out.abs().max(), 1)
         out = out.clamp_(-1, 1).cpu()
-        out = out[self.sources.index(track)]
+        if not isinstance(track, list):
+            track = [track]
+        out = sum([out[self.sources.index(t)] for t in track], 0)
         return out
 
 def center_trim(tensor, length):

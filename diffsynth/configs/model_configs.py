@@ -1155,10 +1155,23 @@ ace_step_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ace_step_tokenizer.AceStepTokenizerStateDictConverter",
     },
     {
-        # Example: ???
+        # Example: ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music-Tools", origin_file_pattern="track_separator/model.safetensors")
         "model_hash": "ff74b1806e6a0b52e7bbd1d3df2d26d1",
         "model_name": "demucs",
         "model_class": "diffsynth.models.demucs.HTDemucs",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music-Tools", origin_file_pattern="transformer/model.safetensors")
+        "model_hash": "167b8d453605e3d72076f88790528f8e",
+        "model_name": "diffsynth_music_dit",
+        "model_class": "diffsynth.models.diffsynth_music_dit.DiffSynthMusicDiTModel",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music-Tools", origin_file_pattern="conditioner/model.safetensors")
+        "model_hash": "d6c90aec3f282bde16298e0221413098",
+        "model_name": "ace_step_conditioner",
+        "model_class": "diffsynth.models.ace_step_conditioner.AceStepConditionEncoder",
+        "extra_kwargs": {"placeholder_shape": (1, 15000, 64)},
     },
 ]
 
