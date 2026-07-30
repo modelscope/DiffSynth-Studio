@@ -9,8 +9,8 @@ accelerate launch examples/lingbot_video/model_training/train.py \
   --num_frames 81 \
   --first_frame_as_condition \
   --dataset_repeat 50 \
-  --model_id_with_origin_paths "Robbyant/lingbot-video-dense-1.3b:transformer/diffusion_pytorch_model.safetensors,Robbyant/lingbot-video-dense-1.3b:text_encoder/model*.safetensors,Robbyant/lingbot-video-dense-1.3b:vae/diffusion_pytorch_model.safetensors" \
-  --processor_path "Robbyant/lingbot-video-dense-1.3b:processor/" \
+  --model_id_with_origin_paths "Robbyant/lingbot-video-dense-1.3b:transformer/diffusion_pytorch_model.safetensors,Qwen/Qwen3-VL-4B-Instruct:*.safetensors,Robbyant/lingbot-video-dense-1.3b:vae/diffusion_pytorch_model.safetensors" \
+  --processor_path "Qwen/Qwen3-VL-4B-Instruct:" \
   --learning_rate 1e-4 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \

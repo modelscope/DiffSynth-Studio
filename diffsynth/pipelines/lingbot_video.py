@@ -14,7 +14,7 @@ from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..diffusion.flow_match import FlowMatchScheduler
 
 from ..models.lingbot_video_dit import LingBotVideoDiT
-from ..models.lingbot_video_text_encoder import LingBotVideoTextEncoder
+from ..models.krea2_text_encoder import Krea2TextEncoder
 from ..models.qwen_image_vae import QwenImageVAE
 
 
@@ -26,7 +26,7 @@ class LingBotVideoPipeline(BasePipeline):
             time_division_factor=4, time_division_remainder=1,
         )
         self.scheduler = FlowMatchScheduler(template="Wan")
-        self.text_encoder: LingBotVideoTextEncoder = None
+        self.text_encoder: Krea2TextEncoder = None
         self.dit: LingBotVideoDiT = None
         self.vae: QwenImageVAE = None
         self.processor = None
@@ -67,7 +67,7 @@ class LingBotVideoPipeline(BasePipeline):
         pipe = LingBotVideoPipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
 
-        pipe.text_encoder = model_pool.fetch_model("lingbot_video_text_encoder")
+        pipe.text_encoder = model_pool.fetch_model("krea2_text_encoder")
         pipe.dit = model_pool.fetch_model("lingbot_video_dit")
         pipe.vae = model_pool.fetch_model("qwen_image_vae")
 
