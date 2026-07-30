@@ -19,12 +19,12 @@ pipe = LingBotVideoPipeline.from_pretrained(
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="lingbot_video/lingbot-video-moe-30b-a3b_t2v/*",
+    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b_t2v/*",
 )
 # LingBot-Video is trained on structured-JSON captions, not free-form prose. This example
 # runs on a released in-distribution caption; see the bottom for turning a brief idea into
 # such a caption with the two-stage prompt rewriter.
-with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-moe-30b-a3b_t2v/t2v_example_1.json", "r", encoding="utf-8") as f:
+with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2v/t2v_example_1.json", "r", encoding="utf-8") as f:
     caption = json.load(f)
 
 video = pipe(
