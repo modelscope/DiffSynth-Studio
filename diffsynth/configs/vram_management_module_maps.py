@@ -414,7 +414,7 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
     "diffsynth.models.lingbot_video_dit.LingBotVideoDiT": {
         "diffsynth.models.lingbot_video_dit.LingBotVideoBlock": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
         "diffsynth.models.lingbot_video_dit.LingBotVideoRouter": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
-        "diffsynth.models.lingbot_video_dit.LingBotVideoGroupedExperts": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.lingbot_video_dit.LingBotVideoGroupedExperts": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
         "diffsynth.models.lingbot_video_dit.LingBotVideoRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
     },
