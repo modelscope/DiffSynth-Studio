@@ -41,6 +41,7 @@ Welcome to DiffSynth-Studio's Documentation
    Model_Details/Ideogram-4
    Model_Details/Krea-2
    Model_Details/Boogu-Image
+   Model_Details/LingBot-Video
 
 .. toctree::
    :maxdepth: 2

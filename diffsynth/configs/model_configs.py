@@ -1322,8 +1322,18 @@ krea2_series = [
     },
 ]
 
+lingbot_video_series = [
+    {
+        # Example: ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors")
+        "model_hash": "2bcf511fe5e0000519394d242b4d8abd",
+        "model_name": "lingbot_video_dit",
+        "model_class": "diffsynth.models.lingbot_video_dit.LingBotVideoDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.lingbot_video_dit.LingBotVideoDiTStateDictConverter",
+    },
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
-    + image_metrics_series + ideogram4_series + krea2_series
+    + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series
 )
