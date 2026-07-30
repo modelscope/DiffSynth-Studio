@@ -1338,13 +1338,6 @@ lingbot_video_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.lingbot_video_dit.LingBotVideoDiTStateDictConverter",
         "extra_kwargs": {'depth': 48, 'axes_lens': (4096, 512, 512), 'num_experts': 128, 'moe_intermediate_size': 768, 'n_group': 4, 'topk_group': 2, 'n_shared_experts': 1, 'routed_scaling_factor': 2.5},
     },
-    {
-        # Example: ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="text_encoder/*.safetensors")
-        "model_hash": "b8750c24f732c87797f551196c4cef78",
-        "model_name": "lingbot_video_text_encoder",
-        "model_class": "diffsynth.models.lingbot_video_text_encoder.LingBotVideoTextEncoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.lingbot_video_text_encoder.LingBotVideoTextEncoderStateDictConverter",
-    },
 ]
 
 MODEL_CONFIGS = (

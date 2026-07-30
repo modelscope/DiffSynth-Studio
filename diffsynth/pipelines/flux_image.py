@@ -117,7 +117,7 @@ class FluxImagePipeline(BasePipeline):
                     if merger_name in self.lora_patcher.model_dict:
                         module.lora_merger = self.lora_patcher.model_dict[merger_name]
 
-    def load_timestep_lora(self, lora_config, alpha=1):
+    def load_timestep_lora(self, lora_config, alpha=2.0):
         loader = FluxTimestepLoRALoader(torch_dtype=self.torch_dtype, device=self.device)
         loader.load(self.dit, lora_config, alpha=alpha)
         self.model_fn = loader.wrap_model_fn(self.model_fn)

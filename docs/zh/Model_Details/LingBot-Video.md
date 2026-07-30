@@ -1,6 +1,8 @@
 # LingBot-Video
 
-LingBot-Video 是由 LingBot 团队研发的 flow-matching 视频生成模型，同一份 checkpoint 支持文生视频、图生视频和文生图三种任务。
+LingBot-Video 是由 LingBot 团队研发的 flow-matching 视频生成模型，单个模型即可完成文生视频、图生视频和文生图三种任务。
+
+特别感谢 [NancyFyong](https://github.com/NancyFyong) 在模型接入中做出的杰出贡献！
 
 ## 安装
 
@@ -16,7 +18,7 @@ pip install -e .
 
 ## 快速开始
 
-运行以下代码可以快速加载 [Robbyant/lingbot-video-dense-1.3b](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 24G 显存即可运行。
+运行以下代码可以快速加载 [Robbyant/lingbot-video-dense-1.3b](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 6G 显存即可运行。
 
 ```python
 import torch
@@ -41,19 +43,19 @@ pipe = LingBotVideoPipeline.from_pretrained(
     device="cuda",
     model_configs=[
         ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors", **vram_config),
-        ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors", **vram_config),
         ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
     ],
-    processor_config=ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="processor/"),
+    processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b/*",
+    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b_t2v/*",
 )
-with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b/t2v_example_1.json", "r", encoding="utf-8") as f:
+with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2v/t2v_example_1.json", "r", encoding="utf-8") as f:
     caption = json.load(f)
 
 video = pipe(
@@ -68,16 +70,14 @@ save_video(video, "video.mp4", fps=15, quality=10)
 
 ## 模型总览
 
-Dense-1.3B 是一份 checkpoint，通过同一个 Pipeline 支持文生视频、图生视频、文生图三种任务，每种任务都配有推理 / 低显存 / 训练 / 验证脚本。
-
 MoE-30B-A3B 是更大的版本：总参数量 30B，每个 token 激活约 3B，每个 MoE 层包含 128 个路由专家和 1 个共享专家，并使用 group-limited top-k（4 组，取 top-2 组）将每个 token 路由到 8 个专家。它通过同一条 Pipeline 支持同样的三种任务，只需更换模型 ID 与分片通配符。
 
 |模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
-|[Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b.py)|
+|[Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_t2v.py)|
 |[Robbyant/lingbot-video-dense-1.3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py)|
 |[Robbyant/lingbot-video-dense-1.3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py)|-|-|-|-|
-|[Robbyant/lingbot-video-moe-30b-a3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b.py)|-|-|-|-|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v.py)|-|-|-|-|
 |[Robbyant/lingbot-video-moe-30b-a3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v.py)|-|-|-|-|
 |[Robbyant/lingbot-video-moe-30b-a3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2i.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2i.py)|-|-|-|-|
 
@@ -183,7 +183,7 @@ LingBot-Video 系列模型统一通过 [`examples/lingbot_video/model_training/t
 我们构建了一个样例数据集供您测试，可通过以下命令下载：
 
 ```shell
-modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "lingbot_video/lingbot-video-dense-1.3b/*" --local_dir ./data/diffsynth_example_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "lingbot_video/lingbot-video-dense-1.3b_t2v/*" --local_dir ./data/diffsynth_example_dataset
 ```
 
 训练时 `prompt` 字段应存放**结构化 JSON caption**（与推理时使用的分布内格式一致）。如果数据集里存的是原始散文，可先使用 [`examples/lingbot_video/model_training/scripts/rewrite_captions.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/scripts/rewrite_captions.py) 离线改写一次。

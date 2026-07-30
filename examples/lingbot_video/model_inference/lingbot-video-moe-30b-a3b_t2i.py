@@ -1,20 +1,25 @@
-import os
 import json
 import torch
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
+from modelscope import dataset_snapshot_download
 
 pipe = LingBotVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
         ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
-        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="text_encoder/model*.safetensors"),
+        ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors"),
         ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
-    processor_config=ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="processor/"),
+    processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
 )
 
-with open(os.path.join(os.path.dirname(__file__), "prompts", "t2i_example.json"), "r", encoding="utf-8") as f:
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
+    local_dir="data/diffsynth_example_dataset",
+    allow_file_pattern="lingbot_video/lingbot-video-moe-30b-a3b_t2i/*",
+)
+with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-moe-30b-a3b_t2i/t2i_example.json", "r", encoding="utf-8") as f:
     caption = json.load(f)
 
 frames = pipe(

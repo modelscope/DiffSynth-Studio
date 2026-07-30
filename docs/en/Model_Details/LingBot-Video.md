@@ -1,6 +1,8 @@
 # LingBot-Video
 
-LingBot-Video is a flow-matching video generation model developed by the LingBot team, supporting text-to-video, image-to-video and text-to-image tasks with a single checkpoint.
+LingBot-Video is a flow-matching video generation model developed by the LingBot team; a single model handles text-to-video, image-to-video and text-to-image tasks.
+
+Huge thanks to [NancyFyong](https://github.com/NancyFyong) for the outstanding contribution to the integration of this model!
 
 ## Installation
 
@@ -16,7 +18,7 @@ For more information on installation, please refer to [Setup Dependencies](../Pi
 
 ## Quick Start
 
-Running the following code will load the [Robbyant/lingbot-video-dense-1.3b](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) model for inference. VRAM management is enabled, the framework automatically controls parameter loading based on available VRAM, requiring a minimum of 24GB VRAM.
+Running the following code will load the [Robbyant/lingbot-video-dense-1.3b](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) model for inference. VRAM management is enabled, the framework automatically controls parameter loading based on available VRAM, requiring a minimum of 6GB VRAM.
 
 ```python
 import torch
@@ -41,19 +43,19 @@ pipe = LingBotVideoPipeline.from_pretrained(
     device="cuda",
     model_configs=[
         ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors", **vram_config),
-        ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors", **vram_config),
         ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
     ],
-    processor_config=ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="processor/"),
+    processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b/*",
+    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b_t2v/*",
 )
-with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b/t2v_example_1.json", "r", encoding="utf-8") as f:
+with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2v/t2v_example_1.json", "r", encoding="utf-8") as f:
     caption = json.load(f)
 
 video = pipe(
@@ -68,16 +70,14 @@ save_video(video, "video.mp4", fps=15, quality=10)
 
 ## Model Overview
 
-Dense-1.3B is a single checkpoint that serves three tasks — text-to-video, image-to-video, and text-to-image — through the same pipeline. Each task ships its own inference / low-VRAM / training / validation scripts.
-
 MoE-30B-A3B is the larger variant: 30B total parameters with ~3B active per token, where each MoE layer holds 128 routed experts plus 1 shared expert and routes every token to 8 experts with group-limited top-k (4 groups, top-2 groups). It serves the same three tasks through the same pipeline, only the model ID and the shard glob change.
 
 |Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
 |-|-|-|-|-|-|-|
-|[Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b.py)|
+|[Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_t2v.py)|
 |[Robbyant/lingbot-video-dense-1.3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py)|
 |[Robbyant/lingbot-video-dense-1.3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py)|-|-|-|-|
-|[Robbyant/lingbot-video-moe-30b-a3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b.py)|-|-|-|-|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v.py)|-|-|-|-|
 |[Robbyant/lingbot-video-moe-30b-a3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v.py)|-|-|-|-|
 |[Robbyant/lingbot-video-moe-30b-a3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2i.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2i.py)|-|-|-|-|
 
@@ -183,7 +183,7 @@ Models in the LingBot-Video series are trained uniformly via [`examples/lingbot_
 We provide a sample dataset for your testing. You can download it with the following command:
 
 ```shell
-modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "lingbot_video/lingbot-video-dense-1.3b/*" --local_dir ./data/diffsynth_example_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "lingbot_video/lingbot-video-dense-1.3b_t2v/*" --local_dir ./data/diffsynth_example_dataset
 ```
 
 Training captions should be **structured-JSON captions** (the same in-distribution format used at inference). If your dataset stores raw prose, rewrite it once offline with [`examples/lingbot_video/model_training/scripts/rewrite_captions.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/scripts/rewrite_captions.py) before training.

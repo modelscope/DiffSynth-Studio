@@ -4,22 +4,29 @@ import torch
 from PIL import Image
 from diffsynth.utils.data import save_video
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
+from modelscope import dataset_snapshot_download
 
 pipe = LingBotVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
         ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
-        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="text_encoder/model*.safetensors"),
+        ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors"),
         ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
-    processor_config=ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="processor/"),
+    processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
 )
 
-here = os.path.dirname(__file__)
-with open(os.path.join(here, "prompts", "ti2v_example.json"), "r", encoding="utf-8") as f:
+# The condition first frame and its paired caption ship in the example dataset.
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
+    local_dir="data/diffsynth_example_dataset",
+    allow_file_pattern="lingbot_video/lingbot-video-moe-30b-a3b_ti2v/*",
+)
+base = "data/diffsynth_example_dataset/lingbot_video/lingbot-video-moe-30b-a3b_ti2v"
+with open(os.path.join(base, "ti2v_example.json"), "r", encoding="utf-8") as f:
     caption = json.load(f)
-input_image = Image.open(os.path.join(here, "assets", "ti2v_first_frame.png")).convert("RGB")
+input_image = Image.open(os.path.join(base, "ti2v_first_frame.png")).convert("RGB")
 
 video = pipe(
     prompt=caption,
