@@ -10,15 +10,6 @@ from ..core.gradient import gradient_checkpoint_forward
 from ..core.device.npu_compatible_device import get_device_type
 
 
-def resolve_bulk_dtype(linear: nn.Module) -> torch.dtype:
-    computation_dtype = getattr(linear, "computation_dtype", None)
-    if isinstance(computation_dtype, torch.dtype):
-        if computation_dtype in (torch.float8_e4m3fn, torch.float8_e4m3fnuz, torch.float8_e5m2):
-            return torch.bfloat16
-        return computation_dtype
-    return linear.weight.dtype
-
-
 def get_timestep_embedding(
     timesteps: torch.Tensor,
     embedding_dim: int,
@@ -422,20 +413,19 @@ class LingBotVideoBlock(nn.Module):
             self.ffn = LingBotVideoMLP(h, intermediate_size)
         self.norm_post_ffn = LingBotVideoRMSNorm(h, norm_eps)
 
-    def forward(self, x, temb6, rotary_emb, attention_mask=None, moe_padding_mask=None, bulk_dtype=None):
+    def forward(self, x, temb6, rotary_emb, attention_mask=None, moe_padding_mask=None):
         expected_tokens = x.shape[0] * x.shape[1]
         if temb6.ndim != 2 or temb6.shape[0] != expected_tokens:
             raise ValueError(
                 "LingBotVideoBlock expects token-level temb6 with shape (B*S, 6D); "
                 f"got {tuple(temb6.shape)} for hidden states {tuple(x.shape)}."
             )
-        if bulk_dtype is None:
-            bulk_dtype = resolve_bulk_dtype(self.attn.to_q)
         mod = temb6.view(x.shape[0], x.shape[1], -1) + self.scale_shift_table.to(dtype=temb6.dtype, device=temb6.device).unsqueeze(0)
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = mod.chunk(6, dim=-1)
         gate_msa, gate_mlp = gate_msa.tanh(), gate_mlp.tanh()
         scale_msa, scale_mlp = 1.0 + scale_msa, 1.0 + scale_mlp
 
+        bulk_dtype = x.dtype
         attn_in = (self.norm1(x) * scale_msa + shift_msa).to(bulk_dtype)
         attn_out = self.attn(attn_in, rotary_emb, attention_mask)
         x = x + (gate_msa * self.norm_post_attn(attn_out)).to(x.dtype)
@@ -594,7 +584,7 @@ class LingBotVideoDiT(nn.Module):
 
         # Timestep -> per-token modulation.
         timestep_proj = self.time_proj(timestep.float())
-        t_emb = self.time_embedder(timestep_proj.to(resolve_bulk_dtype(self.time_embedder.linear_1)))  # (B, D)
+        t_emb = self.time_embedder(timestep_proj.to(joint.dtype))  # (B, D)
         if packed_batch:
             temb_input = torch.cat(
                 [t_emb[i:i + 1].unsqueeze(1).expand(1, sample_seq_lens[i], -1) for i in range(B)], dim=1
@@ -602,10 +592,8 @@ class LingBotVideoDiT(nn.Module):
         else:
             temb_input = t_emb.unsqueeze(1).expand(B, joint_seq_len, -1)  # (B, S, D)
         b_eff, s_eff = temb_input.shape[0], temb_input.shape[1]
-        mod_dtype = resolve_bulk_dtype(self.time_modulation[1])
-        temb6 = self.time_modulation(temb_input.reshape(b_eff * s_eff, -1).to(mod_dtype))  # (B*S, 6D)
+        temb6 = self.time_modulation(temb_input.reshape(b_eff * s_eff, -1))  # (B*S, 6D)
 
-        bulk_dtype = resolve_bulk_dtype(self.patch_embedder)
         for block in self.blocks:
             joint = gradient_checkpoint_forward(
                 block,
@@ -613,14 +601,12 @@ class LingBotVideoDiT(nn.Module):
                 use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
                 x=joint, temb6=temb6, rotary_emb=rotary,
                 attention_mask=attention_mask, moe_padding_mask=moe_padding_mask,
-                bulk_dtype=bulk_dtype,
             )
 
-        out_mod_dtype = resolve_bulk_dtype(self.norm_out_modulation[1])
-        final_mod = self.norm_out_modulation(temb_input.reshape(joint.shape[0] * joint.shape[1], -1).to(out_mod_dtype))
+        final_mod = self.norm_out_modulation(temb_input.reshape(joint.shape[0] * joint.shape[1], -1))
         shift, scale = final_mod.reshape(joint.shape[0], joint.shape[1], -1).chunk(2, dim=-1)
         final_hidden = self.norm_out(joint) * (1.0 + scale) + shift
-        projected = self.proj_out(final_hidden.to(resolve_bulk_dtype(self.proj_out)))
+        projected = self.proj_out(final_hidden.to(joint.dtype))
 
         if packed_batch:
             split_lengths = []
