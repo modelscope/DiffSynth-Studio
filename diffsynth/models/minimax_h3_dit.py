@@ -107,10 +107,11 @@ class MiniMaxH3Rope(nn.Module):
     def __init__(self, inv_freq_len: int) -> None:
         super().__init__()
         # RoPE inverse frequencies (theta=10000), computed deterministically so the
-        # buffer never depends on checkpoint loading or VRAM/disk offload. Matches
-        # the checkpoint's rope.inv_freq bit-exactly.
+        # value is correct even if VRAM/disk offload bypasses materializing it.
+        # Kept persistent so the state_dict key matches the checkpoint's rope.inv_freq
+        # (strict loaders accept it); the checkpoint overwrites it with the identical value.
         inv_freq = 1.0 / (10000.0 ** (torch.arange(0, inv_freq_len, dtype=_FP32_DTYPE) / inv_freq_len))
-        self.register_buffer("inv_freq", inv_freq, persistent=False)
+        self.register_buffer("inv_freq", inv_freq, persistent=True)
 
     def forward(self, img_position_ids: torch.Tensor) -> torch.Tensor:
         if img_position_ids.dim() != 3 or img_position_ids.shape[0] != 1:
