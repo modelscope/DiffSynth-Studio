@@ -18,6 +18,7 @@ import torch
 import torch.nn as nn
 
 from ..core.attention import attention_forward
+from ..core.gradient import gradient_checkpoint_forward
 
 _BF16_DTYPE = torch.bfloat16
 _FP32_DTYPE = torch.float32
@@ -29,7 +30,7 @@ MINIMAX_H3_ADALN_MODALITY_NUM = 3
 _PATCH_T, _PATCH_H, _PATCH_W = 1, 2, 2
 
 
-def patchify_video_latent(latent: torch.Tensor) -> torch.Tensor:
+def patchify_video(latent: torch.Tensor) -> torch.Tensor:
     # [1,24,T,H,W] -> [T*(H/2)*(W/2), 96]
     b, c, ft, fh, fw = (int(x) for x in latent.shape)
     t, h, w = ft // _PATCH_T, fh // _PATCH_H, fw // _PATCH_W
@@ -38,20 +39,20 @@ def patchify_video_latent(latent: torch.Tensor) -> torch.Tensor:
     return packed.reshape(b * t * h * w, c * _PATCH_T * _PATCH_H * _PATCH_W).contiguous()
 
 
-def unpatchify_video_tokens(rows: torch.Tensor, t: int, h: int, w: int, channel: int = 24) -> torch.Tensor:
-    # [T*h*w, 96] -> [1,24,T,h*2,w*2]  (inverse of patchify_video_latent; h,w are patched dims)
+def unpatchify_video(rows: torch.Tensor, t: int, h: int, w: int, channel: int = 24) -> torch.Tensor:
+    # [T*h*w, 96] -> [1,24,T,h*2,w*2]  (inverse of patchify_video; h,w are patched dims)
     packed = rows.reshape(-1, t, h, w, channel, _PATCH_T, _PATCH_H, _PATCH_W)
     latent = torch.einsum("nthwcrpq->nctrhpwq", packed)
     return latent.reshape(-1, channel, t * _PATCH_T, h * _PATCH_H, w * _PATCH_W).contiguous()
 
 
-def pack_audio_latent(latent: torch.Tensor) -> torch.Tensor:
+def pack_audio(latent: torch.Tensor) -> torch.Tensor:
     # [audio_channel, 32, T] -> [audio_channel*T, 32]  (channel-major)
     ac, ld, steps = (int(x) for x in latent.shape)
     return latent.permute(0, 2, 1).reshape(ac * steps, ld).contiguous()
 
 
-def unpack_audio_tokens(rows: torch.Tensor, audio_channel: int, steps: int, latent_dim: int = 32) -> torch.Tensor:
+def unpack_audio(rows: torch.Tensor, audio_channel: int, steps: int, latent_dim: int = 32) -> torch.Tensor:
     # [audio_channel*T, 32] -> [audio_channel, 32, T]
     return rows.reshape(audio_channel, steps, latent_dim).permute(0, 2, 1).contiguous()
 
@@ -105,13 +106,17 @@ def _sdpa_varlen_attention(q, k, v, cu_seqlens, softmax_scale):
 class MiniMaxH3Rope(nn.Module):
     def __init__(self, inv_freq_len: int) -> None:
         super().__init__()
-        self.register_buffer("inv_freq", torch.empty(inv_freq_len, dtype=_FP32_DTYPE), persistent=True)
+        # RoPE inverse frequencies (theta=10000), computed deterministically so the
+        # buffer never depends on checkpoint loading or VRAM/disk offload. Matches
+        # the checkpoint's rope.inv_freq bit-exactly.
+        inv_freq = 1.0 / (10000.0 ** (torch.arange(0, inv_freq_len, dtype=_FP32_DTYPE) / inv_freq_len))
+        self.register_buffer("inv_freq", inv_freq, persistent=False)
 
     def forward(self, img_position_ids: torch.Tensor) -> torch.Tensor:
         if img_position_ids.dim() != 3 or img_position_ids.shape[0] != 1:
             raise ValueError(f"img_position_ids must be [1, S, 3], got {list(img_position_ids.shape)}")
         pos = img_position_ids[0].to(_FP32_DTYPE)
-        per_axis = pos.unsqueeze(-1) * self.inv_freq.view(1, 1, -1)
+        per_axis = pos.unsqueeze(-1) * self.inv_freq.to(pos.device).view(1, 1, -1)
         t_f, h_f, w_f = per_axis.unbind(dim=1)
         half = torch.cat((t_f, h_f, w_f), dim=-1)
         return torch.cat((half, half), dim=-1)
@@ -273,6 +278,9 @@ class MiniMaxH3FinalLayer(nn.Module):
 
 
 class MiniMaxH3DiT(nn.Module):
+    # Regional torch.compile targets the repeated transformer block type.
+    _repeated_blocks = ["MiniMaxH3DiTBlock"]
+
     def __init__(
         self,
         num_layers: int = 50,
@@ -349,6 +357,8 @@ class MiniMaxH3DiT(nn.Module):
         img_pos_for_infer_output_info,
         packed_seq_params,
         refiner_packed_seq_params,
+        use_gradient_checkpointing=False,
+        use_gradient_checkpointing_offload=False,
         update_audio_mask=None,
         skip_mask_out_condition=False,
     ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -387,9 +397,16 @@ class MiniMaxH3DiT(nn.Module):
         hidden = decoder_input
         cu_seqlens = cu_seqlens.to(device)
         for block in self.blocks:
-            hidden = block(
-                hidden, t_emb=t_emb, combined_indices=combined_indices,
-                rope_freqs=rope_freqs, cu_seqlens=cu_seqlens, max_seqlen=max_seqlen,
+            hidden = gradient_checkpoint_forward(
+                block,
+                use_gradient_checkpointing,
+                use_gradient_checkpointing_offload,
+                hidden,
+                t_emb=t_emb,
+                combined_indices=combined_indices,
+                rope_freqs=rope_freqs,
+                cu_seqlens=cu_seqlens,
+                max_seqlen=max_seqlen,
             )
 
         video_logits, audio_logits = self.final_layer(hidden, t_emb=t_emb, inverse_indices=inverse_indices)

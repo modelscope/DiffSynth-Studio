@@ -3065,6 +3065,12 @@ class AutoencoderKLLegacy(AutoencoderKL):
 # the checkpoint video_vae/source/config.json + video_vae/config.json.
 
 
+# Per-channel latent normalization (from video_vae/config.json). Decode does
+# latent * std + mean before running the VAE decoder.
+_VIDEO_LATENTS_MEAN = [0.858090341091156, -0.9606591463088989, 1.0661640167236328, -0.5090325474739075, -0.2727581858634949, -1.3675414323806763, -0.2553254961967468, -0.26907554268836975, -0.5376840829849243, -0.0464097298681736, 0.6657370328903198, 0.19690127670764923, -0.5460608005523682, -0.4035342037677765, -0.23683024942874908, 0.25928452610969543, -0.30133944749832153, 0.211341992020607, -1.1206848621368408, 0.3581933379173279, -0.04225143790245056, 0.2604829967021942, 0.22864092886447906, 0.7056031823158264]
+_VIDEO_LATENTS_STD = [1.2223774194717407, 1.2767263650894165, 1.6831774711608887, 1.7549455165863037, 1.5636216402053833, 2.194143533706665, 0.9653137922286987, 1.0569885969161987, 0.841948926448822, 0.7729952931404114, 1.8955937623977661, 0.946841835975647, 0.7996809482574463, 0.44988900423049927, 0.7197399735450745, 0.6936293244361877, 2.961095094680786, 2.7694199085235596, 3.0496184825897217, 2.1088054180145264, 3.276226282119751, 3.1627357006073, 2.2816812992095947, 2.6127843856811523]
+
+
 class MiniMaxH3VideoVAE(AutoencoderKLLegacy):
     """Top-level video VAE. state_dict keys match the checkpoint 1:1
     (encoder./decoder./quant_conv./post_quant_conv.)."""
@@ -3160,6 +3166,36 @@ class MiniMaxH3VideoVAE(AutoencoderKLLegacy):
             chunk_dim=chunk_dim,
             **kwargs,
         )
+
+    @torch.no_grad()
+    def decode_video(self, latents, tiled=True, tile_size=None, tile_overlap=None):
+        """Latents -> pixel frames. De-normalizes (latent*std+mean), decodes, and
+        reverts to a [1,3,T,H,W] tensor in [0,1]. Wraps (does not modify) decode_base.
+        `tiled` toggles decoder tiling to bound peak VRAM; tile_size/tile_overlap
+        override the tile geometry (default: checkpoint config 256/64)."""
+        device = latents.device
+        mean = torch.tensor(_VIDEO_LATENTS_MEAN, device=device, dtype=torch.float32).view(1, -1, 1, 1, 1)
+        std = torch.tensor(_VIDEO_LATENTS_STD, device=device, dtype=torch.float32).view(1, -1, 1, 1, 1)
+        dtype = next(self.parameters()).dtype
+        z = (latents.to(device, torch.float32) * std + mean).to(dtype)
+
+        prev_tiling = self.decoder_tiling
+        prev_tile_size = self.decoder_tile_size
+        prev_overlap = self.decoder_tile_overlap_min
+        self.decoder_tiling = bool(tiled)
+        if tile_size is not None:
+            self.decoder_tile_size = tile_size
+        if tile_overlap is not None:
+            self.decoder_tile_overlap_min = tile_overlap
+        try:
+            recon = self.decode_base(z)
+        finally:
+            self.decoder_tiling = prev_tiling
+            self.decoder_tile_size = prev_tile_size
+            self.decoder_tile_overlap_min = prev_overlap
+
+        recon = recon[0] if isinstance(recon, (tuple, list)) else recon
+        return self.processor.revert_tensor(recon.float())  # [1,3,T,H,W] in [0,1]
 
 
 __all__ = ["MiniMaxH3VideoVAE"]

@@ -13,7 +13,6 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
     "diffsynth.models.minimax_h3_dit.MiniMaxH3DiT": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "diffsynth.models.minimax_h3_dit.MiniMaxH3Rope": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.minimax_h3_text_encoder.MiniMaxH3TextEncoder": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
