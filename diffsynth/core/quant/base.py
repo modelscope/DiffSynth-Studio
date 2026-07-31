@@ -16,10 +16,7 @@ class QuantBackend(ABC):
     (a) It is an `nn.Linear` drop-in: `forward(x)` internally performs dequant + matmul.
     (b) `.to(...)` moves devices but never re-types the packed weight / quant state:
         a dtype cast (`.to(dtype)` / `.half()` / `.float()`) must leave their storage
-        format and values intact. Non-float packed storage (bnb uint8) satisfies this
-        structurally; tensor subclasses intercept the cast (torchao); quantized Linears
-        built from plain float parameters/buffers must guard the module's `_apply`
-        themselves (see `Fp8Linear` in `diffsynth.models.ideogram4_dit`).
+        format and values intact.
     (c) `state_dict()` / `load_state_dict(assign=True)` round-trips (optionally via
         `flatten_state_dict` / `unflatten_state_dict`).
     (d) (Training branch only) `forward` is differentiable w.r.t. its input, so

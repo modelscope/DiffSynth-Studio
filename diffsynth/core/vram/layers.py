@@ -269,9 +269,6 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
 
 
 class LoRAHotLoadMixin:
-    # Hot-loaded LoRA weights are applied as an additive branch on top of the base
-    # module's output. Shared by `AutoWrappedLinear` and `AutoWrappedQuantizedModule`.
-
     def init_lora_hotload(self):
         self.lora_A_weights = []
         self.lora_B_weights = []
@@ -440,11 +437,6 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule, LoRAHotLoadMixin):
 
 
 class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
-    # Wraps a backend-native quantized Linear (see `diffsynth.core.quant`). Unlike
-    # `AutoWrappedLinear`, forward is delegated to the quantized module itself so the
-    # backend's dequant + matmul kernel is used, and all state transitions move the
-    # device only: the packed weight's storage dtype is owned by the backend.
-
     def __init__(
         self,
         module: torch.nn.Module,
@@ -482,10 +474,6 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
         self.init_lora_hotload()
 
     def _module_device(self):
-        # Introspection helper: the device the wrapped module's tensors actually sit on.
-        # Not used to drive `computation_module`, which follows the state machine like
-        # the other wrappers; it exists so tests can assert the `state -> device`
-        # invariant that decision relies on.
         tensor = next(self.module.parameters(), None)
         if tensor is None:
             tensor = next(self.module.buffers(), None)
@@ -507,14 +495,6 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
             self.state = 2
 
     def computation_module(self):
-        # Same convention as `AutoWrappedModule.computation` and
-        # `AutoWrappedLinear.computation`: compare the device *declared* by the tier
-        # `state` points at against the *declared* computation device, never a device
-        # read back from a tensor. Both operands come from the same `vram_config`, so
-        # they compare as written and no `torch.device` normalization is involved
-        # (`torch.device("cuda") != torch.device("cuda:0")` would break that).
-        # Tier already on the computation device -> zero copy; otherwise a temporary
-        # copy transits through it (the degraded path under `vram_limit`).
         device = self.preparing_device if self.state == 2 else self.onload_device
         if device == self.computation_device:
             return self.module
@@ -541,10 +521,6 @@ def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict,
         model = model.module
     for name, module in model.named_children():
         layer_name = name if name_prefix == "" else name_prefix + "." + name
-        # Quantized layers are recognized by the quantize config's predicate, never by
-        # the class-keyed map: bnb's Linear4bit subclasses nn.Linear and torchao keeps
-        # the nn.Linear class, so the map would wrap them as AutoWrappedLinear and
-        # silently corrupt the packed weights.
         if quantize is not None and quantize.is_quantized_linear(module):
             module_ = AutoWrappedQuantizedModule(module, **vram_config, vram_limit=vram_limit, name=layer_name, disk_map=disk_map, **kwargs)
             setattr(model, name, module_)
