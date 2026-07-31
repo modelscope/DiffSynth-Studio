@@ -1332,8 +1332,38 @@ lingbot_video_series = [
     },
 ]
 
+minimax_h3_series = [
+    {
+        # Example: ModelConfig(model_id="MiniMaxAI/MiniMax-H3-FL2VA", origin_file_pattern="audio_vae/model.safetensors")
+        "model_hash": "db383f1c8960837b94059f7722e6cb11",
+        "model_name": "minimax_h3_audio_vae",
+        "model_class": "diffsynth.models.minimax_h3_audio_vae.MiniMaxH3AudioVAE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_audio_vae.MiniMaxH3AudioVAEStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="MiniMaxAI/MiniMax-H3-FL2VA", origin_file_pattern="text_encoder/model*.safetensors")
+        "model_hash": "8398104725e58fa8287c163c5c332686",
+        "model_name": "minimax_h3_text_encoder",
+        "model_class": "diffsynth.models.minimax_h3_text_encoder.MiniMaxH3TextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_text_encoder.MiniMaxH3TextEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="MiniMaxAI/MiniMax-H3-FL2VA", origin_file_pattern="transformer/model*.safetensors")
+        "model_hash": "db0197b6919425a5c7102c54e73affc1",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit.MiniMaxH3DiT",
+        "extra_kwargs": {"keep_original_dtype": True},
+    },
+    {
+        # Example: ModelConfig(model_id="MiniMaxAI/MiniMax-H3-FL2VA", origin_file_pattern="video_vae/source/model.safetensors")
+        "model_hash": "24b80900992e2024fab17c991c57da23",
+        "model_name": "minimax_h3_video_vae",
+        "model_class": "diffsynth.models.minimax_h3_video_vae.MiniMaxH3VideoVAE",
+    },
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
-    + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series
+    + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series + minimax_h3_series
 )

@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -20,6 +20,7 @@ class FlowMatchScheduler():
             "Ideogram4": FlowMatchScheduler.set_timesteps_ideogram4,
             "Krea-2": FlowMatchScheduler.set_timesteps_krea2,
             "Boogu": FlowMatchScheduler.set_timesteps_boogu,
+            "MiniMax-H3": FlowMatchScheduler.set_timesteps_minimax_h3,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -297,6 +298,28 @@ class FlowMatchScheduler():
             one_minus_z = 1.0 - sigmas
             scale_factor = one_minus_z[-1] / (1 - terminal)
             sigmas = 1.0 - (one_minus_z / scale_factor)
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_minimax_h3(num_inference_steps=50, denoising_strength=1.0, shift=12.0):
+        # Rectified-flow Euler (eta=0) sigma schedule, matching the target library's
+        # time_request._time_shift_sigmas: base = linspace(1, 0, num_steps),
+        # sigma = s*base/(1+(s-1)*base), consecutive-dedup, append trailing 0.
+        # MiniMax H3 uses per-modality shift (video=12, audio=3) -> two scheduler
+        # instances each call this with its own `shift`.
+        num_train_timesteps = 1000
+        shift = 12.0 if shift is None else float(shift)
+        base = torch.linspace(denoising_strength, 0.0, num_inference_steps, dtype=torch.float32)
+        sigmas = shift * base / (1 + (shift - 1) * base)
+        sigmas = torch.unique_consecutive(sigmas)
+        if num_inference_steps > 1 and sigmas[-1].item() > 0.0:
+            sigmas = torch.cat([sigmas, sigmas.new_zeros(1)])
+        # DiffSynth convention: sigmas length == number of forward steps; the final
+        # sigma_next=0 is supplied by step() when timestep_id+1 >= len. So drop the
+        # trailing 0 that the target keeps in its list.
+        if sigmas.numel() > 1 and sigmas[-1].item() == 0.0:
+            sigmas = sigmas[:-1]
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
 

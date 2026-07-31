@@ -1,0 +1,569 @@
+# SPDX-License-Identifier: Apache-2.0
+# MiniMax H3 audio VAE: DAC-lineage waveform encoder + BigVGAN decoder.
+# Ported from the checkpoint's remote code (self-contained, pure PyTorch).
+import math
+from typing import List
+
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn import Conv1d, ConvTranspose1d, Parameter
+from torch.nn.utils.parametrizations import weight_norm
+
+
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__dict__ = self
+
+
+def WNConv1d(*args, **kwargs):
+    return weight_norm(nn.Conv1d(*args, **kwargs))
+
+
+def init_weights(m, mean=0.0, std=0.01):
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1:
+        m.weight.data.normal_(mean, std)
+
+
+def get_padding(kernel_size, dilation=1):
+    return int((kernel_size * dilation - dilation) / 2)
+
+
+# ---------------- activations ----------------
+@torch.jit.script
+def snake(x, alpha):
+    shape = x.shape
+    x = x.reshape(shape[0], shape[1], -1)
+    x = x + (alpha + 1e-9).reciprocal() * torch.sin(alpha * x).pow(2)
+    x = x.reshape(shape)
+    return x
+
+
+class Snake1d(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.alpha = nn.Parameter(torch.ones(1, channels, 1))
+
+    def forward(self, x):
+        return snake(x, self.alpha)
+
+
+@torch.jit.script
+def snakebeta(x, alpha, beta):
+    shape = x.shape
+    x = x.reshape(shape[0], shape[1], -1)
+    x = x + (beta + 1e-9).reciprocal() * torch.sin(alpha * x).pow(2)
+    x = x.reshape(shape)
+    return x
+
+
+class SnakeBeta(nn.Module):
+    def __init__(self, in_features, alpha=1.0, alpha_trainable=True, alpha_logscale=False):
+        super().__init__()
+        self.in_features = in_features
+        self.alpha_logscale = alpha_logscale
+        if self.alpha_logscale:
+            self.alpha = Parameter(torch.zeros(in_features) * alpha)
+            self.beta = Parameter(torch.zeros(in_features) * alpha)
+        else:
+            self.alpha = Parameter(torch.ones(in_features) * alpha)
+            self.beta = Parameter(torch.ones(in_features) * alpha)
+        self.alpha.requires_grad = alpha_trainable
+        self.beta.requires_grad = alpha_trainable
+        self.no_div_by_zero = 0.000000001
+
+    def forward(self, x):
+        alpha = self.alpha.unsqueeze(0).unsqueeze(-1)
+        beta = self.beta.unsqueeze(0).unsqueeze(-1)
+        if self.alpha_logscale:
+            alpha = torch.exp(alpha)
+            beta = torch.exp(beta)
+        x = snakebeta(x, alpha, beta)
+        return x
+
+
+# ---------------- alias-free (anti-aliasing) ----------------
+if "sinc" in dir(torch):
+    sinc = torch.sinc
+else:
+    def sinc(x: torch.Tensor):
+        return torch.where(
+            x == 0,
+            torch.tensor(1.0, device=x.device, dtype=x.dtype),
+            torch.sin(math.pi * x) / math.pi / x,
+        )
+
+
+def kaiser_sinc_filter1d(cutoff, half_width, kernel_size):
+    even = kernel_size % 2 == 0
+    half_size = kernel_size // 2
+    delta_f = 4 * half_width
+    A = 2.285 * (half_size - 1) * math.pi * delta_f + 7.95
+    if A > 50.0:
+        beta = 0.1102 * (A - 8.7)
+    elif A >= 21.0:
+        beta = 0.5842 * (A - 21) ** 0.4 + 0.07886 * (A - 21.0)
+    else:
+        beta = 0.0
+    window = torch.kaiser_window(kernel_size, beta=beta, periodic=False)
+    if even:
+        time = torch.arange(-half_size, half_size) + 0.5
+    else:
+        time = torch.arange(kernel_size) - half_size
+    if cutoff == 0:
+        filter_ = torch.zeros_like(time)
+    else:
+        filter_ = 2 * cutoff * window * sinc(2 * cutoff * time)
+        filter_ /= filter_.sum()
+        filter = filter_.view(1, 1, kernel_size)
+    return filter
+
+
+class LowPassFilter1d(nn.Module):
+    def __init__(
+        self,
+        cutoff=0.5,
+        half_width=0.6,
+        stride: int = 1,
+        padding: bool = True,
+        padding_mode: str = "replicate",
+        kernel_size: int = 12,
+    ):
+        super().__init__()
+        if cutoff < -0.0:
+            raise ValueError("Minimum cutoff must be larger than zero.")
+        if cutoff > 0.5:
+            raise ValueError("A cutoff above 0.5 does not make sense.")
+        self.kernel_size = kernel_size
+        self.even = kernel_size % 2 == 0
+        self.pad_left = kernel_size // 2 - int(self.even)
+        self.pad_right = kernel_size // 2
+        self.stride = stride
+        self.padding = padding
+        self.padding_mode = padding_mode
+        filter = kaiser_sinc_filter1d(cutoff, half_width, kernel_size)
+        self.register_buffer("filter", filter)
+
+    def forward(self, x):
+        _, C, _ = x.shape
+        if self.padding:
+            x = F.pad(x, (self.pad_left, self.pad_right), mode=self.padding_mode)
+        out = F.conv1d(x, self.filter.expand(C, -1, -1), stride=self.stride, groups=C)
+        return out
+
+
+class UpSample1d(nn.Module):
+    def __init__(self, ratio=2, kernel_size=None):
+        super().__init__()
+        self.ratio = ratio
+        self.kernel_size = int(6 * ratio // 2) * 2 if kernel_size is None else kernel_size
+        self.stride = ratio
+        self.pad = self.kernel_size // ratio - 1
+        self.pad_left = self.pad * self.stride + (self.kernel_size - self.stride) // 2
+        self.pad_right = self.pad * self.stride + (self.kernel_size - self.stride + 1) // 2
+        filter = kaiser_sinc_filter1d(cutoff=0.5 / ratio, half_width=0.6 / ratio, kernel_size=self.kernel_size)
+        self.register_buffer("filter", filter)
+
+    def forward(self, x):
+        _, C, _ = x.shape
+        x = F.pad(x, (self.pad, self.pad), mode="replicate")
+        x = self.ratio * F.conv_transpose1d(x, self.filter.expand(C, -1, -1), stride=self.stride, groups=C)
+        x = x[..., self.pad_left : -self.pad_right]
+        return x
+
+
+class DownSample1d(nn.Module):
+    def __init__(self, ratio=2, kernel_size=None):
+        super().__init__()
+        self.ratio = ratio
+        self.kernel_size = int(6 * ratio // 2) * 2 if kernel_size is None else kernel_size
+        self.lowpass = LowPassFilter1d(
+            cutoff=0.5 / ratio,
+            half_width=0.6 / ratio,
+            stride=ratio,
+            kernel_size=self.kernel_size,
+        )
+
+    def forward(self, x):
+        return self.lowpass(x)
+
+
+class Activation1d(nn.Module):
+    def __init__(
+        self,
+        activation,
+        up_ratio: int = 2,
+        down_ratio: int = 2,
+        up_kernel_size: int = 12,
+        down_kernel_size: int = 12,
+    ):
+        super().__init__()
+        self.up_ratio = up_ratio
+        self.down_ratio = down_ratio
+        self.act = activation
+        self.upsample = UpSample1d(up_ratio, up_kernel_size)
+        self.downsample = DownSample1d(down_ratio, down_kernel_size)
+
+    def forward(self, x):
+        x = self.upsample(x)
+        x = self.act(x)
+        x = self.downsample(x)
+        return x
+
+
+# ---------------- attn projection (encoder head, unused by decode) ----------------
+class GeGluMlp(nn.Module):
+    def __init__(self, in_features, hidden_features):
+        super().__init__()
+        self.norm = nn.LayerNorm(in_features)
+        self.act = nn.GELU(approximate="tanh")
+        self.w0 = nn.Linear(in_features, hidden_features)
+        self.w1 = nn.Linear(in_features, hidden_features)
+        self.w2 = nn.Linear(hidden_features, in_features)
+
+    def forward(self, x):
+        x = self.norm(x)
+        x = self.act(self.w0(x)) * self.w1(x)
+        x = self.w2(x)
+        return x
+
+
+class CausalAttention(nn.Module):
+    def __init__(self, in_dim, out_dim, num_heads):
+        super().__init__()
+        if in_dim > out_dim:
+            self.head_dim = in_dim // num_heads
+            self.qkv = nn.Linear(in_dim, in_dim * 3, bias=False)
+            self.q_bias = nn.Parameter(torch.zeros(in_dim))
+            self.v_bias = nn.Parameter(torch.zeros(in_dim))
+            self.register_buffer("zero_k_bias", torch.zeros(in_dim))
+        else:
+            self.head_dim = out_dim // num_heads
+            self.qkv = nn.Linear(in_dim, out_dim * 3, bias=False)
+            self.q_bias = nn.Parameter(torch.zeros(out_dim))
+            self.v_bias = nn.Parameter(torch.zeros(out_dim))
+            self.register_buffer("zero_k_bias", torch.zeros(out_dim))
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.num_heads = num_heads
+        self.scale = self.head_dim**-0.5
+        self.proj = nn.Linear(out_dim, out_dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, N, C = x.shape
+        qkv = F.linear(input=x, weight=self.qkv.weight, bias=torch.cat((self.q_bias, self.zero_k_bias, self.v_bias)))
+        q, k, v = qkv.reshape(B, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4).unbind(0)
+        x = F.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=True)
+        if self.in_dim > self.out_dim:
+            x = torch.mean(x, dim=1)
+            if self.in_dim // self.num_heads != self.out_dim:
+                x = nn.functional.adaptive_avg_pool1d(x, self.out_dim)
+        else:
+            x = x.transpose(1, 2).reshape(B, N, -1)
+        x = self.proj(x)
+        return x
+
+
+class AttnProjection(nn.Module):
+    def __init__(self, in_dim, out_dim, num_heads, norm_layer=nn.LayerNorm, mlp_ratio=2):
+        super().__init__()
+        assert out_dim % in_dim == 0 or in_dim % out_dim == 0
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.norm1 = norm_layer(in_dim)
+        self.attn = CausalAttention(in_dim, out_dim, num_heads)
+        self.proj = nn.Linear(in_dim, out_dim)
+        self.norm3 = norm_layer(in_dim)
+        self.norm2 = norm_layer(out_dim)
+        hidden_dim = int(out_dim * mlp_ratio)
+        self.mlp = GeGluMlp(in_features=out_dim, hidden_features=hidden_dim)
+
+    def forward(self, x):
+        x = self.proj(self.norm3(x)) + self.attn(self.norm1(x))
+        x = x + self.mlp(self.norm2(x))
+        return x
+
+
+# ---------------- DAC encoder ----------------
+class ResidualUnit(nn.Module):
+    def __init__(self, dim: int = 16, dilation: int = 1):
+        super().__init__()
+        pad = ((7 - 1) * dilation) // 2
+        self.block = nn.Sequential(
+            Snake1d(dim),
+            WNConv1d(dim, dim, kernel_size=7, dilation=dilation, padding=pad),
+            Snake1d(dim),
+            WNConv1d(dim, dim, kernel_size=1),
+        )
+
+    def forward(self, x):
+        y = self.block(x)
+        pad = (x.shape[-1] - y.shape[-1]) // 2
+        if pad > 0:
+            x = x[..., pad:-pad]
+        return x + y
+
+
+class EncoderBlock(nn.Module):
+    def __init__(self, dim: int = 16, stride: int = 1):
+        super().__init__()
+        self.block = nn.Sequential(
+            ResidualUnit(dim // 2, dilation=1),
+            ResidualUnit(dim // 2, dilation=3),
+            ResidualUnit(dim // 2, dilation=9),
+            Snake1d(dim // 2),
+            WNConv1d(
+                dim // 2,
+                dim,
+                kernel_size=2 * stride,
+                stride=stride,
+                padding=math.ceil(stride / 2),
+            ),
+        )
+
+    def forward(self, x):
+        return self.block(x)
+
+
+class Encoder(nn.Module):
+    def __init__(self, d_model: int = 64, strides: list = [2, 4, 8, 8], d_latent: int = 64):
+        super().__init__()
+        self.block = [WNConv1d(1, d_model, kernel_size=7, padding=3)]
+        for stride in strides:
+            d_model *= 2
+            self.block += [EncoderBlock(d_model, stride=stride)]
+        self.block += [
+            Snake1d(d_model),
+            WNConv1d(d_model, d_latent, kernel_size=3, padding=1),
+        ]
+        self.block = nn.Sequential(*self.block)
+        self.enc_dim = d_model
+
+    def forward(self, x):
+        return self.block(x)
+
+
+# ---------------- BigVGAN decoder ----------------
+class AMPBlock1(torch.nn.Module):
+    def __init__(self, h, channels, kernel_size=3, dilation=(1, 3, 5), activation=None):
+        super().__init__()
+        self.h = h
+        self.convs1 = nn.ModuleList(
+            [
+                weight_norm(Conv1d(channels, channels, kernel_size, stride=1, dilation=d, padding=get_padding(kernel_size, d)))
+                for d in dilation
+            ]
+        )
+        self.convs1.apply(init_weights)
+        self.convs2 = nn.ModuleList(
+            [
+                weight_norm(Conv1d(channels, channels, kernel_size, stride=1, dilation=1, padding=get_padding(kernel_size, 1)))
+                for _ in range(len(dilation))
+            ]
+        )
+        self.convs2.apply(init_weights)
+        self.num_layers = len(self.convs1) + len(self.convs2)
+        if activation == "snakebeta":
+            self.activations = nn.ModuleList(
+                [Activation1d(activation=SnakeBeta(channels, alpha_logscale=h.snake_logscale)) for _ in range(self.num_layers)]
+            )
+        else:
+            raise NotImplementedError("activation must be 'snakebeta'")
+
+    def forward(self, x):
+        acts1, acts2 = self.activations[::2], self.activations[1::2]
+        for c1, c2, a1, a2 in zip(self.convs1, self.convs2, acts1, acts2):
+            xt = a1(x)
+            xt = c1(xt)
+            xt = a2(xt)
+            xt = c2(xt)
+            x = xt + x
+        return x
+
+
+class BigVGAN(torch.nn.Module):
+    def __init__(self, h):
+        super().__init__()
+        self.h = h
+        self.num_kernels = len(h.resblock_kernel_sizes)
+        self.num_upsamples = len(h.upsample_rates)
+        self.conv_pre = weight_norm(Conv1d(h.num_mels, h.upsample_initial_channel, 7, 1, padding=3))
+        if h.resblock == "1":
+            resblock_class = AMPBlock1
+        else:
+            raise ValueError(f"Incorrect resblock class: {h.resblock}")
+        self.ups = nn.ModuleList()
+        for i, (u, k) in enumerate(zip(h.upsample_rates, h.upsample_kernel_sizes)):
+            self.ups.append(
+                nn.ModuleList(
+                    [
+                        weight_norm(
+                            ConvTranspose1d(
+                                h.upsample_initial_channel // (2**i),
+                                h.upsample_initial_channel // (2 ** (i + 1)),
+                                k,
+                                u,
+                                padding=(k - u) // 2,
+                            )
+                        )
+                    ]
+                )
+            )
+        self.resblocks = nn.ModuleList()
+        for i in range(len(self.ups)):
+            ch = h.upsample_initial_channel // (2 ** (i + 1))
+            for j, (k, d) in enumerate(zip(h.resblock_kernel_sizes, h.resblock_dilation_sizes)):
+                self.resblocks.append(resblock_class(h, ch, k, d, activation=h.activation))
+        if h.activation != "snakebeta":
+            raise NotImplementedError("activation must be 'snakebeta'")
+        activation_post = SnakeBeta(ch, alpha_logscale=h.snake_logscale)
+        self.activation_post = Activation1d(activation=activation_post)
+        self.use_bias_at_final = h.get("use_bias_at_final", True)
+        self.conv_post = weight_norm(Conv1d(ch, 1, 7, 1, padding=3, bias=self.use_bias_at_final))
+        for i in range(len(self.ups)):
+            self.ups[i].apply(init_weights)
+        self.conv_post.apply(init_weights)
+        self.use_tanh_at_final = h.get("use_tanh_at_final", True)
+
+    def forward(self, x):
+        x = self.conv_pre(x)
+        for i in range(self.num_upsamples):
+            for i_up in range(len(self.ups[i])):
+                x = self.ups[i][i_up](x)
+            xs = None
+            for j in range(self.num_kernels):
+                if xs is None:
+                    xs = self.resblocks[i * self.num_kernels + j](x)
+                else:
+                    xs += self.resblocks[i * self.num_kernels + j](x)
+            x = xs / self.num_kernels
+        x = self.activation_post(x)
+        x = self.conv_post(x)
+        if self.use_tanh_at_final:
+            x = torch.tanh(x)
+        else:
+            x = torch.clamp(x, min=-1.0, max=1.0)
+        return x
+
+
+class MiniMaxH3AudioVAE(nn.Module):
+    """DAC-lineage waveform encoder + BigVGAN decoder. Continuous 32-ch Gaussian VAE.
+
+    state_dict keys match the checkpoint 1:1 (encoder./decoder./mean_proj./
+    logs_proj./dec_in_proj./pre_block.). weight_norm layers store the legacy
+    weight_g/weight_v names in the checkpoint; the state_dict_converter maps
+    them onto the parametrizations.weight.original0/original1 keys produced by
+    torch.nn.utils.parametrizations.weight_norm.
+    """
+
+    def __init__(
+        self,
+        encoder_dim: int = 64,
+        encoder_rates: List[int] = [2, 4, 4, 5, 5],
+        latent_dim: int = None,
+        decoder_dim: int = 1024,
+        decoder_rates: List[int] = [5, 5, 2, 2, 2, 2, 2],
+        sample_rate: int = 32000,
+        vae_latent_channels: int = 32,
+        attn_proj: bool = True,
+        decoder_type: str = "bigvgan",
+    ):
+        super().__init__()
+        self.encoder_dim = encoder_dim
+        self.encoder_rates = encoder_rates
+        self.decoder_dim = decoder_dim
+        self.decoder_rates = decoder_rates
+        self.sample_rate = sample_rate
+        self.attn_proj = attn_proj
+        self.decoder_type = decoder_type
+
+        if latent_dim is None:
+            latent_dim = encoder_dim * (2 ** len(encoder_rates))
+        self.latent_dim = latent_dim
+        self.hop_length = int(np.prod(encoder_rates))
+        self.encoder = Encoder(encoder_dim, encoder_rates, latent_dim)
+
+        if latent_dim % vae_latent_channels == 0:
+            self.attn_proj_dim = vae_latent_channels
+        else:
+            self.attn_proj_dim = 2 ** int(np.ceil(np.log2(vae_latent_channels)))
+
+        self.mean_proj = nn.Conv1d(self.attn_proj_dim, vae_latent_channels, 1)
+        self.logs_proj = nn.Conv1d(self.attn_proj_dim, vae_latent_channels, 1)
+        self.dec_in_proj = nn.Conv1d(vae_latent_channels, latent_dim, 1)
+
+        if self.decoder_type == "bigvgan":
+            if sample_rate == 16000:
+                bigvgan_conf = {
+                    "resblock": "1", "num_mels": latent_dim,
+                    "upsample_rates": [5, 5, 2, 2, 2, 2],
+                    "upsample_kernel_sizes": [9, 9, 4, 4, 4, 4],
+                    "upsample_initial_channel": decoder_dim,
+                    "resblock_kernel_sizes": [3, 7, 11],
+                    "resblock_dilation_sizes": [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
+                    "use_tanh_at_final": False, "use_bias_at_final": False,
+                    "activation": "snakebeta", "snake_logscale": True,
+                }
+            elif sample_rate == 32000:
+                bigvgan_conf = {
+                    "resblock": "1", "num_mels": latent_dim,
+                    "upsample_rates": [5, 5, 2, 2, 2, 2, 2],
+                    "upsample_kernel_sizes": [9, 9, 4, 4, 4, 4, 4],
+                    "upsample_initial_channel": decoder_dim,
+                    "resblock_kernel_sizes": [3, 7, 11],
+                    "resblock_dilation_sizes": [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
+                    "use_tanh_at_final": False, "use_bias_at_final": False,
+                    "activation": "snakebeta", "snake_logscale": True,
+                }
+            else:
+                raise ValueError(f"Invalid sample_rate: {sample_rate}")
+            self.decoder = BigVGAN(AttrDict(**bigvgan_conf))
+        else:
+            raise ValueError(f"Invalid decoder type: {self.decoder_type}")
+
+        if self.attn_proj:
+            self.pre_block = AttnProjection(latent_dim, self.attn_proj_dim, num_heads=8)
+
+        self.apply(init_weights)
+
+    def preprocess(self, audio_data, sample_rate=None):
+        if sample_rate is None:
+            sample_rate = self.sample_rate
+        length = audio_data.shape[-1]
+        right_pad = math.ceil(length / self.hop_length) * self.hop_length - length
+        audio_data = nn.functional.pad(audio_data, (0, right_pad))
+        return audio_data
+
+    def encode(self, audio_data: torch.Tensor) -> torch.Tensor:
+        """Encode waveform [B,1,L] -> posterior mean latent [B, vae_latent_channels, T]."""
+        z = self.encoder(audio_data)
+        if self.attn_proj:
+            z = self.pre_block(z.transpose(1, 2)).transpose(1, 2)
+        mean = self.mean_proj(z)
+        return mean
+
+    def decode(self, z: torch.Tensor) -> torch.Tensor:
+        """Decode latent [B, vae_latent_channels, T] -> waveform [B, 1, L]."""
+        z = self.dec_in_proj(z)
+        return self.decoder(z)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        return self.decode(z)
+
+    def remove_weight_norm(self):
+        """Fuse weight_norm parametrizations into plain weights (inference/export).
+
+        The conv layers use torch.nn.utils.parametrizations.weight_norm (new-style,
+        storing original0/original1), so removal goes through the parametrize API
+        with leave_parametrized=True, which bakes in the currently computed weight
+        (bit-exact to the parametrized forward) and drops the per-forward recompute.
+        """
+        from torch.nn.utils.parametrize import remove_parametrizations
+
+        for module in self.modules():
+            if isinstance(module, (nn.Conv1d, nn.ConvTranspose1d)):
+                if hasattr(module, "parametrizations") and "weight" in module.parametrizations:
+                    remove_parametrizations(module, "weight", leave_parametrized=True)
