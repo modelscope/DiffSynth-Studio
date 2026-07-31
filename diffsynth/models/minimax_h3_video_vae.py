@@ -3168,11 +3168,11 @@ class MiniMaxH3VideoVAE(AutoencoderKLLegacy):
         )
 
     @torch.no_grad()
-    def decode_video(self, latents, tiled=True, tile_size=None, tile_overlap=None):
+    def decode_video(self, latents, tiled=True, tile_size=256, tile_overlap=64):
         """Latents -> pixel frames. De-normalizes (latent*std+mean), decodes, and
         reverts to a [1,3,T,H,W] tensor in [0,1]. Wraps (does not modify) decode_base.
         `tiled` toggles decoder tiling to bound peak VRAM; tile_size/tile_overlap
-        override the tile geometry (default: checkpoint config 256/64)."""
+        control the tile geometry (default: 256/64 from checkpoint config)."""
         device = latents.device
         mean = torch.tensor(_VIDEO_LATENTS_MEAN, device=device, dtype=torch.float32).view(1, -1, 1, 1, 1)
         std = torch.tensor(_VIDEO_LATENTS_STD, device=device, dtype=torch.float32).view(1, -1, 1, 1, 1)
@@ -3183,10 +3183,8 @@ class MiniMaxH3VideoVAE(AutoencoderKLLegacy):
         prev_tile_size = self.decoder_tile_size
         prev_overlap = self.decoder_tile_overlap_min
         self.decoder_tiling = bool(tiled)
-        if tile_size is not None:
-            self.decoder_tile_size = tile_size
-        if tile_overlap is not None:
-            self.decoder_tile_overlap_min = tile_overlap
+        self.decoder_tile_size = tile_size
+        self.decoder_tile_overlap_min = tile_overlap
         try:
             recon = self.decode_base(z)
         finally:
