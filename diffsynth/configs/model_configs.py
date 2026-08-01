@@ -1348,7 +1348,7 @@ minimax_h3_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_text_encoder.MiniMaxH3TextEncoderStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="MiniMaxAI/MiniMax-H3-FL2VA", origin_file_pattern="transformer/model*.safetensors")
+        # Example: ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/transformer/model*.safetensors")
         "model_hash": "db0197b6919425a5c7102c54e73affc1",
         "model_name": "minimax_h3_dit",
         "model_class": "diffsynth.models.minimax_h3_dit.MiniMaxH3DiT",
