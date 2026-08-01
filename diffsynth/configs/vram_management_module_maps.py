@@ -22,6 +22,12 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        # Wrap the vision tower as ONE unit so recursion stops here. Its
+        # `fast_pos_embed_interpolate` builds the pos_embed index from
+        # `weight.device`, which must already be the computation device.
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionModel": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionPatchEmbed": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.qwen_image_dit.QwenImageDiT": {
         "diffsynth.models.qwen_image_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",

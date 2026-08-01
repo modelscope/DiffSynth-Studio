@@ -26,6 +26,7 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
         ModelConfig(model_id=MODEL_ID, origin_file_pattern="FL2VA/audio_vae/model.safetensors"),
     ],
     tokenizer_config=ModelConfig(model_id=MODEL_ID, origin_file_pattern="FL2VA/tokenizer/"),
+    processor_config=ModelConfig(model_id=MODEL_ID, origin_file_pattern="FL2VA/processor/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 

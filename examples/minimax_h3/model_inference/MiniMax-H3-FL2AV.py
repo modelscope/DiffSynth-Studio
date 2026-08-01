@@ -26,6 +26,7 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
         ModelConfig(model_id=MODEL_ID, origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
     ],
     tokenizer_config=ModelConfig(model_id=MODEL_ID, origin_file_pattern="FL2VA/tokenizer/"),
+    processor_config=ModelConfig(model_id=MODEL_ID, origin_file_pattern="FL2VA/processor/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
 
@@ -35,7 +36,8 @@ prompt = open("assets_minimax/fl2av/prompt.txt").read().strip()
 
 video, audio = pipe(
     prompt=prompt,
-    height=1344, width=768, num_frames=121,
+    # 1 second; the pipeline snaps num_frames up to the nearest 17n+5 (24 -> 39).
+    height=1344, width=768, num_frames=120,
     num_inference_steps=50, seed=42,
     keyframes=[first_frame, last_frame],
     keyframe_indices=[0, -1],
