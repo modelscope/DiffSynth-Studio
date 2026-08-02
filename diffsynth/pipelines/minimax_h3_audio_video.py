@@ -19,114 +19,6 @@ from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE, _VIDEO_LATENTS_MEAN
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE, _AUDIO_LATENTS_MEAN, _AUDIO_LATENTS_STD
 from ..models.minimax_constant import *
 
-
-def _sample_qwen_video_frames(frames):
-    """Sample 2fps frames + per-block timestamps from a 24fps CFR frame list.
-
-    Ref: target reference_encoding.py:527-571 `minimax_h3_sample_reference_video_frames`.
-    The cursor/round/dedup recipe is kept verbatim; ratio is 24/2 = 12, so dedup
-    never drops a wanted frame. Timestamps pad to the temporal patch with the
-    last entry, then each block takes the mean of its merged pair.
-    """
-    ratio = MINIMAX_H3_SUPPORTED_FPS / QWEN_VIDEO_SAMPLE_FPS
-    indices: list[int] = []
-    cursor = 0.0
-    while True:
-        idx = int(round(cursor))
-        if idx >= len(frames):
-            break
-        if not indices or idx > indices[-1]:
-            indices.append(idx)
-        cursor += ratio
-    if not indices:
-        raise ValueError("no frames sampled for the Qwen video presentation")
-    ts = [i / QWEN_VIDEO_SAMPLE_FPS for i in range(len(indices))]
-    pad = (-len(ts)) % QWEN_TEMPORAL_PATCH
-    ts = ts + [ts[-1]] * pad
-    block_timestamps = [
-        (ts[i] + ts[i + QWEN_TEMPORAL_PATCH - 1]) / 2
-        for i in range(0, len(ts), QWEN_TEMPORAL_PATCH)
-    ]
-    return [frames[i] for i in indices], block_timestamps
-
-
-# ---------------------------------------------------------------------------
-# Spatial / temporal policies (ref: target resolved_plan.py + reference_encoding.py)
-# ---------------------------------------------------------------------------
-def _nearest_multiple(value: float, multiple: int) -> int:
-    """Ref: target resolved_plan.py:91-98, reference_encoding.py:100-101."""
-    return max(multiple, int(round(float(value) / multiple)) * multiple)
-
-
-def _resolve_reference_image_shape(width: int, height: int):
-    """Reference images always target a 2048px short edge, upscaling when needed.
-
-    Ratio must stay within 1:4 to 4:1; there is NO area cap here, unlike the
-    target-canvas / reference-video policy.
-    Ref: target reference_encoding.py:104-158 `minimax_h3_resolve_reference_image_shape`.
-    """
-    src_w, src_h = float(width), float(height)
-    if src_w <= 0.0 or src_h <= 0.0:
-        raise ValueError("reference image width and height must be positive")
-    if src_w > 4.0 * src_h or src_h > 4.0 * src_w:
-        raise ValueError(
-            f"reference image ratio must be within 1:4 to 4:1, got {width}x{height}"
-        )
-    scale = MINIMAX_H3_REFERENCE_IMAGE_SHORT_EDGE / min(src_w, src_h)
-    return (
-        _nearest_multiple(src_w * scale, MINIMAX_H3_REFERENCE_IMAGE_MULTIPLE),
-        _nearest_multiple(src_h * scale, MINIMAX_H3_REFERENCE_IMAGE_MULTIPLE),
-    )
-
-
-def _resolve_reference_video_shape(width: int, height: int):
-    """`adapt_shape_v1`: 768px short edge, capped at 768*1344 pixels, nearest-32.
-
-    Reference videos follow the target-canvas policy, NOT the 2048 image policy.
-    Ref: target prequeue.py:247-259 -> resolved_plan.py:107-175
-    `minimax_h3_resolve_spatial_shape(base_short_edge=768)`.
-    """
-    src_w, src_h = float(width), float(height)
-    if src_w <= 0.0 or src_h <= 0.0:
-        raise ValueError("reference video width and height must be positive")
-    ratio = src_w / src_h
-    if ratio >= 1.0:
-        nominal_h = float(MINIMAX_H3_BASE_SHORT_EDGE)
-        nominal_w = MINIMAX_H3_BASE_SHORT_EDGE * ratio
-    else:
-        nominal_w = float(MINIMAX_H3_BASE_SHORT_EDGE)
-        nominal_h = MINIMAX_H3_BASE_SHORT_EDGE / ratio
-    nominal_area = nominal_w * nominal_h
-    if nominal_area > MINIMAX_H3_MAX_PIXELS:
-        scale = float(np.sqrt(float(MINIMAX_H3_MAX_PIXELS) / nominal_area))
-        nominal_w *= scale
-        nominal_h *= scale
-    return (
-        _nearest_multiple(nominal_w, MINIMAX_H3_CANVAS_MULTIPLE),
-        _nearest_multiple(nominal_h, MINIMAX_H3_CANVAS_MULTIPLE),
-    )
-
-
-def _trim_reference_video_length(frame_count: int) -> int:
-    """Trim DOWN to the largest 17n+5 (n>=1) that fits; never pad up.
-
-    Equivalent to the video VAE's `get_suitable_video_length` with chunk-granularity
-    `mode="trim"` (`vae_processor.py:100-171`). Fewer than 22 frames cannot be
-    trimmed, matching `align_video_length`'s "Cannot trim ... not enough frames".
-    """
-    frame_count = int(frame_count)
-    chunks = max(
-        1, (frame_count - MINIMAX_H3_VAE_TAIL_FRAMES) // MINIMAX_H3_VAE_CLIP_LENGTH
-    )
-    used = chunks * MINIMAX_H3_VAE_CLIP_LENGTH + MINIMAX_H3_VAE_TAIL_FRAMES
-    if used > frame_count:
-        raise ValueError(
-            f"cannot trim {frame_count} reference video frames down to a valid "
-            f"length: at least {used} frames are required"
-        )
-    return used
-
-
 class MiniMaxH3Pipeline(BasePipeline):
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
@@ -226,18 +118,11 @@ class MiniMaxH3Pipeline(BasePipeline):
             {"type": "video_audio", "video": list[PIL.Image],
                                     "audio": Tensor[C, L], "sample_rate": int}
 
-        Input contract: `video` frame lists must ALREADY be 24fps CFR — the
-        pipeline never resamples frame rate. `sample_rate` is mandatory and is the
-        only rate the pipeline normalizes (one resample to 32kHz at the audio VAE
-        boundary). Use `video_audio` when a reference video carries its soundtrack;
-        it is fail-closed and raises if `audio` is missing.
+        Input contract: `video` frame lists must ALREADY be 24fps the pipeline never resamples frame rate.
         """
-        # 1. Schedulers (video / audio independent shift)
         self.scheduler.set_timesteps(num_inference_steps, shift=flow_shift)
         self.scheduler_audio.set_timesteps(num_inference_steps, shift=audio_flow_shift)
 
-        # 2. Three-dict inputs. All feature params go into inputs_shared; Units
-        # check None internally to decide whether to execute.
         inputs_posi = {}
         inputs_nega = {}
         inputs_shared = {
@@ -468,6 +353,36 @@ def _presentation_ref2va(
     return presentation.build()
 
 
+def _sample_qwen_video_frames(frames):
+    """Sample 2fps frames + per-block timestamps from a 24fps CFR frame list.
+
+    Ref: target reference_encoding.py:527-571 `minimax_h3_sample_reference_video_frames`.
+    The cursor/round/dedup recipe is kept verbatim; ratio is 24/2 = 12, so dedup
+    never drops a wanted frame. Timestamps pad to the temporal patch with the
+    last entry, then each block takes the mean of its merged pair.
+    """
+    ratio = MINIMAX_H3_SUPPORTED_FPS / QWEN_VIDEO_SAMPLE_FPS
+    indices: list[int] = []
+    cursor = 0.0
+    while True:
+        idx = int(round(cursor))
+        if idx >= len(frames):
+            break
+        if not indices or idx > indices[-1]:
+            indices.append(idx)
+        cursor += ratio
+    if not indices:
+        raise ValueError("no frames sampled for the Qwen video presentation")
+    ts = [i / QWEN_VIDEO_SAMPLE_FPS for i in range(len(indices))]
+    pad = (-len(ts)) % QWEN_TEMPORAL_PATCH
+    ts = ts + [ts[-1]] * pad
+    block_timestamps = [
+        (ts[i] + ts[i + QWEN_TEMPORAL_PATCH - 1]) / 2
+        for i in range(0, len(ts), QWEN_TEMPORAL_PATCH)
+    ]
+    return [frames[i] for i in indices], block_timestamps
+
+
 class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
     """Encode the Qwen3-VL presentation (text + optional vision blocks).
 
@@ -523,8 +438,7 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
         return vout["pixel_values_videos"], grid, block_counts, block_timestamps
 
     def preprocess_ref_blocks(self, pipe: MiniMaxH3Pipeline, prompt, ref_blocks):
-        if pipe.processor is None:
-            raise ValueError("ref2va requires processor_config in from_pretrained")
+        pixel_values = image_grid_thw = pixel_values_videos = video_grid_thw = None
         counters = {"image": 0, "audio": 0, "video": 0}
         condition_labels = []
         images, videos, timestamps_per_video = [], [], []
@@ -550,20 +464,12 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
                 raise ValueError(f"unknown reference kind: {kind}")
 
         image_counts = []
-        if images:
-            pixel_values, image_grid_thw, image_counts = self._image_token_counts(
-                pipe.processor, images
-            )
+        if len(images) > 0:
+            pixel_values, image_grid_thw, image_counts = self._image_token_counts(pipe.processor, images)
         video_counts, video_timestamps = [], []
-        if videos:
-            (pixel_values_videos, video_grid_thw, video_counts,
-                video_timestamps) = self._video_token_counts(
-                pipe.processor, videos, timestamps_per_video
-            )
-        input_ids, text_token_tags = _presentation_ref2va(
-            pipe.tokenizer, prompt, condition_labels,
-            image_counts, video_counts, video_timestamps,
-        )
+        if len(videos) > 0:
+            pixel_values_videos, video_grid_thw, video_counts, video_timestamps = self._video_token_counts(pipe.processor, videos, timestamps_per_video)
+        input_ids, text_token_tags = _presentation_ref2va(pipe.tokenizer, prompt, condition_labels, image_counts, video_counts, video_timestamps)
         return input_ids, text_token_tags, pixel_values, image_grid_thw, pixel_values_videos, video_grid_thw
 
     def process(self, pipe: MiniMaxH3Pipeline, prompt,
@@ -585,9 +491,6 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
         ids = input_ids[None].to(pipe.device)
         kwargs = {"input_ids": ids, "attention_mask": torch.ones_like(ids)}
         if pixel_values is not None or pixel_values_videos is not None:
-            # get_rope_index routes grids by token type: image_pad -> 1, video_pad -> 2.
-            # Mislabelling a video pad as 1 makes it consume an image grid entry.
-            # Ref: target minimax_h3_qwen3vl.py:198-214.
             mm_types = torch.zeros_like(ids, dtype=torch.int32)
             mm_types[ids == pipe.text_encoder.image_token_id] = 1
             mm_types[ids == pipe.text_encoder.video_token_id] = 2
@@ -709,6 +612,80 @@ class MiniMaxH3Unit_KeyframeEncoder(PipelineUnit):
             "keyframe_indices_validated": list(keyframe_indices),
             "keyframe_prepared_images": prepared_images,
         }
+
+
+def _nearest_multiple(value: float, multiple: int) -> int:
+    """Ref: target resolved_plan.py:91-98, reference_encoding.py:100-101."""
+    return max(multiple, int(round(float(value) / multiple)) * multiple)
+
+
+def _resolve_reference_image_shape(width: int, height: int):
+    """Reference images always target a 2048px short edge, upscaling when needed.
+
+    Ratio must stay within 1:4 to 4:1; there is NO area cap here, unlike the
+    target-canvas / reference-video policy.
+    Ref: target reference_encoding.py:104-158 `minimax_h3_resolve_reference_image_shape`.
+    """
+    src_w, src_h = float(width), float(height)
+    if src_w <= 0.0 or src_h <= 0.0:
+        raise ValueError("reference image width and height must be positive")
+    if src_w > 4.0 * src_h or src_h > 4.0 * src_w:
+        raise ValueError(
+            f"reference image ratio must be within 1:4 to 4:1, got {width}x{height}"
+        )
+    scale = MINIMAX_H3_REFERENCE_IMAGE_SHORT_EDGE / min(src_w, src_h)
+    return (
+        _nearest_multiple(src_w * scale, MINIMAX_H3_REFERENCE_IMAGE_MULTIPLE),
+        _nearest_multiple(src_h * scale, MINIMAX_H3_REFERENCE_IMAGE_MULTIPLE),
+    )
+
+
+def _resolve_reference_video_shape(width: int, height: int):
+    """`adapt_shape_v1`: 768px short edge, capped at 768*1344 pixels, nearest-32.
+
+    Reference videos follow the target-canvas policy, NOT the 2048 image policy.
+    Ref: target prequeue.py:247-259 -> resolved_plan.py:107-175
+    `minimax_h3_resolve_spatial_shape(base_short_edge=768)`.
+    """
+    src_w, src_h = float(width), float(height)
+    if src_w <= 0.0 or src_h <= 0.0:
+        raise ValueError("reference video width and height must be positive")
+    ratio = src_w / src_h
+    if ratio >= 1.0:
+        nominal_h = float(MINIMAX_H3_BASE_SHORT_EDGE)
+        nominal_w = MINIMAX_H3_BASE_SHORT_EDGE * ratio
+    else:
+        nominal_w = float(MINIMAX_H3_BASE_SHORT_EDGE)
+        nominal_h = MINIMAX_H3_BASE_SHORT_EDGE / ratio
+    nominal_area = nominal_w * nominal_h
+    if nominal_area > MINIMAX_H3_MAX_PIXELS:
+        scale = float(np.sqrt(float(MINIMAX_H3_MAX_PIXELS) / nominal_area))
+        nominal_w *= scale
+        nominal_h *= scale
+    return (
+        _nearest_multiple(nominal_w, MINIMAX_H3_CANVAS_MULTIPLE),
+        _nearest_multiple(nominal_h, MINIMAX_H3_CANVAS_MULTIPLE),
+    )
+
+
+def _trim_reference_video_length(frame_count: int) -> int:
+    """Trim DOWN to the largest 17n+5 (n>=1) that fits; never pad up.
+
+    Equivalent to the video VAE's `get_suitable_video_length` with chunk-granularity
+    `mode="trim"` (`vae_processor.py:100-171`). Fewer than 22 frames cannot be
+    trimmed, matching `align_video_length`'s "Cannot trim ... not enough frames".
+    """
+    frame_count = int(frame_count)
+    chunks = max(
+        1, (frame_count - MINIMAX_H3_VAE_TAIL_FRAMES) // MINIMAX_H3_VAE_CLIP_LENGTH
+    )
+    used = chunks * MINIMAX_H3_VAE_CLIP_LENGTH + MINIMAX_H3_VAE_TAIL_FRAMES
+    if used > frame_count:
+        raise ValueError(
+            f"cannot trim {frame_count} reference video frames down to a valid "
+            f"length: at least {used} frames are required"
+        )
+    return used
 
 
 class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
