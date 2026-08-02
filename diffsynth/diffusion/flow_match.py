@@ -303,23 +303,9 @@ class FlowMatchScheduler():
 
     @staticmethod
     def set_timesteps_minimax_h3(num_inference_steps=50, denoising_strength=1.0, shift=12.0):
-        # Rectified-flow Euler (eta=0) sigma schedule, matching the target library's
-        # time_request._time_shift_sigmas: base = linspace(1, 0, num_steps),
-        # sigma = s*base/(1+(s-1)*base), consecutive-dedup, append trailing 0.
-        # MiniMax H3 uses per-modality shift (video=12, audio=3) -> two scheduler
-        # instances each call this with its own `shift`.
         num_train_timesteps = 1000
-        shift = 12.0 if shift is None else float(shift)
-        base = torch.linspace(denoising_strength, 0.0, num_inference_steps, dtype=torch.float32)
+        base = torch.linspace(denoising_strength, 0.0, num_inference_steps+1, dtype=torch.float32)[:-1]
         sigmas = shift * base / (1 + (shift - 1) * base)
-        sigmas = torch.unique_consecutive(sigmas)
-        if num_inference_steps > 1 and sigmas[-1].item() > 0.0:
-            sigmas = torch.cat([sigmas, sigmas.new_zeros(1)])
-        # DiffSynth convention: sigmas length == number of forward steps; the final
-        # sigma_next=0 is supplied by step() when timestep_id+1 >= len. So drop the
-        # trailing 0 that the target keeps in its list.
-        if sigmas.numel() > 1 and sigmas[-1].item() == 0.0:
-            sigmas = sigmas[:-1]
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
 
