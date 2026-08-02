@@ -17,149 +17,7 @@ from ..models.minimax_h3_dit import (
 from ..models.minimax_h3_text_encoder import MiniMaxH3TextEncoder
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE, _VIDEO_LATENTS_MEAN, _VIDEO_LATENTS_STD
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE, _AUDIO_LATENTS_MEAN, _AUDIO_LATENTS_STD
-
-
-# ---------------------------------------------------------------------------
-# Qwen3-VL presentation (ref: target presentation.py)
-# ---------------------------------------------------------------------------
-_VISION_START = "<|vision_start|>"
-_VISION_END = "<|vision_end|>"
-_IMAGE_PAD = "<|image_pad|>"
-_VIDEO_PAD = "<|video_pad|>"
-# AdaLN modality tags: text rows are 1, Qwen vision spans are 0 (VIDEO).
-_PRESENTATION_TEXT_TAG = 1
-_PRESENTATION_VIDEO_TAG = 0
-# Ref: target reference_encoding.py:502-503
-_QWEN_VIDEO_SAMPLE_FPS = 2.0
-_QWEN_TEMPORAL_PATCH = 2
-# Ref: target resolved_plan.py:39-42
-_MINIMAX_H3_BASE_SHORT_EDGE = 768
-_MINIMAX_H3_MAX_PIXELS = 768 * 1344
-_MINIMAX_H3_CANVAS_MULTIPLE = 32
-# Video VAE temporal chunking (config.json: vae_clip_length=17), 17n+5 grouping.
-_MINIMAX_H3_VAE_CLIP_LENGTH = 17
-_MINIMAX_H3_VAE_TAIL_FRAMES = 5
-
-
-def _text_ids(tokenizer, text: str) -> list[int]:
-    return list(tokenizer(text, add_special_tokens=False)["input_ids"])
-
-
-def _vision_block_ids(tokenizer, pad_token: str, count: int) -> list[int]:
-    """Ref: target presentation.py:33-39."""
-    return (
-        [tokenizer.convert_tokens_to_ids(_VISION_START)]
-        + [tokenizer.convert_tokens_to_ids(pad_token)] * int(count)
-        + [tokenizer.convert_tokens_to_ids(_VISION_END)]
-    )
-
-
-class _Presentation:
-    """Accumulates aligned (ids, token_tags) segments. Ref: target presentation.py:41-61."""
-
-    def __init__(self):
-        self.ids: list[int] = []
-        self.tags: list[int] = []
-
-    def text(self, token_ids: list[int]):
-        self.ids += token_ids
-        self.tags += [_PRESENTATION_TEXT_TAG] * len(token_ids)
-
-    def vision(self, token_ids: list[int]):
-        self.ids += token_ids
-        self.tags += [_PRESENTATION_VIDEO_TAG] * len(token_ids)
-
-    def build(self):
-        return (
-            torch.tensor(self.ids, dtype=torch.long),
-            torch.tensor(self.tags, dtype=torch.long),
-        )
-
-
-def _presentation_t2va(tokenizer, prompt: str):
-    """Verbatim prompt, all tags TEXT.
-
-    Ref: target presentation.py:83-88 + text_encoding.py:139-149.
-    """
-    if not prompt:
-        raise ValueError("prompt must be non-empty")
-    presentation = _Presentation()
-    presentation.text(_text_ids(tokenizer, prompt))
-    return presentation.build()
-
-
-def _presentation_fl2va(tokenizer, prompt: str, image_token_counts):
-    """`<Picture i>: ` + image vision block per keyframe, then the prompt.
-
-    Ref: target presentation.py:91-107 `_multi_image_presentation`.
-    """
-    if not image_token_counts:
-        raise ValueError("image_token_counts must be non-empty")
-    presentation = _Presentation()
-    for index, count in enumerate(image_token_counts, start=1):
-        if int(count) <= 0:
-            raise ValueError("image_token_count must be positive")
-        presentation.text(_text_ids(tokenizer, f"<Picture {index}>: "))
-        presentation.vision(_vision_block_ids(tokenizer, _IMAGE_PAD, count))
-    presentation.text(_text_ids(tokenizer, prompt))
-    return presentation.build()
-
-
-def _presentation_ref2va(
-    tokenizer,
-    prompt: str,
-    condition_labels,
-    image_token_counts,
-    video_block_token_counts,
-    video_block_timestamps,
-):
-    """Per condition in request order, then the verbatim prompt.
-
-    image i -> `<Picture i>: ` + image vision block
-    audio j -> `<Audio j>: ` label only (audio content never enters Qwen)
-    video k -> `<Video k>: ` then per temporal block `<{t:.1f} seconds>` + video block
-
-    Ref: target presentation.py:216-295 `minimax_h3_ref2va_video_presentation`.
-    """
-    if not prompt:
-        raise ValueError("prompt must be non-empty")
-    presentation = _Presentation()
-    image_seen = 0
-    video_seen = 0
-    for cond_type, ordinal in condition_labels:
-        if cond_type == "image":
-            image_seen += 1
-            if image_seen > len(image_token_counts):
-                raise ValueError("image_token_count required for an image reference")
-            count = int(image_token_counts[image_seen - 1])
-            if count <= 0:
-                raise ValueError("image_token_count required for an image reference")
-            presentation.text(_text_ids(tokenizer, f"<Picture {ordinal}>: "))
-            presentation.vision(_vision_block_ids(tokenizer, _IMAGE_PAD, count))
-        elif cond_type == "audio":
-            presentation.text(_text_ids(tokenizer, f"<Audio {ordinal}>: "))
-        elif cond_type == "video":
-            video_seen += 1
-            if video_seen > len(video_block_token_counts):
-                raise ValueError("video reference requires block token counts and timestamps")
-            counts = video_block_token_counts[video_seen - 1]
-            timestamps = video_block_timestamps[video_seen - 1]
-            if not counts or len(counts) != len(timestamps):
-                raise ValueError("video block token counts and timestamps must align")
-            presentation.text(_text_ids(tokenizer, f"<Video {ordinal}>: "))
-            for count, timestamp in zip(counts, timestamps):
-                if int(count) <= 0:
-                    raise ValueError("video block token count must be positive")
-                presentation.text(_text_ids(tokenizer, f"<{timestamp:.1f} seconds>"))
-                presentation.vision(_vision_block_ids(tokenizer, _VIDEO_PAD, count))
-        else:
-            raise ValueError(f"unsupported ref2va condition type {cond_type!r}")
-    if image_seen != len(image_token_counts):
-        raise ValueError("unused image_token_count entries")
-    if video_seen != len(video_block_token_counts):
-        raise ValueError("unused video block token count entries")
-    presentation.text(_text_ids(tokenizer, prompt))
-    return presentation.build()
+from ..models.minimax_constant import *
 
 
 def _sample_qwen_video_frames(frames):
@@ -170,7 +28,7 @@ def _sample_qwen_video_frames(frames):
     never drops a wanted frame. Timestamps pad to the temporal patch with the
     last entry, then each block takes the mean of its merged pair.
     """
-    ratio = _MINIMAX_H3_SUPPORTED_FPS / _QWEN_VIDEO_SAMPLE_FPS
+    ratio = MINIMAX_H3_SUPPORTED_FPS / QWEN_VIDEO_SAMPLE_FPS
     indices: list[int] = []
     cursor = 0.0
     while True:
@@ -182,12 +40,12 @@ def _sample_qwen_video_frames(frames):
         cursor += ratio
     if not indices:
         raise ValueError("no frames sampled for the Qwen video presentation")
-    ts = [i / _QWEN_VIDEO_SAMPLE_FPS for i in range(len(indices))]
-    pad = (-len(ts)) % _QWEN_TEMPORAL_PATCH
+    ts = [i / QWEN_VIDEO_SAMPLE_FPS for i in range(len(indices))]
+    pad = (-len(ts)) % QWEN_TEMPORAL_PATCH
     ts = ts + [ts[-1]] * pad
     block_timestamps = [
-        (ts[i] + ts[i + _QWEN_TEMPORAL_PATCH - 1]) / 2
-        for i in range(0, len(ts), _QWEN_TEMPORAL_PATCH)
+        (ts[i] + ts[i + QWEN_TEMPORAL_PATCH - 1]) / 2
+        for i in range(0, len(ts), QWEN_TEMPORAL_PATCH)
     ]
     return [frames[i] for i in indices], block_timestamps
 
@@ -214,10 +72,10 @@ def _resolve_reference_image_shape(width: int, height: int):
         raise ValueError(
             f"reference image ratio must be within 1:4 to 4:1, got {width}x{height}"
         )
-    scale = _MINIMAX_H3_REFERENCE_IMAGE_SHORT_EDGE / min(src_w, src_h)
+    scale = MINIMAX_H3_REFERENCE_IMAGE_SHORT_EDGE / min(src_w, src_h)
     return (
-        _nearest_multiple(src_w * scale, _MINIMAX_H3_REFERENCE_IMAGE_MULTIPLE),
-        _nearest_multiple(src_h * scale, _MINIMAX_H3_REFERENCE_IMAGE_MULTIPLE),
+        _nearest_multiple(src_w * scale, MINIMAX_H3_REFERENCE_IMAGE_MULTIPLE),
+        _nearest_multiple(src_h * scale, MINIMAX_H3_REFERENCE_IMAGE_MULTIPLE),
     )
 
 
@@ -233,19 +91,19 @@ def _resolve_reference_video_shape(width: int, height: int):
         raise ValueError("reference video width and height must be positive")
     ratio = src_w / src_h
     if ratio >= 1.0:
-        nominal_h = float(_MINIMAX_H3_BASE_SHORT_EDGE)
-        nominal_w = _MINIMAX_H3_BASE_SHORT_EDGE * ratio
+        nominal_h = float(MINIMAX_H3_BASE_SHORT_EDGE)
+        nominal_w = MINIMAX_H3_BASE_SHORT_EDGE * ratio
     else:
-        nominal_w = float(_MINIMAX_H3_BASE_SHORT_EDGE)
-        nominal_h = _MINIMAX_H3_BASE_SHORT_EDGE / ratio
+        nominal_w = float(MINIMAX_H3_BASE_SHORT_EDGE)
+        nominal_h = MINIMAX_H3_BASE_SHORT_EDGE / ratio
     nominal_area = nominal_w * nominal_h
-    if nominal_area > _MINIMAX_H3_MAX_PIXELS:
-        scale = float(np.sqrt(float(_MINIMAX_H3_MAX_PIXELS) / nominal_area))
+    if nominal_area > MINIMAX_H3_MAX_PIXELS:
+        scale = float(np.sqrt(float(MINIMAX_H3_MAX_PIXELS) / nominal_area))
         nominal_w *= scale
         nominal_h *= scale
     return (
-        _nearest_multiple(nominal_w, _MINIMAX_H3_CANVAS_MULTIPLE),
-        _nearest_multiple(nominal_h, _MINIMAX_H3_CANVAS_MULTIPLE),
+        _nearest_multiple(nominal_w, MINIMAX_H3_CANVAS_MULTIPLE),
+        _nearest_multiple(nominal_h, MINIMAX_H3_CANVAS_MULTIPLE),
     )
 
 
@@ -258,9 +116,9 @@ def _trim_reference_video_length(frame_count: int) -> int:
     """
     frame_count = int(frame_count)
     chunks = max(
-        1, (frame_count - _MINIMAX_H3_VAE_TAIL_FRAMES) // _MINIMAX_H3_VAE_CLIP_LENGTH
+        1, (frame_count - MINIMAX_H3_VAE_TAIL_FRAMES) // MINIMAX_H3_VAE_CLIP_LENGTH
     )
-    used = chunks * _MINIMAX_H3_VAE_CLIP_LENGTH + _MINIMAX_H3_VAE_TAIL_FRAMES
+    used = chunks * MINIMAX_H3_VAE_CLIP_LENGTH + MINIMAX_H3_VAE_TAIL_FRAMES
     if used > frame_count:
         raise ValueError(
             f"cannot trim {frame_count} reference video frames down to a valid "
@@ -285,9 +143,6 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.tokenizer = None
         self.processor = None
         self.in_iteration_models = ("dit",)
-        # PromptEmbedder runs AFTER the visual encoders so the Qwen presentation
-        # consumes the exact same prepared images the VAE saw
-        # (ref: target canvas.py:8-11, text_encoding.py:170-176).
         self.units = [
             MiniMaxH3Unit_ShapeChecker(),
             MiniMaxH3Unit_NoiseInitializer(),
@@ -304,8 +159,8 @@ class MiniMaxH3Pipeline(BasePipeline):
         torch_dtype: torch.dtype = torch.bfloat16,
         device: str = get_device_type(),
         model_configs: list[ModelConfig] = [],
-        tokenizer_config: ModelConfig = None,
-        processor_config: ModelConfig = None,
+        tokenizer_config: ModelConfig = ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/tokenizer/"),
+        processor_config: ModelConfig = ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
         vram_limit: float = None,
     ):
         pipe = MiniMaxH3Pipeline(device=device, torch_dtype=torch_dtype)
@@ -333,7 +188,7 @@ class MiniMaxH3Pipeline(BasePipeline):
         prompt: str,
         height: int = 768,
         width: int = 1344,
-        num_frames: int = 24,
+        num_frames: int = 120,
         num_inference_steps: int = 50,
         seed: int = 42,
         rand_device: str = "cpu",
@@ -437,8 +292,7 @@ class MiniMaxH3Unit_ShapeChecker(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("height", "width", "num_frames"),
-            output_params=("height", "width", "num_frames",
-                           "video_latent_t", "audio_latent_t", "latent_h", "latent_w"),
+            output_params=("height", "width", "num_frames"),
         )
 
     @staticmethod
@@ -448,26 +302,170 @@ class MiniMaxH3Unit_ShapeChecker(PipelineUnit):
             current += 1
         return current
 
+    def process(self, pipe: MiniMaxH3Pipeline, height, width, num_frames):
+        height, width = pipe.check_resize_height_width(height, width)
+        num_frames = self._align_frame_count(num_frames)
+        return {"height": height, "width": width, "num_frames": num_frames}
+
+
+class MiniMaxH3Unit_NoiseInitializer(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("seed", "num_frames", "height", "width", "rand_device"),
+            output_params=("video_latents", "audio_latents"),
+        )
+
     @staticmethod
     def _video_latent_t(frame_count: int) -> int:
         if frame_count <= 5:
             return 2
         return ((int(frame_count) - 5) // 17) * 5 + 2
 
-    def process(self, pipe: MiniMaxH3Pipeline, height, width, num_frames):
-        height, width = pipe.check_resize_height_width(height, width)
-        # Freeze the aligned frame count back onto num_frames so every later unit
-        # consumes one shape. Ref: target prequeue.py:280-289 `batch.num_frames = work_frames`.
-        num_frames = self._align_frame_count(num_frames)
-        # Audio latent length follows the ALIGNED duration.
-        # Ref: target resolved_plan.py:202-211 + time_request.py:29-31.
-        duration_seconds = float(num_frames) / float(_MINIMAX_H3_SUPPORTED_FPS)
-        return {
-            "height": height, "width": width, "num_frames": num_frames,
-            "video_latent_t": self._video_latent_t(num_frames),
-            "audio_latent_t": int(round(duration_seconds * 40.0)),
-            "latent_h": height // 16, "latent_w": width // 16,
-        }
+    def process(self, pipe: MiniMaxH3Pipeline, seed, num_frames, height, width, rand_device):
+
+        video_latent_t, latent_h, latent_w = self._video_latent_t(num_frames), height // 16, width // 16
+        video_latents = pipe.generate_noise(
+            (1, 24, video_latent_t, latent_h, latent_w),
+            seed=seed, rand_device=rand_device, rand_torch_dtype=torch.float32, torch_dtype=torch.float32,
+        )
+        audio_latent_t = int(round(float(num_frames) / float(MINIMAX_H3_SUPPORTED_FPS) * 40.0))
+        audio_rows = pipe.generate_noise(
+            (audio_latent_t * 2, 32),
+            seed=seed, rand_device=rand_device, rand_torch_dtype=torch.float32, torch_dtype=torch.float32,
+        )
+        audio_latents = unpack_audio(audio_rows, audio_channel=2, steps=audio_latent_t)
+        return {"video_latents": video_latents, "audio_latents": audio_latents}
+
+
+def _video_latent_geometry(video_latents):
+    """(video_latent_t, latent_h, latent_w) read off the noise tensor.
+
+    NoiseInitializer shapes video latents as [1, 24, t, h, w] and audio latents as
+    [audio_channel, 32, t], so the packed-sequence geometry rides along with the
+    tensors; the audio side is just `audio_latents.shape[-1]`.
+    """
+    latent_t, latent_h, latent_w = (int(x) for x in video_latents.shape[2:])
+    return latent_t, latent_h, latent_w
+
+
+def _text_ids(tokenizer, text: str) -> list[int]:
+    return list(tokenizer(text, add_special_tokens=False)["input_ids"])
+
+
+def _vision_block_ids(tokenizer, pad_token: str, count: int) -> list[int]:
+    """Ref: target presentation.py:33-39."""
+    return (
+        [tokenizer.convert_tokens_to_ids(VISION_START)]
+        + [tokenizer.convert_tokens_to_ids(pad_token)] * int(count)
+        + [tokenizer.convert_tokens_to_ids(VISION_END)]
+    )
+
+class _Presentation:
+    """Accumulates aligned (ids, token_tags) segments. Ref: target presentation.py:41-61."""
+
+    def __init__(self):
+        self.ids: list[int] = []
+        self.tags: list[int] = []
+
+    def text(self, token_ids: list[int]):
+        self.ids += token_ids
+        self.tags += [PRESENTATION_TEXT_TAG] * len(token_ids)
+
+    def vision(self, token_ids: list[int]):
+        self.ids += token_ids
+        self.tags += [PRESENTATION_VIDEO_TAG] * len(token_ids)
+
+    def build(self):
+        return (
+            torch.tensor(self.ids, dtype=torch.long),
+            torch.tensor(self.tags, dtype=torch.long),
+        )
+
+
+def _presentation_t2va(tokenizer, prompt: str):
+    """Verbatim prompt, all tags TEXT.
+
+    Ref: target presentation.py:83-88 + text_encoding.py:139-149.
+    """
+    if not prompt:
+        raise ValueError("prompt must be non-empty")
+    presentation = _Presentation()
+    presentation.text(_text_ids(tokenizer, prompt))
+    return presentation.build()
+
+
+def _presentation_fl2va(tokenizer, prompt: str, image_token_counts):
+    """`<Picture i>: ` + image vision block per keyframe, then the prompt.
+
+    Ref: target presentation.py:91-107 `_multi_image_presentation`.
+    """
+    if not image_token_counts:
+        raise ValueError("image_token_counts must be non-empty")
+    presentation = _Presentation()
+    for index, count in enumerate(image_token_counts, start=1):
+        if int(count) <= 0:
+            raise ValueError("image_token_count must be positive")
+        presentation.text(_text_ids(tokenizer, f"<Picture {index}>: "))
+        presentation.vision(_vision_block_ids(tokenizer, IMAGE_PAD, count))
+    presentation.text(_text_ids(tokenizer, prompt))
+    return presentation.build()
+
+
+def _presentation_ref2va(
+    tokenizer,
+    prompt: str,
+    condition_labels,
+    image_token_counts,
+    video_block_token_counts,
+    video_block_timestamps,
+):
+    """Per condition in request order, then the verbatim prompt.
+
+    image i -> `<Picture i>: ` + image vision block
+    audio j -> `<Audio j>: ` label only (audio content never enters Qwen)
+    video k -> `<Video k>: ` then per temporal block `<{t:.1f} seconds>` + video block
+
+    Ref: target presentation.py:216-295 `minimax_h3_ref2va_video_presentation`.
+    """
+    if not prompt:
+        raise ValueError("prompt must be non-empty")
+    presentation = _Presentation()
+    image_seen = 0
+    video_seen = 0
+    for cond_type, ordinal in condition_labels:
+        if cond_type == "image":
+            image_seen += 1
+            if image_seen > len(image_token_counts):
+                raise ValueError("image_token_count required for an image reference")
+            count = int(image_token_counts[image_seen - 1])
+            if count <= 0:
+                raise ValueError("image_token_count required for an image reference")
+            presentation.text(_text_ids(tokenizer, f"<Picture {ordinal}>: "))
+            presentation.vision(_vision_block_ids(tokenizer, IMAGE_PAD, count))
+        elif cond_type == "audio":
+            presentation.text(_text_ids(tokenizer, f"<Audio {ordinal}>: "))
+        elif cond_type == "video":
+            video_seen += 1
+            if video_seen > len(video_block_token_counts):
+                raise ValueError("video reference requires block token counts and timestamps")
+            counts = video_block_token_counts[video_seen - 1]
+            timestamps = video_block_timestamps[video_seen - 1]
+            if not counts or len(counts) != len(timestamps):
+                raise ValueError("video block token counts and timestamps must align")
+            presentation.text(_text_ids(tokenizer, f"<Video {ordinal}>: "))
+            for count, timestamp in zip(counts, timestamps):
+                if int(count) <= 0:
+                    raise ValueError("video block token count must be positive")
+                presentation.text(_text_ids(tokenizer, f"<{timestamp:.1f} seconds>"))
+                presentation.vision(_vision_block_ids(tokenizer, VIDEO_PAD, count))
+        else:
+            raise ValueError(f"unsupported ref2va condition type {cond_type!r}")
+    if image_seen != len(image_token_counts):
+        raise ValueError("unused image_token_count entries")
+    if video_seen != len(video_block_token_counts):
+        raise ValueError("unused video block token count entries")
+    presentation.text(_text_ids(tokenizer, prompt))
+    return presentation.build()
 
 
 class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
@@ -524,6 +522,50 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
             block_timestamps.append([float(t) for t in timestamps])
         return vout["pixel_values_videos"], grid, block_counts, block_timestamps
 
+    def preprocess_ref_blocks(self, pipe: MiniMaxH3Pipeline, prompt, ref_blocks):
+        if pipe.processor is None:
+            raise ValueError("ref2va requires processor_config in from_pretrained")
+        counters = {"image": 0, "audio": 0, "video": 0}
+        condition_labels = []
+        images, videos, timestamps_per_video = [], [], []
+        for block in ref_blocks:
+            kind = block["kind"]
+            if kind == "image":
+                counters["image"] += 1
+                condition_labels.append(("image", counters["image"]))
+                images.append(block["prepared_image"])
+            elif kind == "audio":
+                counters["audio"] += 1
+                condition_labels.append(("audio", counters["audio"]))
+            elif kind in ("video", "video_audio"):
+                if int(block["ref_audio_t"]) > 0:
+                    counters["audio"] += 1
+                    condition_labels.append(("audio", counters["audio"]))
+                counters["video"] += 1
+                condition_labels.append(("video", counters["video"]))
+                sampled, timestamps = _sample_qwen_video_frames(block["prepared_frames"])
+                videos.append(np.stack([np.asarray(f) for f in sampled]))
+                timestamps_per_video.append(timestamps)
+            else:
+                raise ValueError(f"unknown reference kind: {kind}")
+
+        image_counts = []
+        if images:
+            pixel_values, image_grid_thw, image_counts = self._image_token_counts(
+                pipe.processor, images
+            )
+        video_counts, video_timestamps = [], []
+        if videos:
+            (pixel_values_videos, video_grid_thw, video_counts,
+                video_timestamps) = self._video_token_counts(
+                pipe.processor, videos, timestamps_per_video
+            )
+        input_ids, text_token_tags = _presentation_ref2va(
+            pipe.tokenizer, prompt, condition_labels,
+            image_counts, video_counts, video_timestamps,
+        )
+        return input_ids, text_token_tags, pixel_values, image_grid_thw, pixel_values_videos, video_grid_thw
+
     def process(self, pipe: MiniMaxH3Pipeline, prompt,
                 keyframe_prepared_images=None, ref_blocks=None):
         pipe.load_models_to_device(("text_encoder",))
@@ -531,59 +573,12 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
         pixel_values_videos = video_grid_thw = None
 
         if ref_blocks:
-            if pipe.processor is None:
-                raise ValueError("ref2va requires processor_config in from_pretrained")
-            # Condition labels are per-type 1-based; a soundtrack-bearing video
-            # emits its audio label BEFORE its video label.
-            # Ref: target text_encoding.py:257-294.
-            counters = {"image": 0, "audio": 0, "video": 0}
-            condition_labels = []
-            images, videos, timestamps_per_video = [], [], []
-            for block in ref_blocks:
-                kind = block["kind"]
-                if kind == "image":
-                    counters["image"] += 1
-                    condition_labels.append(("image", counters["image"]))
-                    images.append(block["prepared_image"])
-                elif kind == "audio":
-                    counters["audio"] += 1
-                    condition_labels.append(("audio", counters["audio"]))
-                elif kind in ("video", "video_audio"):
-                    if int(block["ref_audio_t"]) > 0:
-                        counters["audio"] += 1
-                        condition_labels.append(("audio", counters["audio"]))
-                    counters["video"] += 1
-                    condition_labels.append(("video", counters["video"]))
-                    sampled, timestamps = _sample_qwen_video_frames(block["prepared_frames"])
-                    videos.append(np.stack([np.asarray(f) for f in sampled]))
-                    timestamps_per_video.append(timestamps)
-                else:
-                    raise ValueError(f"unknown reference kind: {kind}")
-
-            image_counts = []
-            if images:
-                pixel_values, image_grid_thw, image_counts = self._image_token_counts(
-                    pipe.processor, images
-                )
-            video_counts, video_timestamps = [], []
-            if videos:
-                (pixel_values_videos, video_grid_thw, video_counts,
-                 video_timestamps) = self._video_token_counts(
-                    pipe.processor, videos, timestamps_per_video
-                )
-            input_ids, text_token_tags = _presentation_ref2va(
-                pipe.tokenizer, prompt, condition_labels,
-                image_counts, video_counts, video_timestamps,
-            )
+            input_ids, text_token_tags, pixel_values, image_grid_thw, pixel_values_videos, video_grid_thw = self.preprocess_ref_blocks(pipe, prompt, ref_blocks)
         elif keyframe_prepared_images:
             if pipe.processor is None:
                 raise ValueError("fl2va requires processor_config in from_pretrained")
-            pixel_values, image_grid_thw, image_counts = self._image_token_counts(
-                pipe.processor, keyframe_prepared_images
-            )
-            input_ids, text_token_tags = _presentation_fl2va(
-                pipe.tokenizer, prompt, image_counts
-            )
+            pixel_values, image_grid_thw, image_counts = self._image_token_counts(pipe.processor, keyframe_prepared_images)
+            input_ids, text_token_tags = _presentation_fl2va(pipe.tokenizer, prompt, image_counts)
         else:
             input_ids, text_token_tags = _presentation_t2va(pipe.tokenizer, prompt)
 
@@ -611,89 +606,6 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
         }
 
 
-class MiniMaxH3Unit_NoiseInitializer(PipelineUnit):
-    def __init__(self):
-        super().__init__(
-            input_params=("seed", "video_latent_t", "latent_h", "latent_w", "audio_latent_t", "rand_device"),
-            output_params=("video_latents", "audio_latents"),
-        )
-
-    def process(self, pipe: MiniMaxH3Pipeline, seed, video_latent_t, latent_h, latent_w, audio_latent_t, rand_device):
-        if seed is None:
-            seed = 42
-        video_latents = pipe.generate_noise(
-            (1, 24, video_latent_t, latent_h, latent_w),
-            seed=seed, rand_device=rand_device, rand_torch_dtype=torch.float32, torch_dtype=torch.float32,
-        )
-        audio_rows = pipe.generate_noise(
-            (audio_latent_t * 2, 32),
-            seed=seed, rand_device=rand_device, rand_torch_dtype=torch.float32, torch_dtype=torch.float32,
-        )
-        audio_latents = unpack_audio(audio_rows, audio_channel=2, steps=audio_latent_t)
-        return {"video_latents": video_latents, "audio_latents": audio_latents}
-
-
-_MINIMAX_H3_KEYFRAME_ENCODE_SEED = 42
-# Ref: target reference_encoding.py:45-48
-_MINIMAX_H3_REFERENCE_IMAGE_SHORT_EDGE = 2048
-_MINIMAX_H3_REFERENCE_IMAGE_MULTIPLE = 32
-_MINIMAX_H3_AUDIO_SAMPLE_RATE = 32000
-_MINIMAX_H3_AUDIO_CHANNELS = 2
-# Ref: target reference_encoding.py:437-438
-_MINIMAX_H3_REFERENCE_VIDEO_ENCODE_SEED = 42
-_MINIMAX_H3_REFERENCE_VIDEO_PATCH_SIZE = (1, 2, 2)
-# Ref: target constants.py:23
-_MINIMAX_H3_SUPPORTED_FPS = 24
-
-
-class _AudioVAEDeterminismContext:
-    """Scoped determinism config for the audio encode.
-
-    Ref: target reference_encoding.py:51-97 `_AudioVAEDeterminismContext`.
-    Disables TF32, forces deterministic algorithms, DISABLES cuDNN entirely
-    for the encode (convs run on the fallback kernels), and pins SDP to the
-    math backend. Restored on exit so the decode path keeps its own config.
-    """
-
-    def __enter__(self):
-        b = torch.backends
-        self._saved = (
-            b.cuda.matmul.allow_tf32,
-            b.cudnn.allow_tf32,
-            b.cudnn.benchmark,
-            b.cudnn.deterministic,
-            b.cudnn.enabled,
-            b.cuda.flash_sdp_enabled(),
-            b.cuda.mem_efficient_sdp_enabled(),
-            b.cuda.math_sdp_enabled(),
-        )
-        b.cuda.matmul.allow_tf32 = False
-        b.cudnn.allow_tf32 = False
-        b.cudnn.benchmark = False
-        b.cudnn.deterministic = True
-        b.cudnn.enabled = False
-        b.cuda.enable_flash_sdp(False)
-        b.cuda.enable_mem_efficient_sdp(False)
-        b.cuda.enable_math_sdp(True)
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        b = torch.backends
-        (
-            b.cuda.matmul.allow_tf32,
-            b.cudnn.allow_tf32,
-            b.cudnn.benchmark,
-            b.cudnn.deterministic,
-            b.cudnn.enabled,
-            flash,
-            mem_eff,
-            math_sdp,
-        ) = self._saved
-        b.cuda.enable_flash_sdp(flash)
-        b.cuda.enable_mem_efficient_sdp(mem_eff)
-        b.cuda.enable_math_sdp(math_sdp)
-
-
 class MiniMaxH3Unit_KeyframeEncoder(PipelineUnit):
     """Encode keyframe images for FL2AV conditioning. If keyframes is None, this
     unit is a no-op (t2va mode). Outputs keyframe_cond_anchor (patchified rows
@@ -703,17 +615,18 @@ class MiniMaxH3Unit_KeyframeEncoder(PipelineUnit):
 
     def __init__(self):
         super().__init__(
-            input_params=("keyframes", "keyframe_indices", "latent_h", "latent_w",
-                          "video_latent_t", "seed", "imgvid_cond_noise_aug"),
+            input_params=("keyframes", "keyframe_indices", "video_latents",
+                          "seed", "imgvid_cond_noise_aug"),
             output_params=("keyframe_cond_anchor", "keyframe_indices_validated",
                            "keyframe_prepared_images"),
             onload_model_names=("video_vae",),
         )
 
-    def process(self, pipe: MiniMaxH3Pipeline, keyframes, keyframe_indices, latent_h, latent_w,
-                video_latent_t, seed, imgvid_cond_noise_aug):
+    def process(self, pipe: MiniMaxH3Pipeline, keyframes, keyframe_indices, video_latents,
+                seed, imgvid_cond_noise_aug):
         if keyframes is None:
             return {}
+        video_latent_t, latent_h, latent_w = _video_latent_geometry(video_latents)
         if keyframe_indices is None:
             raise ValueError("keyframe_indices must be provided when keyframes is not None")
         if len(keyframes) != len(keyframe_indices):
@@ -750,7 +663,7 @@ class MiniMaxH3Unit_KeyframeEncoder(PipelineUnit):
             vae_dtype = next(pipe.video_vae.parameters()).dtype
             img_tensor = img_tensor.to(device=device, dtype=vae_dtype)
             with torch.random.fork_rng(devices=[device] if str(device) != "cpu" else []):
-                torch.manual_seed(_MINIMAX_H3_KEYFRAME_ENCODE_SEED)
+                torch.manual_seed(MINIMAX_H3_KEYFRAME_ENCODE_SEED)
                 z = pipe.video_vae.encode_base(img_tensor, process_image=True)  # [1,24,1,H',W']
             # Normalize: (z - mean) / std
             z_norm = (z - mean.to(z.device)) / std.to(z.device)
@@ -825,7 +738,7 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("references", "seed", "imgvid_cond_noise_aug",
-                          "audio_cond_noise_aug", "video_latent_t", "num_frames"),
+                          "audio_cond_noise_aug", "video_latents", "num_frames"),
             output_params=("ref_blocks",),
             onload_model_names=("video_vae", "audio_vae"),
         )
@@ -846,7 +759,7 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
         vae_dtype = next(pipe.video_vae.parameters()).dtype
         img_tensor = img_tensor.to(device=pipe.device, dtype=vae_dtype)
         with torch.random.fork_rng(devices=[pipe.device] if str(pipe.device) != "cpu" else []):
-            torch.manual_seed(_MINIMAX_H3_KEYFRAME_ENCODE_SEED)
+            torch.manual_seed(MINIMAX_H3_KEYFRAME_ENCODE_SEED)
             z = pipe.video_vae.encode_base(img_tensor, process_image=True)  # [1,24,1,H',W']
         mean = torch.tensor(_VIDEO_LATENTS_MEAN, device=z.device, dtype=torch.float32).view(1, -1, 1, 1, 1)
         std = torch.tensor(_VIDEO_LATENTS_STD, device=z.device, dtype=torch.float32).view(1, -1, 1, 1, 1)
@@ -876,7 +789,7 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
         used = _trim_reference_video_length(len(prepared_frames))
         frames_np = np.stack([np.asarray(f) for f in prepared_frames[:used]], axis=0)
         with torch.random.fork_rng(devices=[pipe.device] if str(pipe.device) != "cpu" else []):
-            torch.manual_seed(_MINIMAX_H3_REFERENCE_VIDEO_ENCODE_SEED)
+            torch.manual_seed(MINIMAX_H3_REFERENCE_VIDEO_ENCODE_SEED)
             frames_tensor = torch.from_numpy(frames_np).permute(3, 0, 1, 2).unsqueeze(0).float() / 255.0
             frames_tensor = pipe.video_vae.processor.transform_tensor(frames_tensor)
             vae_dtype = next(pipe.video_vae.parameters()).dtype
@@ -905,32 +818,31 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
             raise ValueError(f"expected audio waveform [C, L], got {list(waveform.shape)}")
         waveform = waveform.float()
 
-        if int(sample_rate) != _MINIMAX_H3_AUDIO_SAMPLE_RATE:
+        if int(sample_rate) != MINIMAX_H3_AUDIO_SAMPLE_RATE:
             waveform = torchaudio.transforms.Resample(
-                int(sample_rate), _MINIMAX_H3_AUDIO_SAMPLE_RATE
+                int(sample_rate), MINIMAX_H3_AUDIO_SAMPLE_RATE
             )(waveform)
 
-        if waveform.shape[0] < _MINIMAX_H3_AUDIO_CHANNELS:
-            repeats = (_MINIMAX_H3_AUDIO_CHANNELS + waveform.shape[0] - 1) // waveform.shape[0]
+        if waveform.shape[0] < MINIMAX_H3_AUDIO_CHANNELS:
+            repeats = (MINIMAX_H3_AUDIO_CHANNELS + waveform.shape[0] - 1) // waveform.shape[0]
             waveform = waveform.repeat(repeats, 1)
         # Match the VAE's parameter dtype: VRAM management may hold weights in bf16
         # while the waveform is fp32. (Target upcasts the VAE to fp32 instead; under
         # VRAM management we cannot mutate the wrapped weights, so we cast the input.)
         vae_dtype = next(model.parameters()).dtype
-        waveform = waveform[:_MINIMAX_H3_AUDIO_CHANNELS].to(device=device, dtype=vae_dtype)
+        waveform = waveform[:MINIMAX_H3_AUDIO_CHANNELS].to(device=device, dtype=vae_dtype)
 
-        with _AudioVAEDeterminismContext():
-            # Batched: preprocess([2, 1, L]) -> encoder -> optional pre_block -> mean_proj
-            # Ref: target reference_encoding.py:308-317
-            audio_data = model.preprocess(waveform.unsqueeze(1), _MINIMAX_H3_AUDIO_SAMPLE_RATE)
-            z = model.encoder(audio_data)
-            if bool(getattr(model, "attn_proj", False)):
-                z = model.pre_block(z.transpose(1, 2)).transpose(1, 2)
-            if not hasattr(model, "mean_proj"):
-                raise AttributeError(
-                    "audio VAE model must expose mean_proj for deterministic mean encoding"
-                )
-            latent = model.mean_proj(z).float().cpu()  # [2, 32, T] or [2, T, 32]
+        # Batched: preprocess([2, 1, L]) -> encoder -> optional pre_block -> mean_proj
+        # Ref: target reference_encoding.py:308-317
+        audio_data = model.preprocess(waveform.unsqueeze(1), MINIMAX_H3_AUDIO_SAMPLE_RATE)
+        z = model.encoder(audio_data)
+        if bool(getattr(model, "attn_proj", False)):
+            z = model.pre_block(z.transpose(1, 2)).transpose(1, 2)
+        if not hasattr(model, "mean_proj"):
+            raise AttributeError(
+                "audio VAE model must expose mean_proj for deterministic mean encoding"
+            )
+        latent = model.mean_proj(z).float().cpu()  # [2, 32, T] or [2, T, 32]
 
         if latent.ndim != 3:
             raise ValueError(f"expected 3D audio latent, got {list(latent.shape)}")
@@ -992,14 +904,14 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
         )
 
     def process(self, pipe: MiniMaxH3Pipeline, references, seed, imgvid_cond_noise_aug,
-                audio_cond_noise_aug, video_latent_t, num_frames):
+                audio_cond_noise_aug, video_latents, num_frames):
         if not references:
             return {}
 
         pipe.load_models_to_device(("video_vae",))
         seed_val = int(seed) if seed is not None else 42
         device = pipe.device
-        target_latent_t = int(video_latent_t)
+        target_latent_t = _video_latent_geometry(video_latents)[0]
 
         # First pass: encode every reference, keeping clean rows + geometry.
         ref_blocks_out = [
@@ -1063,7 +975,7 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
 
     def __init__(self):
         super().__init__(
-            input_params=("prompt_embeds", "video_latent_t", "latent_h", "latent_w", "audio_latent_t",
+            input_params=("prompt_embeds", "video_latents", "audio_latents",
                           "text_token_tags", "keyframe_cond_anchor",
                           "keyframe_indices_validated", "ref_blocks"),
             output_params=("packed",),
@@ -1495,10 +1407,12 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
             "ref_audio_rows": total_ref_audio_rows,
         }
 
-    def process(self, pipe: MiniMaxH3Pipeline, prompt_embeds, video_latent_t, latent_h, latent_w, audio_latent_t,
+    def process(self, pipe: MiniMaxH3Pipeline, prompt_embeds, video_latents, audio_latents,
                 text_token_tags=None, keyframe_cond_anchor=None,
                 keyframe_indices_validated=None, ref_blocks=None):
         text_len = int(prompt_embeds.shape[0])
+        video_latent_t, latent_h, latent_w = _video_latent_geometry(video_latents)
+        audio_latent_t = int(audio_latents.shape[-1])
         if ref_blocks is not None:
             packed = self._build_packed_ref2va(
                 text_len, video_latent_t, latent_h, latent_w, audio_latent_t, ref_blocks,
@@ -1535,11 +1449,21 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
 
 
 def model_fn_minimax_h3(
-    dit, video_latents, audio_latents, packed, prompt_embeds,
-    t_video, t_audio, device, torch_dtype,
-    keyframe_cond_anchor=None, imgvid_cond_noise_aug=0.999,
-    ref_blocks=None, audio_cond_noise_aug=1.0,
-    use_gradient_checkpointing=False, use_gradient_checkpointing_offload=False,
+    dit,
+    video_latents,
+    audio_latents,
+    packed,
+    prompt_embeds,
+    t_video,
+    t_audio,
+    device,
+    torch_dtype,
+    keyframe_cond_anchor=None,
+    imgvid_cond_noise_aug=0.999,
+    ref_blocks=None,
+    audio_cond_noise_aug=1.0,
+    use_gradient_checkpointing=False,
+    use_gradient_checkpointing_offload=False,
     **kwargs,
 ):
     # ---- patchify (in): natural latents -> packed rows ----
@@ -1627,7 +1551,7 @@ def model_fn_minimax_h3(
         inverse_indices=inverse_indices,
         update_mask=update_mask,
         token_tags=packed["token_tags"],
-        prompt_embeds=prompt_embeds.to(device, torch.bfloat16),
+        prompt_embeds=prompt_embeds,
         img_pos_info={"position_ids": img_pos},
         audio_pos_info={"position_ids": audio_pos},
         text_pos_info={"position_ids": text_pos},
