@@ -24,12 +24,12 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
         ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/video_vae/source/model.safetensors", **vram_config),
         ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
     ],
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
-prompt = "A girl is very happy, she is speaking: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
+prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
 video, audio = pipe(
     prompt=prompt,
-    height=480, width=832, num_frames=120,
+    height=480, width=832, num_frames=124,
     num_inference_steps=50, seed=0,
 )
 write_video_audio(

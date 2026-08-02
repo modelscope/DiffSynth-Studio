@@ -52,8 +52,6 @@ class MiniMaxH3Pipeline(BasePipeline):
         pipe.dit = model_pool.fetch_model("minimax_h3_dit")
         pipe.video_vae = model_pool.fetch_model("minimax_h3_video_vae")
         pipe.audio_vae = model_pool.fetch_model("minimax_h3_audio_vae")
-        if pipe.audio_vae is not None and hasattr(pipe.audio_vae, "remove_weight_norm"):
-            pipe.audio_vae.remove_weight_norm()
         if processor_config is not None:
             processor_config.download_if_necessary()
             pipe.processor = AutoProcessor.from_pretrained(processor_config.path)
