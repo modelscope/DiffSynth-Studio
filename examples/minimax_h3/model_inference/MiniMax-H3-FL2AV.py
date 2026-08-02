@@ -7,8 +7,6 @@ from PIL import Image
 from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
 from diffsynth.utils.data.audio_video import write_video_audio
 
-MODEL_ID = "MiniMaxAI/MiniMax-H3"
-
 vram_config = {
     "offload_dtype": torch.bfloat16, "offload_device": "cpu",
     "onload_dtype": torch.bfloat16, "onload_device": "cpu",
@@ -20,13 +18,12 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id=MODEL_ID, origin_file_pattern="FL2VA/text_encoder/model*.safetensors", **vram_config),
-        ModelConfig(model_id=MODEL_ID, origin_file_pattern="FL2VA/transformer/model*.safetensors", **vram_config),
-        ModelConfig(model_id=MODEL_ID, origin_file_pattern="FL2VA/video_vae/source/model.safetensors", **vram_config),
-        ModelConfig(model_id=MODEL_ID, origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/text_encoder/model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/transformer/model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/video_vae/source/model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
     ],
-    tokenizer_config=ModelConfig(model_id=MODEL_ID, origin_file_pattern="FL2VA/tokenizer/"),
-    processor_config=ModelConfig(model_id=MODEL_ID, origin_file_pattern="FL2VA/processor/"),
+    processor_config=ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
 
@@ -36,8 +33,7 @@ prompt = open("assets_minimax/fl2av/prompt.txt").read().strip()
 
 video, audio = pipe(
     prompt=prompt,
-    # 1 second; the pipeline snaps num_frames up to the nearest 17n+5 (24 -> 39).
-    height=1344, width=768, num_frames=120,
+    height=832, width=480, num_frames=124,
     num_inference_steps=50, seed=42,
     keyframes=[first_frame, last_frame],
     keyframe_indices=[0, -1],

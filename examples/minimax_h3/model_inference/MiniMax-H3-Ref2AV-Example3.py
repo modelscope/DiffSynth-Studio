@@ -91,26 +91,24 @@ def read_audio(path, num_out_frames):
 
 
 # Example 1: subject image + reference video (with its own soundtrack).
-ref_image = Image.open("assets_minimax/ref2av/example1/image.png")
-ref_video = read_video_24fps("assets_minimax/ref2av/example1/ref1.mov", ALIGNED_FRAMES)
-ref_audio = read_audio("assets_minimax/ref2av/example1/ref1.mov", ALIGNED_FRAMES)
-prompt = open("assets_minimax/ref2av/example1/prompt.txt").read().strip()
+ref_image = Image.open("assets_minimax/ref2av/example3/image.png")
+# ref_video = read_video_24fps("assets_minimax/ref2av/example1/ref1.mov", ALIGNED_FRAMES)
+# ref_audio = read_audio("assets_minimax/ref2av/example1/ref1.mov", ALIGNED_FRAMES)
+prompt = open("assets_minimax/ref2av/example3/prompt.txt").read().strip()
 
 video, audio = pipe(
     prompt=prompt,
-    height=768, width=1344, num_frames=NUM_FRAMES,
+    height=1158, width=1280, num_frames=NUM_FRAMES,
     num_inference_steps=50, seed=42,
     references=[
         {"type": "image", "image": ref_image},
-        {"type": "video_audio", "video": ref_video,
-         "audio": ref_audio, "sample_rate": AUDIO_SR},
     ],
 )
 write_video_audio(
     video=video,
     audio=audio,
-    output_path="minimax_h3_ref2av_ex1.mp4",
+    output_path="minimax_h3_ref2av_ex3.mp4",
     fps=FPS,
     audio_sample_rate=pipe.audio_vae.sample_rate,
 )
-print("saved minimax_h3_ref2av_ex1.mp4", "frames:", len(video), "audio:", tuple(audio.shape))
+print("saved minimax_h3_ref2av_ex3.mp4", "frames:", len(video), "audio:", tuple(audio.shape))
