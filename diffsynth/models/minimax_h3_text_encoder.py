@@ -1,16 +1,10 @@
-# SPDX-License-Identifier: Apache-2.0
-# MiniMax H3 text encoder: frozen Qwen3-VL (32B), layer-50 hidden-state extractor.
-# Mirrors the checkpoint recipe: retain only the first N decoder layers, replace
-# the final norm with Identity, and drop the LM head — the encoder contract is
-# the unnormalized hidden state after decoder layer N (hidden_states[N], dim 5120).
 import torch
+from transformers import Qwen3VLConfig, Qwen3VLModel
 
 
 class MiniMaxH3TextEncoder(torch.nn.Module):
     def __init__(self, num_retained_layers: int = 50):
         super().__init__()
-        from transformers import Qwen3VLConfig, Qwen3VLModel
-
         self.num_retained_layers = num_retained_layers
         config = Qwen3VLConfig(**{
             "architectures": ["Qwen3VLForConditionalGeneration"],
@@ -65,8 +59,6 @@ class MiniMaxH3TextEncoder(torch.nn.Module):
             "vision_start_token_id": 151652,
         })
         self.model = Qwen3VLModel(config)
-        # Layer-N hidden-state contract: unnormalized output after N decoder
-        # layers. Drop the final norm so last_hidden_state == hidden_states[N].
         self.model.language_model.norm = torch.nn.Identity()
         self.config = config
         self.image_token_id = config.image_token_id

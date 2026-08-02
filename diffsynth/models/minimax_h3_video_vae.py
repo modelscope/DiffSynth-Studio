@@ -1,12 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0
-# MiniMax H3 video VAE (DiffSynth port of the checkpoint remote code).
-# Asymmetric KL VAE: causal 3D-CNN encoder + ViT-3D decoder, 24-ch latent,
-# 16x spatial / 4x temporal (17-frame -> 5-latent) compression.
-# Consolidated from the original 15-file bundle into one module to follow
-# DiffSynth's one-file-per-component convention. Section banners below mark
-# the original source files; diffusers base classes are provided by the
-# inlined _compat shim. Single-card only: sequence-parallel/distributed and
-# torch.compile scaffolding have been removed.
 from __future__ import annotations
 
 from contextlib import nullcontext
@@ -27,19 +19,7 @@ from torchvision.transforms import Normalize
 from ..core.attention import attention_forward
 
 
-
-# ======================================================================
-# ---- _compat.py ----
-# ======================================================================
-# Minimal diffusers-compat shim so the ported MiniMax H3 video-VAE remote code
-# runs without depending on diffusers. Provides the base classes / decorator
-# the code imports from diffusers, backed by torch.nn only.
-
-
-
-
 class _Config(dict):
-    """dict that also supports attribute access (self.config.x and self.config['x'])."""
 
     def __getattr__(self, key):
         try:
@@ -59,14 +39,11 @@ class ModelMixin(nn.Module):
 
 
 def register_to_config(init):
-    """Populate ``self.config`` from the __init__ signature (positional args,
-    keyword args, and defaults) BEFORE running the body, so the wrapped __init__
-    can freely read and mutate self.config (matching diffusers semantics)."""
 
     @functools.wraps(init)
     def wrapper(self, *args, **kwargs):
         cfg = _Config()
-        params = list(inspect.signature(init).parameters.values())[1:]  # skip self
+        params = list(inspect.signature(init).parameters.values())[1:]
         positional = [p for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
         for p, val in zip(positional, args):
             cfg[p.name] = val
@@ -87,22 +64,7 @@ def maybe_allow_in_graph(cls):
     return cls
 
 
-# ======================================================================
-# ---- parallel.py ----
-# ======================================================================
-# Parallel state and collective helpers for the MiniMax H3 visual VAE.
-
-
-# ======================================================================
-# ---- flash.py ----
-# ======================================================================
-# Torch-native attention implemented with PyTorch SDPA instead of FA4/CUTLASS.
-
-
-
 _BLOCK_CAUSAL_MASK_MOD_CACHE = {}
-
-
 
 
 def _as_bool_mask(mask, *, device):
@@ -122,9 +84,6 @@ def _ensure_nonempty_rows(mask):
 
 
 def _sdpa_attention(query, key, value, causal=False, attn_mask=None):
-    # query/key/value arrive as [B, S, H, D] ("b s n d"); delegate to
-    # DiffSynth's unified attention_forward (flash/sage/xformers when available,
-    # else torch SDPA). It rearranges to the backend layout internally.
     if attn_mask is not None and attn_mask.dim() == 3:
         attn_mask = attn_mask.unsqueeze(0)
     out = attention_forward(
@@ -152,11 +111,6 @@ def _mask_mod_to_dense(mask_mod, batch, heads, q_len, kv_len, device, aux_tensor
             mask = mask_mod(b_idx, h_idx, q_idx, kv_idx, None, aux_tensors)
             dense[b, h] = _as_bool_mask(mask, device=device)
     return _ensure_nonempty_rows(dense)
-
-
-#########################################################
-# Block causal attention
-#########################################################
 
 
 def make_block_causal_mask_mod(num_tokens, block_size, num_special=0, suffix=False):
@@ -202,15 +156,6 @@ def make_block_causal_mask_mod(num_tokens, block_size, num_special=0, suffix=Fal
     return mask_mod
 
 
-
-
-
-
-#########################################################
-# Public entry point
-#########################################################
-
-
 @torch.compiler.disable
 def flash_attn(
     query: torch.Tensor,
@@ -245,14 +190,6 @@ def flash_attn(
         return _sdpa_attention(query, key, value, attn_mask=dense_mask)
 
     return _sdpa_attention(query, key, value, causal=causal)
-
-
-# ======================================================================
-# ---- func.py ----
-# ======================================================================
-# Token-id and rotary-embedding helpers for the MiniMax H3 visual VAE.
-
-
 
 
 def create_token_ids(patch_dims, device, dtype, id_type="length_normalized", flatten=True):
@@ -293,11 +230,6 @@ def create_token_ids(patch_dims, device, dtype, id_type="length_normalized", fla
     return coords.unsqueeze(0)
 
 
-def _env_flag(name, default="0"):
-    value = os.environ.get(name, default)
-    return str(value).strip().lower() in ("1", "true", "yes", "on")
-
-
 def _rotate_half(x: torch.Tensor) -> torch.Tensor:
     x1, x2 = torch.chunk(x, 2, dim=-1)
     return torch.cat((-x2, x1), dim=-1)
@@ -331,12 +263,6 @@ def apply_rotary_pos_emb(
     t: torch.Tensor, rotary_pos_emb: Tuple[torch.Tensor, torch.Tensor]
 ) -> torch.Tensor:
     return _apply_rotary_pos_emb_impl(t, rotary_pos_emb)
-
-
-# ======================================================================
-# ---- normalize.py ----
-# ======================================================================
-# Pixel normalization transforms for the MiniMax H3 visual VAE.
 
 
 NORM_CONFIGS = {
@@ -374,17 +300,8 @@ def get_denormalize_transform(norm_type: str = "imagenet") -> Normalize:
     return Normalize(inv_mean, inv_std)
 
 
-# ======================================================================
-# ---- vae_module.py ----
-# ======================================================================
-# VAE distribution and aggregation helpers for the MiniMax H3 visual VAE.
-
-
 class DiagonalGaussianDistribution(object):
-    def __init__(self, parameters, upcast_fp32=True):
-        if upcast_fp32:
-            parameters = parameters.to(dtype=torch.float32)
-
+    def __init__(self, parameters):
         self.parameters = parameters
         self.mean, self.logvar = torch.chunk(parameters, 2, dim=1)
         self.logvar = torch.clamp(self.logvar, -30.0, 20.0)
@@ -394,8 +311,8 @@ class DiagonalGaussianDistribution(object):
     @torch.compiler.disable
     def sample(self, generator=None):
         noise = torch.randn(self.mean.shape, generator=generator)
-        x = self.mean + self.std * noise.to(device=self.parameters.device)
-        return x
+        noise = noise.to(device=self.parameters.device, dtype=self.mean.dtype)
+        return self.mean + self.std * noise
 
 
 class ClsTokenAggregator:
@@ -428,15 +345,6 @@ class ClsTokenAggregator:
             cls_token = self.vae.encoder.loss_info["cls_token"]
             cls_token = cls_token.unflatten(0, (num_tiles, sample_batch_size))
             self.cls_tokens.extend(token.clone() for token in cls_token)
-
-
-# ======================================================================
-# ---- conv.py ----
-# ======================================================================
-# Spatial-parallel 3D convolution for the MiniMax H3 visual VAE.
-
-
-
 
 
 class BaseConv3d(nn.Conv3d):
@@ -515,14 +423,6 @@ class BaseConv3d(nn.Conv3d):
             padding=0,
             dilation=self.dilation,
         )
-
-
-# ======================================================================
-# ---- norm.py ----
-# ======================================================================
-# Torch-native normalization for the MiniMax H3 visual VAE.
-
-
 
 
 def _validate_activation(activation):
@@ -605,7 +505,6 @@ class DummyAffine(torch.nn.Module):
 
 
 class FusedGroupNorm3D(torch.nn.Module):
-    """Compatibility wrapper implemented with native PyTorch ops."""
 
     def __init__(
         self,
@@ -711,12 +610,6 @@ class TemporalIsolatedSpatialParallelGroupNorm(SpatialParallelGroupNorm):
         return super().forward(input)
 
 
-
-
-
-
-
-
 class SpatialNorm3D(nn.Module):
     def __init__(
         self,
@@ -814,21 +707,6 @@ def get_group_norm_3d(num_channels, use_t_isolated_gn=False):
         else SpatialParallelGroupNorm
     )
     return norm_cls(num_groups=32, num_channels=num_channels, eps=1e-6, affine=True)
-
-
-# ======================================================================
-# ---- attention.py ----
-# ======================================================================
-# Attention module for the MiniMax H3 visual VAE (inference-only bundle).
-
-
-
-
-def _vit_norm_input(module, hidden_states):
-    if _env_flag("MINIMAX_H3_VAE_DECODER_VIT_FP32_NORM", "1"):
-        return hidden_states.float()
-    weight = getattr(module, "weight", None)
-    return hidden_states.to(getattr(weight, "dtype", hidden_states.dtype))
 
 
 def maybe_checkpoint(owner, function, *args):
@@ -929,9 +807,9 @@ class Attention(nn.Module):
         query, key, value = torch.chunk(qkv, 3, dim=-1)
 
         if self.norm_q is not None:
-            query = self.norm_q(_vit_norm_input(self.norm_q, query)).to(query.dtype)
+            query = self.norm_q(query)
         if self.norm_k is not None:
-            key = self.norm_k(_vit_norm_input(self.norm_k, key)).to(key.dtype)
+            key = self.norm_k(key)
 
         if rotary_pos_emb is not None:
             query = apply_rotary_pos_emb(query, rotary_pos_emb)
@@ -943,14 +821,6 @@ class Attention(nn.Module):
         hidden_states = self.to_out(hidden_states)
 
         return hidden_states
-
-
-# ======================================================================
-# ---- base_module.py ----
-# ======================================================================
-# Transformer building blocks for the MiniMax H3 visual VAE ViT decoder.
-
-
 
 
 class FeedForward(nn.Module):
@@ -1015,10 +885,13 @@ class RotaryEmbeddingND(nn.Module):
         else:
             self.angle_scale = 1.0
 
-        inv_freq = 1 / rotary_base ** torch.arange(
-            0, 1, 2 * n_dim / dim, dtype=torch.float32
+        self.rotary_base = rotary_base
+        self.register_buffer("inv_freq", self._build_inv_freq(), persistent=False)
+
+    def _build_inv_freq(self, device=None) -> torch.Tensor:
+        return 1 / self.rotary_base ** torch.arange(
+            0, 1, 2 * self.n_dim / self.dim, dtype=torch.float32, device=device
         )
-        self.register_buffer("inv_freq", inv_freq, persistent=False)
 
     def forward(self, img_ids):
         B, N, D = img_ids.shape
@@ -1026,10 +899,11 @@ class RotaryEmbeddingND(nn.Module):
             raise ValueError(f"Expected {self.n_dim} dimensions, got {D}")
 
         with torch.autocast("cuda", enabled=False):
+            inv_freq = self._build_inv_freq(img_ids.device)
             angles = (
                 self.angle_scale
                 * img_ids[:, :, :, None]
-                * self.inv_freq.to(img_ids.device)[None, None, None, :]
+                * inv_freq[None, None, None, :]
             )
             angles = angles.flatten(2, 3)
             angles = angles.tile(2)
@@ -1038,7 +912,7 @@ class RotaryEmbeddingND(nn.Module):
             cos = torch.cos(angles)
             sin = torch.sin(angles)
 
-        return cos.to(dtype=img_ids.dtype), sin.to(dtype=img_ids.dtype)
+        return cos, sin
 
 
 @maybe_allow_in_graph
@@ -1110,14 +984,14 @@ class TransformerBlock(nn.Module):
         rotary_pos_emb: Optional[torch.FloatTensor] = None,
         pack_info: dict = {},
     ):
-        norm_hidden_states = self.norm1(_vit_norm_input(self.norm1, hidden_states)).to(hidden_states.dtype)
+        norm_hidden_states = self.norm1(hidden_states)
         attn_output = self.attn(norm_hidden_states, rotary_pos_emb, pack_info)
         if self.use_scale:
             hidden_states = hidden_states + attn_output * self.scale1
         else:
             hidden_states = hidden_states + attn_output
 
-        norm_hidden_states = self.norm2(_vit_norm_input(self.norm2, hidden_states)).to(hidden_states.dtype)
+        norm_hidden_states = self.norm2(hidden_states)
         ff_output = self.ff(norm_hidden_states)
         if self.use_scale:
             hidden_states = hidden_states + ff_output * self.scale2
@@ -1125,26 +999,6 @@ class TransformerBlock(nn.Module):
             hidden_states = hidden_states + ff_output
 
         return hidden_states
-
-
-# ======================================================================
-# ---- vae_cnn.py ----
-# ======================================================================
-# 3D causal CNN encoder for the MiniMax H3 visual VAE (inference-only bundle).
-
-
-
-
-
-
-
-
-
-
-
-# ============================================================================
-# 3D CNN Components
-# ============================================================================
 
 
 def norm_silu(x, norm, cond=None):
@@ -1412,23 +1266,6 @@ class EncoderFCN3D(nn.Module):
         return h
 
 
-# ======================================================================
-# ---- vae_vit.py ----
-# ======================================================================
-# ViT3D decoder for the MiniMax H3 visual VAE (inference-only bundle).
-
-
-
-
-def _linear_with_module_dtype(linear, tensor, out_dtype=None):
-    weight = getattr(linear, "weight", None)
-    target_dtype = getattr(weight, "dtype", tensor.dtype)
-    output = linear(tensor.to(target_dtype))
-    if out_dtype is not None and output.dtype != out_dtype:
-        output = output.to(out_dtype)
-    return output
-
-
 def _pack_tensors_3d(tensors, patch_size, patch_size_t):
     batch_size, num_channels_tensors, temporal, height, width = tensors.shape
 
@@ -1471,7 +1308,6 @@ def _unpack_tensors_3d(tensors, patch_size, patch_size_t, temporal, height, widt
 
 
 class ViTBase(ModelMixin):
-    """Base class for ViT Encoder and Decoder with common functionality."""
 
     _supports_gradient_checkpointing = True
     _no_split_modules = ["TransformerBlock"]
@@ -1551,14 +1387,7 @@ class ViTBase(ModelMixin):
         return hidden_states
 
 
-
-
-
-
-
-
 class ViT3DDecoder(ViTBase):
-    """Vision Transformer Video Decoder using TransformerBlock."""
 
     @register_to_config
     def __init__(
@@ -1639,7 +1468,7 @@ class ViT3DDecoder(ViTBase):
         latent_size = (latent_T, latent_H, latent_W)
 
         with torch.autocast("cuda", enabled=False):
-            hidden_states = _linear_with_module_dtype(self.x_embedder, hidden_states, hidden_states.dtype)
+            hidden_states = self.x_embedder(hidden_states)
 
         num_patches = hidden_states.shape[1]
 
@@ -1654,7 +1483,7 @@ class ViT3DDecoder(ViTBase):
         hidden_states = torch.cat(tokens, dim=1)
 
         patch_dims = [latent_T, latent_H, latent_W]
-        img_ids = create_token_ids(latent_size, x.device, x.dtype).expand(B, -1, -1)
+        img_ids = create_token_ids(latent_size, x.device, torch.float32).expand(B, -1, -1)
         suffix_ids = torch.zeros((B, num_suffix, 3), device=x.device, dtype=img_ids.dtype)
         img_ids = torch.cat([img_ids, suffix_ids], dim=1)
 
@@ -1682,7 +1511,7 @@ class ViT3DDecoder(ViTBase):
         hidden_states = self.apply_mask_postprocess(hidden_states, num_patches)
 
         with torch.autocast("cuda", enabled=False):
-            output = _linear_with_module_dtype(self.proj_out, hidden_states, hidden_states.dtype)
+            output = self.proj_out(hidden_states)
 
         output = output[:, :num_patches, :]
 
@@ -1692,14 +1521,6 @@ class ViT3DDecoder(ViTBase):
         output = _unpack_tensors_3d(output, patch_size, patch_size_t, video_t, video_h, video_w)
 
         return output
-
-
-# ======================================================================
-# ---- vae_processor.py ----
-# ======================================================================
-# Tensor pre/post-processing for the MiniMax H3 visual VAE.
-
-
 
 
 class VAEProcessor:
@@ -1778,7 +1599,7 @@ class VAEProcessor:
             if aligned_r > self.clip_length:
                 return (full_chunks + 1) * self.clip_length + intra_tail
             return full_chunks * self.clip_length + aligned_r
-        else:  # trim
+        else:
             k = (remainder - intra_tail) // self.vae_ratio_t
             if k >= 0:
                 target = full_chunks * self.clip_length + k * self.vae_ratio_t + intra_tail
@@ -1812,11 +1633,6 @@ class VAEProcessor:
         return delta
 
     def align_video_length_2pass(self, video_length):
-        """Return the leading/trailing frame pads and trailing latent drop.
-
-        This is the continuation-prefix (2-pass) alignment.  The caller temporarily disables the model's normal token
-        drop and keeps these mirrored processor fields at zero.
-        """
         if self.isolated_last_frame:
             raise ValueError(
                 "align_video_length_2pass does not support isolated_last_frame"
@@ -1875,7 +1691,6 @@ class VAEProcessor:
         return latent_length
 
 
-
     def transform_tensor(self, tensor):
         B, T = None, None
         if tensor.ndim == 5:
@@ -1922,49 +1737,12 @@ class VAEProcessor:
         return tensor
 
 
-# ======================================================================
-# ---- klvae.py ----
-# ======================================================================
-# MiniMax H3 visual VAE: 3D causal CNN encoder + ViT3D decoder (inference-only bundle).
-
-
-
-
-
-def _resolve_temporal_cat_dtype():
-    raw = os.environ.get("MINIMAX_H3_VAE_DECODER_TEMPORAL_CAT_DTYPE", "").strip().lower()
-    if raw in ("", "0", "false", "no", "off", "none", "keep", "default"):
-        return None
-    mapping = {
-        "fp16": torch.float16,
-        "float16": torch.float16,
-        "half": torch.float16,
-        "bf16": torch.bfloat16,
-        "bfloat16": torch.bfloat16,
-        "fp32": torch.float32,
-        "float32": torch.float32,
-    }
-    if raw not in mapping:
-        raise ValueError(
-            "MINIMAX_H3_VAE_DECODER_TEMPORAL_CAT_DTYPE must be one of "
-            "fp16|bf16|fp32|keep, got %r" % raw
-        )
-    return mapping[raw]
-
-
 def _resolve_temporal_stream_cat():
     raw = os.environ.get("MINIMAX_H3_VAE_DECODER_STREAM_TEMPORAL_CAT", "1").strip().lower()
     return raw not in ("0", "false", "no", "off", "disable", "disabled")
 
 
 class AutoencoderKL(ModelMixin):
-    r"""
-    Abstract shared base for the MiniMax H3 visual VAE.
-
-    This class only carries the shared inference machinery (temporal
-    chunking, tiling, encode/decode entry points). Instantiate the concrete
-    subclass ``AutoencoderKLLegacy`` via ``from_pretrained`` instead.
-    """
 
     _supports_gradient_checkpointing = True
     _compilable_modules = ["encoder", "decoder"]
@@ -1987,7 +1765,7 @@ class AutoencoderKL(ModelMixin):
         "encoder_parallel",
         "decoder_parallel",
         "chunk_dim",
-    ]  # legacy config keys accepted by from_pretrained for checkpoint compatibility
+    ]
 
 
     def _set_gradient_checkpointing(self, module, value=False):
@@ -2024,7 +1802,6 @@ class AutoencoderKL(ModelMixin):
         self.crop_mode = kwargs.get("crop_mode", "top_left")
         self.pixel_norm_type = kwargs.get("pixel_norm_type", "imagenet")
 
-        # spatial parallel mode
         if hasattr(self, "_sp_initialized"):
             if (
                 kwargs.get("chunk_dim", -1) != self.chunk_dim
@@ -2271,7 +2048,7 @@ class AutoencoderKL(ModelMixin):
 
     def trim_output(self, dec, target_frames):
         if target_frames < dec.shape[2]:
-            if self.causal_encoder:  # This is defined by encoder, not decoder
+            if self.causal_encoder:
                 dec = dec[:, :, -target_frames:, :, :]
             else:
                 start_frame = (dec.shape[2] - target_frames) // 2
@@ -2388,7 +2165,7 @@ class AutoencoderKL(ModelMixin):
         pad_frames = self._decode_temporal_pad_frames(z, pad_tokens)
         return int(total_frames), int(pad_frames), int(total_frames - pad_frames)
 
-    def _decode_temporal_streaming(self, z, z_head, z_tail, num_chunks, pad_tokens, temporal_cat_dtype):
+    def _decode_temporal_streaming(self, z, z_head, z_tail, num_chunks, pad_tokens):
         total_frames, pad_frames, output_frames = self._decode_temporal_output_frame_plan(
             z, z_head, z_tail, num_chunks, pad_tokens
         )
@@ -2441,8 +2218,6 @@ class AutoencoderKL(ModelMixin):
 
             clip_dec = self._adaptive_decode(clip_z)
             decoded_count += 1
-            if temporal_cat_dtype is not None and clip_dec.dtype != temporal_cat_dtype:
-                clip_dec = clip_dec.to(temporal_cat_dtype)
             if clip_dec.device != z.device:
                 clip_dec = clip_dec.to(z.device)
 
@@ -2470,8 +2245,6 @@ class AutoencoderKL(ModelMixin):
                         dec_overlap = None
                     write_part(clip_dec_chunk)
                 else:
-                    # Break the view's reference to the full decoded clip so earlier
-                    # temporal chunks can be released before the final output exists.
                     dec_overlap = clip_dec_chunk.contiguous()
 
             if i == num_chunks - 1:
@@ -2532,11 +2305,8 @@ class AutoencoderKL(ModelMixin):
             pad_z = z[:, :, -1:, :, :].repeat(1, 1, pad_tokens, 1, 1)
             z = torch.cat([z, pad_z], dim=2)
 
-        temporal_cat_dtype = _resolve_temporal_cat_dtype()
         if not self.training and _resolve_temporal_stream_cat():
-            return self._decode_temporal_streaming(
-                z, z_head, z_tail, num_chunks, pad_tokens, temporal_cat_dtype
-            )
+            return self._decode_temporal_streaming(z, z_head, z_tail, num_chunks, pad_tokens)
 
         decoded_tasks = []
         for i in range(num_chunks):
@@ -2551,9 +2321,6 @@ class AutoencoderKL(ModelMixin):
                 clip_z = torch.cat([clip_z, z_tail], dim=2)
 
             clip_dec = self._adaptive_decode(clip_z)
-            if temporal_cat_dtype is not None and clip_dec.dtype != temporal_cat_dtype:
-                clip_dec = clip_dec.to(temporal_cat_dtype)
-
             decoded_tasks.append((i, clip_dec))
 
         clip_dec_list = [clip_dec.to(z.device) for _, clip_dec in decoded_tasks]
@@ -2628,12 +2395,6 @@ class AutoencoderKL(ModelMixin):
 
         return recon
 
-    #########################################################
-    # freeze_scope is retained from the training codebase: in this
-    # inference-only bundle (self.training is always False) it simply
-    # provides the no_grad() context used by encode()/decode().
-    #########################################################
-
 
     def freeze_scope(self, module_name):
         if not self.training:
@@ -2646,269 +2407,7 @@ class AutoencoderKL(ModelMixin):
             return nullcontext()
 
 
-
-
-
-
-
-
-    #########################################################
-    # following methods are for inference
-    #########################################################
-
-    @torch.no_grad()
-    def encode_images(
-        self,
-        images: Union[List[np.ndarray], List[torch.Tensor]],
-        transform_input: bool = False,
-        use_fp16_latent: bool = False,
-        verbose: bool = False,
-    ) -> List[torch.Tensor]:
-        """encode images into latents
-
-        Args:
-            images (Union[List[np.ndarray], List[torch.Tensor]]):
-                List of images, single input will be wrapped in a list.
-                If input is a list of np.ndarray, it should be in shape B * (H, W, 3), dtype uint8.
-                If input is a list of torch.Tensor, it should be in shape B * (3, H, W), dtype float32.
-            transform_input (bool, optional):
-                Whether to transform input using ImageNet std/mean. Defaults to False.
-                If input is a list of np.ndarray, it will always be set to True.
-            use_fp16_latent (bool, optional):
-                Whether to use fp16 latent. Defaults to False.
-            verbose (bool, optional):
-                Whether to print debug information. Defaults to False.
-
-        Returns:
-            List[torch.Tensor]:
-                List of image latents.
-                If self.use_3d_conv is True, it should be in shape B * (D, 1, H', W').
-                Otherwise, it should be in shape B * (D, H', W').
-        """
-
-        images = self.processor._ensure_list(images)
-
-        if isinstance(images[0], Image.Image):
-            images = [np.array(image) for image in images]
-
-        if isinstance(images[0], np.ndarray):
-            device = next(self.parameters()).device
-            images = self.processor.convert_numpy_to_tensor(images, device)
-            images = torch.split(images, 1, dim=0)
-            transform_input = True
-
-        if transform_input:
-            images = [
-                image.unsqueeze(0) if image.ndim == 3 else image for image in images
-            ]
-            images = [self.processor.transform_tensor(image) for image in images]
-
-        prepared = []
-        for image_tensor in images:
-            if image_tensor.ndim == 3:
-                image_tensor = image_tensor.unsqueeze(0)
-            _, _, h, w = image_tensor.shape
-            new_h, new_w = self.processor._align_to_total_patch_size(h, w)
-            image_tensor = self.processor._crop_to_align(image_tensor, new_h, new_w)
-            prepared.append(image_tensor)
-
-        if len(prepared) > 1 and len(set(t.shape for t in prepared)) == 1:
-            stacked = torch.cat(prepared, dim=0)
-            if verbose:
-                pass
-            all_latents = self.encode_base(stacked, True)
-            image_latents = [all_latents[i].contiguous() for i in range(all_latents.shape[0])]
-        else:
-            image_latents = []
-            for image_tensor in prepared:
-                if verbose:
-                    pass
-                image_latent = self.encode_base(image_tensor, True)
-                image_latents.append(image_latent.squeeze(0).contiguous())
-
-        if use_fp16_latent:
-            image_latents = [lat.to(torch.float16) for lat in image_latents]
-
-        if verbose:
-            for lat in image_latents:
-                pass
-
-        return image_latents
-
-    @torch.no_grad()
-    def encode_videos(
-        self,
-        videos: Union[List[np.ndarray], List[torch.Tensor]],
-        transform_input: bool = False,
-        use_fp16_latent: bool = False,
-        verbose: bool = False,
-        encode_prefix: bool = False,
-    ) -> List[torch.Tensor]:
-        """encode videos into latents
-
-        Args:
-            videos (Union[List[np.ndarray], List[torch.Tensor]]):
-                List of videos, single input will be wrapped in a list.
-                If input is a list of np.ndarray, it should be in shape B * (T, H, W, 3), dtype uint8.
-                If input is a list of torch.Tensor, it should be in shape B * (3, T, H, W), dtype float32.
-            transform_input (bool, optional):
-                Whether to transform input using ImageNet std/mean. Defaults to False.
-                If input is a list of np.ndarray, it will always be set to True.
-            use_fp16_latent (bool, optional):
-                Whether to use fp16 latent. Defaults to False.
-            verbose (bool, optional):
-                Whether to print debug information. Defaults to False.
-            encode_prefix (bool, optional):
-                Continuation (prefix) mode: prepend normalized
-                black frames to token alignment, append black frames to chunk
-                alignment, encode with token_drop disabled, then discard only
-                the trailing padding tokens. Returns both latents and leading
-                pad-frame counts. Defaults to False.
-
-        Returns:
-            List[torch.Tensor]:
-                List of video latents, shape B * (D, T', H', W').
-                With encode_prefix=True, returns
-                (List[torch.Tensor], List[int]).
-        """
-
-        videos = self.processor._ensure_list(videos)
-
-        if isinstance(videos[0], np.ndarray):
-            device = next(self.parameters()).device
-            videos = [self.processor.convert_numpy_to_tensor(video, device) for video in videos]
-            transform_input = True
-
-        if transform_input:
-            videos = [self.processor.transform_tensor(video) for video in videos]
-            videos = [video.transpose(0, 1) for video in videos]
-
-        if encode_prefix:
-            if self.isolated_last_frame:
-                raise ValueError(
-                    "encode_prefix does not support isolated_last_frame"
-                )
-
-            video_latents = []
-            prefix_pad_frames = []
-            for video in videos:
-                if video.ndim == 4:
-                    video = video.unsqueeze(0)
-                _, _, _, h, w = video.shape
-                new_h, new_w = self.processor._align_to_total_patch_size(h, w)
-                video = self.processor._crop_to_align(
-                    video, new_h, new_w, is_video=True
-                )
-
-                model_alignment = (
-                    self.token_drop,
-                    self.frame_drop,
-                    self.token_overlap,
-                    self.frame_overlap,
-                )
-                processor_alignment = (
-                    self.processor.token_overlap,
-                    self.processor.frame_overlap,
-                )
-                self.token_drop = 0
-                self.frame_drop = 0
-                self.token_overlap = 0
-                self.frame_overlap = 0
-                self.processor.token_overlap = 0
-                self.processor.frame_overlap = 0
-                try:
-                    orig_frames = video.shape[2]
-                    leading, trailing, drop_tokens = (
-                        self.processor.align_video_length_2pass(orig_frames)
-                    )
-                    _, _, _, cropped_h, cropped_w = video.shape
-                    if leading > 0:
-                        black = self.processor.transform(
-                            video.new_zeros(leading, 3, cropped_h, cropped_w)
-                        )
-                        black = black.unsqueeze(0).permute(0, 2, 1, 3, 4)
-                        video = torch.cat([black, video], dim=2)
-                    if trailing > 0:
-                        black = self.processor.transform(
-                            video.new_zeros(trailing, 3, cropped_h, cropped_w)
-                        )
-                        black = black.unsqueeze(0).permute(0, 2, 1, 3, 4)
-                        video = torch.cat([video, black], dim=2)
-
-                    if verbose:
-                        pass
-
-                    video_latent = self.encode_base(video, False)
-                    if drop_tokens > 0:
-                        video_latent = video_latent[:, :, :-drop_tokens, :, :]
-                    prefix_pad_frames.append(leading)
-                finally:
-                    (
-                        self.token_drop,
-                        self.frame_drop,
-                        self.token_overlap,
-                        self.frame_overlap,
-                    ) = model_alignment
-                    (
-                        self.processor.token_overlap,
-                        self.processor.frame_overlap,
-                    ) = processor_alignment
-
-                video_latents.append(video_latent.squeeze(0).contiguous())
-
-            if use_fp16_latent:
-                video_latents = [lat.to(torch.float16) for lat in video_latents]
-            if verbose:
-                for latent in video_latents:
-                    pass
-            return video_latents, prefix_pad_frames
-
-        prepared = []
-        for video in videos:
-            if video.ndim == 4:
-                video = video.unsqueeze(0)
-            used_frame_length = self.processor.get_suitable_video_length(video.shape[2], verbose)
-            _, _, _, h, w = video.shape
-            new_h, new_w = self.processor._align_to_total_patch_size(h, w)
-            video = video[:, :, :used_frame_length, :, :]
-            video = self.processor._crop_to_align(video, new_h, new_w, is_video=True)
-            prepared.append(video)
-
-        if len(prepared) > 1 and len(set(t.shape for t in prepared)) == 1:
-            stacked = torch.cat(prepared, dim=0)
-            if verbose:
-                pass
-            all_latents = self.encode_base(stacked, False)
-            video_latents = [all_latents[i].contiguous() for i in range(all_latents.shape[0])]
-        else:
-            video_latents = []
-            for video in prepared:
-                if verbose:
-                    pass
-                video_latent = self.encode_base(video, False)
-                video_latents.append(video_latent.squeeze(0).contiguous())
-
-        if use_fp16_latent:
-            video_latents = [lat.to(torch.float16) for lat in video_latents]
-
-        if verbose:
-            for lat in video_latents:
-                pass
-
-        return video_latents
-
-
-
-
-# ============================================================================
-# Legacy CNN VAE
-# ============================================================================
-
-
 class AutoencoderKLLegacy(AutoencoderKL):
-    r"""
-    A VAE model (legacy CNN-based) for encoding pixels into latents and decoding latent representations into pixels.
-    """
 
     @register_to_config
     def __init__(
@@ -2919,7 +2418,6 @@ class AutoencoderKLLegacy(AutoencoderKL):
         embed_dim=16,
         z_channels=16,
         use_3d_conv=False,
-        # cnn vae
         zq_ch_encoder=None,
         zq_ch_decoder=None,
         num_res_blocks=2,
@@ -2936,15 +2434,12 @@ class AutoencoderKLLegacy(AutoencoderKL):
         causal_decoder=True,
         use_vit_decoder=False,
         vit_decoder_kwargs=None,
-        # stats
         shift_factor=0.0,
         scaling_factor=1.0,
-        # pixel normalization
         pixel_norm_type="imagenet",
-        # others
         **kwargs,
     ):
-        ModelMixin.__init__(self)  # NOTE: avoid wrong @register_to_config
+        ModelMixin.__init__(self)
 
         if not use_3d_conv or not use_vit_decoder:
             raise NotImplementedError(
@@ -2959,17 +2454,14 @@ class AutoencoderKLLegacy(AutoencoderKL):
         self.causal_decoder = causal_decoder
         self.slidedec = self.causal_encoder and not self.causal_decoder
 
-        # some registered parameters for simplicity
         self.vae_ratio = int(np.cumprod(space_down)[-1])
         self.vae_ratio_t = int(np.cumprod(time_down)[-1]) if time_down else 1
         self.config["vae_ratio"] = self.vae_ratio
         self.config["vae_ratio_t"] = self.vae_ratio_t
 
-        # some registered parameters for inference and training
         self.setup_forward(**kwargs)
         self.setup_training(**kwargs)
 
-        # init encoder
         encoder_config = {
             "double_z": True,
             "z_channels": z_channels,
@@ -2987,13 +2479,11 @@ class AutoencoderKLLegacy(AutoencoderKL):
         }
         self.encoder = EncoderFCN3D(**encoder_config)
 
-        # init pointwise quant/post_quant conv
         self.quant_conv = nn.Conv3d(z_channels * 2, 2 * embed_dim, 1)
         self.post_quant_conv = nn.Conv3d(embed_dim, z_channels, 1)
 
         self.use_vit_decoder = use_vit_decoder
 
-        # init decoder
         vit_kwargs = {
             "patch_size": self.vae_ratio,
             "in_channels": z_channels,
@@ -3046,34 +2536,17 @@ class AutoencoderKLLegacy(AutoencoderKL):
 
         return z
 
-    #########################################################
-    # training-related knobs kept only for checkpoint/config compatibility
-    #########################################################
 
     def setup_training(self, **kwargs):
         self.fix_modules = kwargs.get("fix_modules", [])
         self.frozen_modules = kwargs.get("frozen_modules", [])
 
 
-# ======================================================================
-# ---- __init__.py ----
-# ======================================================================
-# MiniMax H3 video VAE (DiffSynth port of the checkpoint remote code).
-# Asymmetric KL VAE: causal 3D-CNN encoder + ViT-3D decoder, 24-ch latent,
-# 16x spatial / 4x temporal (17-frame -> 5-latent) compression. Single-card
-# only (sequence-parallel/distributed code removed). Defaults below come from
-# the checkpoint video_vae/source/config.json + video_vae/config.json.
-
-
-# Per-channel latent normalization (from video_vae/config.json). Decode does
-# latent * std + mean before running the VAE decoder.
 _VIDEO_LATENTS_MEAN = [0.858090341091156, -0.9606591463088989, 1.0661640167236328, -0.5090325474739075, -0.2727581858634949, -1.3675414323806763, -0.2553254961967468, -0.26907554268836975, -0.5376840829849243, -0.0464097298681736, 0.6657370328903198, 0.19690127670764923, -0.5460608005523682, -0.4035342037677765, -0.23683024942874908, 0.25928452610969543, -0.30133944749832153, 0.211341992020607, -1.1206848621368408, 0.3581933379173279, -0.04225143790245056, 0.2604829967021942, 0.22864092886447906, 0.7056031823158264]
 _VIDEO_LATENTS_STD = [1.2223774194717407, 1.2767263650894165, 1.6831774711608887, 1.7549455165863037, 1.5636216402053833, 2.194143533706665, 0.9653137922286987, 1.0569885969161987, 0.841948926448822, 0.7729952931404114, 1.8955937623977661, 0.946841835975647, 0.7996809482574463, 0.44988900423049927, 0.7197399735450745, 0.6936293244361877, 2.961095094680786, 2.7694199085235596, 3.0496184825897217, 2.1088054180145264, 3.276226282119751, 3.1627357006073, 2.2816812992095947, 2.6127843856811523]
 
 
 class MiniMaxH3VideoVAE(AutoencoderKLLegacy):
-    """Top-level video VAE. state_dict keys match the checkpoint 1:1
-    (encoder./decoder./quant_conv./post_quant_conv.)."""
 
     def __init__(
         self,
@@ -3168,16 +2641,34 @@ class MiniMaxH3VideoVAE(AutoencoderKLLegacy):
         )
 
     @torch.no_grad()
-    def decode_video(self, latents, tiled=True, tile_size=256, tile_overlap=64):
-        """Latents -> pixel frames. De-normalizes (latent*std+mean), decodes, and
-        reverts to a [1,3,T,H,W] tensor in [0,1]. Wraps (does not modify) decode_base.
-        `tiled` toggles decoder tiling to bound peak VRAM; tile_size/tile_overlap
-        control the tile geometry (default: 256/64 from checkpoint config)."""
-        device = latents.device
+    def encode_video(self, video, dtype=None, process_image=False, tiled=True, tile_size=256, tile_overlap=64):
+        device, out_dtype = video.device, video.dtype
+        x = self.processor.transform_tensor(video.to(torch.float32))
+        x = x.to(device=device, dtype=dtype if dtype is not None else out_dtype)
+
+        prev_tiling = self.encoder_tiling
+        prev_tile_size = self.tile_size
+        prev_overlap = self.tile_overlap_min
+        self.encoder_tiling = bool(tiled)
+        self.tile_size = tile_size
+        self.tile_overlap_min = tile_overlap
+        try:
+            z = self.encode_base(x, process_image=process_image)
+        finally:
+            self.encoder_tiling = prev_tiling
+            self.tile_size = prev_tile_size
+            self.tile_overlap_min = prev_overlap
+
+        mean = torch.tensor(_VIDEO_LATENTS_MEAN, device=z.device, dtype=torch.float32).view(1, -1, 1, 1, 1)
+        std = torch.tensor(_VIDEO_LATENTS_STD, device=z.device, dtype=torch.float32).view(1, -1, 1, 1, 1)
+        return ((z.to(torch.float32) - mean) / std).to(out_dtype)
+
+    @torch.no_grad()
+    def decode_video(self, latents, dtype=None, tiled=True, tile_size=256, tile_overlap=64):
+        device, out_dtype = latents.device, latents.dtype
         mean = torch.tensor(_VIDEO_LATENTS_MEAN, device=device, dtype=torch.float32).view(1, -1, 1, 1, 1)
         std = torch.tensor(_VIDEO_LATENTS_STD, device=device, dtype=torch.float32).view(1, -1, 1, 1, 1)
-        dtype = next(self.parameters()).dtype
-        z = (latents.to(device, torch.float32) * std + mean).to(dtype)
+        z = (latents.to(device, torch.float32) * std + mean).to(dtype if dtype is not None else out_dtype)
 
         prev_tiling = self.decoder_tiling
         prev_tile_size = self.decoder_tile_size
@@ -3193,7 +2684,7 @@ class MiniMaxH3VideoVAE(AutoencoderKLLegacy):
             self.decoder_tile_overlap_min = prev_overlap
 
         recon = recon[0] if isinstance(recon, (tuple, list)) else recon
-        return self.processor.revert_tensor(recon.float())  # [1,3,T,H,W] in [0,1]
+        return self.processor.revert_tensor(recon.float()).to(out_dtype)
 
 
 __all__ = ["MiniMaxH3VideoVAE"]

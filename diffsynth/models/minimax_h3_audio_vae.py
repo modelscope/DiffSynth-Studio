@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0
-# MiniMax H3 audio VAE: DAC-lineage waveform encoder + BigVGAN decoder.
-# Ported from the checkpoint's remote code (self-contained, pure PyTorch).
 import math
 from typing import List
 
@@ -32,7 +30,6 @@ def get_padding(kernel_size, dilation=1):
     return int((kernel_size * dilation - dilation) / 2)
 
 
-# ---------------- activations ----------------
 @torch.jit.script
 def snake(x, alpha):
     shape = x.shape
@@ -85,7 +82,6 @@ class SnakeBeta(nn.Module):
         return x
 
 
-# ---------------- alias-free (anti-aliasing) ----------------
 if "sinc" in dir(torch):
     sinc = torch.sinc
 else:
@@ -214,7 +210,6 @@ class Activation1d(nn.Module):
         return x
 
 
-# ---------------- attn projection (encoder head, unused by decode) ----------------
 class GeGluMlp(nn.Module):
     def __init__(self, in_features, hidden_features):
         super().__init__()
@@ -287,7 +282,6 @@ class AttnProjection(nn.Module):
         return x
 
 
-# ---------------- DAC encoder ----------------
 class ResidualUnit(nn.Module):
     def __init__(self, dim: int = 16, dilation: int = 1):
         super().__init__()
@@ -346,7 +340,6 @@ class Encoder(nn.Module):
         return self.block(x)
 
 
-# ---------------- BigVGAN decoder ----------------
 class AMPBlock1(torch.nn.Module):
     def __init__(self, h, channels, kernel_size=3, dilation=(1, 3, 5), activation=None):
         super().__init__()
@@ -449,21 +442,11 @@ class BigVGAN(torch.nn.Module):
         return x
 
 
-# Per-channel latent normalization (from audio_vae/config.json). Decode does
-# latent * std + mean before running the VAE decoder.
 _AUDIO_LATENTS_MEAN = [-0.020211687488382354, 0.3876466479950502, -0.04398279799186767, -0.28591514936373, 0.08179686214561671, -0.35782641352446604, 0.040623809960919084, -0.01552534501956604, -0.223362481667332, 0.1821006842509091, 0.2941778783780663, -0.07901167601970885, -0.056815072777201, -0.3699028221860095, -0.31616315591624855, 0.5905951377425391, -0.052139568068853864, 0.013673160263486295, -0.03691647864630577, 0.09732660653298163, -0.3394662328788498, -0.30685677538541667, -0.24504598907458763, -0.034698524462007344, 0.02868032184767538, -0.21217779266454084, -0.1678263169941987, 0.3221287889040614, -0.1223055851554907, 0.4356604928128464, -0.0502599202236253, 0.3979258376211797]
 _AUDIO_LATENTS_STD = [1.6895524230479284, 2.76263727217653, 1.7945344281264435, 1.6801681847309828, 1.6390226546605453, 2.7788298348882177, 1.7659090095747236, 1.6199757612137327, 2.6336525640336896, 1.8539356672817833, 2.5056497896915633, 1.811019237886178, 1.9579657790720237, 1.6685498243529284, 1.4922469314453364, 3.298670198067373, 1.9491804496832168, 1.8720003270431442, 1.8334080103291832, 1.6488070416529093, 1.6176957696319716, 1.9131449234774398, 1.5695245398428617, 1.6943659940415912, 1.8318420762504692, 1.5540637421583379, 1.9344930328968526, 1.599198216109855, 1.718045989838149, 1.6307219190837705, 1.8661226051202384, 1.5613768203168363]
 
 
 class MiniMaxH3AudioVAE(nn.Module):
-    """DAC-lineage waveform encoder + BigVGAN decoder. Continuous 32-ch Gaussian VAE.
-
-    state_dict keys match the checkpoint 1:1 (encoder./decoder./mean_proj./
-    logs_proj./dec_in_proj./pre_block.). weight_norm layers store the legacy
-    weight_g/weight_v names in the checkpoint; the state_dict_converter maps
-    them onto the parametrizations.weight.original0/original1 keys produced by
-    torch.nn.utils.parametrizations.weight_norm.
-    """
 
     def __init__(
         self,
@@ -544,7 +527,6 @@ class MiniMaxH3AudioVAE(nn.Module):
         return audio_data
 
     def encode(self, audio_data: torch.Tensor) -> torch.Tensor:
-        """Encode waveform [B,1,L] -> posterior mean latent [B, vae_latent_channels, T]."""
         z = self.encoder(audio_data)
         if self.attn_proj:
             z = self.pre_block(z.transpose(1, 2)).transpose(1, 2)
@@ -552,34 +534,39 @@ class MiniMaxH3AudioVAE(nn.Module):
         return mean
 
     def decode(self, z: torch.Tensor) -> torch.Tensor:
-        """Decode latent [B, vae_latent_channels, T] -> waveform [B, 1, L]."""
         z = self.dec_in_proj(z)
         return self.decoder(z)
 
     @torch.no_grad()
-    def decode_audio(self, latents: torch.Tensor) -> torch.Tensor:
-        """Latents [C, 32, T] (channel-as-batch) -> waveform [1, C, L]. De-normalizes
-        (latent*std+mean) then decodes; batched as [1, C, L] so the pipeline's
-        output_audio_format_check yields (channels, samples)."""
+    def encode_audio(self, waveform: torch.Tensor, dtype=None) -> torch.Tensor:
+        if waveform.dim() != 2:
+            raise ValueError(f"expected waveform [C, L], got {list(waveform.shape)}")
+        out_dtype = waveform.dtype
+        audio_data = waveform.unsqueeze(1).to(dtype if dtype is not None else out_dtype)
+        latent = self.encode(self.preprocess(audio_data))
+        latent_channels = len(_AUDIO_LATENTS_MEAN)
+        if latent.dim() != 3 or latent.shape[1] != latent_channels:
+            raise ValueError(
+                f"expected audio latent [C, {latent_channels}, T], got {list(latent.shape)}"
+            )
+        device = latent.device
+        mean = torch.tensor(_AUDIO_LATENTS_MEAN, device=device, dtype=torch.float32).view(1, -1, 1)
+        std = torch.tensor(_AUDIO_LATENTS_STD, device=device, dtype=torch.float32).view(1, -1, 1)
+        return ((latent.to(torch.float32) - mean) / std).to(out_dtype)
+
+    @torch.no_grad()
+    def decode_audio(self, latents: torch.Tensor, dtype=None) -> torch.Tensor:
         device = latents.device
         mean = torch.tensor(_AUDIO_LATENTS_MEAN, device=device, dtype=torch.float32).view(1, -1, 1)
         std = torch.tensor(_AUDIO_LATENTS_STD, device=device, dtype=torch.float32).view(1, -1, 1)
-        dtype = next(self.parameters()).dtype
-        z = (latents.to(device, torch.float32) * std + mean).to(dtype)
-        waveform = self.decode(z)        # [C, 1, L]
-        return waveform.transpose(0, 1)  # [1, C, L]
+        z = (latents.to(device, torch.float32) * std + mean).to(dtype if dtype is not None else latents.dtype)
+        waveform = self.decode(z)
+        return waveform.transpose(0, 1).to(latents.dtype)
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
         return self.decode(z)
 
     def remove_weight_norm(self):
-        """Fuse weight_norm parametrizations into plain weights (inference/export).
-
-        The conv layers use torch.nn.utils.parametrizations.weight_norm (new-style,
-        storing original0/original1), so removal goes through the parametrize API
-        with leave_parametrized=True, which bakes in the currently computed weight
-        (bit-exact to the parametrized forward) and drops the per-forward recompute.
-        """
         from torch.nn.utils.parametrize import remove_parametrizations
 
         for module in self.modules():

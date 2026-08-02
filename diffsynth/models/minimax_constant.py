@@ -39,10 +39,3 @@ MINIMAX_H3_SUPPORTED_FPS = 24
 # ---------------------------------------------------------------------------
 MINIMAX_H3_AUDIO_SAMPLE_RATE = 32000
 MINIMAX_H3_AUDIO_CHANNELS = 2
-
-# ---------------------------------------------------------------------------
-# Condition encoding determinism
-# ---------------------------------------------------------------------------
-MINIMAX_H3_KEYFRAME_ENCODE_SEED = 42
-# Ref: target reference_encoding.py:437
-MINIMAX_H3_REFERENCE_VIDEO_ENCODE_SEED = 42

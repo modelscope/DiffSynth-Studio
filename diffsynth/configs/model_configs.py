@@ -1352,7 +1352,6 @@ minimax_h3_series = [
         "model_hash": "db0197b6919425a5c7102c54e73affc1",
         "model_name": "minimax_h3_dit",
         "model_class": "diffsynth.models.minimax_h3_dit.MiniMaxH3DiT",
-        "extra_kwargs": {"keep_original_dtype": True},
     },
     {
         # Example: ModelConfig(model_id="MiniMaxAI/MiniMax-H3-FL2VA", origin_file_pattern="video_vae/source/model.safetensors")

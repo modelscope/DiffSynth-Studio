@@ -1,15 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
-# MiniMax H3 packed-token audio-video DiT (DiffSynth port).
-# Ported from the SGLang implementation with the parallel/serving layer removed:
-#   - ColumnParallelLinear/RowParallelLinear -> nn.Linear (single-card TP=1)
-#   - Ulysses sequence parallelism removed (single-card)
-#   - attention runs a segment-wise (cu_seqlens) loop that delegates each
-#     packed-document segment to DiffSynth's attention_forward (varlen kernel dropped)
-#   - fused qkv keeps the checkpoint's per-head-interleaved layout verbatim
-#     (no state_dict_converter); q/k/v are split in forward.
-# fp32 whitelist (patch projections, time embedder, output heads) + rope buffer
-# stay fp32; everything else is bf16 (dtypes come from the checkpoint via
-# keep_original_dtype loading).
 from __future__ import annotations
 
 import math
@@ -20,13 +8,7 @@ import torch.nn as nn
 from ..core.attention import attention_forward
 from ..core.gradient import gradient_checkpoint_forward
 
-_BF16_DTYPE = torch.bfloat16
-_FP32_DTYPE = torch.float32
-
 MINIMAX_H3_ADALN_MODALITY_NUM = 3
-
-# Latent <-> packed-DiT-row conversions used by the pipeline's model_fn.
-# Video uses a fixed [1,2,2] (t,h,w) patch; audio rows are channel-major.
 _PATCH_T, _PATCH_H, _PATCH_W = 1, 2, 2
 
 
@@ -57,8 +39,8 @@ def unpack_audio(rows: torch.Tensor, audio_channel: int, steps: int, latent_dim:
     return rows.reshape(audio_channel, steps, latent_dim).permute(0, 2, 1).contiguous()
 
 
-def _norm(size: int, *, eps: float, dtype: torch.dtype = _BF16_DTYPE) -> nn.RMSNorm:
-    return nn.RMSNorm(size, eps=eps, dtype=dtype)
+def _norm(size: int, *, eps: float) -> nn.RMSNorm:
+    return nn.RMSNorm(size, eps=eps)
 
 
 def _rotate_half(x: torch.Tensor) -> torch.Tensor:
@@ -75,21 +57,16 @@ def _apply_rope(x: torch.Tensor, freqs: torch.Tensor) -> torch.Tensor:
     return torch.cat((x_rot, x_pass), dim=-1)
 
 
-def _modulate_scale_shift(x, shift, scale, indices, *, dtype):
-    return (x * (1.0 + scale.index_select(0, indices)) + shift.index_select(0, indices)).to(dtype)
+def _modulate_scale_shift(x, shift, scale, indices):
+    # Cast back to x: index_select on the AdaLN params can promote the expression.
+    return (x * (1.0 + scale.index_select(0, indices)) + shift.index_select(0, indices)).to(x.dtype)
 
 
-def _modulate_gate(x, gate, other, indices, *, dtype):
-    return (x + gate.index_select(0, indices) * other).to(dtype)
+def _modulate_gate(x, gate, other, indices):
+    return (x + gate.index_select(0, indices) * other).to(x.dtype)
 
 
 def _sdpa_varlen_attention(q, k, v, cu_seqlens, softmax_scale):
-    """Segment-wise attention over packed documents delimited by cu_seqlens.
-
-    Attention never crosses packed-document boundaries (real tokens vs padding).
-    Each segment is a standard full attention, delegated to DiffSynth's unified
-    attention_forward (flash/sage/xformers when available, else torch SDPA).
-    """
     out = torch.empty_like(q)
     bounds = cu_seqlens.tolist()
     for start, stop in zip(bounds[:-1], bounds[1:]):
@@ -106,18 +83,19 @@ def _sdpa_varlen_attention(q, k, v, cu_seqlens, softmax_scale):
 class MiniMaxH3Rope(nn.Module):
     def __init__(self, inv_freq_len: int) -> None:
         super().__init__()
-        # RoPE inverse frequencies (theta=10000), computed deterministically so the
-        # value is correct even if VRAM/disk offload bypasses materializing it.
-        # Kept persistent so the state_dict key matches the checkpoint's rope.inv_freq
-        # (strict loaders accept it); the checkpoint overwrites it with the identical value.
-        inv_freq = 1.0 / (10000.0 ** (torch.arange(0, inv_freq_len, dtype=_FP32_DTYPE) / inv_freq_len))
-        self.register_buffer("inv_freq", inv_freq, persistent=True)
+        self.inv_freq_len = inv_freq_len
+        self.register_buffer("inv_freq", self._build_inv_freq(), persistent=True)
+
+    def _build_inv_freq(self, device=None) -> torch.Tensor:
+        steps = torch.arange(0, self.inv_freq_len, dtype=torch.float32, device=device)
+        return 1.0 / (10000.0 ** (steps / self.inv_freq_len))
 
     def forward(self, img_position_ids: torch.Tensor) -> torch.Tensor:
         if img_position_ids.dim() != 3 or img_position_ids.shape[0] != 1:
             raise ValueError(f"img_position_ids must be [1, S, 3], got {list(img_position_ids.shape)}")
-        pos = img_position_ids[0].to(_FP32_DTYPE)
-        per_axis = pos.unsqueeze(-1) * self.inv_freq.to(pos.device).view(1, 1, -1)
+        pos = img_position_ids[0].to(torch.float32)
+        inv_freq = self._build_inv_freq(pos.device)
+        per_axis = pos.unsqueeze(-1) * inv_freq.view(1, 1, -1)
         t_f, h_f, w_f = per_axis.unbind(dim=1)
         half = torch.cat((t_f, h_f, w_f), dim=-1)
         return torch.cat((half, half), dim=-1)
@@ -127,19 +105,17 @@ class MiniMaxH3TimeEmbedder(nn.Module):
     def __init__(self, timestep_input_dim, time_embed_hidden_size, time_embed_dim):
         super().__init__()
         self.frequency_embedding_size = timestep_input_dim
-        self.proj_in = nn.Linear(timestep_input_dim, time_embed_hidden_size, bias=True, dtype=_FP32_DTYPE)
-        self.proj_out = nn.Linear(time_embed_hidden_size, time_embed_dim, bias=True, dtype=_FP32_DTYPE)
+        self.proj_in = nn.Linear(timestep_input_dim, time_embed_hidden_size, bias=True)
+        self.proj_out = nn.Linear(time_embed_hidden_size, time_embed_dim, bias=True)
 
-    def forward(self, t: torch.Tensor) -> torch.Tensor:
+    def forward(self, t: torch.Tensor, *, dtype: torch.dtype) -> torch.Tensor:
         half = self.frequency_embedding_size // 2
         freqs = torch.exp(
-            -math.log(10000.0) * torch.arange(half, dtype=_FP32_DTYPE, device=t.device) / half
+            -math.log(10000.0) * torch.arange(half, dtype=torch.float32, device=t.device) / half
         )
-        args = t.to(_FP32_DTYPE)[:, None] * freqs[None]
+        args = t.to(torch.float32)[:, None] * freqs[None]
         t_freq = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
-        # Cast to the projection's actual weight dtype: fp32 under keep_original_dtype
-        # loading (bit-exact), or the VRAM offload dtype (e.g. bf16) when managed.
-        hidden = self.proj_in(t_freq.to(self.proj_in.weight.dtype))
+        hidden = self.proj_in(t_freq.to(dtype))
         hidden = nn.functional.silu(hidden)
         return self.proj_out(hidden)
 
@@ -151,16 +127,14 @@ class MiniMaxH3Attention(nn.Module):
         self.head_dim = attention_head_dim
         inner_dim = self.num_heads * self.head_dim
         self.softmax_scale = self.head_dim**-0.5
-        self.qkv_proj = nn.Linear(hidden_size, inner_dim * 3, bias=False, dtype=_BF16_DTYPE)
+        self.qkv_proj = nn.Linear(hidden_size, inner_dim * 3, bias=False)
         self.q_norm = _norm(attention_head_dim, eps=qk_norm_eps)
         self.k_norm = _norm(attention_head_dim, eps=qk_norm_eps)
-        self.out_proj = nn.Linear(inner_dim, hidden_size, bias=False, dtype=_BF16_DTYPE)
+        self.out_proj = nn.Linear(inner_dim, hidden_size, bias=False)
 
     def forward(self, x, *, rope_freqs, cu_seqlens, max_seqlen=None):
         total = x.shape[0]
         qkv = self.qkv_proj(x)
-        # Fused qkv keeps the checkpoint's per-head-interleaved layout
-        # [head0: q k v | head1: q k v | ...]; split per head.
         qkv = qkv.view(total, self.num_heads, 3, self.head_dim)
         q = qkv[:, :, 0, :]
         k = qkv[:, :, 1, :]
@@ -178,8 +152,8 @@ class MiniMaxH3Attention(nn.Module):
 class MiniMaxH3MLP(nn.Module):
     def __init__(self, hidden_size, ffn_hidden_size):
         super().__init__()
-        self.fc1 = nn.Linear(hidden_size, ffn_hidden_size * 2, bias=False, dtype=_BF16_DTYPE)
-        self.fc2 = nn.Linear(ffn_hidden_size, hidden_size, bias=False, dtype=_BF16_DTYPE)
+        self.fc1 = nn.Linear(hidden_size, ffn_hidden_size * 2, bias=False)
+        self.fc2 = nn.Linear(ffn_hidden_size, hidden_size, bias=False)
 
     def forward(self, x):
         hidden = self.fc1(x)
@@ -198,11 +172,11 @@ class MiniMaxH3AdalnProj(nn.Module):
         self.expand_ratio = expand_ratio
         self.modality_num = modality_num
         self.hidden_size = hidden_size
-        self.linear = nn.Linear(time_embed_dim, out_features, bias=True, dtype=_BF16_DTYPE)
+        self.linear = nn.Linear(time_embed_dim, out_features, bias=True)
 
     def forward(self, t_emb):
         x = nn.functional.silu(t_emb)
-        x = self.linear(x.to(self.linear.weight.dtype))
+        x = self.linear(x)
         m = x.shape[0]
         x = x.view(m * self.modality_num, self.expand_ratio * self.hidden_size)
         return tuple(x.chunk(self.expand_ratio, dim=-1))
@@ -249,14 +223,14 @@ class MiniMaxH3DiTBlock(nn.Module):
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaln_proj(t_emb)
         residual = x
         h = self.norm1(x)
-        h = _modulate_scale_shift(h, shift_msa, scale_msa, combined_indices, dtype=_BF16_DTYPE)
+        h = _modulate_scale_shift(h, shift_msa, scale_msa, combined_indices)
         h = self.attn(h, rope_freqs=rope_freqs, cu_seqlens=cu_seqlens, max_seqlen=max_seqlen)
-        x = _modulate_gate(residual, gate_msa, h, combined_indices, dtype=_BF16_DTYPE)
+        x = _modulate_gate(residual, gate_msa, h, combined_indices)
         residual = x
         h = self.norm2(x)
-        h = _modulate_scale_shift(h, shift_mlp, scale_mlp, combined_indices, dtype=_BF16_DTYPE)
+        h = _modulate_scale_shift(h, shift_mlp, scale_mlp, combined_indices)
         h = self.mlp(h)
-        return _modulate_gate(residual, gate_mlp, h, combined_indices, dtype=_BF16_DTYPE)
+        return _modulate_gate(residual, gate_mlp, h, combined_indices)
 
 
 class MiniMaxH3FinalLayer(nn.Module):
@@ -265,21 +239,19 @@ class MiniMaxH3FinalLayer(nn.Module):
         video_patch_dim = latents_dim * patch_size[0] * patch_size[1] * patch_size[2]
         self.norm = _norm(hidden_size, eps=final_norm_eps)
         self.adaln_proj = MiniMaxH3AdalnProj(hidden_size, time_embed_dim, final_adaln_out_features, expand_ratio=2, modality_num=1)
-        self.video_out = nn.Linear(hidden_size, video_patch_dim, bias=True, dtype=_FP32_DTYPE)
-        self.audio_out = nn.Linear(hidden_size, audio_latents_dim, bias=True, dtype=_FP32_DTYPE)
+        self.video_out = nn.Linear(hidden_size, video_patch_dim, bias=True)
+        self.audio_out = nn.Linear(hidden_size, audio_latents_dim, bias=True)
 
     def forward(self, x, *, t_emb, inverse_indices):
         shift, scale = self.adaln_proj(t_emb)
         h = self.norm(x)
-        h = _modulate_scale_shift(h, shift, scale, inverse_indices, dtype=_BF16_DTYPE)
-        h = h.to(self.video_out.weight.dtype)
+        h = _modulate_scale_shift(h, shift, scale, inverse_indices)
         video = self.video_out(h)
         audio = self.audio_out(h)
         return video, audio
 
 
 class MiniMaxH3DiT(nn.Module):
-    # Regional torch.compile targets the repeated transformer block type.
     _repeated_blocks = ["MiniMaxH3DiTBlock"]
 
     def __init__(
@@ -311,9 +283,9 @@ class MiniMaxH3DiT(nn.Module):
         self.num_channels_latents = latents_dim
         video_patch_dim = latents_dim * patch_size[0] * patch_size[1] * patch_size[2]
 
-        self.video_patch_proj = nn.Linear(video_patch_dim, hidden_size, bias=True, dtype=_FP32_DTYPE)
-        self.audio_patch_proj = nn.Linear(audio_latents_dim, hidden_size, bias=True, dtype=_FP32_DTYPE)
-        self.condition_proj = nn.Linear(text_dim, hidden_size, bias=True, dtype=_BF16_DTYPE)
+        self.video_patch_proj = nn.Linear(video_patch_dim, hidden_size, bias=True)
+        self.audio_patch_proj = nn.Linear(audio_latents_dim, hidden_size, bias=True)
+        self.condition_proj = nn.Linear(text_dim, hidden_size, bias=True)
         self.time_embedder = MiniMaxH3TimeEmbedder(timestep_input_dim, time_embed_hidden_size, time_embed_dim)
         self.rope = MiniMaxH3Rope(rope_inv_freq_len)
         self.token_refiner = MiniMaxH3TokenRefiner(
@@ -326,20 +298,21 @@ class MiniMaxH3DiT(nn.Module):
         self.final_layer = MiniMaxH3FinalLayer(hidden_size, time_embed_dim, final_adaln_out_features, latents_dim, audio_latents_dim, patch_size, final_norm_eps)
 
     def _embed(self, *, x, audio_x, text_embeddings_selected, unique_timesteps, img_pos, audio_pos, text_pos, refiner_cu_seqlens, refiner_max_seqlen, seq_len, device):
-        x_rows = x.view(-1, x.shape[-1]).index_select(0, img_pos).to(self.video_patch_proj.weight.dtype)
+        dtype = text_embeddings_selected.dtype
+        x_rows = x.view(-1, x.shape[-1]).index_select(0, img_pos).to(dtype)
         video_embed = self.video_patch_proj(x_rows)
-        audio_rows = audio_x.view(-1, audio_x.shape[-1]).index_select(0, audio_pos).to(self.audio_patch_proj.weight.dtype)
+        audio_rows = audio_x.view(-1, audio_x.shape[-1]).index_select(0, audio_pos).to(dtype)
         audio_embed = self.audio_patch_proj(audio_rows)
-        text_rows = text_embeddings_selected.to(device=device, dtype=_BF16_DTYPE)
+        text_rows = text_embeddings_selected.to(device=device)
         text_embed = self.condition_proj(text_rows)
         text_embed = self.token_refiner(text_embed, cu_seqlens=refiner_cu_seqlens, max_seqlen=refiner_max_seqlen)
 
-        embeddings = torch.zeros((seq_len, self.hidden_size), device=device, dtype=_BF16_DTYPE)
-        embeddings.index_add_(0, text_pos, text_embed.to(_BF16_DTYPE)[: text_pos.shape[0]])
-        embeddings.index_add_(0, img_pos, video_embed.to(_BF16_DTYPE)[: img_pos.shape[0]])
-        embeddings.index_add_(0, audio_pos, audio_embed.to(_BF16_DTYPE)[: audio_pos.shape[0]])
+        embeddings = torch.zeros((seq_len, self.hidden_size), device=device, dtype=dtype)
+        embeddings.index_add_(0, text_pos, text_embed.to(dtype)[: text_pos.shape[0]])
+        embeddings.index_add_(0, img_pos, video_embed.to(dtype)[: img_pos.shape[0]])
+        embeddings.index_add_(0, audio_pos, audio_embed.to(dtype)[: audio_pos.shape[0]])
 
-        t_emb = self.time_embedder(unique_timesteps)
+        t_emb = self.time_embedder(unique_timesteps, dtype=dtype)
         return embeddings, t_emb
 
     def forward(
