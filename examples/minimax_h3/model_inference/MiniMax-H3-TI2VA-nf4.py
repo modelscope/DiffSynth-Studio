@@ -1,6 +1,5 @@
 import torch
 from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
-from diffsynth.core.quant import QuantizeConfig
 from diffsynth.utils.data.audio_video import write_video_audio
 from modelscope import dataset_snapshot_download
 from PIL import Image
