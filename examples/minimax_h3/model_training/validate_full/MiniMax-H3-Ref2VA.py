@@ -19,15 +19,13 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
     device="cuda",
     model_configs=[
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="Ref2VA/text_encoder/model*.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="Ref2VA/transformer/model*.safetensors", **vram_config),
+        ModelConfig(path="models/train/MiniMax-H3-Ref2VA-full/epoch-1.safetensors", **vram_config),
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="Ref2VA/video_vae/source/model.safetensors", **vram_config),
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="Ref2VA/audio_vae/model.safetensors", **vram_config),
     ],
     processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="Ref2VA/processor/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 5,
 )
-pipe.load_lora(pipe.dit, "models/train/MiniMax-H3-Ref2VA-split/epoch-4.safetensors")
-
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
@@ -45,7 +43,7 @@ video, audio = pipe(
     references=[{"type": "image", "image": ref_image}],
 )
 write_video_audio(
-    video=video, audio=audio, output_path="minimax_h3_ref2va_lora.mp4",
+    video=video, audio=audio, output_path="minimax_h3_ref2va_full.mp4",
     fps=24, audio_sample_rate=pipe.audio_vae.sample_rate,
 )
-print("saved minimax_h3_ref2va_lora.mp4", "frames:", len(video), "audio:", tuple(audio.shape))
+print("saved minimax_h3_ref2va_full.mp4", "frames:", len(video), "audio:", tuple(audio.shape))

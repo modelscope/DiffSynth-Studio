@@ -21,7 +21,7 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-text-encoder-nf4.safetensors", **vram_config),
         ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-nf4.safetensors", **vram_config),
         ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="video_vae_nf4.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="audio_vae_nf4.safetensors", **vram_config),
     ],
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
@@ -29,13 +29,13 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="minimax_h3/MiniMax-H3-TI2VA/*",
+    allow_file_pattern="minimax_h3/MiniMax-H3-FL2VA/*",
 )
-dataset_base_path = "data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-TI2VA"
+dataset_base_path = "data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA"
 height, width, num_frames = 480, 832, 124
 
 prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
-pipe.load_lora(pipe.dit, "models/train/MiniMax-H3-T2VA-nf4/epoch-0.safetensors")
+pipe.load_lora(pipe.dit, "models/train/MiniMax-H3-T2VA-nf4/epoch-4.safetensors")
 video, audio = pipe(
     prompt=prompt,
     height=height, width=width, num_frames=num_frames,
