@@ -64,10 +64,10 @@ print("saved minimax_h3_t2va_quant_nf4.mp4", "frames:", len(video), "audio:", tu
 
 |模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
-|[MiniMax/MiniMax-H3: TI2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-TI2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-TI2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-TI2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-TI2VA.py)|
-|[MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py)|
-|[DiffSynth-Studio/MiniMax-H3-NF4: TI2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-TI2VA-nf4.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-TI2VA-nf4.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-TI2VA-nf4.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-TI2VA-nf4.py)|
-|[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA-nf4.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA-nf4.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA-nf4.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA-nf4.py)|
+|[MiniMax/MiniMax-H3: FL2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-FL2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-FL2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FL2VA.py)|
+|[MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py)|
+|[DiffSynth-Studio/MiniMax-H3-NF4: FL2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-NF4-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-FL2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-FL2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-FL2VA.py)|
+|[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Ref2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Ref2VA.py)|
 
 模型权重分为两个分区：`FL2VA` 分区服务文生音视频与首尾帧引导生成，`Ref2VA` 分区服务参考驱动生成，两者的 DiT 与文本编码器权重不同，需按任务选择对应分区的 `origin_file_pattern`。
 
@@ -168,6 +168,26 @@ MiniMax-H3 系列模型统一通过 [`examples/minimax_h3/model_training/train.p
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --local_dir ./data/diffsynth_example_dataset
 ```
 
-LoRA 训练脚本采用两阶段流程：先以 `--task "sft:data_process"` 预处理并缓存数据集，再以 `--task "sft:train"` 执行正式训练；LoRA 默认作用于 DiT 的 `qkv_proj,out_proj` 模块，rank 为 32。首尾帧引导（FL2VA）训练在 `--extra_inputs` 中追加 `input_image,end_image`，分别取训练视频的首帧与尾帧作为条件。
+LoRA 训练脚本采用两阶段流程：先以 `--task "sft:data_process"` 预处理并缓存数据集，再以 `--task "sft:train"` 执行正式训练。之所以必须分阶段，是因为 DiT 与 Qwen3-VL 文本编码器无法同时载入单卡。LoRA 默认作用于 DiT 的 `qkv_proj,out_proj` 模块，rank 为 32。全量训练同样采用两阶段流程，第二阶段通过 [`accelerate_config_zero3.yaml`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/accelerate_config_zero3.yaml) 启用 DeepSpeed ZeRO-3，并以 `--trainable_models "dit"` 指定训练对象。
+
+NF4 量化版本的 LoRA 训练为单阶段流程：量化后所有组件可同时载入单卡，无需预先缓存数据集。此时必须显式指定 `--lora_target_modules`，因为量化权重在 state dict 中以打包形式存储，自动探测无法识别其形状。
+
+首尾帧引导（FL2VA）训练在 `--extra_inputs` 中追加 `input_image,end_image`，分别取训练视频的首帧与尾帧作为条件，数据集无需额外列。参考驱动（Ref2VA）训练使用 `metadata.json`，其中 `references` 字段为一组参考块，支持 `image`、`video`、`audio`、`video_audio` 四种类型：
+
+```json
+[
+  {
+    "video": "train_video.mp4",
+    "prompt": "...",
+    "input_audio": "train_video.mp4",
+    "references": [
+      {"type": "image", "image": "0.png"}
+    ],
+    "frame_rate": 24
+  }
+]
+```
+
+`references` 需同时出现在 `--data_file_keys` 与 `--extra_inputs` 中，前者负责按类型加载文件，后者负责将参考块注入 Pipeline。参考图像以原生分辨率交给 Pipeline（其内部会按参考短边重新缩放），参考视频则裁剪到训练画布并按 24fps 采样。
 
 我们为每个模型编写了推荐的训练脚本，请参考前文“模型总览”中的表格。关于如何编写模型训练脚本，请参考[模型训练](../Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/zh/Training/)。
