@@ -1372,11 +1372,11 @@ minimax_h3_series = [
     },
     {
         # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-text-encoder-nf4.safetensors")
-        "model_hash": "14c8a9ac1e38161b6989158689d8b28b",
+        "model_hash": "297933c3a2b0fc4d4dfee30e34c566b8",
         "model_name": "minimax_h3_text_encoder",
         "model_class": "diffsynth.models.minimax_h3_text_encoder.MiniMaxH3TextEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_text_encoder.MiniMaxH3TextEncoderStateDictConverter",
-        "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True},
+        "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["qkv", "proj", "linear_fc1", "linear_fc2"]},
     },
     {
         # Example: ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/transformer/model*.safetensors")
