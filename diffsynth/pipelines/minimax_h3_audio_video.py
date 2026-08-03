@@ -30,6 +30,8 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.units = [
             MiniMaxH3Unit_ShapeChecker(),
             MiniMaxH3Unit_NoiseInitializer(),
+            MiniMaxH3Unit_InputVideoEmbedder(),
+            MiniMaxH3Unit_InputAudioEmbedder(),
             MiniMaxH3Unit_KeyframeEncoder(),
             MiniMaxH3Unit_ReferenceEncoder(),
             MiniMaxH3Unit_PromptEmbedder(),
@@ -407,6 +409,64 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
         return {"prompt_embeds": hidden[0].to(pipe.device, pipe.torch_dtype), "text_token_tags": text_token_tags.to(pipe.device, torch.long)}
 
 
+def _encode_audio_waveform(pipe: "MiniMaxH3Pipeline", waveform: torch.Tensor, sample_rate: int) -> torch.Tensor:
+    import torchaudio  # local import; needed only for resample
+
+    pipe.load_models_to_device(("audio_vae",))
+
+    if waveform.dim() == 3:
+        waveform = waveform.squeeze(0)  # [1,C,L] -> [C,L]
+    if waveform.dim() != 2:
+        raise ValueError(f"expected audio waveform [C, L], got {list(waveform.shape)}")
+    waveform = waveform.float()
+
+    if int(sample_rate) != MINIMAX_H3_AUDIO_SAMPLE_RATE:
+        waveform = torchaudio.transforms.Resample(int(sample_rate), MINIMAX_H3_AUDIO_SAMPLE_RATE)(waveform)
+
+    if waveform.shape[0] < MINIMAX_H3_AUDIO_CHANNELS:
+        repeats = (MINIMAX_H3_AUDIO_CHANNELS + waveform.shape[0] - 1) // waveform.shape[0]
+        waveform = waveform.repeat(repeats, 1)
+
+    return pipe.audio_vae.encode_audio(
+        waveform[:MINIMAX_H3_AUDIO_CHANNELS].to(pipe.device), dtype=pipe.torch_dtype,
+    )  # [C, 32, T]
+
+
+class MiniMaxH3Unit_InputVideoEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("input_video",),
+            output_params=("video_latents", "input_latents"),
+            onload_model_names=("video_vae",)
+        )
+
+    def process(self, pipe: MiniMaxH3Pipeline, input_video):
+        if input_video is None or not pipe.scheduler.training:
+            return {}
+        pipe.load_models_to_device(self.onload_model_names)
+        used = _trim_reference_video_length(len(input_video))
+        frames_np = np.stack([np.asarray(f.convert("RGB")) for f in input_video[:used]], axis=0)
+        frames_tensor = torch.from_numpy(frames_np).permute(3, 0, 1, 2).unsqueeze(0).float() / 255.0
+        latents = pipe.video_vae.encode_video(frames_tensor.to(pipe.device), dtype=pipe.torch_dtype).to(pipe.torch_dtype)
+        return {"video_latents": latents, "input_latents": latents}
+
+
+class MiniMaxH3Unit_InputAudioEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("input_audio",),
+            output_params=("audio_latents", "audio_input_latents"),
+            onload_model_names=("audio_vae",)
+        )
+
+    def process(self, pipe: MiniMaxH3Pipeline, input_audio):
+        if input_audio is None or not pipe.scheduler.training:
+            return {}
+        waveform, sample_rate = input_audio
+        latents = _encode_audio_waveform(pipe, waveform, int(sample_rate)).to(pipe.torch_dtype)  # [C,32,T]
+        return {"audio_latents": latents, "audio_input_latents": latents}
+
+
 class MiniMaxH3Unit_KeyframeEncoder(PipelineUnit):
     def __init__(self):
         super().__init__(
@@ -542,26 +602,7 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
         return rows, int(z.shape[2]), int(z.shape[3]), int(z.shape[4]), prepared_frames
 
     def _encode_audio_ref(self, pipe, waveform, sample_rate: int):
-        import torchaudio  # local import; needed only for resample
-
-        pipe.load_models_to_device(("audio_vae",))
-
-        if waveform.dim() == 3:
-            waveform = waveform.squeeze(0)  # [1,C,L] -> [C,L]
-        if waveform.dim() != 2:
-            raise ValueError(f"expected audio waveform [C, L], got {list(waveform.shape)}")
-        waveform = waveform.float()
-
-        if int(sample_rate) != MINIMAX_H3_AUDIO_SAMPLE_RATE:
-            waveform = torchaudio.transforms.Resample(int(sample_rate), MINIMAX_H3_AUDIO_SAMPLE_RATE)(waveform)
-
-        if waveform.shape[0] < MINIMAX_H3_AUDIO_CHANNELS:
-            repeats = (MINIMAX_H3_AUDIO_CHANNELS + waveform.shape[0] - 1) // waveform.shape[0]
-            waveform = waveform.repeat(repeats, 1)
-
-        latent = pipe.audio_vae.encode_audio(
-            waveform[:MINIMAX_H3_AUDIO_CHANNELS].to(pipe.device), dtype=pipe.torch_dtype,
-        )  # [C, 32, T]
+        latent = _encode_audio_waveform(pipe, waveform, sample_rate)  # [C, 32, T]
         return pack_audio(latent), int(latent.shape[-1])
 
     @staticmethod

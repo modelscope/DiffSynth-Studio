@@ -1583,10 +1583,10 @@ Example code for MiniMax-H3 is available at: [/examples/minimax_h3/](/examples/m
 
 | Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
 |-|-|-|-|-|-|-|
-|[MiniMax/MiniMax-H3: TI2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-TI2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-TI2VA.py)|-|-|-|-|
-|[MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py)|-|-|-|-|
-|[DiffSynth-Studio/MiniMax-H3-NF4: TI2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-TI2VA-nf4.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-TI2VA-nf4.py)|-|-|-|-|
-|[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA-nf4.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA-nf4.py)|-|-|-|-|
+|[MiniMax/MiniMax-H3: TI2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-TI2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-TI2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-TI2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-TI2VA.py)|
+|[MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py)|
+|[DiffSynth-Studio/MiniMax-H3-NF4: TI2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-TI2VA-nf4.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-TI2VA-nf4.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-TI2VA-nf4.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-TI2VA-nf4.py)|
+|[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA-nf4.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA-nf4.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA-nf4.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA-nf4.py)|
 
 </details>
 
