@@ -119,7 +119,7 @@ class BitsAndBytesQuantBackend(QuantBackend):
             if weight_key not in rebuilt:
                 raise ValueError(f"Found quant state for `{weight_key}` but no packed weight.")
             rebuilt[weight_key] = bnb.nn.Params4bit.from_prequantized(
-                data=rebuilt[weight_key], quantized_stats=stats, requires_grad=False,
+                data=rebuilt[weight_key], quantized_stats=stats, requires_grad=False, device=rebuilt[weight_key].device,
             )
         return rebuilt
 
