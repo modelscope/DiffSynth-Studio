@@ -1,9 +1,9 @@
-modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "minimax_h3/MiniMax-H3-TI2VA/*" --local_dir ./data/diffsynth_example_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "minimax_h3/MiniMax-H3-FL2VA/*" --local_dir ./data/diffsynth_example_dataset
 
 # T2VA - stage 1 (data process)
 accelerate launch examples/minimax_h3/model_training/train.py \
-  --dataset_base_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-TI2VA \
-  --dataset_metadata_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-TI2VA/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA \
+  --dataset_metadata_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA/metadata.csv \
   --data_file_keys "video,input_audio" \
   --extra_inputs "input_audio" \
   --height 480 \
@@ -45,8 +45,8 @@ accelerate launch examples/minimax_h3/model_training/train.py \
 # input_image / end_image take the first and last frame of the training video
 # FL2VA - stage 1 (data process)
 accelerate launch examples/minimax_h3/model_training/train.py \
-  --dataset_base_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-TI2VA \
-  --dataset_metadata_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-TI2VA/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA \
+  --dataset_metadata_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA/metadata.csv \
   --data_file_keys "video,input_audio" \
   --extra_inputs "input_audio,input_image,end_image" \
   --height 480 \
