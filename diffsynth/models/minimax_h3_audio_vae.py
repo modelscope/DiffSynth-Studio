@@ -6,8 +6,124 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import Conv1d, ConvTranspose1d, Parameter
-from torch.nn.utils.parametrizations import weight_norm
+from torch.nn import Parameter
+
+
+class WeightNormedConv1d(torch.nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride = 1, padding = 0, dilation = 1, groups = 1, bias = True, padding_mode = "zeros", device=None, dtype=None):
+        super().__init__()
+        self.weight_g = torch.nn.Parameter(torch.empty((out_channels, 1, 1)))
+        self.weight_v = torch.nn.Parameter(torch.empty((out_channels, in_channels, kernel_size)))
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
+        self.groups = groups
+        if bias:
+            self.bias = torch.nn.Parameter(torch.empty((out_channels,)))
+        else:
+            self.bias = None
+
+    def forward(self, input):
+        dtype = self.weight_g.dtype
+        weight = (self.weight_g.float() * self.weight_v.float() / torch.norm(self.weight_v.float(), dim=(1, 2), keepdim=True)).to(dtype)
+        return torch.nn.functional.conv1d(
+            input, weight, self.bias, self.stride, self.padding, self.dilation, self.groups
+        )
+
+
+class WeightNormedConvTranspose1d(torch.nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride = 1, padding = 0, output_padding = 0, dilation = 1, groups = 1, bias = True, padding_mode = "zeros", device=None, dtype=None):
+        super().__init__()
+        self.weight_g = torch.nn.Parameter(torch.empty((in_channels, 1, 1)))
+        self.weight_v = torch.nn.Parameter(torch.empty((in_channels, out_channels, kernel_size)))
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = (padding,)
+        self.output_padding = output_padding
+        self.dilation = dilation
+        self.groups = groups
+        if bias:
+            self.bias = torch.nn.Parameter(torch.empty((out_channels,)))
+        else:
+            self.bias = None
+
+    def _output_padding(
+        self,
+        input,
+        output_size: list[int] | None,
+        stride: list[int],
+        padding: list[int],
+        kernel_size: list[int],
+        num_spatial_dims: int,
+        dilation: list[int] | None = None,
+    ) -> list[int]:
+        if output_size is None:
+            ret = self.output_padding
+        else:
+            has_batch_dim = input.dim() == num_spatial_dims + 2
+            num_non_spatial_dims = 2 if has_batch_dim else 1
+            if len(output_size) == num_non_spatial_dims + num_spatial_dims:
+                output_size = output_size[num_non_spatial_dims:]
+            if len(output_size) != num_spatial_dims:
+                raise ValueError(
+                    f"ConvTranspose{num_spatial_dims}D: for {input.dim()}D input, output_size must have {num_spatial_dims} "
+                    f"or {num_non_spatial_dims + num_spatial_dims} elements (got {len(output_size)})"
+                )
+
+            min_sizes = torch.jit.annotate(list[int], [])
+            max_sizes = torch.jit.annotate(list[int], [])
+            for d in range(num_spatial_dims):
+                dim_size = (
+                    (input.size(d + num_non_spatial_dims) - 1) * stride[d]
+                    - 2 * padding[d]
+                    + (dilation[d] if dilation is not None else 1)
+                    * (kernel_size[d] - 1)
+                    + 1
+                )
+                min_sizes.append(dim_size)
+                max_sizes.append(min_sizes[d] + stride[d] - 1)
+
+            for i in range(len(output_size)):
+                size = output_size[i]
+                min_size = min_sizes[i]
+                max_size = max_sizes[i]
+                if size < min_size or size > max_size:
+                    raise ValueError(
+                        f"requested an output size of {output_size}, but valid sizes range "
+                        f"from {min_sizes} to {max_sizes} (for an input of {input.size()[2:]})"
+                    )
+
+            res = torch.jit.annotate(list[int], [])
+            for d in range(num_spatial_dims):
+                res.append(output_size[d] - min_sizes[d])
+
+            ret = res
+        return ret
+
+    def forward(self, input, output_size=None):
+        dtype = self.weight_g.dtype
+        weight = (self.weight_g.float() * self.weight_v.float() / torch.norm(self.weight_v.float(), dim=(1, 2), keepdim=True)).to(dtype)
+        assert isinstance(self.padding, tuple)
+        num_spatial_dims = 1
+        output_padding = self._output_padding(
+            input,
+            output_size,
+            self.stride,  # type: ignore[arg-type]
+            self.padding,  # type: ignore[arg-type]
+            self.kernel_size,  # type: ignore[arg-type]
+            num_spatial_dims,
+            self.dilation,  # type: ignore[arg-type]
+        )
+        return F.conv_transpose1d(
+            input,
+            weight,
+            self.bias,
+            self.stride,
+            self.padding,
+            output_padding,
+            self.groups,
+            self.dilation,
+        )
 
 
 class AttrDict(dict):
@@ -17,20 +133,20 @@ class AttrDict(dict):
 
 
 def WNConv1d(*args, **kwargs):
-    return weight_norm(nn.Conv1d(*args, **kwargs))
+    return WeightNormedConv1d(*args, **kwargs)
 
 
 def init_weights(m, mean=0.0, std=0.01):
-    classname = m.__class__.__name__
-    if classname.find("Conv") != -1:
-        m.weight.data.normal_(mean, std)
+    pass
+    # classname = m.__class__.__name__
+    # if classname.find("Conv") != -1:
+    #     m.weight.data.normal_(mean, std)
 
 
 def get_padding(kernel_size, dilation=1):
     return int((kernel_size * dilation - dilation) / 2)
 
 
-@torch.jit.script
 def snake(x, alpha):
     shape = x.shape
     x = x.reshape(shape[0], shape[1], -1)
@@ -48,7 +164,6 @@ class Snake1d(nn.Module):
         return snake(x, self.alpha)
 
 
-@torch.jit.script
 def snakebeta(x, alpha, beta):
     shape = x.shape
     x = x.reshape(shape[0], shape[1], -1)
@@ -141,13 +256,13 @@ class LowPassFilter1d(nn.Module):
         self.padding = padding
         self.padding_mode = padding_mode
         filter = kaiser_sinc_filter1d(cutoff, half_width, kernel_size)
-        self.register_buffer("filter", filter)
+        self.filter = torch.nn.Parameter(filter)
 
     def forward(self, x):
         _, C, _ = x.shape
         if self.padding:
             x = F.pad(x, (self.pad_left, self.pad_right), mode=self.padding_mode)
-        out = F.conv1d(x, self.filter.expand(C, -1, -1), stride=self.stride, groups=C)
+        out = F.conv1d(x, self.filter.expand(C, -1, -1).to(dtype=x.dtype, device=x.device), stride=self.stride, groups=C)
         return out
 
 
@@ -161,12 +276,12 @@ class UpSample1d(nn.Module):
         self.pad_left = self.pad * self.stride + (self.kernel_size - self.stride) // 2
         self.pad_right = self.pad * self.stride + (self.kernel_size - self.stride + 1) // 2
         filter = kaiser_sinc_filter1d(cutoff=0.5 / ratio, half_width=0.6 / ratio, kernel_size=self.kernel_size)
-        self.register_buffer("filter", filter)
+        self.filter = torch.nn.Parameter(filter)
 
     def forward(self, x):
         _, C, _ = x.shape
         x = F.pad(x, (self.pad, self.pad), mode="replicate")
-        x = self.ratio * F.conv_transpose1d(x, self.filter.expand(C, -1, -1), stride=self.stride, groups=C)
+        x = self.ratio * F.conv_transpose1d(x, self.filter.expand(C, -1, -1).to(dtype=x.dtype, device=x.device), stride=self.stride, groups=C)
         x = x[..., self.pad_left : -self.pad_right]
         return x
 
@@ -346,14 +461,14 @@ class AMPBlock1(torch.nn.Module):
         self.h = h
         self.convs1 = nn.ModuleList(
             [
-                weight_norm(Conv1d(channels, channels, kernel_size, stride=1, dilation=d, padding=get_padding(kernel_size, d)))
+                WeightNormedConv1d(channels, channels, kernel_size, stride=1, dilation=d, padding=get_padding(kernel_size, d))
                 for d in dilation
             ]
         )
         self.convs1.apply(init_weights)
         self.convs2 = nn.ModuleList(
             [
-                weight_norm(Conv1d(channels, channels, kernel_size, stride=1, dilation=1, padding=get_padding(kernel_size, 1)))
+                WeightNormedConv1d(channels, channels, kernel_size, stride=1, dilation=1, padding=get_padding(kernel_size, 1))
                 for _ in range(len(dilation))
             ]
         )
@@ -383,7 +498,7 @@ class BigVGAN(torch.nn.Module):
         self.h = h
         self.num_kernels = len(h.resblock_kernel_sizes)
         self.num_upsamples = len(h.upsample_rates)
-        self.conv_pre = weight_norm(Conv1d(h.num_mels, h.upsample_initial_channel, 7, 1, padding=3))
+        self.conv_pre = WeightNormedConv1d(h.num_mels, h.upsample_initial_channel, 7, 1, padding=3)
         if h.resblock == "1":
             resblock_class = AMPBlock1
         else:
@@ -393,14 +508,12 @@ class BigVGAN(torch.nn.Module):
             self.ups.append(
                 nn.ModuleList(
                     [
-                        weight_norm(
-                            ConvTranspose1d(
-                                h.upsample_initial_channel // (2**i),
-                                h.upsample_initial_channel // (2 ** (i + 1)),
-                                k,
-                                u,
-                                padding=(k - u) // 2,
-                            )
+                        WeightNormedConvTranspose1d(
+                            h.upsample_initial_channel // (2**i),
+                            h.upsample_initial_channel // (2 ** (i + 1)),
+                            k,
+                            u,
+                            padding=(k - u) // 2,
                         )
                     ]
                 )
@@ -415,7 +528,7 @@ class BigVGAN(torch.nn.Module):
         activation_post = SnakeBeta(ch, alpha_logscale=h.snake_logscale)
         self.activation_post = Activation1d(activation=activation_post)
         self.use_bias_at_final = h.get("use_bias_at_final", True)
-        self.conv_post = weight_norm(Conv1d(ch, 1, 7, 1, padding=3, bias=self.use_bias_at_final))
+        self.conv_post = WeightNormedConv1d(ch, 1, 7, 1, padding=3, bias=self.use_bias_at_final)
         for i in range(len(self.ups)):
             self.ups[i].apply(init_weights)
         self.conv_post.apply(init_weights)
@@ -565,11 +678,3 @@ class MiniMaxH3AudioVAE(nn.Module):
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
         return self.decode(z)
-
-    def remove_weight_norm(self):
-        from torch.nn.utils.parametrize import remove_parametrizations
-
-        for module in self.modules():
-            if isinstance(module, (nn.Conv1d, nn.ConvTranspose1d)):
-                if hasattr(module, "parametrizations") and "weight" in module.parametrizations:
-                    remove_parametrizations(module, "weight", leave_parametrized=True)
