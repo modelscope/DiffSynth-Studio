@@ -1405,6 +1405,14 @@ minimax_h3_series = [
         "model_name": "minimax_h3_video_vae",
         "model_class": "diffsynth.models.minimax_h3_video_vae.MiniMaxH3VideoVAE",
     },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="video_vae_nf4.safetensors")
+        "model_hash": "204819338f4fa12936684eeda37fdf71",
+        "model_name": "minimax_h3_video_vae",
+        "model_class": "diffsynth.models.minimax_h3_video_vae.MiniMaxH3VideoVAE",
+        "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["decoder.x_embedder"]},
+
+    },
 ]
 
 MODEL_CONFIGS = (

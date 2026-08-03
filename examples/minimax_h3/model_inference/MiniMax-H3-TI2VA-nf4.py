@@ -2,6 +2,7 @@ import torch
 from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
 from diffsynth.utils.data.audio_video import write_video_audio
 from modelscope import dataset_snapshot_download
+from diffsynth.core.quant import QuantizeConfig
 from PIL import Image
 
 vram_config = {
@@ -20,7 +21,7 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
     model_configs=[
         ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-nf4.safetensors", **vram_config),
         ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-text-encoder-nf4.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/video_vae/source/model.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="video_vae_nf4.safetensors", **vram_config),
         ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
     ],
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,

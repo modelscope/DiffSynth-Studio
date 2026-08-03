@@ -410,12 +410,12 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
 class MiniMaxH3Unit_KeyframeEncoder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("keyframes", "keyframe_indices", "video_latents", "seed", "imgvid_cond_noise_aug"),
+            input_params=("keyframes", "keyframe_indices", "video_latents", "rand_device", "seed", "imgvid_cond_noise_aug", "height", "width"),
             output_params=("keyframe_cond_anchor", "keyframe_indices_validated", "keyframe_prepared_images"),
             onload_model_names=("video_vae",)
         )
 
-    def process(self, pipe: MiniMaxH3Pipeline, keyframes, keyframe_indices, video_latents, seed, imgvid_cond_noise_aug):
+    def process(self, pipe: MiniMaxH3Pipeline, keyframes, keyframe_indices, video_latents, rand_device, seed, imgvid_cond_noise_aug, height, width):
         if keyframes is None:
             return {}
         video_latent_t, latent_h, latent_w = (int(x) for x in video_latents.shape[2:])
@@ -432,17 +432,11 @@ class MiniMaxH3Unit_KeyframeEncoder(PipelineUnit):
 
         all_cond_rows = []
         prepared_images = []
-        target_w, target_h = latent_w * 16, latent_h * 16
         for img in keyframes:
-            img = img.convert("RGB")
-            if img.size != (target_w, target_h):
-                img = img.resize((target_w, target_h), Image.LANCZOS)
+            img = img.convert("RGB").resize((width, height), Image.LANCZOS)
             prepared_images.append(img)
-
             img_tensor = torch.from_numpy(np.array(img)).permute(2, 0, 1).unsqueeze(0).float() / 255.0
-            z_norm = pipe.video_vae.encode_video(
-                img_tensor.to(device), dtype=pipe.torch_dtype, process_image=True,
-            )  # [1,24,1,H',W']
+            z_norm = pipe.video_vae.encode_video(img_tensor.to(device), dtype=pipe.torch_dtype, process_image=True)  # [1,24,1,H',W']
             rows = patchify_video(z_norm)
             all_cond_rows.append(rows)
 
@@ -460,7 +454,7 @@ class MiniMaxH3Unit_KeyframeEncoder(PipelineUnit):
             for i in range(num_cond_frames):
                 latent_t_i = 1  # image keyframe = single-frame latent
                 full_t = int(video_latent_t) + num_cond_frames
-                noise = pipe.generate_noise((1, 24, full_t, latent_h, latent_w), seed=seed_val, rand_device="cpu", rand_torch_dtype=pipe.torch_dtype, device="cpu", torch_dtype=pipe.torch_dtype)[:,:,:latent_t_i]
+                noise = pipe.generate_noise((1, 24, full_t, latent_h, latent_w), seed_val, rand_device, pipe.torch_dtype)[:,:,:latent_t_i]
                 noise_rows = patchify_video(noise).to(device=device, dtype=pipe.torch_dtype)
                 clean_part = clean_cond_rows[i * frame_rows: (i + 1) * frame_rows]
                 parts.append(timestep_tensor * clean_part + (1.0 - timestep_tensor) * noise_rows)
