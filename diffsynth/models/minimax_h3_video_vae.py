@@ -19,6 +19,18 @@ from torchvision.transforms import Normalize
 from ..core.attention import attention_forward
 
 
+class WarpedTensor(torch.nn.Module):
+    def __init__(self, weight=None, shape=None):
+        super().__init__()
+        if weight is not None:
+            self.weight = torch.nn.Parameter(weight)
+        else:
+            self.weight = torch.nn.Parameter(torch.empty(shape))
+
+    def forward(self):
+        return self.weight
+
+
 class _Config(dict):
 
     def __getattr__(self, key):
@@ -961,7 +973,7 @@ class TransformerBlock(nn.Module):
             **kwargs,
         )
         if use_scale:
-            self.scale1 = nn.Parameter(torch.zeros(dim))
+            self.scale1 = WarpedTensor(torch.zeros(dim))
 
         self.norm2 = norm_class(
             dim,
@@ -976,7 +988,7 @@ class TransformerBlock(nn.Module):
             glu_balanced=ffn_glu_balanced,
         )
         if use_scale:
-            self.scale2 = nn.Parameter(torch.zeros(dim))
+            self.scale2 = WarpedTensor(torch.zeros(dim))
 
     def forward(
         self,
@@ -987,14 +999,14 @@ class TransformerBlock(nn.Module):
         norm_hidden_states = self.norm1(hidden_states)
         attn_output = self.attn(norm_hidden_states, rotary_pos_emb, pack_info)
         if self.use_scale:
-            hidden_states = hidden_states + attn_output * self.scale1
+            hidden_states = hidden_states + attn_output * self.scale1()
         else:
             hidden_states = hidden_states + attn_output
 
         norm_hidden_states = self.norm2(hidden_states)
         ff_output = self.ff(norm_hidden_states)
         if self.use_scale:
-            hidden_states = hidden_states + ff_output * self.scale2
+            hidden_states = hidden_states + ff_output * self.scale2()
         else:
             hidden_states = hidden_states + ff_output
 
@@ -1357,11 +1369,11 @@ class ViTBase(ModelMixin):
     def init_suffix_tokens(self, dim, num_register_tokens, has_cls_token=True):
         self.num_register_tokens = num_register_tokens
         if num_register_tokens > 0:
-            self.register_tokens = nn.Parameter(torch.randn(1, num_register_tokens, dim) * 0.02)
+            self.register_tokens = WarpedTensor(weight=torch.randn(1, num_register_tokens, dim) * 0.02)
         else:
             self.register_tokens = None
         if has_cls_token:
-            self.cls_token = nn.Parameter(torch.randn(1, 1, dim) * 0.02)
+            self.cls_token = WarpedTensor(torch.randn(1, 1, dim) * 0.02)
 
     def apply_mask_preprocess(self, hidden_states, img_ids, patch_dims, num_suffix):
         if self.training and self.mask_enabled:
@@ -1475,7 +1487,7 @@ class ViT3DDecoder(ViTBase):
         tokens = [hidden_states]
 
         if self.register_tokens is not None:
-            register_tokens = self.register_tokens.expand(B, -1, -1)
+            register_tokens = self.register_tokens().expand(B, -1, -1)
             tokens.append(register_tokens)
 
         cls_token = torch.zeros_like(hidden_states[:, 0:1, :])
