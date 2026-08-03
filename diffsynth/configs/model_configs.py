@@ -1413,6 +1413,13 @@ minimax_h3_series = [
         "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["decoder.x_embedder"]},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_video_vae.MiniMaxH3VideoVAEStateDictConverter",
     },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="audio_vae_nf4.safetensors")
+        "model_hash": "925ae768f8f4a9daa902b789de2ad2dc",
+        "model_name": "minimax_h3_audio_vae",
+        "model_class": "diffsynth.models.minimax_h3_audio_vae.MiniMaxH3AudioVAE",
+        "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True},
+    },
 ]
 
 MODEL_CONFIGS = (
