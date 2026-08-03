@@ -1,0 +1,51 @@
+{
+  "family": "hidream_o1_image",
+  "name": "HiDream-O1-Image",
+  "sort_order": 10,
+  "generation_type": "image",
+  "source_script": "examples/hidream_o1_image/model_training/lora/HiDream-O1-Image.sh",
+  "train_script": "examples/hidream_o1_image/model_training/train.py",
+  "defaults": {
+    "model_paths": [
+      {
+        "model_id": "HiDream-ai/HiDream-O1-Image",
+        "file_pattern": "model-*.safetensors",
+        "local_path": "",
+        "fp8": false
+      }
+    ],
+    "enable_custom_lora_target": false,
+    "lora_target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj,attn.qkv,attn.proj,mlp.linear_fc1,mlp.linear_fc2",
+    "lora_rank": 32,
+    "dataset_repeat": 50,
+    "resolution_mode": "max_pixels",
+    "max_pixels": 4194304,
+    "height": 2048,
+    "width": 2048,
+    "num_epochs": 5,
+    "learning_rate": 1e-4,
+    "optimizer": "torch.optim.AdamW",
+    "gradient_accumulation": 1,
+    "dataset_num_workers": 0,
+    "find_unused_parameters": false,
+    "extra_inputs": null
+  },
+  "training_args": {
+    "processor_config": "HiDream-ai/HiDream-O1-Image:./",
+    "remove_prefix_in_ckpt": "pipe.dit.",
+    "lora_base_model": "dit",
+    "use_gradient_checkpointing": true,
+    "data_file_keys": "image,video,audio,edit_image",
+    "noise_scale": 8.0
+  },
+  "stages": [
+    {}
+  ],
+  "sampling": {
+    "validate_script": "examples/hidream_o1_image/model_training/validate_lora/HiDream-O1-Image.py",
+    "output_extension": ".jpg",
+    "sample_prompts": [
+      "a dog"
+    ]
+  }
+}

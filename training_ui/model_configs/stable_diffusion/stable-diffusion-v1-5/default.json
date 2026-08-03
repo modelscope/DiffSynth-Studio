@@ -1,0 +1,61 @@
+{
+  "family": "stable_diffusion",
+  "name": "stable-diffusion-v1-5",
+  "sort_order": 15,
+  "generation_type": "image",
+  "source_script": "examples/stable_diffusion/model_training/lora/stable-diffusion-v1-5.sh",
+  "train_script": "examples/stable_diffusion/model_training/train.py",
+  "defaults": {
+    "model_paths": [
+      {
+        "model_id": "AI-ModelScope/stable-diffusion-v1-5",
+        "file_pattern": "text_encoder/model.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "AI-ModelScope/stable-diffusion-v1-5",
+        "file_pattern": "unet/diffusion_pytorch_model.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "AI-ModelScope/stable-diffusion-v1-5",
+        "file_pattern": "vae/diffusion_pytorch_model.safetensors",
+        "local_path": "",
+        "fp8": false
+      }
+    ],
+    "enable_custom_lora_target": false,
+    "lora_target_modules": "",
+    "lora_rank": 32,
+    "dataset_repeat": 50,
+    "resolution_mode": "hw",
+    "max_pixels": null,
+    "height": 512,
+    "width": 512,
+    "num_epochs": 5,
+    "learning_rate": 1e-4,
+    "optimizer": "torch.optim.AdamW",
+    "gradient_accumulation": 1,
+    "dataset_num_workers": 0,
+    "find_unused_parameters": false,
+    "extra_inputs": null
+  },
+  "training_args": {
+    "remove_prefix_in_ckpt": "pipe.unet.",
+    "lora_base_model": "unet",
+    "use_gradient_checkpointing": true,
+    "data_file_keys": "image,video,audio,edit_image"
+  },
+  "stages": [
+    {}
+  ],
+  "sampling": {
+    "validate_script": "examples/stable_diffusion/model_training/validate_lora/stable-diffusion-v1-5.py",
+    "output_extension": ".jpg",
+    "sample_prompts": [
+      "a dog"
+    ]
+  }
+}

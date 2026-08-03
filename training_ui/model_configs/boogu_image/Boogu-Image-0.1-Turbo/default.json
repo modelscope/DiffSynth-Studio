@@ -1,0 +1,61 @@
+{
+  "family": "boogu_image",
+  "name": "Boogu-Image-0.1-Turbo",
+  "sort_order": 2,
+  "generation_type": "image",
+  "source_script": "examples/boogu_image/model_training/lora/Boogu-Image-0.1-Turbo.sh",
+  "train_script": "examples/boogu_image/model_training/train.py",
+  "defaults": {
+    "model_paths": [
+      {
+        "model_id": "Boogu/Boogu-Image-0.1-Turbo",
+        "file_pattern": "transformer/*.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "Boogu/Boogu-Image-0.1-Turbo",
+        "file_pattern": "mllm/*.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "Boogu/Boogu-Image-0.1-Turbo",
+        "file_pattern": "vae/*.safetensors",
+        "local_path": "",
+        "fp8": false
+      }
+    ],
+    "enable_custom_lora_target": false,
+    "lora_target_modules": "to_q,to_k,to_v,to_out.0,img_to_q,img_to_k,img_to_v,img_out,instruct_to_q,instruct_to_k,instruct_to_v,instruct_out",
+    "lora_rank": 32,
+    "dataset_repeat": 50,
+    "resolution_mode": "max_pixels",
+    "max_pixels": 1048576,
+    "height": 1024,
+    "width": 1024,
+    "num_epochs": 5,
+    "learning_rate": 1e-4,
+    "optimizer": "torch.optim.AdamW",
+    "gradient_accumulation": 1,
+    "dataset_num_workers": 8,
+    "find_unused_parameters": true,
+    "extra_inputs": null
+  },
+  "training_args": {
+    "remove_prefix_in_ckpt": "pipe.dit.",
+    "lora_base_model": "dit",
+    "use_gradient_checkpointing": true,
+    "data_file_keys": "image,video,audio,edit_image"
+  },
+  "stages": [
+    {}
+  ],
+  "sampling": {
+    "validate_script": "examples/boogu_image/model_training/validate_lora/Boogu-Image-0.1-Turbo.py",
+    "output_extension": ".jpg",
+    "sample_prompts": [
+      "a dog"
+    ]
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "family": "ace_step",
+  "name": "Ace-Step1.5",
+  "sort_order": 25,
+  "generation_type": "audio",
+  "source_script": "examples/ace_step/model_training/lora/Ace-Step1.5.sh",
+  "train_script": "examples/ace_step/model_training/train.py",
+  "defaults": {
+    "model_paths": [
+      {
+        "model_id": "ACE-Step/Ace-Step1.5",
+        "file_pattern": "acestep-v15-turbo/model.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "ACE-Step/Ace-Step1.5",
+        "file_pattern": "Qwen3-Embedding-0.6B/model.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "ACE-Step/Ace-Step1.5",
+        "file_pattern": "vae/diffusion_pytorch_model.safetensors",
+        "local_path": "",
+        "fp8": false
+      }
+    ],
+    "enable_custom_lora_target": false,
+    "lora_target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+    "lora_rank": 32,
+    "dataset_repeat": 50,
+    "num_epochs": 20,
+    "learning_rate": 1e-4,
+    "optimizer": "torch.optim.AdamW",
+    "gradient_accumulation": 1,
+    "dataset_num_workers": 0,
+    "find_unused_parameters": true,
+    "extra_inputs": null
+  },
+  "training_args": {
+    "use_gradient_checkpointing": true,
+    "tokenizer_path": "ACE-Step/Ace-Step1.5:Qwen3-Embedding-0.6B/",
+    "silence_latent_path": "ACE-Step/Ace-Step1.5:acestep-v15-turbo/silence_latent.pt",
+    "lora_base_model": "dit",
+    "remove_prefix_in_ckpt": "pipe.dit.",
+    "data_file_keys": "image,video,audio,edit_image"
+  },
+  "stages": [
+    {}
+  ],
+  "sampling": {
+    "validate_script": "examples/ace_step/model_training/validate_lora/Ace-Step1.5.py",
+    "output_extension": ".wav",
+    "sample_prompts": [
+      "An explosive, high-energy pop-rock track with a strong anime theme song feel. The song kicks off with a catchy, synthesized brass fanfare over a driving rock beat with punchy drums and a solid bassline. A powerful, clear male vocal enters with a theatrical and energetic delivery, soaring through the verses and hitting powerful high notes in the chorus. The arrangement is dense and dynamic, featuring rhythmic electric guitar chords, brief instrumental breaks with synth flourishes, and a consistent, danceable groove throughout. The overall mood is triumphant, adventurous, and exhilarating."
+    ]
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "family": "ltx2",
+  "name": "LTX-2-T2AV-splited",
+  "sort_order": 19,
+  "generation_type": "video",
+  "source_script": "examples/ltx2/model_training/lora/LTX-2-T2AV-splited.sh",
+  "train_script": "examples/ltx2/model_training/train.py",
+  "defaults": {
+    "model_paths": [
+      {
+        "model_id": "DiffSynth-Studio/LTX-2-Repackage",
+        "file_pattern": "text_encoder_post_modules.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "DiffSynth-Studio/LTX-2-Repackage",
+        "file_pattern": "video_vae_encoder.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "DiffSynth-Studio/LTX-2-Repackage",
+        "file_pattern": "audio_vae_encoder.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "google/gemma-3-12b-it-qat-q4_0-unquantized",
+        "file_pattern": "model-*.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "DiffSynth-Studio/LTX-2-Repackage",
+        "file_pattern": "transformer.safetensors",
+        "local_path": "",
+        "fp8": false
+      }
+    ],
+    "enable_custom_lora_target": false,
+    "lora_target_modules": "to_k,to_q,to_v,to_out.0",
+    "lora_rank": 32,
+    "dataset_repeat": 1,
+    "resolution_mode": "hw",
+    "max_pixels": null,
+    "height": 512,
+    "width": 768,
+    "num_frames": 121,
+    "num_epochs": 5,
+    "learning_rate": 1e-4,
+    "optimizer": "torch.optim.AdamW",
+    "gradient_accumulation": 1,
+    "dataset_num_workers": 0,
+    "find_unused_parameters": false,
+    "extra_inputs": "input_audio"
+  },
+  "training_args": {
+    "data_file_keys": "image,video,audio,edit_image,input_audio",
+    "remove_prefix_in_ckpt": "pipe.dit.",
+    "lora_base_model": "dit",
+    "use_gradient_checkpointing": true
+  },
+  "stages": [
+    {
+      "task": "sft:data_process",
+      "model_id_with_origin_paths": "DiffSynth-Studio/LTX-2-Repackage:text_encoder_post_modules.safetensors,DiffSynth-Studio/LTX-2-Repackage:video_vae_encoder.safetensors,DiffSynth-Studio/LTX-2-Repackage:audio_vae_encoder.safetensors,google/gemma-3-12b-it-qat-q4_0-unquantized:model-*.safetensors",
+      "dataset_repeat": "1"
+    },
+    {
+      "task": "sft:train",
+      "model_id_with_origin_paths": "DiffSynth-Studio/LTX-2-Repackage:transformer.safetensors",
+      "dataset_repeat": "100"
+    }
+  ],
+  "sampling": {
+    "validate_script": "examples/ltx2/model_training/validate_lora/LTX-2-T2AV.py",
+    "output_extension": ".mp4",
+    "sample_prompts": [
+      "A beautiful sunset over the ocean."
+    ]
+  }
+}

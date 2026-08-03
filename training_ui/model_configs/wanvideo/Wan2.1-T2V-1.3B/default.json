@@ -1,0 +1,61 @@
+{
+  "family": "wanvideo",
+  "name": "Wan2.1-T2V-1.3B",
+  "sort_order": 22,
+  "generation_type": "video",
+  "source_script": "examples/wanvideo/model_training/lora/Wan2.1-T2V-1.3B.sh",
+  "train_script": "examples/wanvideo/model_training/train.py",
+  "defaults": {
+    "model_paths": [
+      {
+        "model_id": "Wan-AI/Wan2.1-T2V-1.3B",
+        "file_pattern": "diffusion_pytorch_model*.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "Wan-AI/Wan2.1-T2V-1.3B",
+        "file_pattern": "models_t5_umt5-xxl-enc-bf16.pth",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "Wan-AI/Wan2.1-T2V-1.3B",
+        "file_pattern": "Wan2.1_VAE.pth",
+        "local_path": "",
+        "fp8": false
+      }
+    ],
+    "enable_custom_lora_target": false,
+    "lora_target_modules": "q,k,v,o,ffn.0,ffn.2",
+    "lora_rank": 32,
+    "dataset_repeat": 100,
+    "resolution_mode": "hw",
+    "max_pixels": null,
+    "height": 480,
+    "width": 832,
+    "num_frames": 81,
+    "num_epochs": 5,
+    "learning_rate": 1e-4,
+    "optimizer": "torch.optim.AdamW",
+    "gradient_accumulation": 1,
+    "dataset_num_workers": 0,
+    "find_unused_parameters": false,
+    "extra_inputs": null
+  },
+  "training_args": {
+    "remove_prefix_in_ckpt": "pipe.dit.",
+    "lora_base_model": "dit",
+    "data_file_keys": "image,video,audio,edit_image"
+  },
+  "stages": [
+    {}
+  ],
+  "sampling": {
+    "validate_script": "examples/wanvideo/model_training/validate_lora/Wan2.1-T2V-1.3B.py",
+    "output_extension": ".mp4",
+    "sample_prompts": [
+      "from sunset to night, a small town, light, house, river"
+    ]
+  }
+}

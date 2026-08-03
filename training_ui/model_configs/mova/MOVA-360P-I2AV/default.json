@@ -1,0 +1,95 @@
+{
+  "family": "mova",
+  "name": "MOVA-360P-I2AV",
+  "sort_order": 21,
+  "generation_type": "video",
+  "source_script": "examples/mova/model_training/lora/MOVA-360P-I2AV.sh",
+  "train_script": "examples/mova/model_training/train.py",
+  "defaults": {
+    "model_paths": [
+      {
+        "model_id": "openmoss/MOVA-360p",
+        "file_pattern": "video_dit/diffusion_pytorch_model-*.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "openmoss/MOVA-360p",
+        "file_pattern": "audio_dit/diffusion_pytorch_model.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "openmoss/MOVA-360p",
+        "file_pattern": "dual_tower_bridge/diffusion_pytorch_model.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "openmoss/MOVA-720p",
+        "file_pattern": "audio_vae/diffusion_pytorch_model.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "DiffSynth-Studio/Wan-Series-Converted-Safetensors",
+        "file_pattern": "Wan2.1_VAE.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "DiffSynth-Studio/Wan-Series-Converted-Safetensors",
+        "file_pattern": "models_t5_umt5-xxl-enc-bf16.safetensors",
+        "local_path": "",
+        "fp8": false
+      },
+      {
+        "model_id": "openmoss/MOVA-360p",
+        "file_pattern": "video_dit_2/diffusion_pytorch_model-*.safetensors",
+        "local_path": "",
+        "fp8": false
+      }
+    ],
+    "enable_custom_lora_target": false,
+    "lora_target_modules": "q,k,v,o,ffn.0,ffn.2",
+    "lora_rank": 32,
+    "dataset_repeat": 100,
+    "resolution_mode": "hw",
+    "max_pixels": null,
+    "height": 352,
+    "width": 640,
+    "num_frames": 121,
+    "num_epochs": 5,
+    "learning_rate": 1e-4,
+    "optimizer": "torch.optim.AdamW",
+    "gradient_accumulation": 1,
+    "dataset_num_workers": 0,
+    "find_unused_parameters": false,
+    "extra_inputs": "input_audio,input_image"
+  },
+  "training_args": {
+    "data_file_keys": "image,video,audio,edit_image,input_audio",
+    "remove_prefix_in_ckpt": "pipe.video_dit.",
+    "lora_base_model": "video_dit",
+    "use_gradient_checkpointing": true
+  },
+  "stages": [
+    {
+      "max_timestep_boundary": "0.358",
+      "min_timestep_boundary": "0",
+      "model_id_with_origin_paths": "openmoss/MOVA-360p:video_dit/diffusion_pytorch_model-*.safetensors,openmoss/MOVA-360p:audio_dit/diffusion_pytorch_model.safetensors,openmoss/MOVA-360p:dual_tower_bridge/diffusion_pytorch_model.safetensors,openmoss/MOVA-720p:audio_vae/diffusion_pytorch_model.safetensors,DiffSynth-Studio/Wan-Series-Converted-Safetensors:Wan2.1_VAE.safetensors,DiffSynth-Studio/Wan-Series-Converted-Safetensors:models_t5_umt5-xxl-enc-bf16.safetensors"
+    },
+    {
+      "max_timestep_boundary": "1",
+      "min_timestep_boundary": "0.358",
+      "model_id_with_origin_paths": "openmoss/MOVA-360p:video_dit_2/diffusion_pytorch_model-*.safetensors,openmoss/MOVA-360p:audio_dit/diffusion_pytorch_model.safetensors,openmoss/MOVA-360p:dual_tower_bridge/diffusion_pytorch_model.safetensors,openmoss/MOVA-720p:audio_vae/diffusion_pytorch_model.safetensors,DiffSynth-Studio/Wan-Series-Converted-Safetensors:Wan2.1_VAE.safetensors,DiffSynth-Studio/Wan-Series-Converted-Safetensors:models_t5_umt5-xxl-enc-bf16.safetensors"
+    }
+  ],
+  "sampling": {
+    "validate_script": "examples/mova/model_training/validate_lora/MOVA-360p-I2AV.py",
+    "output_extension": ".mp4",
+    "sample_prompts": [
+      "A beautiful sunset over the ocean."
+    ]
+  }
+}

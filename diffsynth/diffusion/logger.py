@@ -1,4 +1,7 @@
-import os, torch
+import csv
+import os
+
+import torch
 from accelerate import Accelerator
 
 
@@ -46,6 +49,30 @@ class WandbLogger:
         self.wandb.finish()
 
 
+class CSVLogger:
+    def __init__(self, log_dir):
+        os.makedirs(log_dir, exist_ok=True)
+        self.path = os.path.join(log_dir, "loss.csv")
+        file_exists = os.path.isfile(self.path) and os.path.getsize(self.path) > 0
+        self.file = open(self.path, "a", encoding="utf-8", newline="")
+        self.writer = csv.DictWriter(self.file, fieldnames=["step", "loss"])
+        if not file_exists:
+            self.writer.writeheader()
+            self.file.flush()
+
+    def log(self, key, value, step):
+        if key != "loss":
+            return
+        if isinstance(value, torch.Tensor):
+            value = value.detach().float().item()
+        self.writer.writerow({"step": step, "loss": float(value)})
+        self.file.flush()
+
+    def close(self):
+        if not self.file.closed:
+            self.file.close()
+
+
 class ModelLogger:
     def __init__(
         self, output_path, remove_prefix_in_ckpt=None, state_dict_converter=lambda x: x,
@@ -67,6 +94,7 @@ class ModelLogger:
         self.loggers_initialized = False
 
     def init_loggers(self):
+        self.loggers.append(CSVLogger(self.output_path))
         if self.enable_tensorboard_log:
             self.loggers.append(TensorBoardLogger(os.path.join(self.output_path, "tensorboard_log")))
         if self.enable_swanlab_log:

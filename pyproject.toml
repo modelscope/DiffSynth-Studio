@@ -34,9 +34,15 @@ classifiers = [
 
 [tool.setuptools.packages.find]
 where = ["./"]
-include = ["diffsynth", "diffsynth.*"]
+include = ["diffsynth", "diffsynth.*","diffsynth_train_ui", "diffsynth_train_ui.*"]
 
 [project.optional-dependencies]
+webui = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "python-multipart>=0.0.9",
+    "pillow",
+]
 npu_aarch64 = [
     "torch==2.7.1",
     "torch-npu==2.7.1",
@@ -58,7 +64,9 @@ all = [
     "torchaudio",
     "torchcodec",
     "librosa",
-    "streamlit"
+    "streamlit",
+    "bitsandbytes",
+    "torchao"
 ]
 
 [tool.setuptools]
