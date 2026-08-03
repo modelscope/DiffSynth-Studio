@@ -451,12 +451,15 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
         vram_limit: float = None,
         name: str = "",
         disk_map: DiskMap = None,
+        quantize=None,
+        metadata: dict = None,
         **kwargs
     ):
-        if "disk" in (offload_dtype, offload_device, onload_dtype, onload_device):
+        disk_offload = "disk" in (offload_dtype, offload_device, onload_dtype, onload_device)
+        if disk_offload and (disk_map is None or quantize is None):
             raise ValueError(
-                "Layer quantization is incompatible with disk offload: DiskMap holds plain "
-                "tensors only and cannot rebuild packed weights with their quant state."
+                "Disk offload for quantized layers requires both `disk_map` and `quantize`, "
+                "so each layer can rebuild its packed weight and quant state lazily."
             )
         super().__init__(
             offload_dtype,
@@ -471,7 +474,31 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
         )
         self.module = module
         self.name = name
+        self.disk_offload = disk_offload
+        self.disk_map = disk_map
+        self.quantize = quantize
+        self.metadata = metadata
+        self._required_keys = None
         self.init_lora_hotload()
+
+    def _disk_required_keys(self):
+        if self._required_keys is None:
+            weight_prefix = self.name + ".weight."
+            self._required_keys = [
+                key for key in self.disk_map
+                if key == self.name + ".weight" or key.startswith(weight_prefix) or key == self.name + ".bias"
+            ]
+        return self._required_keys
+
+    def _load_from_disk(self, device, target=None):
+        module = self.module if target is None else target
+        prefix = self.name + "."
+        subdict = {key: self.disk_map[key] for key in self._disk_required_keys()}
+        rebuilt = self.quantize.unflatten_state_dict(subdict, self.metadata or {})
+        state = {key[len(prefix):]: value for key, value in rebuilt.items()}
+        module.load_state_dict(state, assign=True)
+        module.to(device=device)
+        return module
 
     def _module_device(self):
         tensor = next(self.module.parameters(), None)
@@ -481,23 +508,35 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
 
     def offload(self):
         if self.state != 0:
-            self.module.to(device=self.offload_device)
+            if self.disk_offload:
+                self.module = self.quantize.backend.create_quantized_linear_shell(self.module, self.computation_dtype)
+            else:
+                self.module.to(device=self.offload_device)
             self.state = 0
 
     def onload(self):
         if self.state < 1:
-            self.module.to(device=self.onload_device)
+            if self.disk_offload and self.onload_device != "disk" and self.offload_device == "disk":
+                self._load_from_disk(self.onload_device)
+            elif self.onload_device != "disk":
+                self.module.to(device=self.onload_device)
             self.state = 1
 
     def preparing(self):
         if self.state != 2:
-            self.module.to(device=self.preparing_device)
+            if self.disk_offload and self.preparing_device != "disk" and self.onload_device == "disk":
+                self._load_from_disk(self.preparing_device)
+            elif self.preparing_device != "disk":
+                self.module.to(device=self.preparing_device)
             self.state = 2
 
     def computation_module(self):
         device = self.preparing_device if self.state == 2 else self.onload_device
         if device == self.computation_device:
             return self.module
+        if self.disk_offload and device == "disk":
+            transient = self.quantize.backend.create_quantized_linear_shell(self.module, self.computation_dtype)
+            return self._load_from_disk(self.computation_device, target=transient)
         return copy.deepcopy(self.module).to(device=self.computation_device)
 
     def forward(self, x, *args, **kwargs):
@@ -522,7 +561,7 @@ def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict,
     for name, module in model.named_children():
         layer_name = name if name_prefix == "" else name_prefix + "." + name
         if quantize is not None and quantize.is_quantized_linear(module):
-            module_ = AutoWrappedQuantizedModule(module, **vram_config, vram_limit=vram_limit, name=layer_name, disk_map=disk_map, **kwargs)
+            module_ = AutoWrappedQuantizedModule(module, **vram_config, vram_limit=vram_limit, name=layer_name, disk_map=disk_map, quantize=quantize, **kwargs)
             setattr(model, name, module_)
             continue
         for source_module, target_module in module_map.items():
