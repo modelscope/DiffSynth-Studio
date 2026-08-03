@@ -43,7 +43,7 @@ class MiniMaxH3Pipeline(BasePipeline):
         torch_dtype: torch.dtype = torch.bfloat16,
         device: str = get_device_type(),
         model_configs: list[ModelConfig] = [],
-        processor_config: ModelConfig = ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
+        processor_config: ModelConfig = ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
         vram_limit: float = None,
     ):
         pipe = MiniMaxH3Pipeline(device=device, torch_dtype=torch_dtype)

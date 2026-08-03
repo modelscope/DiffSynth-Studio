@@ -1358,14 +1358,14 @@ lingbot_video_series = [
 
 minimax_h3_series = [
     {
-        # Example: ModelConfig(model_id="MiniMaxAI/MiniMax-H3-FL2VA", origin_file_pattern="audio_vae/model.safetensors")
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-FL2VA", origin_file_pattern="audio_vae/model.safetensors")
         "model_hash": "db383f1c8960837b94059f7722e6cb11",
         "model_name": "minimax_h3_audio_vae",
         "model_class": "diffsynth.models.minimax_h3_audio_vae.MiniMaxH3AudioVAE",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_audio_vae.MiniMaxH3AudioVAEStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="MiniMaxAI/MiniMax-H3-FL2VA", origin_file_pattern="text_encoder/model*.safetensors")
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-FL2VA", origin_file_pattern="text_encoder/model*.safetensors")
         "model_hash": "8398104725e58fa8287c163c5c332686",
         "model_name": "minimax_h3_text_encoder",
         "model_class": "diffsynth.models.minimax_h3_text_encoder.MiniMaxH3TextEncoder",
@@ -1380,7 +1380,7 @@ minimax_h3_series = [
         "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True},
     },
     {
-        # Example: ModelConfig(model_id="MiniMaxAI/MiniMax-H3", origin_file_pattern="FL2VA/transformer/model*.safetensors")
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/transformer/model*.safetensors")
         "model_hash": "db0197b6919425a5c7102c54e73affc1",
         "model_name": "minimax_h3_dit",
         "model_class": "diffsynth.models.minimax_h3_dit.MiniMaxH3DiT",
@@ -1400,7 +1400,7 @@ minimax_h3_series = [
         "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["time_embedder.proj_in", "time_embedder.proj_out", "video_patch_proj", "audio_patch_proj", "condition_proj", "final_layer.video_out", "final_layer.audio_out"]},
     },
     {
-        # Example: ModelConfig(model_id="MiniMaxAI/MiniMax-H3-FL2VA", origin_file_pattern="video_vae/source/model.safetensors")
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-FL2VA", origin_file_pattern="video_vae/source/model.safetensors")
         "model_hash": "24b80900992e2024fab17c991c57da23",
         "model_name": "minimax_h3_video_vae",
         "model_class": "diffsynth.models.minimax_h3_video_vae.MiniMaxH3VideoVAE",
