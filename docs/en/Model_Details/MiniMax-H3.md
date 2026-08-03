@@ -64,10 +64,10 @@ print("saved minimax_h3_t2va_quant_nf4.mp4", "frames:", len(video), "audio:", tu
 
 |Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
 |-|-|-|-|-|-|-|
-|[MiniMax/MiniMax-H3: TI2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-TI2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-TI2VA.py)|-|-|-|-|
-|[MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py)|-|-|-|-|
-|[DiffSynth-Studio/MiniMax-H3-NF4: TI2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-TI2VA-nf4.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-TI2VA-nf4.py)|-|-|-|-|
-|[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA-nf4.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA-nf4.py)|-|-|-|-|
+|[MiniMax/MiniMax-H3: TI2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-TI2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-TI2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-TI2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-TI2VA.py)|
+|[MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py)|
+|[DiffSynth-Studio/MiniMax-H3-NF4: TI2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-TI2VA-nf4.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-TI2VA-nf4.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-TI2VA-nf4.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-TI2VA-nf4.py)|
+|[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA-nf4.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA-nf4.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA-nf4.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA-nf4.py)|
 
 The model weights are split into two partitions: the `FL2VA` partition serves text-to-video-audio and keyframe-guided generation, while the `Ref2VA` partition serves reference-driven generation. The two partitions have different DiT and text encoder weights, so choose the `origin_file_pattern` of the matching partition for your task.
 
@@ -114,3 +114,60 @@ write_video_audio(video=video, audio=audio, output_path="video.mp4", fps=24, aud
 ```
 
 If VRAM is insufficient, please enable [VRAM management](../Pipeline_Usage/VRAM_management.md). We provide a recommended low VRAM configuration for each model in the example code, see the table in "Model Overview" above. We also provide NF4-quantized weights to further reduce VRAM requirements; the corresponding scripts are listed in the same table.
+
+## Model Training
+
+Models in the MiniMax-H3 series are trained uniformly via [`examples/minimax_h3/model_training/train.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/train.py). The script parameters include:
+
+* General Training Parameters
+    * Dataset Configuration
+        * `--dataset_base_path`: Root directory of the dataset.
+        * `--dataset_metadata_path`: Path to the dataset metadata file.
+        * `--dataset_repeat`: Number of dataset repeats per epoch.
+        * `--dataset_num_workers`: Number of processes per DataLoader.
+        * `--data_file_keys`: Field names to load from metadata, typically paths to image or video files, separated by `,`.
+    * Model Loading Configuration
+        * `--model_paths`: Paths to load models from, in JSON format.
+        * `--model_id_with_origin_paths`: Model IDs with original paths, separated by commas.
+        * `--extra_inputs`: Additional input parameters required by the model Pipeline, separated by `,`.
+        * `--fp8_models`: Models to load in FP8 format, currently only supported for models whose parameters are not updated by gradients.
+    * Basic Training Configuration
+        * `--learning_rate`: Learning rate.
+        * `--num_epochs`: Number of epochs.
+        * `--trainable_models`: Trainable models, e.g., `dit`, `vae`, `text_encoder`.
+        * `--find_unused_parameters`: Whether unused parameters exist in DDP training.
+        * `--weight_decay`: Weight decay magnitude.
+        * `--task`: Training task, defaults to `sft`.
+    * Output Configuration
+        * `--output_path`: Path to save the model.
+        * `--remove_prefix_in_ckpt`: Remove prefix in the model's state dict.
+        * `--save_steps`: Interval in training steps to save the model.
+    * LoRA Configuration
+        * `--lora_base_model`: Which model to add LoRA to.
+        * `--lora_target_modules`: Which layers to add LoRA to.
+        * `--lora_rank`: Rank of LoRA.
+        * `--lora_checkpoint`: Path to LoRA checkpoint.
+        * `--preset_lora_path`: Path to preset LoRA checkpoint for LoRA differential training.
+        * `--preset_lora_model`: Which model to integrate preset LoRA into, e.g., `dit`.
+    * Gradient Configuration
+        * `--use_gradient_checkpointing`: Whether to enable gradient checkpointing.
+        * `--use_gradient_checkpointing_offload`: Whether to offload gradient checkpointing to CPU memory.
+        * `--gradient_accumulation_steps`: Number of gradient accumulation steps.
+    * Resolution Configuration
+        * `--height`: Height of the video. Leave `height` and `width` empty to enable dynamic resolution.
+        * `--width`: Width of the video. Leave `height` and `width` empty to enable dynamic resolution.
+        * `--max_pixels`: Maximum pixel area, images larger than this will be scaled down during dynamic resolution.
+        * `--num_frames`: Number of frames for the video.
+* MiniMax-H3 Specific Parameters
+    * `--processor_path`: Path of the Qwen3-VL processor, supports the `model_id:origin_file_pattern` form, used to tokenize the prompt.
+    * `--initialize_model_on_cpu`: Whether to initialize models on CPU.
+
+We provide an example dataset for testing, which can be downloaded with the following command:
+
+```shell
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --local_dir ./data/diffsynth_example_dataset
+```
+
+The LoRA training scripts use a two-stage workflow: first preprocess and cache the dataset with `--task "sft:data_process"`, then run the actual training with `--task "sft:train"`. LoRA is applied to the `qkv_proj,out_proj` modules of the DiT by default, with a rank of 32. Keyframe-guided (FL2VA) training appends `input_image,end_image` to `--extra_inputs`, taking the first and last frame of the training video as conditions respectively.
+
+We provide recommended training scripts for each model, please refer to the table in "Model Overview" above. For guidance on writing model training scripts, see [Model Training](../Pipeline_Usage/Model_Training.md); for more advanced training algorithms, see [Training Framework Overview](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/en/Training/).
