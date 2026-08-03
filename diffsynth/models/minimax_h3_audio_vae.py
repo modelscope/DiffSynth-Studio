@@ -364,7 +364,7 @@ class CausalAttention(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, N, C = x.shape
-        qkv = F.linear(input=x, weight=self.qkv.weight, bias=torch.cat((self.q_bias, self.zero_k_bias, self.v_bias)))
+        qkv = F.linear(input=x, weight=self.qkv.weight.to(dtype=x.dtype, device=x.device), bias=torch.cat((self.q_bias, self.zero_k_bias, self.v_bias)))
         q, k, v = qkv.reshape(B, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4).unbind(0)
         x = F.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=True)
         if self.in_dim > self.out_dim:
