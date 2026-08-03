@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -20,6 +20,7 @@ class FlowMatchScheduler():
             "Ideogram4": FlowMatchScheduler.set_timesteps_ideogram4,
             "Krea-2": FlowMatchScheduler.set_timesteps_krea2,
             "Boogu": FlowMatchScheduler.set_timesteps_boogu,
+            "MiniMax-H3": FlowMatchScheduler.set_timesteps_minimax_h3,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -297,6 +298,14 @@ class FlowMatchScheduler():
             one_minus_z = 1.0 - sigmas
             scale_factor = one_minus_z[-1] / (1 - terminal)
             sigmas = 1.0 - (one_minus_z / scale_factor)
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_minimax_h3(num_inference_steps=50, denoising_strength=1.0, shift=12.0):
+        num_train_timesteps = 1000
+        base = torch.linspace(denoising_strength, 0.0, num_inference_steps+1, dtype=torch.float32)[:-1]
+        sigmas = shift * base / (1 + (shift - 1) * base)
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
 

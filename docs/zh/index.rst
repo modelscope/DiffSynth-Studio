@@ -42,6 +42,7 @@
    Model_Details/Krea-2
    Model_Details/Boogu-Image
    Model_Details/LingBot-Video
+   Model_Details/MiniMax-H3
 
 .. toctree::
    :maxdepth: 2
