@@ -27,7 +27,7 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.minimax_h3_video_vae.MiniMaxH3VideoVAE": {
-        "diffsynth.models.minimax_h3_video_vae.WarpedTensor": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
+        "diffsynth.models.minimax_h3_video_vae.WarpedTensor": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
