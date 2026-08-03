@@ -40,24 +40,22 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-nf4.safetensors", **vram_config),
         ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-text-encoder-nf4.safetensors", **vram_config),
         ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="video_vae_nf4.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="audio_vae_nf4.safetensors", **vram_config),
     ],
+    processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
+
+# Text -> Video + Audio
 prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
 video, audio = pipe(
     prompt=prompt,
-    height=480, width=832, num_frames=124,
-    num_inference_steps=50, seed=0,
+    height=480, width=832, num_frames=124, num_inference_steps=50, seed=0,
 )
 write_video_audio(
-    video=video,
-    audio=audio,
-    output_path="minimax_h3_t2va_quant_nf4.mp4",
-    fps=24,
-    audio_sample_rate=pipe.audio_vae.sample_rate,
+    video=video, audio=audio,
+    output_path="t2va.mp4", fps=24, audio_sample_rate=32000,
 )
-print("saved minimax_h3_t2va_quant_nf4.mp4", "frames:", len(video), "audio:", tuple(audio.shape))
 ```
 
 ## Model Overview
