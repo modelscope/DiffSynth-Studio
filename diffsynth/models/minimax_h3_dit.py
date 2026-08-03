@@ -84,7 +84,7 @@ class MiniMaxH3Rope(nn.Module):
     def __init__(self, inv_freq_len: int) -> None:
         super().__init__()
         self.inv_freq_len = inv_freq_len
-        self.register_buffer("inv_freq", self._build_inv_freq(), persistent=True)
+        self.inv_freq = nn.Parameter(self._build_inv_freq())
 
     def _build_inv_freq(self, device=None) -> torch.Tensor:
         steps = torch.arange(0, self.inv_freq_len, dtype=torch.float32, device=device)
