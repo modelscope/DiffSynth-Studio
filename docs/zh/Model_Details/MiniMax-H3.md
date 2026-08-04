@@ -94,7 +94,6 @@ write_video_audio(
 * `tile_overlap`: VAE 编解码阶段的分块重叠大小，默认为 64。
 * `keyframes`: 关键帧图像列表，用于首尾帧引导生成，图像会被缩放到目标画幅。
 * `keyframe_indices`: 关键帧在视频中的帧索引列表，取值为 `0`（首帧）或 `-1`（尾帧），与 `keyframes` 一一对应。
-* `imgvid_cond_noise_aug`: 图像 / 视频条件的噪声增强锚定时间步，默认值为 0.999。
 * `references`: 参考条件列表，按请求顺序给出，每个元素为字典，支持以下四种形式：
     * `{"type": "image", "image": PIL.Image}`
     * `{"type": "video", "video": list[PIL.Image]}`（无声视频）
@@ -102,7 +101,6 @@ write_video_audio(
     * `{"type": "video_audio", "video": list[PIL.Image], "audio": Tensor[C, L], "sample_rate": int}`
 
     其中传入的视频帧列表必须已经是 24fps，Pipeline 不会重采样帧率。
-* `audio_cond_noise_aug`: 参考音频条件的噪声增强锚定时间步，默认值为 1.0。
 * `progress_bar_cmd`: 进度条，默认为 `tqdm`。可通过设置为 `lambda x: x` 来屏蔽进度条。
 
 Pipeline 返回 `(video, audio)` 二元组，视频为 PIL 图像列表，音频为波形张量，可通过 `diffsynth.utils.data.audio_video.write_video_audio` 混流写出 MP4：
