@@ -10,6 +10,18 @@ from torch.nn import Parameter
 from ..core.attention import attention_forward
 
 
+class WarpedTensor(torch.nn.Module):
+    def __init__(self, weight=None, shape=None):
+        super().__init__()
+        if weight is not None:
+            self.weight = torch.nn.Parameter(weight)
+        else:
+            self.weight = torch.nn.Parameter(torch.empty(shape))
+
+    def forward(self):
+        return self.weight
+
+
 class WeightNormedConv1d(torch.nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride = 1, padding = 0, dilation = 1, groups = 1, bias = True, padding_mode = "zeros", device=None, dtype=None):
         super().__init__()
@@ -258,13 +270,13 @@ class CausalAttention(nn.Module):
         self.out_dim = out_dim
         self.num_heads = num_heads
         self.proj = nn.Linear(out_dim, out_dim)
-        self.q_bias = nn.Parameter(torch.empty(in_dim))
-        self.zero_k_bias = nn.Parameter(torch.empty(in_dim))
-        self.v_bias = nn.Parameter(torch.empty(in_dim))
+        self.q_bias = WarpedTensor(torch.empty(in_dim))
+        self.zero_k_bias = WarpedTensor(torch.empty(in_dim))
+        self.v_bias = WarpedTensor(torch.empty(in_dim))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         q, k, v = self.qkv(x).chunk(3, dim=-1)
-        q, k, v = q + self.q_bias, k + self.zero_k_bias, v + self.v_bias
+        q, k, v = q + self.q_bias(), k + self.zero_k_bias(), v + self.v_bias()
         x = attention_forward(q, k, v, q_pattern="b s (n d)", k_pattern="b s (n d)", v_pattern="b s (n d)", out_pattern="b n s d", dims={"n": self.num_heads}, is_causal=True)
         x = torch.mean(x, dim=1)
         x = F.adaptive_avg_pool1d(x, self.out_dim)

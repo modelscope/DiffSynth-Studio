@@ -1370,6 +1370,7 @@ minimax_h3_series = [
         "model_hash": "db383f1c8960837b94059f7722e6cb11",
         "model_name": "minimax_h3_audio_vae",
         "model_class": "diffsynth.models.minimax_h3_audio_vae.MiniMaxH3AudioVAE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_audio_vae.MiniMaxH3AudioVAEStateDictConverter"
     },
     {
         # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-FL2VA", origin_file_pattern="text_encoder/model*.safetensors")
@@ -1427,6 +1428,7 @@ minimax_h3_series = [
         "model_name": "minimax_h3_audio_vae",
         "model_class": "diffsynth.models.minimax_h3_audio_vae.MiniMaxH3AudioVAE",
         "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_audio_vae.MiniMaxH3AudioVAEStateDictConverter"
     },
 ]
 
