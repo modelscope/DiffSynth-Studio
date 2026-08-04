@@ -34,7 +34,7 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.minimax_h3_video_vae.BaseConv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "diffsynth.models.minimax_h3_video_vae.TemporalIsolatedSpatialParallelGroupNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_h3_video_vae.TemporalIsolatedSpatialGroupNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.minimax_h3_audio_vae.MiniMaxH3AudioVAE": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
@@ -42,8 +42,7 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "diffsynth.models.minimax_h3_audio_vae.Snake1d": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "diffsynth.models.minimax_h3_audio_vae.SnakeBeta": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_h3_audio_vae.Snake": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.minimax_h3_audio_vae.WeightNormedConv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.minimax_h3_audio_vae.WeightNormedConvTranspose1d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.minimax_h3_audio_vae.UpSample1d": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
