@@ -978,6 +978,7 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
         packed["update_mask"] = packed["update_mask"].to(dev)
         if "audio_update_mask" in packed:
             packed["audio_update_mask"] = packed["audio_update_mask"].to(dev)
+        if pipe.device == "mps": packed["img_position_ids"] = packed["img_position_ids"].to(torch.float32)
         packed["img_position_ids"] = packed["img_position_ids"][None].to(dev)  # [1,S,3] fp64
         packed["token_tags"] = packed["token_tags"].to(dev, torch.long)
         packed["cu_seqlens"] = packed["cu_seqlens"].to(dev, torch.int32)

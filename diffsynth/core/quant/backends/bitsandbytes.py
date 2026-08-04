@@ -37,8 +37,6 @@ class BitsAndBytesQuantBackend(QuantBackend):
                 "bitsandbytes is required for bitsandbytes quantization methods. "
                 'Please install it via `pip install bitsandbytes` or `pip install "diffsynth[quant]"`.'
             )
-        if not torch.cuda.is_available():
-            raise RuntimeError("bitsandbytes 4bit quantization requires a CUDA device.")
 
     def capabilities(self):
         return {
