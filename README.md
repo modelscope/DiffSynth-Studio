@@ -36,6 +36,8 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
+- **August 3, 2026** MiniMax-H3 open-sourced, welcome a new member to the video model family! Support includes text-to-video-audio generation, keyframe-guided generation, reference-driven generation, low VRAM inference, and NF4-quantized inference. For details, please refer to the [documentation](/docs/en/Model_Details/MiniMax-H3.md) and [example code](/examples/minimax_h3/).
+
 - **July 28, 2026** LingBot-Video open-sourced, welcome a new member to the video model family! Support includes text-to-video, image-to-video and text-to-image generation, low VRAM inference, and LoRA / full training capabilities. The MoE-30B-A3B variant serves the same three tasks with 30B total parameters and ~3B active per token. For details, please refer to the [documentation](/docs/en/Model_Details/LingBot-Video.md) and [example code](/examples/lingbot_video/). Huge thanks to [NancyFyong](https://github.com/NancyFyong) for contributing the integration of this model!
 
 - **July 21, 2026** We have open-sourced [DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills). This is a composable collection of Agent Skills that automates the entire workflow of integrating external diffusion models into DiffSynth-Studio, significantly improving the standardization and efficiency of model integration. Get started with the [example](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1)!
@@ -1521,6 +1523,71 @@ Example code for LingBot-Video is available at: [/examples/lingbot_video/](/exam
 |[Robbyant/lingbot-video-moe-30b-a3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v.py)|[code](/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_t2v.sh)|[code](/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_t2v.py)|[code](/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_t2v.sh)|[code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_t2v.py)|
 |[Robbyant/lingbot-video-moe-30b-a3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v.py)|[code](/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_ti2v.sh)|[code](/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_ti2v.py)|[code](/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_ti2v.sh)|[code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_ti2v.py)|
 |[Robbyant/lingbot-video-moe-30b-a3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2i.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2i.py)|-|-|-|-|
+
+</details>
+
+#### MiniMax-H3: [/docs/en/Model_Details/MiniMax-H3.md](/docs/en/Model_Details/MiniMax-H3.md)
+
+<details>
+
+<summary>Quick Start</summary>
+
+Running the following code will quickly load the [DiffSynth-Studio/MiniMax-H3-NF4](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4) NF4-quantized model and perform text-to-video-audio inference. VRAM management is enabled, and the framework automatically controls the loading of model parameters based on available VRAM, requiring a minimum of 7GB VRAM.
+
+```python
+import torch
+from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
+from diffsynth.utils.data.audio_video import write_video_audio
+
+vram_config = {
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+pipe = MiniMaxH3Pipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-nf4.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-text-encoder-nf4.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="video_vae_nf4.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="audio_vae_nf4.safetensors", **vram_config),
+    ],
+    processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
+)
+
+# Text -> Video + Audio
+prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
+video, audio = pipe(
+    prompt=prompt,
+    height=480, width=832, num_frames=124, num_inference_steps=50, seed=0,
+)
+write_video_audio(
+    video=video, audio=audio,
+    output_path="t2va.mp4", fps=24, audio_sample_rate=32000,
+)
+```
+
+</details>
+
+<details>
+
+<summary>Examples</summary>
+
+Example code for MiniMax-H3 is available at: [/examples/minimax_h3/](/examples/minimax_h3/)
+
+| Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
+|-|-|-|-|-|-|-|
+|[MiniMax/MiniMax-H3: FL2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA.py)|[code](/examples/minimax_h3/model_training/full/MiniMax-H3-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-FL2VA.py)|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FL2VA.py)|
+|[MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py)|[code](/examples/minimax_h3/model_training/full/MiniMax-H3-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Ref2VA.py)|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py)|
+|[DiffSynth-Studio/MiniMax-H3-NF4: FL2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-FL2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-FL2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-FL2VA.py)|
+|[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Ref2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Ref2VA.py)|
 
 </details>
 
