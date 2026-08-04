@@ -2,11 +2,11 @@ import os
 
 from ...core.data.operators import DataProcessingOperator, ImageCropAndResize, LoadImage, LoadVideo
 from ...models.minimax_constant import (
-    MINIMAX_H3_AUDIO_SAMPLE_RATE,
-    MINIMAX_H3_CANVAS_MULTIPLE,
-    MINIMAX_H3_SUPPORTED_FPS,
-    MINIMAX_H3_VAE_CLIP_LENGTH,
-    MINIMAX_H3_VAE_TAIL_FRAMES,
+    AUDIO_SAMPLE_RATE,
+    CANVAS_MULTIPLE,
+    SUPPORTED_FPS,
+    VAE_CLIP_LENGTH,
+    VAE_TAIL_FRAMES,
 )
 from .audio import read_audio
 
@@ -39,8 +39,8 @@ class MiniMaxH3ReferenceLoader(DataProcessingOperator):
         width=None,
         max_pixels=None,
         num_frames=124,
-        frame_rate=MINIMAX_H3_SUPPORTED_FPS,
-        audio_sample_rate=MINIMAX_H3_AUDIO_SAMPLE_RATE,
+        frame_rate=SUPPORTED_FPS,
+        audio_sample_rate=AUDIO_SAMPLE_RATE,
     ):
         self.base_path = base_path
         self.frame_rate = frame_rate
@@ -49,14 +49,14 @@ class MiniMaxH3ReferenceLoader(DataProcessingOperator):
         self.image_loader = LoadImage()
         self.video_loader = LoadVideo(
             num_frames=num_frames,
-            time_division_factor=MINIMAX_H3_VAE_CLIP_LENGTH,
-            time_division_remainder=MINIMAX_H3_VAE_TAIL_FRAMES,
+            time_division_factor=VAE_CLIP_LENGTH,
+            time_division_remainder=VAE_TAIL_FRAMES,
             frame_processor=ImageCropAndResize(
                 height=height,
                 width=width,
                 max_pixels=max_pixels,
-                height_division_factor=MINIMAX_H3_CANVAS_MULTIPLE,
-                width_division_factor=MINIMAX_H3_CANVAS_MULTIPLE,
+                height_division_factor=CANVAS_MULTIPLE,
+                width_division_factor=CANVAS_MULTIPLE,
             ),
             frame_rate=frame_rate,
             fix_frame_rate=True,

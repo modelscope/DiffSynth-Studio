@@ -102,8 +102,6 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
             "keyframes": None,
             "keyframe_indices": None,
             "references": None,
-            "imgvid_cond_noise_aug": 0.999,
-            "audio_cond_noise_aug": 1.0,
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
             "cfg_scale": 1,

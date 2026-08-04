@@ -94,7 +94,6 @@ The input parameters for `MiniMaxH3Pipeline` inference include:
 * `tile_overlap`: Tile overlap during VAE encoding/decoding, defaults to 64.
 * `keyframes`: List of keyframe images for keyframe-guided generation. Images are resized onto the target canvas.
 * `keyframe_indices`: Frame indices of the keyframes in the video, either `0` (first frame) or `-1` (last frame), corresponding one-to-one with `keyframes`.
-* `imgvid_cond_noise_aug`: Noise augmentation anchor timestep for image/video conditions, defaults to 0.999.
 * `references`: List of reference conditions in request order. Each element is a dict in one of the following four forms:
     * `{"type": "image", "image": PIL.Image}`
     * `{"type": "video", "video": list[PIL.Image]}` (silent video)
@@ -102,7 +101,6 @@ The input parameters for `MiniMaxH3Pipeline` inference include:
     * `{"type": "video_audio", "video": list[PIL.Image], "audio": Tensor[C, L], "sample_rate": int}`
 
     Video frame lists must ALREADY be at 24fps; the pipeline never resamples the frame rate.
-* `audio_cond_noise_aug`: Noise augmentation anchor timestep for reference audio conditions, defaults to 1.0.
 * `progress_bar_cmd`: Progress bar, defaults to `tqdm`. Set it to `lambda x: x` to disable the progress bar.
 
 The pipeline returns a `(video, audio)` tuple, where the video is a list of PIL images and the audio is a waveform tensor. Use `diffsynth.utils.data.audio_video.write_video_audio` to mux them into an MP4:
