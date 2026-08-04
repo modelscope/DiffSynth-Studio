@@ -9,7 +9,7 @@ from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..models.minimax_h3_dit import MiniMaxH3DiT, patchify_video, unpatchify_video, pack_audio, unpack_audio
-from ..models.minimax_h3_text_encoder import MiniMaxH3TextEncoder, presentation_t2va, presentation_fl2va, presentation_ref2va, sample_qwen_video_frames
+from ..models.minimax_h3_text_encoder import MiniMaxH3TextEncoder, presentation_t2va, presentation_fl2va, presentation_ref2va, sample_qwen_video_frames, image_token_counts, video_token_counts
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
 from ..models.minimax_constant import *
@@ -188,31 +188,10 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
             onload_model_names=("text_encoder",),
         )
 
-    @staticmethod
-    def _image_token_counts(processor, images):
-        vision = processor.image_processor(images=images, return_tensors="pt")
-        merge = int(processor.image_processor.merge_size) ** 2
-        counts = [int(vision["image_grid_thw"][i].prod().item()) // merge for i in range(len(images))]
-        return vision["pixel_values"], vision["image_grid_thw"], counts
-
-    @staticmethod
-    def _video_token_counts(processor, videos, timestamps_per_video):
-        vout = processor.video_processor(videos=videos, do_sample_frames=False, return_tensors="pt")
-        grid = vout["video_grid_thw"]
-        merge = int(processor.image_processor.merge_size) ** 2
-        block_counts, block_timestamps = [], []
-        for index, timestamps in enumerate(timestamps_per_video):
-            n_blocks = int(grid[index, 0])
-            per_block = int(grid[index, 1]) * int(grid[index, 2]) // merge
-            block_counts.append([per_block] * n_blocks)
-            block_timestamps.append([float(t) for t in timestamps])
-        return vout["pixel_values_videos"], grid, block_counts, block_timestamps
-
     def preprocess_ref_blocks(self, pipe: MiniMaxH3Pipeline, prompt, ref_blocks):
         pixel_values = image_grid_thw = pixel_values_videos = video_grid_thw = None
         counters = {"image": 0, "audio": 0, "video": 0}
-        condition_labels = []
-        images, videos, timestamps_per_video = [], [], []
+        images, videos, timestamps_per_video, condition_labels = [], [], [], []
         for block in ref_blocks:
             kind = block["kind"]
             if kind == "image":
@@ -234,45 +213,37 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
             else:
                 raise ValueError(f"unknown reference kind: {kind}")
 
-        image_counts = []
+        image_counts, video_counts, video_timestamps = [], [], []
         if len(images) > 0:
-            pixel_values, image_grid_thw, image_counts = self._image_token_counts(pipe.processor, images)
-        video_counts, video_timestamps = [], []
+            pixel_values, image_grid_thw, image_counts = image_token_counts(pipe.processor, images)
         if len(videos) > 0:
-            pixel_values_videos, video_grid_thw, video_counts, video_timestamps = self._video_token_counts(pipe.processor, videos, timestamps_per_video)
+            pixel_values_videos, video_grid_thw, video_counts, video_timestamps = video_token_counts(pipe.processor, videos, timestamps_per_video)
         input_ids, text_token_tags = presentation_ref2va(pipe.tokenizer, prompt, condition_labels, image_counts, video_counts, video_timestamps)
         return input_ids, text_token_tags, pixel_values, image_grid_thw, pixel_values_videos, video_grid_thw
 
     def process(self, pipe: MiniMaxH3Pipeline, prompt, keyframes=None, ref_blocks=None, height=None, width=None):
         pipe.load_models_to_device(("text_encoder",))
-        pixel_values = image_grid_thw = None
-        pixel_values_videos = video_grid_thw = None
-
+        pixel_values = image_grid_thw = pixel_values_videos = video_grid_thw = None
         if ref_blocks:
             input_ids, text_token_tags, pixel_values, image_grid_thw, pixel_values_videos, video_grid_thw = self.preprocess_ref_blocks(pipe, prompt, ref_blocks)
         elif keyframes:
             keyframes = [img.convert("RGB").resize((width, height)) for img in keyframes]
-            pixel_values, image_grid_thw, image_counts = self._image_token_counts(pipe.processor, keyframes)
+            pixel_values, image_grid_thw, image_counts = image_token_counts(pipe.processor, keyframes)
             input_ids, text_token_tags = presentation_fl2va(pipe.tokenizer, prompt, image_counts)
         else:
             input_ids, text_token_tags = presentation_t2va(pipe.tokenizer, prompt)
 
-        ids = input_ids[None].to(pipe.device)
+        ids = input_ids.unsqueeze(0).to(pipe.device)
         kwargs = {"input_ids": ids, "attention_mask": torch.ones_like(ids)}
-        if pixel_values is not None or pixel_values_videos is not None:
-            mm_types = torch.zeros_like(ids, dtype=torch.int32)
-            mm_types[ids == pipe.text_encoder.image_token_id] = 1
-            mm_types[ids == pipe.text_encoder.video_token_id] = 2
-            kwargs["mm_token_type_ids"] = mm_types
         if pixel_values is not None:
             kwargs["pixel_values"] = pixel_values.to(pipe.device, pipe.torch_dtype)
             kwargs["image_grid_thw"] = image_grid_thw.to(pipe.device, torch.long)
         if pixel_values_videos is not None:
             kwargs["pixel_values_videos"] = pixel_values_videos.to(pipe.device, pipe.torch_dtype)
             kwargs["video_grid_thw"] = video_grid_thw.to(pipe.device, torch.long)
-
         hidden = pipe.text_encoder(**kwargs)
-        return {"prompt_embeds": hidden[0].to(pipe.device, pipe.torch_dtype), "text_token_tags": text_token_tags.to(pipe.device, torch.long)}
+
+        return {"prompt_embeds": hidden.to(pipe.device, pipe.torch_dtype), "text_token_tags": text_token_tags.to(pipe.device, torch.long)}
 
 
 def _encode_audio_waveform(pipe: "MiniMaxH3Pipeline", waveform: torch.Tensor, sample_rate: int) -> torch.Tensor:
