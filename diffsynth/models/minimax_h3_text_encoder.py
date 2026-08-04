@@ -83,9 +83,13 @@ class MiniMaxH3TextEncoder(torch.nn.Module):
         image_grid_thw=None,
         pixel_values_videos=None,
         video_grid_thw=None,
-        mm_token_type_ids=None,
         **kwargs,
     ):
+        mm_token_type_ids = None
+        if pixel_values is not None or pixel_values_videos is not None:
+            mm_token_type_ids = torch.zeros_like(input_ids, dtype=torch.int32)
+            mm_token_type_ids[input_ids == self.image_token_id] = 1
+            mm_token_type_ids[input_ids == self.video_token_id] = 2
         outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -99,7 +103,27 @@ class MiniMaxH3TextEncoder(torch.nn.Module):
             return_dict=True,
             **kwargs,
         )
-        return outputs.last_hidden_state
+        return outputs.last_hidden_state[0]
+
+
+def image_token_counts(processor, images):
+    vision = processor.image_processor(images=images, return_tensors="pt")
+    merge = int(processor.image_processor.merge_size) ** 2
+    counts = [int(vision["image_grid_thw"][i].prod().item()) // merge for i in range(len(images))]
+    return vision["pixel_values"], vision["image_grid_thw"], counts
+
+
+def video_token_counts(processor, videos, timestamps_per_video):
+    vout = processor.video_processor(videos=videos, do_sample_frames=False, return_tensors="pt")
+    grid = vout["video_grid_thw"]
+    merge = int(processor.image_processor.merge_size) ** 2
+    block_counts, block_timestamps = [], []
+    for index, timestamps in enumerate(timestamps_per_video):
+        n_blocks = int(grid[index, 0])
+        per_block = int(grid[index, 1]) * int(grid[index, 2]) // merge
+        block_counts.append([per_block] * n_blocks)
+        block_timestamps.append([float(t) for t in timestamps])
+    return vout["pixel_values_videos"], grid, block_counts, block_timestamps
 
 
 def _text_ids(tokenizer, text: str) -> list[int]:
@@ -137,12 +161,8 @@ def presentation_t2va(tokenizer, prompt: str):
 
 
 def presentation_fl2va(tokenizer, prompt: str, image_token_counts):
-    if not image_token_counts:
-        raise ValueError("image_token_counts must be non-empty")
     presentation = _Presentation()
     for index, count in enumerate(image_token_counts, start=1):
-        if int(count) <= 0:
-            raise ValueError("image_token_count must be positive")
         presentation.text(_text_ids(tokenizer, f"<Picture {index}>: "))
         presentation.vision(_vision_block_ids(tokenizer, IMAGE_PAD, count))
     presentation.text(_text_ids(tokenizer, prompt))
