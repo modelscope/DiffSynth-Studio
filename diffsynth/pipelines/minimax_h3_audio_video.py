@@ -191,26 +191,19 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
     @staticmethod
     def _image_token_counts(processor, images):
         vision = processor.image_processor(images=images, return_tensors="pt")
-        grid = vision["image_grid_thw"]
-        if int(grid.shape[0]) != len(images):
-            raise ValueError(f"expected {len(images)} image grids, got {list(grid.shape)}")
         merge = int(processor.image_processor.merge_size) ** 2
-        counts = [int(grid[i].prod().item()) // merge for i in range(len(images))]
-        return vision["pixel_values"], grid, counts
+        counts = [int(vision["image_grid_thw"][i].prod().item()) // merge for i in range(len(images))]
+        return vision["pixel_values"], vision["image_grid_thw"], counts
 
     @staticmethod
     def _video_token_counts(processor, videos, timestamps_per_video):
         vout = processor.video_processor(videos=videos, do_sample_frames=False, return_tensors="pt")
         grid = vout["video_grid_thw"]
-        if int(grid.shape[0]) != len(videos):
-            raise ValueError(f"expected {len(videos)} video grids, got {list(grid.shape)}")
         merge = int(processor.image_processor.merge_size) ** 2
         block_counts, block_timestamps = [], []
         for index, timestamps in enumerate(timestamps_per_video):
             n_blocks = int(grid[index, 0])
             per_block = int(grid[index, 1]) * int(grid[index, 2]) // merge
-            if len(timestamps) != n_blocks:
-                raise ValueError(f"video block count mismatch: processor {n_blocks} vs " f"timestamps {len(timestamps)} for video {index}")
             block_counts.append([per_block] * n_blocks)
             block_timestamps.append([float(t) for t in timestamps])
         return vout["pixel_values_videos"], grid, block_counts, block_timestamps

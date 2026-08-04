@@ -137,12 +137,8 @@ def presentation_t2va(tokenizer, prompt: str):
 
 
 def presentation_fl2va(tokenizer, prompt: str, image_token_counts):
-    if not image_token_counts:
-        raise ValueError("image_token_counts must be non-empty")
     presentation = _Presentation()
     for index, count in enumerate(image_token_counts, start=1):
-        if int(count) <= 0:
-            raise ValueError("image_token_count must be positive")
         presentation.text(_text_ids(tokenizer, f"<Picture {index}>: "))
         presentation.vision(_vision_block_ids(tokenizer, IMAGE_PAD, count))
     presentation.text(_text_ids(tokenizer, prompt))
