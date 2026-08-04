@@ -28,9 +28,6 @@ REFERENCE_IMAGE_MULTIPLE = 32
 # ---------------------------------------------------------------------------
 # Temporal / VAE
 # ---------------------------------------------------------------------------
-# Video VAE temporal chunking (config.json: vae_clip_length=17), 17n+5 grouping.
-VAE_CLIP_LENGTH = 17
-VAE_TAIL_FRAMES = 5
 # Ref: target constants.py:23
 SUPPORTED_FPS = 24
 

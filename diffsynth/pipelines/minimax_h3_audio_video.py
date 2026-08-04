@@ -17,7 +17,7 @@ from ..models.minimax_constant import *
 class MiniMaxH3Pipeline(BasePipeline):
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
-        super().__init__(device=device, torch_dtype=torch_dtype, height_division_factor=32, width_division_factor=32)
+        super().__init__(device=device, torch_dtype=torch_dtype, height_division_factor=32, width_division_factor=32, time_division_factor=17, time_division_remainder=5)
         self.scheduler = FlowMatchScheduler("MiniMax-H3")
         self.scheduler_audio = FlowMatchScheduler("MiniMax-H3")
         self.text_encoder: MiniMaxH3TextEncoder = None
@@ -157,16 +157,8 @@ class MiniMaxH3Unit_ShapeChecker(PipelineUnit):
             output_params=("height", "width", "num_frames"),
         )
 
-    @staticmethod
-    def _align_frame_count(frame_count: int) -> int:
-        current = max(int(frame_count), 1)
-        while current % 17 != 5:
-            current += 1
-        return current
-
     def process(self, pipe: MiniMaxH3Pipeline, height, width, num_frames):
-        height, width = pipe.check_resize_height_width(height, width)
-        num_frames = self._align_frame_count(num_frames)
+        height, width, num_frames = pipe.check_resize_height_width(height, width, num_frames)
         return {"height": height, "width": width, "num_frames": num_frames}
 
 
@@ -177,18 +169,11 @@ class MiniMaxH3Unit_NoiseInitializer(PipelineUnit):
             output_params=("video_latents", "audio_latents"),
         )
 
-    @staticmethod
-    def _video_latent_t(frame_count: int) -> int:
-        if frame_count <= 5:
-            return 2
-        return ((int(frame_count) - 5) // 17) * 5 + 2
-
     def process(self, pipe: MiniMaxH3Pipeline, seed, num_frames, height, width, rand_device):
-        video_latent_t, latent_h, latent_w = self._video_latent_t(num_frames), height // 16, width // 16
-        video_latents = pipe.generate_noise((1, 24, video_latent_t, latent_h, latent_w), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype, torch_dtype=pipe.torch_dtype)
-        audio_latent_t = int(round(float(num_frames) / float(SUPPORTED_FPS) * 40.0))
-        audio_rows = pipe.generate_noise((audio_latent_t * 2, 32), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype, torch_dtype=pipe.torch_dtype)
-        audio_latents = unpack_audio(audio_rows, audio_channel=2, steps=audio_latent_t)
+        video_latent_t, latent_h, latent_w = ((num_frames - 5) // 17) * 5 + 2, height // 16, width // 16
+        video_latents = pipe.generate_noise((1, 24, video_latent_t, latent_h, latent_w), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype)
+        audio_latent_t = round(num_frames / 24.0 * 40.0)
+        audio_latents = pipe.generate_noise((2, 32, audio_latent_t), seed=seed, rand_device=rand_device, rand_torch_dtype=pipe.torch_dtype)
         return {"video_latents": video_latents, "audio_latents": audio_latents}
 
 
@@ -441,7 +426,7 @@ class MiniMaxH3Unit_InputVideoEmbedder(PipelineUnit):
         if input_video is None or not pipe.scheduler.training:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
-        used = _trim_reference_video_length(len(input_video))
+        used = _trim_reference_video_length(pipe, len(input_video))
         frames_np = np.stack([np.asarray(f.convert("RGB")) for f in input_video[:used]], axis=0)
         frames_tensor = torch.from_numpy(frames_np).permute(3, 0, 1, 2).unsqueeze(0).float() / 255.0
         latents = pipe.video_vae.encode_video(frames_tensor.to(pipe.device), dtype=pipe.torch_dtype).to(pipe.torch_dtype)
@@ -550,10 +535,11 @@ def _resolve_reference_video_shape(width: int, height: int):
     return (_nearest_multiple(nominal_w, CANVAS_MULTIPLE), _nearest_multiple(nominal_h, CANVAS_MULTIPLE))
 
 
-def _trim_reference_video_length(frame_count: int) -> int:
+def _trim_reference_video_length(pipe: MiniMaxH3Pipeline, frame_count: int) -> int:
     frame_count = int(frame_count)
-    chunks = max(1, (frame_count - VAE_TAIL_FRAMES) // VAE_CLIP_LENGTH)
-    used = chunks * VAE_CLIP_LENGTH + VAE_TAIL_FRAMES
+    factor, remainder = pipe.time_division_factor, pipe.time_division_remainder
+    chunks = max(1, (frame_count - remainder) // factor)
+    used = chunks * factor + remainder
     if used > frame_count:
         raise ValueError(f"cannot trim {frame_count} reference video frames down to a valid " f"length: at least {used} frames are required")
     return used
@@ -588,7 +574,7 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
             frames = frames[: int(target_frame_count)]
         prepared_frames = frames
 
-        used = _trim_reference_video_length(len(prepared_frames))
+        used = _trim_reference_video_length(pipe, len(prepared_frames))
         frames_np = np.stack([np.asarray(f) for f in prepared_frames[:used]], axis=0)
         frames_tensor = torch.from_numpy(frames_np).permute(3, 0, 1, 2).unsqueeze(0).float() / 255.0
         z = pipe.video_vae.encode_video(frames_tensor.to(pipe.device), dtype=pipe.torch_dtype, process_image=False,)  # [1,24,T',H',W']

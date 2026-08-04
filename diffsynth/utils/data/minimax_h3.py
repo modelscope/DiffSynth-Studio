@@ -5,8 +5,6 @@ from ...models.minimax_constant import (
     AUDIO_SAMPLE_RATE,
     CANVAS_MULTIPLE,
     SUPPORTED_FPS,
-    VAE_CLIP_LENGTH,
-    VAE_TAIL_FRAMES,
 )
 from .audio import read_audio
 
@@ -49,8 +47,8 @@ class MiniMaxH3ReferenceLoader(DataProcessingOperator):
         self.image_loader = LoadImage()
         self.video_loader = LoadVideo(
             num_frames=num_frames,
-            time_division_factor=VAE_CLIP_LENGTH,
-            time_division_remainder=VAE_TAIL_FRAMES,
+            time_division_factor=17,
+            time_division_remainder=5,
             frame_processor=ImageCropAndResize(
                 height=height,
                 width=width,

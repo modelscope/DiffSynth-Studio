@@ -109,7 +109,7 @@ class BasePipeline(torch.nn.Module):
             return height, width
         else:
             if num_frames % self.time_division_factor != self.time_division_remainder:
-                num_frames = (num_frames + self.time_division_factor - 1) // self.time_division_factor * self.time_division_factor + self.time_division_remainder
+                num_frames = (num_frames - self.time_division_remainder + self.time_division_factor - 1) // self.time_division_factor * self.time_division_factor + self.time_division_remainder
                 if verbose > 0:
                     print(f"num_frames % {self.time_division_factor} != {self.time_division_remainder}. We round it up to {num_frames}.")
             return height, width, num_frames
