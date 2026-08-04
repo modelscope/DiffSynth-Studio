@@ -9,7 +9,7 @@ from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..models.minimax_h3_dit import MiniMaxH3DiT, patchify_video, unpatchify_video, pack_audio, unpack_audio
-from ..models.minimax_h3_text_encoder import MiniMaxH3TextEncoder
+from ..models.minimax_h3_text_encoder import MiniMaxH3TextEncoder, presentation_t2va, presentation_fl2va, presentation_ref2va, sample_qwen_video_frames
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
 from ..models.minimax_constant import *
@@ -177,115 +177,6 @@ class MiniMaxH3Unit_NoiseInitializer(PipelineUnit):
         return {"video_latents": video_latents, "audio_latents": audio_latents}
 
 
-def _text_ids(tokenizer, text: str) -> list[int]:
-    return list(tokenizer(text, add_special_tokens=False)["input_ids"])
-
-
-def _vision_block_ids(tokenizer, pad_token: str, count: int) -> list[int]:
-    return (
-        [tokenizer.convert_tokens_to_ids(VISION_START)]
-        + [tokenizer.convert_tokens_to_ids(pad_token)] * int(count)
-        + [tokenizer.convert_tokens_to_ids(VISION_END)]
-    )
-
-class _Presentation:
-    def __init__(self):
-        self.ids: list[int] = []
-        self.tags: list[int] = []
-
-    def text(self, token_ids: list[int]):
-        self.ids += token_ids
-        self.tags += [PRESENTATION_TEXT_TAG] * len(token_ids)
-
-    def vision(self, token_ids: list[int]):
-        self.ids += token_ids
-        self.tags += [PRESENTATION_VIDEO_TAG] * len(token_ids)
-
-    def build(self):
-        return (torch.tensor(self.ids, dtype=torch.long), torch.tensor(self.tags, dtype=torch.long))
-
-
-def _presentation_t2va(tokenizer, prompt: str):
-    presentation = _Presentation()
-    presentation.text(_text_ids(tokenizer, prompt))
-    return presentation.build()
-
-
-def _presentation_fl2va(tokenizer, prompt: str, image_token_counts):
-    if not image_token_counts:
-        raise ValueError("image_token_counts must be non-empty")
-    presentation = _Presentation()
-    for index, count in enumerate(image_token_counts, start=1):
-        if int(count) <= 0:
-            raise ValueError("image_token_count must be positive")
-        presentation.text(_text_ids(tokenizer, f"<Picture {index}>: "))
-        presentation.vision(_vision_block_ids(tokenizer, IMAGE_PAD, count))
-    presentation.text(_text_ids(tokenizer, prompt))
-    return presentation.build()
-
-
-def _presentation_ref2va(tokenizer, prompt: str, condition_labels, image_token_counts, video_block_token_counts, video_block_timestamps):
-    if not prompt:
-        raise ValueError("prompt must be non-empty")
-    presentation = _Presentation()
-    image_seen = 0
-    video_seen = 0
-    for cond_type, ordinal in condition_labels:
-        if cond_type == "image":
-            image_seen += 1
-            if image_seen > len(image_token_counts):
-                raise ValueError("image_token_count required for an image reference")
-            count = int(image_token_counts[image_seen - 1])
-            if count <= 0:
-                raise ValueError("image_token_count required for an image reference")
-            presentation.text(_text_ids(tokenizer, f"<Picture {ordinal}>: "))
-            presentation.vision(_vision_block_ids(tokenizer, IMAGE_PAD, count))
-        elif cond_type == "audio":
-            presentation.text(_text_ids(tokenizer, f"<Audio {ordinal}>: "))
-        elif cond_type == "video":
-            video_seen += 1
-            if video_seen > len(video_block_token_counts):
-                raise ValueError("video reference requires block token counts and timestamps")
-            counts = video_block_token_counts[video_seen - 1]
-            timestamps = video_block_timestamps[video_seen - 1]
-            if not counts or len(counts) != len(timestamps):
-                raise ValueError("video block token counts and timestamps must align")
-            presentation.text(_text_ids(tokenizer, f"<Video {ordinal}>: "))
-            for count, timestamp in zip(counts, timestamps):
-                if int(count) <= 0:
-                    raise ValueError("video block token count must be positive")
-                presentation.text(_text_ids(tokenizer, f"<{timestamp:.1f} seconds>"))
-                presentation.vision(_vision_block_ids(tokenizer, VIDEO_PAD, count))
-        else:
-            raise ValueError(f"unsupported ref2va condition type {cond_type!r}")
-    if image_seen != len(image_token_counts):
-        raise ValueError("unused image_token_count entries")
-    if video_seen != len(video_block_token_counts):
-        raise ValueError("unused video block token count entries")
-    presentation.text(_text_ids(tokenizer, prompt))
-    return presentation.build()
-
-
-def _sample_qwen_video_frames(frames):
-    ratio = SUPPORTED_FPS / QWEN_VIDEO_SAMPLE_FPS
-    indices: list[int] = []
-    cursor = 0.0
-    while True:
-        idx = int(round(cursor))
-        if idx >= len(frames):
-            break
-        if not indices or idx > indices[-1]:
-            indices.append(idx)
-        cursor += ratio
-    if not indices:
-        raise ValueError("no frames sampled for the Qwen video presentation")
-    ts = [i / QWEN_VIDEO_SAMPLE_FPS for i in range(len(indices))]
-    pad = (-len(ts)) % QWEN_TEMPORAL_PATCH
-    ts = ts + [ts[-1]] * pad
-    block_timestamps = [(ts[i] + ts[i + QWEN_TEMPORAL_PATCH - 1]) / 2 for i in range(0, len(ts), QWEN_TEMPORAL_PATCH)]
-    return [frames[i] for i in indices], block_timestamps
-
-
 class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
@@ -344,7 +235,7 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
                     condition_labels.append(("audio", counters["audio"]))
                 counters["video"] += 1
                 condition_labels.append(("video", counters["video"]))
-                sampled, timestamps = _sample_qwen_video_frames(block["prepared_frames"])
+                sampled, timestamps = sample_qwen_video_frames(block["prepared_frames"])
                 videos.append(np.stack([np.asarray(f) for f in sampled]))
                 timestamps_per_video.append(timestamps)
             else:
@@ -356,7 +247,7 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
         video_counts, video_timestamps = [], []
         if len(videos) > 0:
             pixel_values_videos, video_grid_thw, video_counts, video_timestamps = self._video_token_counts(pipe.processor, videos, timestamps_per_video)
-        input_ids, text_token_tags = _presentation_ref2va(pipe.tokenizer, prompt, condition_labels, image_counts, video_counts, video_timestamps)
+        input_ids, text_token_tags = presentation_ref2va(pipe.tokenizer, prompt, condition_labels, image_counts, video_counts, video_timestamps)
         return input_ids, text_token_tags, pixel_values, image_grid_thw, pixel_values_videos, video_grid_thw
 
     def process(self, pipe: MiniMaxH3Pipeline, prompt, keyframes=None, ref_blocks=None, height=None, width=None):
@@ -369,9 +260,9 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
         elif keyframes:
             keyframes = [img.convert("RGB").resize((width, height)) for img in keyframes]
             pixel_values, image_grid_thw, image_counts = self._image_token_counts(pipe.processor, keyframes)
-            input_ids, text_token_tags = _presentation_fl2va(pipe.tokenizer, prompt, image_counts)
+            input_ids, text_token_tags = presentation_fl2va(pipe.tokenizer, prompt, image_counts)
         else:
-            input_ids, text_token_tags = _presentation_t2va(pipe.tokenizer, prompt)
+            input_ids, text_token_tags = presentation_t2va(pipe.tokenizer, prompt)
 
         ids = input_ids[None].to(pipe.device)
         kwargs = {"input_ids": ids, "attention_mask": torch.ones_like(ids)}
@@ -402,8 +293,8 @@ def _encode_audio_waveform(pipe: "MiniMaxH3Pipeline", waveform: torch.Tensor, sa
         raise ValueError(f"expected audio waveform [C, L], got {list(waveform.shape)}")
     waveform = waveform.float()
 
-    if int(sample_rate) != AUDIO_SAMPLE_RATE:
-        waveform = torchaudio.transforms.Resample(int(sample_rate), AUDIO_SAMPLE_RATE)(waveform)
+    if int(sample_rate) != pipe.audio_vae.sample_rate:
+        waveform = torchaudio.transforms.Resample(int(sample_rate), pipe.audio_vae.sample_rate)(waveform)
 
     if waveform.shape[0] < AUDIO_CHANNELS:
         repeats = (AUDIO_CHANNELS + waveform.shape[0] - 1) // waveform.shape[0]

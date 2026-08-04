@@ -1,6 +1,17 @@
 import torch
 from transformers import Qwen3VLConfig, Qwen3VLModel
 
+VISION_START = "<|vision_start|>"
+VISION_END = "<|vision_end|>"
+IMAGE_PAD = "<|image_pad|>"
+VIDEO_PAD = "<|video_pad|>"
+
+PRESENTATION_TEXT_TAG = 1
+PRESENTATION_VIDEO_TAG = 0
+
+QWEN_VIDEO_SAMPLE_FPS = 2.0
+QWEN_TEMPORAL_PATCH = 2
+MINIMAX_SUPPORTED_FPS = 24
 
 class MiniMaxH3TextEncoder(torch.nn.Module):
     def __init__(self, num_retained_layers: int = 50):
@@ -89,3 +100,112 @@ class MiniMaxH3TextEncoder(torch.nn.Module):
             **kwargs,
         )
         return outputs.last_hidden_state
+
+
+def _text_ids(tokenizer, text: str) -> list[int]:
+    return list(tokenizer(text, add_special_tokens=False)["input_ids"])
+
+
+def _vision_block_ids(tokenizer, pad_token: str, count: int) -> list[int]:
+    return (
+        [tokenizer.convert_tokens_to_ids(VISION_START)]
+        + [tokenizer.convert_tokens_to_ids(pad_token)] * int(count)
+        + [tokenizer.convert_tokens_to_ids(VISION_END)]
+    )
+
+class _Presentation:
+    def __init__(self):
+        self.ids: list[int] = []
+        self.tags: list[int] = []
+
+    def text(self, token_ids: list[int]):
+        self.ids += token_ids
+        self.tags += [PRESENTATION_TEXT_TAG] * len(token_ids)
+
+    def vision(self, token_ids: list[int]):
+        self.ids += token_ids
+        self.tags += [PRESENTATION_VIDEO_TAG] * len(token_ids)
+
+    def build(self):
+        return (torch.tensor(self.ids, dtype=torch.long), torch.tensor(self.tags, dtype=torch.long))
+
+
+def presentation_t2va(tokenizer, prompt: str):
+    presentation = _Presentation()
+    presentation.text(_text_ids(tokenizer, prompt))
+    return presentation.build()
+
+
+def presentation_fl2va(tokenizer, prompt: str, image_token_counts):
+    if not image_token_counts:
+        raise ValueError("image_token_counts must be non-empty")
+    presentation = _Presentation()
+    for index, count in enumerate(image_token_counts, start=1):
+        if int(count) <= 0:
+            raise ValueError("image_token_count must be positive")
+        presentation.text(_text_ids(tokenizer, f"<Picture {index}>: "))
+        presentation.vision(_vision_block_ids(tokenizer, IMAGE_PAD, count))
+    presentation.text(_text_ids(tokenizer, prompt))
+    return presentation.build()
+
+
+def presentation_ref2va(tokenizer, prompt: str, condition_labels, image_token_counts, video_block_token_counts, video_block_timestamps):
+    if not prompt:
+        raise ValueError("prompt must be non-empty")
+    presentation = _Presentation()
+    image_seen = 0
+    video_seen = 0
+    for cond_type, ordinal in condition_labels:
+        if cond_type == "image":
+            image_seen += 1
+            if image_seen > len(image_token_counts):
+                raise ValueError("image_token_count required for an image reference")
+            count = int(image_token_counts[image_seen - 1])
+            if count <= 0:
+                raise ValueError("image_token_count required for an image reference")
+            presentation.text(_text_ids(tokenizer, f"<Picture {ordinal}>: "))
+            presentation.vision(_vision_block_ids(tokenizer, IMAGE_PAD, count))
+        elif cond_type == "audio":
+            presentation.text(_text_ids(tokenizer, f"<Audio {ordinal}>: "))
+        elif cond_type == "video":
+            video_seen += 1
+            if video_seen > len(video_block_token_counts):
+                raise ValueError("video reference requires block token counts and timestamps")
+            counts = video_block_token_counts[video_seen - 1]
+            timestamps = video_block_timestamps[video_seen - 1]
+            if not counts or len(counts) != len(timestamps):
+                raise ValueError("video block token counts and timestamps must align")
+            presentation.text(_text_ids(tokenizer, f"<Video {ordinal}>: "))
+            for count, timestamp in zip(counts, timestamps):
+                if int(count) <= 0:
+                    raise ValueError("video block token count must be positive")
+                presentation.text(_text_ids(tokenizer, f"<{timestamp:.1f} seconds>"))
+                presentation.vision(_vision_block_ids(tokenizer, VIDEO_PAD, count))
+        else:
+            raise ValueError(f"unsupported ref2va condition type {cond_type!r}")
+    if image_seen != len(image_token_counts):
+        raise ValueError("unused image_token_count entries")
+    if video_seen != len(video_block_token_counts):
+        raise ValueError("unused video block token count entries")
+    presentation.text(_text_ids(tokenizer, prompt))
+    return presentation.build()
+
+
+def sample_qwen_video_frames(frames):
+    ratio = MINIMAX_SUPPORTED_FPS / QWEN_VIDEO_SAMPLE_FPS
+    indices: list[int] = []
+    cursor = 0.0
+    while True:
+        idx = int(round(cursor))
+        if idx >= len(frames):
+            break
+        if not indices or idx > indices[-1]:
+            indices.append(idx)
+        cursor += ratio
+    if not indices:
+        raise ValueError("no frames sampled for the Qwen video presentation")
+    ts = [i / QWEN_VIDEO_SAMPLE_FPS for i in range(len(indices))]
+    pad = (-len(ts)) % QWEN_TEMPORAL_PATCH
+    ts = ts + [ts[-1]] * pad
+    block_timestamps = [(ts[i] + ts[i + QWEN_TEMPORAL_PATCH - 1]) / 2 for i in range(0, len(ts), QWEN_TEMPORAL_PATCH)]
+    return [frames[i] for i in indices], block_timestamps
