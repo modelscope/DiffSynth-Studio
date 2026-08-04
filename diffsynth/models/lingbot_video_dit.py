@@ -447,8 +447,6 @@ class LingBotVideoDiT(nn.Module):
     (`num_experts>0`, FFN = sparse MoE) variants from a single class.
     """
 
-    _supports_gradient_checkpointing = True
-    _no_split_modules = ["LingBotVideoBlock"]
     _repeated_blocks = ["LingBotVideoBlock"]
 
     def __init__(

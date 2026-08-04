@@ -31,9 +31,9 @@ pipe = LingBotVideoPipeline.from_pretrained(
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b_t2v/*",
+    allow_file_pattern="lingbot_video/lingbot-video-moe-30b-a3b_t2v/*",
 )
-with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2v/t2v_example_1.json", "r", encoding="utf-8") as f:
+with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-moe-30b-a3b_t2v/t2v_example_1.json", "r", encoding="utf-8") as f:
     caption = json.load(f)
 
 video = pipe(
