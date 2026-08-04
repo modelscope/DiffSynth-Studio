@@ -37,6 +37,7 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "diffsynth.models.minimax_h3_video_vae.TemporalIsolatedSpatialGroupNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.minimax_h3_audio_vae.MiniMaxH3AudioVAE": {
+        "diffsynth.models.minimax_h3_audio_vae.WarpedTensor": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
@@ -45,8 +46,8 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "diffsynth.models.minimax_h3_audio_vae.Snake": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.minimax_h3_audio_vae.WeightNormedConv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.minimax_h3_audio_vae.WeightNormedConvTranspose1d": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "diffsynth.models.minimax_h3_audio_vae.UpSample1d": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
-        "diffsynth.models.minimax_h3_audio_vae.LowPassFilter1d": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
+        "diffsynth.models.minimax_h3_audio_vae.UpSample1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_h3_audio_vae.LowPassFilter1d": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.qwen_image_dit.QwenImageDiT": {
         "diffsynth.models.qwen_image_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
