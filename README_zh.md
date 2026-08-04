@@ -38,7 +38,7 @@ DiffSynth 目前包括两个开源项目：
 
 - **2026年8月3日** MiniMax-H3 开源，欢迎加入视频生成模型家族！支持文生音视频、首尾帧引导生成、参考驱动生成、低显存推理以及 NF4 量化推理。详情请参考[文档](/docs/zh/Model_Details/MiniMax-H3.md)和[示例代码](/examples/minimax_h3/)。
 
-- **2026年7月28日** LingBot-Video 开源，欢迎加入视频生成模型家族！支持文生视频、图生视频、文生图推理、低显存推理以及 LoRA / 全量训练能力。MoE-30B-A3B 总参数量 30B、每个 token 激活约 3B，同样支持这三种任务。详情请参考[文档](/docs/zh/Model_Details/LingBot-Video.md)和[示例代码](/examples/lingbot_video/)。特别感谢 [NancyFyong](https://github.com/NancyFyong) 贡献了本模型的接入代码！
+- **2026年7月28日** LingBot-Video 开源，欢迎加入视频生成模型家族！本次开源包含 Dense-1.3B 和 MoE-30B-A3B 两个版本（MoE 版总参数量 30B、每个 token 激活约 3B），均支持文生视频、图生视频、文生图推理、低显存推理以及 LoRA / 全量训练能力。详情请参考[文档](/docs/zh/Model_Details/LingBot-Video.md)和[示例代码](/examples/lingbot_video/)。特别感谢 [NancyFyong](https://github.com/NancyFyong) 贡献了本模型的接入代码！
 
 - **2026年7月21日** 我们开源了 [DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills)。这是一套可组合的 Agent Skill 合集，将外部扩散模型接入 DiffSynth-Studio 的全流程自动化，大幅提升模型接入标准化程度与效率。从[使用示例](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1)开始体验吧！
 

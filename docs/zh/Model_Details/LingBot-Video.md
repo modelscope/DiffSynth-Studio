@@ -70,8 +70,6 @@ save_video(video, "video.mp4", fps=15, quality=10)
 
 ## 模型总览
 
-MoE-30B-A3B 是更大的版本：总参数量 30B，每个 token 激活约 3B，每个 MoE 层包含 128 个路由专家和 1 个共享专家，并使用 group-limited top-k（4 组，取 top-2 组）将每个 token 路由到 8 个专家。它通过同一条 Pipeline 支持同样的三种任务，只需更换模型 ID 与分片通配符。
-
 |模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
 |[Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_t2v.py)|
@@ -187,7 +185,5 @@ modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --inclu
 ```
 
 训练时 `prompt` 字段应存放**结构化 JSON caption**（与推理时使用的分布内格式一致）。如果数据集里存的是原始散文，可先使用 [`examples/lingbot_video/model_training/scripts/rewrite_captions.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/scripts/rewrite_captions.py) 离线改写一次。
-
-MoE-30B-A3B 的训练脚本通过 [`examples/lingbot_video/model_training/full/accelerate_config_moe.yaml`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/accelerate_config_moe.yaml) 启动（DeepSpeed ZeRO-2、优化器状态 CPU offload、bf16），全量训练脚本还额外开启了 `--use_gradient_checkpointing_offload`。需要注意的是，`--lora_target_modules "to_q,to_k,to_v,to_out"` 只覆盖注意力投影层：路由专家与路由器以裸参数张量的形式存放以便做分组矩阵乘法，LoRA 不会训练它们。如需更新专家部分，请使用全量训练。
 
 我们为每个任务编写了推荐的训练脚本，请参考前文"模型总览"中的表格。关于如何编写模型训练脚本，请参考[模型训练](../Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/zh/Training/)。

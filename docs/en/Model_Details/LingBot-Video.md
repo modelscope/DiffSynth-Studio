@@ -70,8 +70,6 @@ save_video(video, "video.mp4", fps=15, quality=10)
 
 ## Model Overview
 
-MoE-30B-A3B is the larger variant: 30B total parameters with ~3B active per token, where each MoE layer holds 128 routed experts plus 1 shared expert and routes every token to 8 experts with group-limited top-k (4 groups, top-2 groups). It serves the same three tasks through the same pipeline, only the model ID and the shard glob change.
-
 |Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
 |-|-|-|-|-|-|-|
 |[Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_t2v.py)|
@@ -187,7 +185,5 @@ modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --inclu
 ```
 
 Training captions should be **structured-JSON captions** (the same in-distribution format used at inference). If your dataset stores raw prose, rewrite it once offline with [`examples/lingbot_video/model_training/scripts/rewrite_captions.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/scripts/rewrite_captions.py) before training.
-
-The MoE-30B-A3B scripts launch with [`examples/lingbot_video/model_training/full/accelerate_config_moe.yaml`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/accelerate_config_moe.yaml) (DeepSpeed ZeRO-2, optimizer CPU offload, bf16), and the full-parameter scripts additionally enable `--use_gradient_checkpointing_offload`. Note that `--lora_target_modules "to_q,to_k,to_v,to_out"` only reaches the attention projections: the routed experts and the router are stored as bare parameter tensors for grouped matmul, so LoRA leaves them frozen. Use full-parameter training to update the expert stack.
 
 We provide recommended training scripts for each task, please refer to the table in "Model Overview" above. For guidance on writing model training scripts, see [Model Training](../Pipeline_Usage/Model_Training.md); for more advanced training algorithms, see [Training Framework Overview](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/en/Training/).
