@@ -52,7 +52,6 @@ write_video_audio(
 ref_video, ref_video_audio, ref_video_sample_rate = read_video_audio(
     "data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-Ref2VA/video.mp4",
     height=480, width=832, num_frames=124, fps=24, audio_sample_rate=pipe.audio_vae.sample_rate,
-    ref_image_short_edge=768,
 )
 ref_voice, ref_voice_sample_rate = read_audio(
     "data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-Ref2VA/voice.mp3", duration=len(ref_video) / 24, resample=True, resample_rate=pipe.audio_vae.sample_rate,
@@ -65,7 +64,6 @@ video, audio = pipe(
         {"type": "video_audio", "video": ref_video, "audio": ref_video_audio, "sample_rate": ref_video_sample_rate},
         {"type": "audio", "audio": ref_voice, "sample_rate": ref_voice_sample_rate},
     ],
-    ref_video_short_edge=480,
 )
 write_video_audio(
     video=video, audio=audio,
