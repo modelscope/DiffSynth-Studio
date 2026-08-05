@@ -258,7 +258,7 @@ def _encode_audio_waveform(pipe: "MiniMaxH3Pipeline", waveform: torch.Tensor, sa
     waveform = waveform.float()
 
     if int(sample_rate) != pipe.audio_vae.sample_rate:
-        waveform = torchaudio.transforms.Resample(int(sample_rate), pipe.audio_vae.sample_rate)(waveform)
+        waveform = torchaudio.functional.resample(waveform, int(sample_rate), pipe.audio_vae.sample_rate)
 
     if waveform.shape[0] < AUDIO_CHANNELS:
         repeats = (AUDIO_CHANNELS + waveform.shape[0] - 1) // waveform.shape[0]
