@@ -100,7 +100,19 @@ write_video_audio(
     * `{"type": "audio", "audio": Tensor[C, L], "sample_rate": int}`
     * `{"type": "video_audio", "video": list[PIL.Image], "audio": Tensor[C, L], "sample_rate": int}`
 
-    其中传入的视频帧列表必须已经是 24fps，Pipeline 不会重采样帧率。
+    其中传入的视频帧列表必须已经是 24fps，Pipeline 不会重采样帧率。`video` 一律按无声处理，因此若要把参考视频自带的声轨也作为音频条件，必须使用 `video_audio` 并显式传入波形 —— Pipeline 接收的是帧列表而非文件，无法自行探测声轨。可用 `diffsynth.utils.data.audio_video.read_video_audio` 从同一个文件同时读出画面与声轨，两者的时长会自动对齐：
+
+    ```python
+    from diffsynth.utils.data.audio_video import read_video_audio
+
+    frames, waveform, sample_rate = read_video_audio(
+        "video.mp4", height=480, width=832, num_frames=124, fps=24,
+        audio_sample_rate=pipe.audio_vae.sample_rate,
+    )
+    ```
+* `ref_image_short_edge`: 参考图像的短边目标长度，默认值为 2048。参考图像保持长宽比缩放至该短边（允许放大），两轴各自向最近的 32 倍数取整，不受面积上限约束。
+* `ref_video_short_edge`: 参考视频的短边目标长度，默认值为 768。
+* `ref_video_max_pixels`: 参考视频的面积软上限，默认值为 `768 * 1344`。参考视频先按短边定标，若面积超过该上限则等比缩回，最后两轴各自取整到 32 的倍数。宽于 16:9 的素材通常会触发该上限。
 * `progress_bar_cmd`: 进度条，默认为 `tqdm`。可通过设置为 `lambda x: x` 来屏蔽进度条。
 
 Pipeline 返回 `(video, audio)` 二元组，视频为 PIL 图像列表，音频为波形张量，可通过 `diffsynth.utils.data.audio_video.write_video_audio` 混流写出 MP4：
