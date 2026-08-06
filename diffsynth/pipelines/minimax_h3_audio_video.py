@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import torch
 from PIL import Image
@@ -16,6 +17,7 @@ from ..models.minimax_h3_text_encoder import (
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
 from ..utils.data.audio import convert_to_stereo, resample_waveform
+
 
 class MiniMaxH3Pipeline(BasePipeline):
 
@@ -37,6 +39,8 @@ class MiniMaxH3Pipeline(BasePipeline):
             MiniMaxH3Unit_NoiseInitializer(),
             MiniMaxH3Unit_InputVideoEmbedder(),
             MiniMaxH3Unit_InputAudioEmbedder(),
+            MiniMaxH3Unit_VideoRetakeEmbedder(),
+            MiniMaxH3Unit_AudioRetakeEmbedder(),
             MiniMaxH3Unit_KeyframeEncoder(),
             MiniMaxH3Unit_ReferenceEncoder(),
             MiniMaxH3Unit_PromptEmbedder(),
@@ -93,6 +97,12 @@ class MiniMaxH3Pipeline(BasePipeline):
         ref_image_short_edge: int = 2048,
         ref_video_short_edge: int = 768,
         ref_video_max_pixels: int = 768 * 1344,
+        # Video / Audio Retake
+        retake_video: list[Image.Image] = None,
+        frame_regions_to_retake: list[tuple[float, float]] = None,
+        retake_audio: torch.Tensor = None,
+        retake_audio_sample_rate: int = 32000,
+        seconds_regions_to_retake: list[tuple[float, float]] = None,
         progress_bar_cmd=tqdm,
     ):
         """Generate a joint video + audio sample.
@@ -123,10 +133,13 @@ class MiniMaxH3Pipeline(BasePipeline):
             "cfg_scale": cfg_scale,
             "height": height, "width": width, "num_frames": num_frames,
             "seed": seed, "rand_device": rand_device,
+            "tiled": tiled, "tile_size": tile_size, "tile_overlap": tile_overlap,
             "use_gradient_checkpointing": use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": use_gradient_checkpointing_offload,
             "keyframes": keyframes, "keyframe_indices": keyframe_indices,
             "references": references, "ref_image_short_edge": ref_image_short_edge, "ref_video_short_edge": ref_video_short_edge, "ref_video_max_pixels": ref_video_max_pixels,
+            "retake_video": retake_video, "frame_regions_to_retake": frame_regions_to_retake,
+            "retake_audio": (retake_audio, retake_audio_sample_rate) if retake_audio is not None else None, "seconds_regions_to_retake": seconds_regions_to_retake,
             "imgvid_cond_noise_aug": self.imgvid_cond_noise_aug, "audio_cond_noise_aug": self.audio_cond_noise_aug,
         }
 
@@ -144,8 +157,14 @@ class MiniMaxH3Pipeline(BasePipeline):
                 self.model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega,
                 **models, t_video=t_video, t_audio=t_audio, device=self.device,
             )
-            inputs_shared["video_latents"] = self.step(self.scheduler, inputs_shared["video_latents"], progress_id, noise_pred=noise_pred_video)
-            inputs_shared["audio_latents"] = self.step(self.scheduler_audio, inputs_shared["audio_latents"], progress_id, noise_pred=noise_pred_audio)
+            inputs_shared["video_latents"] = self.step(
+                self.scheduler, inputs_shared["video_latents"], progress_id, noise_pred=noise_pred_video,
+                inpaint_mask=inputs_shared.get("denoise_mask_video"), input_latents=inputs_shared.get("input_latents_video"),
+            )
+            inputs_shared["audio_latents"] = self.step(
+                self.scheduler_audio, inputs_shared["audio_latents"], progress_id, noise_pred=noise_pred_audio,
+                inpaint_mask=inputs_shared.get("denoise_mask_audio"), input_latents=inputs_shared.get("input_latents_audio"),
+            )
 
         # 5. Decode
         self.load_models_to_device(["video_vae"])
@@ -291,6 +310,72 @@ class MiniMaxH3Unit_InputAudioEmbedder(PipelineUnit):
         return {"audio_latents": latents, "audio_input_latents": latents}
 
 
+class MiniMaxH3Unit_VideoRetakeEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("retake_video", "frame_regions_to_retake", "video_latents", "height", "width", "num_frames", "tiled", "tile_size", "tile_overlap"),
+            output_params=("input_latents_video", "denoise_mask_video"),
+            onload_model_names=("video_vae",)
+        )
+
+    def process(self, pipe: MiniMaxH3Pipeline, retake_video, frame_regions_to_retake, video_latents, height, width, num_frames, tiled, tile_size, tile_overlap):
+        if retake_video is None:
+            return {}
+        assert len(retake_video) > 0, "retake_video must contain at least one frame"
+        pipe.load_models_to_device(self.onload_model_names)
+        frames = [f.convert("RGB").resize((width, height), Image.LANCZOS) for f in retake_video[:num_frames]]
+        padded_frames = num_frames - len(frames)
+        frames += [frames[-1]] * padded_frames
+        frames_tensor = pipe.preprocess_video(frames, torch_dtype=torch.float32, min_value=0, device=pipe.device)
+        latents = pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap).to(device=pipe.device, dtype=pipe.torch_dtype)
+        assert latents.shape == video_latents.shape, f"retake_video latents {tuple(latents.shape)} do not match the target shape {tuple(video_latents.shape)}"
+
+        regions = list(frame_regions_to_retake or [])
+        if padded_frames > 0:
+            regions.append((num_frames - padded_frames, num_frames))
+        clip_frames, latents_per_clip = pipe.video_vae.clip_length, pipe.video_vae.tokens_chunk_size
+        mask = torch.zeros(latents.shape[2], dtype=pipe.torch_dtype, device=pipe.device)  # 1 = regenerate
+        for start, end in regions:
+            if end > start:
+                mask[max(0, math.floor(start / clip_frames)) * latents_per_clip: math.ceil(end / clip_frames) * latents_per_clip] = 1
+        return {"input_latents_video": latents, "denoise_mask_video": mask.view(1, 1, -1, 1, 1).expand(-1, -1, -1, *latents.shape[-2:])}
+
+
+class MiniMaxH3Unit_AudioRetakeEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("retake_audio", "seconds_regions_to_retake", "audio_latents"),
+            output_params=("input_latents_audio", "denoise_mask_audio"),
+            onload_model_names=("audio_vae",)
+        )
+
+    def process(self, pipe: MiniMaxH3Pipeline, retake_audio, seconds_regions_to_retake, audio_latents):
+        if retake_audio is None:
+            return {}
+        pipe.load_models_to_device(self.onload_model_names)
+        waveform, sample_rate = retake_audio
+        waveform = waveform.squeeze(0) if waveform.dim() == 3 else waveform
+        assert waveform.dim() == 2, "waveform must be in shape (C, T)"
+        waveform = resample_waveform(convert_to_stereo(waveform).float(), sample_rate, pipe.audio_vae.sample_rate)
+        latents = pipe.audio_vae.encode_audio(waveform[:2].to(pipe.device), dtype=pipe.torch_dtype).to(pipe.torch_dtype)  # [C, 32, T]
+        audio_latent_t = audio_latents.shape[-1]
+        padded_latents = 0
+        if latents.shape[-1] > audio_latent_t:
+            latents = latents[..., :audio_latent_t]
+        elif latents.shape[-1] < audio_latent_t:
+            padded_latents = audio_latent_t - latents.shape[-1]
+            latents = torch.cat([latents, latents[..., -1:].repeat(1, 1, padded_latents)], dim=-1)
+
+        latent_fps = pipe.audio_vae.sample_rate / pipe.audio_vae.hop_length
+        mask = torch.zeros(audio_latent_t, dtype=pipe.torch_dtype, device=pipe.device)  # 1 = regenerate
+        for start, end in seconds_regions_to_retake or []:
+            if end > start:
+                mask[max(0, math.floor(start * latent_fps)): math.ceil(end * latent_fps)] = 1
+        if padded_latents > 0:
+            mask[audio_latent_t - padded_latents:] = 1
+        return {"input_latents_audio": latents, "denoise_mask_audio": mask.view(1, 1, -1).expand(latents.shape[0], -1, -1)}
+
+
 class MiniMaxH3Unit_KeyframeEncoder(PipelineUnit):
     def __init__(self):
         super().__init__(
@@ -394,12 +479,11 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
             if kind == "video" and ref.get("audio") is not None:
                 raise ValueError("reference type 'video' is silent; use 'video_audio' to pass a soundtrack")
             frames = self._require(ref, "video", kind)
-            if kind == "video_audio":
-                audio_waveform = self._require(ref, "audio", kind)
-                audio_sample_rate = int(self._require(ref, "sample_rate", kind))
             rows, lt, lh, lw, prepared = self._encode_video_ref(pipe, frames, target_frame_count, ref_video_short_edge, ref_video_max_pixels)
             block = {"kind": kind, "visual_clean": rows, "latent_t": lt, "latent_h": lh, "latent_w": lw, "prepared_frames": prepared, "ref_audio_t": 0}
             if kind == "video_audio":
+                audio_waveform = self._require(ref, "audio", kind)
+                audio_sample_rate = int(self._require(ref, "sample_rate", kind))
                 audio_rows, ref_audio_t = self._encode_audio_ref(pipe, audio_waveform, audio_sample_rate)
                 block["audio_clean"], block["ref_audio_t"] = audio_rows, ref_audio_t
             return block
@@ -717,6 +801,10 @@ def model_fn_minimax_h3(
     keyframe_cond_anchor=None,
     ref_visual_anchor=None,
     ref_audio_anchor=None,
+    input_latents_video=None,
+    denoise_mask_video=None,
+    input_latents_audio=None,
+    denoise_mask_audio=None,
     imgvid_cond_noise_aug=0.999,
     audio_cond_noise_aug=1.0,
     use_gradient_checkpointing=False,
@@ -726,15 +814,18 @@ def model_fn_minimax_h3(
     dtype, device = video_latents.dtype, video_latents.device
     f, h, w = video_latents.shape[2:]
     audio_channel, audio_t = audio_latents.shape[0], audio_latents.shape[-1]
+
+    if input_latents_video is not None:
+        video_latents = video_latents * denoise_mask_video + input_latents_video * (1.0 - denoise_mask_video)
+        denoise_mask_video = patchify_video(denoise_mask_video)[:, 0]
+    if input_latents_audio is not None:
+        audio_latents = audio_latents * denoise_mask_audio + input_latents_audio * (1.0 - denoise_mask_audio)
+        denoise_mask_audio = pack_audio(denoise_mask_audio)[:, 0]
     video_rows = patchify_video(video_latents)
     audio_rows = pack_audio(audio_latents)
 
-    img_pos = packed["img_pos"]
-    audio_pos = packed["audio_pos"]
-    text_pos = packed["text_pos"]
-    cu = packed["cu_seqlens"]
-    seq_len = packed["seq_len"]
-    text_len = text_pos.shape[0]
+    img_pos, audio_pos, text_pos = packed["img_pos"], packed["audio_pos"], packed["text_pos"]
+    cu, seq_len, text_len = packed["cu_seqlens"], packed["seq_len"], text_pos.shape[0]
     # Video Sequence
     cond_anchor = ref_visual_anchor if ref_visual_anchor is not None else keyframe_cond_anchor
     cond_rows_count = 0 if cond_anchor is None else cond_anchor.shape[0]
@@ -751,6 +842,12 @@ def model_fn_minimax_h3(
 
     timesteps = torch.full((seq_len,), float(t_video), dtype=torch.float32, device=device)
     timesteps[audio_pos] = float(t_audio)
+
+    if input_latents_video is not None:
+        timesteps[img_pos[cond_rows_count:][denoise_mask_video == 0]] = 1.0
+    if input_latents_audio is not None:
+        timesteps[audio_pos[ref_audio_rows_count:][denoise_mask_audio == 0]] = 1.0
+
     timesteps[img_pos[:cond_rows_count]] = max(float(t_video), imgvid_cond_noise_aug)
     timesteps[audio_pos[:ref_audio_rows_count]] = max(float(t_audio), audio_cond_noise_aug)
     unique_timesteps, inverse_indices = torch.unique(timesteps, sorted=True, return_inverse=True)
