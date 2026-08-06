@@ -19,12 +19,12 @@ pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Wan-AI/Wan-Animate-2-14B", origin_file_pattern="wan_animate_2/wan_animate_2_bf16.safetensors", **vram_config),
-        ModelConfig(model_id="Wan-AI/Wan-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/models_t5_umt5-xxl-enc-bf16.pth", **vram_config),
-        ModelConfig(model_id="Wan-AI/Wan-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth", **vram_config),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Animate-2-14B", origin_file_pattern="wan_animate_2/wan_animate_2_bf16.safetensors", **vram_config),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/models_t5_umt5-xxl-enc-bf16.pth", **vram_config),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth", **vram_config),
         ModelConfig(model_id="Wan-AI/Wan2.1-T2V-14B", origin_file_pattern="Wan2.1_VAE.pth", **vram_config),
     ],
-    tokenizer_config=ModelConfig(model_id="Wan-AI/Wan-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/umt5-xxl/"),
+    tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.2-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/umt5-xxl/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
@@ -32,10 +32,10 @@ pipe = WanVideoPipeline.from_pretrained(
 dataset_snapshot_download(
     "DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="wanvideo/Wan-Animate-2-14B/*"
+    allow_file_pattern="wanvideo/Wan2.2-Animate-2-14B/*"
 )
-reference_image = Image.open("data/diffsynth_example_dataset/wanvideo/Wan-Animate-2-14B/refimage.jpg").convert("RGB")
-reference_video = VideoData("data/diffsynth_example_dataset/wanvideo/Wan-Animate-2-14B/refvideo.mp4").raw_data()
+reference_image = Image.open("data/diffsynth_example_dataset/wanvideo/Wan2.2-Animate-2-14B/refimage.jpg").convert("RGB")
+reference_video = VideoData("data/diffsynth_example_dataset/wanvideo/Wan2.2-Animate-2-14B/refvideo.mp4").raw_data()
 # Example 1: single-clip generation
 num_frames = 81
 video = pipe(
@@ -49,7 +49,7 @@ video = pipe(
     num_inference_steps=40, cfg_scale=3.0,
     seed=0, tiled=True,
 )
-save_video(video, "video_Wan-Animate-2-14B.mp4", fps=24, quality=5)
+save_video(video, "video_Wan2.2-Animate-2-14B.mp4", fps=24, quality=5)
 
 
 # Example 2: multi-clip long-video generation
@@ -111,4 +111,4 @@ long_video = generate_long_video(
     num_inference_steps=40, cfg_scale=3.0,
     seed=0, tiled=True,
 )
-save_video(long_video, "video_Wan-Animate-2-14B-long.mp4", fps=24, quality=5)
+save_video(long_video, "video_Wan2.2-Animate-2-14B-long.mp4", fps=24, quality=5)

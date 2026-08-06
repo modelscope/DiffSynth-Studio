@@ -19,19 +19,19 @@ pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Wan-AI/Wan-Animate-2-14B", origin_file_pattern="wan_animate_2/wan_animate_2_bf16_distillation.safetensors", **vram_config),
-        ModelConfig(model_id="Wan-AI/Wan-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/models_t5_umt5-xxl-enc-bf16.pth", **vram_config),
-        ModelConfig(model_id="Wan-AI/Wan-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth", **vram_config),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Animate-2-14B", origin_file_pattern="wan_animate_2/wan_animate_2_bf16_distillation.safetensors", **vram_config),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/models_t5_umt5-xxl-enc-bf16.pth", **vram_config),
+        ModelConfig(model_id="Wan-AI/Wan2.2-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth", **vram_config),
         ModelConfig(model_id="Wan-AI/Wan2.1-T2V-14B", origin_file_pattern="Wan2.1_VAE.pth", **vram_config),
     ],
-    tokenizer_config=ModelConfig(model_id="Wan-AI/Wan-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/umt5-xxl/"),
+    tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.2-Animate-2-14B", origin_file_pattern="videomodel/Wan-AI/umt5-xxl/"),
 )
-state_dict = load_state_dict("models/train/Wan-Animate-2-14B-Distilled_full/epoch-1.safetensors")
+state_dict = load_state_dict("models/train/Wan2.2-Animate-2-14B-Distilled_full/epoch-1.safetensors")
 state_dict = {k.replace(".block.self_attn.", ".block.module.self_attn."): v for k, v in state_dict.items()}
 pipe.dit.load_state_dict(state_dict, strict=False)
 
-reference_image = Image.open("data/diffsynth_example_dataset/wanvideo/Wan-Animate-2-14B-Distilled/refimage.jpg").convert("RGB")
-reference_video = VideoData("data/diffsynth_example_dataset/wanvideo/Wan-Animate-2-14B-Distilled/refvideo.mp4").raw_data()
+reference_image = Image.open("data/diffsynth_example_dataset/wanvideo/Wan2.2-Animate-2-14B-Distilled/refimage.jpg").convert("RGB")
+reference_video = VideoData("data/diffsynth_example_dataset/wanvideo/Wan2.2-Animate-2-14B-Distilled/refvideo.mp4").raw_data()
 num_frames = 81
 video = pipe(
     prompt="人物外观描述：一名长黑发女性，穿着白色半透明蕾丝长袖上衣，衣身带有花卉刺绣，下身搭配白色百褶短裙和黑色腰带，脚穿米白色厚底运动鞋。 背景描述：背景为现代室内空间，墙面和柜体以浅灰色为主，后方设有两扇深色落地窗或玻璃门，顶部安装长条形灯具，中央有一块浅色长方形台面。",
@@ -44,4 +44,4 @@ video = pipe(
     num_inference_steps=40, cfg_scale=3.0,
     seed=0, tiled=True,
 )
-save_video(video, "video_Wan-Animate-2-14B-Distilled.mp4", fps=24, quality=5)
+save_video(video, "video_Wan2.2-Animate-2-14B-Distilled.mp4", fps=24, quality=5)
