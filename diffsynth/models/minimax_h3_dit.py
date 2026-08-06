@@ -21,11 +21,12 @@ def patchify_video(latent: torch.Tensor) -> torch.Tensor:
     return packed.reshape(b * t * h * w, c * _PATCH_T * _PATCH_H * _PATCH_W).contiguous()
 
 
-def unpatchify_video(rows: torch.Tensor, t: int, h: int, w: int, channel: int = 24) -> torch.Tensor:
-    # [T*h*w, 96] -> [1,24,T,h*2,w*2]  (inverse of patchify_video; h,w are patched dims)
+def unpatchify_video(rows: torch.Tensor, ft: int, fh: int, fw: int, channel: int = 24) -> torch.Tensor:
+    # [T*(H/2)*(W/2), 96] -> [1,24,T,H,W]  (inverse of patchify_video; ft/fh/fw match its input)
+    t, h, w = ft // _PATCH_T, fh // _PATCH_H, fw // _PATCH_W
     packed = rows.reshape(-1, t, h, w, channel, _PATCH_T, _PATCH_H, _PATCH_W)
     latent = torch.einsum("nthwcrpq->nctrhpwq", packed)
-    return latent.reshape(-1, channel, t * _PATCH_T, h * _PATCH_H, w * _PATCH_W).contiguous()
+    return latent.reshape(-1, channel, ft, fh, fw).contiguous()
 
 
 def pack_audio(latent: torch.Tensor) -> torch.Tensor:

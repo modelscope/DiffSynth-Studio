@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import torch
 from PIL import Image
@@ -9,10 +10,14 @@ from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..models.minimax_h3_dit import MiniMaxH3DiT, patchify_video, unpatchify_video, pack_audio, unpack_audio
-from ..models.minimax_h3_text_encoder import MiniMaxH3TextEncoder, presentation_t2va, presentation_fl2va, presentation_ref2va, sample_qwen_video_frames, image_token_counts, video_token_counts
+from ..models.minimax_h3_text_encoder import (
+    MiniMaxH3TextEncoder, presentation_t2va, presentation_fl2va, presentation_ref2va,
+    sample_qwen_video_frames, image_token_counts, video_token_counts,
+)
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
-from ..models.minimax_constant import *
+from ..utils.data.audio import convert_to_stereo, resample_waveform
+
 
 class MiniMaxH3Pipeline(BasePipeline):
 
@@ -26,12 +31,16 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.audio_vae: MiniMaxH3AudioVAE = None
         self.tokenizer = None
         self.processor = None
+        self.imgvid_cond_noise_aug = 0.999
+        self.audio_cond_noise_aug = 1.0
         self.in_iteration_models = ("dit",)
         self.units = [
             MiniMaxH3Unit_ShapeChecker(),
             MiniMaxH3Unit_NoiseInitializer(),
             MiniMaxH3Unit_InputVideoEmbedder(),
             MiniMaxH3Unit_InputAudioEmbedder(),
+            MiniMaxH3Unit_VideoRetakeEmbedder(),
+            MiniMaxH3Unit_AudioRetakeEmbedder(),
             MiniMaxH3Unit_KeyframeEncoder(),
             MiniMaxH3Unit_ReferenceEncoder(),
             MiniMaxH3Unit_PromptEmbedder(),
@@ -81,10 +90,19 @@ class MiniMaxH3Pipeline(BasePipeline):
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
         # Keyframe to Video
-        keyframes=None,
-        keyframe_indices=None,
+        keyframes: list[Image.Image] = None,
+        keyframe_indices: list[int] = None,
         # Reference to Video
-        references=None,
+        references: list[dict] = None,
+        ref_image_short_edge: int = 2048,
+        ref_video_short_edge: int = 768,
+        ref_video_max_pixels: int = 768 * 1344,
+        # Video / Audio Retake
+        retake_video: list[Image.Image] = None,
+        frame_regions_to_retake: list[tuple[float, float]] = None,
+        retake_audio: torch.Tensor = None,
+        retake_audio_sample_rate: int = 32000,
+        seconds_regions_to_retake: list[tuple[float, float]] = None,
         progress_bar_cmd=tqdm,
     ):
         """Generate a joint video + audio sample.
@@ -104,7 +122,7 @@ class MiniMaxH3Pipeline(BasePipeline):
             {"type": "video_audio", "video": list[PIL.Image],
                                     "audio": Tensor[C, L], "sample_rate": int}
 
-        Input contract: `video` frame lists must ALREADY be 24fps the pipeline never resamples frame rate.
+        Input contract: `video` frame lists must ALREADY. be 24fps the pipeline never resamples frame rate.
         """
         self.scheduler.set_timesteps(num_inference_steps, shift=flow_shift)
         self.scheduler_audio.set_timesteps(num_inference_steps, shift=audio_flow_shift)
@@ -115,11 +133,14 @@ class MiniMaxH3Pipeline(BasePipeline):
             "cfg_scale": cfg_scale,
             "height": height, "width": width, "num_frames": num_frames,
             "seed": seed, "rand_device": rand_device,
+            "tiled": tiled, "tile_size": tile_size, "tile_overlap": tile_overlap,
             "use_gradient_checkpointing": use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": use_gradient_checkpointing_offload,
-            "keyframes": keyframes,
-            "keyframe_indices": keyframe_indices,
-            "references": references,
+            "keyframes": keyframes, "keyframe_indices": keyframe_indices,
+            "references": references, "ref_image_short_edge": ref_image_short_edge, "ref_video_short_edge": ref_video_short_edge, "ref_video_max_pixels": ref_video_max_pixels,
+            "retake_video": retake_video, "frame_regions_to_retake": frame_regions_to_retake,
+            "retake_audio": (retake_audio, retake_audio_sample_rate) if retake_audio is not None else None, "seconds_regions_to_retake": seconds_regions_to_retake,
+            "imgvid_cond_noise_aug": self.imgvid_cond_noise_aug, "audio_cond_noise_aug": self.audio_cond_noise_aug,
         }
 
         # 3. Unit chain
@@ -129,15 +150,21 @@ class MiniMaxH3Pipeline(BasePipeline):
         # 4. Denoise loop
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
-        for progress_id, _ in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
-            t_video = float(1.0 - self.scheduler.sigmas[progress_id])
-            t_audio = float(1.0 - self.scheduler_audio.sigmas[progress_id])
+        for progress_id, timestep_video in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
+            timestep_video = timestep_video.unsqueeze(0).to(dtype=torch.float32, device=self.device)
+            timestep_audio = self.scheduler_audio.timesteps[progress_id].unsqueeze(0).to(dtype=torch.float32, device=self.device)
             noise_pred_video, noise_pred_audio = self.cfg_guided_model_fn(
                 self.model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega,
-                **models, t_video=t_video, t_audio=t_audio, device=self.device,
+                **models, timestep_video=timestep_video, timestep_audio=timestep_audio,
             )
-            inputs_shared["video_latents"] = self.step(self.scheduler, inputs_shared["video_latents"], progress_id, noise_pred=noise_pred_video)
-            inputs_shared["audio_latents"] = self.step(self.scheduler_audio, inputs_shared["audio_latents"], progress_id, noise_pred=noise_pred_audio)
+            inputs_shared["video_latents"] = self.step(
+                self.scheduler, inputs_shared["video_latents"], progress_id, noise_pred=noise_pred_video,
+                inpaint_mask=inputs_shared.get("denoise_mask_video"), input_latents=inputs_shared.get("input_latents_video"),
+            )
+            inputs_shared["audio_latents"] = self.step(
+                self.scheduler_audio, inputs_shared["audio_latents"], progress_id, noise_pred=noise_pred_audio,
+                inpaint_mask=inputs_shared.get("denoise_mask_audio"), input_latents=inputs_shared.get("input_latents_audio"),
+            )
 
         # 5. Decode
         self.load_models_to_device(["video_vae"])
@@ -222,12 +249,12 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
         return input_ids, text_token_tags, pixel_values, image_grid_thw, pixel_values_videos, video_grid_thw
 
     def process(self, pipe: MiniMaxH3Pipeline, prompt, keyframes=None, ref_blocks=None, height=None, width=None):
-        pipe.load_models_to_device(("text_encoder",))
+        pipe.load_models_to_device(self.onload_model_names)
         pixel_values = image_grid_thw = pixel_values_videos = video_grid_thw = None
         if ref_blocks:
             input_ids, text_token_tags, pixel_values, image_grid_thw, pixel_values_videos, video_grid_thw = self.preprocess_ref_blocks(pipe, prompt, ref_blocks)
         elif keyframes:
-            keyframes = [img.convert("RGB").resize((width, height)) for img in keyframes]
+            keyframes = [img.convert("RGB").resize((width, height), Image.LANCZOS) for img in keyframes]
             pixel_values, image_grid_thw, image_counts = image_token_counts(pipe.processor, keyframes)
             input_ids, text_token_tags = presentation_fl2va(pipe.tokenizer, prompt, image_counts)
         else:
@@ -243,30 +270,7 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
             kwargs["video_grid_thw"] = video_grid_thw.to(pipe.device, torch.long)
         hidden = pipe.text_encoder(**kwargs)
 
-        return {"prompt_embeds": hidden.to(pipe.device, pipe.torch_dtype), "text_token_tags": text_token_tags.to(pipe.device, torch.long)}
-
-
-def _encode_audio_waveform(pipe: "MiniMaxH3Pipeline", waveform: torch.Tensor, sample_rate: int) -> torch.Tensor:
-    import torchaudio  # local import; needed only for resample
-
-    pipe.load_models_to_device(("audio_vae",))
-
-    if waveform.dim() == 3:
-        waveform = waveform.squeeze(0)  # [1,C,L] -> [C,L]
-    if waveform.dim() != 2:
-        raise ValueError(f"expected audio waveform [C, L], got {list(waveform.shape)}")
-    waveform = waveform.float()
-
-    if int(sample_rate) != pipe.audio_vae.sample_rate:
-        waveform = torchaudio.transforms.Resample(int(sample_rate), pipe.audio_vae.sample_rate)(waveform)
-
-    if waveform.shape[0] < AUDIO_CHANNELS:
-        repeats = (AUDIO_CHANNELS + waveform.shape[0] - 1) // waveform.shape[0]
-        waveform = waveform.repeat(repeats, 1)
-
-    return pipe.audio_vae.encode_audio(
-        waveform[:AUDIO_CHANNELS].to(pipe.device), dtype=pipe.torch_dtype,
-    )  # [C, 32, T]
+        return {"prompt_embeds": hidden.to(pipe.device, pipe.torch_dtype), "text_token_tags": text_token_tags.view(-1).to(pipe.device, torch.long)}
 
 
 class MiniMaxH3Unit_InputVideoEmbedder(PipelineUnit):
@@ -281,10 +285,8 @@ class MiniMaxH3Unit_InputVideoEmbedder(PipelineUnit):
         if input_video is None or not pipe.scheduler.training:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
-        used = _trim_reference_video_length(pipe, len(input_video))
-        frames_np = np.stack([np.asarray(f.convert("RGB")) for f in input_video[:used]], axis=0)
-        frames_tensor = torch.from_numpy(frames_np).permute(3, 0, 1, 2).unsqueeze(0).float() / 255.0
-        latents = pipe.video_vae.encode_video(frames_tensor.to(pipe.device), dtype=pipe.torch_dtype).to(pipe.torch_dtype)
+        frames_tensor = pipe.preprocess_video(input_video, torch_dtype=torch.float32, min_value=0, device=pipe.device)
+        latents = pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype).to(pipe.torch_dtype)
         return {"video_latents": latents, "input_latents": latents}
 
 
@@ -299,218 +301,239 @@ class MiniMaxH3Unit_InputAudioEmbedder(PipelineUnit):
     def process(self, pipe: MiniMaxH3Pipeline, input_audio):
         if input_audio is None or not pipe.scheduler.training:
             return {}
+        pipe.load_models_to_device(self.onload_model_names)
         waveform, sample_rate = input_audio
-        latents = _encode_audio_waveform(pipe, waveform, int(sample_rate)).to(pipe.torch_dtype)  # [C,32,T]
+        waveform = waveform.squeeze(0) if waveform.dim() == 3 else waveform
+        assert waveform.dim() == 2, "waveform must be in shape (C, T)"
+        waveform = resample_waveform(convert_to_stereo(waveform).float(), sample_rate, pipe.audio_vae.sample_rate) # [C, T]
+        latents = pipe.audio_vae.encode_audio(waveform[:2].to(pipe.device), dtype=pipe.torch_dtype).to(pipe.torch_dtype)  # [C, 32, T]
         return {"audio_latents": latents, "audio_input_latents": latents}
+
+
+class MiniMaxH3Unit_VideoRetakeEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("retake_video", "frame_regions_to_retake", "video_latents", "height", "width", "num_frames", "tiled", "tile_size", "tile_overlap"),
+            output_params=("input_latents_video", "denoise_mask_video"),
+            onload_model_names=("video_vae",)
+        )
+
+    def process(self, pipe: MiniMaxH3Pipeline, retake_video, frame_regions_to_retake, video_latents, height, width, num_frames, tiled, tile_size, tile_overlap):
+        if retake_video is None:
+            return {}
+        assert len(retake_video) > 0, "retake_video must contain at least one frame"
+        pipe.load_models_to_device(self.onload_model_names)
+        frames = [f.convert("RGB").resize((width, height), Image.LANCZOS) for f in retake_video[:num_frames]]
+        padded_frames = num_frames - len(frames)
+        frames += [frames[-1]] * padded_frames
+        frames_tensor = pipe.preprocess_video(frames, torch_dtype=torch.float32, min_value=0, device=pipe.device)
+        latents = pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap).to(device=pipe.device, dtype=pipe.torch_dtype)
+        assert latents.shape == video_latents.shape, f"retake_video latents {tuple(latents.shape)} do not match the target shape {tuple(video_latents.shape)}"
+
+        regions = list(frame_regions_to_retake or [])
+        if padded_frames > 0:
+            regions.append((num_frames - padded_frames, num_frames))
+        clip_frames, latents_per_clip = pipe.video_vae.clip_length, pipe.video_vae.tokens_chunk_size
+        mask = torch.zeros(latents.shape[2], dtype=pipe.torch_dtype, device=pipe.device)  # 1 = regenerate
+        for start, end in regions:
+            if end > start:
+                mask[max(0, math.floor(start / clip_frames)) * latents_per_clip: math.ceil(end / clip_frames) * latents_per_clip] = 1
+        return {"input_latents_video": latents, "denoise_mask_video": mask.view(1, 1, -1, 1, 1).expand(-1, -1, -1, *latents.shape[-2:])}
+
+
+class MiniMaxH3Unit_AudioRetakeEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("retake_audio", "seconds_regions_to_retake", "audio_latents"),
+            output_params=("input_latents_audio", "denoise_mask_audio"),
+            onload_model_names=("audio_vae",)
+        )
+
+    def process(self, pipe: MiniMaxH3Pipeline, retake_audio, seconds_regions_to_retake, audio_latents):
+        if retake_audio is None:
+            return {}
+        pipe.load_models_to_device(self.onload_model_names)
+        waveform, sample_rate = retake_audio
+        waveform = waveform.squeeze(0) if waveform.dim() == 3 else waveform
+        assert waveform.dim() == 2, "waveform must be in shape (C, T)"
+        waveform = resample_waveform(convert_to_stereo(waveform).float(), sample_rate, pipe.audio_vae.sample_rate)
+        latents = pipe.audio_vae.encode_audio(waveform[:2].to(pipe.device), dtype=pipe.torch_dtype).to(pipe.torch_dtype)  # [C, 32, T]
+        audio_latent_t = audio_latents.shape[-1]
+        padded_latents = 0
+        if latents.shape[-1] > audio_latent_t:
+            latents = latents[..., :audio_latent_t]
+        elif latents.shape[-1] < audio_latent_t:
+            padded_latents = audio_latent_t - latents.shape[-1]
+            latents = torch.cat([latents, latents[..., -1:].repeat(1, 1, padded_latents)], dim=-1)
+
+        latent_fps = pipe.audio_vae.sample_rate / pipe.audio_vae.hop_length
+        mask = torch.zeros(audio_latent_t, dtype=pipe.torch_dtype, device=pipe.device)  # 1 = regenerate
+        for start, end in seconds_regions_to_retake or []:
+            if end > start:
+                mask[max(0, math.floor(start * latent_fps)): math.ceil(end * latent_fps)] = 1
+        if padded_latents > 0:
+            mask[audio_latent_t - padded_latents:] = 1
+        return {"input_latents_audio": latents, "denoise_mask_audio": mask.view(1, 1, -1).expand(latents.shape[0], -1, -1)}
 
 
 class MiniMaxH3Unit_KeyframeEncoder(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("keyframes", "keyframe_indices", "video_latents", "rand_device", "seed", "height", "width"),
-            output_params=("keyframe_cond_anchor", "keyframe_indices_validated"),
+            output_params=("keyframe_cond_anchor",),
             onload_model_names=("video_vae",)
         )
 
     def process(self, pipe: MiniMaxH3Pipeline, keyframes, keyframe_indices, video_latents, rand_device, seed, height, width):
         if keyframes is None:
             return {}
-        video_latent_t, latent_h, latent_w = (int(x) for x in video_latents.shape[2:])
-        if keyframe_indices is None:
-            raise ValueError("keyframe_indices must be provided when keyframes is not None")
-        if len(keyframes) != len(keyframe_indices):
-            raise ValueError(f"len(keyframes)={len(keyframes)} != len(keyframe_indices)={len(keyframe_indices)}")
-        for idx in keyframe_indices:
-            if idx not in (0, -1):
-                raise ValueError(f"keyframe_indices must be 0 or -1, got {idx}")
-
-        pipe.load_models_to_device(("video_vae",))
-        device = pipe.device
-
+        assert keyframe_indices is not None and len(keyframes) == len(keyframe_indices), "keyframe_indices must be provided when keyframes is not None"
+        assert all(idx in (0, -1) for idx in keyframe_indices), "keyframe_indices must be within the range of keyframes (0 or -1)"
+        pipe.load_models_to_device(self.onload_model_names)
+        # Encode keyframes
         all_cond_rows = []
         for img in keyframes:
-            img_tensor = pipe.preprocess_image(img.convert("RGB").resize((width, height)), min_value=0)
-            z_norm = pipe.video_vae.encode_video(img_tensor, process_image=True)  # [1,24,1,H',W']
+            img_tensor = pipe.preprocess_image(img.convert("RGB").resize((width, height), Image.LANCZOS), torch_dtype=torch.float32, min_value=0)
+            z_norm = pipe.video_vae.encode_video(img_tensor, dtype=pipe.torch_dtype, process_image=True)  # [1,24,1,H',W']
             rows = patchify_video(z_norm)
             all_cond_rows.append(rows)
-
-        clean_cond_rows = torch.cat(all_cond_rows, dim=0).to(device=device, dtype=pipe.torch_dtype)
-
-        seed_val = int(seed) if seed is not None else 42
-        num_cond_frames = len(keyframes)
-        noise_aug = IMGVID_COND_NOISE_AUG
-        if noise_aug == 1.0:
-            cond_anchor = clean_cond_rows
+        clean_cond_rows = torch.cat(all_cond_rows, dim=0).to(device=pipe.device, dtype=pipe.torch_dtype)
+        if pipe.imgvid_cond_noise_aug == 1.0:
+            keyframe_cond_anchor = clean_cond_rows
         else:
+            video_latent_t, latent_h, latent_w = (int(x) for x in video_latents.shape[2:])
+            ts = torch.tensor(pipe.imgvid_cond_noise_aug, dtype=pipe.torch_dtype, device=pipe.device)
+            noise = pipe.generate_noise((1, 24, video_latent_t + len(keyframes), latent_h, latent_w), seed, rand_device, pipe.torch_dtype)[:,:,:1]
+            noise_rows = patchify_video(noise).to(device=pipe.device, dtype=pipe.torch_dtype)
             frame_rows = (latent_h // 2) * (latent_w // 2)
-            timestep_tensor = torch.tensor(noise_aug, dtype=pipe.torch_dtype, device=device)
-            parts = []
-            for i in range(num_cond_frames):
-                latent_t_i = 1  # image keyframe = single-frame latent
-                full_t = int(video_latent_t) + num_cond_frames
-                noise = pipe.generate_noise((1, 24, full_t, latent_h, latent_w), seed_val, rand_device, pipe.torch_dtype)[:,:,:latent_t_i]
-                noise_rows = patchify_video(noise).to(device=device, dtype=pipe.torch_dtype)
-                clean_part = clean_cond_rows[i * frame_rows: (i + 1) * frame_rows]
-                parts.append(timestep_tensor * clean_part + (1.0 - timestep_tensor) * noise_rows)
-            cond_anchor = torch.cat(parts, dim=0).contiguous()
-
-        return {"keyframe_cond_anchor": cond_anchor, "keyframe_indices_validated": list(keyframe_indices)}
-
-
-def _nearest_multiple(value: float, multiple: int) -> int:
-    return max(multiple, int(round(float(value) / multiple)) * multiple)
-
-
-def _resolve_reference_image_shape(width: int, height: int):
-    src_w, src_h = float(width), float(height)
-    if src_w <= 0.0 or src_h <= 0.0:
-        raise ValueError("reference image width and height must be positive")
-    if src_w > 4.0 * src_h or src_h > 4.0 * src_w:
-        raise ValueError(f"reference image ratio must be within 1:4 to 4:1, got {width}x{height}")
-    scale = REFERENCE_IMAGE_SHORT_EDGE / min(src_w, src_h)
-    return (_nearest_multiple(src_w * scale, REFERENCE_IMAGE_MULTIPLE), _nearest_multiple(src_h * scale, REFERENCE_IMAGE_MULTIPLE))
-
-
-def _resolve_reference_video_shape(width: int, height: int):
-    src_w, src_h = float(width), float(height)
-    if src_w <= 0.0 or src_h <= 0.0:
-        raise ValueError("reference video width and height must be positive")
-    ratio = src_w / src_h
-    if ratio >= 1.0:
-        nominal_h = float(BASE_SHORT_EDGE)
-        nominal_w = BASE_SHORT_EDGE * ratio
-    else:
-        nominal_w = float(BASE_SHORT_EDGE)
-        nominal_h = BASE_SHORT_EDGE / ratio
-    nominal_area = nominal_w * nominal_h
-    if nominal_area > MAX_PIXELS:
-        scale = float(np.sqrt(float(MAX_PIXELS) / nominal_area))
-        nominal_w *= scale
-        nominal_h *= scale
-    return (_nearest_multiple(nominal_w, CANVAS_MULTIPLE), _nearest_multiple(nominal_h, CANVAS_MULTIPLE))
-
-
-def _trim_reference_video_length(pipe: MiniMaxH3Pipeline, frame_count: int) -> int:
-    frame_count = int(frame_count)
-    factor, remainder = pipe.time_division_factor, pipe.time_division_remainder
-    chunks = max(1, (frame_count - remainder) // factor)
-    used = chunks * factor + remainder
-    if used > frame_count:
-        raise ValueError(f"cannot trim {frame_count} reference video frames down to a valid " f"length: at least {used} frames are required")
-    return used
+            parts = [
+                ts * clean_cond_rows[i * frame_rows:(i + 1) * frame_rows] + (1.0 - ts) * noise_rows
+                for i in range(len(keyframes))
+            ]
+            keyframe_cond_anchor = torch.cat(parts, dim=0)
+        return {"keyframe_cond_anchor": keyframe_cond_anchor.contiguous()}
 
 
 class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("references", "seed", "video_latents", "num_frames"),
-            output_params=("ref_blocks",),
+            input_params=("references", "seed", "video_latents", "num_frames", "ref_image_short_edge", "ref_video_short_edge", "ref_video_max_pixels"),
+            output_params=("ref_blocks", "ref_visual_anchor", "ref_audio_anchor"),
             onload_model_names=("video_vae", "audio_vae")
         )
 
-    def _encode_image_ref(self, pipe, img: Image.Image):
-        img = img.convert("RGB")
-        target_w, target_h = _resolve_reference_image_shape(*img.size)
-        if (target_w, target_h) != img.size:
-            img = img.resize((target_w, target_h), Image.LANCZOS)
+    @staticmethod
+    def _nearest_multiple(value: float, multiple: int) -> int:
+        return max(multiple, int(round(float(value) / multiple)) * multiple)
 
-        img_tensor = torch.from_numpy(np.array(img)).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+    def _resolve_reference_image_shape(self, pipe: MiniMaxH3Pipeline, width: int, height: int, short_edge: int):
+        scale = short_edge * 1.0 / min(width, height)
+        return self._nearest_multiple(width * scale, pipe.width_division_factor), self._nearest_multiple(height * scale, pipe.height_division_factor)
+
+    def _resolve_reference_video_shape(self, pipe: MiniMaxH3Pipeline, width: int, height: int, short_edge: int, max_pixels: int):
+        scale = min(short_edge * 1.0 / min(width, height), float(np.sqrt(max_pixels / (width * height))))
+        return self._nearest_multiple(width * scale, pipe.width_division_factor), self._nearest_multiple(height * scale, pipe.height_division_factor)
+
+    def _trim_reference_video_length(self, pipe: MiniMaxH3Pipeline, frame_count: int) -> int:
+        frame_count = int(frame_count)
+        factor, remainder = pipe.time_division_factor, pipe.time_division_remainder
+        chunks = max(1, (frame_count - remainder) // factor)
+        used = chunks * factor + remainder
+        assert used <= frame_count, f"cannot trim {frame_count} reference video frames down to a valid " f"length: at least {used} frames are required"
+        return used
+
+    def _encode_image_ref(self, pipe, img: Image.Image, short_edge: int):
+        target_w, target_h = self._resolve_reference_image_shape(pipe, *img.size, short_edge)
+        img = img.convert("RGB").resize((target_w, target_h), Image.LANCZOS)
+        img_tensor = pipe.preprocess_image(img, torch_dtype=torch.float32, min_value=0)
         z = pipe.video_vae.encode_video(img_tensor.to(pipe.device), dtype=pipe.torch_dtype, process_image=True,)  # [1,24,1,H',W']
-        rows = patchify_video(z)
-        return rows, int(z.shape[-2]), int(z.shape[-1]), img
+        return patchify_video(z), z.shape[-2], z.shape[-1], img
 
-    def _encode_video_ref(self, pipe, frames, target_frame_count: int):
-        frames = [f.convert("RGB") for f in frames]
-        target_w, target_h = _resolve_reference_video_shape(*frames[0].size)
-        if (target_w, target_h) != frames[0].size:
-            frames = [f.resize((target_w, target_h), Image.LANCZOS) for f in frames]
-        # Keep at most the target number of leading frames.
-        if len(frames) > int(target_frame_count):
-            frames = frames[: int(target_frame_count)]
-        prepared_frames = frames
-
-        used = _trim_reference_video_length(pipe, len(prepared_frames))
-        frames_np = np.stack([np.asarray(f) for f in prepared_frames[:used]], axis=0)
-        frames_tensor = torch.from_numpy(frames_np).permute(3, 0, 1, 2).unsqueeze(0).float() / 255.0
-        z = pipe.video_vae.encode_video(frames_tensor.to(pipe.device), dtype=pipe.torch_dtype, process_image=False,)  # [1,24,T',H',W']
-        rows = patchify_video(z)
-        return rows, int(z.shape[2]), int(z.shape[3]), int(z.shape[4]), prepared_frames
+    def _encode_video_ref(self, pipe, frames, target_frame_count: int, short_edge: int, max_pixels: int):
+        target_w, target_h = self._resolve_reference_video_shape(pipe, *frames[0].size, short_edge, max_pixels)
+        frames = [f.resize((target_w, target_h), Image.LANCZOS).convert("RGB") for f in frames]
+        frames = frames[: self._trim_reference_video_length(pipe, min(len(frames), target_frame_count))]
+        frames_tensor = pipe.preprocess_video(frames, torch_dtype=torch.float32, min_value=0, device=pipe.device)
+        z = pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype, process_image=False,)  # [1,24,T',H',W']
+        return patchify_video(z), int(z.shape[2]), int(z.shape[3]), int(z.shape[4]), frames
 
     def _encode_audio_ref(self, pipe, waveform, sample_rate: int):
-        latent = _encode_audio_waveform(pipe, waveform, sample_rate)  # [C, 32, T]
-        return pack_audio(latent), int(latent.shape[-1])
+        waveform = waveform.squeeze(0) if waveform.dim() == 3 else waveform
+        assert waveform.dim() == 2, "waveform must be in shape (C, T)"
+        waveform = resample_waveform(convert_to_stereo(waveform).float(), sample_rate, pipe.audio_vae.sample_rate) # [C, T]
+        latent = pipe.audio_vae.encode_audio(waveform[:2].to(pipe.device), dtype=pipe.torch_dtype)  # [C, 32, T]
+        return pack_audio(latent), latent.shape[-1]
 
     @staticmethod
     def _require(ref, key, kind):
         value = ref.get(key)
-        if value is None:
-            raise ValueError(f"reference type {kind!r} requires field {key!r}")
+        assert value is not None, f"reference type {kind!r} requires field {key!r}"
         return value
 
-    def _build_block(self, pipe, ref, target_frame_count):
+    def _build_block(self, pipe, ref, target_frame_count, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels):
         kind = ref["type"]
         if kind == "image":
-            rows, lh, lw, prepared = self._encode_image_ref(pipe, self._require(ref, "image", kind))
+            rows, lh, lw, prepared = self._encode_image_ref(pipe, self._require(ref, "image", kind), ref_image_short_edge)
             return {"kind": kind, "visual_clean": rows, "latent_t": 1, "latent_h": lh, "latent_w": lw, "prepared_image": prepared, "ref_audio_t": 0}
         if kind in ("video", "video_audio"):
             if kind == "video" and ref.get("audio") is not None:
                 raise ValueError("reference type 'video' is silent; use 'video_audio' to pass a soundtrack")
             frames = self._require(ref, "video", kind)
+            rows, lt, lh, lw, prepared = self._encode_video_ref(pipe, frames, target_frame_count, ref_video_short_edge, ref_video_max_pixels)
+            block = {"kind": kind, "visual_clean": rows, "latent_t": lt, "latent_h": lh, "latent_w": lw, "prepared_frames": prepared, "ref_audio_t": 0}
             if kind == "video_audio":
                 audio_waveform = self._require(ref, "audio", kind)
                 audio_sample_rate = int(self._require(ref, "sample_rate", kind))
-            rows, lt, lh, lw, prepared = self._encode_video_ref(pipe, frames, target_frame_count)
-            block = {"kind": kind, "visual_clean": rows, "latent_t": lt, "latent_h": lh, "latent_w": lw, "prepared_frames": prepared, "ref_audio_t": 0}
-            if kind == "video_audio":
                 audio_rows, ref_audio_t = self._encode_audio_ref(pipe, audio_waveform, audio_sample_rate)
-                block["audio_clean"] = audio_rows
-                block["ref_audio_t"] = ref_audio_t
+                block["audio_clean"], block["ref_audio_t"] = audio_rows, ref_audio_t
             return block
         if kind == "audio":
             rows, ref_audio_t = self._encode_audio_ref(pipe, self._require(ref, "audio", kind), int(self._require(ref, "sample_rate", kind)))
             return {"kind": kind, "audio_clean": rows, "ref_audio_t": ref_audio_t}
-        raise ValueError(f"unknown reference type {kind!r}; supported: image / video / audio / video_audio")
 
-    def process(self, pipe: MiniMaxH3Pipeline, references, seed, video_latents, num_frames):
+    def process(self, pipe: MiniMaxH3Pipeline, references, seed, video_latents, num_frames, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels):
         if not references:
             return {}
-
-        pipe.load_models_to_device(("video_vae",))
-        seed_val = int(seed) if seed is not None else 42
+        pipe.load_models_to_device(self.onload_model_names)
+        seed = int(seed) if seed is not None else 42
         device = pipe.device
-        target_latent_t = video_latents.shape[2]
 
-        ref_blocks_out = [self._build_block(pipe, ref, int(num_frames)) for ref in references]
+        ref_blocks_out = [self._build_block(pipe, ref, num_frames, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels) for ref in references]
         visual_blocks = [b for b in ref_blocks_out if "visual_clean" in b]
         imgvid_cond_num_frames = len(visual_blocks)
-        noise_aug = IMGVID_COND_NOISE_AUG
+        visual_parts = []
         for block in visual_blocks:
             clean = block.pop("visual_clean").to(device=device, dtype=pipe.torch_dtype)
-            if noise_aug == 1.0:
+            if pipe.imgvid_cond_noise_aug == 1.0:
                 anchor = clean
             else:
-                full_t = target_latent_t + imgvid_cond_num_frames
-                noise = pipe.generate_noise((1, 24, full_t, int(block["latent_h"]), int(block["latent_w"])), seed=seed_val, rand_device="cpu", rand_torch_dtype=pipe.torch_dtype, device="cpu", torch_dtype=pipe.torch_dtype)[:,:,: int(block["latent_t"])]
-                noise_rows = patchify_video(noise).to(device=device, dtype=pipe.torch_dtype)
-                ts = torch.tensor(noise_aug, dtype=pipe.torch_dtype, device=device)
+                full_t = video_latents.shape[2] + imgvid_cond_num_frames
+                noise_shape = (1, 24, full_t, int(block["latent_h"]), int(block["latent_w"]))
+                noise = pipe.generate_noise(noise_shape, seed=seed, rand_device="cpu", rand_torch_dtype=pipe.torch_dtype, device="cpu", torch_dtype=pipe.torch_dtype)
+                noise_rows = patchify_video(noise[:, :, : int(block["latent_t"])]).to(device=device, dtype=pipe.torch_dtype)
+                ts = torch.tensor(pipe.imgvid_cond_noise_aug, dtype=pipe.torch_dtype, device=device)
                 anchor = ts * clean + (1.0 - ts) * noise_rows
-            block["visual_rows"] = anchor
+            visual_parts.append(anchor)
 
-        audio_noise_aug = AUDIO_COND_NOISE_AUG
+        audio_parts = []
         for block in ref_blocks_out:
             if "audio_clean" not in block or int(block["ref_audio_t"]) <= 0:
                 block.pop("audio_clean", None)
                 continue
             clean = block.pop("audio_clean").to(device=device, dtype=pipe.torch_dtype)
-            if audio_noise_aug == 1.0:
+            if pipe.audio_cond_noise_aug == 1.0:
                 anchor = clean
             else:
-                noise = pipe.generate_noise(clean.shape, seed=seed_val + 1, rand_device="cpu", rand_torch_dtype=pipe.torch_dtype, device=device, torch_dtype=pipe.torch_dtype)
-                ts = torch.tensor(audio_noise_aug, dtype=pipe.torch_dtype, device=device)
+                noise = pipe.generate_noise(clean.shape, seed=seed + 1, rand_device="cpu", rand_torch_dtype=pipe.torch_dtype, device=device, torch_dtype=pipe.torch_dtype)
+                ts = torch.tensor(pipe.audio_cond_noise_aug, dtype=pipe.torch_dtype, device=device)
                 anchor = ts * clean + (1.0 - ts) * noise
-            block["audio_rows"] = anchor
+            audio_parts.append(anchor)
 
-        return {"ref_blocks": ref_blocks_out}
+        return {
+            "ref_blocks": ref_blocks_out,
+            "ref_visual_anchor": torch.cat(visual_parts, dim=0) if visual_parts else None,
+            "ref_audio_anchor": torch.cat(audio_parts, dim=0) if audio_parts else None,
+        }
 
 
 class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
@@ -519,236 +542,126 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
     _FRAME_PER_TOKEN = (1, 4, 4, 4, 4)
     _FRAME_RESCALE = 5.0 / 3.0
     _SEQ_ALIGN = 64
-    _PATCH_H, _PATCH_W = 2, 2
-    _TEXT_ID, _AUDIO_FIRST_ID, _AUDIO_ID = -5, -15, -14
-    _IMGVID_COND_ID = -11
-    _AUDIO_REF_COND_ID = -17
-    _VIDEO_FIRST_ID, _VIDEO_ID, _VIDEO_LAST_ID, _PAD_ID = -3, -2, -4, -1
 
     def __init__(self):
         super().__init__(
             seperate_cfg=True,
             input_params_posi={"prompt_embeds": "prompt_embeds", "text_token_tags": "text_token_tags"},
             input_params_nega={"prompt_embeds": "prompt_embeds", "text_token_tags": "text_token_tags"},
-            input_params=("video_latents", "audio_latents", "keyframe_cond_anchor", "keyframe_indices_validated", "ref_blocks"),
+            input_params=("video_latents", "audio_latents", "keyframe_cond_anchor", "keyframe_indices", "ref_blocks"),
             output_params=("packed",)
         )
 
-    @classmethod
-    def _axis_from_sqrt_area(cls, dim: int, patch: int, sqrt_area: float) -> torch.Tensor:
+    @staticmethod
+    def _to_device(packed: dict, device) -> dict:
+        return {k: v.to(device) if torch.is_tensor(v) else v for k, v in packed.items()}
+
+    def _aligned_seq_len(self, used: int) -> int:
+        return ((used + self._SEQ_ALIGN - 1) // self._SEQ_ALIGN) * self._SEQ_ALIGN
+
+    def _axis_from_sqrt_area(self, dim: int, patch: int, sqrt_area: float) -> torch.Tensor:
         ratio = dim / sqrt_area
         left = (1.0 - ratio) * 0.5
         right = left + ratio
-        grid = np.linspace(left, right, dim // patch, endpoint=False) * cls._INTERP
+        grid = np.linspace(left, right, dim // patch, endpoint=False) * self._INTERP
         return torch.from_numpy(grid).to(torch.float64)
 
-    @classmethod
-    def _video_t_grid(cls, n: int, origin: float) -> torch.Tensor:
-        spans = torch.tensor([cls._FRAME_RESCALE * cls._FRAME_PER_TOKEN[k % cls._T_GROUP] for k in range(n)], dtype=torch.float64)
+    def _video_t_grid(self, n: int, origin: float) -> torch.Tensor:
+        spans = torch.tensor([self._FRAME_RESCALE * self._FRAME_PER_TOKEN[k % self._T_GROUP] for k in range(n)], dtype=torch.float64)
         return origin + torch.cat([torch.zeros(1, dtype=torch.float64), spans[:-1].cumsum(0)])
 
-    @classmethod
-    def _temporal_position_span(cls, temporal_length: int) -> float:
-        spans = np.ones(int(temporal_length), dtype=np.float64) * cls._FRAME_RESCALE
-        for token_index in range(cls._T_GROUP):
-            spans[token_index::cls._T_GROUP] *= cls._FRAME_PER_TOKEN[token_index]
+    def _temporal_position_span(self, temporal_length: int) -> float:
+        spans = np.ones(int(temporal_length), dtype=np.float64) * self._FRAME_RESCALE
+        for token_index in range(self._T_GROUP):
+            spans[token_index::self._T_GROUP] *= self._FRAME_PER_TOKEN[token_index]
         return float(spans.sum())
 
-    @classmethod
-    def _video_t_span(cls, n: int) -> float:
-        return sum(cls._FRAME_RESCALE * cls._FRAME_PER_TOKEN[k % cls._T_GROUP] for k in range(n))
+    def _video_t_span(self, n: int) -> float:
+        return sum(self._FRAME_RESCALE * self._FRAME_PER_TOKEN[k % self._T_GROUP] for k in range(n))
 
-    @classmethod
-    def _build_packed_t2va(cls, text_len, latent_t, latent_h, latent_w, audio_t, audio_channel=2):
-        """t2va layout: [text | audio | video | pad]."""
-        ph, pw = latent_h // cls._PATCH_H, latent_w // cls._PATCH_W
-        frame_rows = ph * pw
-        video_rows = latent_t * frame_rows
-        audio_rows = audio_t * audio_channel
-        used = text_len + audio_rows + video_rows
-        seq_len = ((used + cls._SEQ_ALIGN - 1) // cls._SEQ_ALIGN) * cls._SEQ_ALIGN
-
-        text_sl = slice(0, text_len)
-        audio_sl = slice(text_len, text_len + audio_rows)
-        video_sl = slice(audio_sl.stop, audio_sl.stop + video_rows)
-
-        input_ids = torch.full((seq_len,), cls._PAD_ID, dtype=torch.int64)
-        input_ids[text_sl] = cls._TEXT_ID
-        input_ids[audio_sl] = cls._AUDIO_ID
-        input_ids[audio_sl.start] = cls._AUDIO_FIRST_ID
-        input_ids[video_sl] = cls._VIDEO_ID
-        input_ids[video_sl.start] = cls._VIDEO_FIRST_ID
-        input_ids[video_sl.stop - 1] = cls._VIDEO_LAST_ID
-
-        img_pos = torch.arange(video_sl.start, video_sl.stop)
-        update_mask = torch.ones(img_pos.shape[0], dtype=torch.bool)
-        audio_pos = torch.arange(audio_sl.start, audio_sl.stop)
-        text_pos = torch.arange(0, text_len)
-
-        g = torch.zeros(seq_len, 3, dtype=torch.float64)
-        g[text_sl, 0] = torch.arange(text_len, dtype=torch.float64)
-        t_grid = cls._video_t_grid(latent_t, float(text_len))
-        sqrt_area = np.sqrt(latent_h * latent_w)
-        h_grid = cls._axis_from_sqrt_area(latent_h, cls._PATCH_H, sqrt_area)
-        w_grid = cls._axis_from_sqrt_area(latent_w, cls._PATCH_W, sqrt_area)
+    def _frame_grid(self, latent_h: int, latent_w: int, sqrt_area):
+        h_grid = self._axis_from_sqrt_area(latent_h, 2, sqrt_area)
+        w_grid = self._axis_from_sqrt_area(latent_w, 2, sqrt_area)
         hh, ww = torch.meshgrid(h_grid, w_grid, indexing="ij")
-        frame = torch.stack([hh.reshape(-1), ww.reshape(-1)], dim=-1)
-        video_g = torch.empty(latent_t, frame_rows, 3, dtype=torch.float64)
-        video_g[:, :, 0] = t_grid[:, None]
+        return torch.stack([hh.reshape(-1), ww.reshape(-1)], dim=-1), w_grid
+
+    def _video_grid(self, latent_t: int, frame: torch.Tensor, origin: float) -> torch.Tensor:
+        video_g = torch.empty(latent_t, frame.shape[0], 3, dtype=torch.float64)
+        video_g[:, :, 0] = self._video_t_grid(latent_t, origin)[:, None]
         video_g[:, :, 1:] = frame[None]
-        g[video_sl] = video_g.reshape(-1, 3)
-        audio_t_grid = float(text_len) + torch.arange(audio_t, dtype=torch.float64)
-        g[audio_sl, 0] = audio_t_grid.repeat(audio_channel)
-        g[audio_sl, 2] = torch.cat([torch.full((audio_t,), float(w_grid[0]), dtype=torch.float64), torch.full((audio_rows - audio_t,), float(w_grid[-1]), dtype=torch.float64)])
+        return video_g.reshape(-1, 3)
 
-        token_tags = torch.full((seq_len,), -1, dtype=torch.long)
-        token_tags[text_sl] = 1
-        token_tags[audio_sl] = 2
-        token_tags[img_pos] = 0
+    def _audio_w_axis(self, w_grid: torch.Tensor, audio_t: int, audio_rows: int) -> torch.Tensor:
+        return torch.cat([torch.full((audio_t,), float(w_grid[0]), dtype=torch.float64),
+                          torch.full((audio_rows - audio_t,), float(w_grid[-1]), dtype=torch.float64)])
 
-        cu = torch.tensor([0, used, seq_len], dtype=torch.int32)
-        return {
-            "seq_len": int(seq_len),
-            "img_pos": img_pos,
-            "audio_pos": audio_pos,
-            "text_pos": text_pos,
-            "update_mask": update_mask,
-            "img_position_ids": g,
-            "token_tags": token_tags,
-            "cu_seqlens": cu,
-            "text_len": int(text_len),
-            "audio_channel": audio_channel,
-            "audio_t": audio_t,
-            "latent_t": latent_t,
-            "latent_h_patched": ph,
-            "latent_w_patched": pw
-        }
-
-    @classmethod
-    def _build_packed_fl2va(cls, text_len, latent_t, latent_h, latent_w, audio_t, keyframe_indices, audio_channel=2):
+    def _build_packed_fl2va(self, text_len, latent_t, latent_h, latent_w, audio_t, keyframe_indices, audio_channel=2):
         """fl2va layout: [text | cond | audio | video | pad]."""
-        ph, pw = latent_h // cls._PATCH_H, latent_w // cls._PATCH_W
-        frame_rows = ph * pw
+        frame_rows = (latent_h // 2) * (latent_w // 2)
         video_rows = latent_t * frame_rows
         audio_rows = audio_t * audio_channel
         num_keyframes = len(keyframe_indices)
         cond_rows = num_keyframes * frame_rows
         used = text_len + cond_rows + audio_rows + video_rows
-        seq_len = ((used + cls._SEQ_ALIGN - 1) // cls._SEQ_ALIGN) * cls._SEQ_ALIGN
+        seq_len = self._aligned_seq_len(used)
 
         text_sl = slice(0, text_len)
         cond_sl = slice(text_len, text_len + cond_rows)
         audio_sl = slice(cond_sl.stop, cond_sl.stop + audio_rows)
         video_sl = slice(audio_sl.stop, audio_sl.stop + video_rows)
 
-        input_ids = torch.full((seq_len,), cls._PAD_ID, dtype=torch.int64)
-        input_ids[text_sl] = cls._TEXT_ID
-        input_ids[cond_sl] = cls._IMGVID_COND_ID
-        input_ids[audio_sl] = cls._AUDIO_ID
-        input_ids[audio_sl.start] = cls._AUDIO_FIRST_ID
-        input_ids[video_sl] = cls._VIDEO_ID
-        input_ids[video_sl.start] = cls._VIDEO_FIRST_ID
-        input_ids[video_sl.stop - 1] = cls._VIDEO_LAST_ID
-
-        # img_pos covers both cond AND video rows; update_mask separates them
+        # img_pos covers both cond AND video rows, conditions first
         img_pos = torch.cat([torch.arange(cond_sl.start, cond_sl.stop), torch.arange(video_sl.start, video_sl.stop)])
-        update_mask = torch.zeros(img_pos.shape[0], dtype=torch.bool)
-        update_mask[cond_rows:] = True
-
         audio_pos = torch.arange(audio_sl.start, audio_sl.stop)
-        text_pos = torch.arange(0, text_len)
 
-        # RoPE position grid
         g = torch.zeros(seq_len, 3, dtype=torch.float64)
         g[text_sl, 0] = torch.arange(text_len, dtype=torch.float64)
 
         sqrt_area = np.sqrt(latent_h * latent_w)
-        h_grid = cls._axis_from_sqrt_area(latent_h, cls._PATCH_H, sqrt_area)
-        w_grid = cls._axis_from_sqrt_area(latent_w, cls._PATCH_W, sqrt_area)
-        hh, ww = torch.meshgrid(h_grid, w_grid, indexing="ij")
-        frame = torch.stack([hh.reshape(-1), ww.reshape(-1)], dim=-1)
+        frame, w_grid = self._frame_grid(latent_h, latent_w, sqrt_area)
 
         # Condition rows: temporal position depends on frame_index
-        t_grid_video = cls._video_t_grid(latent_t, float(text_len))
-        temporal_span = cls._temporal_position_span(latent_t)
+        temporal_span = self._temporal_position_span(latent_t)
         for i, idx in enumerate(keyframe_indices):
             sl = slice(i * frame_rows, (i + 1) * frame_rows)
             if idx == 0:
                 cond_t = float(text_len)
             else:  # idx == -1
-                cond_t = float(text_len) + temporal_span - cls._FRAME_RESCALE
+                cond_t = float(text_len) + temporal_span - self._FRAME_RESCALE
             cond_g = torch.empty(frame_rows, 3, dtype=torch.float64)
             cond_g[:, 0] = cond_t
             cond_g[:, 1:] = frame
             g[cond_sl.start + sl.start: cond_sl.start + sl.stop] = cond_g
 
-        # Video target rows
-        video_g = torch.empty(latent_t, frame_rows, 3, dtype=torch.float64)
-        video_g[:, :, 0] = t_grid_video[:, None]
-        video_g[:, :, 1:] = frame[None]
-        g[video_sl] = video_g.reshape(-1, 3)
-
-        # Audio rows
-        audio_t_grid = float(text_len) + torch.arange(audio_t, dtype=torch.float64)
-        g[audio_sl, 0] = audio_t_grid.repeat(audio_channel)
-        g[audio_sl, 2] = torch.cat([torch.full((audio_t,), float(w_grid[0]), dtype=torch.float64), torch.full((audio_rows - audio_t,), float(w_grid[-1]), dtype=torch.float64)])
+        g[video_sl] = self._video_grid(latent_t, frame, float(text_len))
+        g[audio_sl, 0] = (float(text_len) + torch.arange(audio_t, dtype=torch.float64)).repeat(audio_channel)
+        g[audio_sl, 2] = self._audio_w_axis(w_grid, audio_t, audio_rows)
 
         token_tags = torch.full((seq_len,), -1, dtype=torch.long)
         token_tags[text_sl] = 1
         token_tags[audio_sl] = 2
         token_tags[img_pos] = 0  # both cond and video rows are tagged as video (0)
 
-        cu = torch.tensor([0, used, seq_len], dtype=torch.int32)
         return {
-            "seq_len": int(seq_len),
-            "img_pos": img_pos,
-            "audio_pos": audio_pos,
-            "text_pos": text_pos,
-            "update_mask": update_mask,
-            "img_position_ids": g,
-            "token_tags": token_tags,
-            "cu_seqlens": cu,
-            "text_len": int(text_len),
-            "audio_channel": audio_channel,
-            "audio_t": audio_t,
-            "latent_t": latent_t,
-            "latent_h_patched": ph,
-            "latent_w_patched": pw,
-            "cond_rows": cond_rows,
+            "img_pos": img_pos, "audio_pos": audio_pos, "text_pos": torch.arange(0, text_len),
+            "img_position_ids": g[None], "token_tags": token_tags,
+            "cu_seqlens": torch.tensor([0, used, seq_len], dtype=torch.int32), "seq_len": seq_len,
         }
 
-    @classmethod
-    def _build_packed_ref2va(cls, text_len, latent_t, latent_h, latent_w, audio_t, ref_blocks, audio_channel=2):
-        """ref2va layout: [text | ref_0 | ref_1 | ... | target_audio | target_video | pad].
-        Each ref block uses its OWN spatial grid; temporal positions accumulate
-        via t_cursor. Returns packed dict with additional keys: audio_update_mask,
-        ref_visual_rows_count, ref_audio_rows_count."""
-        ph = latent_h // cls._PATCH_H
-        pw = latent_w // cls._PATCH_W
+    def _build_packed_ref2va(self, text_len, latent_t, latent_h, latent_w, audio_t, ref_blocks, audio_channel=2):
+        """ref2va layout: [text | ref_0 | ref_1 | ... | target_audio | target_video | pad]"""
+        ph, pw = latent_h // 2, latent_w // 2
         target_frame_rows = ph * pw
         target_video_rows = latent_t * target_frame_rows
         target_audio_rows = audio_t * audio_channel
 
-        # First pass: per-block dims and total ref rows, to size the sequence.
-        # Video-bearing blocks pack their audio rows immediately BEFORE their video
-        # rows; `ref_audio_t` may be 0 (silent video), which degrades to an empty
-        # audio slice. Ref: target packed_sequence.py:336-376.
-        block_dims = []
-        total_ref_visual_rows = 0
-        total_ref_audio_rows = 0
+        block_dims, total_ref_visual_rows, total_ref_audio_rows = [], 0, 0
         for b in ref_blocks:
             kind = b["kind"]
             info = {"kind": kind, "visual_rows": 0, "audio_rows": 0, "ref_audio_t": int(b.get("ref_audio_t", 0))}
             if kind in ("image", "video", "video_audio"):
-                lh_r = int(b["latent_h"])
-                lw_r = int(b["latent_w"])
-                lt_r = int(b["latent_t"])
-                frame_rows_r = (lh_r // cls._PATCH_H) * (lw_r // cls._PATCH_W)
-                info["visual_rows"] = lt_r * frame_rows_r
-                info["frame_rows"] = frame_rows_r
-                info["latent_t"] = lt_r
-                info["latent_h"] = lh_r
-                info["latent_w"] = lw_r
+                lt_r, lh_r, lw_r = int(b["latent_t"]), int(b["latent_h"]), int(b["latent_w"])
+                info.update(visual_rows=lt_r * (lh_r // 2) * (lw_r // 2), latent_t=lt_r, latent_h=lh_r, latent_w=lw_r)
                 total_ref_visual_rows += info["visual_rows"]
                 info["audio_rows"] = info["ref_audio_t"] * audio_channel
                 total_ref_audio_rows += info["audio_rows"]
@@ -760,10 +673,7 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
             block_dims.append(info)
 
         used = text_len + total_ref_visual_rows + total_ref_audio_rows + target_audio_rows + target_video_rows
-        seq_len = ((used + cls._SEQ_ALIGN - 1) // cls._SEQ_ALIGN) * cls._SEQ_ALIGN
-
-        input_ids = torch.full((seq_len,), cls._PAD_ID, dtype=torch.int64)
-        input_ids[0:text_len] = cls._TEXT_ID
+        seq_len = self._aligned_seq_len(used)
 
         g = torch.zeros(seq_len, 3, dtype=torch.float64)
         g[0:text_len, 0] = torch.arange(text_len, dtype=torch.float64)
@@ -771,28 +681,20 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
         token_tags[0:text_len] = 1
 
         # Iterate through ref blocks, placing them contiguously.
-        cursor = text_len
-        t_cursor = float(text_len)
-        ref_visual_pos_parts = []
-        ref_audio_pos_parts = []
+        cursor, t_cursor = text_len, float(text_len)
+        ref_visual_pos_parts, ref_audio_pos_parts = [], []
         # Target w_grid used for audio W-axis (channel separation)
         target_sqrt_area = float(np.sqrt(latent_h * latent_w))
-        target_w_grid = cls._axis_from_sqrt_area(latent_w, cls._PATCH_W, target_sqrt_area)
+        target_w_grid = self._axis_from_sqrt_area(latent_w, 2, target_sqrt_area)
 
         for info in block_dims:
             kind = info["kind"]
             if kind == "image":
-                v_rows = info["visual_rows"]
-                lh_r = info["latent_h"]
-                lw_r = info["latent_w"]
+                v_rows, lh_r, lw_r = info["visual_rows"], info["latent_h"], info["latent_w"]
                 # Own spatial grid
                 sqrt_area = float(np.sqrt(lh_r * lw_r))
-                h_grid = cls._axis_from_sqrt_area(lh_r, cls._PATCH_H, sqrt_area)
-                w_grid = cls._axis_from_sqrt_area(lw_r, cls._PATCH_W, sqrt_area)
-                hh, ww = torch.meshgrid(h_grid, w_grid, indexing="ij")
-                frame = torch.stack([hh.reshape(-1), ww.reshape(-1)], dim=-1)
+                frame, w_grid = self._frame_grid(lh_r, lw_r, sqrt_area)
                 sl = slice(cursor, cursor + v_rows)
-                input_ids[sl] = cls._IMGVID_COND_ID
                 g[sl, 0] = t_cursor
                 g[sl, 1:] = frame
                 token_tags[sl] = 0
@@ -801,50 +703,36 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
                 t_cursor += 1.0
 
             elif kind in ("video", "video_audio"):
-                a_rows = info["audio_rows"]
-                v_rows = info["visual_rows"]
-                ref_at = info["ref_audio_t"]
-                lt_r = info["latent_t"]
-                lh_r = info["latent_h"]
-                lw_r = info["latent_w"]
+                a_rows, v_rows, ref_at = info["audio_rows"], info["visual_rows"], info["ref_audio_t"]
+                lt_r, lh_r, lw_r = info["latent_t"], info["latent_h"], info["latent_w"]
                 sqrt_area = float(np.sqrt(lh_r * lw_r))
-                rv_h_grid = cls._axis_from_sqrt_area(lh_r, cls._PATCH_H, sqrt_area)
-                rv_w_grid = cls._axis_from_sqrt_area(lw_r, cls._PATCH_W, sqrt_area)
-                hh, ww = torch.meshgrid(rv_h_grid, rv_w_grid, indexing="ij")
-                frame = torch.stack([hh.reshape(-1), ww.reshape(-1)], dim=-1)
+                frame, rv_w_grid = self._frame_grid(lh_r, lw_r, sqrt_area)
 
                 audio_sl = slice(cursor, cursor + a_rows)
                 visual_sl = slice(audio_sl.stop, audio_sl.stop + v_rows)
 
-                input_ids[audio_sl] = cls._AUDIO_REF_COND_ID
                 a_t_grid = t_cursor + torch.arange(ref_at, dtype=torch.float64)
                 g[audio_sl, 0] = a_t_grid.repeat(audio_channel)
                 if ref_at:
                     # W-axis uses THIS reference video's own grid, not the target's.
-                    g[audio_sl, 2] = torch.cat([torch.full((ref_at,), float(rv_w_grid[0]), dtype=torch.float64), torch.full((a_rows - ref_at,), float(rv_w_grid[-1]), dtype=torch.float64)])
+                    g[audio_sl, 2] = self._audio_w_axis(rv_w_grid, ref_at, a_rows)
                     token_tags[audio_sl] = 2
                     ref_audio_pos_parts.append(torch.arange(audio_sl.start, audio_sl.stop))
 
-                input_ids[visual_sl] = cls._IMGVID_COND_ID
-                video_g = torch.empty(lt_r, info["frame_rows"], 3, dtype=torch.float64)
-                video_g[:, :, 0] = cls._video_t_grid(lt_r, t_cursor)[:, None]
-                video_g[:, :, 1:] = frame[None]
-                g[visual_sl] = video_g.reshape(-1, 3)
+                g[visual_sl] = self._video_grid(lt_r, frame, t_cursor)
                 token_tags[visual_sl] = 0
                 ref_visual_pos_parts.append(torch.arange(visual_sl.start, visual_sl.stop))
 
                 cursor = visual_sl.stop
-                t_cursor += max(float(ref_at), cls._video_t_span(lt_r))
+                t_cursor += max(float(ref_at), self._video_t_span(lt_r))
 
             elif kind == "audio":
-                a_rows = info["audio_rows"]
-                ref_at = info["ref_audio_t"]
+                a_rows, ref_at = info["audio_rows"], info["ref_audio_t"]
                 sl = slice(cursor, cursor + a_rows)
-                input_ids[sl] = cls._AUDIO_REF_COND_ID
                 a_t_grid = t_cursor + torch.arange(ref_at, dtype=torch.float64)
                 g[sl, 0] = a_t_grid.repeat(audio_channel)
                 if ref_at:
-                    g[sl, 2] = torch.cat([torch.full((ref_at,), float(target_w_grid[0]), dtype=torch.float64), torch.full((a_rows - ref_at,), float(target_w_grid[-1]), dtype=torch.float64)])
+                    g[sl, 2] = self._audio_w_axis(target_w_grid, ref_at, a_rows)
                     token_tags[sl] = 2
                     ref_audio_pos_parts.append(torch.arange(sl.start, sl.stop))
                 cursor += a_rows
@@ -854,26 +742,13 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
         target_audio_sl = slice(cursor, cursor + target_audio_rows)
         target_video_sl = slice(target_audio_sl.stop, target_audio_sl.stop + target_video_rows)
 
-        input_ids[target_audio_sl] = cls._AUDIO_ID
-        input_ids[target_audio_sl.start] = cls._AUDIO_FIRST_ID
-        input_ids[target_video_sl] = cls._VIDEO_ID
-        input_ids[target_video_sl.start] = cls._VIDEO_FIRST_ID
-        input_ids[target_video_sl.stop - 1] = cls._VIDEO_LAST_ID
-
         # Target spatial grid (own)
-        h_grid_t = cls._axis_from_sqrt_area(latent_h, cls._PATCH_H, target_sqrt_area)
-        w_grid_t = cls._axis_from_sqrt_area(latent_w, cls._PATCH_W, target_sqrt_area)
-        hh_t, ww_t = torch.meshgrid(h_grid_t, w_grid_t, indexing="ij")
-        frame_t = torch.stack([hh_t.reshape(-1), ww_t.reshape(-1)], dim=-1)
-        t_grid_v = cls._video_t_grid(latent_t, t_cursor)
-        video_g_t = torch.empty(latent_t, target_frame_rows, 3, dtype=torch.float64)
-        video_g_t[:, :, 0] = t_grid_v[:, None]
-        video_g_t[:, :, 1:] = frame_t[None]
-        g[target_video_sl] = video_g_t.reshape(-1, 3)
+        frame_t, w_grid_t = self._frame_grid(latent_h, latent_w, target_sqrt_area)
+        g[target_video_sl] = self._video_grid(latent_t, frame_t, t_cursor)
 
         target_audio_t_grid = t_cursor + torch.arange(audio_t, dtype=torch.float64)
         g[target_audio_sl, 0] = target_audio_t_grid.repeat(audio_channel)
-        g[target_audio_sl, 2] = torch.cat([torch.full((audio_t,), float(w_grid_t[0]), dtype=torch.float64), torch.full((target_audio_rows - audio_t,), float(w_grid_t[-1]), dtype=torch.float64)])
+        g[target_audio_sl, 2] = self._audio_w_axis(w_grid_t, audio_t, target_audio_rows)
 
         # Build combined img_pos / audio_pos
         target_video_pos = torch.arange(target_video_sl.start, target_video_sl.stop)
@@ -888,11 +763,6 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
         else:
             audio_pos = target_audio_pos
 
-        update_mask = torch.zeros(img_pos.shape[0], dtype=torch.bool)
-        update_mask[total_ref_visual_rows:] = True
-        audio_update_mask = torch.zeros(audio_pos.shape[0], dtype=torch.bool)
-        audio_update_mask[total_ref_audio_rows:] = True
-
         token_tags[img_pos] = 0
         token_tags[target_audio_sl] = 2
 
@@ -900,53 +770,24 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
         cu = torch.tensor([0, used, seq_len], dtype=torch.int32)
 
         return {
-            "seq_len": int(seq_len),
-            "img_pos": img_pos,
-            "audio_pos": audio_pos,
-            "text_pos": text_pos,
-            "update_mask": update_mask,
-            "audio_update_mask": audio_update_mask,
-            "img_position_ids": g,
-            "token_tags": token_tags,
-            "cu_seqlens": cu,
-            "text_len": int(text_len),
-            "audio_channel": audio_channel,
-            "audio_t": audio_t,
-            "latent_t": latent_t,
-            "latent_h_patched": ph,
-            "latent_w_patched": pw,
-            "cond_rows": total_ref_visual_rows,  # visual ref rows count
-            "ref_audio_rows": total_ref_audio_rows,
+            "img_pos": img_pos, "audio_pos": audio_pos, "text_pos": text_pos,
+            "img_position_ids": g[None], "token_tags": token_tags, "cu_seqlens": cu,
+            "seq_len": seq_len,
         }
 
-    def process(self, pipe: MiniMaxH3Pipeline, prompt_embeds, video_latents, audio_latents, text_token_tags=None, keyframe_cond_anchor=None, keyframe_indices_validated=None, ref_blocks=None):
-        text_len = int(prompt_embeds.shape[0])
-        video_latent_t, latent_h, latent_w = (int(x) for x in video_latents.shape[2:])
-        audio_latent_t = int(audio_latents.shape[-1])
+    def process(self, pipe: MiniMaxH3Pipeline, prompt_embeds, video_latents, audio_latents, text_token_tags=None, keyframe_cond_anchor=None, keyframe_indices=None, ref_blocks=None):
+        text_len = prompt_embeds.shape[0]
+        video_latent_t, latent_h, latent_w = video_latents.shape[2:]
+        audio_latent_t = audio_latents.shape[-1]
         if ref_blocks is not None:
             packed = self._build_packed_ref2va(text_len, video_latent_t, latent_h, latent_w, audio_latent_t, ref_blocks)
-        elif keyframe_cond_anchor is not None:
-            packed = self._build_packed_fl2va(text_len, video_latent_t, latent_h, latent_w, audio_latent_t, keyframe_indices_validated)
         else:
-            packed = self._build_packed_t2va(text_len, video_latent_t, latent_h, latent_w, audio_latent_t)
+            packed = self._build_packed_fl2va(text_len, video_latent_t, latent_h, latent_w, audio_latent_t, keyframe_indices if keyframe_cond_anchor is not None else [])
 
-        dev = pipe.device
-        if text_token_tags is not None:
-            tags = text_token_tags.view(-1).to(torch.long)
-            if int(tags.shape[0]) != text_len:
-                raise ValueError(f"text_token_tags length {int(tags.shape[0])} != text_len {text_len}")
-            packed["token_tags"][packed["text_pos"]] = tags.cpu()
-        packed["img_pos"] = packed["img_pos"].to(dev, torch.long)
-        packed["audio_pos"] = packed["audio_pos"].to(dev, torch.long)
-        packed["text_pos"] = packed["text_pos"].to(dev, torch.long)
-        packed["update_mask"] = packed["update_mask"].to(dev)
-        if "audio_update_mask" in packed:
-            packed["audio_update_mask"] = packed["audio_update_mask"].to(dev)
-        if pipe.device == "mps": packed["img_position_ids"] = packed["img_position_ids"].to(torch.float32)
-        packed["img_position_ids"] = packed["img_position_ids"][None].to(dev)  # [1,S,3] fp64
-        packed["token_tags"] = packed["token_tags"].to(dev, torch.long)
-        packed["cu_seqlens"] = packed["cu_seqlens"].to(dev, torch.int32)
-        return {"packed": packed}
+        packed["token_tags"][packed["text_pos"]] = text_token_tags.cpu()
+        if pipe.device == "mps":
+            packed["img_position_ids"] = packed["img_position_ids"].to(torch.float32)
+        return {"packed": self._to_device(packed, pipe.device)}
 
 
 def model_fn_minimax_h3(
@@ -955,80 +796,63 @@ def model_fn_minimax_h3(
     audio_latents,
     packed,
     prompt_embeds,
-    t_video,
-    t_audio,
-    device,
+    timestep_video,
+    timestep_audio,
     keyframe_cond_anchor=None,
-    ref_blocks=None,
+    ref_visual_anchor=None,
+    ref_audio_anchor=None,
+    input_latents_video=None,
+    denoise_mask_video=None,
+    input_latents_audio=None,
+    denoise_mask_audio=None,
+    imgvid_cond_noise_aug=0.999,
+    audio_cond_noise_aug=1.0,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     **kwargs,
 ):
-    # Every producer already hands these over on `device` at the pipeline dtype, so
-    # the packed buffers just follow the latents. index_copy_ below enforces that.
-    dtype = video_latents.dtype
+    t_video = 1.0 - float(timestep_video) / 1000
+    t_audio = 1.0 - float(timestep_audio) / 1000
+
+    dtype, device = video_latents.dtype, video_latents.device
+    f, h, w = video_latents.shape[2:]
+    audio_channel, audio_t = audio_latents.shape[0], audio_latents.shape[-1]
+
+    if input_latents_video is not None:
+        video_latents = video_latents * denoise_mask_video + input_latents_video * (1.0 - denoise_mask_video)
+        denoise_mask_video = patchify_video(denoise_mask_video)[:, 0]
+    if input_latents_audio is not None:
+        audio_latents = audio_latents * denoise_mask_audio + input_latents_audio * (1.0 - denoise_mask_audio)
+        denoise_mask_audio = pack_audio(denoise_mask_audio)[:, 0]
     video_rows = patchify_video(video_latents)
     audio_rows = pack_audio(audio_latents)
 
-    seq_len = packed["seq_len"]
-    img_pos = packed["img_pos"]
-    audio_pos = packed["audio_pos"]
-    text_pos = packed["text_pos"]
-    cu = packed["cu_seqlens"]
-    text_len = packed["text_len"]
-    update_mask = packed["update_mask"]
-    cond_rows_count = packed.get("cond_rows", 0)
-    ref_audio_rows_count = packed.get("ref_audio_rows", 0)
-
+    img_pos, audio_pos, text_pos = packed["img_pos"], packed["audio_pos"], packed["text_pos"]
+    cu, seq_len, text_len = packed["cu_seqlens"], packed["seq_len"], text_pos.shape[0]
+    # Video Sequence
+    cond_anchor = ref_visual_anchor if ref_visual_anchor is not None else keyframe_cond_anchor
+    cond_rows_count = 0 if cond_anchor is None else cond_anchor.shape[0]
     x = torch.zeros(1, seq_len, 96, dtype=dtype, device=device)
+    x[0].index_copy_(0, img_pos[cond_rows_count:], video_rows)
+    if cond_anchor is not None:
+        x[0].index_copy_(0, img_pos[:cond_rows_count], cond_anchor)
+    # Audio Sequence
+    ref_audio_rows_count = 0 if ref_audio_anchor is None else ref_audio_anchor.shape[0]
     audio_x = torch.zeros(1, seq_len, 32, dtype=dtype, device=device)
+    audio_x[0].index_copy_(0, audio_pos[ref_audio_rows_count:], audio_rows)
+    if ref_audio_anchor is not None:
+        audio_x[0].index_copy_(0, audio_pos[:ref_audio_rows_count], ref_audio_anchor)
 
-    # Collect ref anchor rows (for Ref2AV) or use keyframe anchor (for FL2AV)
-    ref_visual_anchor = None
-    ref_audio_anchor = None
-    if ref_blocks is not None:
-        visual_parts = []
-        audio_parts = []
-        for b in ref_blocks:
-            if b.get("visual_rows") is not None:
-                visual_parts.append(b["visual_rows"])
-            if b.get("audio_rows") is not None:
-                audio_parts.append(b["audio_rows"])
-        if visual_parts:
-            ref_visual_anchor = torch.cat(visual_parts, dim=0)
-        if audio_parts:
-            ref_audio_anchor = torch.cat(audio_parts, dim=0)
+    timesteps = torch.full((seq_len,), t_video, dtype=torch.float32, device=device)
+    timesteps[audio_pos] = t_audio
 
-    if ref_visual_anchor is not None and cond_rows_count > 0:
-        ref_pos = img_pos[:cond_rows_count]
-        target_pos = img_pos[cond_rows_count:]
-        x[0].index_copy_(0, target_pos, video_rows)
-        x[0].index_copy_(0, ref_pos, ref_visual_anchor)
-    elif keyframe_cond_anchor is not None and cond_rows_count > 0:
-        cond_pos = img_pos[:cond_rows_count]
-        target_pos = img_pos[cond_rows_count:]
-        x[0].index_copy_(0, target_pos, video_rows)
-        x[0].index_copy_(0, cond_pos, keyframe_cond_anchor)
-    else:
-        x[0].index_copy_(0, img_pos, video_rows)
+    if input_latents_video is not None:
+        timesteps[img_pos[cond_rows_count:][denoise_mask_video == 0]] = 1.0
+    if input_latents_audio is not None:
+        timesteps[audio_pos[ref_audio_rows_count:][denoise_mask_audio == 0]] = 1.0
 
-    if ref_audio_anchor is not None and ref_audio_rows_count > 0:
-        ref_audio_pos = audio_pos[:ref_audio_rows_count]
-        target_audio_pos = audio_pos[ref_audio_rows_count:]
-        audio_x[0].index_copy_(0, target_audio_pos, audio_rows)
-        audio_x[0].index_copy_(0, ref_audio_pos, ref_audio_anchor)
-    else:
-        audio_x[0].index_copy_(0, audio_pos, audio_rows)
-
-    timesteps = torch.full((seq_len,), float(t_video), dtype=torch.float32, device=device)
-    timesteps[audio_pos] = float(t_audio)
-    if cond_rows_count > 0:
-        cond_t = max(float(t_video), IMGVID_COND_NOISE_AUG)
-        timesteps[img_pos[:cond_rows_count]] = cond_t
-    if ref_audio_rows_count > 0:
-        audio_ref_t = max(float(t_audio), AUDIO_COND_NOISE_AUG)
-        timesteps[audio_pos[:ref_audio_rows_count]] = audio_ref_t
-
+    timesteps[img_pos[:cond_rows_count]] = max(t_video, imgvid_cond_noise_aug)
+    timesteps[audio_pos[:ref_audio_rows_count]] = max(t_audio, audio_cond_noise_aug)
     unique_timesteps, inverse_indices = torch.unique(timesteps, sorted=True, return_inverse=True)
 
     refiner_cu = torch.tensor([0, text_len, text_len], dtype=torch.int32, device=device)
@@ -1038,7 +862,6 @@ def model_fn_minimax_h3(
         img_position_ids=packed["img_position_ids"],
         unique_timesteps=unique_timesteps,
         inverse_indices=inverse_indices,
-        update_mask=update_mask,
         token_tags=packed["token_tags"],
         prompt_embeds=prompt_embeds,
         img_pos_info={"position_ids": img_pos},
@@ -1047,16 +870,15 @@ def model_fn_minimax_h3(
         img_pos_for_infer_output_info={"position_ids": img_pos},
         packed_seq_params={"cu_seqlens_q": cu, "max_seqlen_q": int(cu[1])},
         refiner_packed_seq_params={"cu_seqlens_q": refiner_cu, "max_seqlen_q": text_len},
+        update_mask=None,
+        skip_mask_out_condition=True,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
-        skip_mask_out_condition=False,
     )
 
-    if cond_rows_count > 0:
-        v_video_rows = v_video_rows[cond_rows_count:]
-    if ref_audio_rows_count > 0:
-        v_audio_rows = v_audio_rows[ref_audio_rows_count:]
+    v_video_rows = v_video_rows[cond_rows_count:]
+    v_audio_rows = v_audio_rows[ref_audio_rows_count:]
 
-    v_video = unpatchify_video(v_video_rows, packed["latent_t"], packed["latent_h_patched"], packed["latent_w_patched"])
-    v_audio = unpack_audio(v_audio_rows, packed["audio_channel"], packed["audio_t"])
+    v_video = unpatchify_video(v_video_rows, f, h, w)
+    v_audio = unpack_audio(v_audio_rows, audio_channel, audio_t)
     return -v_video, -v_audio

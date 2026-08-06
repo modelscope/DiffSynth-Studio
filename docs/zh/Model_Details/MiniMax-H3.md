@@ -64,6 +64,7 @@ write_video_audio(
 |-|-|-|-|-|-|-|
 |[MiniMax/MiniMax-H3: FL2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-FL2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-FL2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FL2VA.py)|
 |[MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py)|
+|[MiniMax/MiniMax-H3: Retake](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Retake.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Retake.py)|-|-|-|-|
 |[DiffSynth-Studio/MiniMax-H3-NF4: FL2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-NF4-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-FL2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-FL2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-FL2VA.py)|
 |[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Ref2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Ref2VA.py)|
 
@@ -100,7 +101,47 @@ write_video_audio(
     * `{"type": "audio", "audio": Tensor[C, L], "sample_rate": int}`
     * `{"type": "video_audio", "video": list[PIL.Image], "audio": Tensor[C, L], "sample_rate": int}`
 
-    其中传入的视频帧列表必须已经是 24fps，Pipeline 不会重采样帧率。
+    其中传入的视频帧列表必须已经是 24fps，Pipeline 不会重采样帧率。`video` 一律按无声处理，因此若要把参考视频自带的声轨也作为音频条件，必须使用 `video_audio` 并显式传入波形 —— Pipeline 接收的是帧列表而非文件，无法自行探测声轨。可用 `diffsynth.utils.data.audio_video.read_video_audio` 从同一个文件同时读出画面与声轨，两者的时长会自动对齐：
+
+    ```python
+    from diffsynth.utils.data.audio_video import read_video_audio
+
+    frames, waveform, sample_rate = read_video_audio(
+        "video.mp4", height=480, width=832, num_frames=124, fps=24,
+        audio_sample_rate=pipe.audio_vae.sample_rate,
+    )
+    ```
+* `ref_image_short_edge`: 参考图像的短边目标长度，默认值为 2048。参考图像保持长宽比缩放至该短边（允许放大），两轴各自向最近的 32 倍数取整，不受面积上限约束。
+* `ref_video_short_edge`: 参考视频的短边目标长度，默认值为 768。
+* `ref_video_max_pixels`: 参考视频的面积软上限，默认值为 `768 * 1344`。参考视频先按短边定标，若面积超过该上限则等比缩回，最后两轴各自取整到 32 的倍数。宽于 16:9 的素材通常会触发该上限。
+* `retake_video`: 视频重绘（retake）的源视频帧列表，必须已经是 24fps。帧会被缩放到目标画幅并截取前 `num_frames` 帧。由于 `num_frames` 会先向上对齐到最近的 `17n+5`，源视频常常会差几帧（例如 121 帧的素材对应对齐后的 124 帧），此时会重复最后一帧补齐，且补出的尾部会被重新生成而非冻结。源素材帧数不少于 `num_frames` 即可避免。
+* `frame_regions_to_retake`: `retake_video` 中需要重新生成的**帧号**区间，左闭右开、帧从 0 计数，例如 `[(17, 51)]`。区间之外的内容会从源视频原样保留。一个 VAE clip 的 17 帧在隐空间是耦合的，重绘 clip 内任何一帧就等于重绘整个 clip，因此区间会向外扩展到 clip 边界；传 17 的倍数即可得到与请求完全一致的范围。不传该参数（或传入空列表）时整段源视频都会被保留，此时 `retake_video` 相当于视频驱动的音频生成。
+* `retake_audio`: 音频重绘（retake）的源波形 `Tensor[C, L]`。会被转为立体声并重采样到音频 VAE 的采样率，再按视频时长截断或补齐。
+* `retake_audio_sample_rate`: `retake_audio` 的采样率，默认值为 32000。
+* `seconds_regions_to_retake`: `retake_audio` 中需要重新生成的时间区间，单位为**秒**、左闭右开，例如 `[(0, 1), (4, 5)]`。音频 VAE 是均匀压缩（每秒 40 个隐空间帧）、没有 clip 结构，因此区间按给定值直接使用，时间分辨率为 1/40 秒。不传该参数时整段源音频都会被保留，此时 `retake_audio` 相当于音频驱动的视频生成。
+
+    视频与音频的 retake 相互独立：可以只用其中之一，注意两者单位不同 —— 视频用帧号，音频用秒。推荐用 `read_video_audio` 从同一个文件中读出时长已对齐的 `(帧列表, 波形, 采样率)`：
+
+    ```python
+    source_video, source_audio, audio_sample_rate = read_video_audio(
+        "video.mp4", height=480, width=832, num_frames=124, fps=24,
+        audio_sample_rate=pipe.audio_vae.sample_rate,
+    )
+
+    def align_to_clips(start, end, total_frames, clip_frames=17):
+        """把左闭右开的帧区间 [start, end) 扩展到完整 clip，帧从 0 计数。"""
+        first_clip, last_clip = start // clip_frames, (end - 1) // clip_frames
+        return first_clip * clip_frames, min((last_clip + 1) * clip_frames, total_frames)
+
+    video, audio = pipe(
+        prompt=prompt, height=480, width=832, num_frames=124,
+        retake_video=source_video,
+        frame_regions_to_retake=[align_to_clips(24, 48, 124)],   # 帧 [24,48) -> (17, 51)
+        retake_audio=source_audio,
+        retake_audio_sample_rate=audio_sample_rate,
+        seconds_regions_to_retake=[(0, 1), (4, 5)],              # 秒
+    )
+    ```
 * `progress_bar_cmd`: 进度条，默认为 `tqdm`。可通过设置为 `lambda x: x` 来屏蔽进度条。
 
 Pipeline 返回 `(video, audio)` 二元组，视频为 PIL 图像列表，音频为波形张量，可通过 `diffsynth.utils.data.audio_video.write_video_audio` 混流写出 MP4：

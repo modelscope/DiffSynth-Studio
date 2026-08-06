@@ -68,8 +68,8 @@ def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, **inputs):
     min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
 
     timestep_id = torch.randint(min_timestep_boundary, max_timestep_boundary, (1,))
-    timestep_video = pipe.scheduler.timesteps[timestep_id].to(dtype=pipe.torch_dtype, device=pipe.device)
-    timestep_audio = pipe.scheduler_audio.timesteps[timestep_id].to(dtype=pipe.torch_dtype, device=pipe.device)
+    timestep_video = pipe.scheduler.timesteps[timestep_id].to(dtype=torch.float32, device=pipe.device)
+    timestep_audio = pipe.scheduler_audio.timesteps[timestep_id].to(dtype=torch.float32, device=pipe.device)
 
     noise = torch.randn_like(inputs["input_latents"])
     inputs["video_latents"] = pipe.scheduler.add_noise(inputs["input_latents"], noise, timestep_video)
@@ -82,9 +82,7 @@ def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, **inputs):
     models = {name: getattr(pipe, name) for name in pipe.in_iteration_models}
     noise_pred, noise_pred_audio = pipe.model_fn(
         **models, **inputs,
-        t_video=1.0 - float(timestep_video) / pipe.scheduler.num_train_timesteps,
-        t_audio=1.0 - float(timestep_audio) / pipe.scheduler_audio.num_train_timesteps,
-        device=pipe.device,
+        timestep_video=timestep_video, timestep_audio=timestep_audio,
     )
 
     loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
