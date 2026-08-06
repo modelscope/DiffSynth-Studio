@@ -150,12 +150,12 @@ class MiniMaxH3Pipeline(BasePipeline):
         # 4. Denoise loop
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
-        for progress_id, _ in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
-            t_video = float(1.0 - self.scheduler.sigmas[progress_id])
-            t_audio = float(1.0 - self.scheduler_audio.sigmas[progress_id])
+        for progress_id, timestep_video in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
+            timestep_video = timestep_video.unsqueeze(0).to(dtype=torch.float32, device=self.device)
+            timestep_audio = self.scheduler_audio.timesteps[progress_id].unsqueeze(0).to(dtype=torch.float32, device=self.device)
             noise_pred_video, noise_pred_audio = self.cfg_guided_model_fn(
                 self.model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega,
-                **models, t_video=t_video, t_audio=t_audio, device=self.device,
+                **models, timestep_video=timestep_video, timestep_audio=timestep_audio,
             )
             inputs_shared["video_latents"] = self.step(
                 self.scheduler, inputs_shared["video_latents"], progress_id, noise_pred=noise_pred_video,
@@ -796,8 +796,8 @@ def model_fn_minimax_h3(
     audio_latents,
     packed,
     prompt_embeds,
-    t_video,
-    t_audio,
+    timestep_video,
+    timestep_audio,
     keyframe_cond_anchor=None,
     ref_visual_anchor=None,
     ref_audio_anchor=None,
@@ -811,6 +811,9 @@ def model_fn_minimax_h3(
     use_gradient_checkpointing_offload=False,
     **kwargs,
 ):
+    t_video = 1.0 - float(timestep_video) / 1000
+    t_audio = 1.0 - float(timestep_audio) / 1000
+
     dtype, device = video_latents.dtype, video_latents.device
     f, h, w = video_latents.shape[2:]
     audio_channel, audio_t = audio_latents.shape[0], audio_latents.shape[-1]
@@ -840,16 +843,16 @@ def model_fn_minimax_h3(
     if ref_audio_anchor is not None:
         audio_x[0].index_copy_(0, audio_pos[:ref_audio_rows_count], ref_audio_anchor)
 
-    timesteps = torch.full((seq_len,), float(t_video), dtype=torch.float32, device=device)
-    timesteps[audio_pos] = float(t_audio)
+    timesteps = torch.full((seq_len,), t_video, dtype=torch.float32, device=device)
+    timesteps[audio_pos] = t_audio
 
     if input_latents_video is not None:
         timesteps[img_pos[cond_rows_count:][denoise_mask_video == 0]] = 1.0
     if input_latents_audio is not None:
         timesteps[audio_pos[ref_audio_rows_count:][denoise_mask_audio == 0]] = 1.0
 
-    timesteps[img_pos[:cond_rows_count]] = max(float(t_video), imgvid_cond_noise_aug)
-    timesteps[audio_pos[:ref_audio_rows_count]] = max(float(t_audio), audio_cond_noise_aug)
+    timesteps[img_pos[:cond_rows_count]] = max(t_video, imgvid_cond_noise_aug)
+    timesteps[audio_pos[:ref_audio_rows_count]] = max(t_audio, audio_cond_noise_aug)
     unique_timesteps, inverse_indices = torch.unique(timesteps, sorted=True, return_inverse=True)
 
     refiner_cu = torch.tensor([0, text_len, text_len], dtype=torch.int32, device=device)
