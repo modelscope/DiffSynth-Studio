@@ -100,7 +100,19 @@ The input parameters for `MiniMaxH3Pipeline` inference include:
     * `{"type": "audio", "audio": Tensor[C, L], "sample_rate": int}`
     * `{"type": "video_audio", "video": list[PIL.Image], "audio": Tensor[C, L], "sample_rate": int}`
 
-    Video frame lists must ALREADY be at 24fps; the pipeline never resamples the frame rate.
+    Video frame lists must ALREADY be at 24fps; the pipeline never resamples the frame rate. A `video` is always treated as silent, so conditioning on a reference video's own soundtrack requires `video_audio` with the waveform passed explicitly — the pipeline receives frame lists rather than files and cannot probe for a soundtrack itself. `diffsynth.utils.data.audio_video.read_video_audio` reads the frames and the soundtrack out of one file with their durations already aligned:
+
+    ```python
+    from diffsynth.utils.data.audio_video import read_video_audio
+
+    frames, waveform, sample_rate = read_video_audio(
+        "video.mp4", height=480, width=832, num_frames=124, fps=24,
+        audio_sample_rate=pipe.audio_vae.sample_rate,
+    )
+    ```
+* `ref_image_short_edge`: Target short edge of a reference image, defaults to 2048. A reference image is rescaled onto that short edge with its aspect ratio preserved (upscaling allowed) and both axes rounded to the nearest multiple of 32. No area cap applies.
+* `ref_video_short_edge`: Target short edge of a reference video, defaults to 768.
+* `ref_video_max_pixels`: Soft area cap for a reference video, defaults to `768 * 1344`. A reference video is first scaled onto the short edge, then scaled back down proportionally if its area exceeds the cap, and finally both axes are rounded to a multiple of 32. Footage wider than 16:9 usually hits the cap.
 * `progress_bar_cmd`: Progress bar, defaults to `tqdm`. Set it to `lambda x: x` to disable the progress bar.
 
 The pipeline returns a `(video, audio)` tuple, where the video is a list of PIL images and the audio is a waveform tensor. Use `diffsynth.utils.data.audio_video.write_video_audio` to mux them into an MP4:

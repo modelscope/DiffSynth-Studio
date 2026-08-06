@@ -102,6 +102,10 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
             "keyframes": None,
             "keyframe_indices": None,
             "references": None,
+            "ref_image_short_edge": 2048,
+            "ref_video_short_edge": 768, "ref_video_max_pixels": 768 * 1344,
+            "imgvid_cond_noise_aug": self.pipe.imgvid_cond_noise_aug,
+            "audio_cond_noise_aug": self.pipe.audio_cond_noise_aug,
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
             "cfg_scale": 1,
@@ -134,6 +138,11 @@ def minimax_h3_parser():
 if __name__ == "__main__":
     parser = minimax_h3_parser()
     args = parser.parse_args()
+    if args.num_frames % MINIMAX_H3_TIME_DIVISION_FACTOR != MINIMAX_H3_TIME_DIVISION_REMAINDER:
+        raise ValueError(
+            f"--num_frames must be {MINIMAX_H3_TIME_DIVISION_FACTOR}n+{MINIMAX_H3_TIME_DIVISION_REMAINDER} "
+            f"(e.g. 39, 56, 124) so it lands on the video VAE's temporal grouping, got {args.num_frames}."
+        )
     accelerator = accelerate.Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         kwargs_handlers=[accelerate.DistributedDataParallelKwargs(find_unused_parameters=args.find_unused_parameters)],
