@@ -1,7 +1,8 @@
 import torch
 from PIL import Image
 from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
-from diffsynth.utils.data.audio_video import write_video_audio, read_audio, VideoData, read_video_audio
+from diffsynth.utils.data.audio_video import write_video_audio, read_audio, read_video_audio
+from modelscope import dataset_snapshot_download
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -25,6 +26,7 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
     processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
+dataset_snapshot_download(dataset_id="DiffSynth-Studio/diffsynth_example_dataset", local_dir="data/diffsynth_example_dataset", allow_file_pattern="minimax_h3/MiniMax-H3-Retake/*")
 
 num_frames = 124
 # Audio -> Video + Audio
