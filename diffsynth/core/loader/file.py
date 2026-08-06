@@ -33,6 +33,11 @@ def load_state_dict_from_safetensors(file_path, torch_dtype=None, device="cpu"):
     return state_dict
 
 
+def load_metadata_from_safetensors(file_path):
+    with safe_open(file_path, framework="pt", device="cpu") as f:
+        return f.metadata() or {}
+
+
 def load_state_dict_from_bin(file_path, torch_dtype=None, device="cpu"):
     state_dict = torch.load(file_path, map_location=device, weights_only=True)
     if len(state_dict) == 1:

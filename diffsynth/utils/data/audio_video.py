@@ -3,7 +3,8 @@ from fractions import Fraction
 import torch
 from PIL import Image
 from tqdm import tqdm
-from .audio import convert_to_stereo
+from . import VideoData
+from .audio import convert_to_stereo, read_audio
 
 
 def _resample_audio(
@@ -132,3 +133,53 @@ def write_video_audio(
         _write_audio(container, audio_stream, audio, audio_sample_rate)
 
     container.close()
+
+def read_video_audio(
+    path: str,
+    height: int,
+    width: int,
+    num_frames: int | None = None,
+    duration: float | None = None,
+    fps: int = 24,
+    audio_sample_rate: int | None = None,
+) -> tuple[list[Image.Image], torch.Tensor, int]:
+    """
+    Read one file's video frames and its own soundtrack as a time-aligned pair.
+
+    Frames are resampled to `fps` by nearest-source-frame lookup, and the audio is then
+    clipped to the span those frames actually cover. That second step is why the two are
+    read together: a source shorter than requested yields fewer frames than asked for, and
+    taking the audio duration from the decoded count rather than from the request keeps the
+    streams aligned.
+
+    Args:
+        path (str): A video file carrying an audio stream.
+        height (int): Target frame height; frames are center-cropped and resized to it.
+        width (int): Target frame width.
+        num_frames (int | None): How many frames to keep, at `fps`. Give this or `duration`.
+        duration (float | None): Target length in seconds, converted to a frame count via `fps`.
+        fps (int, optional): Target frame rate. Defaults to 24.
+        audio_sample_rate (int | None, optional): Resample the audio to this rate. Left at
+            None the file's own rate is kept and the returned rate reports it.
+
+    Returns:
+        tuple[list[Image.Image], torch.Tensor, int]: The frames, the waveform as [C, T], and
+            the waveform's sample rate.
+    """
+    if (num_frames is None) == (duration is None):
+        raise ValueError("pass exactly one of `num_frames` or `duration`")
+    if num_frames is None:
+        num_frames = max(1, int(round(duration * fps)))
+
+    video = VideoData(path, height=height, width=width)
+    frames = video.raw_data()
+    source_fps = float(video.data.reader.get_meta_data()["fps"])
+    sampled = []
+    for k in range(num_frames):
+        index = int(round(k * source_fps / fps))
+        if index >= len(frames):
+            break
+        sampled.append(frames[index])
+
+    waveform, sample_rate = read_audio(path, duration=len(sampled) / fps, resample=audio_sample_rate is not None, resample_rate=audio_sample_rate)
+    return sampled, waveform, sample_rate

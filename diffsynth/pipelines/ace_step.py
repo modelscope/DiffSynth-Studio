@@ -125,6 +125,10 @@ class AceStepPipeline(BasePipeline):
         # Residual
         residual = None,
         negative_residual = None,
+        # Tiled VAE
+        tiled: bool = False,
+        tile_size: int = 512,
+        tile_stride: int = 256,
         # Progress
         progress_bar_cmd=tqdm,
     ):
@@ -173,21 +177,17 @@ class AceStepPipeline(BasePipeline):
 
         # Decode
         self.load_models_to_device(['vae'])
-        # DiT output is [B, T, 64] (channels-last), VAE expects [B, 64, T] (channels-first)
-        latents = inputs_shared["latents"].transpose(1, 2)
-        vae_output = self.vae.decode(latents)
-        audio_output = self.normalize_audio(vae_output, target_db=-1.0)
-        audio = self.output_audio_format_check(audio_output)
+        audio = self.vae_output_to_audio(inputs_shared["latents"], tiled, tile_size, tile_stride)
         self.load_models_to_device([])
         return audio
-
-    def normalize_audio(self, audio: torch.Tensor, target_db: float = -1.0) -> torch.Tensor:
+    
+    def vae_output_to_audio(self, vae_output, tiled=False, tile_size=512, tile_stride=256):
+        audio = self.vae.decode(vae_output.transpose(1, 2), tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         peak = torch.max(torch.abs(audio))
-        if peak < 1e-6:
-            return audio
-        target_amp = 10 ** (target_db / 20.0)
-        gain = target_amp / peak
-        return audio * gain
+        if peak < 1e-6: return audio
+        audio = audio * (10 ** (-1 / 20.0) / peak)
+        audio = self.output_audio_format_check(audio)
+        return audio
 
     def switch_noncover_condition(self, inputs_shared, inputs_posi, inputs_nega, progress_id):
         if inputs_shared["task_type"] != "cover" or inputs_shared["audio_cover_strength"] >= 1.0:

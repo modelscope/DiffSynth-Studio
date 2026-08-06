@@ -259,14 +259,116 @@ class AceStepVAE(nn.Module):
         )
         self.sampling_rate = sampling_rate
 
-    def encode(self, x: torch.Tensor) -> torch.Tensor:
-        """Audio waveform [B, audio_channels, T] → latent [B, decoder_input_channels, T']."""
+    def tiled_encode(self, x: torch.Tensor, tile_size: int = 10240, tile_stride: int = 5120) -> torch.Tensor:
+        batch_size, audio_channels, T_audio = x.shape
+        up = self.upsampling_factor
+
+        lat_T = round(T_audio / up)
+
+        tiles = []
+        for t in range(0, T_audio, tile_stride):
+            if t - tile_stride >= 0 and t - tile_stride + tile_size >= T_audio:
+                continue
+            tiles.append((t, min(t + tile_size, T_audio)))
+
+        encoder_out_channels = self.encoder.conv2.out_channels
+        values = torch.zeros((batch_size, encoder_out_channels, lat_T), dtype=x.dtype, device="cpu")
+        weight = torch.zeros((1, 1, lat_T), dtype=x.dtype, device="cpu")
+
+        for t_start, t_end in tiles:
+            tile_audio = x[:, :, t_start:t_end]
+            tile_latent = self.encoder(tile_audio).to("cpu")
+            lat_len = tile_latent.shape[-1]
+
+            lat_start = round(t_start / up)
+            lat_end = lat_start + lat_len
+
+            border = (tile_size - tile_stride) // up
+            mask = self._build_blend_mask_1d(
+                lat_len, border,
+                is_left_bound=(t_start == 0),
+                is_right_bound=(t_end >= T_audio),
+                dtype=x.dtype, device="cpu",
+            )
+
+            values[:, :, lat_start:lat_end] += tile_latent * mask
+            weight[:, :, lat_start:lat_end] += mask
+
+        weight = weight.clamp(min=1e-8)
+        latent = values / weight
+        output = OobleckDiagonalGaussianDistribution(latent.to(x.device)).sample()
+        return output
+
+    def encode(self, x: torch.Tensor, tiled: bool = False, tile_size: int = 10240, tile_stride: int = 5120) -> torch.Tensor:
+        """Audio waveform [B, audio_channels, T] → latent [B, decoder_input_channels, T"]."""
+        if tiled:
+            return self.tiled_encode(x, tile_size=tile_size, tile_stride=tile_stride)
         h = self.encoder(x)
         output = OobleckDiagonalGaussianDistribution(h).sample()
         return output
 
-    def decode(self, z: torch.Tensor) -> torch.Tensor:
-        """Latent [B, decoder_input_channels, T] → audio waveform [B, audio_channels, T']."""
+    @property
+    def upsampling_factor(self) -> int:
+        ratios = [10, 6, 4, 4, 2]
+        result = 1
+        for r in ratios:
+            result *= r
+        return result
+
+    def _build_blend_mask_1d(self, length: int, border_width: int, is_left_bound: bool, is_right_bound: bool,
+                              dtype: torch.dtype, device: torch.device) -> torch.Tensor:
+        mask = torch.ones(length, dtype=dtype, device=device)
+        if border_width <= 0:
+            return mask
+        if not is_left_bound:
+            ramp = torch.linspace(0.0, 1.0, border_width, dtype=dtype, device=device)
+            mask[:border_width] = ramp
+        if not is_right_bound:
+            ramp = torch.linspace(1.0, 0.0, border_width, dtype=dtype, device=device)
+            mask[-border_width:] = ramp
+        return mask.unsqueeze(0).unsqueeze(0)
+
+    def tiled_decode(self, z: torch.Tensor, tile_size: int = 512, tile_stride: int = 256) -> torch.Tensor:
+        batch_size, channels, T = z.shape
+        up = self.upsampling_factor
+        out_length = up * T
+
+        tiles = []
+        for t in range(0, T, tile_stride):
+            if t - tile_stride >= 0 and t - tile_stride + tile_size >= T:
+                continue
+            tiles.append((t, min(t + tile_size, T)))
+
+        audio_channels = self.decoder.conv2.out_channels
+        values = torch.zeros((batch_size, audio_channels, out_length), dtype=z.dtype, device="cpu")
+        weight = torch.zeros((1, 1, out_length), dtype=z.dtype, device="cpu")
+
+        for t_start, t_end in tiles:
+            tile_latent = z[:, :, t_start:t_end]
+            tile_output = self.decoder(tile_latent).to("cpu")
+            tile_len = tile_output.shape[-1]
+
+            out_start = t_start * up
+            out_end = out_start + tile_len
+
+            border = (tile_size - tile_stride) * up
+            mask = self._build_blend_mask_1d(
+                tile_len, border,
+                is_left_bound=(t_start == 0),
+                is_right_bound=(t_end >= T),
+                dtype=z.dtype, device="cpu",
+            )
+
+            values[:, :, out_start:out_end] += tile_output * mask
+            weight[:, :, out_start:out_end] += mask
+
+        weight = weight.clamp(min=1e-8)
+        return values / weight
+
+    def decode(self, z: torch.Tensor, tiled: bool = False, tile_size: int = 512, tile_stride: int = 256) -> torch.Tensor:
+        """Latent [B, decoder_input_channels, T] → audio waveform [B, audio_channels, T]."""
+        if tiled:
+            return self.tiled_decode(z, tile_size=tile_size, tile_stride=tile_stride)
         return self.decoder(z)
 
     def forward(self, sample: torch.Tensor) -> torch.Tensor:

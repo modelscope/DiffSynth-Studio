@@ -279,7 +279,7 @@ class Head(nn.Module):
             shift, scale = (self.modulation.unsqueeze(0).to(dtype=t_mod.dtype, device=t_mod.device) + t_mod.unsqueeze(2)).chunk(2, dim=2)
             x = (self.head(self.norm(x) * (1 + scale.squeeze(2)) + shift.squeeze(2)))
         else:
-            shift, scale = (self.modulation.to(dtype=t_mod.dtype, device=t_mod.device) + t_mod).chunk(2, dim=1)
+            shift, scale = (self.modulation.to(dtype=t_mod.dtype, device=t_mod.device) + t_mod.unsqueeze(1)).chunk(2, dim=1)
             x = (self.head(self.norm(x) * (1 + scale) + shift))
         return x
 

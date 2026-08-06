@@ -14,6 +14,8 @@
 ## 简介
 
 > DiffSynth-Studio 文档：[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/)、[English version](https://diffsynth-studio-doc.readthedocs.io/en/latest/)
+> 
+> DiffSynth-Studio Skills：[DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills)
 
 欢迎来到 Diffusion 模型的魔法世界！DiffSynth-Studio 是由[魔搭社区](https://www.modelscope.cn/)团队开发和维护的开源 Diffusion 模型引擎。我们期望以框架建设孵化技术创新，凝聚开源社区的力量，探索生成式模型技术的边界！
 
@@ -35,6 +37,12 @@ DiffSynth 目前包括两个开源项目：
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
 - **2026年8月7日** 我们为 Wan 系列新增了 Wan-Animate-2，输入一张参考图和一段驱动视频，即可让参考角色演绎驱动视频中的动作，生成高质量角色动画，包含标准与蒸馏两个变体。详情请参考[文档](/docs/zh/Model_Details/Wan.md)和[示例代码](/examples/wanvideo/)。
+
+- **2026年8月3日** MiniMax-H3 开源，欢迎加入视频生成模型家族！支持文生音视频、首尾帧引导生成、参考驱动生成、低显存推理以及 NF4 量化推理。详情请参考[文档](/docs/zh/Model_Details/MiniMax-H3.md)和[示例代码](/examples/minimax_h3/)。
+
+- **2026年7月28日** LingBot-Video 开源，欢迎加入视频生成模型家族！本次开源包含 Dense-1.3B 和 MoE-30B-A3B 两个版本（MoE 版总参数量 30B、每个 token 激活约 3B），均支持文生视频、图生视频、文生图推理、低显存推理以及 LoRA / 全量训练能力。详情请参考[文档](/docs/zh/Model_Details/LingBot-Video.md)和[示例代码](/examples/lingbot_video/)。特别感谢 [NancyFyong](https://github.com/NancyFyong) 贡献了本模型的接入代码！
+
+- **2026年7月21日** 我们开源了 [DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills)。这是一套可组合的 Agent Skill 合集，将外部扩散模型接入 DiffSynth-Studio 的全流程自动化，大幅提升模型接入标准化程度与效率。从[使用示例](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1)开始体验吧！
 
 - **2026年6月29日** Boogu-Image 开源，已支持文生图推理、图像编辑、低显存推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/Boogu-Image.md)和[示例代码](/examples/boogu_image/)。
 
@@ -265,7 +273,7 @@ DiffSynth-Studio 为主流 Diffusion 模型（包括 FLUX、Wan 等）重新设�
 > 
 > ```python
 > import os
-> os.environ["MODELSCOPE_DOMAIN"] = "www.modelscope.ai"
+> os.environ["MODELSCOPE_ENDPOINT"] = "https://modelscope.ai"
 > ```
 > 
 > 如需从其他站点下载，请修改[环境变量 DIFFSYNTH_DOWNLOAD_SOURCE](/docs/zh/Pipeline_Usage/Environment_Variables.md#diffsynth_download_source)。
@@ -1444,6 +1452,146 @@ Wan 的示例代码位于：[/examples/wanvideo/](/examples/wanvideo/)
 |[openmoss/MOVA-720p](https://modelscope.cn/models/openmoss/MOVA-720p)|`input_image`|[code](/examples/mova/model_inference/MOVA-720p-I2AV.py)|[code](/examples/mova/model_inference_low_vram/MOVA-720p-I2AV.py)|[code](/examples/mova/model_training/full/MOVA-720P-I2AV.sh)|[code](/examples/mova/model_training/validate_full/MOVA-720p-I2AV.py)|[code](/examples/mova/model_training/lora/MOVA-720P-I2AV.sh)|[code](/examples/mova/model_training/validate_lora/MOVA-720p-I2AV.py)|
 |[Wan-AI/Wan-Dancer-14B (global model)](https://modelscope.cn/models/Wan-AI/Wan-Dancer-14B)|`wantodance_music_path`, `wantodance_reference_image`, `wantodance_fps`, `wantodance_keyframes`, `wantodance_keyframes_mask`|[code](/examples/wanvideo/model_inference/Wan-Dancer-14B-global.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan-Dancer-14B-global.py)|[code](/examples/wanvideo/model_training/full/Wan-Dancer-14B-global.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan-Dancer-14B-global.py)|[code](/examples/wanvideo/model_training/lora/Wan-Dancer-14B-global.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan-Dancer-14B-global.py)|
 |[Wan-AI/Wan-Dancer-14B (local model)](https://modelscope.cn/models/Wan-AI/Wan-Dancer-14B)|`wantodance_music_path`, `wantodance_reference_image`, `wantodance_fps`, `wantodance_keyframes`, `wantodance_keyframes_mask`|[code](/examples/wanvideo/model_inference/Wan-Dancer-14B-local.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan-Dancer-14B-local.py)|[code](/examples/wanvideo/model_training/full/Wan-Dancer-14B-local.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan-Dancer-14B-local.py)|[code](/examples/wanvideo/model_training/lora/Wan-Dancer-14B-local.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan-Dancer-14B-local.py)|
+
+</details>
+
+#### LingBot-Video: [/docs/zh/Model_Details/LingBot-Video.md](/docs/zh/Model_Details/LingBot-Video.md)
+
+<details>
+
+<summary>快速开始</summary>
+
+运行以下代码可以快速加载 [Robbyant/lingbot-video-dense-1.3b](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 6G 显存即可运行。
+
+```python
+import torch
+import json
+from diffsynth.utils.data import save_video, VideoData
+from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
+from modelscope import dataset_snapshot_download
+
+vram_config = {
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": torch.float8_e4m3fn,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+
+pipe = LingBotVideoPipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors", **vram_config),
+        ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
+    ],
+    processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+)
+
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
+    local_dir="data/diffsynth_example_dataset",
+    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b_t2v/*",
+)
+with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2v/t2v_example_1.json", "r", encoding="utf-8") as f:
+    caption = json.load(f)
+
+video = pipe(
+    prompt=caption,
+    negative_prompt=pipe.default_negative_prompt,
+    height=480, width=832, num_frames=81,
+    num_inference_steps=40, cfg_scale=3.0,
+    seed=0,
+)
+save_video(video, "video.mp4", fps=15, quality=10)
+```
+
+</details>
+
+<details>
+
+<summary>示例代码</summary>
+
+LingBot-Video 的示例代码位于：[/examples/lingbot_video/](/examples/lingbot_video/)
+
+| 模型 ID | 推理 | 低显存推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
+|-|-|-|-|-|-|-|
+|[Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2v.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2v.py)|[code](/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_t2v.sh)|[code](/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_t2v.py)|[code](/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_t2v.sh)|[code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_t2v.py)|
+|[Robbyant/lingbot-video-dense-1.3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py)|[code](/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_ti2v.sh)|[code](/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_ti2v.py)|[code](/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh)|[code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py)|
+|[Robbyant/lingbot-video-dense-1.3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py)|-|-|-|-|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v.py)|[code](/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_t2v.sh)|[code](/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_t2v.py)|[code](/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_t2v.sh)|[code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_t2v.py)|
+|[Robbyant/lingbot-video-moe-30b-a3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v.py)|[code](/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_ti2v.sh)|[code](/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_ti2v.py)|[code](/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_ti2v.sh)|[code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_ti2v.py)|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2i.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2i.py)|-|-|-|-|
+
+</details>
+
+#### MiniMax-H3: [/docs/zh/Model_Details/MiniMax-H3.md](/docs/zh/Model_Details/MiniMax-H3.md)
+
+<details>
+
+<summary>快速开始</summary>
+
+运行以下代码可以快速加载 [DiffSynth-Studio/MiniMax-H3-NF4](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4) NF4 量化模型并进行文生音视频推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 7G 显存即可运行。
+
+```python
+import torch
+from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
+from diffsynth.utils.data.audio_video import write_video_audio
+
+vram_config = {
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+pipe = MiniMaxH3Pipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-nf4.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-text-encoder-nf4.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="video_vae_nf4.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="audio_vae_nf4.safetensors", **vram_config),
+    ],
+    processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
+)
+
+# Text -> Video + Audio
+prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
+video, audio = pipe(
+    prompt=prompt,
+    height=480, width=832, num_frames=124, num_inference_steps=50, seed=0,
+)
+write_video_audio(
+    video=video, audio=audio,
+    output_path="t2va.mp4", fps=24, audio_sample_rate=32000,
+)
+```
+
+</details>
+
+<details>
+
+<summary>示例代码</summary>
+
+MiniMax-H3 的示例代码位于：[/examples/minimax_h3/](/examples/minimax_h3/)
+
+| 模型 ID | 推理 | 低显存推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
+|-|-|-|-|-|-|-|
+|[MiniMax/MiniMax-H3: FL2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA.py)|[code](/examples/minimax_h3/model_training/full/MiniMax-H3-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-FL2VA.py)|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FL2VA.py)|
+|[MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py)|[code](/examples/minimax_h3/model_training/full/MiniMax-H3-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Ref2VA.py)|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py)|
+|[DiffSynth-Studio/MiniMax-H3-NF4: FL2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-FL2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-FL2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-FL2VA.py)|
+|[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Ref2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Ref2VA.py)|
 
 </details>
 
