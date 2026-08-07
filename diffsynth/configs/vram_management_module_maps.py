@@ -114,6 +114,15 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "diffsynth.models.wan_video_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.wan_animate_2_dit.WanAnimate2Transformer": {
+        "diffsynth.models.wan_video_dit.MLP": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.wan_animate_2_dit.AttentionBlock": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
+        "diffsynth.models.wan_animate_2_dit.Head": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.wan_video_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
     "diffsynth.models.wan_video_dit.WanModel": {
         "diffsynth.models.wan_video_dit.MLP": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.wan_video_dit.DiTBlock": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",

@@ -27,6 +27,13 @@ except ModuleNotFoundError:
     XFORMERS_AVAILABLE = False
 
 try:
+    from torch.nn.attention.flex_attention import flex_attention as flex_attention_func
+    flex_attention_func = torch.compile(flex_attention_func, dynamic=False, mode="max-autotune-no-cudagraphs", fullgraph=True, backend="inductor")
+    FLEX_ATTN_AVAILABLE = True
+except (ModuleNotFoundError, ImportError):
+    FLEX_ATTN_AVAILABLE = False
+
+try:
     if "enable_gqa" in inspect.signature(torch.nn.functional.scaled_dot_product_attention).parameters:
         TORCH_SUPPORT_GQA = True
     else:
@@ -169,9 +176,20 @@ def xformers_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_patt
     return out
 
 
-def attention_forward(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, attn_mask=None, scale=None, is_causal=False, compatibility_mode=False, window_size=None):
+def flex_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, attn_mask=None, scale=None, score_mod=None):
+    assert FLEX_ATTN_AVAILABLE, "Flex Attention is not available. Please upgrade torch to 2.5.0 or later."
+    required_in_pattern, required_out_pattern = "b n s d", "b n s d"
+    q, k, v = rearrange_qkv(q, k, v, q_pattern, k_pattern, v_pattern, required_in_pattern, dims)
+    out = flex_attention_func(query=q, key=k, value=v, block_mask=attn_mask, scale=scale, score_mod=score_mod)
+    out = rearrange_out(out, out_pattern, required_out_pattern, dims)
+    return out
+
+
+def attention_forward(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, attn_mask=None, scale=None, is_causal=False, compatibility_mode=False, window_size=None, use_flex=False, score_mod=None):
     if compatibility_mode or (attn_mask is not None) or ATTENTION_IMPLEMENTATION == "torch":
-        if window_size is None:
+        if use_flex or score_mod is not None:
+            return flex_attention(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale, score_mod=score_mod)
+        elif window_size is None:
             return torch_sdpa(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale, is_causal=is_causal)
         else:
             # Sliding Window Attention is not compatible with `is_causal` and `attn_mask`.

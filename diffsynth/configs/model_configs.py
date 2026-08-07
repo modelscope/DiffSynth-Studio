@@ -82,6 +82,13 @@ qwen_image_series = [
 
 wan_series = [
     {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.2-Animate-2-14B", origin_file_pattern="wan_animate_2/wan_animate_2_bf16.safetensors")
+        "model_hash": "4536c21ad8740ba78367af4216ae85bf",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_animate_2_dit.WanAnimate2Transformer",
+        "extra_kwargs": {},
+    },
+    {
         # Example: ModelConfig(model_id="krea/krea-realtime-video", origin_file_pattern="krea-realtime-video-14b.safetensors")
         "model_hash": "5ec04e02b42d2580483ad69f4e76346a",
         "model_name": "wan_video_dit",
