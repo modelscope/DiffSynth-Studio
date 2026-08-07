@@ -1,6 +1,11 @@
 import torch, os, inspect
 from einops import rearrange, repeat
 
+try:
+    from flash_attn.cute import flash_attn_func as flash_attn_func_cute
+    FLASH_ATTN_4_AVAILABLE = True
+except ModuleNotFoundError:
+    FLASH_ATTN_4_AVAILABLE = False
 
 try:
     import flash_attn_interface
@@ -45,6 +50,8 @@ except:
 def initialize_attention_priority():
     if os.environ.get('DIFFSYNTH_ATTENTION_IMPLEMENTATION') is not None:
         return os.environ.get('DIFFSYNTH_ATTENTION_IMPLEMENTATION').lower()
+    elif FLASH_ATTN_4_AVAILABLE:
+        return "flash_attention_4"
     elif FLASH_ATTN_3_AVAILABLE:
         return "flash_attention_3"
     elif FLASH_ATTN_2_AVAILABLE:
@@ -140,11 +147,22 @@ def torch_sdpa_sliding_window(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
     return output
 
 
+def flash_attention_4(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, scale=None, is_causal=False, window_size=None):
+    required_in_pattern, required_out_pattern= "b s n d", "b s n d"
+    q, k, v = rearrange_qkv(q, k, v, q_pattern, k_pattern, v_pattern, required_in_pattern, dims)
+    window_size = (window_size, window_size) if window_size is not None else (-1, -1)
+    out = flash_attn_func_cute(q, k, v, softmax_scale=scale, causal=is_causal, window_size=window_size)
+    if isinstance(out, tuple):
+        out = out[0]
+    out = rearrange_out(out, out_pattern, required_out_pattern, dims)
+    return out
+
+
 def flash_attention_3(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, scale=None, is_causal=False, window_size=None):
     required_in_pattern, required_out_pattern= "b s n d", "b s n d"
     q, k, v = rearrange_qkv(q, k, v, q_pattern, k_pattern, v_pattern, required_in_pattern, dims)
     window_size = (window_size, window_size) if window_size is not None else (-1, -1)
-    out = flash_attn_interface.flash_attn_func(q, k, v, softmax_scale=scale, window_size=window_size)
+    out = flash_attn_interface.flash_attn_func(q, k, v, softmax_scale=scale, causal=is_causal, window_size=window_size)
     if isinstance(out, tuple):
         out = out[0]
     out = rearrange_out(out, out_pattern, required_out_pattern, dims)
@@ -195,6 +213,8 @@ def attention_forward(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_patte
             # Sliding Window Attention is not compatible with `is_causal` and `attn_mask`.
             assert is_causal == False and attn_mask is None
             return torch_sdpa_sliding_window(q, k, v, window_size, q_pattern, k_pattern, v_pattern, out_pattern, dims, scale=scale)
+    elif ATTENTION_IMPLEMENTATION == "flash_attention_4":
+        return flash_attention_4(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, scale=scale, is_causal=is_causal, window_size=window_size)
     elif ATTENTION_IMPLEMENTATION == "flash_attention_3":
         return flash_attention_3(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, scale=scale, is_causal=is_causal, window_size=window_size)
     elif ATTENTION_IMPLEMENTATION == "flash_attention_2":
