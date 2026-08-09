@@ -4,6 +4,7 @@ from typing import Union
 from tqdm import tqdm
 from einops import rearrange, repeat
 import numpy as np
+import cv2
 from transformers import CLIPTokenizer, T5TokenizerFast
 
 from ..core.device.npu_compatible_device import get_device_type
@@ -83,8 +84,11 @@ class FluxImagePipeline(BasePipeline):
         self.image_proj_model = None
         self.lora_patcher = None
         self.lora_encoder = None
+        self.flux_redux_image_encoder = None
+        self.flux_redux_image_embedder = None
         self.in_iteration_models = ("dit", "step1x_connector", "controlnet", "lora_patcher")
         self.units = [
+            FluxImageUnit_InsertAnything(),
             FluxImageUnit_ShapeChecker(),
             FluxImageUnit_NoiseInitializer(),
             FluxImageUnit_PromptEmbedder(),
@@ -100,6 +104,8 @@ class FluxImagePipeline(BasePipeline):
             FluxImageUnit_TeaCache(),
             FluxImageUnit_Flex(),
             FluxImageUnit_Step1x(),
+            FluxImageUnit_ReduxPromptEmbedder(),
+            FluxImageUnit_FillCondition(),
             FluxImageUnit_ValueControl(),
             FluxImageUnit_LoRAEncode(),
         ]
@@ -171,6 +177,8 @@ class FluxImagePipeline(BasePipeline):
             pipe.infinityou_processor = InfinitYou(device=device)
         pipe.lora_patcher = model_pool.fetch_model("flux_lora_patcher")
         pipe.lora_encoder = model_pool.fetch_model("flux_lora_encoder")
+        pipe.flux_redux_image_encoder = model_pool.fetch_model("flux_redux_image_encoder")
+        pipe.flux_redux_image_embedder = model_pool.fetch_model("flux_redux_image_embedder")
         pipe.nexus_gen = model_pool.fetch_model("nexus_gen_llm")
         pipe.nexus_gen_generation_adapter = model_pool.fetch_model("nexus_gen_generation_adapter")
         pipe.nexus_gen_editing_adapter = model_pool.fetch_model("nexus_gen_editing_adapter")
@@ -235,6 +243,16 @@ class FluxImagePipeline(BasePipeline):
         # LoRA Encoder
         lora_encoder_inputs: Union[list[ModelConfig], ModelConfig, str] = None,
         lora_encoder_scale: float = 1.0,
+        # Flux Fill
+        flux_fill_image: Image.Image = None,
+        flux_fill_mask: Image.Image = None,
+        # Flux Redux
+        flux_redux_image: Image.Image = None,
+        # Insert Anything
+        insert_anything_source_image: Image.Image = None,
+        insert_anything_source_mask: Image.Image = None,
+        insert_anything_ref_image: Image.Image = None,
+        insert_anything_ref_mask: Image.Image = None,
         # TeaCache
         tea_cache_l1_thresh: float = None,
         # Tile
@@ -246,7 +264,6 @@ class FluxImagePipeline(BasePipeline):
     ):
         # Scheduler
         self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=sigma_shift)
-        
         inputs_posi = {
             "prompt": prompt,
         }
@@ -269,6 +286,8 @@ class FluxImagePipeline(BasePipeline):
             "step1x_reference_image": step1x_reference_image,
             "nexus_gen_reference_image": nexus_gen_reference_image,
             "lora_encoder_inputs": lora_encoder_inputs, "lora_encoder_scale": lora_encoder_scale,
+            "flux_fill_image": flux_fill_image, "flux_fill_mask": flux_fill_mask, "flux_redux_image": flux_redux_image,
+            "insert_anything_source_image": insert_anything_source_image, "insert_anything_source_mask": insert_anything_source_mask, "insert_anything_ref_image": insert_anything_ref_image, "insert_anything_ref_mask": insert_anything_ref_mask,
             "tea_cache_l1_thresh": tea_cache_l1_thresh,
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
             "progress_bar_cmd": progress_bar_cmd,
@@ -287,15 +306,17 @@ class FluxImagePipeline(BasePipeline):
                 **models, timestep=timestep, progress_id=progress_id
             )
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
-        
         # Decode
         self.load_models_to_device(['vae_decoder'])
         image = self.vae_decoder(inputs_shared["latents"], device=self.device, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         image = self.vae_output_to_image(image)
         self.load_models_to_device([])
 
-        return image
+        insert_anything_post = inputs_shared.pop("insert_anything_post", None)
+        if insert_anything_post is not None:
+            image = FluxImageUnit_InsertAnything.postprocess(image, insert_anything_post)
 
+        return image
 
 class FluxImageUnit_ShapeChecker(PipelineUnit):
     def __init__(self):
@@ -795,6 +816,270 @@ class FluxImageUnit_ValueControl(PipelineUnit):
 
 
 
+class FluxImageUnit_ReduxPromptEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            seperate_cfg=True,
+            input_params=("flux_redux_image", "t5_sequence_length"),
+            input_params_posi={},
+            input_params_nega={},
+            output_params=("prompt_emb", "pooled_prompt_emb", "text_ids"),
+            onload_model_names=("flux_redux_image_encoder", "flux_redux_image_embedder"),
+        )
+
+    def process(self, pipe, flux_redux_image, t5_sequence_length):
+        if flux_redux_image is None:
+            return {}
+        pipe.load_models_to_device(self.onload_model_names)
+        image = flux_redux_image.convert("RGB").resize((384, 384), resample=Image.BICUBIC)
+        image = pipe.preprocess_image(image).to(device=pipe.device, dtype=pipe.torch_dtype)  
+        image_enc_hidden_states = pipe.flux_redux_image_encoder(image).last_hidden_state
+        image_embeds = pipe.flux_redux_image_embedder(image_enc_hidden_states)
+        prompt_emb = torch.zeros(
+            (1, t5_sequence_length, 4096), device=pipe.device, dtype=pipe.torch_dtype
+        )
+        prompt_emb = torch.cat([prompt_emb, image_embeds], dim=1)
+        pooled_prompt_emb = torch.zeros((1, 768), device=pipe.device, dtype=pipe.torch_dtype)
+        text_ids = torch.zeros(
+            prompt_emb.shape[0], prompt_emb.shape[1], 3, device=pipe.device, dtype=pipe.torch_dtype
+        )
+        return {"prompt_emb": prompt_emb, "pooled_prompt_emb": pooled_prompt_emb, "text_ids": text_ids}
+
+
+
+class FluxImageUnit_FillCondition(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("flux_fill_image", "flux_fill_mask", "height", "width", "tiled", "tile_size", "tile_stride"),
+            output_params=("fill_condition",),
+            onload_model_names=("vae_encoder",),
+        )
+
+    def process(self, pipe, flux_fill_image, flux_fill_mask, height, width, tiled, tile_size, tile_stride):
+        if flux_fill_image is None or flux_fill_mask is None:
+            if getattr(pipe.dit, "input_dim", 64) == 384:
+                latent_h, latent_w = height // 8, width // 8
+                masked_image_latents = torch.zeros((1, 16, latent_h, latent_w), device=pipe.device, dtype=pipe.torch_dtype)
+                mask_64 = torch.ones((1, 64, latent_h, latent_w), device=pipe.device, dtype=pipe.torch_dtype)
+                return {"fill_condition": torch.cat([masked_image_latents, mask_64], dim=1)}
+            return {}
+        pipe.load_models_to_device(["vae_encoder"])
+        image_resized = flux_fill_image.convert("RGB").resize((width, height), resample=Image.LANCZOS)
+        image_tensor = pipe.preprocess_image(image_resized).to(device=pipe.device, dtype=pipe.torch_dtype)
+        mask_resized = flux_fill_mask.convert("L").resize((width, height), resample=Image.LANCZOS)
+        mask_np = np.array(mask_resized, dtype=np.float32) / 255.0
+        mask_tensor = torch.from_numpy(mask_np)[None, None].to(device=pipe.device, dtype=pipe.torch_dtype)
+        mask_tensor = (mask_tensor >= 0.5).to(dtype=pipe.torch_dtype)
+        masked_image = image_tensor * (1 - mask_tensor)
+        masked_image_latents = pipe.vae_encoder(
+            masked_image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride
+        )
+        latent_h, latent_w = height // 8, width // 8
+        mask_64 = mask_tensor[:, 0, :, :].view(1, latent_h, 8, latent_w, 8)
+        mask_64 = mask_64.permute(0, 2, 4, 1, 3).reshape(1, 64, latent_h, latent_w)
+        mask_64 = mask_64.to(dtype=pipe.torch_dtype)
+        fill_condition = torch.cat([masked_image_latents, mask_64], dim=1)  # (1, 80, latent_h, latent_w)
+        return {"fill_condition": fill_condition}
+    
+
+
+class FluxImageUnit_InsertAnything(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=(
+                "insert_anything_source_image", "insert_anything_source_mask",
+                "insert_anything_ref_image", "insert_anything_ref_mask",
+            ),
+            output_params=(
+                "flux_fill_image", "flux_fill_mask", "flux_redux_image",
+                "height", "width", "insert_anything_post",
+            ),
+        )
+
+    def process(self, pipe: FluxImagePipeline, insert_anything_source_image,
+                insert_anything_source_mask, insert_anything_ref_image, insert_anything_ref_mask):
+        if insert_anything_source_image is None:
+            return {}
+        ctx = self.prepare(
+            insert_anything_source_image, insert_anything_source_mask,
+            insert_anything_ref_image, insert_anything_ref_mask,
+        )
+        return {
+            "flux_fill_image": ctx["flux_fill_image"],
+            "flux_fill_mask": ctx["flux_fill_mask"],
+            "flux_redux_image": ctx["flux_redux_image"],
+            "height": ctx["height"],
+            "width": ctx["width"],
+            "insert_anything_post": ctx,
+        }
+
+    def prepare(self, source_image, source_mask, ref_image, ref_mask):
+        size = (768, 768)
+        ref_image = np.array(ref_image.convert("RGB"))
+        tar_image = np.array(source_image.convert("RGB"))
+        ref_mask = (np.array(ref_mask.convert("L")) > 128).astype(np.uint8)
+        tar_mask = (np.array(source_mask.convert("L")) > 128).astype(np.uint8)
+        tar_mask = cv2.resize(tar_mask, (tar_image.shape[1], tar_image.shape[0]))
+        ref_box_yyxx = self.get_bbox_from_mask(ref_mask)
+        ref_mask_3 = np.stack([ref_mask, ref_mask, ref_mask], -1)
+        masked_ref_image = ref_image * ref_mask_3 + np.ones_like(ref_image) * 255 * (1 - ref_mask_3)
+        y1, y2, x1, x2 = ref_box_yyxx
+        masked_ref_image = masked_ref_image[y1:y2, x1:x2, :]
+        ref_mask = ref_mask[y1:y2, x1:x2]
+        masked_ref_image, ref_mask = self.expand_image_mask(masked_ref_image, ref_mask, ratio=1.3)
+        masked_ref_image = self.pad_to_square(masked_ref_image, pad_value=255, random=False)
+        tar_mask = cv2.dilate(tar_mask, np.ones((7, 7), np.uint8), iterations=2)
+        tar_box_yyxx = self.get_bbox_from_mask(tar_mask)
+        tar_box_yyxx = self.expand_bbox(tar_mask, tar_box_yyxx, ratio=1.2)
+        tar_box_yyxx_crop = self.expand_bbox(tar_image, tar_box_yyxx, ratio=2)
+        tar_box_yyxx_crop = self.box2squre(tar_image, tar_box_yyxx_crop)
+        y1, y2, x1, x2 = tar_box_yyxx_crop
+        old_tar_image = tar_image.copy()
+        tar_image = tar_image[y1:y2, x1:x2, :]
+        tar_mask = tar_mask[y1:y2, x1:x2]
+        H1, W1 = tar_image.shape[0], tar_image.shape[1]
+        tar_mask = self.pad_to_square(tar_mask, pad_value=0)
+        tar_mask = cv2.resize(tar_mask, size)
+        masked_ref_image = cv2.resize(masked_ref_image.astype(np.uint8), size).astype(np.uint8)
+        flux_redux_image = Image.fromarray(masked_ref_image)
+        tar_image = self.pad_to_square(tar_image, pad_value=255)
+        H2, W2 = tar_image.shape[0], tar_image.shape[1]
+        tar_image = cv2.resize(tar_image, size)
+        diptych_ref_tar = np.concatenate([masked_ref_image, tar_image], axis=1)
+        tar_mask = np.stack([tar_mask, tar_mask, tar_mask], -1)
+        mask_black = np.ones_like(tar_image) * 0
+        mask_diptych = np.concatenate([mask_black, tar_mask], axis=1)
+        diptych_ref_tar = Image.fromarray(diptych_ref_tar)
+        mask_diptych[mask_diptych == 1] = 255
+        mask_diptych = Image.fromarray(mask_diptych)
+        return {
+            "flux_redux_image": flux_redux_image,
+            "flux_fill_image": diptych_ref_tar,
+            "flux_fill_mask": mask_diptych,
+            "height": mask_diptych.size[1],
+            "width": mask_diptych.size[0],
+            "old_tar_image": old_tar_image,
+            "extra_sizes": np.array([H1, W1, H2, W2]),
+            "tar_box_yyxx_crop": np.array(tar_box_yyxx_crop),
+        }
+
+    @classmethod
+    def postprocess(cls, image, ctx):
+        width, height = image.size
+        edited = image.crop((width // 2, 0, width, height))
+        edited = np.array(edited)
+        H1, W1, H2, W2 = ctx["extra_sizes"]
+        tar_image = ctx["old_tar_image"].copy()
+        y1, y2, x1, x2 = ctx["tar_box_yyxx_crop"]
+        pred = cv2.resize(edited, (W2, H2))
+        m = 2  
+        if W1 == H1:
+            if m != 0:
+                tar_image[y1 + m:y2 - m, x1 + m:x2 - m, :] = pred[m:-m, m:-m]
+            else:
+                tar_image[y1:y2, x1:x2, :] = pred[:, :]
+            return Image.fromarray(tar_image)
+        if W1 < W2:
+            pad1 = int((W2 - W1) / 2)
+            pad2 = W2 - W1 - pad1
+            pred = pred[:, pad1:-pad2, :]
+        else:
+            pad1 = int((H2 - H1) / 2)
+            pad2 = H2 - H1 - pad1
+            pred = pred[pad1:-pad2, :, :]
+        gen_image = tar_image.copy()
+        if m != 0:
+            gen_image[y1 + m:y2 - m, x1 + m:x2 - m, :] = pred[m:-m, m:-m]
+        else:
+            gen_image[y1:y2, x1:x2, :] = pred[:, :]
+        return Image.fromarray(gen_image)
+
+
+    def f(self, r, T=0.6, beta=0.1):
+        return np.where(r < T, beta + (1 - beta) / T * r, 1)
+
+    def get_bbox_from_mask(self, mask):
+        h, w = mask.shape[0], mask.shape[1]
+        if mask.sum() < 10:
+            return 0, h, 0, w
+        rows = np.any(mask, axis=1)
+        cols = np.any(mask, axis=0)
+        y1, y2 = np.where(rows)[0][[0, -1]]
+        x1, x2 = np.where(cols)[0][[0, -1]]
+        return (y1, y2, x1, x2)
+
+    def expand_bbox(self, mask, yyxx, ratio, min_crop=0):
+        y1, y2, x1, x2 = yyxx
+        H, W = mask.shape[0], mask.shape[1]
+        yyxx_area = (y2 - y1 + 1) * (x2 - x1 + 1)
+        r1 = yyxx_area / (H * W)
+        r2 = self.f(r1)
+        ratio = math.sqrt(r2 / r1)
+        xc, yc = 0.5 * (x1 + x2), 0.5 * (y1 + y2)
+        h = ratio * (y2 - y1 + 1)
+        w = ratio * (x2 - x1 + 1)
+        h = max(h, min_crop)
+        w = max(w, min_crop)
+        x1 = int(xc - w * 0.5)
+        x2 = int(xc + w * 0.5)
+        y1 = int(yc - h * 0.5)
+        y2 = int(yc + h * 0.5)
+        x1 = max(0, x1)
+        x2 = min(W, x2)
+        y1 = max(0, y1)
+        y2 = min(H, y2)
+        return (y1, y2, x1, x2)
+
+    def pad_to_square(self, image, pad_value=255, random=False):
+        H, W = image.shape[0], image.shape[1]
+        if H == W:
+            return image
+        padd = abs(H - W)
+        if random:
+            padd_1 = int(np.random.randint(0, padd))
+        else:
+            padd_1 = int(padd / 2)
+        padd_2 = padd - padd_1
+        if len(image.shape) == 2:
+            pad_param = ((0, 0), (padd_1, padd_2)) if H > W else ((padd_1, padd_2), (0, 0))
+        elif len(image.shape) == 3:
+            pad_param = ((0, 0), (padd_1, padd_2), (0, 0)) if H > W else ((padd_1, padd_2), (0, 0), (0, 0))
+        image = np.pad(image, pad_param, 'constant', constant_values=pad_value)
+        return image
+
+    def expand_image_mask(self, image, mask, ratio=1.4):
+        h, w = image.shape[0], image.shape[1]
+        H, W = int(h * ratio), int(w * ratio)
+        h1 = int((H - h) // 2)
+        h2 = H - h - h1
+        w1 = int((W - w) // 2)
+        w2 = W - w - w1
+        pad_param_image = ((h1, h2), (w1, w2), (0, 0))
+        pad_param_mask = ((h1, h2), (w1, w2))
+        image = np.pad(image, pad_param_image, 'constant', constant_values=255)
+        mask = np.pad(mask, pad_param_mask, 'constant', constant_values=0)
+        return image, mask
+
+    def box2squre(self, image, box):
+        H, W = image.shape[0], image.shape[1]
+        y1, y2, x1, x2 = box
+        cx = (x1 + x2) // 2
+        cy = (y1 + y2) // 2
+        h, w = y2 - y1, x2 - x1
+        if h >= w:
+            x1 = cx - h // 2
+            x2 = cx + h // 2
+        else:
+            y1 = cy - w // 2
+            y2 = cy + w // 2
+        x1 = max(0, x1)
+        x2 = min(W, x2)
+        y1 = max(0, y1)
+        y2 = min(H, y2)
+        return (y1, y2, x1, x2)
+
+        
+
 class InfinitYou(torch.nn.Module):
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__()
@@ -1002,12 +1287,12 @@ class FastTileWorker:
         values /= weight
         return values
 
-    
 def model_fn_flux_image(
     dit: FluxDiT,
     controlnet=None,
     step1x_connector=None,
     latents=None,
+    fill_condition=None,
     timestep=None,
     prompt_emb=None,
     pooled_prompt_emb=None,
@@ -1039,6 +1324,9 @@ def model_fn_flux_image(
     use_gradient_checkpointing_offload=False,
     **kwargs
 ):
+    if fill_condition is not None:
+        latents = torch.cat([latents, fill_condition], dim=1)
+
     if tiled:
         def flux_forward_fn(hl, hr, wl, wr):
             tiled_controlnet_conditionings = [f[:, :, hl: hr, wl: wr] for f in controlnet_conditionings] if controlnet_conditionings is not None else None

@@ -340,6 +340,14 @@ flux_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverterFromDiffusers",
     },
     {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.1-Fill-dev", origin_file_pattern="flux1-fill-dev.safetensors")
+        "model_hash": "f876d2a6fb247fb7da0f84fc7fb8a823",
+        "model_name": "flux_dit",
+        "model_class": "diffsynth.models.flux_dit.FluxDiT",
+        "extra_kwargs": {"input_dim": 384},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_dit.FluxDiTStateDictConverter",
+    },
+    {
         # Example: ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors")
         "model_hash": "94eefa3dac9cec93cb1ebaf1747d7b78",
         "model_name": "flux_text_encoder_clip",
@@ -480,6 +488,21 @@ flux_series = [
         "model_name": "siglip_vision_model",
         "model_class": "diffsynth.models.flux_ipadapter.SiglipVisionModelSO400M",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_ipadapter.SiglipStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.1-Redux-dev", origin_file_pattern="image_encoder/model.safetensors")
+        "model_hash": "6bd5343828144a2135d783519c665e2c",
+        "model_name": "flux_redux_image_encoder",
+        "model_class": "diffsynth.models.flux_ipadapter.SiglipVisionModelSO400M",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux_ipadapter.SiglipReduxStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/FLUX.1-Redux-dev", origin_file_pattern="image_embedder/diffusion_pytorch_model.safetensors")
+        # 2-layer MLP projecting SigLIP tokens (1152) to the 4096-dim FLUX text
+        # space; keys already match FluxReduxImageEncoder, so no converter needed.
+        "model_hash": "d8ea4618391460bc831fddaae5fb5288",
+        "model_name": "flux_redux_image_embedder",
+        "model_class": "diffsynth.models.flux_redux.FluxReduxImageEncoder",
     },
     {
         # Example: ModelConfig(model_id="stepfun-ai/Step1X-Edit", origin_file_pattern="step1x-edit-i1258.safetensors"),
