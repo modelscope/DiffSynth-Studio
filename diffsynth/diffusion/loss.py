@@ -75,9 +75,10 @@ def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, **inputs):
     inputs["video_latents"] = pipe.scheduler.add_noise(inputs["input_latents"], noise, timestep_video)
     training_target = pipe.scheduler.training_target(inputs["input_latents"], noise, timestep_video)
 
-    audio_noise = torch.randn_like(inputs["audio_input_latents"])
-    inputs["audio_latents"] = pipe.scheduler_audio.add_noise(inputs["audio_input_latents"], audio_noise, timestep_audio)
-    training_target_audio = pipe.scheduler_audio.training_target(inputs["audio_input_latents"], audio_noise, timestep_audio)
+    if "audio_input_latents" in inputs:
+        audio_noise = torch.randn_like(inputs["audio_input_latents"])
+        inputs["audio_latents"] = pipe.scheduler_audio.add_noise(inputs["audio_input_latents"], audio_noise, timestep_audio)
+        training_target_audio = pipe.scheduler_audio.training_target(inputs["audio_input_latents"], audio_noise, timestep_audio)
 
     models = {name: getattr(pipe, name) for name in pipe.in_iteration_models}
     noise_pred, noise_pred_audio = pipe.model_fn(
@@ -87,9 +88,11 @@ def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, **inputs):
 
     loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
     loss = loss * pipe.scheduler.training_weight(timestep_video)
-    loss_audio = torch.nn.functional.mse_loss(noise_pred_audio.float(), training_target_audio.float())
-    loss_audio = loss_audio * pipe.scheduler_audio.training_weight(timestep_audio)
-    return loss + loss_audio
+    if "audio_input_latents" in inputs:
+        loss_audio = torch.nn.functional.mse_loss(noise_pred_audio.float(), training_target_audio.float())
+        loss_audio = loss_audio * pipe.scheduler_audio.training_weight(timestep_audio)
+        loss = loss + loss_audio
+    return loss
 
 
 def DirectDistillLoss(pipe: BasePipeline, **inputs):

@@ -302,7 +302,7 @@ class FlowMatchScheduler():
         return sigmas, timesteps
 
     @staticmethod
-    def set_timesteps_minimax_h3(num_inference_steps=50, denoising_strength=1.0, shift=12.0):
+    def set_timesteps_minimax_h3(num_inference_steps=50, denoising_strength=1.0, shift=2.22):
         num_train_timesteps = 1000
         base = torch.linspace(denoising_strength, 0.0, num_inference_steps+1, dtype=torch.float32)[:-1]
         sigmas = shift * base / (1 + (shift - 1) * base)

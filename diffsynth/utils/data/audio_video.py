@@ -181,5 +181,9 @@ def read_video_audio(
             break
         sampled.append(frames[index])
 
-    waveform, sample_rate = read_audio(path, duration=len(sampled) / fps, resample=audio_sample_rate is not None, resample_rate=audio_sample_rate)
+    try:
+        waveform, sample_rate = read_audio(path, duration=len(sampled) / fps, resample=audio_sample_rate is not None, resample_rate=audio_sample_rate)
+    except:
+        waveform = None
+        sample_rate = audio_sample_rate
     return sampled, waveform, sample_rate
