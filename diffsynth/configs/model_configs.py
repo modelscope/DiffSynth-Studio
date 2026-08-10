@@ -1393,6 +1393,23 @@ minimax_h3_series = [
         "model_class": "diffsynth.models.minimax_h3_dit.MiniMaxH3DiT",
     },
     {
+        # Example: ModelConfig(model_id="Comfy-Org/MiniMax-H3", origin_file_pattern="diffusion_models/minimax_h3_fl2va_int8_convrot.safetensors")
+        "model_hash": "fb6c399412920c6b817d5c1f43ec62cd",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit.MiniMaxH3DiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit.MiniMaxH3DiTComfyOrgStateDictConverter",
+        # These 16 Linears are the ones ComfyUI leaves in bf16; excluding them matches exactly
+        # the 250 quantized layers. Listing targets instead would over-match, because
+        # `_name_matches` also accepts a ".suffix" match: "blocks.0.mlp.fc1" would additionally
+        # catch "token_refiner.blocks.0.mlp.fc1", which this checkpoint does not quantize.
+        "quant_config": {"method": "ck_int8", "load_prequantized": True, "exclude_modules": [
+            "video_patch_proj", "audio_patch_proj", "condition_proj",
+            "time_embedder.proj_in", "time_embedder.proj_out",
+            "final_layer.adaln_proj.linear", "final_layer.video_out", "final_layer.audio_out",
+        ] + [f"token_refiner.blocks.{index}.{leaf}" for index in range(2)
+             for leaf in ("attn.qkv_proj", "attn.out_proj", "mlp.fc1", "mlp.fc2")]},
+    },
+    {
         # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-nf4.safetensors")
         "model_hash": "4b27efacefbc4d8670e0d7b876699648",
         "model_name": "minimax_h3_dit",

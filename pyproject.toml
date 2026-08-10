@@ -55,6 +55,7 @@ audio = [
 ]
 quant = [
     "bitsandbytes",
+    "comfy-kitchen",
     "torchao"
 ]
 all = [
@@ -64,6 +65,7 @@ all = [
     "librosa",
     "streamlit",
     "bitsandbytes",
+    "comfy-kitchen",
     "torchao"
 ]
 

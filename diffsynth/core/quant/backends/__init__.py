@@ -1,1 +1,1 @@
-from . import bitsandbytes, torchao
+from . import bitsandbytes, comfy_kitchen, torchao
