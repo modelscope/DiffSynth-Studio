@@ -17,7 +17,7 @@ FP8_E4M3_MAX = 448.0
 FP8_WEIGHT_DTYPE = torch.float8_e4m3fn
 
 
-class Fp8Linear(torch.nn.Module):
+class Fp8Linear(torch.nn.Linear):
     """Linear layer holding an e4m3 float8 weight + per-row float32 scale."""
 
     # Names of the packed tensors whose dtype must survive `to(dtype)` / `half()` / etc.
@@ -34,19 +34,17 @@ class Fp8Linear(torch.nn.Module):
         bias: bool,
         compute_dtype: torch.dtype,
     ) -> None:
-        super().__init__()
-        self.in_features = in_features
-        self.out_features = out_features
+        with torch.device("meta"):
+            super().__init__(in_features, out_features, bias=bias, dtype=compute_dtype)
+        del self.weight
         self.compute_dtype = compute_dtype
         self.register_buffer(
             "weight",
-            torch.empty(out_features, in_features, dtype=FP8_WEIGHT_DTYPE),
+            torch.empty(out_features, in_features, dtype=FP8_WEIGHT_DTYPE, device="meta"),
         )
-        self.register_buffer("weight_scale", torch.empty(out_features, dtype=torch.float32))
-        if bias:
-            self.register_buffer("bias", torch.empty(out_features, dtype=compute_dtype))
-        else:
-            self.bias = None
+        self.register_buffer("weight_scale", torch.empty(out_features, dtype=torch.float32, device="meta"))
+        if self.bias is not None:
+            self.bias.requires_grad_(False)
 
     def _apply(self, fn, recurse=True):
         # All dtype/device conversions (`to` / `half` / `float` / ...) funnel through
@@ -85,6 +83,10 @@ class Ideogram4Fp8QuantBackend(QuantBackend):
 
     def quantized_linear_classes(self) -> tuple:
         return (Fp8Linear,)
+
+    def checkpoint_key_patterns(self) -> tuple:
+        """The scale is a sibling of the weight here, not nested below it like bitsandbytes' quant state."""
+        return ("weight", "weight_scale", "bias")
 
     def dequantize_to_linear(self, module, compute_dtype, compute_device=None, model_device=None):
         if compute_device is not None:

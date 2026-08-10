@@ -483,11 +483,7 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
 
     def _disk_required_keys(self):
         if self._required_keys is None:
-            weight_prefix = self.name + ".weight."
-            self._required_keys = [
-                key for key in self.disk_map
-                if key == self.name + ".weight" or key.startswith(weight_prefix) or key == self.name + ".bias"
-            ]
+            self._required_keys = self.quantize.checkpoint_keys(self.module, self.name, self.disk_map)
         return self._required_keys
 
     def _load_from_disk(self, device, target=None):
@@ -509,7 +505,7 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
     def offload(self):
         if self.state != 0:
             if self.disk_offload:
-                self.module = self.quantize.backend.create_quantized_linear_shell(self.module, self.computation_dtype)
+                self.module = self.quantize.build_quantized_shell(self.module, self.computation_dtype)
             else:
                 self.module.to(device=self.offload_device)
             self.state = 0
@@ -535,7 +531,7 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
         if device == self.computation_device:
             return self.module
         if self.disk_offload and device == "disk":
-            transient = self.quantize.backend.create_quantized_linear_shell(self.module, self.computation_dtype)
+            transient = self.quantize.build_quantized_shell(self.module, self.computation_dtype)
             return self._load_from_disk(self.computation_device, target=transient)
         return copy.deepcopy(self.module).to(device=self.computation_device)
 
@@ -560,6 +556,9 @@ def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict,
         model = model.module
     for name, module in model.named_children():
         layer_name = name if name_prefix == "" else name_prefix + "." + name
+        # Quantized Linears subclass `torch.nn.Linear`, so they also match the
+        # `module_map` entry below. This check must stay ahead of that loop: wrapping a
+        # quantized layer as a plain one raises nothing and returns finite garbage.
         if quantize is not None and quantize.is_quantized_linear(module):
             module_ = AutoWrappedQuantizedModule(module, **vram_config, vram_limit=vram_limit, name=layer_name, disk_map=disk_map, quantize=quantize, **kwargs)
             setattr(model, name, module_)

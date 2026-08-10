@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field, fields, is_dataclass
 from typing import Any, Callable, Optional
 import torch
-from .base import QUANT_BACKENDS
+from .base import QUANT_BACKENDS, resolve_checkpoint_keys
 
 
 QUANT_METHODS = {}
@@ -166,6 +166,40 @@ class QuantizeConfig:
         """Whether `module` is one of this config's backend-native quantized Linears."""
         return self.backend.is_quantized_linear(module)
 
+    def checkpoint_keys(self, module, layer_name: str, available_keys) -> list:
+        """
+        Resolve the backend's `checkpoint_key_patterns` for `layer_name` against
+        `available_keys` (anything supporting `in` and iteration, including a `DiskMap`).
+        Raises when the layer contributes no key at all, since silently loading a
+        quantized layer without its packed weight or scale corrupts it without any error.
+
+        Parameters:
+            module: the quantized layer the keys are fetched for.
+            layer_name: its dotted name inside the checkpoint.
+            available_keys: the key index of the whole checkpoint.
+        """
+        keys = resolve_checkpoint_keys(self.backend.checkpoint_key_patterns(), layer_name, available_keys)
+        if not keys:
+            raise ValueError(
+                f"Found no checkpoint entry for the quantized layer `{layer_name}` "
+                f"(backend `{self.backend.name}`, patterns {list(self.backend.checkpoint_key_patterns())}). "
+                "Check that the checkpoint really holds this layer quantized and that "
+                "`target_modules` matches the layers it quantized."
+            )
+        return keys
+
+    def build_quantized_shell(self, module, compute_dtype: torch.dtype):
+        """
+        Build an empty quantized Linear matching `module`, used to release a layer's
+        weights while keeping it routable, and to stage a transient copy on the
+        computation device.
+
+        Parameters:
+            module: the quantized layer whose shape and bias presence are mirrored.
+            compute_dtype: dtype the shell dequantizes to at forward time.
+        """
+        return self.backend.create_quantized_linear_shell(module, compute_dtype)
+
     def prepare_for_prequantized_load(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16):
         """
         Replace the targeted `nn.Linear` layers with empty quantized Linears matching a
@@ -225,6 +259,8 @@ class QuantizeConfig:
 
     def _should_quantize(self, full_name, module):
         if not isinstance(module, torch.nn.Linear):
+            return False
+        if self.is_quantized_linear(module):
             return False
         if self.target_modules is not None and not self._name_matches(full_name, self.target_modules):
             return False
@@ -350,6 +386,37 @@ class MixedQuantizeConfig:
     def is_quantized_linear(self, module) -> bool:
         """Whether `module` is a quantized Linear of any config's backend."""
         return any(config.is_quantized_linear(module) for config in self.configs)
+
+    def checkpoint_keys(self, module, layer_name: str, available_keys) -> list:
+        """
+        Resolve the checkpoint keys of `layer_name` using the config whose backend owns
+        that layer, so each layer set is read with its own key shape.
+
+        Parameters:
+            module: the quantized layer the keys are fetched for.
+            layer_name: its dotted name inside the checkpoint.
+            available_keys: the key index of the whole checkpoint.
+        """
+        return self._owning_config(module).checkpoint_keys(module, layer_name, available_keys)
+
+    def build_quantized_shell(self, module, compute_dtype: torch.dtype):
+        """
+        Build an empty quantized Linear for `module` using the config whose backend owns it.
+
+        Parameters:
+            module: the quantized layer whose shape and bias presence are mirrored.
+            compute_dtype: dtype the shell dequantizes to at forward time.
+        """
+        return self._owning_config(module).build_quantized_shell(module, compute_dtype)
+
+    def _owning_config(self, module):
+        for config in self.configs:
+            if config.is_quantized_linear(module):
+                return config
+        raise ValueError(
+            f"`{type(module).__name__}` is not a quantized Linear of any config in this "
+            f"`MixedQuantizeConfig` (methods: {self.method})."
+        )
 
     def prepare_for_prequantized_load(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16):
         """
