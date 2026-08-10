@@ -551,6 +551,13 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
             return getattr(self.module, name)
 
 
+def _materialize_root_params_from_disk(model: torch.nn.Module, disk_map: DiskMap):
+    for name, param in list(model.named_parameters(recurse=False)):
+        if param is None or not param.is_meta or name not in disk_map:
+            continue
+        model.register_parameter(name, torch.nn.Parameter(disk_map[name], requires_grad=param.requires_grad))
+
+
 def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict, vram_config: dict, vram_limit=None, name_prefix="", disk_map=None, quantize=None, **kwargs):
     if isinstance(model, AutoWrappedNonRecurseModule):
         model = model.module
@@ -596,6 +603,8 @@ def enable_vram_management(model: torch.nn.Module, module_map: dict, vram_config
             break
     else:
         enable_vram_management_recursively(model, module_map, vram_config, vram_limit=vram_limit, disk_map=disk_map, quantize=quantize, **kwargs)
+        if disk_map is not None:
+            _materialize_root_params_from_disk(model, disk_map)
     # `vram_management_enabled` is a flag that allows the pipeline to determine whether VRAM management is enabled.
     model.vram_management_enabled = True
     return model
