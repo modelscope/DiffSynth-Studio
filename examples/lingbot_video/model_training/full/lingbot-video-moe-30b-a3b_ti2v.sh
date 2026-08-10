@@ -1,8 +1,8 @@
-modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "lingbot_video/lingbot-video-dense-1.3b_ti2v/*" --local_dir ./data/diffsynth_example_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "lingbot_video/lingbot-video-moe-30b-a3b_ti2v/*" --local_dir ./data/diffsynth_example_dataset
 
 accelerate launch --config_file examples/lingbot_video/model_training/full/accelerate_config_moe.yaml examples/lingbot_video/model_training/train.py \
-  --dataset_base_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_ti2v \
-  --dataset_metadata_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_ti2v/metadata.json \
+  --dataset_base_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-moe-30b-a3b_ti2v \
+  --dataset_metadata_path data/diffsynth_example_dataset/lingbot_video/lingbot-video-moe-30b-a3b_ti2v/metadata.json \
   --data_file_keys "video" \
   --height 480 \
   --width 832 \
