@@ -59,7 +59,9 @@ def _write_audio(
     _resample_audio(container, audio_stream, frame_in)
 
 
-def _prepare_audio_stream(container: av.container.Container, audio_sample_rate: int) -> av.audio.AudioStream:
+def _prepare_audio_stream(
+    container: av.container.Container, audio_sample_rate: int, audio_bit_rate: int | None = None
+) -> av.audio.AudioStream:
     """
     Prepare the audio stream for writing.
     """
@@ -74,6 +76,8 @@ def _prepare_audio_stream(container: av.container.Container, audio_sample_rate: 
     audio_stream.codec_context.sample_rate = best_rate
     audio_stream.codec_context.layout = "stereo"
     audio_stream.codec_context.time_base = Fraction(1, best_rate)
+    if audio_bit_rate is not None:
+        audio_stream.codec_context.bit_rate = audio_bit_rate
     return audio_stream
 
 
@@ -83,6 +87,9 @@ def write_video_audio(
     output_path: str,
     fps: int = 24,
     audio_sample_rate: int | None = None,
+    video_quality: float | None = 8,
+    ffmpeg_options: dict[str, str] | None = None,
+    audio_bit_rate: int | None = 192000,
 ) -> None:
     """
     Writes a sequence of images and an audio tensor to a video file.
@@ -101,24 +108,37 @@ def write_video_audio(
         audio_sample_rate (int | None, optional): The sample rate (e.g., 44100, 48000) for the audio.
             If the audio tensor is provided and this is None, the function attempts to infer the rate 
             based on the audio tensor's length and the video duration.
+        video_quality (float | None, optional): Video quality between 1 (worst) and 10 (best), sharing the same
+            semantics as the `quality` argument of `save_video`. It is mapped to the H.264 constant rate factor.
+            Pass None to keep the encoder default. Defaults to 8.
+        ffmpeg_options (dict[str, str] | None, optional): Extra libx264 encoder options (e.g. {"preset": "slow"}),
+            passed to the video stream and taking precedence over the options derived from `video_quality`.
+        audio_bit_rate (int | None, optional): Target AAC bitrate in bits per second, recommended range is
+            64000 to 256000 (64 to 256 kbps). The encoder clamps it to 6 * channels * audio_sample_rate, and
+            the achieved bitrate may be lower for easily compressible audio. Pass None to keep the encoder
+            default. Defaults to 192000.
     Raises:
-        ValueError: If an audio tensor is provided but the sample rate cannot be determined.
+        ValueError: If an audio tensor is provided but the sample rate cannot be determined,
+            or if `video_quality` is out of the 1 to 10 range.
     """
     duration = len(video) / fps
     if audio_sample_rate is None:
         audio_sample_rate = int(audio.shape[-1] / duration)
 
+    if video_quality is not None and not 1 <= video_quality <= 10:
+        raise ValueError(f"video_quality must be between 1 and 10 inclusive, got {video_quality}")
+    video_options = {} if video_quality is None else {"crf": str(int((1 - video_quality / 10.0) * 51))}
+    video_options.update(ffmpeg_options or {})
+
     width, height = video[0].size
     container = av.open(output_path, mode="w")
-    stream = container.add_stream("libx264", rate=int(fps))
+    stream = container.add_stream("libx264", rate=int(fps), options=video_options)
     stream.width = width
     stream.height = height
     stream.pix_fmt = "yuv420p"
 
     if audio is not None:
-        if audio_sample_rate is None:
-            raise ValueError("audio_sample_rate is required when audio is provided")
-        audio_stream = _prepare_audio_stream(container, audio_sample_rate)
+        audio_stream = _prepare_audio_stream(container, audio_sample_rate, audio_bit_rate)
 
     for frame in tqdm(video, total=len(video)):
         frame = av.VideoFrame.from_image(frame)
@@ -133,6 +153,7 @@ def write_video_audio(
         _write_audio(container, audio_stream, audio, audio_sample_rate)
 
     container.close()
+
 
 def read_video_audio(
     path: str,
