@@ -31,31 +31,6 @@ pipe = LingBotVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors", **vram_config),
-        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
-    ],
-    processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-
-video = pipe(
-    prompt=caption,
-    negative_prompt=pipe.default_negative_prompt,
-    input_image=input_image,
-    height=480, width=832, num_frames=81,
-    num_inference_steps=40, cfg_scale=3.0,
-    seed=0,
-)
-save_video(video, "video_lingbot-video-moe-30b-a3b_ti2v.mp4", fps=15, quality=10)
-
-del pipe
-torch.cuda.empty_cache()
-
-pipe = LingBotVideoPipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
         ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="refiner/diffusion_pytorch_model*.safetensors", **vram_config),
         ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors", **vram_config),
         ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
@@ -64,7 +39,7 @@ pipe = LingBotVideoPipeline.from_pretrained(
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
-input_video = VideoData("video_lingbot-video-moe-30b-a3b_ti2v.mp4", height=1088, width=1920)
+input_video = VideoData(os.path.join(base, "video_1.mp4"), height=1088, width=1920)
 video = pipe(
     prompt=caption,
     negative_prompt=pipe.default_negative_prompt,

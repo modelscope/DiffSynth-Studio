@@ -102,8 +102,7 @@ class LingBotVideoPipeline(BasePipeline):
         # Scheduler
         num_inference_steps: int = 40,
         sigma_shift: float = 3.0,
-        # Refinement pass: start from a partially noised input video at sigma=t_thresh and
-        # append extra low-noise steps at the tail of the schedule.
+        # High-Resolution Refinement
         t_thresh: float = None,
         sigma_tail_steps: int = 2,
         # progress_bar
@@ -139,11 +138,6 @@ class LingBotVideoPipeline(BasePipeline):
                 **models, timestep=timestep, progress_id=progress_id
             )
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
-            if t_thresh is not None and inputs_shared.get("first_frame_latents") is not None:
-                # The refiner re-pins the clean condition latent after every step, keeping frame 0
-                # identical to the input image while the rest of the clip denoises against it.
-                first_frame_latents = inputs_shared["first_frame_latents"]
-                inputs_shared["latents"][:, :, :first_frame_latents.shape[2]] = first_frame_latents
 
         self.load_models_to_device(['vae'])
         latents = inputs_shared["latents"].to(dtype=self.torch_dtype, device=self.device)
