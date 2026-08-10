@@ -27,7 +27,6 @@ with open(os.path.join(base, "ti2v_example.json"), "r", encoding="utf-8") as f:
     caption = json.load(f)
 input_image = Image.open(os.path.join(base, "ti2v_first_frame.png")).convert("RGB")
 
-# --- Stage 1: base generation at 480x832 ---------------------------------------------
 pipe = LingBotVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
@@ -53,7 +52,6 @@ save_video(video, "video_lingbot-video-moe-30b-a3b_ti2v.mp4", fps=15, quality=10
 del pipe
 torch.cuda.empty_cache()
 
-# --- Stage 2: refinement at 1088x1920 ------------------------------------------------
 pipe = LingBotVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
