@@ -514,4 +514,4 @@ class MixedQuantizeConfig:
                     f"in `MixedQuantizeConfig` both match {len(overlap)} layers (e.g. {', '.join(overlap[:5])}). "
                 )
             ownership.update({name: config for name in names})
-        self._ownership = ownership
+        self._ownership.update(ownership)
