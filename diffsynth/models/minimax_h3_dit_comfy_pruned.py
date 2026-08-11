@@ -6,7 +6,7 @@ from torch import nn
 from .minimax_h3_dit import MiniMaxH3AdalnProj, MiniMaxH3DiT, _apply_rope, _sdpa_varlen_attention
 
 
-class MiniMaxH3AdalnCurveProj(MiniMaxH3AdalnProj):
+class MiniMaxH3ComfyPrunedAdalnProj(MiniMaxH3AdalnProj):
     def forward(self, t_emb):
         x = self.linear(t_emb)
         m = x.shape[0]
@@ -31,7 +31,7 @@ def _comfy_attention_forward(self, x, *, rope_freqs, cu_seqlens, max_seqlen=None
     return self.out_proj(out)
 
 
-class MiniMaxH3AdalnCurveTimeEmbedder(nn.Module):
+class MiniMaxH3ComfyPrunedTimeEmbedder(nn.Module):
     def __init__(self, table_getter):
         super().__init__()
         self._table_getter = table_getter
@@ -45,8 +45,8 @@ class MiniMaxH3AdalnCurveTimeEmbedder(nn.Module):
         return t_emb.to(dtype)
 
 
-def _to_curve_proj(proj: MiniMaxH3AdalnProj) -> MiniMaxH3AdalnCurveProj:
-    curve_proj = MiniMaxH3AdalnCurveProj(
+def _to_comfy_pruned_adaln_proj(proj: MiniMaxH3AdalnProj) -> MiniMaxH3ComfyPrunedAdalnProj:
+    curve_proj = MiniMaxH3ComfyPrunedAdalnProj(
         proj.hidden_size,
         proj.linear.in_features,
         proj.linear.out_features,
@@ -57,16 +57,16 @@ def _to_curve_proj(proj: MiniMaxH3AdalnProj) -> MiniMaxH3AdalnCurveProj:
     return curve_proj
 
 
-class MiniMaxH3DiTAdalnCurve(MiniMaxH3DiT):
+class MiniMaxH3DiTComfyPruned(MiniMaxH3DiT):
     def __init__(self, adaln_curve_grid: int = 1025, time_embed_dim: int = 8, **kwargs):
         super().__init__(time_embed_dim=time_embed_dim, **kwargs)
         self.register_buffer(
             "adaln_t_table", torch.empty(adaln_curve_grid, time_embed_dim, dtype=torch.float32)
         )
-        self.time_embedder = MiniMaxH3AdalnCurveTimeEmbedder(lambda: self.adaln_t_table)
+        self.time_embedder = MiniMaxH3ComfyPrunedTimeEmbedder(lambda: self.adaln_t_table)
         for block in self.blocks:
-            block.adaln_proj = _to_curve_proj(block.adaln_proj)
+            block.adaln_proj = _to_comfy_pruned_adaln_proj(block.adaln_proj)
             block.attn.forward = types.MethodType(_comfy_attention_forward, block.attn)
         for block in self.token_refiner.blocks:
             block.attn.forward = types.MethodType(_comfy_attention_forward, block.attn)
-        self.final_layer.adaln_proj = _to_curve_proj(self.final_layer.adaln_proj)
+        self.final_layer.adaln_proj = _to_comfy_pruned_adaln_proj(self.final_layer.adaln_proj)
