@@ -75,7 +75,7 @@ class Fp8Linear(torch.nn.Linear):
 @register_quant_backend("ideogram4_fp8")
 class Ideogram4Fp8QuantBackend(QuantBackend):
     def capabilities(self):
-        return {**super().capabilities(), "is_serializable": True}
+        return {**super().capabilities(), "is_serializable": True, "is_differentiable": True}
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
         with torch.device("meta"):

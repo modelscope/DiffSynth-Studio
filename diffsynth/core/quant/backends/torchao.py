@@ -1,4 +1,5 @@
 import importlib.util
+import json
 
 import torch
 from ..base import QuantBackend, register_quant_backend
@@ -25,7 +26,7 @@ class TorchaoQuantBackend(QuantBackend):
     def capabilities(self):
         return {
             "is_serializable": True,
-            "is_differentiable": False,
+            "is_differentiable": True,
             "is_compileable": True,
             "requires_calibration": False,
         }
@@ -62,7 +63,6 @@ class TorchaoQuantBackend(QuantBackend):
 
     def unflatten_state_dict(self, state_dict, metadata):
         self._require_safetensors_support()
-        import json
         from torchao.prototype.safetensors.safetensors_support import unflatten_tensor_state_dict
         from torchao.prototype.safetensors.safetensors_utils import is_metadata_torchao
         if not is_metadata_torchao(metadata):
