@@ -88,6 +88,8 @@ def parse_device_type(device):
             return "cuda"
         elif device.startswith("npu"):
             return "npu"
+        elif device.startswith("mps"):
+            return "mps"
         else:
             return "cpu"
     elif isinstance(device, torch.device):

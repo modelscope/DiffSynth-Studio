@@ -63,8 +63,11 @@ class AutoTorchModule(torch.nn.Module):
         return r
 
     def check_free_vram(self):
-        device = self.computation_device if not IS_NPU_AVAILABLE else get_device_name()
-        gpu_mem_state = getattr(torch, self.computation_device_type).mem_get_info(device)
+        if self.computation_device_type == "mps":
+            gpu_mem_state = (torch.mps.current_allocated_memory(), torch.mps.recommended_max_memory())
+        else:
+            device = self.computation_device if not IS_NPU_AVAILABLE else get_device_name()
+            gpu_mem_state = getattr(torch, self.computation_device_type).mem_get_info(device)
         used_memory = (gpu_mem_state[1] - gpu_mem_state[0]) / (1024**3)
         return used_memory < self.vram_limit
 
@@ -354,10 +357,11 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule, LoRAHotLoadMixin):
         input = input / (scale_a + 1e-8)
         input = input.to(self.computation_dtype)
         weight = weight.to(self.computation_dtype)
-        bias = bias.to(torch.bfloat16)
+        if bias is not None:
+            bias = bias.to(torch.bfloat16)
 
         result = torch._scaled_mm(
-            input,
+            input.to(self.computation_dtype),
             weight.T,
             scale_a=scale_a,
             scale_b=scale_b.T,
