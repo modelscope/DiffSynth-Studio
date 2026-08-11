@@ -28,14 +28,14 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
 )
 
 # Text -> Video + Audio
-prompt = "integrated_multimodal_description: [Shot 1] Live-action, cinematic, a locked-off wide shot looks along a single railway line that runs from the left edge of the frame across to the right, seen from close beside the ballast, with flat open farmland stretching back to a low horizon under a bright hazy sky. Daylight picks out the polished tops of the steel rails and the grey crushed stone between the sleepers. The camera holds a static shot for the entire take. Heat shimmer rises continuously off the rails and the ballast, tall dry grass and weeds crowd the trackside and thrash hard and spring back under a steady wind throughout, and loose seed heads drift through the air across the frame. The air stays busy with this ambient movement from the first frame to the last, but the line itself stays completely empty: no train, no vehicle, no person and no animal enters the frame, and the rails, the sleepers, the horizon and the exposure never change.\n\noverall_soundscape: A steady wind blows across the open farmland for the whole take, surging and easing in long gusts, with a broad low rush over the fields and a loud dry rustle and clatter from the thrashing trackside grass. Nothing else is audible.\n\nnon_diegetic_music: A quiet sustained synthesizer pad holds one low chord at a slow, even level from start to finish, with no rhythm, no percussion and no melodic movement, sitting far beneath the wind."
+prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
 video, audio = pipe(
     prompt=prompt,
-    height=480, width=832, num_frames=175, num_inference_steps=20, seed=0,
+    height=480, width=832, num_frames=124, num_inference_steps=50, seed=0,
 )
 write_video_audio(
     video=video, audio=audio,
-    output_path="t2va2.mp4", fps=24, audio_sample_rate=32000,
+    output_path="t2va.mp4", fps=24, audio_sample_rate=32000,
 )
 
 # Text + First Frame + Last Frame -> Video + Audio
@@ -45,7 +45,7 @@ last_frame = Image.open("data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-Pr
 prompt = "室内家庭争吵短剧场景，竖屏短剧质感，真实真人表演，中式家庭/小饭馆室内环境，暖色灯光，背景有红色装饰和书法字幅，浅景深，情绪强烈，剪辑节奏紧凑。表演要求：真实短剧表演风格，不要夸张舞台腔。男人的语气是愤怒、委屈、急切的反驳，他说“你到底想干什么？”；中老年女性的语气是尖锐、强势、咄咄逼人的质问，她说“你必须赔钱！”。两人之间有强烈对峙感，节奏逐步升级。画面风格：竖屏9:16，手机短剧质感，真人实拍感，浅景深，室内暖光，中近景为主，频繁正反打剪辑，背景保持生活化，不要科幻、不要古装、不要动画感。画面中不要出现任何字幕、文字、平台水印或贴片。 "
 video, audio = pipe(
     prompt=prompt,
-    height=832, width=480, num_frames=121, num_inference_steps=20, seed=42,
+    height=832, width=480, num_frames=124, num_inference_steps=50, seed=0,
     keyframes=[first_frame, last_frame], keyframe_indices=[0, -1],
 )
 write_video_audio(
