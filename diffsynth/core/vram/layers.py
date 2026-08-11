@@ -509,7 +509,7 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
     def offload(self):
         if self.state != 0:
             if self.disk_offload:
-                self.module = self.quantize.build_quantized_shell(self.module, self.computation_dtype)
+                self.module = self.quantize.build_quantized_shell(self.module, self.computation_dtype, layer_name=self.name)
             else:
                 self.module.to(device=self.offload_device)
             self.state = 0
@@ -535,7 +535,7 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
         if device == self.computation_device:
             return self.module
         if self.disk_offload and device == "disk":
-            transient = self.quantize.build_quantized_shell(self.module, self.computation_dtype)
+            transient = self.quantize.build_quantized_shell(self.module, self.computation_dtype, layer_name=self.name)
             return self._load_from_disk(self.computation_device, target=transient)
         return copy.deepcopy(self.module).to(device=self.computation_device)
 
@@ -560,6 +560,10 @@ def _materialize_root_params_from_disk(model: torch.nn.Module, disk_map: DiskMap
         if param is None or not param.is_meta or name not in disk_map:
             continue
         model.register_parameter(name, torch.nn.Parameter(disk_map[name], requires_grad=param.requires_grad))
+    for name, buffer in list(model.named_buffers(recurse=False)):
+        if buffer is None or name not in disk_map:
+            continue
+        model.register_buffer(name, disk_map[name], persistent=True)
 
 
 def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict, vram_config: dict, vram_limit=None, name_prefix="", disk_map=None, quantize=None, **kwargs):
