@@ -63,6 +63,38 @@ def FlowMatchSFTAudioVideoLoss(pipe: BasePipeline, **inputs):
     return loss
 
 
+def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, **inputs):
+    max_timestep_boundary = int(inputs.get("max_timestep_boundary", 1) * len(pipe.scheduler.timesteps))
+    min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
+
+    timestep_id = torch.randint(min_timestep_boundary, max_timestep_boundary, (1,))
+    timestep_video = pipe.scheduler.timesteps[timestep_id].to(dtype=torch.float32, device=pipe.device)
+    timestep_audio = pipe.scheduler_audio.timesteps[timestep_id].to(dtype=torch.float32, device=pipe.device)
+
+    noise = torch.randn_like(inputs["input_latents"])
+    inputs["video_latents"] = pipe.scheduler.add_noise(inputs["input_latents"], noise, timestep_video)
+    training_target = pipe.scheduler.training_target(inputs["input_latents"], noise, timestep_video)
+
+    if "audio_input_latents" in inputs:
+        audio_noise = torch.randn_like(inputs["audio_input_latents"])
+        inputs["audio_latents"] = pipe.scheduler_audio.add_noise(inputs["audio_input_latents"], audio_noise, timestep_audio)
+        training_target_audio = pipe.scheduler_audio.training_target(inputs["audio_input_latents"], audio_noise, timestep_audio)
+
+    models = {name: getattr(pipe, name) for name in pipe.in_iteration_models}
+    noise_pred, noise_pred_audio = pipe.model_fn(
+        **models, **inputs,
+        timestep_video=timestep_video, timestep_audio=timestep_audio,
+    )
+
+    loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
+    loss = loss * pipe.scheduler.training_weight(timestep_video)
+    if "audio_input_latents" in inputs:
+        loss_audio = torch.nn.functional.mse_loss(noise_pred_audio.float(), training_target_audio.float())
+        loss_audio = loss_audio * pipe.scheduler_audio.training_weight(timestep_audio)
+        loss = loss + loss_audio
+    return loss
+
+
 def DirectDistillLoss(pipe: BasePipeline, **inputs):
     pipe.scheduler.set_timesteps(inputs["num_inference_steps"])
     pipe.scheduler.training = True

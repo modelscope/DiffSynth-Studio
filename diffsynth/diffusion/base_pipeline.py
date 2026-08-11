@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from einops import repeat, reduce
 from typing import Union
-from ..core import AutoTorchModule, AutoWrappedLinear, load_state_dict, ModelConfig, parse_device_type, enable_vram_management
+from ..core import AutoTorchModule, AutoWrappedLinear, LoRAHotLoadMixin, load_state_dict, ModelConfig, parse_device_type, enable_vram_management
 from ..core.device.npu_compatible_device import get_device_type
 from ..utils.lora import GeneralLoRALoader
 from ..models.model_loader import ModelPool
@@ -109,7 +109,7 @@ class BasePipeline(torch.nn.Module):
             return height, width
         else:
             if num_frames % self.time_division_factor != self.time_division_remainder:
-                num_frames = (num_frames + self.time_division_factor - 1) // self.time_division_factor * self.time_division_factor + self.time_division_remainder
+                num_frames = (num_frames - self.time_division_remainder + self.time_division_factor - 1) // self.time_division_factor * self.time_division_factor + self.time_division_remainder
                 if verbose > 0:
                     print(f"num_frames % {self.time_division_factor} != {self.time_division_remainder}. We round it up to {num_frames}.")
             return height, width, num_frames
@@ -266,7 +266,7 @@ class BasePipeline(torch.nn.Module):
                 raise ValueError("VRAM Management is not enabled. LoRA hotloading is not supported.")
             updated_num = 0
             for _, module in module.named_modules():
-                if isinstance(module, AutoWrappedLinear):
+                if isinstance(module, LoRAHotLoadMixin):
                     name = module.name
                     lora_a_name = f'{name}.lora_A.weight'
                     lora_b_name = f'{name}.lora_B.weight'
@@ -283,7 +283,7 @@ class BasePipeline(torch.nn.Module):
     def clear_lora(self, verbose=1):
         cleared_num = 0
         for name, module in self.named_modules():
-            if isinstance(module, AutoWrappedLinear):
+            if isinstance(module, LoRAHotLoadMixin):
                 if hasattr(module, "lora_A_weights"):
                     if len(module.lora_A_weights) > 0:
                         cleared_num += 1
@@ -307,6 +307,7 @@ class BasePipeline(torch.nn.Module):
                 vram_limit=vram_limit,
                 clear_parameters=model_config.clear_parameters,
                 state_dict=model_config.state_dict,
+                quantize=model_config.quantize,
             )
         return model_pool
     

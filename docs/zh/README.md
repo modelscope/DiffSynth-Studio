@@ -75,6 +75,9 @@ graph LR;
 * [接入细粒度显存管理](./Developer_Guide/Enabling_VRAM_management.md)
 * [接入模型训练](./Developer_Guide/Training_Diffusion_Models.md)
 
+我们开源了 [**DiffSynth-Studio Model Integration Skills**](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills)。这是一套可组合的 Agent Skill 合集，将外部扩散模型（图像 / 视频 / 音频）接入 DiffSynth-Studio 的全流程自动化。它沉淀并定义了 DiffSynth-Studio 的模型接入规范，将代码库分析、模型代码接入、Pipeline 设计、低显存管理与训练支持等最佳实践固化为可复用的标准流程。遵循这套规范，能显著降低接入门槛、减少反复调试，大幅提升新模型的接入效率。建议从 [diffsynth-integrator](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator) 的[使用示例](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1)开始，快速上手、加速模型接入。
+
+
 ## Section 5: API 参考
 
 本节介绍 `DiffSynth-Studio` 中的独立核心模块 `diffsynth.core`，介绍内部的功能是如何设计和运作的，开发者如有需要，可将其中的功能模块用于其他代码库的开发中。

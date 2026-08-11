@@ -1,0 +1,184 @@
+import torch, os, argparse, accelerate, warnings
+from diffsynth.core import UnifiedDataset
+from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline
+from diffsynth.diffusion import *
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+
+class LingBotVideoTrainingModule(DiffusionTrainingModule):
+    def __init__(
+        self,
+        model_paths=None, model_id_with_origin_paths=None,
+        processor_path=None,
+        trainable_models=None,
+        lora_base_model=None, lora_target_modules="", lora_rank=32, lora_checkpoint=None,
+        preset_lora_path=None, preset_lora_model=None,
+        use_gradient_checkpointing=True,
+        use_gradient_checkpointing_offload=False,
+        first_frame_as_condition=False,
+        extra_inputs=None,
+        fp8_models=None,
+        offload_models=None,
+        resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
+        device="cpu",
+        task="sft",
+        max_timestep_boundary=1.0,
+        min_timestep_boundary=0.0,
+    ):
+        super().__init__()
+        # Warning
+        if not use_gradient_checkpointing:
+            warnings.warn("Gradient checkpointing is detected as disabled. To prevent out-of-memory errors, the training framework will forcibly enable gradient checkpointing.")
+            use_gradient_checkpointing = True
+
+        # Load models. The Qwen3-VL processor (tokenizer + image/video processor) is
+        # passed separately via `processor_config`, mirroring the inference pipeline.
+        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
+        processor_config = self.parse_path_or_model_id(processor_path)
+        self.pipe = LingBotVideoPipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, processor_config=processor_config)
+        self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
+        self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
+
+        # Training mode: FlowMatchScheduler (Wan template) runs the full 1000-step
+        # schedule and the SFT loss samples a random timestep. Attention-only LoRA is the
+        # default; pass --lora_target_modules "to_q,to_k,to_v,to_out" to skip MoE/router.
+        self.switch_pipe_to_training_mode(
+            self.pipe, trainable_models,
+            lora_base_model, lora_target_modules, lora_rank, lora_checkpoint,
+            preset_lora_path, preset_lora_model,
+            task=task,
+        )
+
+        # Store other configs
+        self.use_gradient_checkpointing = use_gradient_checkpointing
+        self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
+        self.first_frame_as_condition = first_frame_as_condition
+        self.extra_inputs = extra_inputs.split(",") if extra_inputs is not None else []
+        self.fp8_models = fp8_models
+        self.task = task
+        self.task_to_loss = {
+            "sft:data_process": lambda pipe, *args: args,
+            "sft": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTLoss(pipe, **inputs_shared, **inputs_posi),
+            "sft:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTLoss(pipe, **inputs_shared, **inputs_posi),
+        }
+        self.max_timestep_boundary = max_timestep_boundary
+        self.min_timestep_boundary = min_timestep_boundary
+
+    def get_pipeline_inputs(self, data):
+        # The metadata "prompt" column stores the serialised structured-JSON caption
+        # (see rewrite_captions.py); the pipeline's PromptEmbedder consumes it as-is.
+        inputs_posi = {"prompt": data["prompt"]}
+        inputs_nega = {}
+        inputs_shared = {
+            # Assume you are using this pipeline for inference,
+            # please fill in the input parameters.
+            "input_video": data["video"],
+            "height": data["video"][0].size[1],
+            "width": data["video"][0].size[0],
+            "num_frames": len(data["video"]),
+            # Please do not modify the following parameters
+            # unless you clearly know what this will cause.
+            "cfg_scale": 1,
+            "seed": None,
+            "rand_device": self.pipe.device,
+            "use_gradient_checkpointing": self.use_gradient_checkpointing,
+            "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
+            "max_timestep_boundary": self.max_timestep_boundary,
+            "min_timestep_boundary": self.min_timestep_boundary,
+        }
+        if self.first_frame_as_condition:
+            # Image-to-video (TI2V) LoRA: condition on the clip's own first frame. The
+            # ImageEmbedder unit VAE-encodes it to first_frame_latents and feeds it to the
+            # text encoder as vlm_image; FlowMatchSFTLoss then pins that clean latent into
+            # the first temporal slot and excludes it from the loss (see diffsynth/diffusion/
+            # loss.py). No separate condition column or core change is needed. If your
+            # dataset instead ships a distinct condition frame, drop this flag and pass it via
+            # --extra_inputs input_image (with the column added to --data_file_keys).
+            inputs_shared["input_image"] = data["video"][0]
+        inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
+        return inputs_shared, inputs_posi, inputs_nega
+
+    def forward(self, data, inputs=None):
+        if inputs is None: inputs = self.get_pipeline_inputs(data)
+        inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)
+        for unit in self.pipe.units:
+            inputs = self.pipe.unit_runner(unit, self.pipe, *inputs)
+        loss = self.task_to_loss[self.task](self.pipe, *inputs)
+        return loss
+
+
+def lingbot_video_parser():
+    parser = argparse.ArgumentParser(description="Simple example of a LingBot-Video training script.")
+    parser = add_general_config(parser)
+    parser = add_video_size_config(parser)
+    parser.add_argument("--processor_path", type=str, default=None, help="Path to the Qwen3-VL processor directory (or `model_id:origin_file_pattern`). Used to tokenize prompts.")
+    parser.add_argument("--first_frame_as_condition", default=False, action="store_true", help="Image-to-video (TI2V) LoRA: condition on each clip's own first frame (pinned as a clean latent and excluded from the loss).")
+    parser.add_argument("--max_timestep_boundary", type=float, default=1.0, help="Max timestep boundary (fraction of the training schedule, in [0, 1]).")
+    parser.add_argument("--min_timestep_boundary", type=float, default=0.0, help="Min timestep boundary (fraction of the training schedule, in [0, 1]).")
+    parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
+    return parser
+
+
+if __name__ == "__main__":
+    parser = lingbot_video_parser()
+    args = parser.parse_args()
+    accelerator = accelerate.Accelerator(
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        kwargs_handlers=[accelerate.DistributedDataParallelKwargs(find_unused_parameters=args.find_unused_parameters)],
+    )
+    dataset = UnifiedDataset(
+        base_path=args.dataset_base_path,
+        metadata_path=args.dataset_metadata_path,
+        repeat=args.dataset_repeat,
+        data_file_keys=args.data_file_keys.split(","),
+        main_data_operator=UnifiedDataset.default_video_operator(
+            base_path=args.dataset_base_path,
+            max_pixels=args.max_pixels,
+            height=args.height,
+            width=args.width,
+            height_division_factor=16,
+            width_division_factor=16,
+            num_frames=args.num_frames,
+            time_division_factor=4,
+            time_division_remainder=1,
+        ),
+    )
+    model = LingBotVideoTrainingModule(
+        model_paths=args.model_paths,
+        model_id_with_origin_paths=args.model_id_with_origin_paths,
+        processor_path=args.processor_path,
+        trainable_models=args.trainable_models,
+        lora_base_model=args.lora_base_model,
+        lora_target_modules=args.lora_target_modules,
+        lora_rank=args.lora_rank,
+        lora_checkpoint=args.lora_checkpoint,
+        preset_lora_path=args.preset_lora_path,
+        preset_lora_model=args.preset_lora_model,
+        use_gradient_checkpointing=args.use_gradient_checkpointing,
+        use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
+        first_frame_as_condition=args.first_frame_as_condition,
+        extra_inputs=args.extra_inputs,
+        fp8_models=args.fp8_models,
+        offload_models=args.offload_models,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+        remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
+        task=args.task,
+        device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
+        max_timestep_boundary=args.max_timestep_boundary,
+        min_timestep_boundary=args.min_timestep_boundary,
+    )
+    model_logger = ModelLogger(
+        args.output_path,
+        remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
+        enable_tensorboard_log=args.enable_tensorboard_log,
+        enable_swanlab_log=args.enable_swanlab_log,
+        swanlab_project=args.swanlab_project,
+        enable_wandb_log=args.enable_wandb_log,
+        wandb_project=args.wandb_project,
+    )
+    launcher_map = {
+        "sft:data_process": launch_data_process_task,
+        "sft": launch_training_task,
+        "sft:train": launch_training_task,
+    }
+    launcher_map[args.task](accelerator, dataset, model, model_logger, args=args)
