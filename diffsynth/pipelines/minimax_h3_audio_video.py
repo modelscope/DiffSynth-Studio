@@ -17,6 +17,7 @@ from ..models.minimax_h3_text_encoder import (
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
 from ..utils.data.audio import convert_to_stereo, resample_waveform
+from ..utils.lora.minimax_h3 import MiniMaxH3LoRALoader
 
 
 class MiniMaxH3Pipeline(BasePipeline):
@@ -48,6 +49,7 @@ class MiniMaxH3Pipeline(BasePipeline):
         ]
         self.model_fn = model_fn_minimax_h3
         self.compilable_models = ["dit"]
+        self.lora_loader = MiniMaxH3LoRALoader
 
     @staticmethod
     def from_pretrained(
