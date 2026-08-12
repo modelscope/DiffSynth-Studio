@@ -220,7 +220,7 @@ class DiffusionTrainingModule(torch.nn.Module):
         self,
         model: torch.nn.Module,
         search_for_linear=False,
-        linear_detector=lambda x: min(x.weight.shape) >= 512,
+        linear_detector=lambda x: min(x.in_features, x.out_features) >= 512,
         block_list_detector=lambda x: isinstance(x, torch.nn.ModuleList) and len(x) > 1,
         name_prefix="",
     ):

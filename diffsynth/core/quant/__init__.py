@@ -1,3 +1,3 @@
-from .base import QuantBackend, QUANT_BACKENDS, register_quant_backend, check_differentiable
+from .base import QuantBackend, QUANT_BACKENDS, register_quant_backend, check_differentiable, check_backend_contract, resolve_checkpoint_keys
 from .config import QuantizeConfig, MixedQuantizeConfig, QuantMethodSpec, QUANT_METHODS, register_quant_method, describe_quant_method
 from . import backends

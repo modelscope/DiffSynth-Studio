@@ -1,8 +1,13 @@
 import importlib.util
+import json
 
 import torch
 from ..base import QuantBackend, register_quant_backend
 from ..config import register_quant_method
+
+
+class TorchaoLinear(torch.nn.Linear):
+    """Marker class for torchao-quantized Linears."""
 
 
 @register_quant_backend("torchao")
@@ -21,27 +26,32 @@ class TorchaoQuantBackend(QuantBackend):
     def capabilities(self):
         return {
             "is_serializable": True,
-            "is_differentiable": False,
+            "is_differentiable": True,
             "is_compileable": True,
             "requires_calibration": False,
         }
 
-    def is_quantized_linear(self, module) -> bool:
-        weight = getattr(module, "weight", None)
-        return isinstance(module, torch.nn.Linear) and weight is not None and "torchao" in type(weight).__module__
+    def quantized_linear_classes(self):
+        return (TorchaoLinear,)
+
+    def checkpoint_key_patterns(self):
+        return ("weight", "_weight_qdata", "_weight_scale", "_weight_zero_point", "bias")
 
     def create_quantized_linear(self, linear, compute_device=None, model_device=None):
         from torchao.quantization import quantize_
         linear.requires_grad_(False)
         if compute_device is not None:
             linear = linear.to(device=compute_device)
-        quantize_(linear, self.config)
+        quant_linear = TorchaoLinear(linear.in_features, linear.out_features, bias=linear.bias is not None, device="meta")
+        quant_linear.weight = linear.weight
+        quant_linear.bias = linear.bias
+        quantize_(quant_linear, self.config)
         if model_device is not None:
-            linear = linear.to(device=model_device)
-        return linear
+            quant_linear = quant_linear.to(device=model_device)
+        return quant_linear
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
-        return torch.nn.Linear(linear.in_features, linear.out_features, bias=linear.bias is not None, device="meta")
+        return TorchaoLinear(linear.in_features, linear.out_features, bias=linear.bias is not None, device="meta")
 
     def flatten_state_dict(self, state_dict):
         self._require_safetensors_support()
@@ -61,9 +71,16 @@ class TorchaoQuantBackend(QuantBackend):
                 "safetensors header), so its tensor subclasses cannot be rebuilt. It was most "
                 "likely not saved by torchao."
             )
+        tensor_names = json.loads(metadata["tensor_names"])
+        root_names = [name for name in tensor_names if "." not in name]
+        if root_names:
+            metadata = {**metadata, "tensor_names": json.dumps([name for name in tensor_names if "." in name])}
         rebuilt = unflatten_tensor_state_dict(state_dict, metadata)
         if isinstance(rebuilt, tuple):
             rebuilt = rebuilt[0]
+        for name in root_names:
+            if name in state_dict:
+                rebuilt[name] = state_dict[name]
         return rebuilt
 
     def _require_safetensors_support(self):
