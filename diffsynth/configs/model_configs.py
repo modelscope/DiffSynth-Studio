@@ -1401,6 +1401,13 @@ minimax_h3_series = [
         "model_class": "diffsynth.models.minimax_h3_dit.MiniMaxH3DiT",
     },
     {
+        # Example: ModelConfig(model_id="Comfy-Org/MiniMax-H3", origin_file_pattern="diffusion_models/minimax_h3_fl2va_pruned_bf16.safetensors")
+        "model_hash": "b4e0df87da0c079979ae857edbcef49f",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy_pruned.MiniMaxH3DiTComfyPruned",
+        "extra_kwargs": {"adaln_curve_grid": 1025, "time_embed_dim": 8},
+    },
+    {
         # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-nf4.safetensors")
         "model_hash": "4b27efacefbc4d8670e0d7b876699648",
         "model_name": "minimax_h3_dit",
