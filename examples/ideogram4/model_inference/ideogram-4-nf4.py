@@ -2,7 +2,6 @@ from diffsynth.pipelines.ideogram4 import Ideogram4Pipeline
 from diffsynth.core import ModelConfig
 import torch
 
-# The weights are already quantized to bnb NF4. DiffSynth-Studio VRAM management doesn't support this format.
 pipe = Ideogram4Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",

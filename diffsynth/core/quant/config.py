@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field, fields, is_dataclass
 from typing import Any, Callable, Optional
 import torch
-from .base import QUANT_BACKENDS
+from .base import QUANT_BACKENDS, resolve_checkpoint_keys
 
 
 QUANT_METHODS = {}
@@ -166,6 +166,40 @@ class QuantizeConfig:
         """Whether `module` is one of this config's backend-native quantized Linears."""
         return self.backend.is_quantized_linear(module)
 
+    def checkpoint_keys(self, module, layer_name: str, available_keys) -> list:
+        """
+        Resolve the backend's `checkpoint_key_patterns` for `layer_name` against
+        `available_keys` (anything supporting `in` and iteration, including a `DiskMap`).
+        Raises when the layer contributes no key at all, since silently loading a
+        quantized layer without its packed weight or scale corrupts it without any error.
+
+        Parameters:
+            module: the quantized layer the keys are fetched for.
+            layer_name: its dotted name inside the checkpoint.
+            available_keys: the key index of the whole checkpoint.
+        """
+        keys = resolve_checkpoint_keys(self.backend.checkpoint_key_patterns(), layer_name, available_keys)
+        if not keys:
+            raise ValueError(
+                f"Found no checkpoint entry for the quantized layer `{layer_name}` "
+                f"(backend `{self.backend.name}`, patterns {list(self.backend.checkpoint_key_patterns())}). "
+                "Check that the checkpoint really holds this layer quantized and that "
+                "`target_modules` matches the layers it quantized."
+            )
+        return keys
+
+    def build_quantized_shell(self, module, compute_dtype: torch.dtype, **kwargs):
+        """
+        Build an empty quantized Linear matching `module`, used to release a layer's
+        weights while keeping it routable, and to stage a transient copy on the
+        computation device.
+
+        Parameters:
+            module: the quantized layer whose shape and bias presence are mirrored.
+            compute_dtype: dtype the shell dequantizes to at forward time.
+        """
+        return self.backend.create_quantized_linear_shell(module, compute_dtype)
+
     def prepare_for_prequantized_load(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16):
         """
         Replace the targeted `nn.Linear` layers with empty quantized Linears matching a
@@ -225,6 +259,8 @@ class QuantizeConfig:
 
     def _should_quantize(self, full_name, module):
         if not isinstance(module, torch.nn.Linear):
+            return False
+        if self.is_quantized_linear(module):
             return False
         if self.target_modules is not None and not self._name_matches(full_name, self.target_modules):
             return False
@@ -302,6 +338,7 @@ class MixedQuantizeConfig:
         modes = {config.mode for config in self.configs}
         if len(modes) > 1:
             raise ValueError(f"All configs in `MixedQuantizeConfig` should share the same `mode`, but got {sorted(modes)}.")
+        self._ownership = {}
 
     @property
     def method(self):
@@ -324,7 +361,7 @@ class MixedQuantizeConfig:
         """
         if self.load_prequantized:
             return model
-        self._validate_disjoint(model)
+        self._build_ownership(model)
         for config in self.configs:
             config.quantize_model(model, compute_device=compute_device, model_device=model_device)
         return model
@@ -351,6 +388,43 @@ class MixedQuantizeConfig:
         """Whether `module` is a quantized Linear of any config's backend."""
         return any(config.is_quantized_linear(module) for config in self.configs)
 
+    def checkpoint_keys(self, module, layer_name: str, available_keys) -> list:
+        """
+        Resolve the checkpoint keys of `layer_name` using the config whose backend owns
+        that layer, so each layer set is read with its own key shape.
+
+        Parameters:
+            module: the quantized layer the keys are fetched for.
+            layer_name: its dotted name inside the checkpoint.
+            available_keys: the key index of the whole checkpoint.
+        """
+        return self._owning_config(module, layer_name).checkpoint_keys(module, layer_name, available_keys)
+
+    def build_quantized_shell(self, module, compute_dtype: torch.dtype, layer_name: str = None):
+        """
+        Build an empty quantized Linear for `module` using the config that owns it.
+
+        Parameters:
+            module: the quantized layer whose shape and bias presence are mirrored.
+            compute_dtype: dtype the shell dequantizes to at forward time.
+            layer_name: its dotted name inside the model; required to pick the right config
+                when several configs share one backend, since their quantized Linears are
+                then the same class.
+        """
+        return self._owning_config(module, layer_name).build_quantized_shell(module, compute_dtype)
+
+    def _owning_config(self, module, layer_name=None):
+        config = self._ownership.get(layer_name)
+        if config is not None:
+            return config
+        for config in self.configs:
+            if config.is_quantized_linear(module):
+                return config
+        raise ValueError(
+            f"`{type(module).__name__}` is not a quantized Linear of any config in this "
+            f"`MixedQuantizeConfig` (methods: {self.method})."
+        )
+
     def prepare_for_prequantized_load(self, model: torch.nn.Module, compute_dtype: torch.dtype = torch.bfloat16):
         """
         Replace each config's targeted Linears by that backend's shells, after verifying
@@ -360,26 +434,29 @@ class MixedQuantizeConfig:
             model: the freshly constructed model whose targeted layers become shells.
             compute_dtype: dtype the quantized layers dequantize to at forward time.
         """
-        self._validate_disjoint(model)
+        self._build_ownership(model)
         for config in self.configs:
             config.prepare_for_prequantized_load(model, compute_dtype=compute_dtype)
         return model
 
     def unflatten_state_dict(self, state_dict: dict, metadata: dict):
         """
-        Rebuild composite quantized tensors from a flat (safetensors) state dict,
-        running each distinct backend's `unflatten_state_dict` once.
+        Rebuild composite quantized tensors from a flat (safetensors) state dict.
         """
-        for config in self._distinct_backend_configs():
-            state_dict = config.unflatten_state_dict(state_dict, metadata)
-        return state_dict
+        if not self._ownership:
+            for config in self._distinct_backend_configs():
+                state_dict = config.unflatten_state_dict(state_dict, metadata)
+            return state_dict
+        rebuilt = {}
+        for config, keys in self._grouped_by_backend(state_dict):
+            rebuilt.update(config.unflatten_state_dict(keys, metadata) if config else keys)
+        return rebuilt
 
     def flatten_state_dict(self, state_dict: dict):
         """
-        Flatten the mixed model's state dict into plain tensors and string-only
-        metadata, running each distinct backend's `flatten_state_dict` once. Returns
-        (state_dict, metadata), ready for `safetensors.torch.save_file(tensors, path,
-        metadata=metadata)`.
+        Flatten the mixed model's state dict into plain tensors and string-only metadata.
+        Returns (state_dict, metadata), ready for `safetensors.torch.save_file(tensors,
+        path, metadata=metadata)`.
         """
         for config in self.configs:
             if not config.backend.capabilities().get("is_serializable", False):
@@ -389,10 +466,21 @@ class MixedQuantizeConfig:
                     "state dict cannot be flattened for saving."
                 )
         merged_metadata = {}
-        for config in self._distinct_backend_configs():
-            state_dict, metadata = config.backend.flatten_state_dict(state_dict)
-            merged_metadata.update(metadata)
-        tensors = {key: value.contiguous() for key, value in state_dict.items()}
+        if not self._ownership:
+            flattened = state_dict
+            for config in self._distinct_backend_configs():
+                flattened, metadata = config.backend.flatten_state_dict(flattened)
+                merged_metadata.update(metadata)
+        else:
+            flattened = {}
+            for config, keys in self._grouped_by_backend(state_dict):
+                if config is None:
+                    flattened.update(keys)
+                    continue
+                tensors, metadata = config.backend.flatten_state_dict(keys)
+                flattened.update(tensors)
+                merged_metadata.update(metadata)
+        tensors = {key: value.contiguous() for key, value in flattened.items()}
         metadata = {"format": "pt", **{key: value if isinstance(value, str) else str(value) for key, value in merged_metadata.items()}}
         return tensors, metadata
 
@@ -405,21 +493,25 @@ class MixedQuantizeConfig:
                 distinct.append(config)
         return distinct
 
-    def _validate_disjoint(self, model):
-        matched = [
-            {name for name, module in model.named_modules() if name and config._should_quantize(name, module)}
-            for config in self.configs
-        ]
-        for i in range(len(matched)):
-            for j in range(i + 1, len(matched)):
-                overlap = matched[i] & matched[j]
-                if overlap:
-                    samples = ", ".join(sorted(overlap)[:5])
-                    raise ValueError(
-                        f"Configs {i} (`{self.configs[i].method}`) and {j} (`{self.configs[j].method}`) "
-                        f"in `MixedQuantizeConfig` both match {len(overlap)} layers (e.g. {samples}). "
-                        "Layer sets must be pairwise disjoint, because re-quantizing an already "
-                        "quantized layer corrupts its packed weight silently. "
-                        "Adjust `target_modules` / `exclude_modules` so the sets are complementary."
-                    )
+    def _grouped_by_backend(self, state_dict):
+        groups = {}
+        for key, value in state_dict.items():
+            parts = key.split(".")
+            config = next((owner for end in range(len(parts) - 1, 0, -1)
+                           if (owner := self._ownership.get(".".join(parts[:end]))) is not None), None)
+            groups.setdefault(config.backend.name if config else None, (config, {}))[1][key] = value
+        return groups.values()
 
+    def _build_ownership(self, model):
+        ownership = {}
+        for index, config in enumerate(self.configs):
+            names = [name for name, module in model.named_modules() if name and config._should_quantize(name, module)]
+            overlap = sorted(set(names) & ownership.keys())
+            if overlap:
+                owner = self.configs.index(ownership[overlap[0]])
+                raise ValueError(
+                    f"Configs {owner} (`{self.configs[owner].method}`) and {index} (`{config.method}`) "
+                    f"in `MixedQuantizeConfig` both match {len(overlap)} layers (e.g. {', '.join(overlap[:5])}). "
+                )
+            ownership.update({name: config for name in names})
+        self._ownership.update(ownership)
