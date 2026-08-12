@@ -4,6 +4,17 @@ from diffsynth.utils.data import save_video, VideoData
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
 
+vram_config = {
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+
 dataset_snapshot_download(
     dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
     local_dir="data/diffsynth_example_dataset",
@@ -17,11 +28,12 @@ pipe = LingBotVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="refiner/diffusion_pytorch_model*.safetensors"),
-        ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors"),
-        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="refiner/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors", **vram_config),
+        ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
     ],
     processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 5,
 )
 
 input_video = VideoData(f"{base}/video_1.mp4", height=1088, width=1920)
