@@ -1445,6 +1445,22 @@ minimax_h3_series = [
         "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["time_embedder.proj_in", "time_embedder.proj_out", "video_patch_proj", "audio_patch_proj", "condition_proj", "final_layer.video_out", "final_layer.audio_out"]},
     },
     {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-pruned-nf4.safetensors")
+        "model_hash": "9b8f1cbc6fb5fcd2e2c02b6691480427",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy_pruned.MiniMaxH3DiTComfyPruned",
+        "extra_kwargs": {"adaln_curve_grid": 1025, "time_embed_dim": 8},
+        "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["time_embedder.proj_in", "time_embedder.proj_out", "video_patch_proj", "audio_patch_proj", "condition_proj", "final_layer.video_out", "final_layer.audio_out", "adaln_proj.linear"]},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-ref2va-pruned-nf4.safetensors")
+        "model_hash": "072bd13242d6d67df79a154e7c4274b3",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy_pruned.MiniMaxH3DiTComfyPruned",
+        "extra_kwargs": {"adaln_curve_grid": 1025, "time_embed_dim": 8},
+        "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["time_embedder.proj_in", "time_embedder.proj_out", "video_patch_proj", "audio_patch_proj", "condition_proj", "final_layer.video_out", "final_layer.audio_out", "adaln_proj.linear"]},
+    },
+    {
         # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-FL2VA", origin_file_pattern="video_vae/source/model.safetensors")
         "model_hash": "24b80900992e2024fab17c991c57da23",
         "model_name": "minimax_h3_video_vae",
