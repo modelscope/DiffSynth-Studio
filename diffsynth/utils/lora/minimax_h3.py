@@ -1,33 +1,43 @@
-import torch
 from .general import GeneralLoRALoader
+import torch
 
 
-class MiniMaxH3TurboLoRALoader(GeneralLoRALoader):
+class MiniMaxH3LoRALoader(GeneralLoRALoader):
+    def __init__(self, device="cpu", torch_dtype=torch.float32):
+        super().__init__(device=device, torch_dtype=torch_dtype)
+        
+    @staticmethod
+    def is_lightx2v_format(state_dict):
+        for key in state_dict:
+            if key.startswith("transformer_blocks.") and ".attn.to_q.lora_A.default.weight" in key:
+                return True
+        return False
+
+    def convert_state_dict(self, state_dict, suffix=".weight"):
+        if self.is_lightx2v_format(state_dict):
+            state_dict = MiniMaxH3LoRAConverter.align_to_diffsynth_format(state_dict)
+        return super().convert_state_dict(state_dict, suffix=suffix)
+
+
+class MiniMaxH3LoRAConverter:
 
     @staticmethod
     def _source_prefix(target_prefix):
         if target_prefix.startswith("transformer_blocks."):
             return target_prefix.replace("transformer_blocks.", "blocks.", 1)
         if target_prefix.startswith("token_refiner.refiner_blocks."):
-            return target_prefix.replace(
-                "token_refiner.refiner_blocks.", "token_refiner.blocks.", 1
-            )
+            return target_prefix.replace("token_refiner.refiner_blocks.", "token_refiner.blocks.", 1)
         return target_prefix
 
     @staticmethod
     def _pair(state_dict, prefix):
-        names = (
-            f"{prefix}.lora_A.default.weight",
-            f"{prefix}.lora_B.default.weight",
+        return (
+            state_dict[f"{prefix}.lora_A.default.weight"],
+            state_dict[f"{prefix}.lora_B.default.weight"],
         )
-        return state_dict[names[0]], state_dict[names[1]]
 
-    def convert_state_dict(self, state_dict, suffix=".weight"):
-        if state_dict and all(
-            key.endswith((".lora_A.weight", ".lora_B.weight"))
-            for key in state_dict
-        ):
-            return state_dict
+    @classmethod
+    def align_to_diffsynth_format(cls, state_dict):
         converted = {}
         prefixes = {
             key.removesuffix(".lora_A.default.weight")
@@ -42,7 +52,7 @@ class MiniMaxH3TurboLoRALoader(GeneralLoRALoader):
         )
         consumed = set()
         for prefix in attention_prefixes:
-            pairs = [self._pair(state_dict, f"{prefix}.to_{name}") for name in "qkv"]
+            pairs = [cls._pair(state_dict, f"{prefix}.to_{name}") for name in "qkv"]
             ranks = {a.shape[0] for a, _ in pairs}
             rank = ranks.pop()
             out_features_set = {b.shape[0] for _, b in pairs}
@@ -64,14 +74,14 @@ class MiniMaxH3TurboLoRALoader(GeneralLoRALoader):
                 ).reshape(-1)
                 b_fused[rows, modality * rank : (modality + 1) * rank] = b
 
-            target = self._source_prefix(prefix) + ".qkv_proj"
-            converted[target + f".lora_A{suffix}"] = a_fused
-            converted[target + f".lora_B{suffix}"] = b_fused
+            target = cls._source_prefix(prefix) + ".qkv_proj"
+            converted[target + ".lora_A.default.weight"] = a_fused
+            converted[target + ".lora_B.default.weight"] = b_fused
             consumed.update(f"{prefix}.to_{name}" for name in "qkv")
 
         for prefix in sorted(prefixes - consumed):
-            a, b = self._pair(state_dict, prefix)
-            target = self._source_prefix(prefix)
+            a, b = cls._pair(state_dict, prefix)
+            target = cls._source_prefix(prefix)
             if target.endswith(".attn.to_out.0"):
                 target = target.removesuffix(".to_out.0") + ".out_proj"
             elif target.endswith(".ff.net.0.proj"):
@@ -82,6 +92,6 @@ class MiniMaxH3TurboLoRALoader(GeneralLoRALoader):
                 target = target.removesuffix(".ff.net.2") + ".mlp.fc2"
             else:
                 raise ValueError(f"Unsupported LoRA target: {prefix}")
-            converted[target + f".lora_A{suffix}"] = a
-            converted[target + f".lora_B{suffix}"] = b
+            converted[target + ".lora_A.default.weight"] = a
+            converted[target + ".lora_B.default.weight"] = b
         return converted

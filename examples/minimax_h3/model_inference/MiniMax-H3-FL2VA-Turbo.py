@@ -1,7 +1,6 @@
 import torch
 from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
 from diffsynth.utils.data.audio_video import write_video_audio
-from diffsynth.utils.lora import MiniMaxH3TurboLoRALoader
 from modelscope import dataset_snapshot_download
 from PIL import Image
 
@@ -28,11 +27,7 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
 
-pipe.load_lora(
-    pipe.dit,
-    ModelConfig(model_id="lightx2v/Minimax-h3-Turbo", origin_file_pattern="minimax_h3_fl2v_turbo_4step_v1.0_768p_bf16.safetensors"),
-    lora_loader=MiniMaxH3TurboLoRALoader,
-)
+pipe.load_lora(pipe.dit, ModelConfig(model_id="lightx2v/Minimax-h3-Turbo", origin_file_pattern="minimax_h3_fl2v_turbo_4step_v1.0_768p_bf16.safetensors"))
 
 # Text -> Video + Audio
 prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
