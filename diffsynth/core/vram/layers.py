@@ -487,11 +487,7 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
 
     def _disk_required_keys(self):
         if self._required_keys is None:
-            weight_prefix = self.name + ".weight."
-            self._required_keys = [
-                key for key in self.disk_map
-                if key == self.name + ".weight" or key.startswith(weight_prefix) or key == self.name + ".bias"
-            ]
+            self._required_keys = self.quantize.checkpoint_keys(self.module, self.name, self.disk_map)
         return self._required_keys
 
     def _load_from_disk(self, device, target=None):
@@ -513,7 +509,7 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
     def offload(self):
         if self.state != 0:
             if self.disk_offload:
-                self.module = self.quantize.backend.create_quantized_linear_shell(self.module, self.computation_dtype)
+                self.module = self.quantize.build_quantized_shell(self.module, self.computation_dtype, layer_name=self.name)
             else:
                 self.module.to(device=self.offload_device)
             self.state = 0
@@ -539,7 +535,7 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
         if device == self.computation_device:
             return self.module
         if self.disk_offload and device == "disk":
-            transient = self.quantize.backend.create_quantized_linear_shell(self.module, self.computation_dtype)
+            transient = self.quantize.build_quantized_shell(self.module, self.computation_dtype, layer_name=self.name)
             return self._load_from_disk(self.computation_device, target=transient)
         return copy.deepcopy(self.module).to(device=self.computation_device)
 
@@ -568,7 +564,6 @@ def _materialize_root_params_from_disk(model: torch.nn.Module, disk_map: DiskMap
         if buffer is None or name not in disk_map:
             continue
         model.register_buffer(name, disk_map[name], persistent=True)
-
 
 
 def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict, vram_config: dict, vram_limit=None, name_prefix="", disk_map=None, quantize=None, **kwargs):
