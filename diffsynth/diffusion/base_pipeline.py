@@ -248,6 +248,7 @@ class BasePipeline(torch.nn.Module):
         hotload=None,
         state_dict=None,
         verbose=1,
+        lora_loader=None,
     ):
         if state_dict is None:
             if isinstance(lora_config, str):
@@ -257,7 +258,8 @@ class BasePipeline(torch.nn.Module):
                 lora = load_state_dict(lora_config.path, torch_dtype=self.torch_dtype, device=self.device)
         else:
             lora = state_dict
-        lora_loader = self.lora_loader(torch_dtype=self.torch_dtype, device=self.device)
+        lora_loader = lora_loader or self.lora_loader
+        lora_loader = lora_loader(torch_dtype=self.torch_dtype, device=self.device)
         lora = lora_loader.convert_state_dict(lora)
         if hotload is None:
             hotload = hasattr(module, "vram_management_enabled") and getattr(module, "vram_management_enabled")
