@@ -75,7 +75,7 @@ class MiniMaxH3Pipeline(BasePipeline):
     @torch.no_grad()
     def __call__(
         self,
-        prompt: str,
+        prompt: str = None,
         negative_prompt: str = " ",
         height: int = 768,
         width: int = 1344,
@@ -106,6 +106,8 @@ class MiniMaxH3Pipeline(BasePipeline):
         retake_audio_sample_rate: int = 32000,
         seconds_regions_to_retake: list[tuple[float, float]] = None,
         progress_bar_cmd=tqdm,
+        # Template inputs
+        text_embedding: torch.Tensor = None,
     ):
         """Generate a joint video + audio sample.
 
@@ -129,7 +131,7 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.scheduler.set_timesteps(num_inference_steps, shift=flow_shift)
         self.scheduler_audio.set_timesteps(num_inference_steps, shift=audio_flow_shift)
 
-        inputs_posi = {"prompt": prompt}
+        inputs_posi = {"prompt": prompt, "text_embedding": text_embedding}
         inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
             "cfg_scale": cfg_scale,
@@ -178,6 +180,21 @@ class MiniMaxH3Pipeline(BasePipeline):
         audio = self.output_audio_format_check(waveform)
         return video, audio
 
+    @torch.no_grad()
+    def export_text_embedding(self, prompt: str):
+        inputs_posi = {"prompt": prompt}
+        inputs_nega = {"negative_prompt": ""}
+        inputs_shared = {
+            # These parameters are placeholders
+            "cfg_scale": 1,
+            "height": 480, "width": 480, "num_frames": 5,
+            "seed": 0, "rand_device": "cpu",
+            "imgvid_cond_noise_aug": self.imgvid_cond_noise_aug, "audio_cond_noise_aug": self.audio_cond_noise_aug,
+        }
+        for unit in self.units:
+            inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
+        return inputs_posi["prompt_embeds"]
+
 
 class MiniMaxH3Unit_ShapeChecker(PipelineUnit):
     def __init__(self):
@@ -212,7 +229,7 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
             seperate_cfg=True,
             input_params_posi={"prompt": "prompt"},
             input_params_nega={"prompt": "negative_prompt"},
-            input_params=("keyframes", "ref_blocks", "height", "width"),
+            input_params=("keyframes", "ref_blocks", "height", "width", "text_embedding"),
             output_params=("prompt_embeds", "text_token_tags"),
             onload_model_names=("text_encoder",),
         )
@@ -250,7 +267,9 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
         input_ids, text_token_tags = presentation_ref2va(pipe.tokenizer, prompt, condition_labels, image_counts, video_counts, video_timestamps)
         return input_ids, text_token_tags, pixel_values, image_grid_thw, pixel_values_videos, video_grid_thw
 
-    def process(self, pipe: MiniMaxH3Pipeline, prompt, keyframes=None, ref_blocks=None, height=None, width=None):
+    def process(self, pipe: MiniMaxH3Pipeline, prompt, keyframes=None, ref_blocks=None, height=None, width=None, text_embedding=None):
+        if text_embedding is not None and prompt is None:
+            return {"prompt_embeds": text_embedding.to(pipe.device, pipe.torch_dtype), "text_token_tags": torch.ones((text_embedding.shape[0],), device=pipe.device, dtype=torch.long)}
         pipe.load_models_to_device(self.onload_model_names)
         pixel_values = image_grid_thw = pixel_values_videos = video_grid_thw = None
         if ref_blocks:
@@ -271,6 +290,11 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
             kwargs["pixel_values_videos"] = pixel_values_videos.to(pipe.device, pipe.torch_dtype)
             kwargs["video_grid_thw"] = video_grid_thw.to(pipe.device, torch.long)
         hidden = pipe.text_encoder(**kwargs)
+
+        if text_embedding is not None:
+            hidden = torch.concat([text_embedding.to(hidden.device, hidden.dtype), hidden], dim=0)
+            extra_tags = torch.ones((text_embedding.shape[0],), device=text_token_tags.device, dtype=text_token_tags.dtype)
+            text_token_tags = torch.concat([extra_tags, text_token_tags], dim=0)
 
         return {"prompt_embeds": hidden.to(pipe.device, pipe.torch_dtype), "text_token_tags": text_token_tags.view(-1).to(pipe.device, torch.long)}
 
