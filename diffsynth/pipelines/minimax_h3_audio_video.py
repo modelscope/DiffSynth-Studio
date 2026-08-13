@@ -108,7 +108,6 @@ class MiniMaxH3Pipeline(BasePipeline):
         progress_bar_cmd=tqdm,
         # Template inputs
         text_embedding: torch.Tensor = None,
-        negative_text_embedding: torch.Tensor = None,
     ):
         """Generate a joint video + audio sample.
 
@@ -133,7 +132,7 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.scheduler_audio.set_timesteps(num_inference_steps, shift=audio_flow_shift)
 
         inputs_posi = {"prompt": prompt, "text_embedding": text_embedding}
-        inputs_nega = {"negative_prompt": negative_prompt, "text_embedding": negative_text_embedding}
+        inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
             "cfg_scale": cfg_scale,
             "height": height, "width": width, "num_frames": num_frames,
@@ -228,9 +227,9 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             seperate_cfg=True,
-            input_params_posi={"prompt": "prompt", "text_embedding": "text_embedding"},
-            input_params_nega={"prompt": "negative_prompt", "text_embedding": "text_embedding"},
-            input_params=("keyframes", "ref_blocks", "height", "width"),
+            input_params_posi={"prompt": "prompt"},
+            input_params_nega={"prompt": "negative_prompt"},
+            input_params=("keyframes", "ref_blocks", "height", "width", "text_embedding"),
             output_params=("prompt_embeds", "text_token_tags"),
             onload_model_names=("text_encoder",),
         )
