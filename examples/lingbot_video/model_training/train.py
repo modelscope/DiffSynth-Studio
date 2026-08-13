@@ -1,4 +1,4 @@
-import torch, os, argparse, accelerate, warnings
+import torch, os, argparse, accelerate
 from diffsynth.core import UnifiedDataset
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline
 from diffsynth.diffusion import *
@@ -26,11 +26,6 @@ class LingBotVideoTrainingModule(DiffusionTrainingModule):
         min_timestep_boundary=0.0,
     ):
         super().__init__()
-        # Warning
-        if not use_gradient_checkpointing:
-            warnings.warn("Gradient checkpointing is detected as disabled. To prevent out-of-memory errors, the training framework will forcibly enable gradient checkpointing.")
-            use_gradient_checkpointing = True
-
         # Load models. The Qwen3-VL processor (tokenizer + image/video processor) is
         # passed separately via `processor_config`, mirroring the inference pipeline.
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
