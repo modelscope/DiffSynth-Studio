@@ -14,6 +14,6 @@ accelerate launch examples/minimax_h3/model_training/train.py \
   --learning_rate 1e-4 \
   --num_epochs 2 \
   --remove_prefix_in_ckpt "pipe.template_model." \
-  --output_path "./models/train/MiniMax-H3-Text-Embeddings-full-split-cache" \
+  --output_path "./models/train/MiniMax-H3-Text-Embeddings-full" \
   --trainable_models "template_model" \
   --use_gradient_checkpointing
