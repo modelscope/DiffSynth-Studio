@@ -75,7 +75,7 @@ class Fp8Linear(torch.nn.Linear):
 @register_quant_backend("ideogram4_fp8")
 class Ideogram4Fp8QuantBackend(QuantBackend):
     def capabilities(self):
-        return {**super().capabilities(), "is_serializable": True}
+        return {**super().capabilities(), "is_serializable": True, "is_differentiable": True}
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
         with torch.device("meta"):
@@ -157,6 +157,7 @@ class Ideogram4MRoPE(nn.Module):
             base ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim)
         )
         self.register_buffer("inv_freq", inv_freq, persistent=False)
+        self.base = base
         self.mrope_section = tuple(mrope_section)
         self.head_dim = head_dim
 
@@ -166,9 +167,10 @@ class Ideogram4MRoPE(nn.Module):
         batch_size, seq_len, _ = position_ids.shape
 
         pos = position_ids.permute(2, 0, 1).to(dtype=torch.float32)
-        inv_freq = self.inv_freq.to(dtype=torch.float32)[None, None, :, None].expand(
-            3, batch_size, -1, 1
-        ).to(pos.device)
+        inv_freq = 1.0 / (
+            self.base ** (torch.arange(0, self.head_dim, 2, dtype=torch.float32, device=pos.device) / self.head_dim)
+        )
+        inv_freq = inv_freq[None, None, :, None].expand(3, batch_size, -1, 1)
         freqs = inv_freq @ pos.unsqueeze(2)
         freqs = freqs.transpose(2, 3)
 

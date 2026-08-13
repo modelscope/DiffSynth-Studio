@@ -64,8 +64,14 @@ write_video_audio(
 |-|-|-|-|-|-|-|
 |[MiniMax/MiniMax-H3: FL2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-FL2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-FL2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FL2VA.py)|
 |[MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py)|
+|[MiniMax/MiniMax-H3: Retake](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Retake.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Retake.py)|-|-|-|-|
 |[DiffSynth-Studio/MiniMax-H3-NF4: FL2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-NF4-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-FL2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-FL2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-FL2VA.py)|
 |[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Ref2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Ref2VA.py)|
+|[Comfy-Org/MiniMax-H3: FL2VA pruned](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Pruned-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Pruned-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Pruned-FL2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Pruned-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Pruned-FL2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Pruned-FL2VA.py)|
+|[Comfy-Org/MiniMax-H3: Ref2VA pruned](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Pruned-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Pruned-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Pruned-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Pruned-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Pruned-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Pruned-Ref2VA.py)|
+|[DiffSynth-Studio/MiniMax-H3-NF4: FL2VA pruned](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Pruned-NF4-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Pruned-NF4-FL2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Pruned-NF4-FL2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Pruned-NF4-FL2VA.py)|
+|[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA pruned](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Pruned-NF4-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Pruned-NF4-Ref2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Pruned-NF4-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Pruned-NF4-Ref2VA.py)|
+|[lightx2v/Minimax-h3-Turbo: FL2VA 4steps](https://www.modelscope.cn/models/lightx2v/Minimax-h3-Turbo)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA-Turbo.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA-Turbo.py)|-|-|-|-|
 
 The model weights are split into two partitions: the `FL2VA` partition serves text-to-video-audio and keyframe-guided generation, while the `Ref2VA` partition serves reference-driven generation. The two partitions have different DiT and text encoder weights, so choose the `origin_file_pattern` of the matching partition for your task.
 
@@ -94,15 +100,53 @@ The input parameters for `MiniMaxH3Pipeline` inference include:
 * `tile_overlap`: Tile overlap during VAE encoding/decoding, defaults to 64.
 * `keyframes`: List of keyframe images for keyframe-guided generation. Images are resized onto the target canvas.
 * `keyframe_indices`: Frame indices of the keyframes in the video, either `0` (first frame) or `-1` (last frame), corresponding one-to-one with `keyframes`.
-* `imgvid_cond_noise_aug`: Noise augmentation anchor timestep for image/video conditions, defaults to 0.999.
 * `references`: List of reference conditions in request order. Each element is a dict in one of the following four forms:
     * `{"type": "image", "image": PIL.Image}`
     * `{"type": "video", "video": list[PIL.Image]}` (silent video)
     * `{"type": "audio", "audio": Tensor[C, L], "sample_rate": int}`
     * `{"type": "video_audio", "video": list[PIL.Image], "audio": Tensor[C, L], "sample_rate": int}`
 
-    Video frame lists must ALREADY be at 24fps; the pipeline never resamples the frame rate.
-* `audio_cond_noise_aug`: Noise augmentation anchor timestep for reference audio conditions, defaults to 1.0.
+    Video frame lists must ALREADY be at 24fps; the pipeline never resamples the frame rate. A `video` is always treated as silent, so conditioning on a reference video's own soundtrack requires `video_audio` with the waveform passed explicitly — the pipeline receives frame lists rather than files and cannot probe for a soundtrack itself. `diffsynth.utils.data.audio_video.read_video_audio` reads the frames and the soundtrack out of one file with their durations already aligned:
+
+    ```python
+    from diffsynth.utils.data.audio_video import read_video_audio
+
+    frames, waveform, sample_rate = read_video_audio(
+        "video.mp4", height=480, width=832, num_frames=124, fps=24,
+        audio_sample_rate=pipe.audio_vae.sample_rate,
+    )
+    ```
+* `ref_image_short_edge`: Target short edge of a reference image, defaults to 2048. A reference image is rescaled onto that short edge with its aspect ratio preserved (upscaling allowed) and both axes rounded to the nearest multiple of 32. No area cap applies.
+* `ref_video_short_edge`: Target short edge of a reference video, defaults to 768.
+* `ref_video_max_pixels`: Soft area cap for a reference video, defaults to `768 * 1344`. A reference video is first scaled onto the short edge, then scaled back down proportionally if its area exceeds the cap, and finally both axes are rounded to a multiple of 32. Footage wider than 16:9 usually hits the cap.
+* `retake_video`: Source video frame list for video retake, which must already be at 24fps. Frames are resized onto the target canvas and truncated to `num_frames`. Because `num_frames` is first snapped up to the nearest `17n+5`, a source clip is often a few frames short (e.g. a 121-frame clip against an aligned 124); the tail is padded by repeating the last frame, and that padded tail is regenerated rather than frozen. Supply at least `num_frames` frames to avoid this.
+* `frame_regions_to_retake`: Half-open **frame-id** ranges of `retake_video` to regenerate, counted from 0, e.g. `[(17, 51)]`. Everything outside them is preserved from the source. The 17 frames of a VAE clip are coupled in latent space, so retaking any frame of a clip retakes the whole clip: each range is widened outwards to clip boundaries. Pass multiples of 17 to get exactly the range you asked for. Omit it, or pass an empty list, to preserve the whole source video, which turns `retake_video` into video-driven audio generation.
+* `retake_audio`: Source waveform `Tensor[C, L]` for audio retake. It is converted to stereo and resampled to the audio VAE's sample rate, then trimmed or padded to the video duration.
+* `retake_audio_sample_rate`: Sample rate of `retake_audio`, defaults to 32000.
+* `seconds_regions_to_retake`: Half-open ranges of `retake_audio` to regenerate, in **seconds**, e.g. `[(0, 1), (4, 5)]`. The audio VAE compresses uniformly at 40 latent frames per second and has no clip structure, so ranges are used as given, at a 1/40 s granularity. Omitting it preserves the whole source audio, which turns `retake_audio` into audio-driven video generation.
+
+    Video and audio retake are independent: either one can be used alone, and note the two use different units -- frame ids for video, seconds for audio. `read_video_audio` is the convenient way to get a time-aligned `(frames, waveform, sample_rate)` triple out of a single file:
+
+    ```python
+    source_video, source_audio, audio_sample_rate = read_video_audio(
+        "video.mp4", height=480, width=832, num_frames=124, fps=24,
+        audio_sample_rate=pipe.audio_vae.sample_rate,
+    )
+
+    def align_to_clips(start, end, total_frames, clip_frames=17):
+        """Widen the half-open frame range [start, end) to whole clips. Frames count from 0."""
+        first_clip, last_clip = start // clip_frames, (end - 1) // clip_frames
+        return first_clip * clip_frames, min((last_clip + 1) * clip_frames, total_frames)
+
+    video, audio = pipe(
+        prompt=prompt, height=480, width=832, num_frames=124,
+        retake_video=source_video,
+        frame_regions_to_retake=[align_to_clips(24, 48, 124)],   # frames [24,48) -> (17, 51)
+        retake_audio=source_audio,
+        retake_audio_sample_rate=audio_sample_rate,
+        seconds_regions_to_retake=[(0, 1), (4, 5)],              # seconds
+    )
+    ```
 * `progress_bar_cmd`: Progress bar, defaults to `tqdm`. Set it to `lambda x: x` to disable the progress bar.
 
 The pipeline returns a `(video, audio)` tuple, where the video is a list of PIL images and the audio is a waveform tensor. Use `diffsynth.utils.data.audio_video.write_video_audio` to mux them into an MP4:

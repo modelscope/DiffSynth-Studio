@@ -74,11 +74,19 @@ class QuantBackend(ABC):
         return isinstance(module, self.quantized_linear_classes())
 
     def flatten_state_dict(self, state_dict: dict):
+        self._require_serializable()
         return state_dict, {}
 
     def unflatten_state_dict(self, state_dict: dict, metadata: dict):
+        self._require_serializable()
         return state_dict
 
+    def _require_serializable(self):
+        if not self.capabilities().get("is_serializable", False):
+            raise NotImplementedError(
+                f"Backend `{self.name}` declares `is_serializable=False`, so its quantized state "
+                "dict cannot be flattened or rebuilt. Override these methods if it actually can."
+            )
 
 def register_quant_backend(name):
     def decorator(cls):

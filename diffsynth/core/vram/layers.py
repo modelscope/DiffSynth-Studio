@@ -63,8 +63,11 @@ class AutoTorchModule(torch.nn.Module):
         return r
 
     def check_free_vram(self):
-        device = self.computation_device if not IS_NPU_AVAILABLE else get_device_name()
-        gpu_mem_state = getattr(torch, self.computation_device_type).mem_get_info(device)
+        if self.computation_device_type == "mps":
+            gpu_mem_state = (torch.mps.current_allocated_memory(), torch.mps.recommended_max_memory())
+        else:
+            device = self.computation_device if not IS_NPU_AVAILABLE else get_device_name()
+            gpu_mem_state = getattr(torch, self.computation_device_type).mem_get_info(device)
         used_memory = (gpu_mem_state[1] - gpu_mem_state[0]) / (1024**3)
         return used_memory < self.vram_limit
 
@@ -354,10 +357,11 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule, LoRAHotLoadMixin):
         input = input / (scale_a + 1e-8)
         input = input.to(self.computation_dtype)
         weight = weight.to(self.computation_dtype)
-        bias = bias.to(torch.bfloat16)
+        if bias is not None:
+            bias = bias.to(torch.bfloat16)
 
         result = torch._scaled_mm(
-            input,
+            input.to(self.computation_dtype),
             weight.T,
             scale_a=scale_a,
             scale_b=scale_b.T,
@@ -505,7 +509,7 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
     def offload(self):
         if self.state != 0:
             if self.disk_offload:
-                self.module = self.quantize.build_quantized_shell(self.module, self.computation_dtype)
+                self.module = self.quantize.build_quantized_shell(self.module, self.computation_dtype, layer_name=self.name)
             else:
                 self.module.to(device=self.offload_device)
             self.state = 0
@@ -531,7 +535,7 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
         if device == self.computation_device:
             return self.module
         if self.disk_offload and device == "disk":
-            transient = self.quantize.build_quantized_shell(self.module, self.computation_dtype)
+            transient = self.quantize.build_quantized_shell(self.module, self.computation_dtype, layer_name=self.name)
             return self._load_from_disk(self.computation_device, target=transient)
         return copy.deepcopy(self.module).to(device=self.computation_device)
 
@@ -549,6 +553,17 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
             return super().__getattr__(name)
         else:
             return getattr(self.module, name)
+
+
+def _materialize_root_params_from_disk(model: torch.nn.Module, disk_map: DiskMap):
+    for name, param in list(model.named_parameters(recurse=False)):
+        if param is None or not param.is_meta or name not in disk_map:
+            continue
+        model.register_parameter(name, torch.nn.Parameter(disk_map[name], requires_grad=param.requires_grad))
+    for name, buffer in list(model.named_buffers(recurse=False)):
+        if buffer is None or name not in disk_map:
+            continue
+        model.register_buffer(name, disk_map[name], persistent=True)
 
 
 def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict, vram_config: dict, vram_limit=None, name_prefix="", disk_map=None, quantize=None, **kwargs):
@@ -596,6 +611,8 @@ def enable_vram_management(model: torch.nn.Module, module_map: dict, vram_config
             break
     else:
         enable_vram_management_recursively(model, module_map, vram_config, vram_limit=vram_limit, disk_map=disk_map, quantize=quantize, **kwargs)
+        if disk_map is not None:
+            _materialize_root_params_from_disk(model, disk_map)
     # `vram_management_enabled` is a flag that allows the pipeline to determine whether VRAM management is enabled.
     model.vram_management_enabled = True
     return model

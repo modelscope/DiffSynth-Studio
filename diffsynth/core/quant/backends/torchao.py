@@ -1,4 +1,5 @@
 import importlib.util
+import json
 
 import torch
 from ..base import QuantBackend, register_quant_backend
@@ -25,7 +26,7 @@ class TorchaoQuantBackend(QuantBackend):
     def capabilities(self):
         return {
             "is_serializable": True,
-            "is_differentiable": False,
+            "is_differentiable": True,
             "is_compileable": True,
             "requires_calibration": False,
         }
@@ -71,11 +72,6 @@ class TorchaoQuantBackend(QuantBackend):
                 "safetensors header), so its tensor subclasses cannot be rebuilt. It was most "
                 "likely not saved by torchao."
             )
-        # torchao splits every entry as `module_fqn.weight_name` (`tensor_name.rsplit(".", 1)`),
-        # so a root-level tensor with a dotless name (e.g. a model's own `x_pad_token`) crashes
-        # its loop before it even checks the tensor type. Such tensors are never quantized (only
-        # `<module>.weight` Linears are), so hand torchao only the dotted names to rebuild and
-        # pass the root-level plain tensors through untouched.
         tensor_names = json.loads(metadata["tensor_names"])
         root_names = [name for name in tensor_names if "." not in name]
         if root_names:

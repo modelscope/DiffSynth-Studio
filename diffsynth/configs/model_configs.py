@@ -82,6 +82,13 @@ qwen_image_series = [
 
 wan_series = [
     {
+        # Example: ModelConfig(model_id="Wan-AI/Wan2.2-Animate-2-14B", origin_file_pattern="wan_animate_2/wan_animate_2_bf16.safetensors")
+        "model_hash": "4536c21ad8740ba78367af4216ae85bf",
+        "model_name": "wan_video_dit",
+        "model_class": "diffsynth.models.wan_animate_2_dit.WanAnimate2Transformer",
+        "extra_kwargs": {},
+    },
+    {
         # Example: ModelConfig(model_id="krea/krea-realtime-video", origin_file_pattern="krea-realtime-video-14b.safetensors")
         "model_hash": "5ec04e02b42d2580483ad69f4e76346a",
         "model_name": "wan_video_dit",
@@ -1370,6 +1377,7 @@ minimax_h3_series = [
         "model_hash": "db383f1c8960837b94059f7722e6cb11",
         "model_name": "minimax_h3_audio_vae",
         "model_class": "diffsynth.models.minimax_h3_audio_vae.MiniMaxH3AudioVAE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_audio_vae.MiniMaxH3AudioVAEStateDictConverter"
     },
     {
         # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-FL2VA", origin_file_pattern="text_encoder/model*.safetensors")
@@ -1408,6 +1416,11 @@ minimax_h3_series = [
             "final_layer.adaln_proj.linear", "final_layer.video_out", "final_layer.audio_out",
         ] + [f"token_refiner.blocks.{index}.{leaf}" for index in range(2)
              for leaf in ("attn.qkv_proj", "attn.out_proj", "mlp.fc1", "mlp.fc2")]},
+        # Example: ModelConfig(model_id="Comfy-Org/MiniMax-H3", origin_file_pattern="diffusion_models/minimax_h3_fl2va_pruned_bf16.safetensors")
+        "model_hash": "b4e0df87da0c079979ae857edbcef49f",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy_pruned.MiniMaxH3DiTComfyPruned",
+        "extra_kwargs": {"adaln_curve_grid": 1025, "time_embed_dim": 8},
     },
     {
         # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-nf4.safetensors")
@@ -1422,6 +1435,22 @@ minimax_h3_series = [
         "model_name": "minimax_h3_dit",
         "model_class": "diffsynth.models.minimax_h3_dit.MiniMaxH3DiT",
         "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["time_embedder.proj_in", "time_embedder.proj_out", "video_patch_proj", "audio_patch_proj", "condition_proj", "final_layer.video_out", "final_layer.audio_out"]},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-pruned-nf4.safetensors")
+        "model_hash": "9b8f1cbc6fb5fcd2e2c02b6691480427",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy_pruned.MiniMaxH3DiTComfyPruned",
+        "extra_kwargs": {"adaln_curve_grid": 1025, "time_embed_dim": 8},
+        "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["time_embedder.proj_in", "time_embedder.proj_out", "video_patch_proj", "audio_patch_proj", "condition_proj", "final_layer.video_out", "final_layer.audio_out", "adaln_proj.linear"]},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-ref2va-pruned-nf4.safetensors")
+        "model_hash": "072bd13242d6d67df79a154e7c4274b3",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy_pruned.MiniMaxH3DiTComfyPruned",
+        "extra_kwargs": {"adaln_curve_grid": 1025, "time_embed_dim": 8},
+        "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["time_embedder.proj_in", "time_embedder.proj_out", "video_patch_proj", "audio_patch_proj", "condition_proj", "final_layer.video_out", "final_layer.audio_out", "adaln_proj.linear"]},
     },
     {
         # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-FL2VA", origin_file_pattern="video_vae/source/model.safetensors")
@@ -1444,6 +1473,7 @@ minimax_h3_series = [
         "model_name": "minimax_h3_audio_vae",
         "model_class": "diffsynth.models.minimax_h3_audio_vae.MiniMaxH3AudioVAE",
         "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_audio_vae.MiniMaxH3AudioVAEStateDictConverter"
     },
 ]
 
