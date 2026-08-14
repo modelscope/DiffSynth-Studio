@@ -8,13 +8,13 @@ The inference logic mirrors the target library's modular pipeline (autoregressiv
 import re
 from typing import Optional
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
 from ..core.device.npu_compatible_device import get_device_type
 from ..core import ModelConfig
+from ..diffusion import FlowMatchScheduler
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 
 from ..models.minimax_music3_dit import MiniMaxMusic3DiT
@@ -28,29 +28,22 @@ class MiniMaxMusic3Pipeline(BasePipeline):
     """Caption + lyrics -> music pipeline for MiniMax Music 3."""
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
-        super().__init__(device=device, torch_dtype=torch_dtype, height_division_factor=1, width_division_factor=1)
+        super().__init__(device=device, torch_dtype=torch_dtype)
         self.text_encoder: MiniMaxMusic3TextEncoder = None
         self.rvq_depth_decoder: MiniMaxMusic3RVQDepthDecoder = None
         self.condition_encoder: MiniMaxMusic3ConditionEncoder = None
         self.dit: MiniMaxMusic3DiT = None
         self.vocoder: MiniMaxMusic3Vocoder = None
         self.tokenizer = None
+        self.scheduler = FlowMatchScheduler("MiniMax-Music3")
 
-        # Checkpoint constants (see the official reference implementation's constants).
-        # The DAV decoder synthesizes at 44.1 kHz; the delivered output contract is 32 kHz.
-        self.dav_sample_rate = 44100
-        self.sample_rate = 32000
-        self.frame_rate = 25.0
-        self.latent_hop_length = 512
-        self.num_codebooks = 8
-        self.audio_vocab_size = 1024
-        self.num_channels_latents = 128
-
-        self.in_iteration_models = ("dit",)
+        self.in_iteration_models = ("condition_encoder", "dit")
         self.units = [
             MiniMaxMusic3Unit_PromptEmbedder(),
             MiniMaxMusic3Unit_SemanticGenerator(),
             MiniMaxMusic3Unit_ChunkPlanner(),
+            MiniMaxMusic3Unit_ChunkDenoiser(),
+            MiniMaxMusic3Unit_Vocoder(),
         ]
         self.compilable_models = ["dit"]
 
@@ -77,118 +70,33 @@ class MiniMaxMusic3Pipeline(BasePipeline):
         return pipe
 
     @torch.no_grad()
-    def denoise_chunks(self, frame_hiddens, chunk_starts, num_inference_steps, cfg_scale, generator, progress_bar_cmd):
-        # Neighboring windows share 172 latent frames; the carry spans [L - 344, L - 172).
-        overlap_latent_length = 172
-        chunk_frames = MiniMaxMusic3Unit_ChunkPlanner.chunk_frames
-        # Inverted-sigma flow matching, matching the target library's
-        # FlowMatchEulerDiscreteScheduler(num_train_timesteps=1, shift=1.0, invert_sigmas=True):
-        # the schedule ascends from 0 (noise) to 1 (data) with a terminal sigma of 1.0.
-        sig_in = np.linspace(1.0, 1.0 / num_inference_steps, num_inference_steps)
-        sigmas = np.concatenate([1.0 - sig_in, [1.0]])
-        timesteps = torch.tensor(sigmas[:-1], dtype=torch.float32, device=self.device)
-
-        latent_chunks = []
-        previous_latent = None
-        previous_condition = None
-        for k in progress_bar_cmd(range(len(chunk_starts))):
-            chunk_start = chunk_starts[k]
-            chunk_end = min(chunk_start + chunk_frames, frame_hiddens.shape[1])
-            condition = self.condition_encoder(frame_hiddens[:, chunk_start:chunk_end].to(self.device))
-            condition = condition.to(next(self.dit.parameters()).dtype)
-
-            overlap = 0
-            if previous_latent is not None:
-                overlap = min(previous_latent.shape[-1], condition.shape[1])
-                condition[:, :overlap] = previous_condition[:, :overlap]
-
-            shape = (1, self.num_channels_latents, condition.shape[1])
-            if generator is None:
-                latents = self.generate_noise(shape, rand_device=self.device, rand_torch_dtype=condition.dtype, device=self.device)
-            else:
-                latents = torch.randn(shape, generator=generator, device=self.device, dtype=condition.dtype)
-            noise_prompt = latents[..., :overlap].clone() if overlap > 0 else None
-
-            # The unconditional branch conditions on zeros, not on a re-encoded empty prompt.
-            zeros = torch.zeros_like(condition)
-            for i in range(num_inference_steps):
-                t = float(timesteps[i])
-                if overlap > 0:
-                    # Blend the overlap toward the previous window's trailing latents at every step.
-                    latents[..., :overlap] = (1.0 - (1.0 - 1e-6) * t) * noise_prompt + t * previous_latent[..., :overlap]
-                timestep = timesteps[i].expand(latents.shape[0]).to(latents.dtype)
-                cond_pred = self.dit(latents, timestep, condition)
-                uncond_pred = self.dit(latents, timestep, zeros)
-                velocity = uncond_pred + cfg_scale * (cond_pred - uncond_pred)
-                latents = latents + (sigmas[i + 1] - sigmas[i]) * velocity
-
-            if overlap > 0:
-                latents[..., :overlap] = previous_latent[..., :overlap]
-            overlap_start = max(0, latents.shape[-1] - 2 * overlap_latent_length)
-            overlap_end = max(overlap_start, latents.shape[-1] - overlap_latent_length)
-            previous_latent = latents[..., overlap_start:overlap_end]
-            previous_condition = condition[:, overlap_start:overlap_end]
-            latent_chunks.append(latents)
-        return latent_chunks
-
-    @torch.no_grad()
-    def decode(self, latent_chunks, output_type):
-        # Neighboring windows share 172 latent frames: every window after the first drops its leading
-        # 86 latent frames and every window before the last drops its trailing 344 - 86 latent frames,
-        # so the kept spans tile the full song.
-        crop_left_latent = 86
-        crop_right_latent = 344 - 86
-        hop_length = self.latent_hop_length
-        num_chunks = len(latent_chunks)
-        waveform_chunks = []
-        for chunk_index, latents in enumerate(latent_chunks):
-            waveform = self.vocoder(latents.to(next(self.vocoder.parameters()).dtype))
-            left = 0 if chunk_index == 0 else crop_left_latent * hop_length
-            right = 0 if chunk_index == num_chunks - 1 else crop_right_latent * hop_length
-            waveform_chunks.append(waveform[..., left : waveform.shape[-1] - right])
-        audios = torch.cat(waveform_chunks, dim=-1).float().clamp(-1.0, 1.0)
-        if self.sample_rate != self.dav_sample_rate:
-            import torchaudio.functional as AF
-            audios = AF.resample(audios, self.dav_sample_rate, self.sample_rate)
-        if output_type == "np":
-            audios = audios.cpu().numpy()
-        return audios
-
-    @torch.no_grad()
     def __call__(
         self,
         prompt: str,
-        lyrics: str,
-        audio_duration: float = 60.0,
+        lyrics: str = " ",
+        max_audio_duration: float = 60.0,
         num_inference_steps: int = 30,
         cfg_scale: float = 1.7,
         seed: int = None,
-        output_type: str = "np",
+        rand_device: str = get_device_type(),
         progress_bar_cmd=tqdm,
     ):
-        generator = None if seed is None else torch.Generator(self.device).manual_seed(seed)
-
         inputs_posi = {}
         inputs_nega = {}
         inputs_shared = {
             "prompt": prompt,
             "lyrics": lyrics,
-            "audio_duration": audio_duration,
-            "generator": generator,
+            "max_audio_duration": max_audio_duration,
+            "num_inference_steps": num_inference_steps,
+            "cfg_scale": cfg_scale,
+            "generator": None if seed is None else torch.Generator(rand_device).manual_seed(seed),
+            "rand_device": rand_device,
+            "progress_bar_cmd": progress_bar_cmd,
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
-
-        self.load_models_to_device(["condition_encoder", "dit"])
-        latent_chunks = self.denoise_chunks(
-            inputs_shared["frame_hiddens"], inputs_shared["chunk_starts"],
-            num_inference_steps, cfg_scale, generator, progress_bar_cmd,
-        )
-
-        self.load_models_to_device(["vocoder"])
-        audios = self.decode(latent_chunks, output_type)
         self.load_models_to_device([])
-        return audios[0]
+        return inputs_shared["audio"]
 
 
 class MiniMaxMusic3Unit_PromptEmbedder(PipelineUnit):
@@ -255,8 +163,8 @@ class MiniMaxMusic3Unit_PromptEmbedder(PipelineUnit):
     def process(self, pipe: MiniMaxMusic3Pipeline, prompt, lyrics):
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError(f"`prompt` (the music description) must be a non-empty string, got {prompt!r}")
-        if not isinstance(lyrics, str) or not lyrics.strip():
-            raise ValueError(f"`lyrics` must be a non-empty string, got {lyrics!r}")
+        if not isinstance(lyrics, str):
+            raise ValueError(f"`lyrics` must be a string, got {lyrics!r}")
         text = (
             f"{self.im_start}{self.caption_start}{self.clean_caption(prompt)}{self.caption_end}"
             f"{self.lyrics_start}{self.normalize_lyrics(lyrics)}{self.lyrics_end}{self.im_end}{self.audio_start}"
@@ -279,6 +187,9 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
     audio_code_offset = 151675
     semantic_vocab_size = 16384
     max_audio_frames = 9_000
+    frame_rate = 25.0
+    num_codebooks = 8
+    audio_vocab_size = 1024
     # The autoregressive stage's sampling parameters are fixed by the reference inference recipe.
     ar_cfg_scale = 1.5
     ar_cfg_top_k = 50
@@ -286,7 +197,7 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
 
     def __init__(self):
         super().__init__(
-            input_params=("text_ids", "audio_duration", "generator"),
+            input_params=("text_ids", "max_audio_duration", "generator"),
             output_params=("frame_hiddens",),
             onload_model_names=("text_encoder", "rvq_depth_decoder"),
         )
@@ -298,7 +209,6 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
         values = values.masked_fill(values < threshold, -float("inf"))
         probs = torch.nan_to_num(F.softmax(values, dim=-1), nan=0.0)
         probs = probs / probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
-        # Sample on the generator's device so a CPU generator gives device-independent results.
         sample_device = generator.device if generator is not None else probs.device
         return torch.multinomial(probs.to(sample_device), 1, generator=generator).squeeze(-1).to(probs.device)
 
@@ -306,10 +216,10 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
         # frame_codes: [2, num_codebooks]. Sum the semantic-code embedding with the residual-code embeddings.
         embed_tokens = pipe.text_encoder.model.model.embed_tokens
         embeds = embed_tokens(frame_codes[:, :1] + self.audio_code_offset)
-        offsets = (torch.arange(pipe.num_codebooks - 1, device=frame_codes.device) * pipe.audio_vocab_size).unsqueeze(0)
+        offsets = (torch.arange(self.num_codebooks - 1, device=frame_codes.device) * self.audio_vocab_size).unsqueeze(0)
         extra = pipe.rvq_depth_decoder.audio_extra_embedding(frame_codes[:, 1:] + offsets).sum(dim=1, keepdim=True)
         embeds = embeds + extra.to(embeds.dtype)
-        return embeds * pipe.num_codebooks**-0.5
+        return embeds * self.num_codebooks**-0.5
 
     def generate_depth_codes(self, pipe: MiniMaxMusic3Pipeline, last_hidden, semantic_code, generator):
         # Autoregressively sample the residual codes c1..c7 for one frame and collect their hidden states.
@@ -320,7 +230,7 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
         sequence.append(rvq.audio_decoder.projection(code_embed).unsqueeze(1))
         codes = [semantic_code]
         hidden_parts = []
-        for index in range(1, pipe.num_codebooks):
+        for index in range(1, self.num_codebooks):
             hidden = rvq(torch.cat(sequence, dim=1))[:, -1]
             hidden_parts.append(hidden[:1])
             logits = rvq.audio_decoder.audio_heads[index - 1](hidden)
@@ -329,16 +239,16 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
             # The sampled code is repeated so the language-model feedback keeps the [cond, uncond] rows.
             code = self.sample_top_k(logits, generator).repeat(2)
             codes.append(code)
-            if index < pipe.num_codebooks - 1:
-                embed = rvq.audio_extra_embedding(code + (index - 1) * pipe.audio_vocab_size)
+            if index < self.num_codebooks - 1:
+                embed = rvq.audio_extra_embedding(code + (index - 1) * self.audio_vocab_size)
                 sequence.append(rvq.audio_decoder.projection(embed).unsqueeze(1))
         return torch.stack(codes, dim=1), torch.cat(hidden_parts, dim=-1)
 
-    def process(self, pipe: MiniMaxMusic3Pipeline, text_ids, audio_duration, generator):
+    def process(self, pipe: MiniMaxMusic3Pipeline, text_ids, max_audio_duration, generator):
         pipe.load_models_to_device(self.onload_model_names)
-        if audio_duration <= 0:
-            raise ValueError(f"`audio_duration` must be positive, got {audio_duration}")
-        max_frames = min(int(audio_duration * pipe.frame_rate), self.max_audio_frames)
+        if max_audio_duration <= 0:
+            raise ValueError(f"`max_audio_duration` must be positive, got {max_audio_duration}")
+        max_frames = min(int(max_audio_duration * self.frame_rate), self.max_audio_frames)
         backbone = pipe.text_encoder.model.model
         lm_head = pipe.text_encoder.model.lm_head
         vocab_size = pipe.text_encoder.config.vocab_size
@@ -383,12 +293,9 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
 
 
 class MiniMaxMusic3Unit_ChunkPlanner(PipelineUnit):
-    """Splits the autoregressive frames into 200-frame denoising windows with a 100-frame hop; each window
-    is flow-matched with the previous window's trailing latents as an overlap prompt.
+    """Splits the autoregressive frames into denoising windows; the window geometry is defined by
+    ``MiniMaxMusic3Unit_ChunkDenoiser``.
     """
-
-    chunk_frames = 200
-    chunk_hop = 100
 
     def __init__(self):
         super().__init__(
@@ -397,6 +304,104 @@ class MiniMaxMusic3Unit_ChunkPlanner(PipelineUnit):
         )
 
     def process(self, pipe: MiniMaxMusic3Pipeline, frame_hiddens):
+        chunk_frames = MiniMaxMusic3Unit_ChunkDenoiser.chunk_frames
+        chunk_hop = MiniMaxMusic3Unit_ChunkDenoiser.chunk_hop
         num_frames = frame_hiddens.shape[1]
-        chunk_starts = [0] if num_frames <= self.chunk_frames else list(range(0, num_frames - self.chunk_hop, self.chunk_hop))
+        chunk_starts = [0] if num_frames <= chunk_frames else list(range(0, num_frames - chunk_hop, chunk_hop))
         return {"chunk_starts": chunk_starts}
+
+
+class MiniMaxMusic3Unit_ChunkDenoiser(PipelineUnit):
+    """Flow-matching stage: each window is denoised from noise into Flow-VAE latents, conditioned on the
+    window's encoded frame hidden states and prompted with the previous window's trailing latents.
+    """
+
+    # One window geometry contract, verifiable in a single place: windows of 200 autoregressive frames
+    # advance by a 100-frame hop, so neighboring windows share 172 latent frames. Stitching splits that
+    # shared span evenly, which leaves every window contributing exactly one hop worth of latent frames.
+    chunk_frames = 200
+    chunk_hop = 100
+    overlap_latent_length = 172
+    crop_left_latent = overlap_latent_length // 2
+    crop_right_latent = 2 * overlap_latent_length - crop_left_latent
+    num_channels_latents = 128
+
+    def __init__(self):
+        super().__init__(
+            input_params=("frame_hiddens", "chunk_starts", "num_inference_steps", "cfg_scale", "generator", "rand_device", "progress_bar_cmd"),
+            output_params=("latent_chunks",),
+            onload_model_names=("condition_encoder", "dit"),
+        )
+
+    def process(self, pipe: MiniMaxMusic3Pipeline, frame_hiddens, chunk_starts, num_inference_steps, cfg_scale, generator, rand_device, progress_bar_cmd):
+        pipe.load_models_to_device(self.onload_model_names)
+        pipe.scheduler.set_timesteps(num_inference_steps=num_inference_steps)
+        timesteps = pipe.scheduler.timesteps.to(pipe.device)
+
+        latent_chunks = []
+        previous_latent, previous_condition = None, None
+        for chunk_start in chunk_starts:
+            frames = frame_hiddens[:, chunk_start : chunk_start + self.chunk_frames].to(pipe.device)
+            condition = pipe.condition_encoder(frames).to(next(pipe.dit.parameters()).dtype)
+
+            overlap = 0 if previous_latent is None else min(previous_latent.shape[-1], condition.shape[1])
+            if overlap > 0:
+                condition[:, :overlap] = previous_condition[:, :overlap]
+
+            shape = (1, self.num_channels_latents, condition.shape[1])
+            latents = torch.randn(shape, generator=generator, device=rand_device, dtype=condition.dtype).to(pipe.device)
+            noise_prompt = latents[..., :overlap].clone()
+
+            # The unconditional branch conditions on zeros, not on a re-encoded empty prompt.
+            zeros = torch.zeros_like(condition)
+            for i in progress_bar_cmd(range(num_inference_steps)):
+                if overlap > 0:
+                    # Blend the overlap toward the previous window's trailing latents at every step.
+                    t = float(timesteps[i])
+                    latents[..., :overlap] = (1.0 - (1.0 - 1e-6) * t) * noise_prompt + t * previous_latent[..., :overlap]
+                timestep = timesteps[i].expand(latents.shape[0]).to(latents.dtype)
+                cond_pred = pipe.dit(latents, timestep, condition)
+                uncond_pred = pipe.dit(latents, timestep, zeros)
+                velocity = uncond_pred + cfg_scale * (cond_pred - uncond_pred)
+                # The scheduler descends its sigmas, so it expects the velocity pointing back at the noise.
+                latents = pipe.scheduler.step(-velocity, timesteps[i], latents)
+
+            if overlap > 0:
+                latents[..., :overlap] = previous_latent[..., :overlap]
+            overlap_end = max(latents.shape[-1] - self.overlap_latent_length, 0)
+            overlap_start = max(overlap_end - self.overlap_latent_length, 0)
+            previous_latent = latents[..., overlap_start:overlap_end]
+            previous_condition = condition[:, overlap_start:overlap_end]
+            latent_chunks.append(latents)
+        return {"latent_chunks": latent_chunks}
+
+
+class MiniMaxMusic3Unit_Vocoder(PipelineUnit):
+    """Vocodes every window's latents and stitches the waveforms, dropping the shared span that the
+    neighboring window already covers according to ``MiniMaxMusic3Unit_ChunkDenoiser``'s geometry.
+    """
+
+    # Samples the vocoder synthesizes per latent frame.
+    latent_hop_length = 512
+
+    def __init__(self):
+        super().__init__(
+            input_params=("latent_chunks",),
+            output_params=("audio",),
+            onload_model_names=("vocoder",),
+        )
+
+    def process(self, pipe: MiniMaxMusic3Pipeline, latent_chunks):
+        pipe.load_models_to_device(self.onload_model_names)
+        crop_left = MiniMaxMusic3Unit_ChunkDenoiser.crop_left_latent * self.latent_hop_length
+        crop_right = MiniMaxMusic3Unit_ChunkDenoiser.crop_right_latent * self.latent_hop_length
+        vocoder_dtype = next(pipe.vocoder.parameters()).dtype
+        waveform_chunks = []
+        for chunk_index, latents in enumerate(latent_chunks):
+            waveform = pipe.vocoder(latents.to(vocoder_dtype))
+            left = 0 if chunk_index == 0 else crop_left
+            right = 0 if chunk_index == len(latent_chunks) - 1 else crop_right
+            waveform_chunks.append(waveform[..., left : waveform.shape[-1] - right])
+        # The vocoder keeps a batch dimension that is always 1; the pipeline yields a single [channels, samples] song.
+        song = torch.cat(waveform_chunks, dim=-1)[0]
+        return {"audio": song.float().clamp(-1.0, 1.0)}

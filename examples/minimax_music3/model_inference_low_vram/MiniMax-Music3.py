@@ -1,5 +1,5 @@
 from diffsynth.pipelines.minimax_music3 import MiniMaxMusic3Pipeline, ModelConfig
-import soundfile as sf
+from diffsynth.utils.data.audio import save_audio
 import torch
 
 vram_config = {
@@ -35,5 +35,5 @@ prompt = (
     "Vocals: soft female lead, close and breathy, light stacked harmonies in the chorus. "
     "Arrangement: fingerpicked guitar and soft piano; brushed drums and upright bass enter in the chorus."
 )
-audio = pipe(prompt=prompt, lyrics=lyrics, audio_duration=60.0, num_inference_steps=30, cfg_scale=1.7, seed=7)
-sf.write("MiniMax-Music3.wav", audio.T, pipe.sample_rate)
+audio = pipe(prompt=prompt, lyrics=lyrics, max_audio_duration=60.0, num_inference_steps=30, cfg_scale=1.7, seed=7)
+save_audio(audio, 44100, "MiniMax-Music3.wav")
