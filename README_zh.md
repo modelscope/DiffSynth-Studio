@@ -1875,6 +1875,8 @@ https://github.com/modelscope/DiffSynth-Studio/assets/35051019/d97f6aa9-8064-4b5
 - 论文：[Diffutoon: High-Resolution Editable Toon Shading via Diffusion Models](https://arxiv.org/abs/2401.16224)
 - 代码样例：请前往[旧版本](https://github.com/modelscope/DiffSynth-Studio/tree/afd101f3452c9ecae0c87b79adfa2e22d65ffdc3/examples/Diffutoon)查看
 
+注意：Diffutoon 示例来自 2.0 之前的代码库，目前不包含在 `main` 分支中。请将上面的旧版本代码与对应版本的 DiffSynth-Studio 一起使用。
+
 https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/b54c05c5-d747-4709-be5e-b39af82404dd
 
 </details>
