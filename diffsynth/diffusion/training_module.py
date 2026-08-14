@@ -258,8 +258,11 @@ class DiffusionTrainingModule(torch.nn.Module):
             return pipe
         model_config = self.parse_path_or_model_id(path_or_model_id)
         pipe.load_training_template_model(model_config)
-        pipe.units.append(GeneralUnit_TemplateProcessInputs(pipe.template_data_processor))
-        pipe.units.append(GeneralUnit_TemplateForward(use_gradient_checkpointing, use_gradient_checkpointing_offload))
+        template_units = [
+            GeneralUnit_TemplateProcessInputs(pipe.template_data_processor),
+            GeneralUnit_TemplateForward(use_gradient_checkpointing, use_gradient_checkpointing_offload),
+        ]
+        pipe.units = template_units + pipe.units
         return pipe
 
 
