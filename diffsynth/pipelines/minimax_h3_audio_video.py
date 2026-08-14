@@ -131,7 +131,7 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.scheduler.set_timesteps(num_inference_steps, shift=flow_shift)
         self.scheduler_audio.set_timesteps(num_inference_steps, shift=audio_flow_shift)
 
-        inputs_posi = {"prompt": prompt, "text_embedding": text_embedding}
+        inputs_posi = {"prompt": prompt}
         inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
             "cfg_scale": cfg_scale,
