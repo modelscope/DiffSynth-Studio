@@ -145,6 +145,7 @@ class MiniMaxH3Pipeline(BasePipeline):
             "retake_video": retake_video, "frame_regions_to_retake": frame_regions_to_retake,
             "retake_audio": (retake_audio, retake_audio_sample_rate) if retake_audio is not None else None, "seconds_regions_to_retake": seconds_regions_to_retake,
             "imgvid_cond_noise_aug": self.imgvid_cond_noise_aug, "audio_cond_noise_aug": self.audio_cond_noise_aug,
+            "text_embedding": text_embedding,
         }
 
         # 3. Unit chain
