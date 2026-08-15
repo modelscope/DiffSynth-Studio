@@ -7,8 +7,8 @@ from PIL import Image
 vram_config = {
     "offload_dtype": "disk",
     "offload_device": "disk",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cpu",
+    "onload_dtype": "disk",
+    "onload_device": "disk",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
