@@ -1,10 +1,3 @@
-"""MiniMax Music 3 pipeline for DiffSynth-Studio: caption + lyrics -> song.
-
-Two stages: an autoregressive global LLM (with an RVQ depth decoder) produces per-frame hidden states,
-which condition a chunked flow-matching transformer whose Flow-VAE latents are vocoded to a stereo waveform.
-The inference logic mirrors the target library's modular pipeline (autoregressive CFG 1.5 + top-50 sampling,
-200-frame windows with 100-frame hop, overlap blending, inverted-sigma flow matching, waveform stitching).
-"""
 import re
 from typing import Optional
 
@@ -25,7 +18,6 @@ from ..models.minimax_music3_text_encoder import MiniMaxMusic3TextEncoder
 
 
 class MiniMaxMusic3Pipeline(BasePipeline):
-    """Caption + lyrics -> music pipeline for MiniMax Music 3."""
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(device=device, torch_dtype=torch_dtype)
@@ -41,7 +33,6 @@ class MiniMaxMusic3Pipeline(BasePipeline):
         self.units = [
             MiniMaxMusic3Unit_PromptEmbedder(),
             MiniMaxMusic3Unit_SemanticGenerator(),
-            MiniMaxMusic3Unit_ChunkPlanner(),
             MiniMaxMusic3Unit_ChunkDenoiser(),
             MiniMaxMusic3Unit_Vocoder(),
         ]
@@ -100,12 +91,6 @@ class MiniMaxMusic3Pipeline(BasePipeline):
 
 
 class MiniMaxMusic3Unit_PromptEmbedder(PipelineUnit):
-    """Assembles the checkpoint's special-token prompt from the music description and the lyrics, then
-    tokenizes it into the conditional/unconditional token id pair.
-
-    The template, its token ids and the text normalization are part of the checkpoint contract: even
-    whitespace-level changes to the assembled prompt change the generated audio.
-    """
 
     im_start, im_end = "<|im_start|>", "<|im_end|>"
     caption_start, caption_end = "<|caption_start|>", "<|caption_end|>"
@@ -129,7 +114,6 @@ class MiniMaxMusic3Unit_PromptEmbedder(PipelineUnit):
             return f"{parts[0]} is {parts[1]}" if len(parts) == 2 else inner
 
         text = self.special_tag_re.sub(rewrite_special_tag, caption)
-        # Strip the markdown forms accepted by the model's input contract.
         lines_out = []
         for line in text.splitlines():
             line = re.sub(r"^\s{0,3}#{1,6}\s+", "", line)
@@ -148,7 +132,6 @@ class MiniMaxMusic3Unit_PromptEmbedder(PipelineUnit):
         return re.sub(r"\n{2,}", "\n", text)
 
     def normalize_lyrics(self, lyrics: str) -> str:
-        # Keep only consecutive structural tags at the start of a line; text on a tag line is dropped.
         output = []
         for line in lyrics.split("\n"):
             match = self.leading_tags_re.match(line)
@@ -163,8 +146,6 @@ class MiniMaxMusic3Unit_PromptEmbedder(PipelineUnit):
     def process(self, pipe: MiniMaxMusic3Pipeline, prompt, lyrics):
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError(f"`prompt` (the music description) must be a non-empty string, got {prompt!r}")
-        if not isinstance(lyrics, str):
-            raise ValueError(f"`lyrics` must be a string, got {lyrics!r}")
         text = (
             f"{self.im_start}{self.caption_start}{self.clean_caption(prompt)}{self.caption_end}"
             f"{self.lyrics_start}{self.normalize_lyrics(lyrics)}{self.lyrics_end}{self.im_end}{self.audio_start}"
@@ -178,10 +159,6 @@ class MiniMaxMusic3Unit_PromptEmbedder(PipelineUnit):
 
 
 class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
-    """Autoregressive stage: frame by frame the global language model samples a semantic code with
-    classifier-free guidance and the depth decoder samples the residual RVQ codes; the concatenated
-    per-frame hidden states condition the flow-matching stage.
-    """
 
     audio_end_token_id = 151670
     audio_code_offset = 151675
@@ -190,7 +167,6 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
     frame_rate = 25.0
     num_codebooks = 8
     audio_vocab_size = 1024
-    # The autoregressive stage's sampling parameters are fixed by the reference inference recipe.
     ar_cfg_scale = 1.5
     ar_cfg_top_k = 50
     ar_sampling_top_k = 50
@@ -213,7 +189,6 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
         return torch.multinomial(probs.to(sample_device), 1, generator=generator).squeeze(-1).to(probs.device)
 
     def embed_audio_frame(self, pipe: MiniMaxMusic3Pipeline, frame_codes):
-        # frame_codes: [2, num_codebooks]. Sum the semantic-code embedding with the residual-code embeddings.
         embed_tokens = pipe.text_encoder.model.model.embed_tokens
         embeds = embed_tokens(frame_codes[:, :1] + self.audio_code_offset)
         offsets = (torch.arange(self.num_codebooks - 1, device=frame_codes.device) * self.audio_vocab_size).unsqueeze(0)
@@ -222,7 +197,6 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
         return embeds * self.num_codebooks**-0.5
 
     def generate_depth_codes(self, pipe: MiniMaxMusic3Pipeline, last_hidden, semantic_code, generator):
-        # Autoregressively sample the residual codes c1..c7 for one frame and collect their hidden states.
         rvq = pipe.rvq_depth_decoder
         embed_tokens = pipe.text_encoder.model.model.embed_tokens
         sequence = [rvq.audio_decoder.projection(last_hidden).unsqueeze(1)]
@@ -236,7 +210,6 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
             logits = rvq.audio_decoder.audio_heads[index - 1](hidden)
             conditional, unconditional = logits[:1].float(), logits[1:2].float()
             logits = unconditional + (conditional - unconditional) * self.ar_cfg_scale
-            # The sampled code is repeated so the language-model feedback keeps the [cond, uncond] rows.
             code = self.sample_top_k(logits, generator).repeat(2)
             codes.append(code)
             if index < self.num_codebooks - 1:
@@ -262,14 +235,11 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
         vocab_mask[self.audio_end_token_id] = False
 
         frame_hiddens = []
-        # The first decode step only advances the state past `<|audio_start|>` and is not an emitted frame.
         for frame_index in range(max_frames + 1):
             logits = lm_head(last_hidden).float()
             logits = logits.masked_fill(vocab_mask, -float("inf"))
             conditional, unconditional = logits[0:1], logits[1:2]
             guided = unconditional + (conditional - unconditional) * self.ar_cfg_scale
-            # Restrict the guided distribution to the conditional branch's top candidates, then re-mask:
-            # guidance on two `-inf` logits produces NaN on masked positions.
             threshold = torch.topk(conditional, self.ar_cfg_top_k, dim=-1).values[..., -1, None]
             guided = guided.masked_fill(conditional < threshold, -float("inf"))
             guided = guided.masked_fill(vocab_mask.unsqueeze(0), -float("inf"))
@@ -292,33 +262,8 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
         return {"frame_hiddens": torch.stack(frame_hiddens, dim=1)}
 
 
-class MiniMaxMusic3Unit_ChunkPlanner(PipelineUnit):
-    """Splits the autoregressive frames into denoising windows; the window geometry is defined by
-    ``MiniMaxMusic3Unit_ChunkDenoiser``.
-    """
-
-    def __init__(self):
-        super().__init__(
-            input_params=("frame_hiddens",),
-            output_params=("chunk_starts",),
-        )
-
-    def process(self, pipe: MiniMaxMusic3Pipeline, frame_hiddens):
-        chunk_frames = MiniMaxMusic3Unit_ChunkDenoiser.chunk_frames
-        chunk_hop = MiniMaxMusic3Unit_ChunkDenoiser.chunk_hop
-        num_frames = frame_hiddens.shape[1]
-        chunk_starts = [0] if num_frames <= chunk_frames else list(range(0, num_frames - chunk_hop, chunk_hop))
-        return {"chunk_starts": chunk_starts}
-
-
 class MiniMaxMusic3Unit_ChunkDenoiser(PipelineUnit):
-    """Flow-matching stage: each window is denoised from noise into Flow-VAE latents, conditioned on the
-    window's encoded frame hidden states and prompted with the previous window's trailing latents.
-    """
 
-    # One window geometry contract, verifiable in a single place: windows of 200 autoregressive frames
-    # advance by a 100-frame hop, so neighboring windows share 172 latent frames. Stitching splits that
-    # shared span evenly, which leaves every window contributing exactly one hop worth of latent frames.
     chunk_frames = 200
     chunk_hop = 100
     overlap_latent_length = 172
@@ -328,21 +273,23 @@ class MiniMaxMusic3Unit_ChunkDenoiser(PipelineUnit):
 
     def __init__(self):
         super().__init__(
-            input_params=("frame_hiddens", "chunk_starts", "num_inference_steps", "cfg_scale", "generator", "rand_device", "progress_bar_cmd"),
+            input_params=("frame_hiddens", "num_inference_steps", "cfg_scale", "generator", "rand_device", "progress_bar_cmd"),
             output_params=("latent_chunks",),
             onload_model_names=("condition_encoder", "dit"),
         )
 
-    def process(self, pipe: MiniMaxMusic3Pipeline, frame_hiddens, chunk_starts, num_inference_steps, cfg_scale, generator, rand_device, progress_bar_cmd):
+    def process(self, pipe: MiniMaxMusic3Pipeline, frame_hiddens, num_inference_steps, cfg_scale, generator, rand_device, progress_bar_cmd):
         pipe.load_models_to_device(self.onload_model_names)
         pipe.scheduler.set_timesteps(num_inference_steps=num_inference_steps)
         timesteps = pipe.scheduler.timesteps.to(pipe.device)
+        num_frames = frame_hiddens.shape[1]
+        chunk_starts = [0] if num_frames <= self.chunk_frames else list(range(0, num_frames - self.chunk_hop, self.chunk_hop))
 
         latent_chunks = []
         previous_latent, previous_condition = None, None
         for chunk_start in chunk_starts:
             frames = frame_hiddens[:, chunk_start : chunk_start + self.chunk_frames].to(pipe.device)
-            condition = pipe.condition_encoder(frames).to(next(pipe.dit.parameters()).dtype)
+            condition = pipe.condition_encoder(frames).to(pipe.torch_dtype)
 
             overlap = 0 if previous_latent is None else min(previous_latent.shape[-1], condition.shape[1])
             if overlap > 0:
@@ -352,18 +299,15 @@ class MiniMaxMusic3Unit_ChunkDenoiser(PipelineUnit):
             latents = torch.randn(shape, generator=generator, device=rand_device, dtype=condition.dtype).to(pipe.device)
             noise_prompt = latents[..., :overlap].clone()
 
-            # The unconditional branch conditions on zeros, not on a re-encoded empty prompt.
             zeros = torch.zeros_like(condition)
             for i in progress_bar_cmd(range(num_inference_steps)):
                 if overlap > 0:
-                    # Blend the overlap toward the previous window's trailing latents at every step.
-                    t = float(timesteps[i])
+                    t = timesteps[i].to(latents.dtype)
                     latents[..., :overlap] = (1.0 - (1.0 - 1e-6) * t) * noise_prompt + t * previous_latent[..., :overlap]
                 timestep = timesteps[i].expand(latents.shape[0]).to(latents.dtype)
                 cond_pred = pipe.dit(latents, timestep, condition)
                 uncond_pred = pipe.dit(latents, timestep, zeros)
                 velocity = uncond_pred + cfg_scale * (cond_pred - uncond_pred)
-                # The scheduler descends its sigmas, so it expects the velocity pointing back at the noise.
                 latents = pipe.scheduler.step(-velocity, timesteps[i], latents)
 
             if overlap > 0:
@@ -377,31 +321,26 @@ class MiniMaxMusic3Unit_ChunkDenoiser(PipelineUnit):
 
 
 class MiniMaxMusic3Unit_Vocoder(PipelineUnit):
-    """Vocodes every window's latents and stitches the waveforms, dropping the shared span that the
-    neighboring window already covers according to ``MiniMaxMusic3Unit_ChunkDenoiser``'s geometry.
-    """
 
-    # Samples the vocoder synthesizes per latent frame.
     latent_hop_length = 512
 
     def __init__(self):
         super().__init__(
-            input_params=("latent_chunks",),
-            output_params=("audio",),
-            onload_model_names=("vocoder",),
+            input_params=("latent_chunks", ),
+            output_params=("audio", ),
+            onload_model_names=("vocoder", ),
         )
 
     def process(self, pipe: MiniMaxMusic3Pipeline, latent_chunks):
         pipe.load_models_to_device(self.onload_model_names)
         crop_left = MiniMaxMusic3Unit_ChunkDenoiser.crop_left_latent * self.latent_hop_length
         crop_right = MiniMaxMusic3Unit_ChunkDenoiser.crop_right_latent * self.latent_hop_length
-        vocoder_dtype = next(pipe.vocoder.parameters()).dtype
         waveform_chunks = []
         for chunk_index, latents in enumerate(latent_chunks):
-            waveform = pipe.vocoder(latents.to(vocoder_dtype))
+            waveform = pipe.vocoder(latents.to(pipe.torch_dtype))
             left = 0 if chunk_index == 0 else crop_left
             right = 0 if chunk_index == len(latent_chunks) - 1 else crop_right
-            waveform_chunks.append(waveform[..., left : waveform.shape[-1] - right])
-        # The vocoder keeps a batch dimension that is always 1; the pipeline yields a single [channels, samples] song.
+            waveform_chunks.append(waveform[...,
+                                            left:waveform.shape[-1] - right])
         song = torch.cat(waveform_chunks, dim=-1)[0]
         return {"audio": song.float().clamp(-1.0, 1.0)}
