@@ -80,11 +80,6 @@ class MiniMaxMusic3VocoderDecoder(nn.Module):
 
 
 class MiniMaxMusic3Vocoder(nn.Module):
-    """DAC-style Flow-VAE waveform decoder. Decodes latents ``(batch, latent_channels, length)`` into stereo
-    waveforms; the two channels are decoded as two folded ``latent_channels // 2`` streams.
-
-    State_dict keys mirror the original ``dav.pth`` (``dec_in_proj.*``, ``decoder.model.*``); no renaming.
-    """
 
     def __init__(
         self,

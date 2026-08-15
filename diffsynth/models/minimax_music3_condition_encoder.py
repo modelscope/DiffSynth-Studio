@@ -4,11 +4,6 @@ import torch.nn.functional as F
 
 
 class MiniMaxMusic3ConditionEncoder(nn.Module):
-    """Projects per-frame hidden states from the autoregressive stage onto the Flow-VAE latent timeline.
-
-    State_dict keys mirror the original ``flowmatching_vae.pth`` (``cond_layer_logits``, ``cond_layer_scale``,
-    ``latent_conditioners.0.*``); no parameter is renamed.
-    """
 
     def __init__(
         self,

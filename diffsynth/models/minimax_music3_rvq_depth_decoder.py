@@ -84,11 +84,6 @@ class MiniMaxMusic3AudioDecoder(nn.Module):
 
 
 class MiniMaxMusic3RVQDepthDecoder(nn.Module):
-    """Local language model of MiniMax Music 3: predicts the residual RVQ codebooks per audio frame.
-
-    State_dict keys mirror the original qwen checkpoint (``audio_extra_embedding.*`` and ``audio_decoder.*``);
-    the converter only strips the leading ``model.`` prefix, no parameter is renamed.
-    """
 
     def __init__(
         self,

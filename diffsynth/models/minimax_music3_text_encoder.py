@@ -3,12 +3,6 @@ import torch.nn as nn
 
 
 class MiniMaxMusic3TextEncoder(nn.Module):
-    """Global language model of MiniMax Music 3, wrapping ``transformers`` ``Qwen3ForCausalLM``.
-
-    The original checkpoint is stored with the ``mixtral``/``AbabForCausalLM`` config, but the weights are a plain
-    Qwen3 backbone, so the config is built explicitly (matching the conversion script). The converter prepends the
-    ``model.`` wrapper prefix and drops the RVQ / audio-embedding weights that share the same shards.
-    """
 
     def __init__(
         self,

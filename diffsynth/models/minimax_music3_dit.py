@@ -20,11 +20,6 @@ class MiniMaxMusic3FourierEmbedding(nn.Module):
 
 
 class MiniMaxMusic3LayerNorm(nn.Module):
-    """LayerNorm variant whose affine parameters are named ``gamma``/``beta`` to match the checkpoint.
-
-    ``beta`` is stored as all zeros and never trained, but it stays a parameter rather than a buffer:
-    the VRAM management layers derive the keys they offload and reload from ``named_parameters()``.
-    """
 
     def __init__(self, dim: int, eps: float = 1e-5):
         super().__init__()
@@ -38,7 +33,6 @@ class MiniMaxMusic3LayerNorm(nn.Module):
 
 
 class MiniMaxMusic3RotaryEmbedding(nn.Module):
-    """Partial rotary embedding: only the first ``rotary_dim`` dims of each head rotate."""
 
     def __init__(self, rotary_dim: int, theta: float = 10000.0):
         super().__init__()
@@ -46,8 +40,6 @@ class MiniMaxMusic3RotaryEmbedding(nn.Module):
         self.theta = theta
 
     def forward(self, seq_len: int, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor]:
-        # Derived from `theta` in float32 on every call: keeping it as a buffer would make the phase
-        # depend on the load path, since a bfloat16 cast is lossy and only some paths apply it.
         inv_freq = 1.0 / (self.theta ** (torch.arange(0, self.rotary_dim, 2, device=device, dtype=torch.float32) / self.rotary_dim))
         steps = torch.arange(seq_len, device=device, dtype=torch.float32)
         freqs = torch.outer(steps, inv_freq)
@@ -142,12 +134,6 @@ class MiniMaxMusic3Transformer(nn.Module):
 
 
 class MiniMaxMusic3DiT(nn.Module):
-    """Flow-matching diffusion transformer of MiniMax Music 3.
-
-    The state_dict keys mirror the original ``flowmatching_vae.pth`` checkpoint (with the
-    ``diffusion_transformer.`` prefix stripped by the converter), so no parameter is renamed.
-    """
-
     def __init__(
         self,
         in_channels: int = 128,
