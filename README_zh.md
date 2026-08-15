@@ -36,6 +36,7 @@ DiffSynth 目前包括两个开源项目：
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年8月15日** MiniMax-Music3 开源，欢迎加入音频生成模型家族！支持文生音乐推理和低显存推理能力。详情请参考[文档](/docs/zh/Model_Details/MiniMax-Music3.md)和[示例代码](/examples/minimax_music3/)。
 - **2026年8月7日** 我们为 Wan 系列新增了 Wan-Animate-2，输入一张参考图和一段驱动视频，即可让参考角色演绎驱动视频中的动作，生成高质量角色动画，包含标准与蒸馏两个变体。详情请参考[文档](/docs/zh/Model_Details/Wan.md)和[示例代码](/examples/wanvideo/)。
 
 - **2026年8月3日** MiniMax-H3 开源，欢迎加入视频生成模型家族！支持文生音视频、首尾帧引导生成、参考驱动生成、低显存推理以及 NF4 量化推理。详情请参考[文档](/docs/zh/Model_Details/MiniMax-H3.md)和[示例代码](/examples/minimax_h3/)。
@@ -1681,6 +1682,72 @@ ACE-Step 的示例代码位于：[/examples/ace_step/](/examples/ace_step/)
 |[ACE-Step/acestep-v15-xl-sft](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-sft)|[code](/examples/ace_step/model_inference/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-sft.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-sft.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-sft.py)|
 |[ACE-Step/acestep-v15-xl-turbo](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-turbo)|[code](/examples/ace_step/model_inference/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-turbo.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-turbo.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-turbo.py)|
 |[DiffSynth-Studio/acestep15xlsft-lora-music](https://www.modelscope.cn/models/DiffSynth-Studio/acestep15xlsft-lora-music)|[code](/examples/ace_step/model_inference/acestep15xlsft-vocals2music.py)|[code](/examples/ace_step/model_inference_low_vram/acestep15xlsft-vocals2music.py)|[code](/examples/ace_step/model_training/full/acestep15xlsft-vocals2music.sh)|[code](/examples/ace_step/model_training/validate_full/acestep15xlsft-vocals2music.py)|-|-|
+
+</details>
+
+#### MiniMax-Music3: [/docs/zh/Model_Details/MiniMax-Music3.md](/docs/zh/Model_Details/MiniMax-Music3.md)
+
+<details>
+
+<summary>快速开始</summary>
+
+运行以下代码可以快速加载 [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 21G 显存即可运行。
+
+```python
+from diffsynth.pipelines.minimax_music3 import MiniMaxMusic3Pipeline, ModelConfig
+from diffsynth.utils.data.audio import save_audio
+import torch
+
+vram_config = {
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+
+pipe = MiniMaxMusic3Pipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="qwen_7B/qwen_7B/model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="flowmatching_vae.pth", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="dav.pth", **vram_config),
+    ],
+    tokenizer_config=ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="qwen_7B/qwen3-8B-tokenizer-music/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+)
+
+lyrics = (
+    "[verse]\n"
+    "Morning light filtering through the pine\n"
+    "Every quiet street is yours and mine\n"
+    "[chorus]\n"
+    "Softly the world begins to breathe"
+)
+prompt = (
+    "Genre: acoustic pop. BPM: 96. Key: C major. Warm and intimate, building gently into the chorus. "
+    "Vocals: soft female lead, close and breathy, light stacked harmonies in the chorus. "
+    "Arrangement: fingerpicked guitar and soft piano; brushed drums and upright bass enter in the chorus."
+)
+audio = pipe(prompt=prompt, lyrics=lyrics, max_audio_duration=60.0, num_inference_steps=30, cfg_scale=1.7, seed=7)
+save_audio(audio, 44100, "MiniMax-Music3.wav")
+```
+
+</details>
+
+<details>
+
+<summary>示例代码</summary>
+
+MiniMax-Music3 的示例代码位于：[/examples/minimax_music3/](/examples/minimax_music3/)
+
+| 模型 ID | 推理 | 低显存推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
+|-|-|-|-|-|-|-|
+|[MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3)|[code](/examples/minimax_music3/model_inference/MiniMax-Music3.py)|[code](/examples/minimax_music3/model_inference_low_vram/MiniMax-Music3.py)|—|—|—|—|
 
 </details>
 

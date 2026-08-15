@@ -25,11 +25,13 @@ pipe = MiniMaxMusic3Pipeline.from_pretrained(
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
-lyrics = """[verse]
-Morning light filtering through the pine
-Every quiet street is yours and mine
-[chorus]
-Softly the world begins to breathe"""
+lyrics = (
+    "[verse]\n"
+    "Morning light filtering through the pine\n"
+    "Every quiet street is yours and mine\n"
+    "[chorus]\n"
+    "Softly the world begins to breathe"
+)
 prompt = (
     "Genre: acoustic pop. BPM: 96. Key: C major. Warm and intimate, building gently into the chorus. "
     "Vocals: soft female lead, close and breathy, light stacked harmonies in the chorus. "
