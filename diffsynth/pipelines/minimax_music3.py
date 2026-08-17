@@ -301,10 +301,10 @@ class MiniMaxMusic3Unit_ChunkDenoiser(PipelineUnit):
 
             zeros = torch.zeros_like(condition)
             for i in progress_bar_cmd(range(num_inference_steps)):
+                t = (1.0 - timesteps[i] / pipe.scheduler.num_train_timesteps).to(latents.dtype)
                 if overlap > 0:
-                    t = timesteps[i].to(latents.dtype)
                     latents[..., :overlap] = (1.0 - (1.0 - 1e-6) * t) * noise_prompt + t * previous_latent[..., :overlap]
-                timestep = timesteps[i].expand(latents.shape[0]).to(latents.dtype)
+                timestep = t.expand(latents.shape[0])
                 cond_pred = pipe.dit(latents, timestep, condition)
                 uncond_pred = pipe.dit(latents, timestep, zeros)
                 velocity = uncond_pred + cfg_scale * (cond_pred - uncond_pred)

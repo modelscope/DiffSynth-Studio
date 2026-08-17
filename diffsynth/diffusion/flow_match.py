@@ -335,8 +335,10 @@ class FlowMatchScheduler():
 
     @staticmethod
     def set_timesteps_minimax_music3(num_inference_steps=30, denoising_strength=1.0):
-        sigmas = torch.linspace(denoising_strength, denoising_strength / num_inference_steps, num_inference_steps, dtype=torch.float64)
-        return sigmas, (1.0 - sigmas).to(torch.float32)
+        num_train_timesteps = 1000
+        sigmas = torch.linspace(denoising_strength, denoising_strength / num_inference_steps, num_inference_steps)
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
 
     def set_training_weight(self):
         steps = 1000
