@@ -563,14 +563,20 @@ class MiniMaxH3VideoVAESimple(MiniMaxH3VideoVAE):
     def build_mask(self, data, is_bound, border_width):
         T, H, W = data.shape[-3:]
         s = torch.arange(max(T, H, W), dtype=data.dtype, device=data.device)
-        t = torch.min(1 + s[:T], T - s[:T]).clip(1, border_width[0]) / border_width[0]
-        h = torch.min(1 + s[:H], H - s[:H]).clip(1, border_width[1]) / border_width[1]
-        w = torch.min(1 + s[:W], W - s[:W]).clip(1, border_width[2]) / border_width[2]
+        tl = (1 + s[:T]).clip(1, border_width[0]) / border_width[0]
+        tr = (T - s[:T]).clip(1, border_width[0]) / border_width[0]
+        hl = (1 + s[:H]).clip(1, border_width[1]) / border_width[1]
+        hr = (H - s[:H]).clip(1, border_width[1]) / border_width[1]
+        wl = (1 + s[:W]).clip(1, border_width[2]) / border_width[2]
+        wr = (W - s[:W]).clip(1, border_width[2]) / border_width[2]
         pad = torch.ones((T, H, W), dtype=data.dtype, device=data.device)
         mask = torch.stack([
-            pad if is_bound[0] else repeat(t, "T -> T H W", T=T, H=H, W=W),
-            pad if is_bound[1] else repeat(h, "H -> T H W", T=T, H=H, W=W),
-            pad if is_bound[2] else repeat(w, "W -> T H W", T=T, H=H, W=W),
+            pad if is_bound[0] else repeat(tl, "T -> T H W", T=T, H=H, W=W),
+            pad if is_bound[1] else repeat(tr, "T -> T H W", T=T, H=H, W=W),
+            pad if is_bound[2] else repeat(hl, "H -> T H W", T=T, H=H, W=W),
+            pad if is_bound[3] else repeat(hr, "H -> T H W", T=T, H=H, W=W),
+            pad if is_bound[4] else repeat(wl, "W -> T H W", T=T, H=H, W=W),
+            pad if is_bound[5] else repeat(wr, "W -> T H W", T=T, H=H, W=W),
         ]).min(dim=0).values
         mask = rearrange(mask, "T H W -> 1 1 T H W")
         return mask
