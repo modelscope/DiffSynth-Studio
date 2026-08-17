@@ -173,7 +173,7 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
 
     def __init__(self):
         super().__init__(
-            input_params=("text_ids", "max_audio_duration", "generator"),
+            input_params=("text_ids", "max_audio_duration", "generator", "progress_bar_cmd"),
             output_params=("frame_hiddens",),
             onload_model_names=("text_encoder", "rvq_depth_decoder"),
         )
@@ -217,7 +217,7 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
                 sequence.append(rvq.projection(embed).unsqueeze(1))
         return torch.stack(codes, dim=1), torch.cat(hidden_parts, dim=-1)
 
-    def process(self, pipe: MiniMaxMusic3Pipeline, text_ids, max_audio_duration, generator):
+    def process(self, pipe: MiniMaxMusic3Pipeline, text_ids, max_audio_duration, generator, progress_bar_cmd):
         pipe.load_models_to_device(self.onload_model_names)
         if max_audio_duration <= 0:
             raise ValueError(f"`max_audio_duration` must be positive, got {max_audio_duration}")
@@ -235,7 +235,12 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
         vocab_mask[self.audio_end_token_id] = False
 
         frame_hiddens = []
-        for frame_index in range(max_frames + 1):
+        for frame_index in progress_bar_cmd(
+            range(max_frames + 1),
+            desc="Generating semantic tokens",
+            unit="tokens",
+            bar_format="{desc}: {n_fmt} tokens ({rate_fmt})",
+        ):
             logits = lm_head(last_hidden).float()
             logits = logits.masked_fill(vocab_mask, -float("inf"))
             conditional, unconditional = logits[0:1], logits[1:2]
@@ -287,7 +292,7 @@ class MiniMaxMusic3Unit_ChunkDenoiser(PipelineUnit):
 
         latent_chunks = []
         previous_latent, previous_condition = None, None
-        for chunk_start in chunk_starts:
+        for chunk_start in progress_bar_cmd(chunk_starts):
             frames = frame_hiddens[:, chunk_start : chunk_start + self.chunk_frames].to(pipe.device)
             condition = pipe.condition_encoder(frames).to(pipe.torch_dtype)
 
@@ -300,7 +305,7 @@ class MiniMaxMusic3Unit_ChunkDenoiser(PipelineUnit):
             noise_prompt = latents[..., :overlap].clone()
 
             zeros = torch.zeros_like(condition)
-            for i in progress_bar_cmd(range(num_inference_steps)):
+            for i in range(num_inference_steps):
                 t = (1.0 - timesteps[i] / pipe.scheduler.num_train_timesteps).to(latents.dtype)
                 if overlap > 0:
                     latents[..., :overlap] = (1.0 - (1.0 - 1e-6) * t) * noise_prompt + t * previous_latent[..., :overlap]
