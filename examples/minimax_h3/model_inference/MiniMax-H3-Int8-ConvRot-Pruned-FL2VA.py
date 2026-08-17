@@ -4,11 +4,14 @@ from diffsynth.utils.data.audio_video import write_video_audio
 from modelscope import dataset_snapshot_download
 from PIL import Image
 
+# `onload_device` must equal `computation_device` here: comfy-kitchen's `QuantizedTensor`
+# cannot be deep-copied, and `AutoWrappedQuantizedModule.computation_module()` only skips
+# its `copy.deepcopy` branch when the layer is already on the computation device.
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": "disk",
-    "onload_device": "disk",
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cuda",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
@@ -19,12 +22,11 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
     device="cuda",
     model_configs=[
         ModelConfig(model_id="Comfy-Org/MiniMax-H3", origin_file_pattern="diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/text_encoder/model*.safetensors", **vram_config),
+        ModelConfig(model_id="Comfy-Org/MiniMax-H3", origin_file_pattern="text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors", **vram_config),
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/video_vae/source/model.safetensors", **vram_config),
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
     ],
     processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
 
 # Text -> Video + Audio
