@@ -16,7 +16,7 @@ pip install -e .
 
 ## 快速开始
 
-运行以下代码可以快速加载 [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 21G 显存即可运行。
+运行以下代码可以快速加载 [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 6G 显存即可运行。
 
 ```python
 from diffsynth.pipelines.minimax_music3 import MiniMaxMusic3Pipeline, ModelConfig
@@ -38,11 +38,13 @@ pipe = MiniMaxMusic3Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="qwen_7B/qwen_7B/model*.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="flowmatching_vae.pth", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="dav.pth", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="language_model/model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="rvq_depth_decoder/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="condition_encoder/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="vocoder/diffusion_pytorch_model.safetensors", **vram_config),
     ],
-    tokenizer_config=ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="qwen_7B/qwen3-8B-tokenizer-music/"),
+    tokenizer_config=ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="tokenizer/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 

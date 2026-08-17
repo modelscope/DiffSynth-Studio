@@ -36,7 +36,8 @@ DiffSynth 目前包括两个开源项目：
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
-- **2026年8月15日** MiniMax-Music3 开源，欢迎加入音频生成模型家族！支持文生音乐推理和低显存推理能力。详情请参考[文档](/docs/zh/Model_Details/MiniMax-Music3.md)和[示例代码](/examples/minimax_music3/)。
+- **2026年8月17日** MiniMax-Music3 开源，欢迎加入音频生成模型家族！支持文生音乐推理和低显存推理能力。详情请参考[文档](/docs/zh/Model_Details/MiniMax-Music3.md)和[示例代码](/examples/minimax_music3/)。
+
 - **2026年8月7日** 我们为 Wan 系列新增了 Wan-Animate-2，输入一张参考图和一段驱动视频，即可让参考角色演绎驱动视频中的动作，生成高质量角色动画，包含标准与蒸馏两个变体。详情请参考[文档](/docs/zh/Model_Details/Wan.md)和[示例代码](/examples/wanvideo/)。
 
 - **2026年8月3日** MiniMax-H3 开源，欢迎加入视频生成模型家族！支持文生音视频、首尾帧引导生成、参考驱动生成、低显存推理以及 NF4 量化推理。详情请参考[文档](/docs/zh/Model_Details/MiniMax-H3.md)和[示例代码](/examples/minimax_h3/)。
@@ -1691,7 +1692,7 @@ ACE-Step 的示例代码位于：[/examples/ace_step/](/examples/ace_step/)
 
 <summary>快速开始</summary>
 
-运行以下代码可以快速加载 [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 21G 显存即可运行。
+运行以下代码可以快速加载 [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 6G 显存即可运行。
 
 ```python
 from diffsynth.pipelines.minimax_music3 import MiniMaxMusic3Pipeline, ModelConfig
@@ -1713,11 +1714,13 @@ pipe = MiniMaxMusic3Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="qwen_7B/qwen_7B/model*.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="flowmatching_vae.pth", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="dav.pth", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="language_model/model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="rvq_depth_decoder/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="condition_encoder/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="vocoder/diffusion_pytorch_model.safetensors", **vram_config),
     ],
-    tokenizer_config=ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="qwen_7B/qwen3-8B-tokenizer-music/"),
+    tokenizer_config=ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="tokenizer/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 

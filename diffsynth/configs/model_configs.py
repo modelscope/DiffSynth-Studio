@@ -1464,36 +1464,32 @@ minimax_h3_series = [
 
 minimax_music3_series = [
     {
-        # Example: ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="flowmatching_vae.pth")
-        "model_hash": "372b11771b94b5d90f31733b4fbb0b99",
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        "model_hash": "8d1f1aba6a5801220ccc3a531865f694",
         "model_name": "minimax_music3_dit",
         "model_class": "diffsynth.models.minimax_music3_dit.MiniMaxMusic3DiT",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_music3_dit.MiniMaxMusic3DiTStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="flowmatching_vae.pth")
-        "model_hash": "372b11771b94b5d90f31733b4fbb0b99",
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="condition_encoder/diffusion_pytorch_model.safetensors")
+        "model_hash": "1370ef6377206e5ceaa78b125b2d4e1f",
         "model_name": "minimax_music3_condition_encoder",
         "model_class": "diffsynth.models.minimax_music3_condition_encoder.MiniMaxMusic3ConditionEncoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_music3_condition_encoder.MiniMaxMusic3ConditionEncoderStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="dav.pth")
-        "model_hash": "d1a6d93f60f4040a6ef98291a7d7ba7a",
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="vocoder/diffusion_pytorch_model.safetensors")
+        "model_hash": "b6eded627c26c85b39804628ba4e5d1d",
         "model_name": "minimax_music3_vocoder",
         "model_class": "diffsynth.models.minimax_music3_vocoder.MiniMaxMusic3Vocoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_music3_vocoder.MiniMaxMusic3VocoderStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="qwen_7B/qwen_7B/model*.safetensors")
-        "model_hash": "7c345fb420a64e8b52b9db9b544cfe0f",
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="rvq_depth_decoder/diffusion_pytorch_model.safetensors")
+        "model_hash": "5e571ded532a131c02e9d8256cb3fded",
         "model_name": "minimax_music3_rvq_depth_decoder",
         "model_class": "diffsynth.models.minimax_music3_rvq_depth_decoder.MiniMaxMusic3RVQDepthDecoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_music3_rvq_depth_decoder.MiniMaxMusic3RVQDepthDecoderStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="qwen_7B/qwen_7B/model*.safetensors")
-        "model_hash": "7c345fb420a64e8b52b9db9b544cfe0f",
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="language_model/model*.safetensors")
+        "model_hash": "474b2197ab43bd2d4b69746506a952ef",
         "model_name": "minimax_music3_text_encoder",
         "model_class": "diffsynth.models.minimax_music3_text_encoder.MiniMaxMusic3TextEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_music3_text_encoder.MiniMaxMusic3TextEncoderStateDictConverter",

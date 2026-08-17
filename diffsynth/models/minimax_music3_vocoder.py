@@ -5,14 +5,6 @@ import torch.nn as nn
 from torch.nn.utils import weight_norm
 
 
-def WNConv1d(*args, **kwargs):
-    return weight_norm(nn.Conv1d(*args, **kwargs))
-
-
-def WNConvTranspose1d(*args, **kwargs):
-    return weight_norm(nn.ConvTranspose1d(*args, **kwargs))
-
-
 class MiniMaxMusic3Snake1d(nn.Module):
     def __init__(self, channels: int):
         super().__init__()
@@ -29,54 +21,32 @@ class MiniMaxMusic3VocoderResidualUnit(nn.Module):
     def __init__(self, dim: int, dilation: int):
         super().__init__()
         pad = (7 - 1) * dilation // 2
-        self.block = nn.ModuleList([
-            MiniMaxMusic3Snake1d(dim),
-            WNConv1d(dim, dim, kernel_size=7, dilation=dilation, padding=pad),
-            MiniMaxMusic3Snake1d(dim),
-            WNConv1d(dim, dim, kernel_size=1),
-        ])
+        self.snake1 = MiniMaxMusic3Snake1d(dim)
+        self.conv1 = weight_norm(nn.Conv1d(dim, dim, kernel_size=7, dilation=dilation, padding=pad))
+        self.snake2 = MiniMaxMusic3Snake1d(dim)
+        self.conv2 = weight_norm(nn.Conv1d(dim, dim, kernel_size=1))
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        residual = hidden_states
-        for module in self.block:
-            hidden_states = module(hidden_states)
-        return residual + hidden_states
+        residual = self.conv2(self.snake2(self.conv1(self.snake1(hidden_states))))
+        return hidden_states + residual
 
 
 class MiniMaxMusic3VocoderBlock(nn.Module):
     def __init__(self, input_dim: int, output_dim: int, stride: int):
         super().__init__()
-        self.block = nn.ModuleList([
-            MiniMaxMusic3Snake1d(input_dim),
-            WNConvTranspose1d(input_dim, output_dim, kernel_size=2 * stride, stride=stride, padding=math.ceil(stride / 2)),
-            MiniMaxMusic3VocoderResidualUnit(output_dim, dilation=1),
-            MiniMaxMusic3VocoderResidualUnit(output_dim, dilation=3),
-            MiniMaxMusic3VocoderResidualUnit(output_dim, dilation=9),
-        ])
+        self.snake1 = MiniMaxMusic3Snake1d(input_dim)
+        self.conv_t1 = weight_norm(
+            nn.ConvTranspose1d(input_dim, output_dim, kernel_size=2 * stride, stride=stride, padding=math.ceil(stride / 2))
+        )
+        self.res_unit1 = MiniMaxMusic3VocoderResidualUnit(output_dim, dilation=1)
+        self.res_unit2 = MiniMaxMusic3VocoderResidualUnit(output_dim, dilation=3)
+        self.res_unit3 = MiniMaxMusic3VocoderResidualUnit(output_dim, dilation=9)
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        for module in self.block:
-            hidden_states = module(hidden_states)
-        return hidden_states
-
-
-class MiniMaxMusic3VocoderDecoder(nn.Module):
-    def __init__(self, decoder_input_dim: int, decoder_hidden_dim: int, upsampling_ratios):
-        super().__init__()
-        model = [WNConv1d(decoder_input_dim, decoder_hidden_dim, kernel_size=7, padding=3)]
-        output_dim = decoder_hidden_dim
-        for index, stride in enumerate(upsampling_ratios):
-            input_dim = decoder_hidden_dim // (2 ** index)
-            output_dim = decoder_hidden_dim // (2 ** (index + 1))
-            model.append(MiniMaxMusic3VocoderBlock(input_dim, output_dim, stride))
-        model.append(MiniMaxMusic3Snake1d(output_dim))
-        model.append(WNConv1d(output_dim, 1, kernel_size=7, padding=3))
-        self.model = nn.ModuleList(model)
-
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        for module in self.model:
-            hidden_states = module(hidden_states)
-        return hidden_states
+        hidden_states = self.conv_t1(self.snake1(hidden_states))
+        hidden_states = self.res_unit1(hidden_states)
+        hidden_states = self.res_unit2(hidden_states)
+        return self.res_unit3(hidden_states)
 
 
 class MiniMaxMusic3Vocoder(nn.Module):
@@ -93,12 +63,22 @@ class MiniMaxMusic3Vocoder(nn.Module):
         self.latent_channels = latent_channels
         self.sampling_rate = sampling_rate
         self.dec_in_proj = nn.Conv1d(latent_channels // 2, decoder_input_dim, kernel_size=1)
-        self.decoder = MiniMaxMusic3VocoderDecoder(decoder_input_dim, decoder_hidden_dim, upsampling_ratios)
+        self.conv_in = weight_norm(nn.Conv1d(decoder_input_dim, decoder_hidden_dim, kernel_size=7, padding=3))
+        blocks = []
+        output_dim = decoder_hidden_dim
+        for index, stride in enumerate(upsampling_ratios):
+            input_dim = decoder_hidden_dim // (2 ** index)
+            output_dim = decoder_hidden_dim // (2 ** (index + 1))
+            blocks.append(MiniMaxMusic3VocoderBlock(input_dim, output_dim, stride))
+        self.blocks = nn.ModuleList(blocks)
+        self.snake_out = MiniMaxMusic3Snake1d(output_dim)
+        self.conv_out = weight_norm(nn.Conv1d(output_dim, 1, kernel_size=7, padding=3))
 
     def forward(self, latents: torch.Tensor) -> torch.Tensor:
         batch_size, _, length = latents.shape
         hidden_states = latents.reshape(batch_size * 2, self.latent_channels // 2, length)
-        hidden_states = self.dec_in_proj(hidden_states)
-        hidden_states = self.decoder(hidden_states)
-        waveform = torch.tanh(hidden_states)
+        hidden_states = self.conv_in(self.dec_in_proj(hidden_states))
+        for block in self.blocks:
+            hidden_states = block(hidden_states)
+        waveform = torch.tanh(self.conv_out(self.snake_out(hidden_states)))
         return waveform.reshape(batch_size, 2, -1)

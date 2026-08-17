@@ -192,29 +192,29 @@ class MiniMaxMusic3Unit_SemanticGenerator(PipelineUnit):
         embed_tokens = pipe.text_encoder.model.model.embed_tokens
         embeds = embed_tokens(frame_codes[:, :1] + self.audio_code_offset)
         offsets = (torch.arange(self.num_codebooks - 1, device=frame_codes.device) * self.audio_vocab_size).unsqueeze(0)
-        extra = pipe.rvq_depth_decoder.audio_extra_embedding(frame_codes[:, 1:] + offsets).sum(dim=1, keepdim=True)
+        extra = pipe.rvq_depth_decoder.audio_embeddings(frame_codes[:, 1:] + offsets).sum(dim=1, keepdim=True)
         embeds = embeds + extra.to(embeds.dtype)
         return embeds * self.num_codebooks**-0.5
 
     def generate_depth_codes(self, pipe: MiniMaxMusic3Pipeline, last_hidden, semantic_code, generator):
         rvq = pipe.rvq_depth_decoder
         embed_tokens = pipe.text_encoder.model.model.embed_tokens
-        sequence = [rvq.audio_decoder.projection(last_hidden).unsqueeze(1)]
+        sequence = [rvq.projection(last_hidden).unsqueeze(1)]
         code_embed = embed_tokens(semantic_code + self.audio_code_offset)
-        sequence.append(rvq.audio_decoder.projection(code_embed).unsqueeze(1))
+        sequence.append(rvq.projection(code_embed).unsqueeze(1))
         codes = [semantic_code]
         hidden_parts = []
         for index in range(1, self.num_codebooks):
             hidden = rvq(torch.cat(sequence, dim=1))[:, -1]
             hidden_parts.append(hidden[:1])
-            logits = rvq.audio_decoder.audio_heads[index - 1](hidden)
+            logits = rvq.audio_heads[index - 1](hidden)
             conditional, unconditional = logits[:1].float(), logits[1:2].float()
             logits = unconditional + (conditional - unconditional) * self.ar_cfg_scale
             code = self.sample_top_k(logits, generator).repeat(2)
             codes.append(code)
             if index < self.num_codebooks - 1:
-                embed = rvq.audio_extra_embedding(code + (index - 1) * self.audio_vocab_size)
-                sequence.append(rvq.audio_decoder.projection(embed).unsqueeze(1))
+                embed = rvq.audio_embeddings(code + (index - 1) * self.audio_vocab_size)
+                sequence.append(rvq.projection(embed).unsqueeze(1))
         return torch.stack(codes, dim=1), torch.cat(hidden_parts, dim=-1)
 
     def process(self, pipe: MiniMaxMusic3Pipeline, text_ids, max_audio_duration, generator):

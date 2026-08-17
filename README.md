@@ -36,7 +36,8 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
-- **August 15, 2026** MiniMax-Music3 open-sourced, welcome a new member to the audio model family! Support includes text-to-music generation and low VRAM inference. For details, please refer to the [documentation](/docs/en/Model_Details/MiniMax-Music3.md) and [example code](/examples/minimax_music3/).
+- **August 17, 2026** MiniMax-Music3 open-sourced, welcome a new member to the audio model family! Support includes text-to-music generation and low VRAM inference. For details, please refer to the [documentation](/docs/en/Model_Details/MiniMax-Music3.md) and [example code](/examples/minimax_music3/).
+
 - **August 7, 2026** We add support for Wan-Animate-2 in the Wan series. Given a reference image and a driving video, it makes the reference character perform the motions in the driving video, generating high-quality character animation, with both standard and distilled variants. For details, please refer to the [documentation](/docs/en/Model_Details/Wan.md) and [example code](/examples/wanvideo/).
 
 - **August 3, 2026** MiniMax-H3 open-sourced, welcome a new member to the video model family! Support includes text-to-video-audio generation, keyframe-guided generation, reference-driven generation, low VRAM inference, and NF4-quantized inference. For details, please refer to the [documentation](/docs/en/Model_Details/MiniMax-H3.md) and [example code](/examples/minimax_h3/).
@@ -1691,7 +1692,7 @@ Example code for ACE-Step is available at: [/examples/ace_step/](/examples/ace_s
 
 <summary>Quick Start</summary>
 
-Running the following code will quickly load the [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 21GB VRAM.
+Running the following code will quickly load the [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 6GB VRAM.
 
 ```python
 from diffsynth.pipelines.minimax_music3 import MiniMaxMusic3Pipeline, ModelConfig
@@ -1713,11 +1714,13 @@ pipe = MiniMaxMusic3Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="qwen_7B/qwen_7B/model*.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="flowmatching_vae.pth", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="dav.pth", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="language_model/model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="rvq_depth_decoder/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="condition_encoder/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="vocoder/diffusion_pytorch_model.safetensors", **vram_config),
     ],
-    tokenizer_config=ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="qwen_7B/qwen3-8B-tokenizer-music/"),
+    tokenizer_config=ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="tokenizer/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
