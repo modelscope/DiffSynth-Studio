@@ -115,6 +115,9 @@ class TemplatePipeline(torch.nn.Module):
                 v = torch.concat([kv[1] for kv in kv_list], dim=1)
                 kv_cache_merged[name] = (k, v)
         return kv_cache_merged
+
+    def merge_sequential_embeddings(self, embeddings: List[torch.Tensor]):
+        return torch.concat(embeddings, dim=-2)
     
     def merge_template_cache(self, template_cache_list):
         params = sorted(list(set(sum([list(template_cache.keys()) for template_cache in template_cache_list], []))))
@@ -125,6 +128,8 @@ class TemplatePipeline(torch.nn.Module):
                 data = self.merge_kv_cache(data)
             elif param == "lora":
                 data = merge_lora(data)
+            elif param == "text_embedding":
+                data = self.merge_sequential_embeddings(data)
             elif len(data) == 1:
                 data = data[0]
             else:

@@ -43,6 +43,7 @@
    Model_Details/Boogu-Image
    Model_Details/LingBot-Video
    Model_Details/MiniMax-H3
+   Model_Details/MiniMax-Music3
 
 .. toctree::
    :maxdepth: 2
