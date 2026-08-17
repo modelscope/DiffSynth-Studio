@@ -85,7 +85,10 @@ class DiffSynthMusicPipeline(BasePipeline):
         target_audio = self.extract_track(target_audio, track=target_track)
         audio = self.extract_track(audio, track=kept_track)
         audio, target_audio = self._balance_volumes(audio, target_audio)
-        audio = audio + target_audio
+        if audio.shape[1] > target_audio.shape[1]:
+            audio[:, :target_audio.shape[1]] += target_audio
+        else:
+            audio += target_audio[:, :audio.shape[1]]
         return audio
 
     @staticmethod
