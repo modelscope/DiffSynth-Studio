@@ -36,6 +36,8 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
+- **August 17, 2026** MiniMax-Music3 open-sourced, welcome a new member to the audio model family! Support includes text-to-music generation and low VRAM inference. For details, please refer to the [documentation](/docs/en/Model_Details/MiniMax-Music3.md) and [example code](/examples/minimax_music3/).
+
 - **August 7, 2026** We add support for Wan-Animate-2 in the Wan series. Given a reference image and a driving video, it makes the reference character perform the motions in the driving video, generating high-quality character animation, with both standard and distilled variants. For details, please refer to the [documentation](/docs/en/Model_Details/Wan.md) and [example code](/examples/wanvideo/).
 
 - **August 3, 2026** MiniMax-H3 open-sourced, welcome a new member to the video model family! Support includes text-to-video-audio generation, keyframe-guided generation, reference-driven generation, low VRAM inference, and NF4-quantized inference. For details, please refer to the [documentation](/docs/en/Model_Details/MiniMax-H3.md) and [example code](/examples/minimax_h3/).
@@ -1682,6 +1684,74 @@ Example code for ACE-Step is available at: [/examples/ace_step/](/examples/ace_s
 |[ACE-Step/acestep-v15-xl-sft](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-sft)|[code](/examples/ace_step/model_inference/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-sft.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-sft.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-sft.py)|
 |[ACE-Step/acestep-v15-xl-turbo](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-turbo)|[code](/examples/ace_step/model_inference/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-turbo.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-turbo.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-turbo.py)|
 |[DiffSynth-Studio/acestep15xlsft-lora-music](https://www.modelscope.cn/models/DiffSynth-Studio/acestep15xlsft-lora-music)|[code](/examples/ace_step/model_inference/acestep15xlsft-vocals2music.py)|[code](/examples/ace_step/model_inference_low_vram/acestep15xlsft-vocals2music.py)|[code](/examples/ace_step/model_training/full/acestep15xlsft-vocals2music.sh)|[code](/examples/ace_step/model_training/validate_full/acestep15xlsft-vocals2music.py)|-|-|
+
+</details>
+
+#### MiniMax-Music3: [/docs/en/Model_Details/MiniMax-Music3.md](/docs/en/Model_Details/MiniMax-Music3.md)
+
+<details>
+
+<summary>Quick Start</summary>
+
+Running the following code will quickly load the [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 6GB VRAM.
+
+```python
+from diffsynth.pipelines.minimax_music3 import MiniMaxMusic3Pipeline, ModelConfig
+from diffsynth.utils.data.audio import save_audio
+import torch
+
+vram_config = {
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+
+pipe = MiniMaxMusic3Pipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="language_model/model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="rvq_depth_decoder/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="condition_encoder/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="vocoder/diffusion_pytorch_model.safetensors", **vram_config),
+    ],
+    tokenizer_config=ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="tokenizer/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+)
+
+lyrics = (
+    "[verse]\n"
+    "Morning light filtering through the pine\n"
+    "Every quiet street is yours and mine\n"
+    "[chorus]\n"
+    "Softly the world begins to breathe"
+)
+prompt = (
+    "Genre: acoustic pop. BPM: 96. Key: C major. Warm and intimate, building gently into the chorus. "
+    "Vocals: soft female lead, close and breathy, light stacked harmonies in the chorus. "
+    "Arrangement: fingerpicked guitar and soft piano; brushed drums and upright bass enter in the chorus."
+)
+audio = pipe(prompt=prompt, lyrics=lyrics, max_audio_duration=60.0, num_inference_steps=30, cfg_scale=1.7, seed=7)
+save_audio(audio, 44100, "MiniMax-Music3.wav")
+```
+
+</details>
+
+<details>
+
+<summary>Examples</summary>
+
+Example code for MiniMax-Music3 is available at: [/examples/minimax_music3/](/examples/minimax_music3/)
+
+| Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
+|-|-|-|-|-|-|-|
+|[MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3)|[code](/examples/minimax_music3/model_inference/MiniMax-Music3.py)|[code](/examples/minimax_music3/model_inference_low_vram/MiniMax-Music3.py)|—|—|—|—|
 
 </details>
 

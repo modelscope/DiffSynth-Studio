@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "LingBot-Video"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-Music3", "LingBot-Video"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -21,6 +21,7 @@ class FlowMatchScheduler():
             "Krea-2": FlowMatchScheduler.set_timesteps_krea2,
             "Boogu": FlowMatchScheduler.set_timesteps_boogu,
             "MiniMax-H3": FlowMatchScheduler.set_timesteps_minimax_h3,
+            "MiniMax-Music3": FlowMatchScheduler.set_timesteps_minimax_music3,
             "LingBot-Video": FlowMatchScheduler.set_timesteps_lingbot_video,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
@@ -329,6 +330,13 @@ class FlowMatchScheduler():
         num_train_timesteps = 1000
         base = torch.linspace(denoising_strength, 0.0, num_inference_steps+1, dtype=torch.float32)[:-1]
         sigmas = shift * base / (1 + (shift - 1) * base)
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_minimax_music3(num_inference_steps=30, denoising_strength=1.0):
+        num_train_timesteps = 1000
+        sigmas = torch.linspace(denoising_strength, denoising_strength / num_inference_steps, num_inference_steps)
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
 
