@@ -489,7 +489,7 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
 
     def _disk_required_keys(self):
         if self._required_keys is None:
-            self._required_keys = self.quantize.checkpoint_keys(self.module, self.name, self.disk_map)
+            self._required_keys = [key for key in self.disk_map if key.startswith(self.name + ".")]
         return self._required_keys
 
     def _load_from_disk(self, device, target=None):

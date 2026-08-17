@@ -34,9 +34,6 @@ class TorchaoQuantBackend(QuantBackend):
     def quantized_linear_classes(self):
         return (TorchaoLinear,)
 
-    def checkpoint_key_patterns(self):
-        return ("weight", "_weight_qdata", "_weight_scale", "_weight_zero_point", "bias")
-
     def create_quantized_linear(self, linear, compute_device=None, model_device=None):
         from torchao.quantization import quantize_
         linear.requires_grad_(False)
@@ -63,7 +60,6 @@ class TorchaoQuantBackend(QuantBackend):
 
     def unflatten_state_dict(self, state_dict, metadata):
         self._require_safetensors_support()
-        import json
         from torchao.prototype.safetensors.safetensors_support import unflatten_tensor_state_dict
         from torchao.prototype.safetensors.safetensors_utils import is_metadata_torchao
         if not is_metadata_torchao(metadata):

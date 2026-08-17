@@ -66,10 +66,6 @@ class QuantBackend(ABC):
             f"Backend `{self.name}` must declare the Linear classes it produces."
         )
 
-    def checkpoint_key_patterns(self) -> tuple:
-        """Checkpoint entries one quantized Linear needs, relative to its dotted name."""
-        return ("weight", "weight.", "bias")
-
     def is_quantized_linear(self, module) -> bool:
         return isinstance(module, self.quantized_linear_classes())
 
@@ -94,22 +90,6 @@ def register_quant_backend(name):
         QUANT_BACKENDS[name] = cls
         return cls
     return decorator
-
-
-def resolve_checkpoint_keys(patterns, layer_name: str, available_keys) -> list:
-    """Expand a backend's `checkpoint_key_patterns` into the absolute keys of one layer.
-
-    `available_keys` is anything supporting `in` and iteration (a dict or a `DiskMap`).
-    Exact patterns are probed with `in`, so a whole-file key index costs O(1) per pattern;
-    only patterns ending in "." require scanning the index.
-    """
-    prefix = f"{layer_name}." if layer_name else ""
-    nested_prefixes = tuple(prefix + pattern for pattern in patterns if pattern.endswith("."))
-    keys = [prefix + pattern for pattern in patterns
-            if not pattern.endswith(".") and prefix + pattern in available_keys]
-    if nested_prefixes:
-        keys += [key for key in available_keys if key.startswith(nested_prefixes)]
-    return list(dict.fromkeys(keys))
 
 
 def check_differentiable(module: torch.nn.Module, example_input: torch.Tensor = None, verbose: bool = True) -> bool:
@@ -219,8 +199,6 @@ def check_backend_contract(backend, in_features: int = 512, out_features: int = 
     if quantized is not None:
         check(isinstance(quantized, classes), f"create_quantized_linear() returns a declared class, got {type(quantized).__name__}")
 
-    patterns = backend.checkpoint_key_patterns()
-    check(len(patterns) > 0, f"checkpoint_key_patterns() is non-empty: {list(patterns)}")
     saved = quantized if quantized is not None else shell
     if saved is None:
         if verbose:
@@ -233,8 +211,8 @@ def check_backend_contract(backend, in_features: int = 512, out_features: int = 
             except Exception as error:
                 if verbose:
                     print(f"  [SKIP] flatten_state_dict() failed, falling back to the raw state dict keys: {type(error).__name__}: {error}")
-        uncovered = sorted(set(state_dict) - set(resolve_checkpoint_keys(patterns, "proj", state_dict)))
-        check(len(uncovered) == 0, f"checkpoint_key_patterns() covers every stored key; uncovered: {uncovered}")
+        uncovered = sorted(key for key in state_dict if not key.startswith("proj."))
+        check(len(uncovered) == 0, f"every stored key lives under the layer name; uncovered: {uncovered}")
 
     if verbose:
         print(f"  => {'OK' if not failures else str(len(failures)) + ' FAILED'}")

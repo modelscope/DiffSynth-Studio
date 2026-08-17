@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field, fields, is_dataclass
 from typing import Any, Callable, Optional
 import torch
-from .base import QUANT_BACKENDS, resolve_checkpoint_keys
+from .base import QUANT_BACKENDS
 
 
 QUANT_METHODS = {}
@@ -165,28 +165,6 @@ class QuantizeConfig:
     def is_quantized_linear(self, module) -> bool:
         """Whether `module` is one of this config's backend-native quantized Linears."""
         return self.backend.is_quantized_linear(module)
-
-    def checkpoint_keys(self, module, layer_name: str, available_keys) -> list:
-        """
-        Resolve the backend's `checkpoint_key_patterns` for `layer_name` against
-        `available_keys` (anything supporting `in` and iteration, including a `DiskMap`).
-        Raises when the layer contributes no key at all, since silently loading a
-        quantized layer without its packed weight or scale corrupts it without any error.
-
-        Parameters:
-            module: the quantized layer the keys are fetched for.
-            layer_name: its dotted name inside the checkpoint.
-            available_keys: the key index of the whole checkpoint.
-        """
-        keys = resolve_checkpoint_keys(self.backend.checkpoint_key_patterns(), layer_name, available_keys)
-        if not keys:
-            raise ValueError(
-                f"Found no checkpoint entry for the quantized layer `{layer_name}` "
-                f"(backend `{self.backend.name}`, patterns {list(self.backend.checkpoint_key_patterns())}). "
-                "Check that the checkpoint really holds this layer quantized and that "
-                "`target_modules` matches the layers it quantized."
-            )
-        return keys
 
     def build_quantized_shell(self, module, compute_dtype: torch.dtype, **kwargs):
         """
@@ -387,18 +365,6 @@ class MixedQuantizeConfig:
     def is_quantized_linear(self, module) -> bool:
         """Whether `module` is a quantized Linear of any config's backend."""
         return any(config.is_quantized_linear(module) for config in self.configs)
-
-    def checkpoint_keys(self, module, layer_name: str, available_keys) -> list:
-        """
-        Resolve the checkpoint keys of `layer_name` using the config whose backend owns
-        that layer, so each layer set is read with its own key shape.
-
-        Parameters:
-            module: the quantized layer the keys are fetched for.
-            layer_name: its dotted name inside the checkpoint.
-            available_keys: the key index of the whole checkpoint.
-        """
-        return self._owning_config(module, layer_name).checkpoint_keys(module, layer_name, available_keys)
 
     def build_quantized_shell(self, module, compute_dtype: torch.dtype, layer_name: str = None):
         """

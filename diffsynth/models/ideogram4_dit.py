@@ -84,10 +84,6 @@ class Ideogram4Fp8QuantBackend(QuantBackend):
     def quantized_linear_classes(self) -> tuple:
         return (Fp8Linear,)
 
-    def checkpoint_key_patterns(self) -> tuple:
-        """The scale is a sibling of the weight here, not nested below it like bitsandbytes' quant state."""
-        return ("weight", "weight_scale", "bias")
-
     def dequantize_to_linear(self, module, compute_dtype, compute_device=None, model_device=None):
         if compute_device is not None:
             module = module.to(device=compute_device)
