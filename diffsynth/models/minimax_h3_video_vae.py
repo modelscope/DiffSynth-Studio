@@ -8,6 +8,7 @@ from einops import rearrange
 from torchvision.transforms import Normalize
 
 from ..core.attention import attention_forward
+from einops import repeat
 
 
 class WarpedTensor(torch.nn.Module):
@@ -548,5 +549,67 @@ class MiniMaxH3VideoVAE(nn.Module):
         else:
             recon = self.decode_temporal(z)
         return self.processor.revert_tensor(recon.float()).to(out_dtype)
+
+
+class MiniMaxH3VideoVAESimple(MiniMaxH3VideoVAE):
+    # A simplified VAE. Working in progress. May be removed in the future.
+    def __init__(self):
+        super().__init__()
+
+    def decode(self, z):
+        z = self.decoder(self.post_quant_conv(z))
+        return torch.concat([z[:, :, i + 3: i + 20] for i in range(0, z.shape[2], 20)], dim=2)
+    
+    def build_mask(self, data, is_bound, border_width):
+        T, H, W = data.shape[-3:]
+        s = torch.arange(max(T, H, W), dtype=data.dtype, device=data.device)
+        t = torch.min(1 + s[:T], T - s[:T]).clip(1, border_width[0]) / border_width[0]
+        h = torch.min(1 + s[:H], H - s[:H]).clip(1, border_width[1]) / border_width[1]
+        w = torch.min(1 + s[:W], W - s[:W]).clip(1, border_width[2]) / border_width[2]
+        pad = torch.ones((T, H, W), dtype=data.dtype, device=data.device)
+        mask = torch.stack([
+            pad if is_bound[0] else repeat(t, "T -> T H W", T=T, H=H, W=W),
+            pad if is_bound[1] else repeat(h, "H -> T H W", T=T, H=H, W=W),
+            pad if is_bound[2] else repeat(w, "W -> T H W", T=T, H=H, W=W),
+        ]).min(dim=0).values
+        mask = rearrange(mask, "T H W -> 1 1 T H W")
+        return mask
+
+    def decode_video(self, z, dtype=torch.bfloat16, device="cpu", tile_stride=(5, 12, 12), tile_size=(7, 16, 16), progress_bar=lambda x: x):
+        if z.shape[2] % 5 != 2:
+            pad = [i for i in range(5) if (z.shape[2] + i) % 5 == 2][0]
+            pad = repeat(z[:, :, -1:], "B C T H W -> B C (T P) H W", P=pad)
+            z = torch.concat([z, pad], dim=2)
+
+        mean = torch.tensor(_VIDEO_LATENTS_MEAN, device=z.device, dtype=z.dtype).view(1, -1, 1, 1, 1)
+        std = torch.tensor(_VIDEO_LATENTS_STD, device=z.device, dtype=z.dtype).view(1, -1, 1, 1, 1)
+        z = z * std + mean
+
+        _, _, T, H, W = z.shape
+        T_, H_, W_ = T // 5 * 17 + 5, H * 16, W * 16
+        weight = torch.zeros((1, 1, T_, H_, W_), dtype=dtype, device=device)
+        values = torch.zeros((1, 3, T_, H_, W_), dtype=dtype, device=device)
+
+        tasks = []
+        for t in range(0, T, tile_stride[0]):
+            for h in range(0, H, tile_stride[1]):
+                for w in range(0, W, tile_stride[2]):
+                    if t-tile_stride[0] >= 0 and t-tile_stride[0]+tile_size[0] >= T: continue
+                    if h-tile_stride[1] >= 0 and h-tile_stride[1]+tile_size[1] >= H: continue
+                    if w-tile_stride[2] >= 0 and w-tile_stride[2]+tile_size[2] >= W: continue
+                    t_, h_, w_ = t + tile_size[0], h + tile_size[1], w + tile_size[2]
+                    if t_ > T: t, t_ = T - tile_size[0], T
+                    if h_ > H: h, h_ = H - tile_size[1], H
+                    if w_ > W: w, w_ = W - tile_size[2], W
+                    tasks.append((t, t_, h, h_, w, w_))
+
+        for t, t_, h, h_, w, w_ in progress_bar(tasks):
+            x = self.decode(z[:, :, t: t_, h: h_, w: w_]).to(dtype=dtype, device=device)
+            mask = self.build_mask(x, is_bound=(t==0, t_>=T, h==0, h_>=H, w==0, w_>=W), border_width=(5, 64, 64))
+            values[:, :, t // 5 * 17: t // 5 * 17 + 22, h * 16: h_ * 16, w * 16: w_ * 16] += x * mask
+            weight[:, :, t // 5 * 17: t // 5 * 17 + 22, h * 16: h_ * 16, w * 16: w_ * 16] += mask
+        values = values / weight
+        values = self.processor.revert_tensor(values)
+        return values
 
 __all__ = ["MiniMaxH3VideoVAE"]
