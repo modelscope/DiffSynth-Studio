@@ -4,9 +4,9 @@ from diffsynth.utils.data.audio_video import write_video_audio
 from modelscope import dataset_snapshot_download
 from PIL import Image
 
-# `onload_device` must equal `computation_device` here: comfy-kitchen's `QuantizedTensor`
-# cannot be deep-copied, and `AutoWrappedQuantizedModule.computation_module()` only skips
-# its `copy.deepcopy` branch when the layer is already on the computation device.
+# `onload_device` equals `computation_device` here so the quantized DiT stays on GPU
+# between denoising steps, avoiding the overhead of repeated CPU->GPU transfers for
+# the 250 int8 layers. Other models (text_encoder, VAE) use the same config for simplicity.
 vram_config = {
     "offload_dtype": torch.bfloat16,
     "offload_device": "cpu",

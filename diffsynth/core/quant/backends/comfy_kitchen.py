@@ -1,3 +1,4 @@
+import copy
 import functools
 import importlib.util
 import json
@@ -99,6 +100,24 @@ class ComfyKitchenLinear(torch.nn.Linear):
         return (f"{super().extra_repr()}, layout={self.layout}, "
                 f"convrot={getattr(params, 'convrot', None)}, "
                 f"groupsize={getattr(params, 'convrot_groupsize', None)}")
+
+    def __deepcopy__(self, memo):
+        from comfy_kitchen.tensor import QuantizedTensor
+        clone = ComfyKitchenLinear(
+            self.in_features, self.out_features, bias=self.bias is not None,
+            layout=self.layout, compute_dtype=self.compute_dtype, force_eager=self.force_eager,
+        )
+        weight = self.weight
+        params = getattr(weight, "_params", None)
+        if params is None:
+            cloned_weight = weight.detach().clone()
+        else:
+            cloned_weight = QuantizedTensor(weight._qdata.clone(), weight._layout_cls, copy.deepcopy(params))
+        clone.weight = torch.nn.Parameter(cloned_weight, requires_grad=False)
+        if self.bias is not None:
+            clone.bias = torch.nn.Parameter(self.bias.detach().clone(), requires_grad=False)
+        memo[id(self)] = clone
+        return clone
 
 
 @register_quant_backend("comfy_kitchen")
