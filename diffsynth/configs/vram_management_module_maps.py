@@ -483,7 +483,8 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
     },
     "diffsynth.models.minimax_music3_vocoder.MiniMaxMusic3Vocoder": {
         "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "torch.nn.ConvTranspose1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_music3_vocoder.MiniMaxMusic3WeightNormConv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_music3_vocoder.MiniMaxMusic3WeightNormConvTranspose1d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.minimax_music3_vocoder.MiniMaxMusic3Snake1d": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.minimax_music3_text_encoder.MiniMaxMusic3TextEncoder": {
