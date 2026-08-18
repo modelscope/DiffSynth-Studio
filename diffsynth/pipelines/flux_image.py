@@ -4,7 +4,6 @@ from typing import Union
 from tqdm import tqdm
 from einops import rearrange, repeat
 import numpy as np
-import cv2
 from transformers import CLIPTokenizer, T5TokenizerFast
 
 from ..core.device.npu_compatible_device import get_device_type
@@ -892,7 +891,7 @@ class FluxImageUnit_InsertAnything(PipelineUnit):
             ),
             output_params=(
                 "flux_fill_image", "flux_fill_mask", "flux_redux_image",
-                "height", "width", "insert_anything_post",
+                "height", "width", "insert_anything_post", "input_image",
             ),
         )
 
@@ -904,7 +903,7 @@ class FluxImageUnit_InsertAnything(PipelineUnit):
             insert_anything_source_image, insert_anything_source_mask,
             insert_anything_ref_image, insert_anything_ref_mask,
         )
-        return {
+        outputs = {
             "flux_fill_image": ctx["flux_fill_image"],
             "flux_fill_mask": ctx["flux_fill_mask"],
             "flux_redux_image": ctx["flux_redux_image"],
@@ -912,8 +911,16 @@ class FluxImageUnit_InsertAnything(PipelineUnit):
             "width": ctx["width"],
             "insert_anything_post": ctx,
         }
+        if pipe.scheduler.training:
+            # During training the diptych itself is the reconstruction target:
+            # `flux_fill_image` is the unmasked [ref | source] concatenation, and
+            # `flux_fill_mask` marks the region the model must inpaint. The source
+            # image is therefore expected to already contain the inserted object.
+            outputs["input_image"] = ctx["flux_fill_image"]
+        return outputs
 
     def prepare(self, source_image, source_mask, ref_image, ref_mask):
+        import cv2
         size = (768, 768)
         ref_image = np.array(ref_image.convert("RGB"))
         tar_image = np.array(source_image.convert("RGB"))
@@ -965,6 +972,7 @@ class FluxImageUnit_InsertAnything(PipelineUnit):
 
     @classmethod
     def postprocess(cls, image, ctx):
+        import cv2
         width, height = image.size
         edited = image.crop((width // 2, 0, width, height))
         edited = np.array(edited)

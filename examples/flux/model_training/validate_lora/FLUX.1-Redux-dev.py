@@ -1,7 +1,7 @@
 import torch
 from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 from PIL import Image
-from modelscope import dataset_snapshot_download
+
 
 pipe = FluxImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -15,14 +15,10 @@ pipe = FluxImagePipeline.from_pretrained(
         ModelConfig(model_id="black-forest-labs/FLUX.1-Redux-dev", origin_file_pattern="image_embedder/diffusion_pytorch_model.safetensors"),
     ],
 )
-dataset_snapshot_download(
-    dataset_id="HuanJue/example_dataset",
-    local_dir="./",
-    allow_file_pattern=f"FLUX.1-Redux-dev/*",
+pipe.load_lora(pipe.dit, "models/train/FLUX.1-Redux-dev_lora/epoch-0.safetensors", alpha=1)
+
+image = pipe(
+    flux_redux_image=Image.open("data/diffsynth_example_dataset/flux/FLUX.1-Redux-dev/robot.png").convert("RGB"),
+    embedded_guidance=2.5, num_inference_steps=50, seed=0,
 )
-
-flux_redux_image = Image.open("FLUX.1-Redux-dev/robot.png").convert("RGB")
-
-image = pipe(flux_redux_image=flux_redux_image, embedded_guidance=2.5, num_inference_steps=50)
-
-image.save("image_FLUX.1-Redux-dev.jpg")
+image.save("image_FLUX.1-Redux-dev_lora.jpg")
