@@ -20,6 +20,8 @@ def register_quant_method(name, backend, config_factory, label=""):
 
 def describe_quant_method(name):
     """Print a method's backend, label, and the accepted `backend_config_kwargs` with defaults."""
+    from . import backends
+    backends.load_all_backends()
     if name not in QUANT_METHODS:
         raise ValueError(f"Unknown quantization method: {name}. Available methods:\n{_available_methods()}")
     spec = QUANT_METHODS[name]
@@ -45,6 +47,8 @@ def describe_quant_method(name):
 
 
 def _available_methods():
+    from . import backends
+    backends.load_all_backends()
     methods = sorted(QUANT_METHODS.items())
     if len(methods) == 0:
         return "  (no method registered)"
@@ -113,12 +117,18 @@ class QuantizeConfig:
         self.backend = self._build_backend()
 
     def _build_backend(self):
+        from . import backends
+        backends.load_backend_for_method(self.method)
         if self.method not in QUANT_METHODS:
             raise ValueError(f"Unknown quantization method: {self.method}. Available methods:\n{_available_methods()}")
         spec = QUANT_METHODS[self.method]
         if spec.backend not in QUANT_BACKENDS:
             raise ValueError(f"Quantization backend `{spec.backend}` (required by method `{self.method}`) is not registered.")
-        return QUANT_BACKENDS[spec.backend](spec.config_factory(dict(self.backend_config_kwargs)))
+        backend = QUANT_BACKENDS[spec.backend]()
+        backend.validate_environment()
+        backend.announce_environment()
+        backend.config = spec.config_factory(dict(self.backend_config_kwargs))
+        return backend
 
     def quantize_model(self, model: torch.nn.Module, compute_device=None, model_device=None):
         """
@@ -136,8 +146,6 @@ class QuantizeConfig:
         """
         if self.load_prequantized:
             return model
-        self.backend.validate_environment()
-        self.backend.announce_environment()
 
         def quantize(linear):
             return self.backend.create_quantized_linear(linear, compute_device=compute_device, model_device=model_device)
@@ -188,9 +196,6 @@ class QuantizeConfig:
             model: the freshly constructed model whose targeted layers become shells.
             compute_dtype: dtype the quantized layers dequantize to at forward time.
         """
-        self.backend.validate_environment()
-        self.backend.announce_environment()
-
         def build_shell(linear):
             return self.backend.create_quantized_linear_shell(linear, compute_dtype)
 

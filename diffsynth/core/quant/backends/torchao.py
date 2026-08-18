@@ -4,6 +4,21 @@ import torch
 from ..base import QuantBackend, register_quant_backend
 from ..config import register_quant_method
 
+try:
+    from torchao.quantization import (
+        quantize_, Int8WeightOnlyConfig, Int4WeightOnlyConfig, Float8WeightOnlyConfig,
+        Int8DynamicActivationInt8WeightConfig, Float8DynamicActivationFloat8WeightConfig,
+        Float8DynamicActivationInt4WeightConfig,
+    )
+    from torchao.prototype.mx_formats.inference_workflow import (
+        MXDynamicActivationMXWeightConfig, NVFP4DynamicActivationNVFP4WeightConfig,
+    )
+    from torchao.prototype.safetensors.safetensors_support import flatten_tensor_state_dict, unflatten_tensor_state_dict
+    from torchao.prototype.safetensors.safetensors_utils import is_metadata_torchao
+    TORCHAO_AVAILABLE = True
+except ImportError:
+    TORCHAO_AVAILABLE = False
+
 
 class TorchaoLinear(torch.nn.Linear):
     """Marker class for torchao-quantized Linears."""
@@ -16,9 +31,7 @@ class TorchaoQuantBackend(QuantBackend):
     project_url = "https://github.com/pytorch/ao"
 
     def validate_environment(self):
-        try:
-            import torchao  # noqa: F401
-        except ImportError:
+        if not TORCHAO_AVAILABLE:
             raise ImportError(
                 "torchao is required for torchao quantization methods. "
                 'Please install it via `pip install torchao` or `pip install "diffsynth[quant]"`.'
@@ -42,7 +55,6 @@ class TorchaoQuantBackend(QuantBackend):
         return (TorchaoLinear,)
 
     def create_quantized_linear(self, linear, compute_device=None, model_device=None):
-        from torchao.quantization import quantize_
         linear.requires_grad_(False)
         if compute_device is not None:
             linear = linear.to(device=compute_device)
@@ -58,12 +70,9 @@ class TorchaoQuantBackend(QuantBackend):
         return TorchaoLinear(linear.in_features, linear.out_features, bias=linear.bias is not None, device="meta")
 
     def flatten_state_dict(self, state_dict):
-        from torchao.prototype.safetensors.safetensors_support import flatten_tensor_state_dict
         return flatten_tensor_state_dict(state_dict)
 
     def unflatten_state_dict(self, state_dict, metadata):
-        from torchao.prototype.safetensors.safetensors_support import unflatten_tensor_state_dict
-        from torchao.prototype.safetensors.safetensors_utils import is_metadata_torchao
         if not is_metadata_torchao(metadata):
             raise ValueError("This checkpoint carries no torchao metadata.")
         tensor_names = json.loads(metadata["tensor_names"])
@@ -96,40 +105,33 @@ class TorchaoQuantBackend(QuantBackend):
 
 
 def _int8_weight_only(backend_config_kwargs):
-    from torchao.quantization import Int8WeightOnlyConfig
     backend_config_kwargs.setdefault("version", 2)
     return Int8WeightOnlyConfig(**backend_config_kwargs)
 
 
 def _int4_weight_only(backend_config_kwargs):
-    from torchao.quantization import Int4WeightOnlyConfig
     return Int4WeightOnlyConfig(**backend_config_kwargs)
 
 
 def _fp8_weight_only(backend_config_kwargs):
-    from torchao.quantization import Float8WeightOnlyConfig
     return Float8WeightOnlyConfig(**backend_config_kwargs)
 
 
 def _int8_dynamic_activation_int8_weight(backend_config_kwargs):
-    from torchao.quantization import Int8DynamicActivationInt8WeightConfig
     backend_config_kwargs.setdefault("version", 2)
     return Int8DynamicActivationInt8WeightConfig(**backend_config_kwargs)
 
 
 def _float8_dynamic_activation_float8_weight(backend_config_kwargs):
-    from torchao.quantization import Float8DynamicActivationFloat8WeightConfig
     return Float8DynamicActivationFloat8WeightConfig(**backend_config_kwargs)
 
 
 def _float8_dynamic_activation_int4_weight(backend_config_kwargs):
-    from torchao.quantization import Float8DynamicActivationInt4WeightConfig
     return Float8DynamicActivationInt4WeightConfig(**backend_config_kwargs)
 
 
 def _mx_dynamic_activation_mx_weight(elem_dtype):
     def factory(backend_config_kwargs):
-        from torchao.prototype.mx_formats.inference_workflow import MXDynamicActivationMXWeightConfig
         dtype = getattr(torch, elem_dtype, None)
         if dtype is None:
             raise ImportError(f"This torch build has no `torch.{elem_dtype}`, required by the MX config.")
@@ -140,7 +142,6 @@ def _mx_dynamic_activation_mx_weight(elem_dtype):
 
 
 def _nvfp4_dynamic_activation_nvfp4_weight(backend_config_kwargs):
-    from torchao.prototype.mx_formats.inference_workflow import NVFP4DynamicActivationNVFP4WeightConfig
     return NVFP4DynamicActivationNVFP4WeightConfig(**backend_config_kwargs)
 
 

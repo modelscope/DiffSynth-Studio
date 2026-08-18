@@ -2,6 +2,12 @@ import torch
 from ..base import QuantBackend, register_quant_backend
 from ..config import register_quant_method
 
+try:
+    import bitsandbytes as bnb
+    BITSANDBYTES_AVAILABLE = True
+except ImportError:
+    BITSANDBYTES_AVAILABLE = False
+
 
 def _assign_params_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
     """`_load_from_state_dict` replacement for shells: assigns tensors as-is, since packed weights do not pass the standard shape check."""
@@ -32,9 +38,7 @@ class BitsAndBytesQuantBackend(QuantBackend):
     project_url = "https://github.com/bitsandbytes-foundation/bitsandbytes"
 
     def validate_environment(self):
-        try:
-            import bitsandbytes  # noqa: F401
-        except ImportError:
+        if not BITSANDBYTES_AVAILABLE:
             raise ImportError(
                 "bitsandbytes is required for bitsandbytes quantization methods. "
                 'Please install it via `pip install bitsandbytes` or `pip install "diffsynth[quant]"`.'
@@ -49,16 +53,10 @@ class BitsAndBytesQuantBackend(QuantBackend):
         }
 
     def quantized_linear_classes(self):
-        try:
-            import bitsandbytes as bnb
-        except ImportError:
-            return ()
         return (bnb.nn.Linear4bit,)
 
     def create_quantized_linear(self, linear, compute_device=None, model_device=None):
         """The `meta` shell avoids allocating an fp weight; bnb quantizes while `Params4bit` moves to `compute_device`."""
-        import bitsandbytes as bnb
-
         compute_dtype = linear.weight.dtype
         if compute_device is None:
             compute_device = linear.weight.device
@@ -91,7 +89,6 @@ class BitsAndBytesQuantBackend(QuantBackend):
         return quant_linear.to(device=model_device)
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
-        import bitsandbytes as bnb
         with torch.device("meta"):
             shell = bnb.nn.Linear4bit(
                 linear.in_features,
@@ -106,7 +103,6 @@ class BitsAndBytesQuantBackend(QuantBackend):
         return shell
 
     def unflatten_state_dict(self, state_dict, metadata):
-        import bitsandbytes as bnb
         rebuilt = {}
         quant_state = {}
         for key, value in state_dict.items():
@@ -124,7 +120,6 @@ class BitsAndBytesQuantBackend(QuantBackend):
         return rebuilt
 
     def dequantize_to_linear(self, module, compute_dtype, compute_device=None, model_device=None):
-        import bitsandbytes as bnb
         if compute_device is not None:
             module = module.to(device=compute_device)
         weight = module.weight

@@ -1,10 +1,16 @@
 import copy
-import importlib.util
 import json
 
 import torch
 from ..base import QuantBackend, register_quant_backend
 from ..config import register_quant_method
+
+try:
+    import comfy_kitchen as ck
+    from comfy_kitchen.tensor import QuantizedTensor, get_layout_class
+    COMFY_KITCHEN_AVAILABLE = True
+except ImportError:
+    COMFY_KITCHEN_AVAILABLE = False
 
 
 COMFY_QUANT_KEY = "comfy_quant"
@@ -29,7 +35,6 @@ class ComfyKitchenLinear(torch.nn.Linear):
         return super().forward(x)
 
     def __deepcopy__(self, memo):
-        from comfy_kitchen.tensor import QuantizedTensor
         clone = type(self)(
             self.in_features, self.out_features, bias=self.bias is not None,
             layout=self.layout, compute_dtype=self.compute_dtype,
@@ -49,7 +54,6 @@ class ComfyKitchenLinear(torch.nn.Linear):
 
 def _fp8_linear(x_2d, weight, bias, layout, input_scale):
     """Quantize a 2D activation per tensor, then let comfy-kitchen's dispatch pick the fp8 matmul."""
-    from comfy_kitchen.tensor import QuantizedTensor
     q_x = QuantizedTensor.from_float(x_2d, layout, scale=input_scale)
     return torch.nn.functional.linear(q_x, weight, bias)
 
@@ -192,12 +196,11 @@ class ComfyKitchenQuantBackend(QuantBackend):
     project_url = "https://github.com/Comfy-Org/comfy-kitchen"
 
     def validate_environment(self):
-        if importlib.util.find_spec("comfy_kitchen") is None:
+        if not COMFY_KITCHEN_AVAILABLE:
             raise ImportError(
                 "comfy-kitchen is required for comfy_kitchen quantization methods. "
                 'Please install it via `pip install comfy-kitchen` or `pip install "diffsynth[quant]"`.'
             )
-        import comfy_kitchen as ck
         if torch.version.cuda is None or tuple(int(v) for v in torch.version.cuda.split(".")[:2]) < (13, 0):
             ck.registry.disable("cuda")
 
@@ -213,7 +216,6 @@ class ComfyKitchenQuantBackend(QuantBackend):
         return tuple(dict.fromkeys(fmt.linear_cls for fmt in FORMATS.values()))
 
     def create_quantized_linear(self, linear, compute_device=None, model_device=None):
-        from comfy_kitchen.tensor import QuantizedTensor
         quant_format = self._active_format()
         if compute_device is not None:
             linear = linear.to(device=compute_device)
@@ -231,7 +233,6 @@ class ComfyKitchenQuantBackend(QuantBackend):
         return self._build_linear(linear, compute_dtype)
 
     def unflatten_state_dict(self, state_dict, metadata):
-        from comfy_kitchen.tensor import QuantizedTensor, get_layout_class
         rebuilt = dict(state_dict)
         suffix = f".{COMFY_QUANT_KEY}"
         for layer_name in [key[: -len(suffix)] for key in state_dict if key.endswith(suffix)]:
