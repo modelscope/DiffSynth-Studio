@@ -11,11 +11,104 @@ COMFY_QUANT_KEY = "comfy_quant"
 SCALE_KEY = "weight_scale"
 
 
+class ComfyKitchenLinear(torch.nn.Linear):
+    """`nn.Linear` whose weight is a comfy-kitchen `QuantizedTensor`."""
+
+    def __init__(self, in_features, out_features, bias, *, layout, compute_dtype):
+        with torch.device("meta"):
+            super().__init__(in_features, out_features, bias=bias, dtype=compute_dtype)
+        self.layout = layout
+        self.compute_dtype = compute_dtype
+        self.weight.requires_grad_(False)
+        if self.bias is not None:
+            self.bias.requires_grad_(False)
+
+    def forward(self, x):
+        if not x.is_contiguous():
+            x = x.contiguous()
+        return super().forward(x)
+
+    def __deepcopy__(self, memo):
+        from comfy_kitchen.tensor import QuantizedTensor
+        clone = type(self)(
+            self.in_features, self.out_features, bias=self.bias is not None,
+            layout=self.layout, compute_dtype=self.compute_dtype,
+        )
+        weight = self.weight
+        params = getattr(weight, "_params", None)
+        if params is None:
+            cloned_weight = weight.detach().clone()
+        else:
+            cloned_weight = QuantizedTensor(weight._qdata.clone(), weight._layout_cls, copy.deepcopy(params))
+        clone.weight = torch.nn.Parameter(cloned_weight, requires_grad=False)
+        if self.bias is not None:
+            clone.bias = torch.nn.Parameter(self.bias.detach().clone(), requires_grad=False)
+        memo[id(self)] = clone
+        return clone
+
+
+def _fp8_linear(x_2d, weight, bias, layout, input_scale):
+    """Quantize a 2D activation per tensor, then let comfy-kitchen's dispatch pick the fp8 matmul."""
+    from comfy_kitchen.tensor import QuantizedTensor
+    q_x = QuantizedTensor.from_float(x_2d, layout, scale=input_scale)
+    return torch.nn.functional.linear(q_x, weight, bias)
+
+
+class _FP8LinearFunction(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, x, weight, bias, layout, input_scale):
+        out = _fp8_linear(x.detach().reshape(-1, x.shape[-1]), weight, bias, layout, input_scale)
+        ctx.save_for_backward(weight)
+        ctx.x_shape = x.shape
+        return out.reshape(*x.shape[:-1], out.shape[-1])
+
+    @staticmethod
+    @torch.autograd.function.once_differentiable
+    def backward(ctx, grad_output):
+        weight, = ctx.saved_tensors
+        grad_2d = grad_output.reshape(-1, grad_output.shape[-1])
+        grad_x = torch.mm(grad_2d, weight.dequantize().to(grad_2d.dtype)).reshape(ctx.x_shape)
+        grad_bias = grad_2d.sum(dim=0) if ctx.needs_input_grad[2] else None
+        return grad_x, None, grad_bias, None, None
+
+
+class ComfyKitchenFP8Linear(ComfyKitchenLinear):
+
+    def __init__(self, in_features, out_features, bias, *, layout, compute_dtype):
+        super().__init__(in_features, out_features, bias, layout=layout, compute_dtype=compute_dtype)
+        self.register_buffer("input_scale", None)
+
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+        scale = state_dict.pop(prefix + "input_scale", None)
+        super()._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
+        if scale is not None:
+            self.input_scale = scale
+
+    def forward(self, x):
+        if not x.is_contiguous():
+            x = x.contiguous()
+        scale = self.input_scale
+        if scale is not None:
+            scale = scale.to(dtype=torch.float32, device=x.device)
+        if x.requires_grad:
+            return _FP8LinearFunction.apply(x, self.weight, self.bias, self.layout, scale)
+        out = _fp8_linear(x.reshape(-1, x.shape[-1]), self.weight, self.bias, self.layout, scale)
+        return out.reshape(*x.shape[:-1], out.shape[-1])
+
+    def __deepcopy__(self, memo):
+        clone = super().__deepcopy__(memo)
+        if self.input_scale is not None:
+            clone.input_scale = self.input_scale.detach().clone()
+        return clone
+
+
 class ComfyQuantFormat:
     """Everything specific to one weight format that ComfyUI writes, one hook per direction."""
 
     marker_name = None   # the `format` string ComfyUI writes into the marker
     layout_cls = None    # name of the comfy-kitchen layout class
+    linear_cls = ComfyKitchenLinear   # the `nn.Linear` subclass that runs this format
     sibling_keys = ()    # per-layer tensors to drop, so `load_state_dict` never sees them
 
     def params_from_marker(self, marker, qdata, layer_name):
@@ -32,7 +125,6 @@ class ComfyQuantFormat:
 
 
 class TensorWiseInt8Format(ComfyQuantFormat):
-    """int8 W8A8. The Hadamard rotation is a per-layer knob, so one file mixes group sizes."""
 
     marker_name = "int8_tensorwise"
     layout_cls = "TensorWiseINT8Layout"
@@ -52,8 +144,7 @@ class TensorWiseInt8Format(ComfyQuantFormat):
 
     def from_float_kwargs(self, in_features, config):
         groupsize = config["convrot_groupsize"]
-        kwargs = {"is_weight": True, "per_channel": config["per_channel"],
-                  "convrot": False, "convrot_groupsize": groupsize}
+        kwargs = {"is_weight": True, "per_channel": config["per_channel"], "convrot": False, "convrot_groupsize": groupsize}
         if not config["convrot"]:
             return kwargs
         if groupsize < 4 or groupsize & (groupsize - 1) or (groupsize.bit_length() - 1) % 2:
@@ -72,16 +163,10 @@ class TensorWiseInt8Format(ComfyQuantFormat):
 
 
 class Float8E4M3Format(ComfyQuantFormat):
-    """FP8 per-tensor scaled. Weight is F8_E4M3 with a scalar weight_scale.
-
-    TODO: fp8 activation quantization is not yet implemented. ComfyUI quantizes the input with
-    the checkpoint's `input_scale` before calling scaled_mm (fp8xfp8 on H100/4090); we drop that
-    tensor and fall back to dequant -> bf16 matmul, which is correct but skips fp8 tensor cores.
-    """
 
     marker_name = "float8_e4m3fn"
     layout_cls = "TensorCoreFP8Layout"
-    sibling_keys = ("input_scale",)
+    linear_cls = ComfyKitchenFP8Linear
 
 
 FORMATS = {fmt.marker_name: fmt for fmt in (TensorWiseInt8Format(), Float8E4M3Format())}
@@ -100,47 +185,6 @@ def _parse_marker(marker_tensor, layer_name):
     return FORMATS[marker_name], marker
 
 
-class ComfyKitchenLinear(torch.nn.Linear):
-    """`nn.Linear` whose weight is a comfy-kitchen `QuantizedTensor`."""
-
-    def __init__(self, in_features, out_features, bias, *, layout, compute_dtype, force_eager):
-        with torch.device("meta"):
-            super().__init__(in_features, out_features, bias=bias, dtype=compute_dtype)
-        self.layout = layout
-        self.compute_dtype = compute_dtype
-        self.force_eager = force_eager
-        self.weight.requires_grad_(False)
-        if self.bias is not None:
-            self.bias.requires_grad_(False)
-
-    def forward(self, x):
-        if not x.is_contiguous():
-            x = x.contiguous()
-        if not self.force_eager:
-            return super().forward(x)
-        import comfy_kitchen as ck
-        with ck.use_backend("eager"):
-            return super().forward(x)
-
-    def __deepcopy__(self, memo):
-        from comfy_kitchen.tensor import QuantizedTensor
-        clone = ComfyKitchenLinear(
-            self.in_features, self.out_features, bias=self.bias is not None,
-            layout=self.layout, compute_dtype=self.compute_dtype, force_eager=self.force_eager,
-        )
-        weight = self.weight
-        params = getattr(weight, "_params", None)
-        if params is None:
-            cloned_weight = weight.detach().clone()
-        else:
-            cloned_weight = QuantizedTensor(weight._qdata.clone(), weight._layout_cls, copy.deepcopy(params))
-        clone.weight = torch.nn.Parameter(cloned_weight, requires_grad=False)
-        if self.bias is not None:
-            clone.bias = torch.nn.Parameter(self.bias.detach().clone(), requires_grad=False)
-        memo[id(self)] = clone
-        return clone
-
-
 @register_quant_backend("comfy_kitchen")
 class ComfyKitchenQuantBackend(QuantBackend):
     """Adapter over comfy-kitchen's `QuantizedTensor`, the quantized-weight format ComfyUI writes."""
@@ -153,7 +197,6 @@ class ComfyKitchenQuantBackend(QuantBackend):
                 "comfy-kitchen is required for comfy_kitchen quantization methods. "
                 'Please install it via `pip install comfy-kitchen` or `pip install "diffsynth[quant]"`.'
             )
-        # comfy-kitchen ships cu13 kernels; below CUDA 13 they register as available but fail at launch.
         import comfy_kitchen as ck
         if torch.version.cuda is None or tuple(int(v) for v in torch.version.cuda.split(".")[:2]) < (13, 0):
             ck.registry.disable("cuda")
@@ -167,7 +210,7 @@ class ComfyKitchenQuantBackend(QuantBackend):
         }
 
     def quantized_linear_classes(self):
-        return (ComfyKitchenLinear,)
+        return tuple(dict.fromkeys(fmt.linear_cls for fmt in FORMATS.values()))
 
     def create_quantized_linear(self, linear, compute_device=None, model_device=None):
         from comfy_kitchen.tensor import QuantizedTensor
@@ -244,15 +287,13 @@ class ComfyKitchenQuantBackend(QuantBackend):
         return FORMATS[marker_name]
 
     def _build_linear(self, linear, compute_dtype):
-        from comfy_kitchen.tensor import get_layout_class
-        layout_cls = self._active_format().layout_cls
-        return ComfyKitchenLinear(
+        quant_format = self._active_format()
+        return quant_format.linear_cls(
             linear.in_features,
             linear.out_features,
             bias=linear.bias is not None,
-            layout=layout_cls,
+            layout=quant_format.layout_cls,
             compute_dtype=compute_dtype,
-            force_eager=not get_layout_class(layout_cls).supports_fast_matmul(),
         )
 
 
@@ -272,11 +313,5 @@ def _fp8_config(backend_config_kwargs):
         **backend_config_kwargs,
     }
 
-register_quant_method(
-    "ck_int8_w8a8", "comfy_kitchen", _int8_config,
-    label="W8A8, int8 weight + int8 dynamic activation (ComfyUI int8_tensorwise)",
-)
-register_quant_method(
-    "ck_fp8_w8a8", "comfy_kitchen", _fp8_config,
-    label="W8A8, fp8 E4M3 weight + fp8 dynamic activation (ComfyUI float8_e4m3fn)",
-)
+register_quant_method("ck_int8_w8a8", "comfy_kitchen", _int8_config, label="W8A8, int8 weight + int8 dynamic activation (ComfyUI int8_tensorwise)")
+register_quant_method("ck_fp8_w8a8", "comfy_kitchen", _fp8_config, label="W8A8, fp8 E4M3 weight + fp8 activation, static input_scale when present (ComfyUI float8_e4m3fn)")
