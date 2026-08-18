@@ -1,12 +1,7 @@
-import sys
-from pathlib import Path
-
 import torch
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
+from diffsynth.pipelines.wan_video_echo_memory import load_echo_memory_dit
 from diffsynth.utils.data import save_video
-
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-from echo_memory import load_echo_memory_dit
 
 
 pipe = WanVideoPipeline.from_pretrained(
@@ -20,7 +15,6 @@ pipe = WanVideoPipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
 )
 
-# Overlay the released context_k1 DiT fine-tune. Extra action / SSM keys are skipped.
 load_echo_memory_dit(pipe)
 
 video = pipe(

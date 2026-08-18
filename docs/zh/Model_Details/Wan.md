@@ -70,6 +70,7 @@ graph LR;
     Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.1-I2V-14B-480P;
     Wan-AI/Wan2.1-I2V-14B-480P-->Wan-AI/Wan2.1-I2V-14B-720P;
     Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.1-FLF2V-14B-720P;
+    Wan-AI/Wan2.1-T2V-1.3B-->Echo-Team/Echo-Memory;
     Wan-AI/Wan2.1-T2V-1.3B-->iic/VACE-Wan2.1-1.3B-Preview;
     iic/VACE-Wan2.1-1.3B-Preview-->Wan-AI/Wan2.1-VACE-1.3B;
     Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.1-VACE-14B;
@@ -109,6 +110,7 @@ graph LR;
 |模型 ID|额外参数|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|-|
 |[Wan-AI/Wan2.1-T2V-1.3B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-1.3B)||[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference/Wan2.1-T2V-1.3B.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference_low_vram/Wan2.1-T2V-1.3B.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/full/Wan2.1-T2V-1.3B.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_full/Wan2.1-T2V-1.3B.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/lora/Wan2.1-T2V-1.3B.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_lora/Wan2.1-T2V-1.3B.py)|
+|[Echo-Team/Echo-Memory: context_k1](https://huggingface.co/Echo-Team/Echo-Memory)||[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference/Echo-Memory.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference_low_vram/Echo-Memory.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/full/Echo-Memory.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_full/Echo-Memory.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/lora/Echo-Memory.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_lora/Echo-Memory.py)|
 |[Wan-AI/Wan2.1-T2V-14B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-14B)||[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference/Wan2.1-T2V-14B.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference_low_vram/Wan2.1-T2V-14B.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/full/Wan2.1-T2V-14B.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_full/Wan2.1-T2V-14B.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/lora/Wan2.1-T2V-14B.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_lora/Wan2.1-T2V-14B.py)|
 |[Wan-AI/Wan2.1-I2V-14B-480P](https://modelscope.cn/models/Wan-AI/Wan2.1-I2V-14B-480P)|`input_image`|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference/Wan2.1-I2V-14B-480P.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference_low_vram/Wan2.1-I2V-14B-480P.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/full/Wan2.1-I2V-14B-480P.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_full/Wan2.1-I2V-14B-480P.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/lora/Wan2.1-I2V-14B-480P.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_lora/Wan2.1-I2V-14B-480P.py)|
 |[Wan-AI/Wan2.1-I2V-14B-720P](https://modelscope.cn/models/Wan-AI/Wan2.1-I2V-14B-720P)|`input_image`|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference/Wan2.1-I2V-14B-720P.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference_low_vram/Wan2.1-I2V-14B-720P.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/full/Wan2.1-I2V-14B-720P.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_full/Wan2.1-I2V-14B-720P.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/lora/Wan2.1-I2V-14B-720P.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_lora/Wan2.1-I2V-14B-720P.py)|
@@ -148,12 +150,15 @@ graph LR;
 
 ### 社区：Echo-Memory
 
-[Echo-Memory](https://github.com/Echo-Team-Joy-Future-Academy-JD/Echo-Memory)（[arXiv:2606.09803](https://arxiv.org/abs/2606.09803)）是在 Wan 2.1 1.3B 上的受控 memory 研究。公开的 `context_k1` 行使用原始 Wan / DiffSynth 键名，可通过 [`examples/wanvideo/echo_memory`](https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/wanvideo/echo_memory) 中的可选加载器叠加到 `Wan-AI/Wan2.1-T2V-1.3B`。
+[Echo-Memory](https://github.com/Echo-Team-Joy-Future-Academy-JD/Echo-Memory)（[arXiv:2606.09803](https://arxiv.org/abs/2606.09803)）是在 Wan 2.1 1.3B 上的受控 memory 研究。公开的 `context_k1` 权重可通过 [`diffsynth.pipelines.wan_video_echo_memory`](https://github.com/modelscope/DiffSynth-Studio/blob/main/diffsynth/pipelines/wan_video_echo_memory.py) 中的可选加载器叠加到 `Wan-AI/Wan2.1-T2V-1.3B`。
 
+* 权重：[Echo-Team/Echo-Memory](https://huggingface.co/Echo-Team/Echo-Memory)
 * 推理：[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference/Echo-Memory.py)
 * 低显存推理：[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference_low_vram/Echo-Memory.py)
+* 全量训练：[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/full/Echo-Memory.sh)
+* LoRA 训练：[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/lora/Echo-Memory.sh)
 
-权重：[Echo-Team/Echo-Memory](https://huggingface.co/Echo-Team/Echo-Memory)。多 chunk 相机动作 / SSM 协议仍在 Echo-Memory 仓库。
+当前接入会将匹配的 DiT 权重覆盖到 Wan DiT；相机动作 MLP、block-wise SSM、spatial memory 和多 chunk revisit 协议仍在 Echo-Memory 仓库中。
 
 * FP8 精度训练：[doc](../Training/FP8_Precision.md)、[code](https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/wanvideo/model_training/special/fp8_training/)
 * 两阶段拆分训练：[doc](../Training/Split_Training.md)、[code](https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/wanvideo/model_training/special/split_training/)
@@ -314,6 +319,9 @@ Wan 系列模型统一通过 [`examples/wanvideo/model_training/train.py`](https
 * Wan 系列专有参数
     * `--tokenizer_path`: tokenizer 的路径，适用于文生视频模型，留空则自动从远程下载。
     * `--audio_processor_path`: 音频处理器的路径，适用于语音到视频模型，留空则自动从远程下载。
+    * `--echo_memory_path`: Echo-Memory DiT 权重的本地路径。
+    * `--echo_memory_model_id_with_origin_path`: Echo-Memory 权重的模型 ID 与原始文件路径，例如 `"Echo-Team/Echo-Memory:context_k1/epoch-0.safetensors"`。
+    * `--echo_memory_download_source`: Echo-Memory 权重的下载源，默认值为 `"huggingface"`。
 
 我们构建了一个样例视频数据集，以方便您进行测试，通过以下命令可以下载这个数据集：
 
