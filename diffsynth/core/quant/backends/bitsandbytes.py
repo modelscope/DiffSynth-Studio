@@ -29,6 +29,8 @@ def _assign_params_from_state_dict(self, state_dict, prefix, local_metadata, str
 class BitsAndBytesQuantBackend(QuantBackend):
     """Adapter over `bitsandbytes.nn.Linear4bit` (NF4 / FP4, weight-only)."""
 
+    project_url = "https://github.com/bitsandbytes-foundation/bitsandbytes"
+
     def validate_environment(self):
         try:
             import bitsandbytes  # noqa: F401

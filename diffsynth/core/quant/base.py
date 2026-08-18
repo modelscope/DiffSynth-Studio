@@ -27,6 +27,7 @@ class QuantBackend(ABC):
     """
 
     name: str = ""
+    project_url: str = ""
 
     def __init__(self, config=None):
         self.config = config
@@ -41,6 +42,11 @@ class QuantBackend(ABC):
 
     def validate_environment(self):
         return
+
+    def announce_environment(self):
+        """Point at the library that owns this backend's hardware support, instead of restating it."""
+        if self.project_url:
+            print(f"Quantization backend `{self.name}`: for hardware compatibility issues see {self.project_url}")
 
     def create_quantized_linear(self, linear: torch.nn.Linear, compute_device=None, model_device=None) -> torch.nn.Module:
         raise NotImplementedError(
@@ -155,6 +161,7 @@ def check_backend_contract(backend, in_features: int = 512, out_features: int = 
         check_backend_contract(QUANT_BACKENDS[spec.backend](spec.config_factory({})))
     """
     failures = []
+    backend.validate_environment()
 
     def check(condition, detail):
         if not condition:

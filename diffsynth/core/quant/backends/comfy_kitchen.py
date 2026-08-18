@@ -1,5 +1,4 @@
 import copy
-import functools
 import importlib.util
 import json
 
@@ -12,46 +11,23 @@ COMFY_QUANT_KEY = "comfy_quant"
 SCALE_KEY = "weight_scale"
 
 
-@functools.cache
-def _initialize_registry():
-    """Disable comfy-kitchen's cuda backend below CUDA 13, where it reports available but fails."""
-    import comfy_kitchen as ck
-    if torch.version.cuda is None or tuple(int(v) for v in torch.version.cuda.split(".")[:2]) < (13, 0):
-        ck.registry.disable("cuda")
-
-
 class ComfyQuantFormat:
-    """Everything specific to one weight format that ComfyUI writes."""
+    """Everything specific to one weight format that ComfyUI writes, one hook per direction."""
 
-    marker_name = None      # the `format` string ComfyUI writes into the marker
-    layout_cls = None       # name of the comfy-kitchen layout class
-    extra_tensor_keys = ()  # sibling tensors consumed by unflatten (popped from state dict)
+    marker_name = None   # the `format` string ComfyUI writes into the marker
+    layout_cls = None    # name of the comfy-kitchen layout class
+    sibling_keys = ()    # per-layer tensors to drop, so `load_state_dict` never sees them
 
-    def options_from_marker(self, marker, layer_name):
-        """Per-layer settings taken from the decoded marker."""
+    def params_from_marker(self, marker, qdata, layer_name):
+        """`Params` fields beyond `scale`, `orig_dtype` and `orig_shape`, read off the marker."""
         return {}
 
-    def check_options(self, options, qdata, layer_name):
-        """Reject settings that contradict the packed weight, before they corrupt it silently."""
-
-    def options_for_new_weight(self, in_features, config):
-        """The same settings, chosen from `config` when quantizing an fp weight online."""
+    def from_float_kwargs(self, in_features, config):
+        """Keywords for `QuantizedTensor.from_float` when quantizing an fp weight online."""
         return {}
 
     def marker_from_params(self, params):
-        """Settings to write back, so a re-saved checkpoint reloads identically."""
-        return {}
-
-    def logical_shape(self, qdata, options):
-        """Shape of the dequantized weight. Formats that pack sub-byte values must override."""
-        return tuple(qdata.shape)
-
-    def params_kwargs(self, options, tensors):
-        """`Params` fields beyond `scale`, `orig_dtype` and `orig_shape`."""
-        return {}
-
-    def from_float_kwargs(self, options, config):
-        """Extra keywords for `QuantizedTensor.from_float`."""
+        """Marker fields to write back, so a re-saved checkpoint reloads identically."""
         return {}
 
 
@@ -62,44 +38,31 @@ class TensorWiseInt8Format(ComfyQuantFormat):
     layout_cls = "TensorWiseINT8Layout"
     DEFAULT_GROUPSIZE = 256
 
-    def options_from_marker(self, marker, layer_name):
+    def params_from_marker(self, marker, qdata, layer_name):
         nested = marker.get("params", {})
-        return {
-            "convrot": bool(marker.get("convrot", nested.get("convrot", False))),
-            "convrot_groupsize": int(marker.get(
-                "convrot_groupsize", nested.get("convrot_groupsize", self.DEFAULT_GROUPSIZE))),
-        }
-
-    def check_options(self, options, qdata, layer_name):
+        convrot = bool(marker.get("convrot", nested.get("convrot", False)))
+        groupsize = int(marker.get("convrot_groupsize", nested.get("convrot_groupsize", self.DEFAULT_GROUPSIZE)))
         in_features = qdata.shape[1]
-        if options["convrot"] and in_features % options["convrot_groupsize"] != 0:
+        if convrot and in_features % groupsize:
             raise ValueError(
-                f"The marker of `{layer_name}` asks for convrot with groupsize {options['convrot_groupsize']}, "
+                f"The marker of `{layer_name}` asks for convrot with groupsize {groupsize}, "
                 f"which does not divide in_features={in_features}."
             )
+        return {"is_weight": True, "convrot": convrot, "convrot_groupsize": groupsize}
 
-    def options_for_new_weight(self, in_features, config):
-        convrot, groupsize = self._resolve_rotation(in_features, config["convrot"], config["convrot_groupsize"])
-        return {"convrot": convrot, "convrot_groupsize": groupsize}
-
-    @staticmethod
-    def _is_regular_hadamard_size(size: int) -> bool:
-        """comfy-kitchen builds the rotation as Kronecker powers of a 4x4 Hadamard matrix."""
-        return size >= 4 and size & (size - 1) == 0 and (size.bit_length() - 1) % 2 == 0
-
-    @classmethod
-    def _resolve_rotation(cls, in_features, convrot, groupsize):
-        """Shrink the group size by four until it divides `in_features`, mirroring ComfyUI."""
-        if not convrot:
-            return False, groupsize
-        if not cls._is_regular_hadamard_size(groupsize):
+    def from_float_kwargs(self, in_features, config):
+        groupsize = config["convrot_groupsize"]
+        kwargs = {"is_weight": True, "per_channel": config["per_channel"],
+                  "convrot": False, "convrot_groupsize": groupsize}
+        if not config["convrot"]:
+            return kwargs
+        if groupsize < 4 or groupsize & (groupsize - 1) or (groupsize.bit_length() - 1) % 2:
             raise ValueError(f"convrot_groupsize must be a power of four >= 4, got {groupsize}.")
-        candidate = groupsize
-        while candidate >= 4:
-            if in_features % candidate == 0:
-                return True, candidate
-            candidate //= 4
-        return False, groupsize
+        while groupsize >= 4 and in_features % groupsize:
+            groupsize //= 4
+        if groupsize >= 4:
+            kwargs.update(convrot=True, convrot_groupsize=groupsize)
+        return kwargs
 
     def marker_from_params(self, params):
         marker = {"convrot": bool(params.convrot)}
@@ -107,25 +70,18 @@ class TensorWiseInt8Format(ComfyQuantFormat):
             marker["convrot_groupsize"] = int(params.convrot_groupsize)
         return marker
 
-    def params_kwargs(self, options, tensors):
-        return {"is_weight": True, **options}
-
-    def from_float_kwargs(self, options, config):
-        return {"is_weight": True, "per_channel": config["per_channel"], **options}
-
 
 class Float8E4M3Format(ComfyQuantFormat):
-    """FP8 per-tensor scaled. Weight is F8_E4M3, with scalar weight_scale and optional input_scale.
+    """FP8 per-tensor scaled. Weight is F8_E4M3 with a scalar weight_scale.
 
     TODO: fp8 activation quantization is not yet implemented. ComfyUI quantizes the input with
-    input_scale before calling scaled_mm (fp8×fp8 on H100/4090). We currently fallback to
-    dequant → bf16 matmul, which is correct but does not leverage fp8 tensor cores.
+    the checkpoint's `input_scale` before calling scaled_mm (fp8xfp8 on H100/4090); we drop that
+    tensor and fall back to dequant -> bf16 matmul, which is correct but skips fp8 tensor cores.
     """
 
     marker_name = "float8_e4m3fn"
     layout_cls = "TensorCoreFP8Layout"
-    extra_tensor_keys = ("input_scale",)
-    extra_tensor_optional = True
+    sibling_keys = ("input_scale",)
 
 
 FORMATS = {fmt.marker_name: fmt for fmt in (TensorWiseInt8Format(), Float8E4M3Format())}
@@ -158,7 +114,6 @@ class ComfyKitchenLinear(torch.nn.Linear):
             self.bias.requires_grad_(False)
 
     def forward(self, x):
-        # int8 activation quantization has no strided kernel; a non-contiguous input measured 2.5x slower.
         if not x.is_contiguous():
             x = x.contiguous()
         if not self.force_eager:
@@ -166,14 +121,6 @@ class ComfyKitchenLinear(torch.nn.Linear):
         import comfy_kitchen as ck
         with ck.use_backend("eager"):
             return super().forward(x)
-
-    def extra_repr(self):
-        params = getattr(self.weight, "_params", None)
-        if params is None:
-            return f"{super().extra_repr()}, layout={self.layout}"
-        return (f"{super().extra_repr()}, layout={self.layout}, "
-                f"convrot={getattr(params, 'convrot', None)}, "
-                f"groupsize={getattr(params, 'convrot_groupsize', None)}")
 
     def __deepcopy__(self, memo):
         from comfy_kitchen.tensor import QuantizedTensor
@@ -198,16 +145,18 @@ class ComfyKitchenLinear(torch.nn.Linear):
 class ComfyKitchenQuantBackend(QuantBackend):
     """Adapter over comfy-kitchen's `QuantizedTensor`, the quantized-weight format ComfyUI writes."""
 
-    def __init__(self, config=None):
-        super().__init__(config)
+    project_url = "https://github.com/Comfy-Org/comfy-kitchen"
 
     def validate_environment(self):
         if importlib.util.find_spec("comfy_kitchen") is None:
             raise ImportError(
-                "comfy-kitchen is required for the ck_int8 quantization method. "
+                "comfy-kitchen is required for comfy_kitchen quantization methods. "
                 'Please install it via `pip install comfy-kitchen` or `pip install "diffsynth[quant]"`.'
             )
-        _initialize_registry()
+        # comfy-kitchen ships cu13 kernels; below CUDA 13 they register as available but fail at launch.
+        import comfy_kitchen as ck
+        if torch.version.cuda is None or tuple(int(v) for v in torch.version.cuda.split(".")[:2]) < (13, 0):
+            ck.registry.disable("cuda")
 
     def capabilities(self):
         return {
@@ -223,49 +172,39 @@ class ComfyKitchenQuantBackend(QuantBackend):
     def create_quantized_linear(self, linear, compute_device=None, model_device=None):
         from comfy_kitchen.tensor import QuantizedTensor
         quant_format = self._active_format()
-        options = quant_format.options_for_new_weight(linear.in_features, self.config)
         if compute_device is not None:
             linear = linear.to(device=compute_device)
         weight = QuantizedTensor.from_float(
             linear.weight.data, quant_format.layout_cls,
-            **quant_format.from_float_kwargs(options, self.config),
+            **quant_format.from_float_kwargs(linear.in_features, self.config),
         )
-        quant_linear = self._build_linear(linear, quant_format.layout_cls, linear.weight.dtype)
+        quant_linear = self._build_linear(linear, linear.weight.dtype)
         quant_linear.weight = torch.nn.Parameter(weight, requires_grad=False)
         if linear.bias is not None:
             quant_linear.bias = torch.nn.Parameter(linear.bias.data, requires_grad=False)
         return quant_linear if model_device is None else quant_linear.to(device=model_device)
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
-        return self._build_linear(linear, self._active_format().layout_cls, compute_dtype)
+        return self._build_linear(linear, compute_dtype)
 
     def unflatten_state_dict(self, state_dict, metadata):
         from comfy_kitchen.tensor import QuantizedTensor, get_layout_class
         rebuilt = dict(state_dict)
-        layer_names = [key[: -len(COMFY_QUANT_KEY) - 1] for key in state_dict if key.endswith(f".{COMFY_QUANT_KEY}")]
-        for layer_name in layer_names:
-            quant_format, marker = _parse_marker(rebuilt.pop(f"{layer_name}.{COMFY_QUANT_KEY}"), layer_name)
-            scale = rebuilt.pop(f"{layer_name}.{SCALE_KEY}", None)
-            if scale is None:
-                raise ValueError(f"`{layer_name}` has a {COMFY_QUANT_KEY} marker but no {SCALE_KEY}.")
+        suffix = f".{COMFY_QUANT_KEY}"
+        for layer_name in [key[: -len(suffix)] for key in state_dict if key.endswith(suffix)]:
+            quant_format, marker = _parse_marker(rebuilt.pop(layer_name + suffix), layer_name)
             qdata = rebuilt.get(f"{layer_name}.weight")
-            if qdata is None:
-                raise ValueError(f"`{layer_name}` has a {COMFY_QUANT_KEY} marker but no weight.")
-            options = quant_format.options_from_marker(marker, layer_name)
-            quant_format.check_options(options, qdata, layer_name)
-            tensors = {}
-            optional = getattr(quant_format, 'extra_tensor_optional', False)
-            for key in quant_format.extra_tensor_keys:
-                value = rebuilt.pop(f"{layer_name}.{key}", None)
-                if value is None and not optional:
-                    raise ValueError(f"`{quant_format.marker_name}` needs `{layer_name}.{key}`, which is missing.")
-                if value is not None:
-                    tensors[key] = value
+            scale = rebuilt.pop(f"{layer_name}.{SCALE_KEY}", None)
+            for key, value in (("weight", qdata), (SCALE_KEY, scale)):
+                if value is None:
+                    raise ValueError(f"`{layer_name}` has a {COMFY_QUANT_KEY} marker but no `{key}`.")
+            for key in quant_format.sibling_keys:
+                rebuilt.pop(f"{layer_name}.{key}", None)
             params = get_layout_class(quant_format.layout_cls).Params(
                 scale=scale,
                 orig_dtype=self.config.get("orig_dtype", torch.bfloat16),
-                orig_shape=quant_format.logical_shape(qdata, options),
-                **quant_format.params_kwargs(options, tensors),
+                orig_shape=tuple(qdata.shape),
+                **quant_format.params_from_marker(marker, qdata, layer_name),
             )
             rebuilt[f"{layer_name}.weight"] = QuantizedTensor(qdata, quant_format.layout_cls, params)
         return rebuilt
@@ -278,7 +217,6 @@ class ComfyKitchenQuantBackend(QuantBackend):
                 flattened[key] = value
                 continue
             layer_name = key[: -len(".weight")]
-            # Read the format off the weight, not the config, so a loaded model round-trips.
             quant_format = next((f for f in FORMATS.values() if f.layout_cls == value._layout_cls), None)
             if quant_format is None:
                 raise ValueError(f"`{layer_name}` uses layout `{value._layout_cls}`, which no format claims.")
@@ -305,8 +243,9 @@ class ComfyKitchenQuantBackend(QuantBackend):
             raise ValueError(f"Unsupported format `{marker_name}`, not in {sorted(FORMATS)}.")
         return FORMATS[marker_name]
 
-    def _build_linear(self, linear, layout_cls, compute_dtype):
+    def _build_linear(self, linear, compute_dtype):
         from comfy_kitchen.tensor import get_layout_class
+        layout_cls = self._active_format().layout_cls
         return ComfyKitchenLinear(
             linear.in_features,
             linear.out_features,
@@ -327,22 +266,17 @@ def _int8_config(backend_config_kwargs):
         **backend_config_kwargs,
     }
 
-
-register_quant_method(
-    "ck_int8", "comfy_kitchen", _int8_config,
-    label="8bit, int8 W8A8 (ComfyUI int8_tensorwise). `convrot` and `convrot_groupsize` apply to "
-          "online quantization only; a prequantized checkpoint follows its per-layer marker.",
-)
-
-
 def _fp8_config(backend_config_kwargs):
     return {
         "format": Float8E4M3Format.marker_name,
         **backend_config_kwargs,
     }
 
-
 register_quant_method(
-    "ck_fp8", "comfy_kitchen", _fp8_config,
-    label="8bit, fp8 E4M3 per-tensor scaled (ComfyUI float8_e4m3fn).",
+    "ck_int8_w8a8", "comfy_kitchen", _int8_config,
+    label="W8A8, int8 weight + int8 dynamic activation (ComfyUI int8_tensorwise)",
+)
+register_quant_method(
+    "ck_fp8_w8a8", "comfy_kitchen", _fp8_config,
+    label="W8A8, fp8 E4M3 weight + fp8 dynamic activation (ComfyUI float8_e4m3fn)",
 )

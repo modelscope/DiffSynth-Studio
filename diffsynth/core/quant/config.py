@@ -137,6 +137,7 @@ class QuantizeConfig:
         if self.load_prequantized:
             return model
         self.backend.validate_environment()
+        self.backend.announce_environment()
 
         def quantize(linear):
             return self.backend.create_quantized_linear(linear, compute_device=compute_device, model_device=model_device)
@@ -188,6 +189,7 @@ class QuantizeConfig:
             compute_dtype: dtype the quantized layers dequantize to at forward time.
         """
         self.backend.validate_environment()
+        self.backend.announce_environment()
 
         def build_shell(linear):
             return self.backend.create_quantized_linear_shell(linear, compute_dtype)
