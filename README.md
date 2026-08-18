@@ -114,9 +114,9 @@ We believe that a well-developed open-source code framework can lower the thresh
     - Z-Image Turbo: [Model](https://www.modelscope.ai/models/Tongyi-MAI/Z-Image-Turbo), [Documentation](/docs/en/Model_Details/Z-Image.md), [Code](/examples/z_image/)
     - FLUX.2-dev: [Model](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-dev), [Documentation](/docs/en/Model_Details/FLUX2.md), [Code](/examples/flux2/)
   - Training framework upgrade
-    - [Split Training](/docs/zh/Training/Split_Training.md): Supports automatically splitting the training process into two stages: data processing and training (even for training ControlNet or any other model). Computations that do not require gradient backpropagation, such as text encoding and VAE encoding, are performed during the data processing stage, while other computations are handled during the training stage. Faster speed, less VRAM requirement.
-    - [Differential LoRA Training](/docs/zh/Training/Differential_LoRA.md): This is a training technique we used in [ArtAug](https://www.modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1), now available for LoRA training of any model.
-    - [FP8 Training](/docs/zh/Training/FP8_Precision.md): FP8 can be applied to any non-training model during training, i.e., models with gradients turned off or gradients that only affect LoRA weights.
+    - [Split Training](/docs/en/Training/Split_Training.md): Supports automatically splitting the training process into two stages: data processing and training (even for training ControlNet or any other model). Computations that do not require gradient backpropagation, such as text encoding and VAE encoding, are performed during the data processing stage, while other computations are handled during the training stage. Faster speed, less VRAM requirement.
+    - [Differential LoRA Training](/docs/en/Training/Differential_LoRA.md): This is a training technique we used in [ArtAug](https://www.modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1), now available for LoRA training of any model.
+    - [FP8 Training](/docs/en/Training/FP8_Precision.md): FP8 can be applied to any non-training model during training, i.e., models with gradients turned off or gradients that only affect LoRA weights.
 
 - **November 4, 2025** Supported the [ByteDance/Video-As-Prompt-Wan2.1-14B](https://modelscope.cn/models/ByteDance/Video-As-Prompt-Wan2.1-14B) model, which is trained based on Wan 2.1 and supports generating corresponding actions based on reference videos.
 
@@ -1795,13 +1795,13 @@ Example code for image quality metrics models can be found at: [/examples/image_
 
 | Metric | GitHub Repository | Example Code |
 | - | - | - |
-| PickScore | [GitHub](https://github.com/yuvalkirstain/pickscore) | [code](../../../examples/image_quality_metric/pickscore.py) |
-| ImageReward | [GitHub](https://github.com/zai-org/ImageReward) | [code](../../../examples/image_quality_metric/image_reward.py) |
-| HPSv2 | [GitHub](https://github.com/tgxs002/HPSv2) | [code](../../../examples/image_quality_metric/hpsv2.py) |
-| HPSv3 | [GitHub](https://github.com/MizzenAI/HPSv3) | [code](../../../examples/image_quality_metric/hpsv3.py) |
-| CLIP Score | [GitHub](https://github.com/openai/CLIP) | [code](../../../examples/image_quality_metric/clipscore.py) |
-| Aesthetic | [GitHub](https://github.com/christophschuhmann/improved-aesthetic-predictor) | [code](../../../examples/image_quality_metric/aesthetic.py) |
-| FID | [GitHub](https://github.com/mseitzer/pytorch-fid) | [code](../../../examples/image_quality_metric/fid.py) |
+| PickScore | [GitHub](https://github.com/yuvalkirstain/pickscore) | [code](./examples/image_quality_metric/pickscore.py) |
+| ImageReward | [GitHub](https://github.com/zai-org/ImageReward) | [code](./examples/image_quality_metric/image_reward.py) |
+| HPSv2 | [GitHub](https://github.com/tgxs002/HPSv2) | [code](./examples/image_quality_metric/hpsv2.py) |
+| HPSv3 | [GitHub](https://github.com/MizzenAI/HPSv3) | [code](./examples/image_quality_metric/hpsv3.py) |
+| CLIP Score | [GitHub](https://github.com/openai/CLIP) | [code](./examples/image_quality_metric/clipscore.py) |
+| Aesthetic | [GitHub](https://github.com/christophschuhmann/improved-aesthetic-predictor) | [code](./examples/image_quality_metric/aesthetic.py) |
+| FID | [GitHub](https://github.com/mseitzer/pytorch-fid) | [code](./examples/image_quality_metric/fid.py) |
 
 </details>
 
