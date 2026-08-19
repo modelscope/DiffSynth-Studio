@@ -79,6 +79,7 @@ def add_logger_config(parser: argparse.ArgumentParser):
     parser.add_argument("--swanlab_project", type=str, default="DiffSynth-Studio", help="SwanLab project name.")
     parser.add_argument("--enable_wandb_log", default=False, action="store_true", help="Enable wandb for logging.")
     parser.add_argument("--wandb_project", type=str, default="DiffSynth-Studio", help="Wandb project name.")
+    parser.add_argument("--enable_csv_log", default=False, action="store_true", help="Enable CSV loss logging.")
     return parser
 
 def add_dmd2_config(parser: argparse.ArgumentParser):
