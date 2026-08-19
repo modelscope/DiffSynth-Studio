@@ -368,6 +368,7 @@ if __name__ == "__main__":
     model_logger = ModelLogger(
         args.output_path,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
+        enable_csv_log=args.enable_csv_log,
         enable_tensorboard_log=args.enable_tensorboard_log,
         enable_swanlab_log=args.enable_swanlab_log,
         swanlab_project=args.swanlab_project,

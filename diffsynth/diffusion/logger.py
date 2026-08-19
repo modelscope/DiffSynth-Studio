@@ -1,4 +1,5 @@
 import csv
+import json
 import os
 
 import torch
@@ -52,24 +53,26 @@ class WandbLogger:
 class CSVLogger:
     def __init__(self, log_dir):
         os.makedirs(log_dir, exist_ok=True)
+        self.file = None
         self.path = os.path.join(log_dir, "loss.csv")
         file_exists = os.path.isfile(self.path) and os.path.getsize(self.path) > 0
         self.file = open(self.path, "a", encoding="utf-8", newline="")
-        self.writer = csv.DictWriter(self.file, fieldnames=["step", "loss"])
+        self.writer = csv.DictWriter(self.file, fieldnames=["step", "key", "value"], lineterminator="\n")
         if not file_exists:
             self.writer.writeheader()
             self.file.flush()
 
     def log(self, key, value, step):
-        if key != "loss":
-            return
         if isinstance(value, torch.Tensor):
-            value = value.detach().float().item()
-        self.writer.writerow({"step": step, "loss": float(value)})
+            value = value.detach().float()
+            value = value.item() if value.numel() == 1 else value.mean().item()
+        elif not isinstance(value, (int, float, bool)):
+            value = str(value)
+        self.writer.writerow({"step": step, "key": key, "value": value})
         self.file.flush()
 
     def close(self):
-        if not self.file.closed:
+        if self.file is not None and not self.file.closed:
             self.file.close()
 
 
@@ -79,6 +82,7 @@ class ModelLogger:
         enable_tensorboard_log=False,
         enable_swanlab_log=False, swanlab_project="DiffSynth-Studio",
         enable_wandb_log=False, wandb_project="DiffSynth-Studio",
+        enable_csv_log=False,
     ):
         self.output_path = output_path
         self.remove_prefix_in_ckpt = remove_prefix_in_ckpt
@@ -89,18 +93,20 @@ class ModelLogger:
         self.enable_swanlab_log = enable_swanlab_log
         self.swanlab_project = swanlab_project
         self.enable_wandb_log = enable_wandb_log
+        self.enable_csv_log = enable_csv_log
         self.wandb_project = wandb_project
         self.loggers = []
         self.loggers_initialized = False
 
     def init_loggers(self):
-        self.loggers.append(CSVLogger(self.output_path))
         if self.enable_tensorboard_log:
             self.loggers.append(TensorBoardLogger(os.path.join(self.output_path, "tensorboard_log")))
         if self.enable_swanlab_log:
             self.loggers.append(SwanLabLogger(project_name=self.swanlab_project, log_dir=os.path.join(self.output_path, "swanlab_log")))
         if self.enable_wandb_log:
             self.loggers.append(WandbLogger(project_name=self.wandb_project, log_dir=os.path.join(self.output_path, "wandb_log")))
+        if self.enable_csv_log:
+            self.loggers.append(CSVLogger(self.output_path))
         self.loggers_initialized = True
 
     def on_step_end(self, accelerator: Accelerator, model: torch.nn.Module, save_steps=None, **kwargs):
@@ -108,10 +114,11 @@ class ModelLogger:
         if accelerator.is_main_process:
             if not self.loggers_initialized:
                 self.init_loggers()
-            loss = kwargs.get("loss")
-            if loss is not None:
+            for key, value in kwargs.items():
+                if value is None:
+                    continue
                 for logger in self.loggers:
-                    logger.log("loss", loss, self.num_steps)
+                    logger.log(key, value, self.num_steps)
         if save_steps is not None and self.num_steps % save_steps == 0:
             self.save_model(accelerator, model, f"step-{self.num_steps}.safetensors")
 
