@@ -45,6 +45,28 @@ class WandbLogger:
     def close(self):
         self.wandb.finish()
 
+class CSVLogger:
+    def __init__(self, log_dir):
+        import csv
+        os.makedirs(log_dir, exist_ok=True)
+        self.path = os.path.join(log_dir, "loss.csv")
+        file_exists = os.path.isfile(self.path) and os.path.getsize(self.path) > 0
+        self.file = open(self.path, "a", encoding="utf-8", newline="")
+        self.writer = csv.DictWriter(self.file, fieldnames=["step", "key", "value"], lineterminator="\n")
+        if not file_exists:
+            self.writer.writeheader()
+            self.file.flush()
+
+    def log(self, key, value, step):
+        if isinstance(value, torch.Tensor):
+            value = value.detach().float().mean().item()
+        self.writer.writerow({"step": step, "key": key, "value": value})
+        self.file.flush()
+
+    def close(self):
+        if not self.file.closed:
+            self.file.close()
+
 
 class ModelLogger:
     def __init__(
@@ -52,6 +74,7 @@ class ModelLogger:
         enable_tensorboard_log=False,
         enable_swanlab_log=False, swanlab_project="DiffSynth-Studio",
         enable_wandb_log=False, wandb_project="DiffSynth-Studio",
+        enable_csv_log=False,
     ):
         self.output_path = output_path
         self.remove_prefix_in_ckpt = remove_prefix_in_ckpt
@@ -63,6 +86,7 @@ class ModelLogger:
         self.swanlab_project = swanlab_project
         self.enable_wandb_log = enable_wandb_log
         self.wandb_project = wandb_project
+        self.enable_csv_log = enable_csv_log
         self.loggers = []
         self.loggers_initialized = False
 
@@ -73,6 +97,8 @@ class ModelLogger:
             self.loggers.append(SwanLabLogger(project_name=self.swanlab_project, log_dir=os.path.join(self.output_path, "swanlab_log")))
         if self.enable_wandb_log:
             self.loggers.append(WandbLogger(project_name=self.wandb_project, log_dir=os.path.join(self.output_path, "wandb_log")))
+        if self.enable_csv_log:
+            self.loggers.append(CSVLogger(self.output_path))
         self.loggers_initialized = True
 
     def on_step_end(self, accelerator: Accelerator, model: torch.nn.Module, save_steps=None, **kwargs):

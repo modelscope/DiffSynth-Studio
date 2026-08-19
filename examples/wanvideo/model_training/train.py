@@ -187,6 +187,7 @@ if __name__ == "__main__":
         swanlab_project=args.swanlab_project,
         enable_wandb_log=args.enable_wandb_log,
         wandb_project=args.wandb_project,
+        enable_csv_log=args.enable_csv_log,
     )
     launcher_map = {
         "sft:data_process": launch_data_process_task,
