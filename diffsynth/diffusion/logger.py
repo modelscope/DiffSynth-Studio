@@ -1,4 +1,4 @@
-import os, torch, csv
+import os, torch
 from accelerate import Accelerator
 
 
@@ -47,6 +47,7 @@ class WandbLogger:
 
 class CSVLogger:
     def __init__(self, log_dir):
+        import csv
         os.makedirs(log_dir, exist_ok=True)
         self.path = os.path.join(log_dir, "loss.csv")
         file_exists = os.path.isfile(self.path) and os.path.getsize(self.path) > 0
