@@ -15,6 +15,7 @@ Welcome to DiffSynth-Studio's Documentation
    Pipeline_Usage/Model_Inference
    Pipeline_Usage/Accelerated_Inference
    Pipeline_Usage/VRAM_management
+   Pipeline_Usage/Quantization
    Pipeline_Usage/Model_Training
    Pipeline_Usage/Environment_Variables
    Pipeline_Usage/GPU_support
@@ -75,6 +76,7 @@ Welcome to DiffSynth-Studio's Documentation
    API_Reference/core/data
    API_Reference/core/gradient
    API_Reference/core/loader
+   API_Reference/core/quant
    API_Reference/core/vram
 
 .. toctree::

@@ -76,6 +76,7 @@
    API_Reference/core/data
    API_Reference/core/gradient
    API_Reference/core/loader
+   API_Reference/core/quant
    API_Reference/core/vram
 
 .. toctree::

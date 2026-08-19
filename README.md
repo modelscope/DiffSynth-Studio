@@ -36,6 +36,8 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
+- **August 19, 2026** We have released the model quantization feature. It provides a unified `QuantizeConfig` entry point supporting multiple quantization backends including bitsandbytes, torchao, and comfy-kitchen, with capabilities such as online quantization, loading pre-quantized weights, mixed quantization, saving quantized models, and quantization + LoRA training. For details, please refer to the [documentation](/docs/en/Pipeline_Usage/Quantization.md).
+
 - **August 17, 2026** MiniMax-Music3 open-sourced, welcome a new member to the audio model family! Support includes text-to-music generation and low VRAM inference. For details, please refer to the [documentation](/docs/en/Model_Details/MiniMax-Music3.md) and [example code](/examples/minimax_music3/).
 
 - **August 7, 2026** We add support for Wan-Animate-2 in the Wan series. Given a reference image and a driving video, it makes the reference character perform the motions in the driving video, generating high-quality character animation, with both standard and distilled variants. For details, please refer to the [documentation](/docs/en/Model_Details/Wan.md) and [example code](/examples/wanvideo/).

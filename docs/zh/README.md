@@ -31,6 +31,7 @@ graph LR;
 * [模型推理](./Pipeline_Usage/Model_Inference.md)
 * [加速推理](./Pipeline_Usage/Accelerated_Inference.md)
 * [显存管理](./Pipeline_Usage/VRAM_management.md)
+* [模型量化](./Pipeline_Usage/Quantization.md)
 * [模型训练](./Pipeline_Usage/Model_Training.md)
 * [环境变量](./Pipeline_Usage/Environment_Variables.md)
 * [GPU/NPU 支持](./Pipeline_Usage/GPU_support.md)
@@ -86,6 +87,7 @@ graph LR;
 * [`diffsynth.core.data`](./API_Reference/core/data.md): 数据处理算子与通用数据集
 * [`diffsynth.core.gradient`](./API_Reference/core/gradient.md): 梯度检查点
 * [`diffsynth.core.loader`](./API_Reference/core/loader.md): 模型下载与加载
+* [`diffsynth.core.quant`](./API_Reference/core/quant.md): 模型量化
 * [`diffsynth.core.vram`](./API_Reference/core/vram.md): 显存管理
 
 ## Section 6: Diffusion Templates

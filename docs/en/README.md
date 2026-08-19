@@ -31,6 +31,7 @@ This section introduces the basic usage of `DiffSynth-Studio`, including how to 
 * [Model Inference](./Pipeline_Usage/Model_Inference.md)
 * [Accelerated Inference](./Pipeline_Usage/Accelerated_Inference.md)
 * [VRAM Management](./Pipeline_Usage/VRAM_management.md)
+* [Model Quantization](./Pipeline_Usage/Quantization.md)
 * [Model Training](./Pipeline_Usage/Model_Training.md)
 * [Environment Variables](./Pipeline_Usage/Environment_Variables.md)
 * [GPU/NPU Support](./Pipeline_Usage/GPU_support.md)
@@ -85,6 +86,7 @@ This section introduces the independent core module `diffsynth.core` in `DiffSyn
 * [`diffsynth.core.data`](./API_Reference/core/data.md): Data processing operators and general datasets
 * [`diffsynth.core.gradient`](./API_Reference/core/gradient.md): Gradient checkpointing
 * [`diffsynth.core.loader`](./API_Reference/core/loader.md): Model download and loading
+* [`diffsynth.core.quant`](./API_Reference/core/quant.md): Model quantization
 * [`diffsynth.core.vram`](./API_Reference/core/vram.md): VRAM management
 
 ## Section 6: Diffusion Templates

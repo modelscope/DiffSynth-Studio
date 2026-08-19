@@ -1,18 +1,30 @@
 # 模型量化
 
-量化通过降低模型权重的存储精度（如 4bit、8bit）来减少显存占用，让大模型能在更小的显卡上运行。`DiffSynth-Studio` 提供了统一的量化接口 `QuantizeConfig`，支持多种后端（bitsandbytes、torchao 等），既可以在线量化一个 fp 模型，也可以直接加载预量化的权重，还支持在量化模型上做 LoRA 训练（QLoRA）。
+量化通过降低模型权重的数值精度来减少显存占用，让大模型能在更小的显卡上运行。`DiffSynth-Studio` 提供统一的量化入口 `QuantizeConfig`，支持 bitsandbytes、torchao、comfy-kitchen 等多个量化后端，并支持在线量化、加载预量化权重、混合量化以及量化 + LoRA 训练。
 
-本文以 `Z-Image` 为例，介绍量化功能的使用。
+本文以 `Z-Image` 为例介绍量化的使用。如果你希望把 `diffsynth.core.quant` 用到自己的代码库中，请参考 [`diffsynth.core.quant` API 文档](../API_Reference/core/quant.md)。
 
 > **量化 与 显存管理 FP8 的区别**
 >
-> [显存管理](./VRAM_management.md)中的 FP8 是通过 `offload_dtype` / `onload_dtype` 等参数控制权重在显存中的存储精度，它作用于所有参数、无需依赖第三方量化库，但只支持简单的 FP8 转换。
+> [显存管理](./VRAM_management.md)中的 FP8 通过 `offload_dtype` / `onload_dtype` 等参数控制权重在显存中的存储精度，作用于全部参数、不依赖第三方库，但只有简单的 FP8 转换。
 >
-> 本文的量化（`QuantizeConfig`）是针对 `nn.Linear` 层的专门量化方案，支持 NF4、INT8、INT4 等多种更精细的量化格式，并支持保存/加载量化权重、QLoRA 训练。两者可以组合使用。
+> 本文的量化（`QuantizeConfig`）是针对 `nn.Linear` 的专门方案，支持 NF4、INT8、INT4、MXFP4、NVFP4 等更精细的格式，可保存/加载量化权重，支持激活量化与量化 + LoRA 训练。两者可以组合使用。
+
+## 安装依赖
+
+不同量化后端需要对应的第三方库：
+
+| 后端 | 安装命令 | Project Page |
+| --- | --- | --- |
+| bitsandbytes | `pip install bitsandbytes` | [bitsandbytes](https://github.com/bitsandbytes-foundation/bitsandbytes) |
+| torchao | `pip install torchao>=0.16` | [torchao](https://github.com/pytorch/ao) |
+| comfy-kitchen | `pip install comfy-kitchen` | [comfy-kitchen](https://github.com/Comfy-Org/comfy-kitchen) |
+
+一次性安装全部：`pip install "diffsynth[quant]"`
 
 ## 快速开始
 
-在任意 `ModelConfig` 上传入 `quantize` 参数即可对该模型启用在线量化。以下代码将 Z-Image 的 DiT 用 NF4 量化后加载：
+在任意 `ModelConfig` 上传入 `quantize` 即可对该模型启用在线量化。以下代码把 Z-Image 的 DiT 用 NF4 量化后加载：
 
 ```python
 from diffsynth.pipelines.z_image import ZImagePipeline, ModelConfig
@@ -37,79 +49,74 @@ image = pipe(prompt=prompt, seed=42, num_inference_steps=50, cfg_scale=4)
 image.save("image_z_image_nf4.jpg")
 ```
 
-> bitsandbytes、torchao 等后端需要安装对应的第三方库，可通过 `pip install "diffsynth[quant]"` 一次性安装。
-
 ## 支持的量化方法
 
-框架内置的量化方法如下（`method` 即传入 `QuantizeConfig` 的名称）：
+以下是内置的全部量化方法，`method` 即传入 `QuantizeConfig` 的名称。命名遵循 `W<权重位宽>A<激活位宽>` 约定：`w8a16` 表示只量化权重（weight-only），`w8a8` 表示权重与激活都量化。
 
-| method | 后端 | 位宽 | 依赖库 | 可保存 | 可训练 (QLoRA) |
-| --- | --- | --- | --- | --- | --- |
-| `bitsandbytes_nf4` | bitsandbytes | 4bit (NF4) | bitsandbytes | ✅ | ✅ |
-| `bitsandbytes_fp4` | bitsandbytes | 4bit (FP4) | bitsandbytes | ✅ | ✅ |
-| `torchao_int8_w8a16` | torchao | 8bit (INT8, weight-only) | torchao | ✅ | ✅ |
-| `torchao_int4_w4a16` | torchao | 4bit (INT4, weight-only) | torchao | ✅ | ❌ |
-| `torchao_fp8_w8a16` | torchao | 8bit (FP8, weight-only) | torchao | ✅ | ✅ |
-| `torchao_int8_w8a8` | torchao | W8A8 (INT8 权重 + INT8 动态激活) | torchao | ❌ | ❌ |
-| `torchao_fp8_w8a8` | torchao | W8A8 (FP8 权重 + FP8 动态激活) | torchao | — | — |
-| `torchao_int4_w4a8` | torchao | W4A8 (INT4 权重 + FP8 动态激活) | torchao + mslk | — | — |
-| `torchao_mxfp8_w8a8` | torchao | W8A8 (MXFP8 microscaling) | torchao | ✅ | ❌ |
-| `torchao_mxfp4_w4a4` | torchao | W4A4 (MXFP4 microscaling) | torchao | ✅ | ❌ |
-| `torchao_nvfp4_w4a4` | torchao | W4A4 (NVFP4) | torchao | — | — |
+| method | 后端 | 权重 / 激活 | 可序列化 | 支持 LoRA 训练 |
+| --- | --- | --- | --- | --- |
+| `bitsandbytes_nf4` | bitsandbytes | NF4 / 不量化 | ✅ | ✅ |
+| `bitsandbytes_fp4` | bitsandbytes | FP4 / 不量化 | ✅ | ✅ |
+| `torchao_int8_w8a16` | torchao | INT8 / 不量化 | ✅ | ✅ |
+| `torchao_fp8_w8a16` | torchao | FP8 / 不量化 | ✅ | ✅ |
+| `torchao_int4_w4a16` | torchao | INT4 / 不量化 | ✅ | ❌ |
+| `torchao_int8_w8a8` | torchao | INT8 / INT8 动态 | ✅ | ❌ |
+| `torchao_fp8_w8a8` | torchao | FP8 / FP8 动态 | ✅ | ❌ |
+| `torchao_int4_w4a8` | torchao | INT4 / FP8 动态 | ✅ | ❌ |
+| `torchao_mxfp8_w8a8` | torchao | MXFP8 / MXFP8 | ✅ | ❌ |
+| `torchao_mxfp4_w4a4` | torchao | MXFP4 / MXFP4 | ✅ | ❌ |
+| `torchao_nvfp4_w4a4` | torchao | NVFP4 / NVFP4 | ✅ | ❌ |
+| `comfy_kitchen_int8_w8a8` | comfy_kitchen | INT8 / INT8 动态 | ✅ | ✅ |
+| `comfy_kitchen_fp8_w8a8` | comfy_kitchen | FP8 E4M3 / FP8 | ✅ | ✅ |
 
-### 激活量化的硬件要求
+几点说明：
 
-上表中 `w8a8` / `w4a8` / `w4a4` 这类**激活量化**方法除了量化权重，还会量化激活，因此对显卡算力
-（compute capability，简称 SM）有额外要求。框架会在量化前检查，不满足时直接报错并说明原因，
-而不是让底层 kernel 抛出难以理解的错误：
+- **激活量化**（`w8a8` / `w4a4`）在压缩权重之外还会量化激活值，在支持对应低精度矩阵乘的硬件上可以真正提速，而 weight-only 方案通常只省显存。
+- **LoRA 训练**：只有表中"支持 LoRA 训练"为 ✅ 的方法可用于量化 + LoRA 训练。
+- `comfy_kitchen_*` 方法读写的是 ComfyUI 的量化权重格式，可与 ComfyUI 生态互通。comfy-kitchen 需要 CUDA 13.0 及以上。
+- MXFP8 / MXFP4 / NVFP4 等格式对计算硬件有要求，具体兼容性请查阅 [torchao](https://github.com/pytorch/ao) 文档。
 
-| 方法 | 最低 SM | 说明 |
-| --- | --- | --- |
-| `torchao_int8_w8a8` | 无 | 任意 CUDA 设备可用；但不支持保存量化权重，也无法训练 |
-| `torchao_fp8_w8a8` | 8.9 | 需要 fp8 tensor core |
-| `torchao_int4_w4a8` | 9.0 | 需要 mslk 的 int4 kernel（WGMMA / TMA 指令），另需 `pip install mslk` |
-| `torchao_mxfp8_w8a8` / `torchao_mxfp4_w4a4` / `torchao_nvfp4_w4a4` | 10.0 | 需要块缩放（blockwise scale）的 fp4/fp8 矩阵乘 |
-
-标注 `—` 的方法（`torchao_fp8_w8a8`、`torchao_int4_w4a8`、`torchao_nvfp4_w4a4`）受硬件限制，
-尚未在实机上验证其保存 / 训练能力。MX 两项的结论是通过下面的数值仿真路径实测得到的。
-
-MX 系列还支持**数值仿真**：传入 `kernel_preference="emulated"` 会先反量化再走普通矩阵乘，
-可在任意显卡上评估该量化方案的精度损失（但没有加速效果）：
+你可以在代码中查询所有可用方法及其参数：
 
 ```python
-QuantizeConfig(method="torchao_mxfp4_w4a4",
-               backend_config_kwargs={"kernel_preference": "emulated"})
+from diffsynth.core.quant import describe_quant_method, QUANT_METHODS, backends
+
+backends.load_all_backends()
+print(sorted(QUANT_METHODS))          # 所有已注册的方法名
+
+describe_quant_method("bitsandbytes_nf4")
 ```
 
-> `torchao_int4_w4a16` 默认的 `int4_packing_format="plain"` 同样依赖 mslk 的 Hopper kernel。
-> 在更早的显卡（如 A100）上请改用 torch 原生打包格式：
-> `backend_config_kwargs={"int4_packing_format": "tile_packed_to_4d"}`。
+输出如下，其中 `backend_config_kwargs (user-tunable)` 列出了该方法可调整的参数及默认值，这些参数决定量化的行为，你可以根据需要修改它们。对于 torchao 后端，部分参数会直接传递给 torchao 自己的 config（如 `Int8WeightOnlyConfig`）：
 
-你可以在代码中查看某个方法支持的后端配置参数：
+> 除非你清楚这些参数的含义，否则建议保留默认值。
 
-```python
-from diffsynth.core.quant import describe_quant_method, QUANT_METHODS
-
-# 列出所有已注册的方法名
-print(list(QUANT_METHODS.keys()))
-
-# 查看某个方法的后端、说明，以及可接受的 backend_config_kwargs 及其默认值
-describe_quant_method("bitsandbytes_nf4")
+```
+method: bitsandbytes_nf4
+backend: bitsandbytes
+detail: 4bit, nf4, weight-only
+backend config: diffsynth.core.quant.backends.bitsandbytes.BitsAndBytesNF4Config
+backend_config_kwargs (user-tunable):
+  compress_statistics = True
+  blocksize           = None
+  quant_storage       = torch.uint8
+pinned by method (not overridable):
+  quant_type = 'nf4'
 ```
 
 ## QuantizeConfig 详解
 
-`QuantizeConfig` 描述了"用哪种方法、量化哪些层、量化后如何运行"。常用字段：
+`QuantizeConfig` 描述了"用哪种方法、量化哪些层、量化后如何运行"：
 
 - **`method`**：量化方法名，见上表，必填。
 - **`mode`**：量化层的运行方式。
-    - `"dynamic"`（默认）：保留后端原生的量化 Linear，每次 forward 时临时反量化计算，显存占用低。
-    - `"dequant_once"`：量化/加载完成后，一次性把量化层还原成普通的 fp `nn.Linear`（保留量化引入的误差）。适合需要标准 `nn.Linear` 的场景，不再省显存。
-- **`target_modules` / `exclude_modules`**：按层名过滤要量化的 `nn.Linear`。层名匹配规则为：完整点分名称完全相等，或以 `"." + 名称` 结尾（例如 `"img_mod.1"` 能匹配 `transformer_blocks.0.img_mod.1`）。一般把对量化敏感的层（如 embedding、输出层、调制层）放进 `exclude_modules`。
-- **`backend_config_kwargs`**：透传给后端配置的参数，例如 NF4 的 `blocksize`、`compress_statistics` 等，具体可用 `describe_quant_method(method)` 查看。
-- **`load_prequantized`**：是否加载已经量化好的权重（见下一节）。
+    - `"dynamic"`（默认）：保留量化 Linear，forward 时按需反量化，显存占用低。
+    - `"dequant_once"`：量化完成后一次性还原成普通 fp `nn.Linear`（保留量化误差）。适合需要标准 `nn.Linear` 的场景，不再省显存。
+- **`target_modules` / `exclude_modules`**：按层名过滤要量化的 `nn.Linear`，取值为列表。匹配规则是完整点分名称相等，或以 `"." + 名称` 结尾（例如 `"img_mod.1"` 可匹配 `transformer_blocks.0.img_mod.1`）。
+- **`backend_config_kwargs`**：传给后端配置的参数字典，决定量化的行为（torchao 后端的部分参数会直接传给 torchao 自己的 config）。可先用 `describe_quant_method(method)` 查询可用参数。
+- **`load_prequantized`**：设为 `True` 表示 checkpoint 中已经是量化权重，直接加载（见下文）。
 
-示例：只量化注意力和 MLP 层，排除对精度敏感的层：
+示例：排除对量化敏感的层，并调整 NF4 的后端参数：
 
 ```python
 from diffsynth.core.quant import QuantizeConfig
@@ -122,17 +129,23 @@ quantize = QuantizeConfig(
 )
 ```
 
+激活量化方法的用法完全一致，只是换个 `method`：
+
+```python
+quantize = QuantizeConfig(method="comfy_kitchen_int8_w8a8", backend_config_kwargs={"convrot_groupsize": 128})
+```
+
 ## 加载预量化权重
 
-除了在线量化，框架也支持直接加载已经量化好的 checkpoint，省去每次加载时的量化开销。
+除在线量化外，也支持直接加载已量化好的 checkpoint，省去每次加载时的量化开销。
 
-对于官方发布的量化模型，其配置中已经写好了 `quant_config`，框架会自动识别并加载，你无需做任何额外配置，像加载普通模型一样即可：
+对于官方发布的量化模型（如 `ideogram-ai/ideogram-4-nf4`），配置中已写好量化信息，像加载普通模型一样即可：
 
 ```python
 ModelConfig(model_id="ideogram-ai/ideogram-4-nf4", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors")
 ```
 
-对于自己保存的量化 checkpoint（见下一节），加载时需要显式传入 `quantize`，并设置 `load_prequantized=True`：
+对于自己保存的量化 checkpoint（见下一节），加载时显式传入 `quantize` 并设置 `load_prequantized=True`，其中 `method` 与 `exclude_modules` 必须与保存时保持一致：
 
 ```python
 from diffsynth.core.quant import QuantizeConfig
@@ -143,55 +156,48 @@ ModelConfig(
 )
 ```
 
-> `load_prequantized=True` 表示 checkpoint 中已经是量化后的权重，框架会先构建对应的量化"空壳"再把权重直接赋值进去，而不会再对 fp 权重做一次在线量化。
-
 ## 保存量化模型
 
-如果你想把一次在线量化的结果保存下来，反复使用，可以用 `save_quantized_model`：
+想把一次在线量化的结果保存下来反复使用，可以用 `save_quantized_model`：
 
 ```python
 from diffsynth.core.loader import ModelConfig
 from diffsynth.core.quant import QuantizeConfig
 from diffsynth.utils.quant.serialization import save_quantized_model
 
-quantize = QuantizeConfig(method="bitsandbytes_nf4")
 model_config = ModelConfig(
     model_id="Tongyi-MAI/Z-Image",
     origin_file_pattern="transformer/*.safetensors",
-    quantize=quantize,
+    quantize=QuantizeConfig(method="bitsandbytes_nf4"),
 )
 save_quantized_model(model_config, "models/z-image-nf4/transformer.safetensors")
 ```
 
-它会下载并加载原始 fp 权重、执行量化、再把量化后的 state dict 以 `.safetensors` 格式保存下来。保存后即可用上一节的方式（`load_prequantized=True`）加载。
-
-> 只有后端声明了 `is_serializable=True` 才能保存量化权重（内置的 bitsandbytes、torchao 均支持）。
+它会下载并加载原始 fp 权重、执行量化，再把量化后的 state dict 存成 `.safetensors`。保存后即可用上一节的方式加载。
 
 ## 混合量化
 
-不同层对量化的敏感程度不同。`MixedQuantizeConfig` 允许对不同的层集合应用不同的量化方法，例如对精度敏感的调制层用 INT8、其余层用 NF4：
+不同层对量化的敏感程度不同。`MixedQuantizeConfig` 允许对不同层集合应用不同方法，例如对精度敏感的调制层用 INT8、其余层用 NF4：
 
 ```python
 from diffsynth.core.quant import QuantizeConfig, MixedQuantizeConfig
 
-mod_layers = [
-    "img_mod.1", "txt_mod.1", "norm_out.linear", "img_in", "txt_in", "proj_out",
-]
+mod_layers = ["img_mod.1", "txt_mod.1", "norm_out.linear", "img_in", "txt_in", "proj_out"]
 quantize = MixedQuantizeConfig(configs=[
     QuantizeConfig(method="bitsandbytes_nf4", exclude_modules=mod_layers),
     QuantizeConfig(method="torchao_int8_w8a16", target_modules=mod_layers),
 ])
 ```
 
-各个子配置会按顺序依次执行，且它们匹配到的层集合必须互不重叠，框架会在量化前校验并在冲突时报错。`MixedQuantizeConfig` 对外的接口与单个 `QuantizeConfig` 完全一致，可以直接传给 `ModelConfig(quantize=...)`。
+各子配置匹配到的层集合必须互不重叠。所有子配置必须共享同一个 `mode`。`MixedQuantizeConfig` 对外接口与 `QuantizeConfig` 完全一致，可直接传给 `ModelConfig(quantize=...)`，也可以传给 `save_quantized_model`。
 
-> 注意：加载混合量化的预量化 checkpoint 时，`load_prequantized=True` 要设置在 `MixedQuantizeConfig` 上，而不是子配置上。
+> 加载混合量化的预量化 checkpoint 时，`load_prequantized=True` 要设置在 `MixedQuantizeConfig` 上，而不是子配置上。
 
-## 量化 + LoRA 训练（QLoRA）
+## 量化 + LoRA 训练
 
-量化后的 Linear 是 `torch.nn.Linear` 的子类，且内置后端的量化层都是可微的（`is_differentiable=True`），梯度可以穿过冻结的量化权重反传到 LoRA 分支。因此你可以在量化的底模上直接注入并训练 LoRA，即 QLoRA，从而在很小的显存里训练大模型。
+量化后的模型可以直接注入 LoRA 进行训练，从而在很小的显存里训练大模型。
 
-典型做法是：**用预量化的底模进行训练**。训练脚本通过 `--model_id_with_origin_paths` 指向预量化模型，框架会自动识别其 `quant_config` 完成量化，再由 `--lora_base_model` / `--lora_target_modules` 注入 LoRA：
+可用于量化 + LoRA 训练的方法见[方法表](#支持的量化方法)的最后一列。典型做法是**用预量化的底模训练**，训练脚本通过 `--model_id_with_origin_paths` 指向预量化模型：
 
 ```bash
 accelerate launch examples/.../train.py \
@@ -202,74 +208,164 @@ accelerate launch examples/.../train.py \
   --output_path "./models/train/xxx-nf4"
 ```
 
-- 训练过程中量化底模的权重保持冻结，只有 LoRA 分支参与更新，因此保存下来的是 fp 精度的 LoRA 权重（不是量化权重）。
-- 推理时按"量化底模 + LoRA"的方式加载：先像[加载预量化权重](#加载预量化权重)一样加载量化底模，再 `pipe.load_lora(pipe.dit, "epoch-x.safetensors")`。
+- 训练中量化底模保持冻结，只有 LoRA 分支更新，因此保存下来的是 fp 精度的 LoRA 权重。
+- 推理时按"量化底模 + LoRA"加载：先像[加载预量化权重](#加载预量化权重)那样加载量化底模，再 `pipe.load_lora(pipe.dit, "epoch-x.safetensors")`。
 
 ## 自定义量化后端
 
-如果内置方法不能满足需求，你可以实现自己的量化后端。核心是继承 `QuantBackend`，产出一个满足契约的量化 `nn.Linear`，并注册方法名。可参考 `diffsynth/models/ideogram4_dit.py` 中的 `Fp8Linear` / `Ideogram4Fp8QuantBackend`。
+如果内置方法不满足需求，你可以实现自己的量化后端。完整的接口签名与契约见 [`diffsynth.core.quant` API 文档](../API_Reference/core/quant.md#扩展接口自定义后端)，可参考 `diffsynth/models/ideogram4_dit.py` 中的 `Fp8Linear` / `Ideogram4Fp8QuantBackend` 作为实现范例。
 
-一个量化后端产出的量化 Linear 必须满足以下契约（详见 `diffsynth/core/quant/base.py`）：
+## 量化与显存管理组合
 
-- **(a)** 是 `nn.Linear` 的即插即用替代：`forward(x)` 内部完成反量化 + 矩阵乘。
-- **(b)** `.to(...)` 只移动设备、不改变打包权重/量化状态的 dtype（dtype 转换需保持其存储格式与数值不变）。
-- **(c)** `state_dict()` / `load_state_dict(assign=True)` 可往返（必要时通过 `flatten_state_dict` / `unflatten_state_dict`）。
-- **(d)**（仅训练场景）`forward` 对输入可微，梯度能穿过冻结的量化层到达 LoRA 分支。
+量化与[显存管理](./VRAM_management.md)解决的是不同层面的问题，可以同时启用：
 
-一个最小后端骨架：
+- 量化降低**每一层的存储体积**，例如 NF4 约为 bf16 的 1/4。
+- 显存管理决定**哪些层此刻留在显存里**，其余按需从内存/硬盘调入。
+
+两者组合可以进一步压低推理所需的显存：先把权重压缩到 4bit/8bit，再用 `vram_limit` 把压缩后的模型拆分到显存与内存中。
 
 ```python
+from diffsynth.pipelines.z_image import ZImagePipeline, ModelConfig
+from diffsynth.core.quant import QuantizeConfig
 import torch
-from diffsynth.core.quant import QuantBackend, register_quant_backend, register_quant_method
 
-
-class MyQuantLinear(torch.nn.Linear):
-    """自定义的量化 Linear，需满足上述契约 (a)-(d)。"""
-    # 若持有需要保护 dtype 的打包张量，可参考 ideogram4_dit.py 的 `_apply` 写法。
-
-
-@register_quant_backend("my_backend")
-class MyQuantBackend(QuantBackend):
-    def capabilities(self):
-        return {**super().capabilities(), "is_serializable": True, "is_differentiable": True}
-
-    def quantized_linear_classes(self):
-        return (MyQuantLinear,)
-
-    def create_quantized_linear(self, linear, compute_device=None, model_device=None):
-        # 在线量化：把一个 fp nn.Linear 转成 MyQuantLinear
-        ...
-
-    def create_quantized_linear_shell(self, linear, compute_dtype):
-        # 构建空壳，用于加载预量化 checkpoint
-        ...
-
-    def dequantize_to_linear(self, module, compute_dtype, compute_device=None, model_device=None):
-        # 还原回普通 nn.Linear（支持 mode="dequant_once"）
-        ...
-
-
-# 注册一个量化方法名，指向该后端；config_factory 把 backend_config_kwargs 转为后端配置
-register_quant_method("my_method", "my_backend", lambda kwargs: dict(kwargs), label="my custom method")
+vram_config = {
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+pipe = ZImagePipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(
+            model_id="Tongyi-MAI/Z-Image", origin_file_pattern="transformer/*.safetensors",
+            quantize=QuantizeConfig(method="bitsandbytes_nf4"), **vram_config,
+        ),
+        ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="text_encoder/*.safetensors", **vram_config),
+        ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
+    ],
+    tokenizer_config=ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
+)
 ```
 
-注册后即可像内置方法一样使用：`QuantizeConfig(method="my_method")`。
+两点注意：
 
-框架提供了两个校验工具，建议在实现后运行以确保后端行为正确：
-
-```python
-from diffsynth.core.quant import QUANT_BACKENDS, QUANT_METHODS
-from diffsynth.core.quant.base import check_backend_contract, check_differentiable
-
-spec = QUANT_METHODS["my_method"]
-backend = QUANT_BACKENDS[spec.backend](spec.config_factory({}))
-check_backend_contract(backend)   # 校验类声明、工厂方法、state dict 键覆盖等契约
-# check_differentiable(quantized_linear)  # 校验梯度可穿过量化层（QLoRA 训练需要）
-```
+- `vram_config` 中的 `offload_dtype` / `onload_dtype` 等参数作用于未量化的参数；已量化层的存储精度由量化方法决定，不受这些参数影响。
+- **Disk Offload 与在线量化不兼容**。Disk Offload 按层从硬盘读取参数，要求量化后的参数已经保存在磁盘上，因此不能先走 Disk Offload 再做在线量化。若要结合 Disk Offload 使用量化，请先按[最佳实践](#最佳实践)的流程保存量化权重，再加载预量化 checkpoint。
 
 ## 最佳实践
 
-- **优先加载官方预量化模型**：省去在线量化开销，且量化配置已调好。
-- **敏感层用 `exclude_modules` 排除**：embedding、时间步嵌入、输出层、调制层等对量化较敏感，量化后可能明显掉质量，建议排除或用更高精度（配合混合量化）。
-- **量化与显存管理组合**：在 `ModelConfig` 上同时设置 `quantize` 和 `vram_config` / `vram_limit`，可进一步压低显存。参见[显存管理](./VRAM_management.md)。
-- **精度与显存权衡**：4bit（NF4/INT4）省显存最多但质量损失更大；8bit（INT8/FP8）质量损失较小。可先用 8bit，显存仍不够再降到 4bit。
+以 MiniMax-H3 为例，展示从保存量化权重到加载推理的完整流程。
+
+### 第一步：保存量化权重
+
+MiniMax-H3 的 FL2VA 底模约 66G（bf16），直接用 NF4 在线量化会很慢，建议先量化并保存一次，之后反复加载。`save_quantized_model` 会返回保存文件的 hash：
+
+```python
+from diffsynth.core.loader import ModelConfig
+from diffsynth.core.quant import QuantizeConfig
+from diffsynth.utils.quant.serialization import save_quantized_model
+
+quantize = QuantizeConfig(
+    method="bitsandbytes_nf4",
+    mode="dynamic",
+    exclude_modules=[
+        "time_embedder.proj_in", "time_embedder.proj_out",
+        "video_patch_proj", "audio_patch_proj", "condition_proj",
+        "final_layer.video_out", "final_layer.audio_out",
+    ],
+)
+model_config = ModelConfig(
+    model_id="MiniMaxAI/MiniMax-H3",
+    origin_file_pattern="FL2VA/transformer/model*.safetensors",
+    quantize=quantize,
+)
+model_hash = save_quantized_model(model_config, "models/MiniMax-H3-NF4/minimax-h3-fl2va-nf4.safetensors")
+print(model_hash)
+```
+
+`exclude_modules` 里是对量化敏感的层（时间步嵌入、输入输出投影），保留 bf16 以维持质量。
+
+### 第二步：把 hash 写入模型配置
+
+框架通过文件 hash 识别模型类型与量化配置。注册条目如下，`quant_config` 需与保存时的 `QuantizeConfig` 保持一致并加上 `load_prequantized: True`：
+
+```python
+config_entry = {
+    # Example: ModelConfig(model_id="...", origin_file_pattern="minimax-h3-fl2va-nf4.safetensors")
+    "model_hash": model_hash,
+    "model_name": "minimax_h3_dit",
+    "model_class": "diffsynth.models.minimax_h3_dit.MiniMaxH3DiT",
+    "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["time_embedder.proj_in", "time_embedder.proj_out", "video_patch_proj", "audio_patch_proj", "condition_proj", "final_layer.video_out", "final_layer.audio_out"]},
+}
+```
+
+注册方式有两种：
+
+**方式一：写入配置文件（永久生效）**。把上面的条目添加到 `diffsynth/configs/model_configs.py` 的 `MODEL_CONFIGS` 列表中。
+
+**方式二：在 Python 代码中动态注册（仅当前进程生效）**。在加载模型之前，直接把条目加入 `MODEL_CONFIGS`：
+
+```python
+from diffsynth.configs import MODEL_CONFIGS
+
+MODEL_CONFIGS.append(config_entry)
+```
+
+### 第三步：加载推理
+
+注册完成后，加载自己的量化权重就和加载普通模型一样，无需传入 `quantize` 参数：
+
+```python
+import torch
+from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
+from diffsynth.utils.data.audio_video import write_video_audio
+
+vram_config = {
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+pipe = MiniMaxH3Pipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(path="models/MiniMax-H3-NF4/minimax-h3-fl2va-nf4.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/text_encoder/model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/video_vae/source/model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
+    ],
+    processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
+)
+prompt = "A girl is very happy, she is speaking in english: 'I enjoy working with Diffsynth-Studio, it's a perfect framework.'"
+video, audio = pipe(prompt=prompt, height=480, width=832, num_frames=124, num_inference_steps=50, seed=0)
+write_video_audio(video=video, audio=audio, output_path="t2va.mp4", fps=24, audio_sample_rate=32000)
+```
+
+我们已将 MiniMax-H3 的 NF4 量化权重上传到 ModelScope（[DiffSynth-Studio/MiniMax-H3-NF4](https://modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)），可以直接使用而无需自行量化。如果你想把自己保存的量化权重上传到 ModelScope，可以用 modelscope SDK：
+
+```python
+from modelscope.hub.api import HubApi
+
+api = HubApi()
+api.login("your_access_token")
+api.create_model("your-username/MiniMax-H3-NF4", visibility=1)
+api.upload_folder(
+    repo_id="your-username/MiniMax-H3-NF4",
+    folder_path="models/MiniMax-H3-NF4",
+    repo_type="model",
+)
+```
