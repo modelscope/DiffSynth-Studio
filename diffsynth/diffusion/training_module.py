@@ -1,5 +1,6 @@
 import torch, json, os, inspect
-from ..core import ModelConfig, load_state_dict
+from ..core import ModelConfig, load_state_dict, hash_model_file
+from ..configs import MODEL_CONFIGS
 from ..utils.controlnet import ControlNetInput
 from .base_pipeline import PipelineUnit
 from peft import LoraConfig, inject_adapter_in_model
@@ -176,6 +177,45 @@ class DiffusionTrainingModule(torch.nn.Module):
         else:
             return {}
     
+    def _identify_model_name(self, path):
+        """Identify the model name from its file hash.
+
+        Uses the same matching logic as `ModelPool.auto_load_model`: hash the file
+        (a shard group is merged before hashing) and look it up in `MODEL_CONFIGS`.
+        Returns the model name (e.g. `minimax_h3_dit`) or None if not recognized.
+        """
+        try:
+            model_hash = hash_model_file(path)
+        except Exception:
+            return None
+        for config in MODEL_CONFIGS:
+            if config.get("model_hash") == model_hash:
+                return config.get("model_name")
+        return None
+
+    def _match_model_component(self, path, components):
+        """Check whether a model path matches one of the fp8/offload component names.
+
+        Two forms are supported:
+        1. Exact file path: the token equals `ModelConfig.path` (e.g. a single
+           safetensors file path).
+        2. Logical component name (e.g. `dit`, `vae`, `text_encoder`): the model name
+           is resolved from the file hash and matched either exactly or by its
+           `_`-suffixed tail, so `dit` matches `minimax_h3_dit`, and `vae` matches
+           `minimax_h3_video_vae`/`minimax_h3_audio_vae`.
+        """
+        if not components:
+            return False
+        if path in components:
+            return True
+        model_name = self._identify_model_name(path)
+        if model_name is None:
+            return False
+        return any(
+            component and (model_name == component or model_name.endswith("_" + component))
+            for component in components
+        )
+
     def parse_model_configs(self, model_paths, model_id_with_origin_paths, fp8_models=None, offload_models=None, device="cpu"):
         fp8_models = [] if fp8_models is None else fp8_models.split(",")
         offload_models = [] if offload_models is None else offload_models.split(",")
@@ -184,8 +224,8 @@ class DiffusionTrainingModule(torch.nn.Module):
             model_paths = json.loads(model_paths)
             for path in model_paths:
                 vram_config = self.parse_vram_config(
-                    fp8=path in fp8_models,
-                    offload=path in offload_models,
+                    fp8=self._match_model_component(path, fp8_models),
+                    offload=self._match_model_component(path, offload_models),
                     device=device
                 )
                 model_configs.append(ModelConfig(path=path, **vram_config))
@@ -193,8 +233,8 @@ class DiffusionTrainingModule(torch.nn.Module):
             model_id_with_origin_paths = model_id_with_origin_paths.split(",")
             for model_id_with_origin_path in model_id_with_origin_paths:
                 vram_config = self.parse_vram_config(
-                    fp8=model_id_with_origin_path in fp8_models,
-                    offload=model_id_with_origin_path in offload_models,
+                    fp8=self._match_model_component(model_id_with_origin_path, fp8_models),
+                    offload=self._match_model_component(model_id_with_origin_path, offload_models),
                     device=device
                 )
                 config = self.parse_path_or_model_id(model_id_with_origin_path)
