@@ -314,5 +314,5 @@ class ComfyKitchenFp8Config(BackendConfig):
     orig_dtype: torch.dtype = torch.bfloat16
 
 
-register_quant_method("ck_int8_w8a8", "comfy_kitchen", ComfyKitchenInt8Config.from_kwargs, label="W8A8, int8 weight + int8 dynamic activation (ComfyUI int8_tensorwise)")
-register_quant_method("ck_fp8_w8a8", "comfy_kitchen", ComfyKitchenFp8Config.from_kwargs, label="W8A8, fp8 E4M3 weight + fp8 activation, static input_scale when present (ComfyUI float8_e4m3fn)")
+register_quant_method("comfy_kitchen_int8_w8a8", "comfy_kitchen", ComfyKitchenInt8Config.from_kwargs, label="W8A8, int8 weight + int8 dynamic activation (ComfyUI int8_tensorwise)")
+register_quant_method("comfy_kitchen_fp8_w8a8", "comfy_kitchen", ComfyKitchenFp8Config.from_kwargs, label="W8A8, fp8 E4M3 weight + fp8 activation, static input_scale when present (ComfyUI float8_e4m3fn)")
