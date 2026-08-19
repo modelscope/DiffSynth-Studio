@@ -4,14 +4,11 @@ from diffsynth.utils.data.audio_video import write_video_audio
 from modelscope import dataset_snapshot_download
 from PIL import Image
 
-# `onload_device` equals `computation_device` here so the quantized DiT stays on GPU
-# between denoising steps, avoiding the overhead of repeated CPU->GPU transfers for
-# the 250 int8 layers. Other models (text_encoder, VAE) use the same config for simplicity.
 vram_config = {
     "offload_dtype": torch.bfloat16,
     "offload_device": "cpu",
     "onload_dtype": torch.bfloat16,
-    "onload_device": "cuda",
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
@@ -27,6 +24,7 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
     ],
     processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
 
 # Text -> Video + Audio

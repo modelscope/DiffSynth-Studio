@@ -15,7 +15,7 @@ vram_config = {
     "offload_dtype": torch.bfloat16,
     "offload_device": "cpu",
     "onload_dtype": torch.bfloat16,
-    "onload_device": "cuda",
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
@@ -26,16 +26,17 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
     device="cuda",
     model_configs=[
         ModelConfig(model_id="Comfy-Org/MiniMax-H3", origin_file_pattern="diffusion_models/minimax_h3_ref2va_pruned_fp8_scaled.safetensors", **vram_config),
-        ModelConfig(model_id="Comfy-Org/MiniMax-H3", origin_file_pattern="text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="Ref2VA/text_encoder/model*.safetensors", **vram_config),
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="Ref2VA/video_vae/source/model.safetensors", **vram_config),
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="Ref2VA/audio_vae/model.safetensors", **vram_config),
     ],
     processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="Ref2VA/processor/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
 
 dataset_snapshot_download(dataset_id="DiffSynth-Studio/diffsynth_example_dataset", local_dir="data/diffsynth_example_dataset", allow_file_pattern="minimax_h3/MiniMax-H3-Pruned-Ref2VA/*")
 ref_image = Image.open("data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-Pruned-Ref2VA/0.png").convert("RGB")
-prompt = "\u4e00\u4e2a\u7f51\u7ad9\u9875\u9762\uff0c\u7f51\u7ad9\u9875\u9762UI\u8bbe\u8ba1\uff0c\u7f51\u7ad9\u52a8\u6548\uff0c\u89c6\u9891\u5c55\u793a\u4e86\u6d41\u7545\u7684\u7f51\u9875\u5411\u4e0b\u6eda\u52a8\u6548\u679c\u3002\u4e00\u4e2a\u6781\u5177\u7206\u53d1\u529b\u4e0e\u52a8\u611f\u7684\u4ea7\u54c1\u5b98\u7f51\u98ce\u683c\u4ea7\u54c1\u843d\u5730\u9875 UI/UX \u6f14\u793a\u89c6\u9891\uff0c\u6838\u5fc3\u5c55\u793a\u4e3b\u4f53\u662f\u8be5\u4ea7\u54c1\u56fe\u72471\u3002\u9875\u9762\u91c7\u7528\u7c97\u72b7\u6709\u529b\u3001\u503e\u659c\u7684\u8d85\u5927\u53f7\u65e0\u886c\u7ebf\u5b57\u4f53\u8fdb\u884c\u5f20\u626c\u7684\u6392\u7248\u3002\u80cc\u666f\u6709\u6781\u5177\u901f\u5ea6\u611f\u7684\u52a8\u6001\u5149\u5f71\u3001\u6697\u8272\u78b3\u7ea4\u7ef4\u6216\u8fd0\u52a8\u900f\u6c14\u7f51\u773c\u7eb9\u7406\u5728\u4ea4\u7ec7\u53d8\u6362\u3002\u89c6\u9891\u5c55\u793a\u4e86\u8282\u594f\u7d27\u51d1\u3001\u5145\u6ee1\u529b\u91cf\u611f\u7684\u7f51\u9875\u5411\u4e0b\u6eda\u52a8\u6548\u679c\uff0c\u4ee5\u53ca\u9f20\u6807\u60ac\u505c\u65f6\u5f3a\u70c8\u7684\u89c6\u89c9\u653e\u5927\u4e0e\u989c\u8272\u53cd\u8f6c\u7b49 UI \u4ea4\u4e92\u52a8\u4f5c\u3002"
+prompt = "一个网站页面，网站页面UI设计，网站动效，视频展示了流畅的网页向下滚动效果。一个极具爆发力与动感的产品官网风格产品落地页 UI/UX 演示视频，核心展示主体是该产品图片1。页面采用粗犷有力、倾斜的超大号无衬线字体进行张扬的排版。背景有极具速度感的动态光影、暗色碳纤维或运动透气网眼纹理在交织变换。视频展示了节奏紧凑、充满力量感的网页向下滚动效果，以及鼠标悬停时强烈的视觉放大与颜色反转等 UI 交互动作。"
 video, audio = pipe(
     prompt=prompt,
     height=480, width=832, num_frames=124, num_inference_steps=50, seed=42,
