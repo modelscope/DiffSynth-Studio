@@ -1,8 +1,25 @@
 from abc import ABC
+from dataclasses import dataclass, fields
 import torch
 
 
 QUANT_BACKENDS = {}
+
+
+@dataclass
+class BackendConfig:
+    """Base for a backend's typed config. User-tunable knobs are ordinary init fields;
+    method-pinned values use `field(init=False, ...)` so they cannot be overridden."""
+
+    @classmethod
+    def from_kwargs(cls, kwargs):
+        accepted = {f.name for f in fields(cls) if f.init}
+        unknown = set(kwargs) - accepted
+        if unknown:
+            raise ValueError(
+                f"`backend_config_kwargs` {sorted(unknown)} are not accepted by `{cls.__name__}`. Accepted: {sorted(accepted) or '(none)'}."
+            )
+        return cls(**kwargs)
 
 
 class QuantBackend(ABC):

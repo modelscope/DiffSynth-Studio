@@ -1,8 +1,9 @@
 import copy
 import json
+from dataclasses import dataclass, field
 
 import torch
-from ..base import QuantBackend, register_quant_backend
+from ..base import QuantBackend, BackendConfig, register_quant_backend
 from ..config import register_quant_method
 
 try:
@@ -147,9 +148,9 @@ class TensorWiseInt8Format(ComfyQuantFormat):
         return {"is_weight": True, "convrot": convrot, "convrot_groupsize": groupsize}
 
     def from_float_kwargs(self, in_features, config):
-        groupsize = config["convrot_groupsize"]
-        kwargs = {"is_weight": True, "per_channel": config["per_channel"], "convrot": False, "convrot_groupsize": groupsize}
-        if not config["convrot"]:
+        groupsize = config.convrot_groupsize
+        kwargs = {"is_weight": True, "per_channel": config.per_channel, "convrot": False, "convrot_groupsize": groupsize}
+        if not config.convrot:
             return kwargs
         if groupsize < 4 or groupsize & (groupsize - 1) or (groupsize.bit_length() - 1) % 2:
             raise ValueError(f"convrot_groupsize must be a power of four >= 4, got {groupsize}.")
@@ -246,7 +247,7 @@ class ComfyKitchenQuantBackend(QuantBackend):
                 rebuilt.pop(f"{layer_name}.{key}", None)
             params = get_layout_class(quant_format.layout_cls).Params(
                 scale=scale,
-                orig_dtype=self.config.get("orig_dtype", torch.bfloat16),
+                orig_dtype=self.config.orig_dtype,
                 orig_shape=tuple(qdata.shape),
                 **quant_format.params_from_marker(marker, qdata, layer_name),
             )
@@ -282,7 +283,7 @@ class ComfyKitchenQuantBackend(QuantBackend):
         return linear if model_device is None else linear.to(device=model_device)
 
     def _active_format(self):
-        marker_name = self.config["format"]
+        marker_name = self.config.format
         if marker_name not in FORMATS:
             raise ValueError(f"Unsupported format `{marker_name}`, not in {sorted(FORMATS)}.")
         return FORMATS[marker_name]
@@ -298,21 +299,20 @@ class ComfyKitchenQuantBackend(QuantBackend):
         )
 
 
-def _int8_config(backend_config_kwargs):
-    return {
-        "format": TensorWiseInt8Format.marker_name,
-        "is_weight": True,
-        "per_channel": True,
-        "convrot": True,
-        "convrot_groupsize": TensorWiseInt8Format.DEFAULT_GROUPSIZE,
-        **backend_config_kwargs,
-    }
+@dataclass
+class ComfyKitchenInt8Config(BackendConfig):
+    format: str = field(init=False, default=TensorWiseInt8Format.marker_name)   # pinned by the method
+    per_channel: bool = True
+    convrot: bool = True
+    convrot_groupsize: int = TensorWiseInt8Format.DEFAULT_GROUPSIZE
+    orig_dtype: torch.dtype = torch.bfloat16
 
-def _fp8_config(backend_config_kwargs):
-    return {
-        "format": Float8E4M3Format.marker_name,
-        **backend_config_kwargs,
-    }
 
-register_quant_method("ck_int8_w8a8", "comfy_kitchen", _int8_config, label="W8A8, int8 weight + int8 dynamic activation (ComfyUI int8_tensorwise)")
-register_quant_method("ck_fp8_w8a8", "comfy_kitchen", _fp8_config, label="W8A8, fp8 E4M3 weight + fp8 activation, static input_scale when present (ComfyUI float8_e4m3fn)")
+@dataclass
+class ComfyKitchenFp8Config(BackendConfig):
+    format: str = field(init=False, default=Float8E4M3Format.marker_name)       # pinned by the method
+    orig_dtype: torch.dtype = torch.bfloat16
+
+
+register_quant_method("ck_int8_w8a8", "comfy_kitchen", ComfyKitchenInt8Config.from_kwargs, label="W8A8, int8 weight + int8 dynamic activation (ComfyUI int8_tensorwise)")
+register_quant_method("ck_fp8_w8a8", "comfy_kitchen", ComfyKitchenFp8Config.from_kwargs, label="W8A8, fp8 E4M3 weight + fp8 activation, static input_scale when present (ComfyUI float8_e4m3fn)")

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import dataclass, field, fields
 from typing import Any, Callable, Optional
 import torch
 from .base import QUANT_BACKENDS
@@ -30,19 +30,20 @@ def describe_quant_method(name):
         config = spec.config_factory({})
     except Exception as error:
         lines.append(f"backend config: could not be built with default kwargs: {error}")
-    else:
-        if is_dataclass(config):
-            cls = type(config)
-            lines.append(f"backend config: {cls.__module__}.{cls.__qualname__}")
-            lines.append("backend_config_kwargs: any constructor kwarg of that class; defaults:")
-            width = max(len(f.name) for f in fields(config))
-            lines += [f"  {f.name:<{width}} = {getattr(config, f.name)!r}" for f in fields(config)]
-        elif isinstance(config, dict) and config:
-            lines.append("backend_config_kwargs: merged into the config dict below (defaults shown):")
-            width = max(len(key) for key in config)
-            lines += [f"  {key:<{width}} = {value!r}" for key, value in config.items()]
-        else:
-            lines.append("backend_config_kwargs: (none)")
+        print("\n".join(lines))
+        return
+    cls = type(config)
+    lines.append(f"backend config: {cls.__module__}.{cls.__qualname__}")
+    all_fields = fields(config)
+    user_fields = [f for f in all_fields if f.init]
+    pinned_fields = [f for f in all_fields if not f.init]
+    if user_fields:
+        lines.append("backend_config_kwargs (user-tunable):")
+        width = max(len(f.name) for f in user_fields)
+        lines += [f"  {f.name:<{width}} = {getattr(config, f.name)!r}" for f in user_fields]
+    if pinned_fields:
+        lines.append("pinned by method (not overridable):")
+        lines += [f"  {f.name} = {getattr(config, f.name)!r}" for f in pinned_fields]
     print("\n".join(lines))
 
 

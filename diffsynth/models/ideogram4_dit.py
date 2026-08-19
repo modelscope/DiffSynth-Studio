@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ..core.gradient import gradient_checkpoint_forward
-from ..core.quant import QuantBackend, register_quant_backend, register_quant_method
+from ..core.quant import QuantBackend, BackendConfig, register_quant_backend, register_quant_method
 
 LLM_TOKEN_INDICATOR = 3
 OUTPUT_IMAGE_INDICATOR = 2
@@ -97,10 +97,15 @@ class Ideogram4Fp8QuantBackend(QuantBackend):
         return linear
 
 
+@dataclass
+class Ideogram4Fp8Config(BackendConfig):
+    """No knobs: the checkpoint's compressed-tensors layout fully determines this path."""
+
+
 register_quant_method(
     "ideogram4_fp8",
     "ideogram4_fp8",
-    lambda o: dict(o),
+    Ideogram4Fp8Config.from_kwargs,
     label="8bit, fp8 (compressed-tensors layout, per-channel scale), weight-only",
 )
 
