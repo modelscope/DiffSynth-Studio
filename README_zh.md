@@ -1801,13 +1801,13 @@ print(f"PickScore score:: {score:.3f}")
 
 |指标|GitHub 仓库|示例代码|
 |-|-|-|
-|PickScore|[GitHub](https://github.com/yuvalkirstain/pickscore)|[code](../../../examples/image_quality_metric/pickscore.py)|
-|ImageReward|[GitHub](https://github.com/zai-org/ImageReward)|[code](../../../examples/image_quality_metric/image_reward.py)|
-|HPSv2|[GitHub](https://github.com/tgxs002/HPSv2)|[code](../../../examples/image_quality_metric/hpsv2.py)|
-|HPSv3|[GitHub](https://github.com/MizzenAI/HPSv3)|[code](../../../examples/image_quality_metric/hpsv3.py)|
-|CLIP Score|[GitHub](https://github.com/openai/CLIP)|[code](../../../examples/image_quality_metric/clipscore.py)|
-|Aesthetic|[GitHub](https://github.com/christophschuhmann/improved-aesthetic-predictor)|[code](../../../examples/image_quality_metric/aesthetic.py)|
-|FID|[GitHub](https://github.com/mseitzer/pytorch-fid)|[code](../../../examples/image_quality_metric/fid.py)|
+|PickScore|[GitHub](https://github.com/yuvalkirstain/pickscore)|[code](./examples/image_quality_metric/pickscore.py)|
+|ImageReward|[GitHub](https://github.com/zai-org/ImageReward)|[code](./examples/image_quality_metric/image_reward.py)|
+|HPSv2|[GitHub](https://github.com/tgxs002/HPSv2)|[code](./examples/image_quality_metric/hpsv2.py)|
+|HPSv3|[GitHub](https://github.com/MizzenAI/HPSv3)|[code](./examples/image_quality_metric/hpsv3.py)|
+|CLIP Score|[GitHub](https://github.com/openai/CLIP)|[code](./examples/image_quality_metric/clipscore.py)|
+|Aesthetic|[GitHub](https://github.com/christophschuhmann/improved-aesthetic-predictor)|[code](./examples/image_quality_metric/aesthetic.py)|
+|FID|[GitHub](https://github.com/mseitzer/pytorch-fid)|[code](./examples/image_quality_metric/fid.py)|
 
 </details>
 

@@ -131,6 +131,9 @@ class QwenImagePipeline(BasePipeline):
         edit_rope_interpolation: bool = False,
         # Qwen-Image-Edit-2511
         zero_cond_t: bool = False,
+        # KV cache
+        kv_cache = None,
+        negative_kv_cache = None,
         # Qwen-Image-Layered
         layer_input_image: Image.Image = None,
         layer_num: int = None,
@@ -149,9 +152,11 @@ class QwenImagePipeline(BasePipeline):
         # Parameters
         inputs_posi = {
             "prompt": prompt,
+            "kv_cache": kv_cache,
         }
         inputs_nega = {
             "negative_prompt": negative_prompt,
+            "kv_cache": negative_kv_cache,
         }
         inputs_shared = {
             "cfg_scale": cfg_scale,
@@ -724,6 +729,7 @@ def model_fn_qwen_image(
     use_gradient_checkpointing_offload=False,
     edit_rope_interpolation=False,
     zero_cond_t=False,
+    kv_cache=None,
     **kwargs
 ):
     if layer_num is None:
@@ -798,6 +804,7 @@ def model_fn_qwen_image(
             attention_mask=attention_mask,
             enable_fp8_attention=enable_fp8_attention,
             modulate_index=modulate_index,
+            kv_cache=None if kv_cache is None else kv_cache.get(f"block_{block_id}"),
         )
         if blockwise_controlnet_conditioning is not None:
             image_slice = image[:, :image_seq_len].clone()
