@@ -573,9 +573,6 @@ def enable_vram_management_recursively(model: torch.nn.Module, module_map: dict,
         model = model.module
     for name, module in model.named_children():
         layer_name = name if name_prefix == "" else name_prefix + "." + name
-        # Quantized Linears subclass `torch.nn.Linear`, so they also match the
-        # `module_map` entry below. This check must stay ahead of that loop: wrapping a
-        # quantized layer as a plain one raises nothing and returns finite garbage.
         if quantize is not None and quantize.is_quantized_linear(module):
             module_ = AutoWrappedQuantizedModule(module, **vram_config, vram_limit=vram_limit, name=layer_name, disk_map=disk_map, quantize=quantize, **kwargs)
             setattr(model, name, module_)
