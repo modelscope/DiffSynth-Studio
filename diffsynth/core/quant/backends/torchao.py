@@ -11,7 +11,7 @@ try:
         Float8DynamicActivationInt4WeightConfig,
     )
     from torchao.prototype.mx_formats.inference_workflow import (
-        MXDynamicActivationMXWeightConfig, NVFP4DynamicActivationNVFP4WeightConfig,
+        MXDynamicActivationMXWeightConfig, NVFP4DynamicActivationNVFP4WeightConfig, NVFP4WeightOnlyConfig,
     )
     from torchao.prototype.safetensors.safetensors_support import flatten_tensor_state_dict, unflatten_tensor_state_dict
     from torchao.prototype.safetensors.safetensors_utils import is_metadata_torchao
@@ -40,6 +40,7 @@ class TorchaoQuantBackend(QuantBackend):
     _DIFFERENTIABLE_CONFIGS = frozenset({
         "Int8WeightOnlyConfig",
         "Float8WeightOnlyConfig",
+        "NVFP4WeightOnlyConfig",
     })
 
     def capabilities(self):
@@ -145,6 +146,10 @@ def _nvfp4_dynamic_activation_nvfp4_weight(backend_config_kwargs):
     return NVFP4DynamicActivationNVFP4WeightConfig(**backend_config_kwargs)
 
 
+def _nvfp4_weight_only(backend_config_kwargs):
+    return NVFP4WeightOnlyConfig(**backend_config_kwargs)
+
+
 register_quant_method("torchao_int8_w8a16", "torchao", _int8_weight_only, label="8bit, int8, weight-only")
 register_quant_method("torchao_int4_w4a16", "torchao", _int4_weight_only, label="W4A16, int4 weight-only")
 register_quant_method("torchao_fp8_w8a16", "torchao", _fp8_weight_only, label="8bit, fp8, weight-only")
@@ -154,3 +159,4 @@ register_quant_method("torchao_int4_w4a8", "torchao", _float8_dynamic_activation
 register_quant_method("torchao_mxfp8_w8a8", "torchao", _mx_dynamic_activation_mx_weight("float8_e4m3fn"), label="W8A8, MXFP8 microscaling weight + activation")
 register_quant_method("torchao_mxfp4_w4a4", "torchao", _mx_dynamic_activation_mx_weight("float4_e2m1fn_x2"), label="W4A4, MXFP4 microscaling weight + activation")
 register_quant_method("torchao_nvfp4_w4a4", "torchao", _nvfp4_dynamic_activation_nvfp4_weight, label="W4A4, NVFP4 weight + activation")
+register_quant_method("torchao_nvfp4_w4a16", "torchao", _nvfp4_weight_only, label="W4A16, NVFP4 weight-only")

@@ -60,6 +60,7 @@ The following are all built-in quantization methods. `method` is the name passed
 | `torchao_int8_w8a16` | torchao | INT8 / none | ✅ | ✅ |
 | `torchao_fp8_w8a16` | torchao | FP8 / none | ✅ | ✅ |
 | `torchao_int4_w4a16` | torchao | INT4 / none | ✅ | ❌ |
+| `torchao_nvfp4_w4a16` | torchao | NVFP4 / none | ✅ | ✅ |
 | `torchao_int8_w8a8` | torchao | INT8 / INT8 dynamic | ✅ | ❌ |
 | `torchao_fp8_w8a8` | torchao | FP8 / FP8 dynamic | ✅ | ❌ |
 | `torchao_int4_w4a8` | torchao | INT4 / FP8 dynamic | ✅ | ❌ |

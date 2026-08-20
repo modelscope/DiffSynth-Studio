@@ -60,6 +60,7 @@ image.save("image_z_image_nf4.jpg")
 | `torchao_int8_w8a16` | torchao | INT8 / 不量化 | ✅ | ✅ |
 | `torchao_fp8_w8a16` | torchao | FP8 / 不量化 | ✅ | ✅ |
 | `torchao_int4_w4a16` | torchao | INT4 / 不量化 | ✅ | ❌ |
+| `torchao_nvfp4_w4a16` | torchao | NVFP4 / 不量化 | ✅ | ✅ |
 | `torchao_int8_w8a8` | torchao | INT8 / INT8 动态 | ✅ | ❌ |
 | `torchao_fp8_w8a8` | torchao | FP8 / FP8 动态 | ✅ | ❌ |
 | `torchao_int4_w4a8` | torchao | INT4 / FP8 动态 | ✅ | ❌ |
