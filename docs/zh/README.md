@@ -31,6 +31,7 @@ graph LR;
 * [模型推理](./Pipeline_Usage/Model_Inference.md)
 * [加速推理](./Pipeline_Usage/Accelerated_Inference.md)
 * [显存管理](./Pipeline_Usage/VRAM_management.md)
+* [模型量化](./Pipeline_Usage/Quantization.md)
 * [模型训练](./Pipeline_Usage/Model_Training.md)
 * [环境变量](./Pipeline_Usage/Environment_Variables.md)
 * [GPU/NPU 支持](./Pipeline_Usage/GPU_support.md)
@@ -73,6 +74,7 @@ graph LR;
 * [接入模型结构](./Developer_Guide/Integrating_Your_Model.md)
 * [接入 Pipeline](./Developer_Guide/Building_a_Pipeline.md)
 * [接入细粒度显存管理](./Developer_Guide/Enabling_VRAM_management.md)
+* [接入量化后端](./Developer_Guide/Integrating_Quantization_Backend.md)
 * [接入模型训练](./Developer_Guide/Training_Diffusion_Models.md)
 
 我们开源了 [**DiffSynth-Studio Model Integration Skills**](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills)。这是一套可组合的 Agent Skill 合集，将外部扩散模型（图像 / 视频 / 音频）接入 DiffSynth-Studio 的全流程自动化。它沉淀并定义了 DiffSynth-Studio 的模型接入规范，将代码库分析、模型代码接入、Pipeline 设计、低显存管理与训练支持等最佳实践固化为可复用的标准流程。遵循这套规范，能显著降低接入门槛、减少反复调试，大幅提升新模型的接入效率。建议从 [diffsynth-integrator](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator) 的[使用示例](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1)开始，快速上手、加速模型接入。
@@ -86,6 +88,7 @@ graph LR;
 * [`diffsynth.core.data`](./API_Reference/core/data.md): 数据处理算子与通用数据集
 * [`diffsynth.core.gradient`](./API_Reference/core/gradient.md): 梯度检查点
 * [`diffsynth.core.loader`](./API_Reference/core/loader.md): 模型下载与加载
+* [`diffsynth.core.quant`](./API_Reference/core/quant.md): 模型量化
 * [`diffsynth.core.vram`](./API_Reference/core/vram.md): 显存管理
 
 ## Section 6: Diffusion Templates

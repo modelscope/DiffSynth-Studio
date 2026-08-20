@@ -31,6 +31,7 @@ This section introduces the basic usage of `DiffSynth-Studio`, including how to 
 * [Model Inference](./Pipeline_Usage/Model_Inference.md)
 * [Accelerated Inference](./Pipeline_Usage/Accelerated_Inference.md)
 * [VRAM Management](./Pipeline_Usage/VRAM_management.md)
+* [Model Quantization](./Pipeline_Usage/Quantization.md)
 * [Model Training](./Pipeline_Usage/Model_Training.md)
 * [Environment Variables](./Pipeline_Usage/Environment_Variables.md)
 * [GPU/NPU Support](./Pipeline_Usage/GPU_support.md)
@@ -73,6 +74,7 @@ This section introduces how to integrate models into `DiffSynth-Studio` to utili
 * [Integrating Model Architecture](./Developer_Guide/Integrating_Your_Model.md)
 * [Building a Pipeline](./Developer_Guide/Building_a_Pipeline.md)
 * [Enabling Fine-Grained VRAM Management](./Developer_Guide/Enabling_VRAM_management.md)
+* [Integrating a Quantization Backend](./Developer_Guide/Integrating_Quantization_Backend.md)
 * [Model Training Integration](./Developer_Guide/Training_Diffusion_Models.md)
 
 We have open-sourced [**DiffSynth-Studio Model Integration Skills**](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills). This is a composable collection of Agent Skills that automates the entire workflow of integrating external diffusion models (image / video / audio) into DiffSynth-Studio. It distills and defines the model integration standards of DiffSynth-Studio, consolidating best practices such as codebase analysis, model code integration, Pipeline design, low-VRAM management, and training support into reusable standard procedures. Following these standards can significantly lower the integration barrier, reduce repetitive debugging, and greatly improve the efficiency of integrating new models. We recommend starting from the [`diffsynth-integrator`](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator) [example](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1) to get started quickly and accelerate model integration.
@@ -85,6 +87,7 @@ This section introduces the independent core module `diffsynth.core` in `DiffSyn
 * [`diffsynth.core.data`](./API_Reference/core/data.md): Data processing operators and general datasets
 * [`diffsynth.core.gradient`](./API_Reference/core/gradient.md): Gradient checkpointing
 * [`diffsynth.core.loader`](./API_Reference/core/loader.md): Model download and loading
+* [`diffsynth.core.quant`](./API_Reference/core/quant.md): Model quantization
 * [`diffsynth.core.vram`](./API_Reference/core/vram.md): VRAM management
 
 ## Section 6: Diffusion Templates

@@ -55,7 +55,8 @@ audio = [
 ]
 quant = [
     "bitsandbytes",
-    "torchao"
+    "comfy-kitchen",
+    "torchao>=0.16"
 ]
 all = [
     "av",
@@ -64,7 +65,8 @@ all = [
     "librosa",
     "streamlit",
     "bitsandbytes",
-    "torchao"
+    "comfy-kitchen",
+    "torchao>=0.16"
 ]
 
 [tool.setuptools]

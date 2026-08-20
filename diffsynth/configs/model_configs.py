@@ -1418,17 +1418,45 @@ minimax_h3_series = [
         "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["qkv", "proj", "linear_fc1", "linear_fc2"]},
     },
     {
+        # Example: ModelConfig(model_id="Comfy-Org/MiniMax-H3", origin_file_pattern="text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors")
+        "model_hash": "d6473c909b72b73afc4fa00c273d1da2",
+        "model_name": "minimax_h3_text_encoder",
+        "model_class": "diffsynth.models.minimax_h3_text_encoder.MiniMaxH3TextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_text_encoder.MiniMaxH3TextEncoderComfyOrgStateDictConverter",
+        "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["qkv", "proj", "linear_fc1", "linear_fc2"]},
+    },
+    {
         # Example: ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/transformer/model*.safetensors")
         "model_hash": "db0197b6919425a5c7102c54e73affc1",
         "model_name": "minimax_h3_dit",
         "model_class": "diffsynth.models.minimax_h3_dit.MiniMaxH3DiT",
     },
     {
+        # Example: ModelConfig(model_id="Comfy-Org/MiniMax-H3", origin_file_pattern="diffusion_models/minimax_h3_fl2va_int8_convrot.safetensors")
+        "model_hash": "fb6c399412920c6b817d5c1f43ec62cd",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfy",
+        "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["video_patch_proj", "audio_patch_proj", "condition_proj", "time_embedder.proj_in", "time_embedder.proj_out", "final_layer.adaln_proj.linear", "final_layer.video_out", "final_layer.audio_out", "token_refiner.blocks.0.attn.qkv_proj", "token_refiner.blocks.0.attn.out_proj", "token_refiner.blocks.0.mlp.fc1", "token_refiner.blocks.0.mlp.fc2", "token_refiner.blocks.1.attn.qkv_proj", "token_refiner.blocks.1.attn.out_proj", "token_refiner.blocks.1.mlp.fc1", "token_refiner.blocks.1.mlp.fc2"]},
+    },
+    {
+        # Example: ModelConfig(model_id="Comfy-Org/MiniMax-H3", origin_file_pattern="diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors")
+        "model_hash": "ac9fdcd56900c9a1a5ef21eaacf6cb76",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfyPruned",
+        "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["video_patch_proj", "audio_patch_proj", "condition_proj", "adaln_proj.linear", "final_layer.video_out", "final_layer.audio_out", "token_refiner.blocks.0.attn.qkv_proj", "token_refiner.blocks.0.attn.out_proj", "token_refiner.blocks.0.mlp.fc1", "token_refiner.blocks.0.mlp.fc2", "token_refiner.blocks.1.attn.qkv_proj", "token_refiner.blocks.1.attn.out_proj", "token_refiner.blocks.1.mlp.fc1", "token_refiner.blocks.1.mlp.fc2"]},
+    },
+    {
+        # Example: ModelConfig(model_id="Comfy-Org/MiniMax-H3", origin_file_pattern="diffusion_models/minimax_h3_fl2va_pruned_fp8_scaled.safetensors")
+        "model_hash": "7e410be9acd325ef8db3b8bed3d814cd",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfyPruned",
+        "quant_config": {"method": "comfy_kitchen_fp8_w8a8", "load_prequantized": True, "exclude_modules": ["video_patch_proj", "audio_patch_proj", "condition_proj", "adaln_proj.linear", "final_layer.video_out", "final_layer.audio_out", "token_refiner.blocks.0.attn.qkv_proj", "token_refiner.blocks.0.attn.out_proj", "token_refiner.blocks.0.mlp.fc1", "token_refiner.blocks.0.mlp.fc2", "token_refiner.blocks.1.attn.qkv_proj", "token_refiner.blocks.1.attn.out_proj", "token_refiner.blocks.1.mlp.fc1", "token_refiner.blocks.1.mlp.fc2"]},
+    },
+    {
         # Example: ModelConfig(model_id="Comfy-Org/MiniMax-H3", origin_file_pattern="diffusion_models/minimax_h3_fl2va_pruned_bf16.safetensors")
         "model_hash": "b4e0df87da0c079979ae857edbcef49f",
         "model_name": "minimax_h3_dit",
-        "model_class": "diffsynth.models.minimax_h3_dit_comfy_pruned.MiniMaxH3DiTComfyPruned",
-        "extra_kwargs": {"adaln_curve_grid": 1025, "time_embed_dim": 8},
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfyPruned",
     },
     {
         # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-nf4.safetensors")
@@ -1448,16 +1476,14 @@ minimax_h3_series = [
         # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-pruned-nf4.safetensors")
         "model_hash": "9b8f1cbc6fb5fcd2e2c02b6691480427",
         "model_name": "minimax_h3_dit",
-        "model_class": "diffsynth.models.minimax_h3_dit_comfy_pruned.MiniMaxH3DiTComfyPruned",
-        "extra_kwargs": {"adaln_curve_grid": 1025, "time_embed_dim": 8},
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfyPruned",
         "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["time_embedder.proj_in", "time_embedder.proj_out", "video_patch_proj", "audio_patch_proj", "condition_proj", "final_layer.video_out", "final_layer.audio_out", "adaln_proj.linear"]},
     },
     {
         # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-ref2va-pruned-nf4.safetensors")
         "model_hash": "072bd13242d6d67df79a154e7c4274b3",
         "model_name": "minimax_h3_dit",
-        "model_class": "diffsynth.models.minimax_h3_dit_comfy_pruned.MiniMaxH3DiTComfyPruned",
-        "extra_kwargs": {"adaln_curve_grid": 1025, "time_embed_dim": 8},
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfyPruned",
         "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True, "exclude_modules": ["time_embedder.proj_in", "time_embedder.proj_out", "video_patch_proj", "audio_patch_proj", "condition_proj", "final_layer.video_out", "final_layer.audio_out", "adaln_proj.linear"]},
     },
     {
