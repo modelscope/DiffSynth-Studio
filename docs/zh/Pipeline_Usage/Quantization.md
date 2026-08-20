@@ -310,15 +310,15 @@ config_entry = {
 
 注册方式有两种：
 
-**方式一：写入配置文件（永久生效）**。把上面的条目添加到 `diffsynth/configs/model_configs.py` 的 `MODEL_CONFIGS` 列表中。
-
-**方式二：在 Python 代码中动态注册（仅当前进程生效）**。在加载模型之前，直接把条目加入 `MODEL_CONFIGS`：
+**方式一：在 Python 代码中动态注册（推荐，即插即用）**。无需改动框架代码，在加载模型之前把条目加入 `MODEL_CONFIGS` 即可生效，仅作用于当前进程：
 
 ```python
 from diffsynth.configs import MODEL_CONFIGS
 
 MODEL_CONFIGS.append(config_entry)
 ```
+
+**方式二：写入配置文件（永久生效）**。把上面的条目添加到 `diffsynth/configs/model_configs.py` 的 `MODEL_CONFIGS` 列表中，这样在本地无需再手动注册。如果你的量化权重已经公开发布，也欢迎把这个条目提交 PR 给我们，让其他用户可以直接加载。
 
 ### 第三步：加载推理
 

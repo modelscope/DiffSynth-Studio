@@ -310,15 +310,15 @@ config_entry = {
 
 There are two ways to register:
 
-**Option 1: write it into the config file (permanent).** Add the entry above to the `MODEL_CONFIGS` list in `diffsynth/configs/model_configs.py`.
-
-**Option 2: register dynamically in Python code (current process only).** Add the entry directly to `MODEL_CONFIGS` before loading the model:
+**Option 1: register dynamically in Python code (recommended, plug-and-play).** No framework changes needed — add the entry to `MODEL_CONFIGS` before loading the model, effective for the current process:
 
 ```python
 from diffsynth.configs import MODEL_CONFIGS
 
 MODEL_CONFIGS.append(config_entry)
 ```
+
+**Option 2: write it into the config file (permanent).** Add the entry above to the `MODEL_CONFIGS` list in `diffsynth/configs/model_configs.py`, so you no longer need to register it manually. If your quantized weights are publicly released, you are also welcome to submit the entry to us as a PR, so other users can load them directly.
 
 ### Step 3: Load for Inference
 
