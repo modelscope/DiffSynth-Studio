@@ -16,6 +16,7 @@ from ..models.minimax_h3_text_encoder import (
 )
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
+from ..models.minimax_h3_vace import MiniMaxH3VaceModel
 from ..utils.data.audio import convert_to_stereo, resample_waveform
 from ..utils.lora.minimax_h3 import MiniMaxH3LoRALoader
 
@@ -30,14 +31,16 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.dit: MiniMaxH3DiT = None
         self.video_vae: MiniMaxH3VideoVAE = None
         self.audio_vae: MiniMaxH3AudioVAE = None
+        self.vace: MiniMaxH3VaceModel = None
         self.tokenizer = None
         self.processor = None
         self.imgvid_cond_noise_aug = 0.999
         self.audio_cond_noise_aug = 1.0
-        self.in_iteration_models = ("dit",)
+        self.in_iteration_models = ("dit", "vace")
         self.units = [
             MiniMaxH3Unit_ShapeChecker(),
             MiniMaxH3Unit_NoiseInitializer(),
+            MiniMaxH3Unit_VaceEncoder(),
             MiniMaxH3Unit_InputVideoEmbedder(),
             MiniMaxH3Unit_InputAudioEmbedder(),
             MiniMaxH3Unit_VideoRetakeEmbedder(),
@@ -105,6 +108,9 @@ class MiniMaxH3Pipeline(BasePipeline):
         retake_audio: torch.Tensor = None,
         retake_audio_sample_rate: int = 32000,
         seconds_regions_to_retake: list[tuple[float, float]] = None,
+        # VACE
+        vace_video: list[Image.Image] = None,
+        vace_scale: float = 1.0,
         progress_bar_cmd=tqdm,
         # Template inputs
         text_embedding: torch.Tensor = None,
@@ -145,6 +151,7 @@ class MiniMaxH3Pipeline(BasePipeline):
             "retake_video": retake_video, "frame_regions_to_retake": frame_regions_to_retake,
             "retake_audio": (retake_audio, retake_audio_sample_rate) if retake_audio is not None else None, "seconds_regions_to_retake": seconds_regions_to_retake,
             "imgvid_cond_noise_aug": self.imgvid_cond_noise_aug, "audio_cond_noise_aug": self.audio_cond_noise_aug,
+            "vace_video": vace_video, "vace_scale": vace_scale,
             "text_embedding": text_embedding,
         }
 
@@ -298,6 +305,28 @@ class MiniMaxH3Unit_PromptEmbedder(PipelineUnit):
             text_token_tags = torch.concat([extra_tags, text_token_tags], dim=0)
 
         return {"prompt_embeds": hidden.to(pipe.device, pipe.torch_dtype), "text_token_tags": text_token_tags.view(-1).to(pipe.device, torch.long)}
+
+
+class MiniMaxH3Unit_VaceEncoder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("vace_video", "num_frames", "height", "width"),
+            output_params=("vace_context",),
+            onload_model_names=("video_vae",)
+        )
+
+    def process(self, pipe: MiniMaxH3Pipeline, vace_video, num_frames, height, width):
+        if vace_video is None:
+            return {"vace_context": None}
+        pipe.load_models_to_device(self.onload_model_names)
+        if len(vace_video) < num_frames:
+            raise ValueError(f"vace_video has {len(vace_video)} frames, but {num_frames} frames are required.")
+        vace_video = [frame.convert("RGB").resize((width, height), Image.LANCZOS) for frame in vace_video[:num_frames]]
+        vace_video = pipe.preprocess_video(vace_video, torch_dtype=torch.float32, min_value=0, device=pipe.device)
+        # `encode_video` returns the input dtype, not the `dtype` argument,
+        # so cast explicitly -- same as `MiniMaxH3Unit_InputVideoEmbedder`.
+        vace_latents = pipe.video_vae.encode_video(vace_video, dtype=pipe.torch_dtype).to(pipe.torch_dtype)
+        return {"vace_context": patchify_video(vace_latents)}
 
 
 class MiniMaxH3Unit_InputVideoEmbedder(PipelineUnit):
@@ -834,6 +863,9 @@ def model_fn_minimax_h3(
     denoise_mask_audio=None,
     imgvid_cond_noise_aug=0.999,
     audio_cond_noise_aug=1.0,
+    vace=None,
+    vace_context=None,
+    vace_scale=1.0,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     **kwargs,
@@ -901,6 +933,9 @@ def model_fn_minimax_h3(
         skip_mask_out_condition=True,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+        vace=vace,
+        vace_context=vace_context,
+        vace_scale=vace_scale,
     )
 
     v_video_rows = v_video_rows[cond_rows_count:]

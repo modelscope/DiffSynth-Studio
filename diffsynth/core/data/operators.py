@@ -288,17 +288,18 @@ class LoadAudio(DataProcessingOperator):
 
 class LoadAudioWithTorchaudio(DataProcessingOperator, FrameSamplerByRateMixin):
 
-    def __init__(self, num_frames=121, time_division_factor=8, time_division_remainder=1, frame_rate=24, fix_frame_rate=True):
+    def __init__(self, num_frames=121, time_division_factor=8, time_division_remainder=1, frame_rate=24, fix_frame_rate=True, audio_backend="pyav"):
         FrameSamplerByRateMixin.__init__(self, num_frames, time_division_factor, time_division_remainder, frame_rate, fix_frame_rate)
-        import torchaudio
-        self.audio_loader = torchaudio.load
+        from ...utils.data.audio import read_audio
+        self.audio_loader = read_audio
+        self.audio_backend = audio_backend
 
     def __call__(self, data: str):
         try:
             reader = self.get_reader(data)
             num_frames = self.get_num_frames(reader)
             duration = num_frames / self.frame_rate
-            waveform, sample_rate = self.audio_loader(data)
+            waveform, sample_rate = self.audio_loader(data, backend=self.audio_backend)
             target_samples = int(duration * sample_rate)
             current_samples = waveform.shape[-1]
             if current_samples > target_samples:

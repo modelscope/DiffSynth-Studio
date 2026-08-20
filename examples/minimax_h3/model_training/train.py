@@ -2,6 +2,7 @@ import torch, os, argparse, accelerate
 from diffsynth.core import UnifiedDataset
 from diffsynth.core.data.operators import LoadAudioWithTorchaudio, ToAbsolutePath
 from diffsynth.utils.data.minimax_h3 import MiniMaxH3ReferenceLoader
+from diffsynth.models.minimax_h3_vace import MiniMaxH3VaceModel
 from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
 from diffsynth.diffusion import *
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -27,6 +28,7 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         template_model_id_or_path=None,
         resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         silent_on_missing_audio=False,
+        vace_layers=None,
         device="cpu",
         task="sft",
     ):
@@ -39,6 +41,17 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
             pipe_kwargs["processor_config"] = ModelConfig(model_id=processor_config.model_id, origin_file_pattern=processor_config.origin_file_pattern)
         self.pipe = MiniMaxH3Pipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, **pipe_kwargs)
         self.pipe = self.load_training_template_model(self.pipe, template_model_id_or_path, use_gradient_checkpointing, use_gradient_checkpointing_offload)
+        # Build a randomly initialized VACE module when no VACE checkpoint is loaded.
+        # The blocks are warm-started from the corresponding DiT blocks, while
+        # `before_proj` and `after_proj` stay zero-initialized, so the control
+        # signal contributes nothing at the beginning of training.
+        if vace_layers is not None and self.pipe.vace is None and self.pipe.dit is not None:
+            self.pipe.vace = MiniMaxH3VaceModel(
+                vace_layers=[int(i) for i in vace_layers.split(",")],
+                hidden_size=self.pipe.dit.hidden_size,
+                num_attention_heads=self.pipe.dit.num_attention_heads,
+            ).to(dtype=self.pipe.torch_dtype, device=device)
+            self.pipe.vace.init_from_dit(self.pipe.dit)
         self.pipe = self.split_pipeline_units(
             task, self.pipe, trainable_models, lora_base_model,
             remove_unnecessary_params=True,
@@ -108,11 +121,13 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
             "ref_video_short_edge": 768, "ref_video_max_pixels": 768 * 1344,
             "imgvid_cond_noise_aug": self.pipe.imgvid_cond_noise_aug,
             "audio_cond_noise_aug": self.pipe.audio_cond_noise_aug,
+            "vace_video": None,
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
             "cfg_scale": 1,
             "seed": 42,
             "rand_device": "cpu",
+            "vace_scale": 1,
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
         }
@@ -135,6 +150,7 @@ def minimax_h3_parser():
     parser.add_argument("--processor_path", type=str, default=None, help="Path or `model_id:pattern` of the Qwen3-VL processor.")
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
     parser.add_argument("--silent_on_missing_audio", default=False, action="store_true", help="Whether to use silent audio as a fallback when no audio track is present in the video data.")
+    parser.add_argument("--vace_layers", type=str, default=None, help="Indices of the DiT blocks that VACE hints are injected into, comma-separated. Only used when training VACE from scratch.")
     return parser
 
 
@@ -185,6 +201,7 @@ if __name__ == "__main__":
                 num_frames=args.num_frames,
                 frame_rate=MINIMAX_H3_FRAME_RATE,
             ),
+            "vace_video": ToAbsolutePath(args.dataset_base_path) >> video_processor,
         }
     )
     model = MiniMaxH3TrainingModule(
@@ -207,6 +224,7 @@ if __name__ == "__main__":
         resume_from_checkpoint=args.resume_from_checkpoint,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         silent_on_missing_audio=args.silent_on_missing_audio,
+        vace_layers=args.vace_layers,
         task=args.task,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
     )

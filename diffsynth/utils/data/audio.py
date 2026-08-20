@@ -52,6 +52,53 @@ def read_audio_with_torchcodec(
     return waveform, decoder.metadata.sample_rate
 
 
+def read_audio_with_pyav(
+    path: str,
+    start_time: float = 0,
+    duration: float | None = None,
+) -> tuple[torch.Tensor, int]:
+    """
+    Read audio from file using PyAV, with optional start time and duration.
+
+    Args:
+        path (str): The file path to the audio file.
+        start_time (float, optional): The start time in seconds to read from. Defaults to 0.
+        duration (float | None, optional): The duration in seconds to read. If None, reads until the end. Defaults to None.
+
+    Returns:
+        tuple[torch.Tensor, int]: A tuple containing the audio tensor and the sample rate.
+            The audio tensor shape is [C, T] where C is the number of channels and T is the number of audio frames.
+    """
+    import av
+    import numpy as np
+    container = av.open(path)
+    try:
+        stream = container.streams.audio[0]
+        sample_rate = stream.rate
+        if start_time > 0:
+            container.seek(int(start_time / float(stream.time_base)), stream=stream)
+        target_samples = None if duration is None else int(duration * sample_rate)
+        frames, num_samples = [], 0
+        for frame in container.decode(audio=0):
+            # `to_ndarray` follows the sample format: integer formats such as s16 and
+            # s32 come back as integers, so they are scaled to [-1, 1] to match the
+            # normalized float waveform the other backends return.
+            data = frame.to_ndarray()  # [C, T]
+            if np.issubdtype(data.dtype, np.integer):
+                data = data.astype(np.float32) / float(-np.iinfo(data.dtype).min)
+            if target_samples is not None:
+                if num_samples >= target_samples:
+                    break
+                data = data[:, : target_samples - num_samples]
+            frames.append(data)
+            num_samples += data.shape[1]
+    finally:
+        container.close()
+    if len(frames) == 0:
+        raise RuntimeError(f"No audio frames found in {path}.")
+    return torch.from_numpy(np.concatenate(frames, axis=1)).float(), sample_rate
+
+
 def read_audio(
     path: str,
     start_time: float = 0,
@@ -69,14 +116,16 @@ def read_audio(
         duration (float | None, optional): The duration in seconds to read. If None, reads until the end. Defaults to None.
         resample (bool, optional): Whether to resample the audio to a different sample rate. Defaults to False.
         resample_rate (int, optional): The target sample rate for resampling if resample is True. Defaults to 48000.
-        backend (str, optional): The audio backend to use for reading. Defaults to "torchcodec".
-        
+        backend (str, optional): The audio backend to use for reading, either "torchcodec" or "pyav". Defaults to "torchcodec".
+
     Returns:
         tuple[torch.Tensor, int]: A tuple containing the audio tensor and the sample rate.
             The audio tensor shape is [C, T] where C is the number of channels and T is the number of audio frames.
     """
     if backend == "torchcodec":
         waveform, sample_rate = read_audio_with_torchcodec(path, start_time, duration)
+    elif backend == "pyav":
+        waveform, sample_rate = read_audio_with_pyav(path, start_time, duration)
     else:
         raise ValueError(f"Unsupported audio backend: {backend}")
 

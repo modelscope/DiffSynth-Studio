@@ -336,6 +336,9 @@ class MiniMaxH3DiT(nn.Module):
         use_gradient_checkpointing_offload=False,
         update_audio_mask=None,
         skip_mask_out_condition=False,
+        vace=None,
+        vace_context=None,
+        vace_scale=1.0,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         inverse_indices = inverse_indices.view(-1).to(torch.long)
         token_tags = token_tags.view(-1).to(torch.long)
@@ -371,7 +374,16 @@ class MiniMaxH3DiT(nn.Module):
 
         hidden = decoder_input
         cu_seqlens = cu_seqlens.to(device)
-        for block in self.blocks:
+
+        # VACE
+        if vace_context is not None:
+            vace_hints = vace(
+                hidden, vace_context, t_emb, combined_indices, rope_freqs, img_pos,
+                use_gradient_checkpointing=use_gradient_checkpointing,
+                use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+            )
+
+        for block_id, block in enumerate(self.blocks):
             hidden = gradient_checkpoint_forward(
                 block,
                 use_gradient_checkpointing,
@@ -383,6 +395,13 @@ class MiniMaxH3DiT(nn.Module):
                 cu_seqlens=cu_seqlens,
                 max_seqlen=max_seqlen,
             )
+
+            # VACE
+            if vace_context is not None and block_id in vace.vace_layers_mapping:
+                current_vace_hint = vace_hints[vace.vace_layers_mapping[block_id]]
+                # `index_add` is out-of-place: an in-place index assignment on a
+                # tensor that requires grad breaks under gradient checkpointing.
+                hidden = hidden.index_add(0, img_pos[:current_vace_hint.shape[0]], current_vace_hint * vace_scale)
 
         video_logits, audio_logits = self.final_layer(hidden, t_emb=t_emb, inverse_indices=inverse_indices)
 
