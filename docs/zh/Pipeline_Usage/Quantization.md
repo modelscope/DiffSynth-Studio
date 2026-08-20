@@ -214,7 +214,7 @@ accelerate launch examples/.../train.py \
 
 ## 自定义量化后端
 
-如果内置方法不满足需求，你可以实现自己的量化后端。完整的接口签名与契约见 [`diffsynth.core.quant` API 文档](../API_Reference/core/quant.md#扩展接口自定义后端)，可参考 `diffsynth/models/ideogram4_dit.py` 中的 `Fp8Linear` / `Ideogram4Fp8QuantBackend` 作为实现范例。
+如果内置方法不满足需求，你可以实现自己的量化后端。完整的接入流程与可运行的示例（以玩具后端 INT9 为例）见[接入量化后端](../Developer_Guide/Integrating_Quantization_Backend.md)，完整的接口签名与契约见 [`diffsynth.core.quant` API 文档](../API_Reference/core/quant.md#扩展接口自定义后端)。
 
 ## 量化与显存管理组合
 

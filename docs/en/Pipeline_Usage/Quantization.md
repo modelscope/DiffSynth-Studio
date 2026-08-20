@@ -214,7 +214,7 @@ accelerate launch examples/.../train.py \
 
 ## Custom Quantization Backends
 
-If the built-in methods don't meet your needs, you can implement your own quantization backend. See the [`diffsynth.core.quant` API documentation](../API_Reference/core/quant.md#extension-interface-custom-backends) for the full interface signatures and contracts. `Fp8Linear` / `Ideogram4Fp8QuantBackend` in `diffsynth/models/ideogram4_dit.py` can serve as a reference implementation.
+If the built-in methods don't meet your needs, you can implement your own quantization backend. See [Integrating a Quantization Backend](../Developer_Guide/Integrating_Quantization_Backend.md) for the full walkthrough with a runnable toy INT9 example, and the [`diffsynth.core.quant` API documentation](../API_Reference/core/quant.md#extension-interface-custom-backends) for the full interface signatures and contracts.
 
 ## Combining Quantization with VRAM Management
 
