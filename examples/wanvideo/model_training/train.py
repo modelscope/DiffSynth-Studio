@@ -2,6 +2,7 @@ import torch, os, argparse, accelerate, warnings
 from diffsynth.core import UnifiedDataset
 from diffsynth.core.data.operators import LoadVideo, LoadAudio, ImageCropAndResize, ToAbsolutePath
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
+from diffsynth.pipelines.wan_video_echo_memory import load_echo_memory_dit
 from diffsynth.diffusion import *
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -11,6 +12,7 @@ class WanTrainingModule(DiffusionTrainingModule):
         self,
         model_paths=None, model_id_with_origin_paths=None,
         tokenizer_path=None, audio_processor_path=None,
+        echo_memory_path=None, echo_memory_model_id_with_origin_path=None, echo_memory_download_source="huggingface",
         trainable_models=None,
         lora_base_model=None, lora_target_modules="", lora_rank=32, lora_checkpoint=None,
         preset_lora_path=None, preset_lora_model=None,
@@ -36,6 +38,11 @@ class WanTrainingModule(DiffusionTrainingModule):
         tokenizer_config = ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/") if tokenizer_path is None else ModelConfig(tokenizer_path)
         audio_processor_config = self.parse_path_or_model_id(audio_processor_path)
         self.pipe = WanVideoPipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config, audio_processor_config=audio_processor_config)
+        if echo_memory_path is not None or echo_memory_model_id_with_origin_path is not None:
+            echo_memory_config = self.parse_path_or_model_id(echo_memory_model_id_with_origin_path) if echo_memory_model_id_with_origin_path is not None else None
+            if echo_memory_config is not None:
+                echo_memory_config.download_source = echo_memory_download_source
+            load_echo_memory_dit(self.pipe, model_config=echo_memory_config, local_path=echo_memory_path)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
         self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
         
@@ -119,6 +126,9 @@ def wan_parser():
     parser = add_video_size_config(parser)
     parser.add_argument("--tokenizer_path", type=str, default=None, help="Path to tokenizer.")
     parser.add_argument("--audio_processor_path", type=str, default=None, help="Path to the audio processor. If provided, the processor will be used for Wan2.2-S2V model.")
+    parser.add_argument("--echo_memory_path", type=str, default=None, help="Path to the Echo-Memory DiT checkpoint.")
+    parser.add_argument("--echo_memory_model_id_with_origin_path", type=str, default=None, help="Echo-Memory checkpoint in model_id:origin_file_pattern format.")
+    parser.add_argument("--echo_memory_download_source", type=str, default="huggingface", help="Download source for the Echo-Memory checkpoint.")
     parser.add_argument("--max_timestep_boundary", type=float, default=1.0, help="Max timestep boundary (for mixed models, e.g., Wan-AI/Wan2.2-I2V-A14B).")
     parser.add_argument("--min_timestep_boundary", type=float, default=0.0, help="Min timestep boundary (for mixed models, e.g., Wan-AI/Wan2.2-I2V-A14B).")
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
@@ -133,11 +143,19 @@ if __name__ == "__main__":
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         kwargs_handlers=[accelerate.DistributedDataParallelKwargs(find_unused_parameters=args.find_unused_parameters)],
     )
+    data_file_keys = args.data_file_keys.split(",")
+    extra_inputs = args.extra_inputs.split(",") if args.extra_inputs is not None else []
+    special_operator_map = {
+        "animate_face_video": ToAbsolutePath(args.dataset_base_path) >> LoadVideo(args.num_frames, 4, 1, frame_processor=ImageCropAndResize(512, 512, None, 16, 16)),
+        "wantodance_music_path": ToAbsolutePath(args.dataset_base_path),
+    }
+    if "input_audio" in data_file_keys or "input_audio" in extra_inputs:
+        special_operator_map["input_audio"] = ToAbsolutePath(args.dataset_base_path) >> LoadAudio(sr=16000)
     dataset = UnifiedDataset(
         base_path=args.dataset_base_path,
         metadata_path=args.dataset_metadata_path,
         repeat=args.dataset_repeat,
-        data_file_keys=args.data_file_keys.split(","),
+        data_file_keys=data_file_keys,
         main_data_operator=UnifiedDataset.default_video_operator(
             base_path=args.dataset_base_path,
             max_pixels=args.max_pixels,
@@ -149,17 +167,16 @@ if __name__ == "__main__":
             time_division_factor=4 if not args.framewise_decoding else 1,
             time_division_remainder=1 if not args.framewise_decoding else 0,
         ),
-        special_operator_map={
-            "animate_face_video": ToAbsolutePath(args.dataset_base_path) >> LoadVideo(args.num_frames, 4, 1, frame_processor=ImageCropAndResize(512, 512, None, 16, 16)),
-            "input_audio": ToAbsolutePath(args.dataset_base_path) >> LoadAudio(sr=16000),
-            "wantodance_music_path": ToAbsolutePath(args.dataset_base_path),
-        }
+        special_operator_map=special_operator_map,
     )
     model = WanTrainingModule(
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
         tokenizer_path=args.tokenizer_path,
         audio_processor_path=args.audio_processor_path,
+        echo_memory_path=args.echo_memory_path,
+        echo_memory_model_id_with_origin_path=args.echo_memory_model_id_with_origin_path,
+        echo_memory_download_source=args.echo_memory_download_source,
         trainable_models=args.trainable_models,
         lora_base_model=args.lora_base_model,
         lora_target_modules=args.lora_target_modules,
