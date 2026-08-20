@@ -44,7 +44,6 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
             offload_device = vram_config["offload_device"]
             computation_device = vram_config["computation_device"]
             computation_dtype = vram_config["computation_dtype"]
-            offload_dtype = vram_config["offload_dtype"]
             load_dtype = None if quantize.load_prequantized else computation_dtype
             if state_dict is None: state_dict = DiskMap(path, offload_device, torch_dtype=load_dtype)
             if state_dict_converter is not None:
@@ -61,7 +60,7 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
 
             model = quantize.quantize_model(model, compute_device=computation_device, model_device=offload_device)
             model = quantize.dequantize_model(model, compute_dtype=computation_dtype, compute_device=computation_device, model_device=offload_device)
-            model = model.to(dtype=offload_dtype, device=offload_device)
+            model = model.to(dtype=computation_dtype, device=offload_device)
             model = enable_vram_management(model, module_map, vram_config=vram_config, disk_map=None, vram_limit=vram_limit, quantize=quantize)
     elif quantize is not None:
         # Weight-only quantization (see `diffsynth.core.quant`), isolated from the normal path below.
