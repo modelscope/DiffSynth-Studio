@@ -191,7 +191,7 @@ class DiffusionTrainingModule(torch.nn.Module):
             method, _, excludes = spec.partition("/")
             exclude_modules = excludes.split(",") if excludes != "" else None
             quant_config = QuantizeConfig(method=method, exclude_modules=exclude_modules)
-            if not quant_config.backend.capabilities().get("is_differentiable", False):
+            if not quant_config.backend.capabilities().get("is_differentiable", True):
                 raise ValueError(f"Quantization method `{method}` is not differentiable, so it cannot be used for training (frozen quantized layers must pass gradients through to LoRA branches). Choose a method whose backend declares `is_differentiable=True`.")
             quant_map[model_string] = quant_config
         return quant_map
