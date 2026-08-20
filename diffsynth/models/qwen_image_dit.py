@@ -525,6 +525,7 @@ class QwenImageTransformerBlock(nn.Module):
         attention_mask: Optional[torch.Tensor] = None,
         enable_fp8_attention = False,
         modulate_index: Optional[List[int]] = None,
+        kv_cache = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
         img_mod_attn, img_mod_mlp = self.img_mod(temb).chunk(2, dim=-1)  # [B, 3*dim] each
@@ -544,6 +545,7 @@ class QwenImageTransformerBlock(nn.Module):
             image_rotary_emb=image_rotary_emb,
             attention_mask=attention_mask,
             enable_fp8_attention=enable_fp8_attention,
+            kv_cache=kv_cache,
         )
         
         image = image + img_gate * img_attn_out
