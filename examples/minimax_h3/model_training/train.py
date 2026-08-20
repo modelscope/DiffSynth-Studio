@@ -35,8 +35,7 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
         pipe_kwargs = {}
         if processor_path is not None:
-            processor_config = self.parse_path_or_model_id(processor_path)
-            pipe_kwargs["processor_config"] = ModelConfig(model_id=processor_config.model_id, origin_file_pattern=processor_config.origin_file_pattern)
+            pipe_kwargs["processor_config"] = self.parse_path_or_model_id(processor_path)
         self.pipe = MiniMaxH3Pipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, **pipe_kwargs)
         self.pipe = self.load_training_template_model(self.pipe, template_model_id_or_path, use_gradient_checkpointing, use_gradient_checkpointing_offload)
         self.pipe = self.split_pipeline_units(
