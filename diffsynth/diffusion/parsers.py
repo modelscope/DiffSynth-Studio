@@ -31,6 +31,10 @@ def add_model_config(parser: argparse.ArgumentParser):
     parser.add_argument("--resume_from_checkpoint", default=None, type=str, help="Resume training from checkpoint file. Only single model training is supported.")
     return parser
 
+def add_quant_config(parser: argparse.ArgumentParser):
+    parser.add_argument("--quant_options", type=str, default=None, help="Dynamically quantize loaded models. Semicolon-separated entries, each `<model_string>:<method>[/<exclude_modules>]`, where `<model_string>` matches an entry in `--model_paths`/`--model_id_with_origin_paths`, `method` is a registered method (e.g. bitsandbytes_nf4), and `exclude_modules` optionally lists layers kept in full precision.")
+    return parser
+
 def add_training_config(parser: argparse.ArgumentParser):
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate.")
     parser.add_argument("--num_epochs", type=int, default=1, help="Number of epochs.")
@@ -106,6 +110,7 @@ def add_dmd2_config(parser: argparse.ArgumentParser):
 def add_general_config(parser: argparse.ArgumentParser):
     parser = add_dataset_base_config(parser)
     parser = add_model_config(parser)
+    parser = add_quant_config(parser)
     parser = add_training_config(parser)
     parser = add_output_config(parser)
     parser = add_lora_config(parser)

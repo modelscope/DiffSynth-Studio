@@ -52,7 +52,7 @@ class QuantBackend(ABC):
     def capabilities(self) -> dict:
         return {
             "is_serializable": False,
-            "is_differentiable": False,
+            "is_differentiable": True,
             "is_compileable": False,
             "requires_calibration": False,
         }
