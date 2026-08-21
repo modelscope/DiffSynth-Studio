@@ -370,8 +370,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 
 > 以推理时间为代价，提高生成内容的质量。
 
-- 论文：[Spectral Evolution Search: Efficient Inference-Time Scaling for Reward-Aligned Image Generation
-](https://arxiv.org/abs/2602.03208)
+- 论文：[Spectral Evolution Search: Efficient Inference-Time Scaling for Reward-Aligned Image Generation](https://arxiv.org/abs/2602.03208)
 - 代码样例：[/docs/en/Research_Tutorial/inference_time_scaling.md](/docs/en/Research_Tutorial/inference_time_scaling.md)
 
 |FLUX.1-dev|FLUX.1-dev + SES|Qwen-Image|Qwen-Image + SES|
