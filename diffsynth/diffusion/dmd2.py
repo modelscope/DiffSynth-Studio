@@ -126,6 +126,27 @@ def _scale_noise(noise, sigma):
     return (noise * sigma).to(original_dtype)
 
 
+def _ode_step(latents, x0, sigma, next_sigma):
+    """Advance a flow-matching sample from ``sigma`` to ``next_sigma``."""
+    original_dtype = latents.dtype
+    latents = latents.to(torch.float64)
+    x0 = x0.to(torch.float64)
+    sigma = _expand_like(sigma, latents)
+    next_sigma = _expand_like(next_sigma, latents)
+    if torch.any(sigma == 0):
+        raise ValueError("DMD2 ODE sampling cannot step from sigma=0.")
+    flow = (latents - x0) / sigma
+    return (latents + flow * (next_sigma - sigma)).to(original_dtype)
+
+
+def _sample_dmd2_student_step(num_steps, device):
+    """Sample one rollout step and keep it aligned across distributed ranks."""
+    step_id = torch.randint(0, num_steps, (1,), device=device)
+    if torch.distributed.is_available() and torch.distributed.is_initialized():
+        torch.distributed.broadcast(step_id, src=0)
+    return int(step_id.item())
+
+
 def make_dmd2_student_schedule(
     pipe,
     num_steps,
@@ -291,8 +312,12 @@ class DMD2Loss:
 
     def _generate_student_data(self, module, real_data, inputs_shared, inputs_posi):
         pipe = module.pipe
-        device, dtype = real_data.device, real_data.dtype
+        device = real_data.device
         batch_size = real_data.shape[0]
+        if self.config.student_sample_steps < 1:
+            raise ValueError("`dmd2_student_sample_steps` must be at least 1.")
+        if self.config.student_sample_type not in {"sde", "ode"}:
+            raise ValueError(f"Unsupported DMD2 student sample type: {self.config.student_sample_type}")
         student_sigmas, student_timesteps = make_dmd2_student_schedule(
             pipe,
             self.config.student_sample_steps,
@@ -304,19 +329,43 @@ class DMD2Loss:
         if len(student_sigmas) != self.config.student_sample_steps + 1:
             raise ValueError("The student sigma schedule length must equal `student_sample_steps + 1`.")
 
-        if self.config.student_sample_steps == 1:
-            timestep = student_timesteps[0:1].expand(batch_size)
-            sigma = student_sigmas[0:1].expand(batch_size)
-            input_student = _scale_noise(torch.randn_like(real_data), sigma)
-        else:
-            step_id = torch.randint(0, self.config.student_sample_steps, (batch_size,), device=device)
-            sigma = student_sigmas[step_id]
-            timestep = student_timesteps[step_id]
-            eps_student = torch.randn_like(real_data)
-            input_student = _forward_process(real_data, eps_student, sigma)
+        selected_step = 0
+        if self.config.student_sample_steps > 1:
+            selected_step = _sample_dmd2_student_step(self.config.student_sample_steps, device)
+
+        student_model = get_dmd2_student_model(module)
+        initial_sigma = student_sigmas[0:1].expand(batch_size)
+        input_student = _scale_noise(torch.randn_like(real_data), initial_sigma)
+
+        # DMD2's backward simulation trains the selected step on inputs produced
+        # by the preceding student steps, matching the rollout seen at inference.
+        # Previous steps build the input distribution only; gradients belong to
+        # the selected step below.
+        with torch.no_grad():
+            for rollout_step in range(selected_step):
+                rollout_sigma = student_sigmas[rollout_step:rollout_step + 1].expand(batch_size)
+                rollout_timestep = student_timesteps[rollout_step:rollout_step + 1].expand(batch_size)
+                rollout_x0 = self._model_forward_x0(
+                    module,
+                    student_model,
+                    module.dmd2_model_fn_student,
+                    input_student,
+                    rollout_timestep,
+                    rollout_sigma,
+                    inputs_shared,
+                    inputs_posi,
+                )
+                next_sigma = student_sigmas[rollout_step + 1:rollout_step + 2].expand(batch_size)
+                if self.config.student_sample_type == "sde":
+                    input_student = _forward_process(rollout_x0, torch.randn_like(real_data), next_sigma)
+                else:
+                    input_student = _ode_step(input_student, rollout_x0, rollout_sigma, next_sigma)
+
+        sigma = student_sigmas[selected_step:selected_step + 1].expand(batch_size)
+        timestep = student_timesteps[selected_step:selected_step + 1].expand(batch_size)
         gen_data = self._model_forward_x0(
             module,
-            get_dmd2_student_model(module),
+            student_model,
             module.dmd2_model_fn_student,
             input_student,
             timestep,
