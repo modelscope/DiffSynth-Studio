@@ -51,8 +51,16 @@ This section introduces the Diffusion models supported by `DiffSynth-Studio`. So
 * [ERNIE-Image](./Model_Details/ERNIE-Image.md)
 * [JoyAI-Image](./Model_Details/JoyAI-Image.md)
 * [ACE-Step](./Model_Details/ACE-Step.md)
+* [HiDream-O1-Image](./Model_Details/HiDream-O1-Image.md)
 * [Stable Diffusion](./Model_Details/Stable-Diffusion.md)
 * [Stable Diffusion XL](./Model_Details/Stable-Diffusion-XL.md)
+* [Image Quality Metrics](./Model_Details/Image-Quality-Metrics.md)
+* [Ideogram 4](./Model_Details/Ideogram-4.md)
+* [Krea-2](./Model_Details/Krea-2.md)
+* [Boogu-Image](./Model_Details/Boogu-Image.md)
+* [LingBot-Video](./Model_Details/LingBot-Video.md)
+* [MiniMax-H3](./Model_Details/MiniMax-H3.md)
+* [MiniMax-Music3](./Model_Details/MiniMax-Music3.md)
 
 ## Section 3: Training Framework
 
@@ -74,10 +82,10 @@ This section introduces how to integrate models into `DiffSynth-Studio` to utili
 * [Integrating Model Architecture](./Developer_Guide/Integrating_Your_Model.md)
 * [Building a Pipeline](./Developer_Guide/Building_a_Pipeline.md)
 * [Enabling Fine-Grained VRAM Management](./Developer_Guide/Enabling_VRAM_management.md)
-* [Integrating a Quantization Backend](./Developer_Guide/Integrating_Quantization_Backend.md)
 * [Model Training Integration](./Developer_Guide/Training_Diffusion_Models.md)
+* [Integrating a Quantization Backend](./Developer_Guide/Integrating_Quantization_Backend.md)
 
-We have open-sourced [**DiffSynth-Studio Model Integration Skills**](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills). This is a composable collection of Agent Skills that automates the entire workflow of integrating external diffusion models (image / video / audio) into DiffSynth-Studio. It distills and defines the model integration standards of DiffSynth-Studio, consolidating best practices such as codebase analysis, model code integration, Pipeline design, low-VRAM management, and training support into reusable standard procedures. Following these standards can significantly lower the integration barrier, reduce repetitive debugging, and greatly improve the efficiency of integrating new models. We recommend starting from the [`diffsynth-integrator`](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator) [example](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1) to get started quickly and accelerate model integration.
+> We have open-sourced [**DiffSynth-Studio Model Integration Skills**](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills). This is a composable collection of Agent Skills that automates the entire workflow of integrating external diffusion models (image / video / audio) into DiffSynth-Studio. It distills and defines the model integration standards of DiffSynth-Studio, consolidating best practices such as codebase analysis, model code integration, Pipeline design, low-VRAM management, and training support into reusable standard procedures. Following these standards can significantly lower the integration barrier, reduce repetitive debugging, and greatly improve the efficiency of integrating new models. We recommend starting from the [`diffsynth-integrator`](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator) [example](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1) to get started quickly and accelerate model integration.
 
 ## Section 5: API Reference
 

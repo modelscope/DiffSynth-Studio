@@ -52,32 +52,6 @@ image.save("image.jpg")
 
 ## Model Overview
 
-<details>
-
-<summary>Model Lineage</summary>
-
-```mermaid
-graph LR;
-    Qwen/Qwen-Image-->Qwen/Qwen-Image-Edit;
-    Qwen/Qwen-Image-Edit-->Qwen/Qwen-Image-Edit-2509;
-    Qwen/Qwen-Image-->EliGen-Series;
-    EliGen-Series-->DiffSynth-Studio/Qwen-Image-EliGen;
-    DiffSynth-Studio/Qwen-Image-EliGen-->DiffSynth-Studio/Qwen-Image-EliGen-V2;
-    EliGen-Series-->DiffSynth-Studio/Qwen-Image-EliGen-Poster;
-    Qwen/Qwen-Image-->Distill-Series;
-    Distill-Series-->DiffSynth-Studio/Qwen-Image-Distill-Full;
-    Distill-Series-->DiffSynth-Studio/Qwen-Image-Distill-LoRA;
-    Qwen/Qwen-Image-->ControlNet-Series;
-    ControlNet-Series-->Blockwise-ControlNet-Series;
-    Blockwise-ControlNet-Series-->DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Canny;
-    Blockwise-ControlNet-Series-->DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Depth;
-    Blockwise-ControlNet-Series-->DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Inpaint;
-    ControlNet-Series-->DiffSynth-Studio/Qwen-Image-In-Context-Control-Union;
-    Qwen/Qwen-Image-->DiffSynth-Studio/Qwen-Image-Edit-Lowres-Fix;
-```
-
-</details>
-
 | Model ID | Inference | Low VRAM Inference | Full Training | Validation After Full Training | LoRA Training | Validation After LoRA Training |
 | - | - | - | - | - | - | - |
 | [Qwen/Qwen-Image](https://www.modelscope.cn/models/Qwen/Qwen-Image) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_inference/Qwen-Image.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_inference_low_vram/Qwen-Image.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_training/full/Qwen-Image.sh) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_training/validate_full/Qwen-Image.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_training/lora/Qwen-Image.sh) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_training/validate_lora/Qwen-Image.py) |

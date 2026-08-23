@@ -196,7 +196,7 @@ The layer sets matched by the sub-configs must not overlap. All sub-configs must
 
 ## Quantization + LoRA Training
 
-A quantized model can have LoRA injected and trained directly, enabling training of large models with very little VRAM.
+In most cases, a quantized model does not support training, but it does support LoRA training with the base model frozen, enabling training of large models with very little VRAM.
 
 Methods usable for quantization + LoRA training are listed in the last column of the [methods table](#supported-quantization-methods). The typical practice is to **train with a pre-quantized base model**: the training script points `--model_id_with_origin_paths` at the pre-quantized model:
 

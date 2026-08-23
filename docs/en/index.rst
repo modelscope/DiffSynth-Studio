@@ -67,6 +67,7 @@ Welcome to DiffSynth-Studio's Documentation
    Developer_Guide/Building_a_Pipeline
    Developer_Guide/Enabling_VRAM_management
    Developer_Guide/Training_Diffusion_Models
+   Developer_Guide/Integrating_Quantization_Backend
 
 .. toctree::
    :maxdepth: 2

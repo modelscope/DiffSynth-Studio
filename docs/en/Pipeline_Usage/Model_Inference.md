@@ -133,6 +133,8 @@ image.save("image.jpg")
 
 * Hot loading: When the base model has [VRAM management](../Pipeline_Usage/VRAM_management.md) enabled, LoRA will not be fused into the base model weights. In this case, inference speed will be slower, but LoRA can be unloaded through `pipe.clear_lora()` after loading.
 
+If you do not want to enable VRAM management, you can enable LoRA hot loading separately via `pipe.enable_lora_hotloading(pipe.dit)`.
+
 ```python
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 import torch
