@@ -23,6 +23,7 @@ template = TemplatePipeline.from_pretrained(
     device="cuda",
     model_configs=[
         ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music-Tools", origin_file_pattern="template_control/"),
+        ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music-Tools", origin_file_pattern="template_prosody/"),
         ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music-Tools", origin_file_pattern="template_reference/"),
     ],
 )
@@ -53,7 +54,7 @@ audio = template(
     duration=duration,
     seed=42, tiled=True, cfg_scale=4, num_inference_steps=50,
     template_inputs=[{"audio": beats}],
-    negative_template_inputs=[{"audio": None}],
+    negative_template_inputs=[{"audio": beats}],
 )
 torchaudio.save("audio_2_output.mp3", audio, 48000)
 torchaudio.save("audio_2_output_with_beats.mp3", audio + beats, 48000)
@@ -101,8 +102,8 @@ audio = template(
     lyrics=lyrics,
     duration=prosody.shape[1] / 48000,
     seed=42, tiled=True, cfg_scale=4, num_inference_steps=50,
-    template_inputs=[{"audio": [prosody * 1.5]}],
-    negative_template_inputs=[{"audio": None}],
+    template_inputs=[{"model_id": 1, "audio": prosody}],
+    negative_template_inputs=[{"model_id": 1, "audio": prosody}],
 )
 torchaudio.save("audio_5_output.mp3", audio, 48000)
 
@@ -116,7 +117,7 @@ audio = template(
     duration=200,
     seed=42, tiled=True, cfg_scale=4, num_inference_steps=100,
     template_inputs=[{
-        "model_id": 1, # Enable the second template model
+        "model_id": 2, # Enable the reference model
         "audio": audio,
     }],
 )
