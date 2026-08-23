@@ -19,9 +19,11 @@
 拆分训练已支持[标准监督训练](../Training/Supervised_Fine_Tuning.md)和[直接蒸馏训练](../Training/Direct_Distill.md)，在训练命令中通过 `--task` 参数控制，以 Qwen-Image 模型的 LoRA 训练为例，拆分前的训练命令为：
 
 ```shell
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "qwen_image/Qwen-Image/*" --local_dir ./data/diffsynth_example_dataset
+
 accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/qwen_image/Qwen-Image \
+  --dataset_metadata_path data/diffsynth_example_dataset/qwen_image/Qwen-Image/metadata.csv \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
   --model_id_with_origin_paths "Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors,Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors" \
@@ -42,15 +44,17 @@ accelerate launch examples/qwen_image/model_training/train.py \
 * 将 `--dataset_repeat` 改为 1，避免重复计算
 * 将 `--output_path` 改为第一阶段计算结果保存的路径
 * 添加额外参数 `--task "sft:data_process"`
-* 删除 `--model_id_with_origin_paths` 中的 DiT 模型
+* 在 `offload_models` 中填入不需要进行 forward 计算的模型，格式与 `model_id_with_origin_paths` 相同
+  * 直接删除 `--model_id_with_origin_paths` 中不需要进行 forward 计算的模型也可，但你必须确保对应的模型在 pipeline 中不会被间接调用，这意味着你必须了解 Pipeline 的运行细节
 
 ```shell
 accelerate launch examples/qwen_image/model_training/train.py \
-  --dataset_base_path data/example_image_dataset \
-  --dataset_metadata_path data/example_image_dataset/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/qwen_image/Qwen-Image \
+  --dataset_metadata_path data/diffsynth_example_dataset/qwen_image/Qwen-Image/metadata.csv \
   --max_pixels 1048576 \
   --dataset_repeat 1 \
-  --model_id_with_origin_paths "Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors" \
+  --model_id_with_origin_paths "Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors,Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors" \
+  --offload_models "Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors" \
   --learning_rate 1e-4 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \
@@ -69,14 +73,16 @@ accelerate launch examples/qwen_image/model_training/train.py \
 * 将 `--dataset_base_path` 改为第一阶段的 `--output_path`
 * 删除 `--dataset_metadata_path`
 * 添加额外参数 `--task "sft:train"`
-* 删除 `--model_id_with_origin_paths` 中的 Text Encoder 和 VAE 模型
+* 在 `offload_models` 中填入不需要进行 forward 计算的模型，格式与 `model_id_with_origin_paths` 相同
+  * 直接删除 `--model_id_with_origin_paths` 中不需要进行 forward 计算的模型也可，但你必须确保对应的模型在 pipeline 中不会被间接调用，这意味着你必须了解 Pipeline 的运行细节
 
 ```shell
 accelerate launch examples/qwen_image/model_training/train.py \
   --dataset_base_path "./models/train/Qwen-Image-LoRA-splited-cache" \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
-  --model_id_with_origin_paths "Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors" \
+  --model_id_with_origin_paths "Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors,Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors" \
+  --offload_models "Qwen/Qwen-Image:text_encoder/model*.safetensors,Qwen/Qwen-Image:vae/diffusion_pytorch_model.safetensors" \
   --learning_rate 1e-4 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \
