@@ -233,7 +233,7 @@ image.save("image_Controlnet_Aesthetic_Sharpness.png")
 
 |结构控制图|输出图|
 |-|-|
-|![](https://github.com/user-attachments/assets/1feeb13f-f8a7-40df-958c-90463ef5eaf4)|![](hhttps://github.com/user-attachments/assets/ea406387-9695-4efd-b0cb-980686474ab7)|
+|![](https://github.com/user-attachments/assets/1feeb13f-f8a7-40df-958c-90463ef5eaf4)|![Image](https://github.com/user-attachments/assets/ea406387-9695-4efd-b0cb-980686474ab7)|
 
 ### 结构控制 + 图像编辑 + 色彩调节
 
