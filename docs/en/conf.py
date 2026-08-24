@@ -126,10 +126,12 @@ myst_enable_extensions = [
 
 myst_fence_as_directive = ['mermaid']
 
+mermaid_version = '11.12.1'
+
 
 def setup(app):
     old_cdn = 'cdn.jsdelivr.net/npm/mermaid@'
-    new_cdn = 'cdn.staticfile.net/mermaid@'
+    new_cdn = 'fastly.jsdelivr.net/npm/mermaid@'
 
     def _use_china_cdn(app_, pagename, templatename, context, doctree):
         for item in context.get('script_files') or []:
