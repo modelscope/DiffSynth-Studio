@@ -25,7 +25,7 @@ Framework features:
 
 References:
 
-* Developer documentation (for humans): [中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/), [English version](https://diffsynth-studio-doc.readthedocs.io/en/latest/)
+* Developer documentation (for humans): [中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/README.html)、[English version](https://diffsynth-studio-doc.readthedocs.io/en/latest/README.html)
 * Agent Skills (for AI): [DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills)
 
 See also:

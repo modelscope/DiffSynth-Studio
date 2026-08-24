@@ -25,7 +25,7 @@
 
 参考资料：
 
-* 开发者文档 (面向人类)：[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/)、[English version](https://diffsynth-studio-doc.readthedocs.io/en/latest/)
+* 开发者文档 (面向人类)：[中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/README.html)、[English version](https://diffsynth-studio-doc.readthedocs.io/en/latest/README.html)
 * Agent Skills (面向 AI)：[DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills)
 
 查看更多：
