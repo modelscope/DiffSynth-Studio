@@ -361,7 +361,7 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 |Input example 1|Output example 1|Input example 2|Output example 2|
 |-|-|-|-|
-|![Image](https://github.com/user-attachments/assets/8177e883-cfef-4e38-a528-cdef01a9f9b8)|![Image](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2/resolve/master/assets/6_output.jpg)|![Image](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2/resolve/master/assets/1_input.jpg)|![Image](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2/resolve/master/assets/1_output.jpg)|
+|![Image](https://github.com/user-attachments/assets/0a1fd252-851f-414e-af24-4c656ab54277)|![Image](https://github.com/user-attachments/assets/96259993-e732-424d-bf07-9ca1ede27890)|![Image](https://github.com/user-attachments/assets/a78573a0-c2cf-4e33-ac21-276078e8cad3)|![Image](https://github.com/user-attachments/assets/8177e883-cfef-4e38-a528-cdef01a9f9b8)|
 
 </details>
 
