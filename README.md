@@ -342,7 +342,7 @@ We believe that a well-developed open-source code framework can lower the thresh
 * Paper: [TreeAdapter: Hierarchical Taxonomy-Guided Adapter Composition for Fine-Grained Species Image Generation](https://arxiv.org/abs/2607.24215)
 * Model: [ModelScope](https://modelscope.cn/models/DiffSynth-Studio/TreeAdapter-KleinBase4B)
 
-![](https://modelscope.cn/models/DiffSynth-Studio/TreeAdapter-KleinBase4B/resolve/master/example/1.png)
+![Image](https://github.com/user-attachments/assets/1b461e0f-60aa-4b38-a44d-d1646cbbbc75)
 
 </details>
 
