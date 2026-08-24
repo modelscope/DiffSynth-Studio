@@ -128,17 +128,18 @@ myst_fence_as_directive = ['mermaid']
 
 
 def setup(app):
+    old_cdn = 'cdn.jsdelivr.net/npm/mermaid@'
+    new_cdn = 'cdn.staticfile.net/mermaid@'
+
     def _use_china_cdn(app_, pagename, templatename, context, doctree):
-        for item in context.get('script_files', []):
-            url = getattr(item, 'body', '') or ''
-            attrs = getattr(item, 'attributes', {}) or {}
-            url = url or attrs.get('body', '') or getattr(item, 'filename', '') or ''
-            if 'cdn.jsdelivr.net/npm/mermaid@' in url:
-                new_url = url.replace('cdn.jsdelivr.net/npm/mermaid@', 'cdn.staticfile.net/mermaid@')
-                if attrs:
-                    attrs['body'] = new_url
-                elif url == getattr(item, 'body', ''):
-                    item.body = new_url
-                else:
-                    item.filename = new_url
+        for item in context.get('script_files') or []:
+            state = vars(item) if hasattr(item, '__dict__') else {}
+            attributes = state.get('attributes') or {}
+            body = attributes.get('body') or ''
+            filename = str(state.get('filename') or '')
+            if old_cdn in body:
+                attributes['body'] = body.replace(old_cdn, new_cdn)
+            if old_cdn in filename:
+                item.filename = filename.replace(old_cdn, new_cdn)
+
     app.connect('html-page-context', _use_china_cdn)
