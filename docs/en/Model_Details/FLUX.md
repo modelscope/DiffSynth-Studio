@@ -52,37 +52,6 @@ image.save("image.jpg")
 
 ## Model Overview
 
-<details>
-
-<summary>Model Lineage</summary>
-
-```mermaid
-graph LR;
-    FLUX.1-Series-->black-forest-labs/FLUX.1-dev;
-    FLUX.1-Series-->black-forest-labs/FLUX.1-Krea-dev;
-    FLUX.1-Series-->black-forest-labs/FLUX.1-Kontext-dev;
-    FLUX.1-Series-->black-forest-labs/FLUX.1-Fill-dev;
-    FLUX.1-Series-->black-forest-labs/FLUX.1-Redux-dev;
-    black-forest-labs/FLUX.1-Fill-dev-->HuanJue/Insert-Anything;
-    black-forest-labs/FLUX.1-Redux-dev-->HuanJue/Insert-Anything;
-    black-forest-labs/FLUX.1-dev-->FLUX.1-dev-ControlNet-Series;
-    FLUX.1-dev-ControlNet-Series-->alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta;
-    FLUX.1-dev-ControlNet-Series-->InstantX/FLUX.1-dev-Controlnet-Union-alpha;
-    FLUX.1-dev-ControlNet-Series-->jasperai/Flux.1-dev-Controlnet-Upscaler;
-    black-forest-labs/FLUX.1-dev-->InstantX/FLUX.1-dev-IP-Adapter;
-    black-forest-labs/FLUX.1-dev-->ByteDance/InfiniteYou;
-    black-forest-labs/FLUX.1-dev-->DiffSynth-Studio/Eligen;
-    black-forest-labs/FLUX.1-dev-->DiffSynth-Studio/LoRA-Encoder-FLUX.1-Dev;
-    black-forest-labs/FLUX.1-dev-->DiffSynth-Studio/LoRAFusion-preview-FLUX.1-dev;
-    black-forest-labs/FLUX.1-dev-->ostris/Flex.2-preview;
-    black-forest-labs/FLUX.1-dev-->stepfun-ai/Step1X-Edit;
-    Qwen/Qwen2.5-VL-7B-Instruct-->stepfun-ai/Step1X-Edit;
-    black-forest-labs/FLUX.1-dev-->DiffSynth-Studio/Nexus-GenV2;
-    Qwen/Qwen2.5-VL-7B-Instruct-->DiffSynth-Studio/Nexus-GenV2;
-```
-
-</details>
-
 | Model ID | Extra Parameters | Inference | Low VRAM Inference | Full Training | Validation After Full Training | LoRA Training | Validation After LoRA Training |
 | - | - | - | - | - | - | - | - |
 | [black-forest-labs/FLUX.1-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.1-dev) | | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux/model_inference/FLUX.1-dev.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux/model_inference_low_vram/FLUX.1-dev.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux/model_training/full/FLUX.1-dev.sh) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux/model_training/validate_full/FLUX.1-dev.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux/model_training/lora/FLUX.1-dev.sh) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux/model_training/validate_lora/FLUX.1-dev.py) |

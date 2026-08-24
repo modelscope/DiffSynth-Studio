@@ -12,6 +12,10 @@
 
 AMD 提供了基于 ROCm 的 torch 包，所以大多数模型无需修改代码即可运行，少数模型由于依赖特定的 cuda 指令无法运行。
 
+### Apple Silicon
+
+在 Apple Silicon 设备上，由于显存和内存是统一的，请将代码中的 `"cuda"` 全部修改为 `"mps"` 或 `"cpu"`。
+
 ## Ascend NPU
 ### 推理
 使用 Ascend NPU 时，需把代码中的 `"cuda"` 改为 `"npu"`。

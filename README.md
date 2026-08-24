@@ -13,22 +13,26 @@
 
 ## Introduction
 
-> DiffSynth-Studio Documentation: [中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/)、[English version](https://diffsynth-studio-doc.readthedocs.io/en/latest/)
-> 
-> DiffSynth-Studio Skills：[DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills)
+Welcome to the magical world of Diffusion models! DiffSynth-Studio is an open-source Diffusion model engine developed and maintained by the [ModelScope Community](https://www.modelscope.cn/) team. We hope to foster technological innovation through framework construction, aggregate the power of the open-source community, and explore the rich capabilities of generative model technology!
 
-Welcome to the magical world of Diffusion models! DiffSynth-Studio is an open-source Diffusion model engine developed and maintained by the [ModelScope Community](https://www.modelscope.cn/). We hope to foster technological innovation through framework construction, aggregate the power of the open-source community, and explore the boundaries of generative model technology!
+Framework features:
 
-DiffSynth currently includes two open-source projects:
-* [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio): Focused on aggressive technical exploration, targeting academia, and providing cutting-edge model capability support.
-* [DiffSynth-Engine](https://github.com/modelscope/DiffSynth-Engine): Focused on stable model deployment, targeting industry, and providing higher computational performance and more stable features.
+* [Model Support](#all-supported-models): The framework integrates mainstream open-source Diffusion models, covering image generation, video generation, audio generation, and image quality metrics models.
+* [VRAM Management](https://diffsynth-studio-doc.readthedocs.io/en/latest/Pipeline_Usage/VRAM_management.html): Dynamically schedules model parameters across disk, memory, and VRAM, allowing consumer-grade GPUs with low VRAM to run inference with large models.
+* [Parameter Quantization](https://diffsynth-studio-doc.readthedocs.io/en/latest/Pipeline_Usage/Quantization.html): Converts model parameters to quantized precisions such as NF4 and INT8, significantly reducing the VRAM requirements of model inference and LoRA training.
+* [Arbitrary Training](https://diffsynth-studio-doc.readthedocs.io/en/latest/Pipeline_Usage/Model_Training.html): Almost every model that supports inference also supports training, whether base models, LoRAs, or any Adapter models with additional inputs.
+* [Split Training](https://diffsynth-studio-doc.readthedocs.io/en/latest/Training/Split_Training.html): Uses a computational graph inference engine to track every variable in the Pipeline, splitting the training process into two stages for efficient training.
 
-[DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio) and [DiffSynth-Engine](https://github.com/modelscope/DiffSynth-Engine) are the core engines of the ModelScope AIGC zone. Welcome to experience our carefully crafted productized features:
+References:
 
-* ModelScope AIGC Zone (for Chinese users): https://modelscope.cn/aigc/home
-* ModelScope Civision (for global users): https://modelscope.ai/civision/home
+* Developer documentation (for humans): [中文版](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/README.html)、[English version](https://diffsynth-studio-doc.readthedocs.io/en/latest/README.html)
+* Agent Skills (for AI): [DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills)
 
-We believe that a well-developed open-source code framework can lower the threshold for technical exploration. We have achieved many [interesting technologies](#innovative-achievements) based on this codebase. Perhaps you also have many wild ideas, and with DiffSynth-Studio, you can quickly realize these ideas. For this reason, we have prepared detailed documentation for developers. We hope that through these documents, developers can understand the principles of Diffusion models, and we look forward to expanding the boundaries of technology together with you.
+See also:
+
+* [DiffSynth-WebUI](https://github.com/modelscope/DiffSynth-WebUI): A lightweight LoRA training tool built on DiffSynth-Studio, enabling LoRA training of models on consumer-grade GPUs.
+* [ModelScope AIGC Zone (for Chinese users)](https://modelscope.cn/aigc/home): Productized features powered by DiffSynth-Studio as the core inference and training engine; experience the rich potential of the open-source model ecosystem.
+* [ModelScope Civision (for global users)](https://modelscope.ai/civision/home): Unlock the vast potential of the open-source model ecosystem through productized capabilities powered by DiffSynth-Studio.
 
 ## Update History
 
@@ -47,6 +51,9 @@ We believe that a well-developed open-source code framework can lower the thresh
 - **July 28, 2026** LingBot-Video open-sourced, welcome a new member to the video model family! This release includes two variants, Dense-1.3B and MoE-30B-A3B (30B total parameters, ~3B active per token), both supporting text-to-video, image-to-video and text-to-image generation, low VRAM inference, and LoRA / full training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/LingBot-Video.md) and [example code](/examples/lingbot_video/). Huge thanks to [NancyFyong](https://github.com/NancyFyong) for contributing the integration of this model!
 
 - **July 21, 2026** We have open-sourced [DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills). This is a composable collection of Agent Skills that automates the entire workflow of integrating external diffusion models into DiffSynth-Studio, significantly improving the standardization and efficiency of model integration. Get started with the [example](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1)!
+
+<details>
+<summary>More</summary>
 
 - **June 29, 2026** Boogu-Image open-sourced. Support includes text-to-image generation, image editing, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/Boogu-Image.md) and [example code](/examples/boogu_image/).
 
@@ -67,7 +74,7 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 - **May 14, 2026** HiDream-O1-Image open-sourced, welcome a new member to the image model family! Support includes text-to-image generation, image editing, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/HiDream-O1-Image.md) and [example code](/examples/hidream_o1_image/).
 
-- **April 28, 2026** 🔥 We are excited to announce the release of **Diffusion Templates**, a plugin framework designed for Diffusion models that significantly lowers the barrier to training controllable generative models. Let's explore this cutting-edge technology together!
+- **April 28, 2026** We released Diffusion Templates, a plugin framework designed for Diffusion models that significantly lowers the barrier to training controllable generative models. Let's explore this cutting-edge technology together!
     * Open-source code: [DiffSynth-Studio](https://github.com/modelscope/DiffSynth-Studio)
     * Technical report: [arXiv](https://arxiv.org/abs/2604.24351)
     * Project homepage: [GitHub](https://modelscope.github.io/diffusion-templates-web/)
@@ -82,8 +89,6 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 - **April 14, 2026** JoyAI-Image open-sourced, welcome a new member to the image editing model family! Support includes instruction-guided image editing, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/JoyAI-Image.md) and [example code](/examples/joyai_image/).
 
-<details>
-<summary>More</summary>
 
 - **March 19, 2026**: Added support for [openmoss/MOVA-720p](https://modelscope.cn/models/openmoss/MOVA-720p) and [openmoss/MOVA-360p](https://modelscope.cn/models/openmoss/MOVA-360p) models, including training and inference capabilities. [Documentation](/docs/en/Model_Details/Wan.md) and [example code](/examples/mova/) are now available.
 
@@ -262,1564 +267,131 @@ pip install -e .
 
 For more installation methods and instructions for non-NVIDIA GPUs, please refer to the [Installation Guide](/docs/en/Pipeline_Usage/Setup.md).
 
+<details>
+<summary>Download Source Configuration</summary>
+
+> Before model inference and training, you can configure the model download source and other options through [environment variables](/docs/en/Pipeline_Usage/Environment_Variables.md).
+> 
+> This project downloads models from [ModelScope](https://modelscope.cn/) by default. For users outside China, you can download models from the [ModelScope International](https://modelscope.ai) site with the following configuration:
+> 
+> ```shell
+> export MODELSCOPE_ENDPOINT=https://modelscope.ai
+> ```
+> 
+> To download models from [HuggingFace](https://huggingface.co/), please modify the [environment variables](/docs/en/Pipeline_Usage/Environment_Variables.md). Note that model IDs may differ across platforms:
+> 
+> ```shell
+> export DIFFSYNTH_DOWNLOAD_SOURCE="huggingface"
+> ```
+
 </details>
 
 ## Basic Framework
 
 DiffSynth-Studio redesigns the inference and training pipelines for mainstream Diffusion models (including FLUX, Wan, etc.), enabling efficient memory management and flexible model training.
 
-<details>
-<summary>Environment Variable Configuration</summary>
+Quick start: experience popular and the latest models:
 
-> Before running model inference or training, you can configure settings such as the model download source via [environment variables](/docs/en/Pipeline_Usage/Environment_Variables.md).
->
-> By default, this project downloads models from ModelScope. For users outside China, you can configure the system to download models from the ModelScope international site as follows:
->
-> ```python
-> import os
-> os.environ["MODELSCOPE_ENDPOINT"] = "https://modelscope.ai"
-> ```
->
-> To download models from other sources, please modify the environment variable [DIFFSYNTH_DOWNLOAD_SOURCE](/docs/en/Pipeline_Usage/Environment_Variables.md#diffsynth_download_source).
-
-</details>
-
-### Image Synthesis
-
-![Image](https://github.com/user-attachments/assets/c01258e2-f251-441a-aa1e-ebb22f02594d)
-
-#### Z-Image: [/docs/en/Model_Details/Z-Image.md](/docs/en/Model_Details/Z-Image.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [Tongyi-MAI/Z-Image-Turbo](https://www.modelscope.cn/models/Tongyi-MAI/Z-Image-Turbo) model for inference. FP8 quantization significantly degrades image quality, so we do not recommend enabling any quantization for the Z-Image Turbo model. CPU offloading is recommended, and the model can run with as little as 8 GB of GPU memory.
-
-```python
-from diffsynth.pipelines.z_image import ZImagePipeline, ModelConfig
-import torch
-
-vram_config = {
-    "offload_dtype": torch.bfloat16,
-    "offload_device": "cpu",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-pipe = ZImagePipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="transformer/*.safetensors", **vram_config),
-        ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="text_encoder/*.safetensors", **vram_config),
-        ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
-    ],
-    tokenizer_config=ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-prompt = "Young Chinese woman in red Hanfu, intricate embroidery. Impeccable makeup, red floral forehead pattern. Elaborate high bun, golden phoenix headdress, red flowers, beads. Holds round folding fan with lady, trees, bird. Neon lightning-bolt lamp (⚡️), bright yellow glow, above extended left palm. Soft-lit outdoor night background, silhouetted tiered pagoda (西安大雁塔), blurred colorful distant lights."
-image = pipe(prompt=prompt, seed=42, rand_device="cuda")
-image.save("image.jpg")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for Z-Image is available at: [/examples/z_image/](/examples/z_image/)
-
-|Model ID|Inference|Low VRAM Inference|Full Training|Validation After Full Training|LoRA Training|Validation After LoRA Training|
-|-|-|-|-|-|-|-|
-|[Tongyi-MAI/Z-Image](https://www.modelscope.cn/models/Tongyi-MAI/Z-Image)|[code](/examples/z_image/model_inference/Z-Image.py)|[code](/examples/z_image/model_inference_low_vram/Z-Image.py)|[code](/examples/z_image/model_training/full/Z-Image.sh)|[code](/examples/z_image/model_training/validate_full/Z-Image.py)|[code](/examples/z_image/model_training/lora/Z-Image.sh)|[code](/examples/z_image/model_training/validate_lora/Z-Image.py)|
-|[DiffSynth-Studio/Z-Image-i2L](https://www.modelscope.cn/models/DiffSynth-Studio/Z-Image-i2L)|[code](/examples/z_image/model_inference/Z-Image-i2L.py)|[code](/examples/z_image/model_inference_low_vram/Z-Image-i2L.py)|-|-|-|-|
-|[Tongyi-MAI/Z-Image-Turbo](https://www.modelscope.cn/models/Tongyi-MAI/Z-Image-Turbo)|[code](/examples/z_image/model_inference/Z-Image-Turbo.py)|[code](/examples/z_image/model_inference_low_vram/Z-Image-Turbo.py)|[code](/examples/z_image/model_training/full/Z-Image-Turbo.sh)|[code](/examples/z_image/model_training/validate_full/Z-Image-Turbo.py)|[code](/examples/z_image/model_training/lora/Z-Image-Turbo.sh)|[code](/examples/z_image/model_training/validate_lora/Z-Image-Turbo.py)|
-|[PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1](https://www.modelscope.cn/models/PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1)|[code](/examples/z_image/model_inference/Z-Image-Turbo-Fun-Controlnet-Union-2.1.py)|[code](/examples/z_image/model_inference_low_vram/Z-Image-Turbo-Fun-Controlnet-Union-2.1.py)|[code](/examples/z_image/model_training/full/Z-Image-Turbo-Fun-Controlnet-Union-2.1.sh)|[code](/examples/z_image/model_training/validate_full/Z-Image-Turbo-Fun-Controlnet-Union-2.1.py)|[code](/examples/z_image/model_training/lora/Z-Image-Turbo-Fun-Controlnet-Union-2.1.sh)|[code](/examples/z_image/model_training/validate_lora/Z-Image-Turbo-Fun-Controlnet-Union-2.1.py)|
-|[PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps](https://www.modelscope.cn/models/PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1)|[code](/examples/z_image/model_inference/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.py)|[code](/examples/z_image/model_inference_low_vram/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.py)|[code](/examples/z_image/model_training/full/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.sh)|[code](/examples/z_image/model_training/validate_full/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.py)|[code](/examples/z_image/model_training/lora/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.sh)|[code](/examples/z_image/model_training/validate_lora/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.py)|
-|[PAI/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps](https://www.modelscope.cn/models/PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1)|[code](/examples/z_image/model_inference/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.py)|[code](/examples/z_image/model_inference_low_vram/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.py)|[code](/examples/z_image/model_training/full/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.sh)|[code](/examples/z_image/model_training/validate_full/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.py)|[code](/examples/z_image/model_training/lora/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.sh)|[code](/examples/z_image/model_training/validate_lora/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.py)|
-|[DiffSynth-Studio/ZImage-i2L-v2](https://www.modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2)|[code](/examples/z_image/model_inference/ZImage-i2L-v2.py)|[code](/examples/z_image/model_inference_low_vram/ZImage-i2L-v2.py)|[code](/examples/z_image/model_training/full/ZImage-i2L-v2.sh)|[code](/examples/z_image/model_training/validate_full/ZImage-i2L-v2.py)|-|-|
-
-</details>
-
-#### Stable Diffusion: [/docs/en/Model_Details/Stable-Diffusion.md](/docs/en/Model_Details/Stable-Diffusion.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [AI-ModelScope/stable-diffusion-v1-5](https://www.modelscope.cn/models/AI-ModelScope/stable-diffusion-v1-5) model for inference. VRAM management is enabled, the framework automatically controls parameter loading based on available VRAM, requiring a minimum of 2GB VRAM.
-
-```python
-import torch
-from diffsynth.core import ModelConfig
-from diffsynth.pipelines.stable_diffusion import StableDiffusionPipeline
-
-vram_config = {
-    "offload_dtype": torch.float32,
-    "offload_device": "cpu",
-    "onload_dtype": torch.float32,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.float32,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.float32,
-    "computation_device": "cuda",
-}
-pipe = StableDiffusionPipeline.from_pretrained(
-    torch_dtype=torch.float32,
-    model_configs=[
-        ModelConfig(model_id="AI-ModelScope/stable-diffusion-v1-5", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
-        ModelConfig(model_id="AI-ModelScope/stable-diffusion-v1-5", origin_file_pattern="unet/diffusion_pytorch_model.safetensors", **vram_config),
-        ModelConfig(model_id="AI-ModelScope/stable-diffusion-v1-5", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
-    ],
-    tokenizer_config=ModelConfig(model_id="AI-ModelScope/stable-diffusion-v1-5", origin_file_pattern="tokenizer/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-
-image = pipe(
-    prompt="a photo of an astronaut riding a horse on mars, high quality, detailed",
-    negative_prompt="blurry, low quality, deformed",
-    cfg_scale=7.5,
-    height=512,
-    width=512,
-    seed=42,
-    rand_device="cuda",
-    num_inference_steps=50,
-)
-image.save("image.jpg")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for Stable Diffusion is available at: [/examples/stable_diffusion/](/examples/stable_diffusion/)
-
-|Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
-|-|-|-|-|-|-|-|
-|[AI-ModelScope/stable-diffusion-v1-5](https://www.modelscope.cn/models/AI-ModelScope/stable-diffusion-v1-5)|[code](/examples/stable_diffusion/model_inference/stable-diffusion-v1-5.py)|[code](/examples/stable_diffusion/model_inference_low_vram/stable-diffusion-v1-5.py)|[code](/examples/stable_diffusion/model_training/full/stable-diffusion-v1-5.sh)|[code](/examples/stable_diffusion/model_training/validate_full/stable-diffusion-v1-5.py)|[code](/examples/stable_diffusion/model_training/lora/stable-diffusion-v1-5.sh)|[code](/examples/stable_diffusion/model_training/validate_lora/stable-diffusion-v1-5.py)|
-
-</details>
-
-#### Stable Diffusion XL: [/docs/en/Model_Details/Stable-Diffusion-XL.md](/docs/en/Model_Details/Stable-Diffusion-XL.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [stabilityai/stable-diffusion-xl-base-1.0](https://www.modelscope.cn/models/stabilityai/stable-diffusion-xl-base-1.0) model for inference. VRAM management is enabled, the framework automatically controls parameter loading based on available VRAM, requiring a minimum of 6GB VRAM.
-
-```python
-import torch
-from diffsynth.core import ModelConfig
-from diffsynth.pipelines.stable_diffusion_xl import StableDiffusionXLPipeline
-
-vram_config = {
-    "offload_dtype": torch.float32,
-    "offload_device": "cpu",
-    "onload_dtype": torch.float32,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.float32,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.float32,
-    "computation_device": "cuda",
-}
-pipe = StableDiffusionXLPipeline.from_pretrained(
-    torch_dtype=torch.float32,
-    model_configs=[
-        ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
-        ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="text_encoder_2/model.safetensors", **vram_config),
-        ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="unet/diffusion_pytorch_model.safetensors", **vram_config),
-        ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
-    ],
-    tokenizer_config=ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="tokenizer/"),
-    tokenizer_2_config=ModelConfig(model_id="stabilityai/stable-diffusion-xl-base-1.0", origin_file_pattern="tokenizer_2/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-
-image = pipe(
-    prompt="a photo of an astronaut riding a horse on mars",
-    negative_prompt="",
-    cfg_scale=5.0,
-    height=1024,
-    width=1024,
-    seed=42,
-    num_inference_steps=50,
-)
-image.save("image.jpg")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for Stable Diffusion XL is available at: [/examples/stable_diffusion_xl/](/examples/stable_diffusion_xl/)
-
-|Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
-|-|-|-|-|-|-|-|
-|[stabilityai/stable-diffusion-xl-base-1.0](https://www.modelscope.cn/models/stabilityai/stable-diffusion-xl-base-1.0)|[code](/examples/stable_diffusion_xl/model_inference/stable-diffusion-xl-base-1.0.py)|[code](/examples/stable_diffusion_xl/model_inference_low_vram/stable-diffusion-xl-base-1.0.py)|[code](/examples/stable_diffusion_xl/model_training/full/stable-diffusion-xl-base-1.0.sh)|[code](/examples/stable_diffusion_xl/model_training/validate_full/stable-diffusion-xl-base-1.0.py)|[code](/examples/stable_diffusion_xl/model_training/lora/stable-diffusion-xl-base-1.0.sh)|[code](/examples/stable_diffusion_xl/model_training/validate_lora/stable-diffusion-xl-base-1.0.py)|
-
-</details>
-
-#### FLUX.2: [/docs/en/Model_Details/FLUX2.md](/docs/en/Model_Details/FLUX2.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [black-forest-labs/FLUX.2-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-dev) model for inference. VRAM management is enabled, and the framework automatically loads model parameters based on available GPU memory. The model can run with as little as 10 GB of VRAM.
-
-```python
-from diffsynth.pipelines.flux2_image import Flux2ImagePipeline, ModelConfig
-import torch
-
-vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": torch.float8_e4m3fn,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e4m3fn,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-pipe = Flux2ImagePipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="text_encoder/*.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="transformer/*.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
-    ],
-    tokenizer_config=ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="tokenizer/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-prompt = "High resolution. A dreamy underwater portrait of a serene young woman in a flowing blue dress. Her hair floats softly around her face, strands delicately suspended in the water. Clear, shimmering light filters through, casting gentle highlights, while tiny bubbles rise around her. Her expression is calm, her features finely detailed—creating a tranquil, ethereal scene."
-image = pipe(prompt, seed=42, rand_device="cuda", num_inference_steps=50)
-image.save("image.jpg")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for FLUX.2 is available at: [/examples/flux2/](/examples/flux2/)
-
-| Model ID | Inference | Low-VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
-|-|-|-|-|-|-|-|
-|[black-forest-labs/FLUX.2-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-dev)|[code](/examples/flux2/model_inference/FLUX.2-dev.py)|[code](/examples/flux2/model_inference_low_vram/FLUX.2-dev.py)|-|-|[code](/examples/flux2/model_training/lora/FLUX.2-dev.sh)|[code](/examples/flux2/model_training/validate_lora/FLUX.2-dev.py)|
-|[black-forest-labs/FLUX.2-klein-4B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-4B)|[code](/examples/flux2/model_inference/FLUX.2-klein-4B.py)|[code](/examples/flux2/model_inference_low_vram/FLUX.2-klein-4B.py)|[code](/examples/flux2/model_training/full/FLUX.2-klein-4B.sh)|[code](/examples/flux2/model_training/validate_full/FLUX.2-klein-4B.py)|[code](/examples/flux2/model_training/lora/FLUX.2-klein-4B.sh)|[code](/examples/flux2/model_training/validate_lora/FLUX.2-klein-4B.py)|
-|[black-forest-labs/FLUX.2-klein-9B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-9B)|[code](/examples/flux2/model_inference/FLUX.2-klein-9B.py)|[code](/examples/flux2/model_inference_low_vram/FLUX.2-klein-9B.py)|[code](/examples/flux2/model_training/full/FLUX.2-klein-9B.sh)|[code](/examples/flux2/model_training/validate_full/FLUX.2-klein-9B.py)|[code](/examples/flux2/model_training/lora/FLUX.2-klein-9B.sh)|[code](/examples/flux2/model_training/validate_lora/FLUX.2-klein-9B.py)|
-|[black-forest-labs/FLUX.2-klein-base-4B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-base-4B)|[code](/examples/flux2/model_inference/FLUX.2-klein-base-4B.py)|[code](/examples/flux2/model_inference_low_vram/FLUX.2-klein-base-4B.py)|[code](/examples/flux2/model_training/full/FLUX.2-klein-base-4B.sh)|[code](/examples/flux2/model_training/validate_full/FLUX.2-klein-base-4B.py)|[code](/examples/flux2/model_training/lora/FLUX.2-klein-base-4B.sh)|[code](/examples/flux2/model_training/validate_lora/FLUX.2-klein-base-4B.py)|
-|[black-forest-labs/FLUX.2-klein-base-9B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-base-9B)|[code](/examples/flux2/model_inference/FLUX.2-klein-base-9B.py)|[code](/examples/flux2/model_inference_low_vram/FLUX.2-klein-base-9B.py)|[code](/examples/flux2/model_training/full/FLUX.2-klein-base-9B.sh)|[code](/examples/flux2/model_training/validate_full/FLUX.2-klein-base-9B.py)|[code](/examples/flux2/model_training/lora/FLUX.2-klein-base-9B.sh)|[code](/examples/flux2/model_training/validate_lora/FLUX.2-klein-base-9B.py)|
-|[DiffSynth-Studio/Template-KleinBase4B-Aesthetic](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Aesthetic)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Aesthetic.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Aesthetic.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Aesthetic.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Aesthetic.py)|-|-|
-|[DiffSynth-Studio/Template-KleinBase4B-Brightness](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Brightness)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Brightness.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Brightness.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Brightness.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Brightness.py)|-|-|
-|[DiffSynth-Studio/Template-KleinBase4B-Age](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Age)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Age.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Age.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Age.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Age.py)|-|-|
-|[DiffSynth-Studio/Template-KleinBase4B-ControlNet](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ControlNet)|[code](/examples/flux2/model_inference/Template-KleinBase4B-ControlNet.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-ControlNet.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-ControlNet.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-ControlNet.py)|-|-|
-|[DiffSynth-Studio/Template-KleinBase4B-Edit](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Edit)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Edit.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Edit.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Edit.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Edit.py)|-|-|
-|[DiffSynth-Studio/Template-KleinBase4B-Inpaint](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Inpaint)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Inpaint.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Inpaint.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Inpaint.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Inpaint.py)|-|-|
-|[DiffSynth-Studio/Template-KleinBase4B-PandaMeme](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-PandaMeme)|[code](/examples/flux2/model_inference/Template-KleinBase4B-PandaMeme.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-PandaMeme.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-PandaMeme.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-PandaMeme.py)|-|-|
-|[DiffSynth-Studio/Template-KleinBase4B-Sharpness](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Sharpness)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Sharpness.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Sharpness.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Sharpness.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Sharpness.py)|-|-|
-|[DiffSynth-Studio/Template-KleinBase4B-SoftRGB](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-SoftRGB)|[code](/examples/flux2/model_inference/Template-KleinBase4B-SoftRGB.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-SoftRGB.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-SoftRGB.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-SoftRGB.py)|-|-|
-|[DiffSynth-Studio/Template-KleinBase4B-Upscaler](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Upscaler)|[code](/examples/flux2/model_inference/Template-KleinBase4B-Upscaler.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Upscaler.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-Upscaler.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Upscaler.py)|-|-|
-|[DiffSynth-Studio/Template-KleinBase4B-ContentRef](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ContentRef)|[code](/examples/flux2/model_inference/Template-KleinBase4B-ContentRef.py)|[code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-ContentRef.py)|[code](/examples/flux2/model_training/full/Template-KleinBase4B-ContentRef.sh)|[code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-ContentRef.py)|-|-|
-|[DiffSynth-Studio/KleinBase4B-i2L-v2](https://www.modelscope.cn/models/DiffSynth-Studio/KleinBase4B-i2L-v2)|[code](/examples/flux2/model_inference/KleinBase4B-i2L-v2.py)|[code](/examples/flux2/model_inference_low_vram/KleinBase4B-i2L-v2.py)|[code](/examples/flux2/model_training/full/KleinBase4B-i2L-v2.sh)|[code](/examples/flux2/model_training/validate_full/KleinBase4B-i2L-v2.py)|-|-|
-
-</details>
-
-#### Anima: [/docs/en/Model_Details/Anima.md](/docs/en/Model_Details/Anima.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Run the following code to quickly load the [circlestone-labs/Anima](https://www.modelscope.cn/models/circlestone-labs/Anima) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 8GB VRAM.
-
-```python
-from diffsynth.pipelines.anima_image import AnimaImagePipeline, ModelConfig
-import torch
-
-vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": "disk",
-    "onload_device": "disk",
-    "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-pipe = AnimaImagePipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="circlestone-labs/Anima", origin_file_pattern="split_files/diffusion_models/anima-preview.safetensors", **vram_config),
-        ModelConfig(model_id="circlestone-labs/Anima", origin_file_pattern="split_files/text_encoders/qwen_3_06b_base.safetensors", **vram_config),
-        ModelConfig(model_id="circlestone-labs/Anima", origin_file_pattern="split_files/vae/qwen_image_vae.safetensors", **vram_config),
-    ],
-    tokenizer_config=ModelConfig(model_id="Qwen/Qwen3-0.6B", origin_file_pattern="./"),
-    tokenizer_t5xxl_config=ModelConfig(model_id="stabilityai/stable-diffusion-3.5-large", origin_file_pattern="tokenizer_3/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-prompt = "Masterpiece, best quality, solo, long hair, wavy hair, silver hair, blue eyes, blue dress, medium breasts, dress, underwater, air bubble, floating hair, refraction, portrait."
-negative_prompt = "worst quality, low quality, monochrome, zombie, interlocked fingers, Aissist, cleavage, nsfw,"
-image = pipe(prompt, seed=0, num_inference_steps=50)
-image.save("image.jpg")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for Anima is located at: [/examples/anima/](/examples/anima/)
-
-| Model ID | Inference | Low VRAM Inference | Full Training | Validation after Full Training | LoRA Training | Validation after LoRA Training |
-|-|-|-|-|-|-|-|
-|[circlestone-labs/Anima](https://www.modelscope.cn/models/circlestone-labs/Anima)|[code](/examples/anima/model_inference/anima-preview.py)|[code](/examples/anima/model_inference_low_vram/anima-preview.py)|[code](/examples/anima/model_training/full/anima-preview.sh)|[code](/examples/anima/model_training/validate_full/anima-preview.py)|[code](/examples/anima/model_training/lora/anima-preview.sh)|[code](/examples/anima/model_training/validate_lora/anima-preview.py)|
-
-</details>
-
-#### Qwen-Image: [/docs/en/Model_Details/Qwen-Image.md](/docs/en/Model_Details/Qwen-Image.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [Qwen/Qwen-Image](https://www.modelscope.cn/models/Qwen/Qwen-Image) model for inference. VRAM management is enabled, and the framework automatically adjusts model parameter loading based on available GPU memory. The model can run with as little as 8 GB of VRAM.
-
-```python
-from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
-import torch
-
-vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": torch.float8_e4m3fn,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e4m3fn,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-pipe = QwenImagePipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
-    ],
-    tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-prompt = "精致肖像，水下少女，蓝裙飘逸，发丝轻扬，光影透澈，气泡环绕，面容恬静，细节精致，梦幻唯美。"
-image = pipe(prompt, seed=0, num_inference_steps=40)
-image.save("image.jpg")
-```
-
-</details>
-
-<details>
-
-<summary>Model Lineage</summary>
-
-```mermaid
-graph LR;
-    Qwen/Qwen-Image-->Qwen/Qwen-Image-Edit;
-    Qwen/Qwen-Image-Edit-->Qwen/Qwen-Image-Edit-2509;
-    Qwen/Qwen-Image-->EliGen-Series;
-    EliGen-Series-->DiffSynth-Studio/Qwen-Image-EliGen;
-    DiffSynth-Studio/Qwen-Image-EliGen-->DiffSynth-Studio/Qwen-Image-EliGen-V2;
-    EliGen-Series-->DiffSynth-Studio/Qwen-Image-EliGen-Poster;
-    Qwen/Qwen-Image-->Distill-Series;
-    Distill-Series-->DiffSynth-Studio/Qwen-Image-Distill-Full;
-    Distill-Series-->DiffSynth-Studio/Qwen-Image-Distill-LoRA;
-    Qwen/Qwen-Image-->ControlNet-Series;
-    ControlNet-Series-->Blockwise-ControlNet-Series;
-    Blockwise-ControlNet-Series-->DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Canny;
-    Blockwise-ControlNet-Series-->DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Depth;
-    Blockwise-ControlNet-Series-->DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Inpaint;
-    ControlNet-Series-->DiffSynth-Studio/Qwen-Image-In-Context-Control-Union;
-    Qwen/Qwen-Image-->DiffSynth-Studio/Qwen-Image-Edit-Lowres-Fix;
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for Qwen-Image is available at: [/examples/qwen_image/](/examples/qwen_image/)
-
-| Model ID | Inference | Low-VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
-|-|-|-|-|-|-|-|
-|[Qwen/Qwen-Image](https://www.modelscope.cn/models/Qwen/Qwen-Image)|[code](/examples/qwen_image/model_inference/Qwen-Image.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image.py)|[code](/examples/qwen_image/model_training/full/Qwen-Image.sh)|[code](/examples/qwen_image/model_training/validate_full/Qwen-Image.py)|[code](/examples/qwen_image/model_training/lora/Qwen-Image.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image.py)|
-|[Qwen/Qwen-Image-2512](https://www.modelscope.cn/models/Qwen/Qwen-Image-2512)|[code](/examples/qwen_image/model_inference/Qwen-Image-2512.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-2512.py)|[code](/examples/qwen_image/model_training/full/Qwen-Image-2512.sh)|[code](/examples/qwen_image/model_training/validate_full/Qwen-Image-2512.py)|[code](/examples/qwen_image/model_training/lora/Qwen-Image-2512.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-2512.py)|
-|[Qwen/Qwen-Image-Edit](https://www.modelscope.cn/models/Qwen/Qwen-Image-Edit)|[code](/examples/qwen_image/model_inference/Qwen-Image-Edit.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Edit.py)|[code](/examples/qwen_image/model_training/full/Qwen-Image-Edit.sh)|[code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Edit.py)|[code](/examples/qwen_image/model_training/lora/Qwen-Image-Edit.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Edit.py)|
-|[Qwen/Qwen-Image-Edit-2509](https://www.modelscope.cn/models/Qwen/Qwen-Image-Edit-2509)|[code](/examples/qwen_image/model_inference/Qwen-Image-Edit-2509.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Edit-2509.py)|[code](/examples/qwen_image/model_training/full/Qwen-Image-Edit-2509.sh)|[code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Edit-2509.py)|[code](/examples/qwen_image/model_training/lora/Qwen-Image-Edit-2509.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Edit-2509.py)|
-|[Qwen/Qwen-Image-Edit-2511](https://www.modelscope.cn/models/Qwen/Qwen-Image-Edit-2511)|[code](/examples/qwen_image/model_inference/Qwen-Image-Edit-2511.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Edit-2511.py)|[code](/examples/qwen_image/model_training/full/Qwen-Image-Edit-2511.sh)|[code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Edit-2511.py)|[code](/examples/qwen_image/model_training/lora/Qwen-Image-Edit-2511.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Edit-2511.py)|
-|[FireRedTeam/FireRed-Image-Edit-1.0](https://www.modelscope.cn/models/FireRedTeam/FireRed-Image-Edit-1.0)|[code](/examples/qwen_image/model_inference/FireRed-Image-Edit-1.0.py)|[code](/examples/qwen_image/model_inference_low_vram/FireRed-Image-Edit-1.0.py)|[code](/examples/qwen_image/model_training/full/FireRed-Image-Edit-1.0.sh)|[code](/examples/qwen_image/model_training/validate_full/FireRed-Image-Edit-1.0.py)|[code](/examples/qwen_image/model_training/lora/FireRed-Image-Edit-1.0.sh)|[code](/examples/qwen_image/model_training/validate_lora/FireRed-Image-Edit-1.0.py)|
-|[FireRedTeam/FireRed-Image-Edit-1.1](https://www.modelscope.cn/models/FireRedTeam/FireRed-Image-Edit-1.1)|[code](/examples/qwen_image/model_inference/FireRed-Image-Edit-1.1.py)|[code](/examples/qwen_image/model_inference_low_vram/FireRed-Image-Edit-1.1.py)|[code](/examples/qwen_image/model_training/full/FireRed-Image-Edit-1.1.sh)|[code](/examples/qwen_image/model_training/validate_full/FireRed-Image-Edit-1.1.py)|[code](/examples/qwen_image/model_training/lora/FireRed-Image-Edit-1.1.sh)|[code](/examples/qwen_image/model_training/validate_lora/FireRed-Image-Edit-1.1.py)|
-|[lightx2v/Qwen-Image-Edit-2511-Lightning](https://modelscope.cn/models/lightx2v/Qwen-Image-Edit-2511-Lightning)|[code](/examples/qwen_image/model_inference/Qwen-Image-Edit-2511-Lightning.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Edit-2511-Lightning.py)|-|-|-|-|
-|[Qwen/Qwen-Image-Layered](https://www.modelscope.cn/models/Qwen/Qwen-Image-Layered)|[code](/examples/qwen_image/model_inference/Qwen-Image-Layered.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Layered.py)|[code](/examples/qwen_image/model_training/full/Qwen-Image-Layered.sh)|[code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Layered.py)|[code](/examples/qwen_image/model_training/lora/Qwen-Image-Layered.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Layered.py)|
-|[DiffSynth-Studio/Qwen-Image-Layered-Control](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Layered-Control)|[code](/examples/qwen_image/model_inference/Qwen-Image-Layered-Control.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Layered-Control.py)|[code](/examples/qwen_image/model_training/full/Qwen-Image-Layered-Control.sh)|[code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Layered-Control.py)|[code](/examples/qwen_image/model_training/lora/Qwen-Image-Layered-Control.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Layered-Control.py)|
-|[DiffSynth-Studio/Qwen-Image-Layered-Control-V2](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Layered-Control-V2)|[code](/examples/qwen_image/model_inference/Qwen-Image-Layered-Control-V2.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Layered-Control-V2.py)|-|-|[code](/examples/qwen_image/model_training/lora/Qwen-Image-Layered-Control-V2.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Layered-Control-V2.py)|
-|[DiffSynth-Studio/Qwen-Image-EliGen](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-EliGen)|[code](/examples/qwen_image/model_inference/Qwen-Image-EliGen.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-EliGen.py)|-|-|[code](/examples/qwen_image/model_training/lora/Qwen-Image-EliGen.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-EliGen.py)|
-|[DiffSynth-Studio/Qwen-Image-EliGen-V2](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-EliGen-V2)|[code](/examples/qwen_image/model_inference/Qwen-Image-EliGen-V2.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-EliGen-V2.py)|-|-|[code](/examples/qwen_image/model_training/lora/Qwen-Image-EliGen.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-EliGen.py)|
-|[DiffSynth-Studio/Qwen-Image-EliGen-Poster](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-EliGen-Poster)|[code](/examples/qwen_image/model_inference/Qwen-Image-EliGen-Poster.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-EliGen-Poster.py)|-|-|[code](/examples/qwen_image/model_training/lora/Qwen-Image-EliGen-Poster.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-EliGen-Poster.py)|
-|[DiffSynth-Studio/Qwen-Image-Distill-Full](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Distill-Full)|[code](/examples/qwen_image/model_inference/Qwen-Image-Distill-Full.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Distill-Full.py)|[code](/examples/qwen_image/model_training/full/Qwen-Image-Distill-Full.sh)|[code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Distill-Full.py)|[code](/examples/qwen_image/model_training/lora/Qwen-Image-Distill-Full.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Distill-Full.py)|
-|[DiffSynth-Studio/Qwen-Image-Distill-LoRA](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Distill-LoRA)|[code](/examples/qwen_image/model_inference/Qwen-Image-Distill-LoRA.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Distill-LoRA.py)|-|-|[code](/examples/qwen_image/model_training/lora/Qwen-Image-Distill-LoRA.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Distill-LoRA.py)|
-|[DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Canny](https://modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Canny)|[code](/examples/qwen_image/model_inference/Qwen-Image-Blockwise-ControlNet-Canny.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Blockwise-ControlNet-Canny.py)|[code](/examples/qwen_image/model_training/full/Qwen-Image-Blockwise-ControlNet-Canny.sh)|[code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Blockwise-ControlNet-Canny.py)|[code](/examples/qwen_image/model_training/lora/Qwen-Image-Blockwise-ControlNet-Canny.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Blockwise-ControlNet-Canny.py)|
-|[DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Depth](https://modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Depth)|[code](/examples/qwen_image/model_inference/Qwen-Image-Blockwise-ControlNet-Depth.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Blockwise-ControlNet-Depth.py)|[code](/examples/qwen_image/model_training/full/Qwen-Image-Blockwise-ControlNet-Depth.sh)|[code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Blockwise-ControlNet-Depth.py)|[code](/examples/qwen_image/model_training/lora/Qwen-Image-Blockwise-ControlNet-Depth.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Blockwise-ControlNet-Depth.py)|
-|[DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Inpaint](https://modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Inpaint)|[code](/examples/qwen_image/model_inference/Qwen-Image-Blockwise-ControlNet-Inpaint.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Blockwise-ControlNet-Inpaint.py)|[code](/examples/qwen_image/model_training/full/Qwen-Image-Blockwise-ControlNet-Inpaint.sh)|[code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Blockwise-ControlNet-Inpaint.py)|[code](/examples/qwen_image/model_training/lora/Qwen-Image-Blockwise-ControlNet-Inpaint.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Blockwise-ControlNet-Inpaint.py)|
-|[DiffSynth-Studio/Qwen-Image-In-Context-Control-Union](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-In-Context-Control-Union)|[code](/examples/qwen_image/model_inference/Qwen-Image-In-Context-Control-Union.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-In-Context-Control-Union.py)|-|-|[code](/examples/qwen_image/model_training/lora/Qwen-Image-In-Context-Control-Union.sh)|[code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-In-Context-Control-Union.py)|
-|[DiffSynth-Studio/Qwen-Image-Edit-Lowres-Fix](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Edit-Lowres-Fix)|[code](/examples/qwen_image/model_inference/Qwen-Image-Edit-Lowres-Fix.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Edit-Lowres-Fix.py)|-|-|-|-|
-|[DiffSynth-Studio/Qwen-Image-i2L](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-i2L)|[code](/examples/qwen_image/model_inference/Qwen-Image-i2L.py)|[code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-i2L.py)|-|-|-|-|
-
-</details>
-
-#### FLUX.1: [/docs/en/Model_Details/FLUX.md](/docs/en/Model_Details/FLUX.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [black-forest-labs/FLUX.1-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.1-dev) model for inference. VRAM management is enabled, and the framework automatically adjusts model parameter loading based on available GPU memory. The model can run with as little as 8 GB of VRAM.
-
-```python
-import torch
-from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
-
-vram_config = {
-    "offload_dtype": torch.float8_e4m3fn,
-    "offload_device": "cpu",
-    "onload_dtype": torch.float8_e4m3fn,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e4m3fn,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-pipe = FluxImagePipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="flux1-dev.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors", **vram_config),
-    ],
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 1,
-)
-prompt = "CG, masterpiece, best quality, solo, long hair, wavy hair, silver hair, blue eyes, blue dress, medium breasts, dress, underwater, air bubble, floating hair, refraction, portrait. The girl's flowing silver hair shimmers with every color of the rainbow and cascades down, merging with the floating flora around her."
-image = pipe(prompt=prompt, seed=0)
-image.save("image.jpg")
-```
-
-</details>
-
-<details>
-
-<summary>Model Lineage</summary>
-
-```mermaid
-graph LR;
-    FLUX.1-Series-->black-forest-labs/FLUX.1-dev;
-    FLUX.1-Series-->black-forest-labs/FLUX.1-Krea-dev;
-    FLUX.1-Series-->black-forest-labs/FLUX.1-Kontext-dev;
-    black-forest-labs/FLUX.1-dev-->FLUX.1-dev-ControlNet-Series;
-    FLUX.1-dev-ControlNet-Series-->alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta;
-    FLUX.1-dev-ControlNet-Series-->InstantX/FLUX.1-dev-Controlnet-Union-alpha;
-    FLUX.1-dev-ControlNet-Series-->jasperai/Flux.1-dev-Controlnet-Upscaler;
-    black-forest-labs/FLUX.1-dev-->InstantX/FLUX.1-dev-IP-Adapter;
-    black-forest-labs/FLUX.1-dev-->ByteDance/InfiniteYou;
-    black-forest-labs/FLUX.1-dev-->DiffSynth-Studio/Eligen;
-    black-forest-labs/FLUX.1-dev-->DiffSynth-Studio/LoRA-Encoder-FLUX.1-Dev;
-    black-forest-labs/FLUX.1-dev-->DiffSynth-Studio/LoRAFusion-preview-FLUX.1-dev;
-    black-forest-labs/FLUX.1-dev-->ostris/Flex.2-preview;
-    black-forest-labs/FLUX.1-dev-->stepfun-ai/Step1X-Edit;
-    Qwen/Qwen2.5-VL-7B-Instruct-->stepfun-ai/Step1X-Edit;
-    black-forest-labs/FLUX.1-dev-->DiffSynth-Studio/Nexus-GenV2;
-    Qwen/Qwen2.5-VL-7B-Instruct-->DiffSynth-Studio/Nexus-GenV2;
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for FLUX.1 is available at: [/examples/flux/](/examples/flux/)
-
-| Model ID | Extra Args | Inference | Low-VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
+| Architecture | Model ID | Inference | Low VRAM Inference | Full Training | Validation After Full Training | LoRA Training | Validation After LoRA Training |
 |-|-|-|-|-|-|-|-|
-|[black-forest-labs/FLUX.1-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.1-dev)||[code](/examples/flux/model_inference/FLUX.1-dev.py)|[code](/examples/flux/model_inference_low_vram/FLUX.1-dev.py)|[code](/examples/flux/model_training/full/FLUX.1-dev.sh)|[code](/examples/flux/model_training/validate_full/FLUX.1-dev.py)|[code](/examples/flux/model_training/lora/FLUX.1-dev.sh)|[code](/examples/flux/model_training/validate_lora/FLUX.1-dev.py)|
-|[black-forest-labs/FLUX.1-Krea-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.1-Krea-dev)||[code](/examples/flux/model_inference/FLUX.1-Krea-dev.py)|[code](/examples/flux/model_inference_low_vram/FLUX.1-Krea-dev.py)|[code](/examples/flux/model_training/full/FLUX.1-Krea-dev.sh)|[code](/examples/flux/model_training/validate_full/FLUX.1-Krea-dev.py)|[code](/examples/flux/model_training/lora/FLUX.1-Krea-dev.sh)|[code](/examples/flux/model_training/validate_lora/FLUX.1-Krea-dev.py)|
-|[black-forest-labs/FLUX.1-Kontext-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.1-Kontext-dev)|`kontext_images`|[code](/examples/flux/model_inference/FLUX.1-Kontext-dev.py)|[code](/examples/flux/model_inference_low_vram/FLUX.1-Kontext-dev.py)|[code](/examples/flux/model_training/full/FLUX.1-Kontext-dev.sh)|[code](/examples/flux/model_training/validate_full/FLUX.1-Kontext-dev.py)|[code](/examples/flux/model_training/lora/FLUX.1-Kontext-dev.sh)|[code](/examples/flux/model_training/validate_lora/FLUX.1-Kontext-dev.py)|
-|[alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta](https://www.modelscope.cn/models/alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta)|`controlnet_inputs`|[code](/examples/flux/model_inference/FLUX.1-dev-Controlnet-Inpainting-Beta.py)|[code](/examples/flux/model_inference_low_vram/FLUX.1-dev-Controlnet-Inpainting-Beta.py)|[code](/examples/flux/model_training/full/FLUX.1-dev-Controlnet-Inpainting-Beta.sh)|[code](/examples/flux/model_training/validate_full/FLUX.1-dev-Controlnet-Inpainting-Beta.py)|[code](/examples/flux/model_training/lora/FLUX.1-dev-Controlnet-Inpainting-Beta.sh)|[code](/examples/flux/model_training/validate_lora/FLUX.1-dev-Controlnet-Inpainting-Beta.py)|
-|[InstantX/FLUX.1-dev-Controlnet-Union-alpha](https://www.modelscope.cn/models/InstantX/FLUX.1-dev-Controlnet-Union-alpha)|`controlnet_inputs`|[code](/examples/flux/model_inference/FLUX.1-dev-Controlnet-Union-alpha.py)|[code](/examples/flux/model_inference_low_vram/FLUX.1-dev-Controlnet-Union-alpha.py)|[code](/examples/flux/model_training/full/FLUX.1-dev-Controlnet-Union-alpha.sh)|[code](/examples/flux/model_training/validate_full/FLUX.1-dev-Controlnet-Union-alpha.py)|[code](/examples/flux/model_training/lora/FLUX.1-dev-Controlnet-Union-alpha.sh)|[code](/examples/flux/model_training/validate_lora/FLUX.1-dev-Controlnet-Union-alpha.py)|
-|[jasperai/Flux.1-dev-Controlnet-Upscaler](https://www.modelscope.cn/models/jasperai/Flux.1-dev-Controlnet-Upscaler)|`controlnet_inputs`|[code](/examples/flux/model_inference/FLUX.1-dev-Controlnet-Upscaler.py)|[code](/examples/flux/model_inference_low_vram/FLUX.1-dev-Controlnet-Upscaler.py)|[code](/examples/flux/model_training/full/FLUX.1-dev-Controlnet-Upscaler.sh)|[code](/examples/flux/model_training/validate_full/FLUX.1-dev-Controlnet-Upscaler.py)|[code](/examples/flux/model_training/lora/FLUX.1-dev-Controlnet-Upscaler.sh)|[code](/examples/flux/model_training/validate_lora/FLUX.1-dev-Controlnet-Upscaler.py)|
-|[InstantX/FLUX.1-dev-IP-Adapter](https://www.modelscope.cn/models/InstantX/FLUX.1-dev-IP-Adapter)|`ipadapter_images`, `ipadapter_scale`|[code](/examples/flux/model_inference/FLUX.1-dev-IP-Adapter.py)|[code](/examples/flux/model_inference_low_vram/FLUX.1-dev-IP-Adapter.py)|[code](/examples/flux/model_training/full/FLUX.1-dev-IP-Adapter.sh)|[code](/examples/flux/model_training/validate_full/FLUX.1-dev-IP-Adapter.py)|[code](/examples/flux/model_training/lora/FLUX.1-dev-IP-Adapter.sh)|[code](/examples/flux/model_training/validate_lora/FLUX.1-dev-IP-Adapter.py)|
-|[ByteDance/InfiniteYou](https://www.modelscope.cn/models/ByteDance/InfiniteYou)|`infinityou_id_image`, `infinityou_guidance`, `controlnet_inputs`|[code](/examples/flux/model_inference/FLUX.1-dev-InfiniteYou.py)|[code](/examples/flux/model_inference_low_vram/FLUX.1-dev-InfiniteYou.py)|[code](/examples/flux/model_training/full/FLUX.1-dev-InfiniteYou.sh)|[code](/examples/flux/model_training/validate_full/FLUX.1-dev-InfiniteYou.py)|[code](/examples/flux/model_training/lora/FLUX.1-dev-InfiniteYou.sh)|[code](/examples/flux/model_training/validate_lora/FLUX.1-dev-InfiniteYou.py)|
-|[DiffSynth-Studio/Eligen](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen)|`eligen_entity_prompts`, `eligen_entity_masks`, `eligen_enable_on_negative`, `eligen_enable_inpaint`|[code](/examples/flux/model_inference/FLUX.1-dev-EliGen.py)|[code](/examples/flux/model_inference_low_vram/FLUX.1-dev-EliGen.py)|-|-|[code](/examples/flux/model_training/lora/FLUX.1-dev-EliGen.sh)|[code](/examples/flux/model_training/validate_lora/FLUX.1-dev-EliGen.py)|
-|[DiffSynth-Studio/LoRA-Encoder-FLUX.1-Dev](https://www.modelscope.cn/models/DiffSynth-Studio/LoRA-Encoder-FLUX.1-Dev)|`lora_encoder_inputs`, `lora_encoder_scale`|[code](/examples/flux/model_inference/FLUX.1-dev-LoRA-Encoder.py)|[code](/examples/flux/model_inference_low_vram/FLUX.1-dev-LoRA-Encoder.py)|[code](/examples/flux/model_training/full/FLUX.1-dev-LoRA-Encoder.sh)|[code](/examples/flux/model_training/validate_full/FLUX.1-dev-LoRA-Encoder.py)|-|-|
-|[DiffSynth-Studio/LoRAFusion-preview-FLUX.1-dev](https://modelscope.cn/models/DiffSynth-Studio/LoRAFusion-preview-FLUX.1-dev)||[code](/examples/flux/model_inference/FLUX.1-dev-LoRA-Fusion.py)|-|-|-|-|-|
-|[stepfun-ai/Step1X-Edit](https://www.modelscope.cn/models/stepfun-ai/Step1X-Edit)|`step1x_reference_image`|[code](/examples/flux/model_inference/Step1X-Edit.py)|[code](/examples/flux/model_inference_low_vram/Step1X-Edit.py)|[code](/examples/flux/model_training/full/Step1X-Edit.sh)|[code](/examples/flux/model_training/validate_full/Step1X-Edit.py)|[code](/examples/flux/model_training/lora/Step1X-Edit.sh)|[code](/examples/flux/model_training/validate_lora/Step1X-Edit.py)|
-|[ostris/Flex.2-preview](https://www.modelscope.cn/models/ostris/Flex.2-preview)|`flex_inpaint_image`, `flex_inpaint_mask`, `flex_control_image`, `flex_control_strength`, `flex_control_stop`|[code](/examples/flux/model_inference/FLEX.2-preview.py)|[code](/examples/flux/model_inference_low_vram/FLEX.2-preview.py)|[code](/examples/flux/model_training/full/FLEX.2-preview.sh)|[code](/examples/flux/model_training/validate_full/FLEX.2-preview.py)|[code](/examples/flux/model_training/lora/FLEX.2-preview.sh)|[code](/examples/flux/model_training/validate_lora/FLEX.2-preview.py)|
-|[DiffSynth-Studio/Nexus-GenV2](https://www.modelscope.cn/models/DiffSynth-Studio/Nexus-GenV2)|`nexus_gen_reference_image`|[code](/examples/flux/model_inference/Nexus-Gen-Editing.py)|[code](/examples/flux/model_inference_low_vram/Nexus-Gen-Editing.py)|[code](/examples/flux/model_training/full/Nexus-Gen.sh)|[code](/examples/flux/model_training/validate_full/Nexus-Gen.py)|[code](/examples/flux/model_training/lora/Nexus-Gen.sh)|[code](/examples/flux/model_training/validate_lora/Nexus-Gen.py)|
-
-</details>
-
-#### ERNIE-Image: [/docs/en/Model_Details/ERNIE-Image.md](/docs/en/Model_Details/ERNIE-Image.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [PaddlePaddle/ERNIE-Image](https://www.modelscope.cn/models/PaddlePaddle/ERNIE-Image) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 3GB VRAM.
-
-```python
-from diffsynth.pipelines.ernie_image import ErnieImagePipeline, ModelConfig
-import torch
-
-vram_config = {
-    "offload_dtype": torch.bfloat16,
-    "offload_device": "cpu",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-pipe = ErnieImagePipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device='cuda',
-    model_configs=[
-        ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
-        ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
-        ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
-    ],
-    tokenizer_config=ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="tokenizer/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-
-image = pipe(
-    prompt="一只黑白相间的中华田园犬",
-    negative_prompt="",
-    height=1024,
-    width=1024,
-    seed=42,
-    num_inference_steps=50,
-    cfg_scale=4.0,
-)
-image.save("output.jpg")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for ERNIE-Image is available at: [/examples/ernie_image/](/examples/ernie_image/)
-
-| Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
-|-|-|-|-|-|-|-|
-|[PaddlePaddle/ERNIE-Image](https://www.modelscope.cn/models/PaddlePaddle/ERNIE-Image)|[code](/examples/ernie_image/model_inference/ERNIE-Image.py)|[code](/examples/ernie_image/model_inference_low_vram/ERNIE-Image.py)|[code](/examples/ernie_image/model_training/full/ERNIE-Image.sh)|[code](/examples/ernie_image/model_training/validate_full/ERNIE-Image.py)|[code](/examples/ernie_image/model_training/lora/ERNIE-Image.sh)|[code](/examples/ernie_image/model_training/validate_lora/ERNIE-Image.py)|
-|[PaddlePaddle/ERNIE-Image-Turbo](https://www.modelscope.cn/models/PaddlePaddle/ERNIE-Image-Turbo)|[code](/examples/ernie_image/model_inference/ERNIE-Image-Turbo.py)|[code](/examples/ernie_image/model_inference_low_vram/ERNIE-Image-Turbo.py)|—|—|—|—|
-
-</details>
-
-#### JoyAI-Image: [/docs/en/Model_Details/JoyAI-Image.md](/docs/en/Model_Details/JoyAI-Image.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [jd-opensource/JoyAI-Image-Edit](https://modelscope.cn/models/jd-opensource/JoyAI-Image-Edit) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 4GB VRAM.
-
-```python
-from diffsynth.pipelines.joyai_image import JoyAIImagePipeline, ModelConfig
-import torch
-from PIL import Image
-from modelscope import dataset_snapshot_download
-
-# Download dataset
-dataset_snapshot_download(
-    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
-    local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="joyai_image/JoyAI-Image-Edit/*"
-)
-
-vram_config = {
-    "offload_dtype": torch.bfloat16,
-    "offload_device": "cpu",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-
-pipe = JoyAIImagePipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="transformer/transformer.pth", **vram_config),
-        ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/model*.safetensors", **vram_config),
-        ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="vae/Wan2.1_VAE.pth", **vram_config),
-    ],
-    processor_config=ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-
-# Use first sample from dataset
-dataset_base_path = "data/diffsynth_example_dataset/joyai_image/JoyAI-Image-Edit"
-prompt = "将裙子改为粉色"
-edit_image = Image.open(f"{dataset_base_path}/edit/image1.jpg").convert("RGB")
-
-output = pipe(
-    prompt=prompt,
-    edit_image=edit_image,
-    height=1024,
-    width=1024,
-    seed=0,
-    num_inference_steps=30,
-    cfg_scale=5.0,
-)
-
-output.save("output_joyai_edit_low_vram.png")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for JoyAI-Image is available at: [/examples/joyai_image/](/examples/joyai_image/)
-
-| Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
-|-|-|-|-|-|-|-|
-|[jd-opensource/JoyAI-Image-Edit](https://modelscope.cn/models/jd-opensource/JoyAI-Image-Edit)|[code](/examples/joyai_image/model_inference/JoyAI-Image-Edit.py)|[code](/examples/joyai_image/model_inference_low_vram/JoyAI-Image-Edit.py)|[code](/examples/joyai_image/model_training/full/JoyAI-Image-Edit.sh)|[code](/examples/joyai_image/model_training/validate_full/JoyAI-Image-Edit.py)|[code](/examples/joyai_image/model_training/lora/JoyAI-Image-Edit.sh)|[code](/examples/joyai_image/model_training/validate_lora/JoyAI-Image-Edit.py)|
-
-</details>
-
-#### HiDream-O1-Image: [/docs/en/Model_Details/HiDream-O1-Image.md](/docs/en/Model_Details/HiDream-O1-Image.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [HiDream-ai/HiDream-O1-Image](https://modelscope.cn/HiDream-ai/HiDream-O1-Image) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 3GB VRAM.
-
-```python
-from diffsynth.pipelines.hidream_o1_image import HiDreamO1ImagePipeline
-from diffsynth.core.loader.config import ModelConfig
-import torch
-
-
-vram_config = {
-    "offload_dtype": torch.bfloat16,
-    "offload_device": "cpu",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-
-
-pipe = HiDreamO1ImagePipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="HiDream-ai/HiDream-O1-Image", origin_file_pattern="model-*.safetensors", **vram_config),
-    ],
-    processor_config=ModelConfig(model_id="HiDream-ai/HiDream-O1-Image", origin_file_pattern="./"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-image = pipe(
-    prompt="medium shot, eye-level, front view. A woman is seated in an ornate bedroom, illuminated by candlelight, with a calm and composed expression. The subject is a young woman with fair skin, light brown hair styled in an updo with loose tendrils framing her face, and blue eyes. She wears a cream-colored satin robe with delicate floral embroidery and lace trim along the neckline. Her ears are adorned with pearl drop earrings. She is seated on a bed with a dark, intricately carved wooden headboard. To her left, a wooden nightstand holds three lit white candles and a candelabra with multiple lit candles in the background. The bed is covered with patterned pillows and a dark, textured blanket. The walls are paneled with dark wood and feature a large, ornate tapestry with muted earth tones. The lighting creates soft highlights on her face and robe, with warm shadows cast across the room.",
-    negative_prompt=" ",
-    cfg_scale=4.0,
-    height=2048,
-    width=2048,
-    seed=42,
-    num_inference_steps=50,
-)
-image.save("image.jpg")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for HiDream-O1-Image is available at: [/examples/hidream_o1_image/](/examples/hidream_o1_image/)
-
-| Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
-|-|-|-|-|-|-|-|
-|[HiDream-ai/HiDream-O1-Image](https://modelscope.cn/HiDream-ai/HiDream-O1-Image)|[code](/examples/hidream_o1_image/model_inference/HiDream-O1-Image.py)|[code](/examples/hidream_o1_image/model_inference_low_vram/HiDream-O1-Image.py)|[code](/examples/hidream_o1_image/model_training/full/HiDream-O1-Image.sh)|[code](/examples/hidream_o1_image/model_training/validate_full/HiDream-O1-Image.py)|[code](/examples/hidream_o1_image/model_training/lora/HiDream-O1-Image.sh)|[code](/examples/hidream_o1_image/model_training/validate_lora/HiDream-O1-Image.py)|
-|[HiDream-ai/HiDream-O1-Image-Dev](https://modelscope.cn/HiDream-ai/HiDream-O1-Image-Dev)|[code](/examples/hidream_o1_image/model_inference/HiDream-O1-Image-Dev.py)|[code](/examples/hidream_o1_image/model_inference_low_vram/HiDream-O1-Image-Dev.py)|[code](/examples/hidream_o1_image/model_training/full/HiDream-O1-Image-Dev.sh)|[code](/examples/hidream_o1_image/model_training/validate_full/HiDream-O1-Image-Dev.py)|[code](/examples/hidream_o1_image/model_training/lora/HiDream-O1-Image-Dev.sh)|[code](/examples/hidream_o1_image/model_training/validate_lora/HiDream-O1-Image-Dev.py)|
-|[DiffSynth-Studio/HidreamO1-i2L-v2](https://www.modelscope.cn/models/DiffSynth-Studio/HidreamO1-i2L-v2)|[code](/examples/hidream_o1_image/model_inference/HidreamO1-i2L-v2.py)|[code](/examples/hidream_o1_image/model_inference_low_vram/HidreamO1-i2L-v2.py)|[code](/examples/hidream_o1_image/model_training/full/HidreamO1-i2L-v2.sh)|[code](/examples/hidream_o1_image/model_training/validate_full/HidreamO1-i2L-v2.py)|-|-|
-
-</details>
-
-#### Ideogram 4: [/docs/en/Model_Details/Ideogram-4.md](/docs/en/Model_Details/Ideogram-4.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [ideogram-ai/ideogram-4-fp8](https://www.modelscope.cn/models/ideogram-ai/ideogram-4-fp8) model and perform inference. The model can run with a minimum of 24GB VRAM.
-
-```python
-from diffsynth.pipelines.ideogram4 import Ideogram4Pipeline
-from diffsynth.core import ModelConfig
-import torch
-
-
-pipe = Ideogram4Pipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors"),
-        # unconditional_transformer is optional. You can delete this line to reduce VRAM required.
-        ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="unconditional_transformer/diffusion_pytorch_model.safetensors"),
-        ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="text_encoder/model.safetensors"),
-        ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
-    ],
-    tokenizer_config=ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="tokenizer/"),
-)
-prompt = r"""
-{
-  "high_level_description": "A medium-shot photograph of Formula 1 driver Max Verstappen wearing his Red Bull Racing racing suit and cap, smiling as he holds his racing helmet and talks to a man in a white shirt and black vest at a race track.",
-  "style_description": {
-    "aesthetics": "saturated primary colors, rule of thirds, joyful and triumphant",
-    "lighting": "overcast daylight, diffused, soft subtle shadows",
-    "photo": "shallow depth of field, sharp focus, eye-level, telephoto",
-    "medium": "photograph"
-  },
-  "compositional_deconstruction": {
-    "background": "The background is an out-of-focus racing paddock or track environment. Several blurred figures are visible, including one in an orange shirt. A purple and white structure with a red 'F1' logo stands on the left. The scene is outdoors with daylight, though the sky is not visible.",
-    "elements": [
-      {"type": "obj", "bbox": [55, 642, 1000, 937], "desc": "An older man standing in profile, facing left toward Max Verstappen. He has grey hair and fair skin. He is wearing a white long-sleeved button-down shirt with a navy blue quilted vest over it. He has a slight smile."},
-      {"type": "obj", "bbox": [34, 137, 1000, 617], "desc": "Max Verstappen, a fair-skinned male Formula 1 driver, positioned in the center. He is facing forward with a joyful expression and a slight smile. He wears a navy blue Red Bull Racing team uniform with numerous sponsor logos and a matching baseball cap with the number '1'. He is holding a white and red racing helmet in his hands. He has a silver watch on his left wrist."},
-      {"type": "obj", "bbox": [422, 212, 792, 452], "desc": "Max Verstappen's racing helmet, held in front of his chest. It features a white, red, and yellow design with the Red Bull logo and the 'Player 0.0' branding. The visor is clear and open."},
-      {"type": "text", "bbox": [657, 0, 755, 142], "text": "F1", "desc": "Large, stylized red logo on a black and purple background in the lower left."},
-      {"type": "text", "bbox": [768, 0, 818, 147], "text": "Formula 1\nWorld Championship™", "desc": "Small white sans-serif text below the F1 logo on the left side."},
-      {"type": "text", "bbox": [78, 447, 117, 510], "text": "ORACLE\nRed Bull\nRacing", "desc": "Very small white and orange logo on the front of the navy blue cap."},
-      {"type": "text", "bbox": [78, 417, 120, 440], "text": "1", "desc": "Bold red numeral '1' on the front left side of the navy blue cap."},
-      {"type": "text", "bbox": [332, 442, 363, 483], "text": "Red Bull", "desc": "Small yellow and red text logo on the collar of the uniform."},
-      {"type": "text", "bbox": [373, 490, 423, 532], "text": "RAUCH", "desc": "Small yellow and blue logo on the right chest of the uniform."},
-      {"type": "text", "bbox": [422, 473, 500, 532], "text": "BYBIT\nHONDA", "desc": "Medium-sized white sans-serif text on the right chest of the uniform."},
-      {"type": "text", "bbox": [410, 203, 442, 257], "text": "RAUCH", "desc": "Small yellow logo on the left upper arm of the uniform."},
-      {"type": "text", "bbox": [530, 448, 627, 510], "text": "Red Bull", "desc": "Medium red text logo on the right side of the torso, part of the Red Bull graphic."},
-      {"type": "text", "bbox": [680, 417, 768, 523], "text": "Red Bull", "desc": "Large red text logo across the lower torso of the uniform."},
-      {"type": "text", "bbox": [797, 475, 815, 518], "text": "MAX", "desc": "Small white text next to a Dutch flag on the belt area of the uniform."},
-      {"type": "text", "bbox": [558, 317, 715, 355], "text": "Player 0.0", "desc": "Black sans-serif text on a white band on the racing helmet."},
-      {"type": "text", "bbox": [560, 800, 582, 835], "text": "IA.COM", "desc": "Small blue sans-serif text on the right sleeve of the white shirt."},
-      {"type": "text", "bbox": [968, 8, 997, 332], "text": "© Anadolu Agency via Getty Images", "desc": "Small white watermark text in the bottom left corner."}
-    ]
-  }
-}
-"""
-image = pipe(prompt=prompt, height=1024, width=1024, num_inference_steps=48, cfg_scale=7.0, seed=42)
-image.save("image_ideogram-4-fp8.jpg")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for Ideogram 4 is available at: [/examples/ideogram4/](/examples/ideogram4/)
-
-| Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
-|-|-|-|-|-|-|-|
-|[ideogram-ai/ideogram-4-fp8](https://www.modelscope.cn/models/ideogram-ai/ideogram-4-fp8)|[code](/examples/ideogram4/model_inference/ideogram-4-fp8.py)|-|-|-|-|-|
-|[DiffSynth-Studio/ideogram-4-bf16-repackage](https://www.modelscope.cn/models/DiffSynth-Studio/ideogram-4-bf16-repackage)|[code](/examples/ideogram4/model_inference/ideogram-4-bf16-repackage.py)|[code](/examples/ideogram4/model_inference_low_vram/ideogram-4-bf16-repackage.py)|[code](/examples/ideogram4/model_training/full/Ideogram-4-bf16-repackage.sh)|-|[code](/examples/ideogram4/model_training/lora/Ideogram-4-bf16-repackage.sh)|[code](/examples/ideogram4/model_training/validate_lora/Ideogram-4-bf16-repackage.py)|
-
-</details>
-
-#### Krea-2: [/docs/en/Model_Details/Krea-2.md](/docs/en/Model_Details/Krea-2.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [krea/Krea-2-Raw](https://www.modelscope.cn/models/krea/Krea-2-Raw) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 24GB VRAM.
-
-```python
-from diffsynth.pipelines.krea2 import Krea2Pipeline, ModelConfig
-import torch
-
-vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": torch.float8_e4m3fn,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e4m3fn,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-pipe = Krea2Pipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="krea/Krea-2-Raw", origin_file_pattern="raw.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
-    ],
-    tokenizer_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 1,
-)
-prompt = "A cat standing on a stone."
-image = pipe(prompt, seed=0, num_inference_steps=52, cfg_scale=4.5)
-image.save("image.jpg")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for Krea-2 is available at: [/examples/krea2/](/examples/krea2/)
-
-| Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
-|-|-|-|-|-|-|-|
-|[krea/Krea-2-Raw](https://www.modelscope.cn/models/krea/Krea-2-Raw)|[code](/examples/krea2/model_inference/Krea-2-Raw.py)|[code](/examples/krea2/model_inference_low_vram/Krea-2-Raw.py)|[code](/examples/krea2/model_training/full/Krea-2-Raw.sh)|[code](/examples/krea2/model_training/validate_full/Krea-2-Raw.py)|[code](/examples/krea2/model_training/lora/Krea-2-Raw.sh)|[code](/examples/krea2/model_training/validate_lora/Krea-2-Raw.py)|
-|[krea/Krea-2-Turbo](https://www.modelscope.cn/models/krea/Krea-2-Turbo)|[code](/examples/krea2/model_inference/Krea-2-Turbo.py)|[code](/examples/krea2/model_inference_low_vram/Krea-2-Turbo.py)|[code](/examples/krea2/model_training/full/Krea-2-Turbo.sh)|[code](/examples/krea2/model_training/validate_full/Krea-2-Turbo.py)|[code](/examples/krea2/model_training/lora/Krea-2-Turbo.sh)|[code](/examples/krea2/model_training/validate_lora/Krea-2-Turbo.py)|
-
-</details>
-
-#### Boogu-Image: [/docs/en/Model_Details/Boogu-Image.md](/docs/en/Model_Details/Boogu-Image.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [Boogu/Boogu-Image-0.1-Base](https://modelscope.cn/models/Boogu/Boogu-Image-0.1-Base) model for inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 8GB VRAM.
-
-```python
-from diffsynth.pipelines.boogu_image import BooguImagePipeline, ModelConfig
-import torch
-
-
-vram_config = {
-    "offload_dtype": torch.float8_e4m3fn,
-    "offload_device": "cpu",
-    "onload_dtype": torch.float8_e4m3fn,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e4m3fn,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-
-pipe = BooguImagePipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="Boogu/Boogu-Image-0.1-Base", origin_file_pattern="transformer/*.safetensors", **vram_config),
-        ModelConfig(model_id="Boogu/Boogu-Image-0.1-Base", origin_file_pattern="mllm/*.safetensors", **vram_config),
-        ModelConfig(model_id="Boogu/Boogu-Image-0.1-Base", origin_file_pattern="vae/*.safetensors", **vram_config),
-    ],
-    processor_config=ModelConfig(model_id="Boogu/Boogu-Image-0.1-Base", origin_file_pattern="mllm/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-
-output = pipe(
-    prompt="a cat",
-    negative_prompt="",
-    height=1024,
-    width=1024,
-    seed=42,
-    num_inference_steps=50,
-    cfg_scale=4.0,
-)
-output.save("image_Boogu-Image-0.1-Base.jpg")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for Boogu-Image is available at: [/examples/boogu_image/](/examples/boogu_image/)
-
-|Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
-|-|-|-|-|-|-|-|
-|[Boogu/Boogu-Image-0.1-Base](https://modelscope.cn/models/Boogu/Boogu-Image-0.1-Base)|[code](/examples/boogu_image/model_inference/Boogu-Image-0.1-Base.py)|[code](/examples/boogu_image/model_inference_low_vram/Boogu-Image-0.1-Base.py)|[code](/examples/boogu_image/model_training/full/Boogu-Image-0.1-Base.sh)|[code](/examples/boogu_image/model_training/validate_full/Boogu-Image-0.1-Base.py)|[code](/examples/boogu_image/model_training/lora/Boogu-Image-0.1-Base.sh)|[code](/examples/boogu_image/model_training/validate_lora/Boogu-Image-0.1-Base.py)|
-|[Boogu/Boogu-Image-0.1-Turbo](https://modelscope.cn/models/Boogu/Boogu-Image-0.1-Turbo)|[code](/examples/boogu_image/model_inference/Boogu-Image-0.1-Turbo.py)|[code](/examples/boogu_image/model_inference_low_vram/Boogu-Image-0.1-Turbo.py)|[code](/examples/boogu_image/model_training/full/Boogu-Image-0.1-Turbo.sh)|[code](/examples/boogu_image/model_training/validate_full/Boogu-Image-0.1-Turbo.py)|[code](/examples/boogu_image/model_training/lora/Boogu-Image-0.1-Turbo.sh)|[code](/examples/boogu_image/model_training/validate_lora/Boogu-Image-0.1-Turbo.py)|
-|[Boogu/Boogu-Image-0.1-Edit](https://modelscope.cn/models/Boogu/Boogu-Image-0.1-Edit)|[code](/examples/boogu_image/model_inference/Boogu-Image-0.1-Edit.py)|[code](/examples/boogu_image/model_inference_low_vram/Boogu-Image-0.1-Edit.py)|[code](/examples/boogu_image/model_training/full/Boogu-Image-0.1-Edit.sh)|[code](/examples/boogu_image/model_training/validate_full/Boogu-Image-0.1-Edit.py)|[code](/examples/boogu_image/model_training/lora/Boogu-Image-0.1-Edit.sh)|[code](/examples/boogu_image/model_training/validate_lora/Boogu-Image-0.1-Edit.py)|
-
-</details>
-
-### Video Synthesis
-
-https://github.com/user-attachments/assets/1d66ae74-3b02-40a9-acc3-ea95fc039314
-
-#### LTX-2: [/docs/en/Model_Details/LTX-2.md](/docs/en/Model_Details/LTX-2.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [Lightricks/LTX-2](https://www.modelscope.cn/models/Lightricks/LTX-2) model for inference. VRAM management is enabled, and the framework automatically adjusts model parameter loading based on available GPU memory. The model can run with as little as 8GB of VRAM.
-
-```python
-import torch
-from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
-from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
-
-vram_config = {
-    "offload_dtype": torch.float8_e5m2,
-    "offload_device": "cpu",
-    "onload_dtype": torch.float8_e5m2,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e5m2,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-"""
-Offical model repo: https://www.modelscope.cn/models/Lightricks/LTX-2
-Repackaged model repo: https://www.modelscope.cn/models/DiffSynth-Studio/LTX-2-Repackage
-For base models of LTX-2, offical checkpoint (with model config ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors"))
-and repackaged checkpoints (with model config ModelConfig(model_id="DiffSynth-Studio/LTX-2-Repackage", origin_file_pattern="*.safetensors")) are both supported.
-We have repackeged the official checkpoints in DiffSynth-Studio/LTX-2-Repackage repo to support separate loading of different submodules,
-and avoid redundant memory usage when users only want to use part of the model.
-"""
-# use the repackaged modelconfig from "DiffSynth-Studio/LTX-2-Repackage" to avoid redundant model loading
-pipe = LTX2AudioVideoPipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized", origin_file_pattern="model-*.safetensors", **vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/LTX-2-Repackage", origin_file_pattern="transformer.safetensors", **vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/LTX-2-Repackage", origin_file_pattern="text_encoder_post_modules.safetensors", **vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/LTX-2-Repackage", origin_file_pattern="video_vae_decoder.safetensors", **vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/LTX-2-Repackage", origin_file_pattern="audio_vae_decoder.safetensors", **vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/LTX-2-Repackage", origin_file_pattern="audio_vocoder.safetensors", **vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/LTX-2-Repackage", origin_file_pattern="video_vae_encoder.safetensors", **vram_config),
-        ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-spatial-upscaler-x2-1.0.safetensors", **vram_config),
-    ],
-    tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
-    stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-
-# use the following modelconfig if you want to initialize model from offical checkpoints from "Lightricks/LTX-2"
-# pipe = LTX2AudioVideoPipeline.from_pretrained(
-#     torch_dtype=torch.bfloat16,
-#     device="cuda",
-#     model_configs=[
-#         ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized", origin_file_pattern="model-*.safetensors", **vram_config),
-#         ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-dev.safetensors", **vram_config),
-#         ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-spatial-upscaler-x2-1.0.safetensors", **vram_config),
-#     ],
-#     tokenizer_config=ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
-#     stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2", origin_file_pattern="ltx-2-19b-distilled-lora-384.safetensors"),
-#     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-# )
-
-prompt = "A girl is very happy, she is speaking: \"I enjoy working with Diffsynth-Studio, it's a perfect framework.\""
-negative_prompt = (
-    "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, "
-    "grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, "
-    "deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, "
-    "wrong hand count, artifacts around text, inconsistent perspective, camera shake, incorrect depth of "
-    "field, background too sharp, background clutter, distracting reflections, harsh shadows, inconsistent "
-    "lighting direction, color banding, cartoonish rendering, 3D CGI look, unrealistic materials, uncanny "
-    "valley effect, incorrect ethnicity, wrong gender, exaggerated expressions, wrong gaze direction, "
-    "mismatched lip sync, silent or muted audio, distorted voice, robotic voice, echo, background noise, "
-    "off-sync audio, incorrect dialogue, added dialogue, repetitive speech, jittery movement, awkward "
-    "pauses, incorrect timing, unnatural transitions, inconsistent framing, tilted camera, flat lighting, "
-    "inconsistent tone, cinematic oversaturation, stylized filters, or AI artifacts."
-)
-height, width, num_frames = 512 * 2, 768 * 2, 121
-video, audio = pipe(
-    prompt=prompt,
-    negative_prompt=negative_prompt,
-    seed=43,
-    height=height,
-    width=width,
-    num_frames=num_frames,
-    tiled=True,
-    use_two_stage_pipeline=True,
-)
-write_video_audio_ltx2(
-    video=video,
-    audio=audio,
-    output_path='ltx2_twostage.mp4',
-    fps=24,
-    audio_sample_rate=24000,
-)
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for LTX-2 is available at: [/examples/ltx2/](/examples/ltx2/)
-
-| Model ID | Extra Args | Inference | Low-VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
-|-|-|-|-|-|-|-|-|
-|[jd-opensource/JoyAI-Echo](https://modelscope.cn/models/jd-opensource/JoyAI-Echo)||[code](/examples/ltx2/model_inference/JoyAI-Echo-T2AV.py)|[code](/examples/ltx2/model_inference_low_vram/JoyAI-Echo-T2AV.py)|[code](/examples/ltx2/model_training/full/JoyAI-Echo-T2AV-splited.sh)|[code](/examples/ltx2/model_training/validate_full/JoyAI-Echo-T2AV.py)|[code](/examples/ltx2/model_training/lora/JoyAI-Echo-T2AV-splited.sh)|[code](/examples/ltx2/model_training/validate_lora/JoyAI-Echo-T2AV.py)|
-|[Lightricks/LTX-2.3: OneStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3)|`input_images`|[code](/examples/ltx2/model_inference/LTX-2.3-I2AV-OneStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-I2AV-OneStage.py)|[code](/examples/ltx2/model_training/full/LTX-2.3-I2AV-splited.sh)|[code](/examples/ltx2/model_training/validate_full/LTX-2.3-I2AV.py)|[code](/examples/ltx2/model_training/lora/LTX-2.3-I2AV-splited.sh)|[code](/examples/ltx2/model_training/validate_lora/LTX-2.3-I2AV.py)|
-|[Lightricks/LTX-2.3: TwoStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3)|`input_images`|[code](/examples/ltx2/model_inference/LTX-2.3-I2AV-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-I2AV-TwoStage.py)|-|-|-|-|
-|[Lightricks/LTX-2.3: DistilledPipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3)|`input_images`|[code](/examples/ltx2/model_inference/LTX-2.3-I2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-I2AV-DistilledPipeline.py)|-|-|-|-|
-|[Lightricks/LTX-2.3: OneStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3)||[code](/examples/ltx2/model_inference/LTX-2.3-T2AV-OneStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-OneStage.py)|[code](/examples/ltx2/model_training/full/LTX-2.3-T2AV-splited.sh)|[code](/examples/ltx2/model_training/validate_full/LTX-2.3-T2AV.py)|[code](/examples/ltx2/model_training/lora/LTX-2.3-T2AV-splited.sh)|[code](/examples/ltx2/model_training/validate_lora/LTX-2.3-T2AV.py)|
-|[Lightricks/LTX-2.3: TwoStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3)||[code](/examples/ltx2/model_inference/LTX-2.3-T2AV-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-TwoStage.py)|-|-|-|-|
-|[Lightricks/LTX-2.3: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3)||[code](/examples/ltx2/model_inference/LTX-2.3-T2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-DistilledPipeline.py)|-|-|-|-|
-|[Lightricks/LTX-2.3: A2V](https://www.modelscope.cn/models/Lightricks/LTX-2.3)|`retake_audio`,`audio_sample_rate`,`retake_audio_regions`|[code](/examples/ltx2/model_inference/LTX-2.3-A2V-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-A2V-TwoStage.py)|-|-|-|-|
-|[Lightricks/LTX-2.3: Retake](https://www.modelscope.cn/models/Lightricks/LTX-2.3)|`retake_video`,`retake_video_regions`,`retake_audio`,`audio_sample_rate`,`retake_audio_regions`|[code](/examples/ltx2/model_inference/LTX-2.3-T2AV-TwoStage-Retake.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-TwoStage-Retake.py)|-|-|-|-|
-|[Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control](https://www.modelscope.cn/models/Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control)|`in_context_videos`,`in_context_downsample_factor`|[code](/examples/ltx2/model_inference/LTX-2.3-T2AV-IC-LoRA-Union-Control.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-IC-LoRA-Union-Control.py)|-|-|[code](/examples/ltx2/model_training/lora/LTX-2.3-T2AV-IC-LoRA-splited.sh)|[code](/examples/ltx2/model_training/validate_lora/LTX-2.3-T2AV-IC-LoRA.py)|
-|[Lightricks/LTX-2.3-22b-IC-LoRA-Motion-Track-Control](https://www.modelscope.cn/models/Lightricks/LTX-2.3-22b-IC-LoRA-Motion-Track-Control)|`in_context_videos`,`in_context_downsample_factor`|[code](/examples/ltx2/model_inference/LTX-2.3-T2AV-IC-LoRA-Motion-Track-Control.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-IC-LoRA-Motion-Track-Control.py)|-|-|[code](/examples/ltx2/model_training/lora/LTX-2.3-T2AV-IC-LoRA-splited.sh)|[code](/examples/ltx2/model_training/validate_lora/LTX-2.3-T2AV-IC-LoRA.py)|
-|[Lightricks/LTX-2: OneStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-OneStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-OneStage.py)|[code](/examples/ltx2/model_training/full/LTX-2-T2AV-splited.sh)|[code](/examples/ltx2/model_training/validate_full/LTX-2-T2AV.py)|[code](/examples/ltx2/model_training/lora/LTX-2-T2AV-splited.sh)|[code](/examples/ltx2/model_training/validate_lora/LTX-2-T2AV.py)|
-|[Lightricks/LTX-2-19b-IC-LoRA-Union-Control](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-IC-LoRA-Union-Control)|`in_context_videos`,`in_context_downsample_factor`|[code](/examples/ltx2/model_inference/LTX-2-T2AV-IC-LoRA-Union-Control.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-IC-LoRA-Union-Control.py)|-|-|[code](/examples/ltx2/model_training/lora/LTX-2-T2AV-IC-LoRA-splited.sh)|[code](/examples/ltx2/model_training/validate_lora/LTX-2-T2AV-IC-LoRA.py)|
-|[Lightricks/LTX-2-19b-IC-LoRA-Detailer](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-IC-LoRA-Detailer)|`in_context_videos`,`in_context_downsample_factor`|[code](/examples/ltx2/model_inference/LTX-2-T2AV-IC-LoRA-Detailer.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-IC-LoRA-Detailer.py)|-|-|[code](/examples/ltx2/model_training/lora/LTX-2-T2AV-IC-LoRA-splited.sh)|[code](/examples/ltx2/model_training/validate_lora/LTX-2-T2AV-IC-LoRA.py)|
-|[Lightricks/LTX-2: TwoStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-TwoStage.py)|-|-|-|-|
-|[Lightricks/LTX-2: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-DistilledPipeline.py)|-|-|-|-|
-|[Lightricks/LTX-2: OneStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2)|`input_images`|[code](/examples/ltx2/model_inference/LTX-2-I2AV-OneStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-I2AV-OneStage.py)|-|-|-|-|
-|[Lightricks/LTX-2: TwoStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2)|`input_images`|[code](/examples/ltx2/model_inference/LTX-2-I2AV-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-I2AV-TwoStage.py)|-|-|-|-|
-|[Lightricks/LTX-2: DistilledPipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2)|`input_images`|[code](/examples/ltx2/model_inference/LTX-2-I2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-I2AV-DistilledPipeline.py)|-|-|-|-|
-|[Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-In](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-In)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Dolly-In.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Dolly-In.py)|-|-|-|-|
-|[Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Out](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Out)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Dolly-Out.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Dolly-Out.py)|-|-|-|-|
-|[Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Left](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Left)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Dolly-Left.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Dolly-Left.py)|-|-|-|-|
-|[Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Right](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Right)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Dolly-Right.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Dolly-Right.py)|-|-|-|-|
-|[Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Up](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Up)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Jib-Up.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Jib-Up.py)|-|-|-|-|
-|[Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Down](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Down)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Jib-Down.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Jib-Down.py)|-|-|-|-|
-|[Lightricks/LTX-2-19b-LoRA-Camera-Control-Static](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Static)||[code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Static.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Static.py)|-|-|-|-|
-
-</details>
-
-#### Wan: [/docs/en/Model_Details/Wan.md](/docs/en/Model_Details/Wan.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [Wan-AI/Wan2.1-T2V-1.3B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-1.3B) model for inference. VRAM management is enabled, and the framework automatically adjusts model parameter loading based on available GPU memory. The model can run with as little as 8 GB of VRAM.
-
-```python
-import torch
-from diffsynth.utils.data import save_video, VideoData
-from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
-
-vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-pipe = WanVideoPipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="diffusion_pytorch_model*.safetensors", **vram_config),
-        ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth", **vram_config),
-        ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="Wan2.1_VAE.pth", **vram_config),
-    ],
-    tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
-)
-
-video = pipe(
-    prompt="纪实摄影风格画面，一只活泼的小狗在绿茵茵的草地上迅速奔跑。小狗毛色棕黄，两只耳朵立起，神情专注而欢快。阳光洒在它身上，使得毛发看上去格外柔软而闪亮。背景是一片开阔的草地，偶尔点缀着几朵野花，远处隐约可见蓝天和几片白云。透视感鲜明，捕捉小狗奔跑时的动感和四周草地的生机。中景侧面移动视角。",
-    negative_prompt="色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
-    seed=0, tiled=True,
-)
-save_video(video, "video.mp4", fps=15, quality=5)
-```
-
-</details>
-
-<details>
-
-<summary>Model Lineage</summary>
-
-```mermaid
-graph LR;
-    Wan-Series-->Wan2.1-Series;
-    Wan-Series-->Wan2.2-Series;
-    Wan2.1-Series-->Wan-AI/Wan2.1-T2V-1.3B;
-    Wan2.1-Series-->Wan-AI/Wan2.1-T2V-14B;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.1-I2V-14B-480P;
-    Wan-AI/Wan2.1-I2V-14B-480P-->Wan-AI/Wan2.1-I2V-14B-720P;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.1-FLF2V-14B-720P;
-    Wan-AI/Wan2.1-T2V-1.3B-->iic/VACE-Wan2.1-1.3B-Preview;
-    iic/VACE-Wan2.1-1.3B-Preview-->Wan-AI/Wan2.1-VACE-1.3B;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.1-VACE-14B;
-    Wan-AI/Wan2.1-T2V-1.3B-->Wan2.1-Fun-1.3B-Series;
-    Wan2.1-Fun-1.3B-Series-->PAI/Wan2.1-Fun-1.3B-InP;
-    Wan2.1-Fun-1.3B-Series-->PAI/Wan2.1-Fun-1.3B-Control;
-    Wan-AI/Wan2.1-T2V-14B-->Wan2.1-Fun-14B-Series;
-    Wan2.1-Fun-14B-Series-->PAI/Wan2.1-Fun-14B-InP;
-    Wan2.1-Fun-14B-Series-->PAI/Wan2.1-Fun-14B-Control;
-    Wan-AI/Wan2.1-T2V-1.3B-->Wan2.1-Fun-V1.1-1.3B-Series;
-    Wan2.1-Fun-V1.1-1.3B-Series-->PAI/Wan2.1-Fun-V1.1-1.3B-Control;
-    Wan2.1-Fun-V1.1-1.3B-Series-->PAI/Wan2.1-Fun-V1.1-1.3B-InP;
-    Wan2.1-Fun-V1.1-1.3B-Series-->PAI/Wan2.1-Fun-V1.1-1.3B-Control-Camera;
-    Wan-AI/Wan2.1-T2V-14B-->Wan2.1-Fun-V1.1-14B-Series;
-    Wan2.1-Fun-V1.1-14B-Series-->PAI/Wan2.1-Fun-V1.1-14B-Control;
-    Wan2.1-Fun-V1.1-14B-Series-->PAI/Wan2.1-Fun-V1.1-14B-InP;
-    Wan2.1-Fun-V1.1-14B-Series-->PAI/Wan2.1-Fun-V1.1-14B-Control-Camera;
-    Wan-AI/Wan2.1-T2V-1.3B-->DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1;
-    Wan-AI/Wan2.1-T2V-14B-->krea/krea-realtime-video;
-    Wan-AI/Wan2.1-T2V-14B-->meituan-longcat/LongCat-Video;
-    Wan-AI/Wan2.1-I2V-14B-720P-->ByteDance/Video-As-Prompt-Wan2.1-14B;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.2-Animate-14B;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.2-S2V-14B;
-    Wan2.2-Series-->Wan-AI/Wan2.2-T2V-A14B;
-    Wan2.2-Series-->Wan-AI/Wan2.2-I2V-A14B;
-    Wan2.2-Series-->Wan-AI/Wan2.2-TI2V-5B;
-    Wan-AI/Wan2.2-T2V-A14B-->Wan2.2-Fun-Series;
-    Wan2.2-Fun-Series-->PAI/Wan2.2-VACE-Fun-A14B;
-    Wan2.2-Fun-Series-->PAI/Wan2.2-Fun-A14B-InP;
-    Wan2.2-Fun-Series-->PAI/Wan2.2-Fun-A14B-Control;
-    Wan2.2-Fun-Series-->PAI/Wan2.2-Fun-A14B-Control-Camera;
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for Wan is available at: [/examples/wanvideo/](/examples/wanvideo/)
-
-| Model ID | Extra Inputs | Inference | Low VRAM Inference | Full Training | Validation After Full Training | LoRA Training | Validation After LoRA Training |
-|-|-|-|-|-|-|-|-|
-|[Wan-AI/Wan2.1-T2V-1.3B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-1.3B)||[code](/examples/wanvideo/model_inference/Wan2.1-T2V-1.3B.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-T2V-1.3B.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-T2V-1.3B.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-T2V-1.3B.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-T2V-1.3B.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-T2V-1.3B.py)|
-|[Wan-AI/Wan2.1-T2V-14B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-14B)||[code](/examples/wanvideo/model_inference/Wan2.1-T2V-14B.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-T2V-14B.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-T2V-14B.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-T2V-14B.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-T2V-14B.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-T2V-14B.py)|
-|[Wan-AI/Wan2.1-I2V-14B-480P](https://modelscope.cn/models/Wan-AI/Wan2.1-I2V-14B-480P)|`input_image`|[code](/examples/wanvideo/model_inference/Wan2.1-I2V-14B-480P.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-I2V-14B-480P.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-I2V-14B-480P.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-I2V-14B-480P.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-I2V-14B-480P.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-I2V-14B-480P.py)|
-|[Wan-AI/Wan2.1-I2V-14B-720P](https://modelscope.cn/models/Wan-AI/Wan2.1-I2V-14B-720P)|`input_image`|[code](/examples/wanvideo/model_inference/Wan2.1-I2V-14B-720P.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-I2V-14B-720P.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-I2V-14B-720P.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-I2V-14B-720P.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-I2V-14B-720P.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-I2V-14B-720P.py)|
-|[Wan-AI/Wan2.1-FLF2V-14B-720P](https://modelscope.cn/models/Wan-AI/Wan2.1-FLF2V-14B-720P)|`input_image`, `end_image`|[code](/examples/wanvideo/model_inference/Wan2.1-FLF2V-14B-720P.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-FLF2V-14B-720P.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-FLF2V-14B-720P.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-FLF2V-14B-720P.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-FLF2V-14B-720P.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-FLF2V-14B-720P.py)|
-|[iic/VACE-Wan2.1-1.3B-Preview](https://modelscope.cn/models/iic/VACE-Wan2.1-1.3B-Preview)|`vace_control_video`, `vace_reference_image`|[code](/examples/wanvideo/model_inference/Wan2.1-VACE-1.3B-Preview.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-VACE-1.3B-Preview.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-VACE-1.3B-Preview.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-VACE-1.3B-Preview.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-VACE-1.3B-Preview.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-VACE-1.3B-Preview.py)|
-|[Wan-AI/Wan2.1-VACE-1.3B](https://modelscope.cn/models/Wan-AI/Wan2.1-VACE-1.3B)|`vace_control_video`, `vace_reference_image`|[code](/examples/wanvideo/model_inference/Wan2.1-VACE-1.3B.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-VACE-1.3B.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-VACE-1.3B.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-VACE-1.3B.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-VACE-1.3B.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-VACE-1.3B.py)|
-|[Wan-AI/Wan2.1-VACE-14B](https://modelscope.cn/models/Wan-AI/Wan2.1-VACE-14B)|`vace_control_video`, `vace_reference_image`|[code](/examples/wanvideo/model_inference/Wan2.1-VACE-14B.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-VACE-14B.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-VACE-14B.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-VACE-14B.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-VACE-14B.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-VACE-14B.py)|
-|[PAI/Wan2.1-Fun-1.3B-InP](https://modelscope.cn/models/PAI/Wan2.1-Fun-1.3B-InP)|`input_image`, `end_image`|[code](/examples/wanvideo/model_inference/Wan2.1-Fun-1.3B-InP.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-1.3B-InP.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-Fun-1.3B-InP.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-1.3B-InP.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-1.3B-InP.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-1.3B-InP.py)|
-|[PAI/Wan2.1-Fun-1.3B-Control](https://modelscope.cn/models/PAI/Wan2.1-Fun-1.3B-Control)|`control_video`|[code](/examples/wanvideo/model_inference/Wan2.1-Fun-1.3B-Control.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-1.3B-Control.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-Fun-1.3B-Control.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-1.3B-Control.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-1.3B-Control.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-1.3B-Control.py)|
-|[PAI/Wan2.1-Fun-14B-InP](https://modelscope.cn/models/PAI/Wan2.1-Fun-14B-InP)|`input_image`, `end_image`|[code](/examples/wanvideo/model_inference/Wan2.1-Fun-14B-InP.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-14B-InP.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-Fun-14B-InP.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-14B-InP.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-14B-InP.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-14B-InP.py)|
-|[PAI/Wan2.1-Fun-14B-Control](https://modelscope.cn/models/PAI/Wan2.1-Fun-14B-Control)|`control_video`|[code](/examples/wanvideo/model_inference/Wan2.1-Fun-14B-Control.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-14B-Control.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-Fun-14B-Control.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-14B-Control.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-14B-Control.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-14B-Control.py)|
-|[PAI/Wan2.1-Fun-V1.1-1.3B-Control](https://modelscope.cn/models/PAI/Wan2.1-Fun-V1.1-1.3B-Control)|`control_video`, `reference_image`|[code](/examples/wanvideo/model_inference/Wan2.1-Fun-V1.1-1.3B-Control.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-V1.1-1.3B-Control.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-Fun-V1.1-1.3B-Control.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-V1.1-1.3B-Control.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-V1.1-1.3B-Control.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-V1.1-1.3B-Control.py)|
-|[PAI/Wan2.1-Fun-V1.1-14B-Control](https://modelscope.cn/models/PAI/Wan2.1-Fun-V1.1-14B-Control)|`control_video`, `reference_image`|[code](/examples/wanvideo/model_inference/Wan2.1-Fun-V1.1-14B-Control.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-V1.1-14B-Control.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-Fun-V1.1-14B-Control.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-V1.1-14B-Control.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-V1.1-14B-Control.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-V1.1-14B-Control.py)|
-|[PAI/Wan2.1-Fun-V1.1-1.3B-InP](https://modelscope.cn/models/PAI/Wan2.1-Fun-V1.1-1.3B-InP)|`input_image`, `end_image`|[code](/examples/wanvideo/model_inference/Wan2.1-Fun-V1.1-1.3B-InP.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-V1.1-1.3B-InP.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-Fun-V1.1-1.3B-InP.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-V1.1-1.3B-InP.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-V1.1-1.3B-InP.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-V1.1-1.3B-InP.py)|
-|[PAI/Wan2.1-Fun-V1.1-14B-InP](https://modelscope.cn/models/PAI/Wan2.1-Fun-V1.1-14B-InP)|`input_image`, `end_image`|[code](/examples/wanvideo/model_inference/Wan2.1-Fun-V1.1-14B-InP.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-V1.1-14B-InP.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-Fun-V1.1-14B-InP.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-V1.1-14B-InP.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-V1.1-14B-InP.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-V1.1-14B-InP.py)|
-|[PAI/Wan2.1-Fun-V1.1-1.3B-Control-Camera](https://modelscope.cn/models/PAI/Wan2.1-Fun-V1.1-1.3B-Control-Camera)|`control_camera_video`, `input_image`|[code](/examples/wanvideo/model_inference/Wan2.1-Fun-V1.1-1.3B-Control-Camera.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-V1.1-1.3B-Control-Camera.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-Fun-V1.1-1.3B-Control-Camera.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-V1.1-1.3B-Control-Camera.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-V1.1-1.3B-Control-Camera.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-V1.1-1.3B-Control-Camera.py)|
-|[PAI/Wan2.1-Fun-V1.1-14B-Control-Camera](https://modelscope.cn/models/PAI/Wan2.1-Fun-V1.1-14B-Control-Camera)|`control_camera_video`, `input_image`|[code](/examples/wanvideo/model_inference/Wan2.1-Fun-V1.1-14B-Control-Camera.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-V1.1-14B-Control-Camera.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-Fun-V1.1-14B-Control-Camera.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-V1.1-14B-Control-Camera.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-V1.1-14B-Control-Camera.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-V1.1-14B-Control-Camera.py)|
-|[DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1](https://modelscope.cn/models/DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1)|`motion_bucket_id`|[code](/examples/wanvideo/model_inference/Wan2.1-1.3b-speedcontrol-v1.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.1-1.3b-speedcontrol-v1.py)|[code](/examples/wanvideo/model_training/full/Wan2.1-1.3b-speedcontrol-v1.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.1-1.3b-speedcontrol-v1.py)|[code](/examples/wanvideo/model_training/lora/Wan2.1-1.3b-speedcontrol-v1.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.1-1.3b-speedcontrol-v1.py)|
-|[krea/krea-realtime-video](https://www.modelscope.cn/models/krea/krea-realtime-video)||[code](/examples/wanvideo/model_inference/krea-realtime-video.py)|[code](/examples/wanvideo/model_inference_low_vram/krea-realtime-video.py)|[code](/examples/wanvideo/model_training/full/krea-realtime-video.sh)|[code](/examples/wanvideo/model_training/validate_full/krea-realtime-video.py)|[code](/examples/wanvideo/model_training/lora/krea-realtime-video.sh)|[code](/examples/wanvideo/model_training/validate_lora/krea-realtime-video.py)|
-|[meituan-longcat/LongCat-Video](https://www.modelscope.cn/models/meituan-longcat/LongCat-Video)|`longcat_video`|[code](/examples/wanvideo/model_inference/LongCat-Video.py)|[code](/examples/wanvideo/model_inference_low_vram/LongCat-Video.py)|[code](/examples/wanvideo/model_training/full/LongCat-Video.sh)|[code](/examples/wanvideo/model_training/validate_full/LongCat-Video.py)|[code](/examples/wanvideo/model_training/lora/LongCat-Video.sh)|[code](/examples/wanvideo/model_training/validate_lora/LongCat-Video.py)|
-|[ByteDance/Video-As-Prompt-Wan2.1-14B](https://modelscope.cn/models/ByteDance/Video-As-Prompt-Wan2.1-14B)|`vap_video`, `vap_prompt`|[code](/examples/wanvideo/model_inference/Video-As-Prompt-Wan2.1-14B.py)|[code](/examples/wanvideo/model_inference_low_vram/Video-As-Prompt-Wan2.1-14B.py)|[code](/examples/wanvideo/model_training/full/Video-As-Prompt-Wan2.1-14B.sh)|[code](/examples/wanvideo/model_training/validate_full/Video-As-Prompt-Wan2.1-14B.py)|[code](/examples/wanvideo/model_training/lora/Video-As-Prompt-Wan2.1-14B.sh)|[code](/examples/wanvideo/model_training/validate_lora/Video-As-Prompt-Wan2.1-14B.py)|
-|[Wan-AI/Wan2.2-T2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-T2V-A14B)||[code](/examples/wanvideo/model_inference/Wan2.2-T2V-A14B.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.2-T2V-A14B.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-T2V-A14B.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-T2V-A14B.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-T2V-A14B.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-T2V-A14B.py)|
-|[Wan-AI/Wan2.2-I2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-I2V-A14B)|`input_image`|[code](/examples/wanvideo/model_inference/Wan2.2-I2V-A14B.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.2-I2V-A14B.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-I2V-A14B.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-I2V-A14B.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-I2V-A14B.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-I2V-A14B.py)|
-|[Wan-AI/Wan2.2-TI2V-5B](https://modelscope.cn/models/Wan-AI/Wan2.2-TI2V-5B)|`input_image`|[code](/examples/wanvideo/model_inference/Wan2.2-TI2V-5B.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.2-TI2V-5B.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-TI2V-5B.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-TI2V-5B.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-TI2V-5B.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-TI2V-5B.py)|
-|[Wan-AI/Wan2.2-Animate-14B](https://www.modelscope.cn/models/Wan-AI/Wan2.2-Animate-14B)|`input_image`, `animate_pose_video`, `animate_face_video`, `animate_inpaint_video`, `animate_mask_video`|[code](/examples/wanvideo/model_inference/Wan2.2-Animate-14B.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.2-Animate-14B.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-Animate-14B.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-Animate-14B.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-Animate-14B.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Animate-14B.py)|
-|[Wan-AI/Wan2.2-Animate-2-14B](https://www.modelscope.cn/models/Wan-AI/Wan2.2-Animate-2-14B)|`animate2_reference_image`, `animate2_reference_video`, `animate2_prompt_ref`|[code](/examples/wanvideo/model_inference/Wan2.2-Animate-2-14B.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.2-Animate-2-14B.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-Animate-2-14B.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-Animate-2-14B.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-Animate-2-14B.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Animate-2-14B.py)|
-|[Wan-AI/Wan2.2-Animate-2-14B: Distilled](https://www.modelscope.cn/models/Wan-AI/Wan2.2-Animate-2-14B)|`animate2_reference_image`, `animate2_reference_video`, `animate2_prompt_ref`|[code](/examples/wanvideo/model_inference/Wan2.2-Animate-2-14B-Distilled.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.2-Animate-2-14B-Distilled.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-Animate-2-14B-Distilled.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-Animate-2-14B-Distilled.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-Animate-2-14B-Distilled.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Animate-2-14B-Distilled.py)|
-|[Wan-AI/Wan2.2-S2V-14B](https://www.modelscope.cn/models/Wan-AI/Wan2.2-S2V-14B)|`input_image`, `input_audio`, `audio_sample_rate`, `s2v_pose_video`|[code](/examples/wanvideo/model_inference/Wan2.2-S2V-14B_multi_clips.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.2-S2V-14B_multi_clips.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-S2V-14B.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-S2V-14B.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-S2V-14B.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-S2V-14B.py)|
-|[PAI/Wan2.2-VACE-Fun-A14B](https://www.modelscope.cn/models/PAI/Wan2.2-VACE-Fun-A14B)|`vace_control_video`, `vace_reference_image`|[code](/examples/wanvideo/model_inference/Wan2.2-VACE-Fun-A14B.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.2-VACE-Fun-A14B.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-VACE-Fun-A14B.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-VACE-Fun-A14B.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-VACE-Fun-A14B.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-VACE-Fun-A14B.py)|
-|[PAI/Wan2.2-Fun-A14B-InP](https://modelscope.cn/models/PAI/Wan2.2-Fun-A14B-InP)|`input_image`, `end_image`|[code](/examples/wanvideo/model_inference/Wan2.2-Fun-A14B-InP.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.2-Fun-A14B-InP.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-Fun-A14B-InP.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-Fun-A14B-InP.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-Fun-A14B-InP.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Fun-A14B-InP.py)|
-|[PAI/Wan2.2-Fun-A14B-Control](https://modelscope.cn/models/PAI/Wan2.2-Fun-A14B-Control)|`control_video`, `reference_image`|[code](/examples/wanvideo/model_inference/Wan2.2-Fun-A14B-Control.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.2-Fun-A14B-Control.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-Fun-A14B-Control.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-Fun-A14B-Control.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-Fun-A14B-Control.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Fun-A14B-Control.py)|
-|[PAI/Wan2.2-Fun-A14B-Control-Camera](https://modelscope.cn/models/PAI/Wan2.2-Fun-A14B-Control-Camera)|`control_camera_video`, `input_image`|[code](/examples/wanvideo/model_inference/Wan2.2-Fun-A14B-Control-Camera.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan2.2-Fun-A14B-Control-Camera.py)|[code](/examples/wanvideo/model_training/full/Wan2.2-Fun-A14B-Control-Camera.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan2.2-Fun-A14B-Control-Camera.py)|[code](/examples/wanvideo/model_training/lora/Wan2.2-Fun-A14B-Control-Camera.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Fun-A14B-Control-Camera.py)|
-|[openmoss/MOVA-360p](https://modelscope.cn/models/openmoss/MOVA-360p)|`input_image`|[code](/examples/mova/model_inference/MOVA-360p-I2AV.py)|[code](/examples/mova/model_inference_low_vram/MOVA-360p-I2AV.py)|[code](/examples/mova/model_training/full/MOVA-360P-I2AV.sh)|[code](/examples/mova/model_training/validate_full/MOVA-360p-I2AV.py)|[code](/examples/mova/model_training/lora/MOVA-360P-I2AV.sh)|[code](/examples/mova/model_training/validate_lora/MOVA-360p-I2AV.py)|
-|[openmoss/MOVA-720p](https://modelscope.cn/models/openmoss/MOVA-720p)|`input_image`|[code](/examples/mova/model_inference/MOVA-720p-I2AV.py)|[code](/examples/mova/model_inference_low_vram/MOVA-720p-I2AV.py)|[code](/examples/mova/model_training/full/MOVA-720P-I2AV.sh)|[code](/examples/mova/model_training/validate_full/MOVA-720p-I2AV.py)|[code](/examples/mova/model_training/lora/MOVA-720P-I2AV.sh)|[code](/examples/mova/model_training/validate_lora/MOVA-720p-I2AV.py)|
-|[Wan-AI/Wan-Dancer-14B (global model)](https://modelscope.cn/models/Wan-AI/Wan-Dancer-14B)|`wantodance_music_path`, `wantodance_reference_image`, `wantodance_fps`, `wantodance_keyframes`, `wantodance_keyframes_mask`|[code](/examples/wanvideo/model_inference/Wan-Dancer-14B-global.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan-Dancer-14B-global.py)|[code](/examples/wanvideo/model_training/full/Wan-Dancer-14B-global.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan-Dancer-14B-global.py)|[code](/examples/wanvideo/model_training/lora/Wan-Dancer-14B-global.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan-Dancer-14B-global.py)|
-|[Wan-AI/Wan-Dancer-14B (local model)](https://modelscope.cn/models/Wan-AI/Wan-Dancer-14B)|`wantodance_music_path`, `wantodance_reference_image`, `wantodance_fps`, `wantodance_keyframes`, `wantodance_keyframes_mask`|[code](/examples/wanvideo/model_inference/Wan-Dancer-14B-local.py)|[code](/examples/wanvideo/model_inference_low_vram/Wan-Dancer-14B-local.py)|[code](/examples/wanvideo/model_training/full/Wan-Dancer-14B-local.sh)|[code](/examples/wanvideo/model_training/validate_full/Wan-Dancer-14B-local.py)|[code](/examples/wanvideo/model_training/lora/Wan-Dancer-14B-local.sh)|[code](/examples/wanvideo/model_training/validate_lora/Wan-Dancer-14B-local.py)|
-
-</details>
-
-#### LingBot-Video: [/docs/en/Model_Details/LingBot-Video.md](/docs/en/Model_Details/LingBot-Video.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [Robbyant/lingbot-video-dense-1.3b](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 6GB VRAM.
-
-```python
-import torch
-import json
-from diffsynth.utils.data import save_video, VideoData
-from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
-from modelscope import dataset_snapshot_download
-
-vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": torch.float8_e4m3fn,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e4m3fn,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-
-pipe = LingBotVideoPipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern="*.safetensors", **vram_config),
-        ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
-    ],
-    processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-
-dataset_snapshot_download(
-    dataset_id="DiffSynth-Studio/diffsynth_example_dataset",
-    local_dir="data/diffsynth_example_dataset",
-    allow_file_pattern="lingbot_video/lingbot-video-dense-1.3b_t2v/*",
-)
-with open("data/diffsynth_example_dataset/lingbot_video/lingbot-video-dense-1.3b_t2v/t2v_example_1.json", "r", encoding="utf-8") as f:
-    caption = json.load(f)
-
-video = pipe(
-    prompt=caption,
-    negative_prompt=pipe.default_negative_prompt,
-    height=480, width=832, num_frames=81,
-    num_inference_steps=40, cfg_scale=3.0,
-    seed=0,
-)
-save_video(video, "video.mp4", fps=15, quality=10)
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for LingBot-Video is available at: [/examples/lingbot_video/](/examples/lingbot_video/)
-
-| Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
-|-|-|-|-|-|-|-|
-|[Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2v.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2v.py)|[code](/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_t2v.sh)|[code](/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_t2v.py)|[code](/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_t2v.sh)|[code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_t2v.py)|
-|[Robbyant/lingbot-video-dense-1.3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py)|[code](/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_ti2v.sh)|[code](/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_ti2v.py)|[code](/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh)|[code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py)|
-|[Robbyant/lingbot-video-dense-1.3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py)|-|-|-|-|
-|[Robbyant/lingbot-video-moe-30b-a3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v.py)|[code](/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_t2v.sh)|[code](/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_t2v.py)|[code](/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_t2v.sh)|[code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_t2v.py)|
-|[Robbyant/lingbot-video-moe-30b-a3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v.py)|[code](/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_ti2v.sh)|[code](/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_ti2v.py)|[code](/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_ti2v.sh)|[code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_ti2v.py)|
-|[Robbyant/lingbot-video-moe-30b-a3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2i.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2i.py)|-|-|-|-|
-|[Robbyant/lingbot-video-moe-30b-a3b: T2V + Refinement](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v_refiner.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v_refiner.py)|-|-|-|-|
-|[Robbyant/lingbot-video-moe-30b-a3b: TI2V + Refinement](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v_refiner.py)|[code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v_refiner.py)|-|-|-|-|
-
-</details>
-
-#### MiniMax-H3: [/docs/en/Model_Details/MiniMax-H3.md](/docs/en/Model_Details/MiniMax-H3.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [DiffSynth-Studio/MiniMax-H3-NF4](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4) NF4-quantized model and perform text-to-video-audio inference. VRAM management is enabled, and the framework automatically controls the loading of model parameters based on available VRAM, requiring a minimum of 7GB VRAM.
-
-```python
-import torch
-from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
-from diffsynth.utils.data.audio_video import write_video_audio
-
-vram_config = {
-    "offload_dtype": torch.bfloat16,
-    "offload_device": "cpu",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-pipe = MiniMaxH3Pipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-nf4.safetensors", **vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-text-encoder-nf4.safetensors", **vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="video_vae_nf4.safetensors", **vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="audio_vae_nf4.safetensors", **vram_config),
-    ],
-    processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
-)
-
-# Text -> Video + Audio
-prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
-video, audio = pipe(
-    prompt=prompt,
-    height=480, width=832, num_frames=124, num_inference_steps=50, seed=0,
-)
-write_video_audio(
-    video=video, audio=audio,
-    output_path="t2va.mp4", fps=24, audio_sample_rate=32000,
-)
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for MiniMax-H3 is available at: [/examples/minimax_h3/](/examples/minimax_h3/)
-
-| Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
-|-|-|-|-|-|-|-|
-|[MiniMax/MiniMax-H3: FL2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA.py)|[code](/examples/minimax_h3/model_training/full/MiniMax-H3-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-FL2VA.py)|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FL2VA.py)|
-|[MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py)|[code](/examples/minimax_h3/model_training/full/MiniMax-H3-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Ref2VA.py)|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py)|
-|[MiniMax/MiniMax-H3: Retake](https://www.modelscope.cn/models/MiniMax/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Retake.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Retake.py)|-|-|-|-|
-|[DiffSynth-Studio/MiniMax-H3-NF4: FL2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-FL2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-FL2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-FL2VA.py)|
-|[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Ref2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Ref2VA.py)|
-|[Comfy-Org/MiniMax-H3: FL2VA pruned](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Pruned-FL2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Pruned-FL2VA.py)|[code](/examples/minimax_h3/model_training/full/MiniMax-H3-Pruned-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Pruned-FL2VA.py)|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Pruned-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Pruned-FL2VA.py)|
-|[Comfy-Org/MiniMax-H3: Ref2VA pruned](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Pruned-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Pruned-Ref2VA.py)|[code](/examples/minimax_h3/model_training/full/MiniMax-H3-Pruned-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Pruned-Ref2VA.py)|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Pruned-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Pruned-Ref2VA.py)|
-|[DiffSynth-Studio/MiniMax-H3-NF4: FL2VA pruned](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Pruned-FL2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Pruned-FL2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Pruned-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Pruned-FL2VA.py)|
-|[DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA pruned](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Pruned-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Pruned-Ref2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Pruned-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Pruned-Ref2VA.py)|
-|[Comfy-Org/MiniMax-H3: FL2VA int8_convrot](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Int8-ConvRot-FL2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Int8-ConvRot-FL2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Int8-ConvRot-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Int8-ConvRot-FL2VA.py)|
-|[Comfy-Org/MiniMax-H3: Ref2VA int8_convrot](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Int8-ConvRot-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Int8-ConvRot-Ref2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Int8-ConvRot-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Int8-ConvRot-Ref2VA.py)|
-|[Comfy-Org/MiniMax-H3: FL2VA pruned int8_convrot](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Int8-ConvRot-Pruned-FL2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Int8-ConvRot-Pruned-FL2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Int8-ConvRot-Pruned-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Int8-ConvRot-Pruned-FL2VA.py)|
-|[Comfy-Org/MiniMax-H3: Ref2VA pruned int8_convrot](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Int8-ConvRot-Pruned-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Int8-ConvRot-Pruned-Ref2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Int8-ConvRot-Pruned-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Int8-ConvRot-Pruned-Ref2VA.py)|
-|[Comfy-Org/MiniMax-H3: FL2VA pruned fp8](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-FP8-Pruned-FL2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FP8-Pruned-FL2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FP8-Pruned-FL2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FP8-Pruned-FL2VA.py)|
-|[Comfy-Org/MiniMax-H3: Ref2VA pruned fp8](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-FP8-Pruned-Ref2VA.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FP8-Pruned-Ref2VA.py)|-|-|[code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FP8-Pruned-Ref2VA.sh)|[code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FP8-Pruned-Ref2VA.py)|
-|[lightx2v/Minimax-h3-Turbo: FL2VA 4steps](https://www.modelscope.cn/models/lightx2v/Minimax-h3-Turbo)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA-Turbo.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA-Turbo.py)|-|-|-|-|
-|[DiffSynth-Studio/MiniMax-H3-Text-Embeddings](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Text-Embeddings)|[code](/examples/minimax_h3/model_inference/MiniMax-H3-Text-Embeddings.py)|[code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Text-Embeddings.py)|[code](/examples/minimax_h3/model_training/full/MiniMax-H3-Text-Embeddings.sh)|[code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Text-Embeddings.py)|-|-|
-
-</details>
-
-### Audio Synthesis
-
-#### ACE-Step: [/docs/en/Model_Details/ACE-Step.md](/docs/en/Model_Details/ACE-Step.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [ACE-Step/Ace-Step1.5](https://www.modelscope.cn/models/ACE-Step/Ace-Step1.5) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 3GB VRAM.
-
-```python
-from diffsynth.pipelines.ace_step import AceStepPipeline, ModelConfig
-from diffsynth.utils.data.audio import save_audio
-import torch
-
-
-vram_config = {
-    "offload_dtype": torch.bfloat16,
-    "offload_device": "cpu",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-
-
-pipe = AceStepPipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/model.safetensors", **vram_config),
-        ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="Qwen3-Embedding-0.6B/model.safetensors", **vram_config),
-        ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
-    ],
-    text_tokenizer_config=ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="Qwen3-Embedding-0.6B/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-
-prompt = "An explosive, high-energy pop-rock track with a strong anime theme song feel. The song kicks off with a catchy, synthesized brass fanfare over a driving rock beat with punchy drums and a solid bassline. A powerful, clear male vocal enters with a theatrical and energetic delivery, soaring through the verses and hitting powerful high notes in the chorus. The arrangement is dense and dynamic, featuring rhythmic electric guitar chords, brief instrumental breaks with synth flourishes, and a consistent, danceable groove throughout. The overall mood is triumphant, adventurous, and exhilarating."
-lyrics = '[Intro - Synth Brass Fanfare]\n\n[Verse 1]\n黑夜里的风吹过耳畔\n甜蜜时光转瞬即万\n脚步飘摇在星光上\n心追节奏心跳狂乱\n耳边传来电吉他呼唤\n手指轻触碰点流点燃\n梦在云端任它蔓延\n疯狂跳跃自由无间\n\n[Chorus]\n心电感应在震动间\n拥抱未来勇敢冒险\n那旋律在心中无限\n世界变得如此耀眼\n\n[Instrumental Break - Synth Brass Melody]\n\n[Verse 2]\n鼓点撞击黑夜的底端\n跳动节拍连接你我俩\n在这里让灵魂发光\n燃尽所有不留遗憾\n\n[Instrumental Break - Synth Brass Melody]\n\n[Bridge]\n光影交错彼此的视线\n霓虹之下夜空的蔚蓝\n月光洒下温热心田\n追逐梦想它不会遥远\n\n[Chorus]\n心电感应在震动间\n拥抱未来勇敢冒险\n那旋律在心中无限\n世界变得如此耀眼\n\n[Outro - Instrumental with Synth Brass Melody]\n[Song ends abruptly]'
-audio = pipe(
-    prompt=prompt,
-    lyrics=lyrics,
-    duration=160,
-    bpm=100,
-    keyscale="B minor",
-    timesignature="4",
-    vocal_language="zh",
-    seed=42,
-)
-
-save_audio(audio, pipe.vae.sampling_rate, "acestep-v15-turbo.wav")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for ACE-Step is available at: [/examples/ace_step/](/examples/ace_step/)
-
-| Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
-|-|-|-|-|-|-|-|
-|[ACE-Step/Ace-Step1.5](https://www.modelscope.cn/models/ACE-Step/Ace-Step1.5)|[code](/examples/ace_step/model_inference/Ace-Step1.5.py)|[code](/examples/ace_step/model_inference_low_vram/Ace-Step1.5.py)|[code](/examples/ace_step/model_training/full/Ace-Step1.5.sh)|[code](/examples/ace_step/model_training/validate_full/Ace-Step1.5.py)|[code](/examples/ace_step/model_training/lora/Ace-Step1.5.sh)|[code](/examples/ace_step/model_training/validate_lora/Ace-Step1.5.py)|
-|[ACE-Step/acestep-v15-turbo-shift1](https://www.modelscope.cn/models/ACE-Step/acestep-v15-turbo-shift1)|[code](/examples/ace_step/model_inference/acestep-v15-turbo-shift1.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-turbo-shift1.py)|[code](/examples/ace_step/model_training/full/acestep-v15-turbo-shift1.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-turbo-shift1.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-turbo-shift1.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-turbo-shift1.py)|
-|[ACE-Step/acestep-v15-turbo-shift3](https://www.modelscope.cn/models/ACE-Step/acestep-v15-turbo-shift3)|[code](/examples/ace_step/model_inference/acestep-v15-turbo-shift3.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-turbo-shift3.py)|[code](/examples/ace_step/model_training/full/acestep-v15-turbo-shift3.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-turbo-shift3.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-turbo-shift3.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-turbo-shift3.py)|
-|[ACE-Step/acestep-v15-turbo-continuous](https://www.modelscope.cn/models/ACE-Step/acestep-v15-turbo-continuous)|[code](/examples/ace_step/model_inference/acestep-v15-turbo-continuous.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-turbo-continuous.py)|[code](/examples/ace_step/model_training/full/acestep-v15-turbo-continuous.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-turbo-continuous.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-turbo-continuous.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-turbo-continuous.py)|
-|[ACE-Step/acestep-v15-base](https://www.modelscope.cn/models/ACE-Step/acestep-v15-base)|[code](/examples/ace_step/model_inference/acestep-v15-base.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-base.py)|[code](/examples/ace_step/model_training/full/acestep-v15-base.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-base.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-base.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-base.py)|
-|[ACE-Step/acestep-v15-base: CoverTask](https://www.modelscope.cn/models/ACE-Step/acestep-v15-base)|[code](/examples/ace_step/model_inference/acestep-v15-base-CoverTask.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-base-CoverTask.py)|—|—|—|—|
-|[ACE-Step/acestep-v15-base: RepaintTask](https://www.modelscope.cn/models/ACE-Step/acestep-v15-base)|[code](/examples/ace_step/model_inference/acestep-v15-base-RepaintTask.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-base-RepaintTask.py)|—|—|—|—|
-|[ACE-Step/acestep-v15-sft](https://www.modelscope.cn/models/ACE-Step/acestep-v15-sft)|[code](/examples/ace_step/model_inference/acestep-v15-sft.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-sft.py)|[code](/examples/ace_step/model_training/full/acestep-v15-sft.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-sft.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-sft.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-sft.py)|
-|[ACE-Step/acestep-v15-xl-base](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-base)|[code](/examples/ace_step/model_inference/acestep-v15-xl-base.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-base.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-base.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-base.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-base.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-base.py)|
-|[ACE-Step/acestep-v15-xl-sft](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-sft)|[code](/examples/ace_step/model_inference/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-sft.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-sft.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-sft.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-sft.py)|
-|[ACE-Step/acestep-v15-xl-turbo](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-turbo)|[code](/examples/ace_step/model_inference/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_training/full/acestep-v15-xl-turbo.sh)|[code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-turbo.py)|[code](/examples/ace_step/model_training/lora/acestep-v15-xl-turbo.sh)|[code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-turbo.py)|
-|[DiffSynth-Studio/acestep15xlsft-lora-music](https://www.modelscope.cn/models/DiffSynth-Studio/acestep15xlsft-lora-music)|[code](/examples/ace_step/model_inference/acestep15xlsft-vocals2music.py)|[code](/examples/ace_step/model_inference_low_vram/acestep15xlsft-vocals2music.py)|[code](/examples/ace_step/model_training/full/acestep15xlsft-vocals2music.sh)|[code](/examples/ace_step/model_training/validate_full/acestep15xlsft-vocals2music.py)|-|-|
-
-</details>
-
-#### MiniMax-Music3: [/docs/en/Model_Details/MiniMax-Music3.md](/docs/en/Model_Details/MiniMax-Music3.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Running the following code will quickly load the [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) model and perform inference. VRAM management is enabled, and the framework will automatically control the loading of model parameters based on available VRAM. The model can run with a minimum of 6GB VRAM.
-
-```python
-from diffsynth.pipelines.minimax_music3 import MiniMaxMusic3Pipeline, ModelConfig
-from diffsynth.utils.data.audio import save_audio
-import torch
-
-vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-
-pipe = MiniMaxMusic3Pipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="language_model/model*.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="rvq_depth_decoder/diffusion_pytorch_model.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="condition_encoder/diffusion_pytorch_model.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="vocoder/diffusion_pytorch_model.safetensors", **vram_config),
-    ],
-    tokenizer_config=ModelConfig(model_id="MiniMax/MiniMax-Music3", origin_file_pattern="tokenizer/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
-)
-
-lyrics = (
-    "[verse]\n"
-    "Morning light filtering through the pine\n"
-    "Every quiet street is yours and mine\n"
-    "[chorus]\n"
-    "Softly the world begins to breathe"
-)
-prompt = (
-    "Genre: acoustic pop. BPM: 96. Key: C major. Warm and intimate, building gently into the chorus. "
-    "Vocals: soft female lead, close and breathy, light stacked harmonies in the chorus. "
-    "Arrangement: fingerpicked guitar and soft piano; brushed drums and upright bass enter in the chorus."
-)
-audio = pipe(prompt=prompt, lyrics=lyrics, max_audio_duration=60.0, num_inference_steps=30, cfg_scale=1.7, seed=7)
-save_audio(audio, 44100, "MiniMax-Music3.wav")
-```
-
-</details>
-
-<details>
-
-<summary>Examples</summary>
-
-Example code for MiniMax-Music3 is available at: [/examples/minimax_music3/](/examples/minimax_music3/)
-
-| Model ID | Inference | Low VRAM Inference | Full Training | Full Training Validation | LoRA Training | LoRA Training Validation |
-|-|-|-|-|-|-|-|
-|[MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3)|[code](/examples/minimax_music3/model_inference/MiniMax-Music3.py)|[code](/examples/minimax_music3/model_inference_low_vram/MiniMax-Music3.py)|—|—|—|—|
-
-</details>
-
-### Image Quality Metrics Models
-
-[/docs/en/Model_Details/Image-Quality-Metrics.md](/docs/en/Model_Details/Image-Quality-Metrics.md)
-
-<details>
-
-<summary>Quick Start</summary>
-
-Run the following code to quickly load PickScore and evaluate an image against a text prompt. The default model will be downloaded from ModelScope to `./models`.
-
-```python
-from diffsynth.metrics import PickScoreMetric, ModelConfig
-from modelscope import dataset_snapshot_download
-from PIL import Image
-
-dataset_snapshot_download(
-    "DiffSynth-Studio/diffsynth_example_dataset",
-    allow_file_pattern="flux/FLUX.1-dev/*",
-    local_dir="./data/diffsynth_example_dataset",
-)
-image = Image.open("data/diffsynth_example_dataset/flux/FLUX.1-dev/1.jpg").convert("RGB")
-prompt = "a dog"
-metric = PickScoreMetric.from_pretrained(
-    model_config=ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="PickScore/model.safetensors"),
-    device="cuda"
-)
-score = metric.compute(prompt, image)[0]
-print(f"PickScore score:: {score:.3f}")
-```
-
-</details>
-
-<details>
-
-<summary>Example Code</summary>
-
-Example code for image quality metrics models can be found at: [/examples/image_quality_metric/](/examples/image_quality_metric/)
-
-| Metric | GitHub Repository | Example Code |
-| - | - | - |
-| PickScore | [GitHub](https://github.com/yuvalkirstain/pickscore) | [code](./examples/image_quality_metric/pickscore.py) |
-| ImageReward | [GitHub](https://github.com/zai-org/ImageReward) | [code](./examples/image_quality_metric/image_reward.py) |
-| HPSv2 | [GitHub](https://github.com/tgxs002/HPSv2) | [code](./examples/image_quality_metric/hpsv2.py) |
-| HPSv3 | [GitHub](https://github.com/MizzenAI/HPSv3) | [code](./examples/image_quality_metric/hpsv3.py) |
-| CLIP Score | [GitHub](https://github.com/openai/CLIP) | [code](./examples/image_quality_metric/clipscore.py) |
-| Aesthetic | [GitHub](https://github.com/christophschuhmann/improved-aesthetic-predictor) | [code](./examples/image_quality_metric/aesthetic.py) |
-| FID | [GitHub](https://github.com/mseitzer/pytorch-fid) | [code](./examples/image_quality_metric/fid.py) |
-
-</details>
+| MiniMax-H3 | [MiniMax/MiniMax-H3: FL2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FL2VA.py) |
+| MiniMax-H3 | [DiffSynth-Studio/MiniMax-H3-NF4: FL2VA pruned](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Pruned-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Pruned-FL2VA.py) | - | - | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Pruned-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Pruned-FL2VA.py) |
+| ACE-Step | [ACE-Step/acestep-v15-xl-sft](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-sft) | [code](/examples/ace_step/model_inference/acestep-v15-xl-sft.py) | [code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-sft.py) | [code](/examples/ace_step/model_training/full/acestep-v15-xl-sft.sh) | [code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-sft.py) | [code](/examples/ace_step/model_training/lora/acestep-v15-xl-sft.sh) | [code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-sft.py) |
+| Z-Image | [Tongyi-MAI/Z-Image-Turbo](https://www.modelscope.cn/models/Tongyi-MAI/Z-Image-Turbo) | [code](/examples/z_image/model_inference/Z-Image-Turbo.py) | [code](/examples/z_image/model_inference_low_vram/Z-Image-Turbo.py) | [code](/examples/z_image/model_training/full/Z-Image-Turbo.sh) | [code](/examples/z_image/model_training/validate_full/Z-Image-Turbo.py) | [code](/examples/z_image/model_training/lora/Z-Image-Turbo.sh) | [code](/examples/z_image/model_training/validate_lora/Z-Image-Turbo.py) |
+| Krea-2 | [krea/Krea-2-Raw](https://www.modelscope.cn/models/krea/Krea-2-Raw) | [code](/examples/krea2/model_inference/Krea-2-Raw.py) | [code](/examples/krea2/model_inference_low_vram/Krea-2-Raw.py) | [code](/examples/krea2/model_training/full/Krea-2-Raw.sh) | [code](/examples/krea2/model_training/validate_full/Krea-2-Raw.py) | [code](/examples/krea2/model_training/lora/Krea-2-Raw.sh) | [code](/examples/krea2/model_training/validate_lora/Krea-2-Raw.py) |
+| Krea-2 | [krea/Krea-2-Turbo](https://www.modelscope.cn/models/krea/Krea-2-Turbo) | [code](/examples/krea2/model_inference/Krea-2-Turbo.py) | [code](/examples/krea2/model_inference_low_vram/Krea-2-Turbo.py) | [code](/examples/krea2/model_training/full/Krea-2-Turbo.sh) | [code](/examples/krea2/model_training/validate_full/Krea-2-Turbo.py) | [code](/examples/krea2/model_training/lora/Krea-2-Turbo.sh) | [code](/examples/krea2/model_training/validate_lora/Krea-2-Turbo.py) |
+
+Model overview:
+
+- Image generation
+    - Boogu-Image: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Boogu-Image.html), [Example code](/examples/boogu_image/)
+    - Krea-2: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Krea-2.html), [Example code](/examples/krea2/)
+    - Ideogram 4: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Ideogram-4.html), [Example code](/examples/ideogram4/)
+    - HiDream-O1-Image: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/HiDream-O1-Image.html), [Example code](/examples/hidream_o1_image/)
+    - JoyAI-Image: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/JoyAI-Image.html), [Example code](/examples/joyai_image/)
+    - ERNIE-Image: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/ERNIE-Image.html), [Example code](/examples/ernie_image/)
+    - FLUX.2: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/FLUX2.html), [Example code](/examples/flux2/)
+    - Z-Image: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Z-Image.html), [Example code](/examples/z_image/)
+    - Anima: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Anima.html), [Example code](/examples/anima/)
+    - Qwen-Image: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Qwen-Image.html), [Example code](/examples/qwen_image/)
+    - FLUX.1: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/FLUX.html), [Example code](/examples/flux/)
+    - Stable Diffusion XL: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Stable-Diffusion-XL.html), [Example code](/examples/stable_diffusion_xl/)
+    - Stable Diffusion: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Stable-Diffusion.html), [Example code](/examples/stable_diffusion/)
+- Video generation
+    - MiniMax-H3: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/MiniMax-H3.html), [Example code](/examples/minimax_h3/)
+    - LingBot-Video: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/LingBot-Video.html), [Example code](/examples/lingbot_video/)
+    - LTX-2: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/LTX-2.html), [Example code](/examples/ltx2/)
+    - Wan: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Wan.html), [Example code](/examples/wanvideo/)
+- Audio generation
+    - MiniMax-Music3: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/MiniMax-Music3.html), [Example code](/examples/minimax_music3/)
+    - ACE-Step: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/ACE-Step.html), [Example code](/examples/ace_step/)
+- Evaluation models: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Image-Quality-Metrics.html), [Example code](/examples/image_quality_metric/)
+
+[View all supported models](#all-supported-models)
 
 ## Innovative Achievements
 
-DiffSynth-Studio is not just an engineered model framework, but also an incubator for innovative achievements.
+We believe that a well-developed open-source code framework can lower the threshold for technical exploration. We have achieved many interesting technologies based on this codebase. Perhaps you also have many wild ideas, and with DiffSynth-Studio, you can quickly realize these ideas.
+
+<details>
+
+<summary>TreeAdapter: A Model System Built from Structured LoRAs</summary>
+
+> A model system composed of 10,000+ LoRAs challenges the precise generation of tens of thousands of rare species.
+
+* Paper: [TreeAdapter: Hierarchical Taxonomy-Guided Adapter Composition for Fine-Grained Species Image Generation](https://arxiv.org/abs/2607.24215)
+* Model: [ModelScope](https://modelscope.cn/models/DiffSynth-Studio/TreeAdapter-KleinBase4B)
+
+![](https://modelscope.cn/models/DiffSynth-Studio/TreeAdapter-KleinBase4B/resolve/master/example/1.png)
+
+</details>
+
+
+<details>
+
+<summary>Image-to-LoRA: Compressing Model Training into Model Inference</summary>
+
+> True Meta Learning: feed a dataset of images into one end of the model, and the trained LoRA model comes out the other end.
+
+* Paper: [Compressing Image Style Training into a Single Model Forward](https://arxiv.org/abs/2606.13809)
+* Model:
+    * [DiffSynth-Studio/ZImage-i2L-v2](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2): Adapted for the Z-Image model
+    * [DiffSynth-Studio/KleinBase4B-i2L-v2](https://modelscope.cn/models/DiffSynth-Studio/KleinBase4B-i2L-v2): Adapted for the FLUX.2-klein-base-4B model
+    * [DiffSynth-Studio/HidreamO1-i2L-v2](https://modelscope.cn/models/DiffSynth-Studio/HidreamO1-i2L-v2): Adapted for the Hidream-O1-Image model
+
+|Input example 1|Output example 1|Input example 2|Output example 2|
+|-|-|-|-|
+|![](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2/resolve/master/assets/6_input.jpg)|![](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2/resolve/master/assets/6_output.jpg)|![](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2/resolve/master/assets/1_input.jpg)|![](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2/resolve/master/assets/1_output.jpg)|
+
+</details>
+
+
+<details>
+
+<summary>Diffusion-Templates: A Plugin-Based Controllable Generation Framework</summary>
+
+> One framework that turns every controllable generation capability into a plugin, allowing multiple models to combine and emerge with rich generation capabilities.
+
+* Paper: [Diffusion Templates: A Unified Plugin Framework for Controllable Diffusion](https://arxiv.org/abs/2604.24351)
+* Project homepage: [GitHub](https://modelscope.github.io/diffusion-templates-web/)
+* Documentation: [English Version](https://diffsynth-studio-doc.readthedocs.io/en/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html) | [Chinese Version](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Diffusion_Templates/Introducing_Diffusion_Templates.html)
+* Online demo: [ModelScope](https://modelscope.cn/studios/DiffSynth-Studio/Diffusion-Templates)
+* Model collections: [ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/KleinBase4B-Templates) | [ModelScope International](https://modelscope.ai/collections/DiffSynth-Studio/KleinBase4B-Templates) | [HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/kleinbase4b-templates)
+* Datasets: [ModelScope](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2) | [ModelScope International](https://modelscope.cn/collections/DiffSynth-Studio/ImagePulseV2) | [HuggingFace](https://huggingface.co/collections/DiffSynth-Studio/imagepulsev2)
+
+|Reference image|Local editing|Style transfer|Sharpness enhancement|
+|-|-|-|-|
+|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_reference.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Brightness_Edit_Inpaint.png)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Controlnet_Edit_SoftRGB.png)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Upscaler_Sharpness.png)|
+
+</details>
+
+
 
 <details>
 
 <summary>Spectral Evolution Search: Efficient Inference-Time Scaling for Reward-Aligned Image Generation</summary>
+
+> Trade inference time for higher quality of generated content.
 
 - Paper: [Spectral Evolution Search: Efficient Inference-Time Scaling for Reward-Aligned Image Generation
 ](https://arxiv.org/abs/2602.03208)
@@ -1835,6 +407,8 @@ DiffSynth-Studio is not just an engineered model framework, but also an incubato
 <details>
 
 <summary>VIRAL: Visual In-Context Reasoning via Analogy in Diffusion Transformers</summary>
+
+> Transform image 3 into image 4 based on the change from image 1 to image 2 — the emergent capability of image editing models.
 
 - Paper: [VIRAL: Visual In-Context Reasoning via Analogy in Diffusion Transformers
 ](https://arxiv.org/abs/2602.03210)
@@ -1852,6 +426,8 @@ DiffSynth-Studio is not just an engineered model framework, but also an incubato
 
 <summary>AttriCtrl: Attribute Intensity Control for Image Generation Models</summary>
 
+> Numerical attributes can also precisely control image generation models.
+
 - Paper: [AttriCtrl: Fine-Grained Control of Aesthetic Attribute Intensity in Diffusion Models](https://arxiv.org/abs/2508.02151)
 - Sample Code: [/examples/flux/model_inference/FLUX.1-dev-AttriCtrl.py](/examples/flux/model_inference/FLUX.1-dev-AttriCtrl.py)
 - Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/AttriCtrl-FLUX.1-Dev)
@@ -1866,6 +442,8 @@ DiffSynth-Studio is not just an engineered model framework, but also an incubato
 <details>
 
 <summary>AutoLoRA: Automated LoRA Retrieval and Fusion</summary>
+
+> LoRA is a product that unifies needs and solutions — how can we make better use of these LoRAs?
 
 - Paper: [AutoLoRA: Automatic LoRA Retrieval and Fine-Grained Gated Fusion for Text-to-Image Generation](https://arxiv.org/abs/2508.02107)
 - Sample Code: [/examples/flux/model_inference/FLUX.1-dev-LoRA-Fusion.py](/examples/flux/model_inference/FLUX.1-dev-LoRA-Fusion.py)
@@ -1885,6 +463,8 @@ DiffSynth-Studio is not just an engineered model framework, but also an incubato
 
 <summary>Nexus-Gen: Unified Architecture for Image Understanding, Generation, and Editing</summary>
 
+> What happens when a single model combines image understanding, generation, and editing capabilities?
+
 - Detailed Page: https://github.com/modelscope/Nexus-Gen
 - Paper: [Nexus-Gen: Unified Image Understanding, Generation, and Editing via Prefilled Autoregression in Shared Embedding Space](https://arxiv.org/pdf/2504.21356)
 - Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/Nexus-GenV2), [HuggingFace](https://huggingface.co/modelscope/Nexus-GenV2)
@@ -1899,6 +479,8 @@ DiffSynth-Studio is not just an engineered model framework, but also an incubato
 <details>
 
 <summary>ArtAug: Aesthetic Enhancement for Image Generation Models</summary>
+
+> A single LoRA that significantly enhances detail and aesthetics.
 
 - Detailed Page: [./examples/ArtAug/](./examples/ArtAug/)
 - Paper: [ArtAug: Enhancing Text-to-Image Generation through Synthesis-Understanding Interaction](https://arxiv.org/abs/2412.12888)
@@ -1915,6 +497,8 @@ DiffSynth-Studio is not just an engineered model framework, but also an incubato
 <details>
 
 <summary>EliGen: Precise Image Partition Control</summary>
+
+> How can region-based layers control the position of content in an image?
 
 - Paper: [EliGen: Entity-Level Controlled Image Generation with Regional Attention](https://arxiv.org/abs/2501.01097)
 - Sample Code: [/examples/flux/model_inference/FLUX.1-dev-EliGen.py](/examples/flux/model_inference/FLUX.1-dev-EliGen.py)
@@ -1933,6 +517,8 @@ DiffSynth-Studio is not just an engineered model framework, but also an incubato
 
 <summary>ExVideo: Extended Training for Video Generation Models</summary>
 
+> If a video generation model can only generate 25 frames, how can we make it generate longer videos?
+
 - Project Page: [Project Page](https://ecnu-cilab.github.io/ExVideoProjectPage/)
 - Paper: [ExVideo: Extending Video Diffusion Models via Parameter-Efficient Post-Tuning](https://arxiv.org/abs/2406.14130)
 - Sample Code: Please refer to the [older version](https://github.com/modelscope/DiffSynth-Studio/tree/afd101f3452c9ecae0c87b79adfa2e22d65ffdc3/examples/ExVideo)
@@ -1946,6 +532,8 @@ https://github.com/modelscope/DiffSynth-Studio/assets/35051019/d97f6aa9-8064-4b5
 <details>
 
 <summary>Diffutoon: High-Resolution Anime-Style Video Rendering</summary>
+
+> I don't care what you say, I just love anime!
 
 - Project Page: [Project Page](https://ecnu-cilab.github.io/DiffutoonProjectPage/)
 - Paper: [Diffutoon: High-Resolution Editable Toon Shading via Diffusion Models](https://arxiv.org/abs/2401.16224)
@@ -1962,6 +550,8 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/b54c05c5-d747-47
 
 <summary>DiffSynth: The Original Version of This Project</summary>
 
+> In the era before video generation models, how could image generation models be used to process videos?
+
 - Project Page: [Project Page](https://ecnu-cilab.github.io/DiffSynth.github.io/)
 - Paper: [DiffSynth: Latent In-Iteration Deflickering for Realistic Video Synthesis](https://arxiv.org/abs/2308.03463)
 - Sample Code: Please refer to the [older version](https://github.com/modelscope/DiffSynth-Studio/tree/afd101f3452c9ecae0c87b79adfa2e22d65ffdc3/examples/diffsynth)
@@ -1975,3 +565,186 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 |Discord：https://discord.gg/Mm9suEeUDc|
 |-|
 |<img width="160" height="160" alt="Image" src="https://github.com/user-attachments/assets/29bdc97b-e35d-4fea-88d6-32e35182e458" />|
+
+
+## All Supported Models
+
+| Architecture | Model ID | Inference | Low VRAM Inference | Full Training | Validation After Full Training | LoRA Training | Validation After LoRA Training |
+|-|-|-|-|-|-|-|-|
+| MiniMax-Music3 | [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) | [code](/examples/minimax_music3/model_inference/MiniMax-Music3.py) | [code](/examples/minimax_music3/model_inference_low_vram/MiniMax-Music3.py) | — | — | — | — |
+| MiniMax-H3 | [MiniMax/MiniMax-H3: FL2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FL2VA.py) |
+| MiniMax-H3 | [MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Ref2VA.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py) |
+| MiniMax-H3 | [MiniMax/MiniMax-H3: Retake](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Retake.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Retake.py) | - | - | - | - |
+| MiniMax-H3 | [DiffSynth-Studio/MiniMax-H3-NF4: FL2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-FL2VA.py) | - | - | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-FL2VA.py) |
+| MiniMax-H3 | [DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Ref2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Ref2VA.py) | - | - | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Ref2VA.py) |
+| MiniMax-H3 | [Comfy-Org/MiniMax-H3: FL2VA pruned](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Pruned-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Pruned-FL2VA.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-Pruned-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Pruned-FL2VA.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Pruned-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Pruned-FL2VA.py) |
+| MiniMax-H3 | [Comfy-Org/MiniMax-H3: Ref2VA pruned](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Pruned-Ref2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Pruned-Ref2VA.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-Pruned-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Pruned-Ref2VA.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Pruned-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Pruned-Ref2VA.py) |
+| MiniMax-H3 | [DiffSynth-Studio/MiniMax-H3-NF4: FL2VA pruned](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Pruned-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Pruned-FL2VA.py) | - | - | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Pruned-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Pruned-FL2VA.py) |
+| MiniMax-H3 | [DiffSynth-Studio/MiniMax-H3-NF4: Ref2VA pruned](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Pruned-Ref2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Pruned-Ref2VA.py) | - | - | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Pruned-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Pruned-Ref2VA.py) |
+| MiniMax-H3 | [Comfy-Org/MiniMax-H3: FL2VA int8_convrot](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Int8-ConvRot-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Int8-ConvRot-FL2VA.py) | - | - | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Int8-ConvRot-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Int8-ConvRot-FL2VA.py) |
+| MiniMax-H3 | [Comfy-Org/MiniMax-H3: Ref2VA int8_convrot](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Int8-ConvRot-Ref2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Int8-ConvRot-Ref2VA.py) | - | - | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Int8-ConvRot-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Int8-ConvRot-Ref2VA.py) |
+| MiniMax-H3 | [Comfy-Org/MiniMax-H3: FL2VA pruned int8_convrot](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Int8-ConvRot-Pruned-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Int8-ConvRot-Pruned-FL2VA.py) | - | - | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Int8-ConvRot-Pruned-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Int8-ConvRot-Pruned-FL2VA.py) |
+| MiniMax-H3 | [Comfy-Org/MiniMax-H3: Ref2VA pruned int8_convrot](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Int8-ConvRot-Pruned-Ref2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Int8-ConvRot-Pruned-Ref2VA.py) | - | - | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Int8-ConvRot-Pruned-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Int8-ConvRot-Pruned-Ref2VA.py) |
+| MiniMax-H3 | [Comfy-Org/MiniMax-H3: FL2VA pruned fp8](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-FP8-Pruned-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FP8-Pruned-FL2VA.py) | - | - | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FP8-Pruned-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FP8-Pruned-FL2VA.py) |
+| MiniMax-H3 | [Comfy-Org/MiniMax-H3: Ref2VA pruned fp8](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-FP8-Pruned-Ref2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FP8-Pruned-Ref2VA.py) | - | - | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FP8-Pruned-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FP8-Pruned-Ref2VA.py) |
+| MiniMax-H3 | [lightx2v/Minimax-h3-Turbo: FL2VA 4steps](https://www.modelscope.cn/models/lightx2v/Minimax-h3-Turbo) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA-Turbo.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA-Turbo.py) | - | - | - | - |
+| MiniMax-H3 | [DiffSynth-Studio/MiniMax-H3-Text-Embeddings](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Text-Embeddings) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Text-Embeddings.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Text-Embeddings.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-Text-Embeddings.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Text-Embeddings.py) | - | - |
+| LingBot-Video | [Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) | [code](/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2v.py) | [code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2v.py) | [code](/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_t2v.sh) | [code](/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_t2v.py) | [code](/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_t2v.sh) | [code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_t2v.py) |
+| LingBot-Video | [Robbyant/lingbot-video-dense-1.3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) | [code](/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py) | [code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py) | [code](/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_ti2v.sh) | [code](/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_ti2v.py) | [code](/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh) | [code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py) |
+| LingBot-Video | [Robbyant/lingbot-video-dense-1.3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) | [code](/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py) | [code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py) | - | - | - | - |
+| LingBot-Video | [Robbyant/lingbot-video-moe-30b-a3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b) | [code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v.py) | [code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v.py) | [code](/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_t2v.sh) | [code](/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_t2v.py) | [code](/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_t2v.sh) | [code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_t2v.py) |
+| LingBot-Video | [Robbyant/lingbot-video-moe-30b-a3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b) | [code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v.py) | [code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v.py) | [code](/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_ti2v.sh) | [code](/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_ti2v.py) | [code](/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_ti2v.sh) | [code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_ti2v.py) |
+| LingBot-Video | [Robbyant/lingbot-video-moe-30b-a3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b) | [code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2i.py) | [code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2i.py) | - | - | - | - |
+| LingBot-Video | [Robbyant/lingbot-video-moe-30b-a3b: T2V + Refinement](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b) | [code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v_refiner.py) | [code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v_refiner.py) | - | - | - | - |
+| LingBot-Video | [Robbyant/lingbot-video-moe-30b-a3b: TI2V + Refinement](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b) | [code](/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v_refiner.py) | [code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v_refiner.py) | - | - | - | - |
+| ACE-Step | [ACE-Step/Ace-Step1.5](https://www.modelscope.cn/models/ACE-Step/Ace-Step1.5) | [code](/examples/ace_step/model_inference/Ace-Step1.5.py) | [code](/examples/ace_step/model_inference_low_vram/Ace-Step1.5.py) | [code](/examples/ace_step/model_training/full/Ace-Step1.5.sh) | [code](/examples/ace_step/model_training/validate_full/Ace-Step1.5.py) | [code](/examples/ace_step/model_training/lora/Ace-Step1.5.sh) | [code](/examples/ace_step/model_training/validate_lora/Ace-Step1.5.py) |
+| ACE-Step | [ACE-Step/acestep-v15-turbo-shift1](https://www.modelscope.cn/models/ACE-Step/acestep-v15-turbo-shift1) | [code](/examples/ace_step/model_inference/acestep-v15-turbo-shift1.py) | [code](/examples/ace_step/model_inference_low_vram/acestep-v15-turbo-shift1.py) | [code](/examples/ace_step/model_training/full/acestep-v15-turbo-shift1.sh) | [code](/examples/ace_step/model_training/validate_full/acestep-v15-turbo-shift1.py) | [code](/examples/ace_step/model_training/lora/acestep-v15-turbo-shift1.sh) | [code](/examples/ace_step/model_training/validate_lora/acestep-v15-turbo-shift1.py) |
+| ACE-Step | [ACE-Step/acestep-v15-turbo-shift3](https://www.modelscope.cn/models/ACE-Step/acestep-v15-turbo-shift3) | [code](/examples/ace_step/model_inference/acestep-v15-turbo-shift3.py) | [code](/examples/ace_step/model_inference_low_vram/acestep-v15-turbo-shift3.py) | [code](/examples/ace_step/model_training/full/acestep-v15-turbo-shift3.sh) | [code](/examples/ace_step/model_training/validate_full/acestep-v15-turbo-shift3.py) | [code](/examples/ace_step/model_training/lora/acestep-v15-turbo-shift3.sh) | [code](/examples/ace_step/model_training/validate_lora/acestep-v15-turbo-shift3.py) |
+| ACE-Step | [ACE-Step/acestep-v15-turbo-continuous](https://www.modelscope.cn/models/ACE-Step/acestep-v15-turbo-continuous) | [code](/examples/ace_step/model_inference/acestep-v15-turbo-continuous.py) | [code](/examples/ace_step/model_inference_low_vram/acestep-v15-turbo-continuous.py) | [code](/examples/ace_step/model_training/full/acestep-v15-turbo-continuous.sh) | [code](/examples/ace_step/model_training/validate_full/acestep-v15-turbo-continuous.py) | [code](/examples/ace_step/model_training/lora/acestep-v15-turbo-continuous.sh) | [code](/examples/ace_step/model_training/validate_lora/acestep-v15-turbo-continuous.py) |
+| ACE-Step | [ACE-Step/acestep-v15-base](https://www.modelscope.cn/models/ACE-Step/acestep-v15-base) | [code](/examples/ace_step/model_inference/acestep-v15-base.py) | [code](/examples/ace_step/model_inference_low_vram/acestep-v15-base.py) | [code](/examples/ace_step/model_training/full/acestep-v15-base.sh) | [code](/examples/ace_step/model_training/validate_full/acestep-v15-base.py) | [code](/examples/ace_step/model_training/lora/acestep-v15-base.sh) | [code](/examples/ace_step/model_training/validate_lora/acestep-v15-base.py) |
+| ACE-Step | [ACE-Step/acestep-v15-base: CoverTask](https://www.modelscope.cn/models/ACE-Step/acestep-v15-base) | [code](/examples/ace_step/model_inference/acestep-v15-base-CoverTask.py) | [code](/examples/ace_step/model_inference_low_vram/acestep-v15-base-CoverTask.py) | — | — | — | — |
+| ACE-Step | [ACE-Step/acestep-v15-base: RepaintTask](https://www.modelscope.cn/models/ACE-Step/acestep-v15-base) | [code](/examples/ace_step/model_inference/acestep-v15-base-RepaintTask.py) | [code](/examples/ace_step/model_inference_low_vram/acestep-v15-base-RepaintTask.py) | — | — | — | — |
+| ACE-Step | [ACE-Step/acestep-v15-sft](https://www.modelscope.cn/models/ACE-Step/acestep-v15-sft) | [code](/examples/ace_step/model_inference/acestep-v15-sft.py) | [code](/examples/ace_step/model_inference_low_vram/acestep-v15-sft.py) | [code](/examples/ace_step/model_training/full/acestep-v15-sft.sh) | [code](/examples/ace_step/model_training/validate_full/acestep-v15-sft.py) | [code](/examples/ace_step/model_training/lora/acestep-v15-sft.sh) | [code](/examples/ace_step/model_training/validate_lora/acestep-v15-sft.py) |
+| ACE-Step | [ACE-Step/acestep-v15-xl-base](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-base) | [code](/examples/ace_step/model_inference/acestep-v15-xl-base.py) | [code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-base.py) | [code](/examples/ace_step/model_training/full/acestep-v15-xl-base.sh) | [code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-base.py) | [code](/examples/ace_step/model_training/lora/acestep-v15-xl-base.sh) | [code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-base.py) |
+| ACE-Step | [ACE-Step/acestep-v15-xl-sft](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-sft) | [code](/examples/ace_step/model_inference/acestep-v15-xl-sft.py) | [code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-sft.py) | [code](/examples/ace_step/model_training/full/acestep-v15-xl-sft.sh) | [code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-sft.py) | [code](/examples/ace_step/model_training/lora/acestep-v15-xl-sft.sh) | [code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-sft.py) |
+| ACE-Step | [ACE-Step/acestep-v15-xl-turbo](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-turbo) | [code](/examples/ace_step/model_inference/acestep-v15-xl-turbo.py) | [code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-turbo.py) | [code](/examples/ace_step/model_training/full/acestep-v15-xl-turbo.sh) | [code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-turbo.py) | [code](/examples/ace_step/model_training/lora/acestep-v15-xl-turbo.sh) | [code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-turbo.py) |
+| ACE-Step | [DiffSynth-Studio/acestep15xlsft-lora-music](https://www.modelscope.cn/models/DiffSynth-Studio/acestep15xlsft-lora-music) | [code](/examples/ace_step/model_inference/acestep15xlsft-vocals2music.py) | [code](/examples/ace_step/model_inference_low_vram/acestep15xlsft-vocals2music.py) | [code](/examples/ace_step/model_training/full/acestep15xlsft-vocals2music.sh) | [code](/examples/ace_step/model_training/validate_full/acestep15xlsft-vocals2music.py) | - | - |
+| Boogu-Image | [Boogu/Boogu-Image-0.1-Base](https://modelscope.cn/models/Boogu/Boogu-Image-0.1-Base) | [code](/examples/boogu_image/model_inference/Boogu-Image-0.1-Base.py) | [code](/examples/boogu_image/model_inference_low_vram/Boogu-Image-0.1-Base.py) | [code](/examples/boogu_image/model_training/full/Boogu-Image-0.1-Base.sh) | [code](/examples/boogu_image/model_training/validate_full/Boogu-Image-0.1-Base.py) | [code](/examples/boogu_image/model_training/lora/Boogu-Image-0.1-Base.sh) | [code](/examples/boogu_image/model_training/validate_lora/Boogu-Image-0.1-Base.py) |
+| Boogu-Image | [Boogu/Boogu-Image-0.1-Turbo](https://modelscope.cn/models/Boogu/Boogu-Image-0.1-Turbo) | [code](/examples/boogu_image/model_inference/Boogu-Image-0.1-Turbo.py) | [code](/examples/boogu_image/model_inference_low_vram/Boogu-Image-0.1-Turbo.py) | [code](/examples/boogu_image/model_training/full/Boogu-Image-0.1-Turbo.sh) | [code](/examples/boogu_image/model_training/validate_full/Boogu-Image-0.1-Turbo.py) | [code](/examples/boogu_image/model_training/lora/Boogu-Image-0.1-Turbo.sh) | [code](/examples/boogu_image/model_training/validate_lora/Boogu-Image-0.1-Turbo.py) |
+| Boogu-Image | [Boogu/Boogu-Image-0.1-Edit](https://modelscope.cn/models/Boogu/Boogu-Image-0.1-Edit) | [code](/examples/boogu_image/model_inference/Boogu-Image-0.1-Edit.py) | [code](/examples/boogu_image/model_inference_low_vram/Boogu-Image-0.1-Edit.py) | [code](/examples/boogu_image/model_training/full/Boogu-Image-0.1-Edit.sh) | [code](/examples/boogu_image/model_training/validate_full/Boogu-Image-0.1-Edit.py) | [code](/examples/boogu_image/model_training/lora/Boogu-Image-0.1-Edit.sh) | [code](/examples/boogu_image/model_training/validate_lora/Boogu-Image-0.1-Edit.py) |
+| Krea-2 | [krea/Krea-2-Raw](https://www.modelscope.cn/models/krea/Krea-2-Raw) | [code](/examples/krea2/model_inference/Krea-2-Raw.py) | [code](/examples/krea2/model_inference_low_vram/Krea-2-Raw.py) | [code](/examples/krea2/model_training/full/Krea-2-Raw.sh) | [code](/examples/krea2/model_training/validate_full/Krea-2-Raw.py) | [code](/examples/krea2/model_training/lora/Krea-2-Raw.sh) | [code](/examples/krea2/model_training/validate_lora/Krea-2-Raw.py) |
+| Krea-2 | [krea/Krea-2-Turbo](https://www.modelscope.cn/models/krea/Krea-2-Turbo) | [code](/examples/krea2/model_inference/Krea-2-Turbo.py) | [code](/examples/krea2/model_inference_low_vram/Krea-2-Turbo.py) | [code](/examples/krea2/model_training/full/Krea-2-Turbo.sh) | [code](/examples/krea2/model_training/validate_full/Krea-2-Turbo.py) | [code](/examples/krea2/model_training/lora/Krea-2-Turbo.sh) | [code](/examples/krea2/model_training/validate_lora/Krea-2-Turbo.py) |
+| Ideogram 4 | [ideogram-ai/ideogram-4-fp8](https://www.modelscope.cn/models/ideogram-ai/ideogram-4-fp8) | [code](/examples/ideogram4/model_inference/ideogram-4-fp8.py) | - | - | - | - | - |
+| Ideogram 4 | [DiffSynth-Studio/ideogram-4-bf16-repackage](https://www.modelscope.cn/models/DiffSynth-Studio/ideogram-4-bf16-repackage) | [code](/examples/ideogram4/model_inference/ideogram-4-bf16-repackage.py) | [code](/examples/ideogram4/model_inference_low_vram/ideogram-4-bf16-repackage.py) | [code](/examples/ideogram4/model_training/full/Ideogram-4-bf16-repackage.sh) | - | [code](/examples/ideogram4/model_training/lora/Ideogram-4-bf16-repackage.sh) | [code](/examples/ideogram4/model_training/validate_lora/Ideogram-4-bf16-repackage.py) |
+| HiDream-O1-Image | [HiDream-ai/HiDream-O1-Image](https://modelscope.cn/models/HiDream-ai/HiDream-O1-Image) | [code](/examples/hidream_o1_image/model_inference/HiDream-O1-Image.py) | [code](/examples/hidream_o1_image/model_inference_low_vram/HiDream-O1-Image.py) | [code](/examples/hidream_o1_image/model_training/full/HiDream-O1-Image.sh) | [code](/examples/hidream_o1_image/model_training/validate_full/HiDream-O1-Image.py) | [code](/examples/hidream_o1_image/model_training/lora/HiDream-O1-Image.sh) | [code](/examples/hidream_o1_image/model_training/validate_lora/HiDream-O1-Image.py) |
+| HiDream-O1-Image | [HiDream-ai/HiDream-O1-Image-Dev](https://modelscope.cn/models/HiDream-ai/HiDream-O1-Image-Dev) | [code](/examples/hidream_o1_image/model_inference/HiDream-O1-Image-Dev.py) | [code](/examples/hidream_o1_image/model_inference_low_vram/HiDream-O1-Image-Dev.py) | [code](/examples/hidream_o1_image/model_training/full/HiDream-O1-Image-Dev.sh) | [code](/examples/hidream_o1_image/model_training/validate_full/HiDream-O1-Image-Dev.py) | [code](/examples/hidream_o1_image/model_training/lora/HiDream-O1-Image-Dev.sh) | [code](/examples/hidream_o1_image/model_training/validate_lora/HiDream-O1-Image-Dev.py) |
+| HiDream-O1-Image | [DiffSynth-Studio/HidreamO1-i2L-v2](https://www.modelscope.cn/models/DiffSynth-Studio/HidreamO1-i2L-v2) | [code](/examples/hidream_o1_image/model_inference/HidreamO1-i2L-v2.py) | [code](/examples/hidream_o1_image/model_inference_low_vram/HidreamO1-i2L-v2.py) | [code](/examples/hidream_o1_image/model_training/full/HidreamO1-i2L-v2.sh) | [code](/examples/hidream_o1_image/model_training/validate_full/HidreamO1-i2L-v2.py) | - | - |
+| JoyAI-Image | [jd-opensource/JoyAI-Image-Edit](https://modelscope.cn/models/jd-opensource/JoyAI-Image-Edit) | [code](/examples/joyai_image/model_inference/JoyAI-Image-Edit.py) | [code](/examples/joyai_image/model_inference_low_vram/JoyAI-Image-Edit.py) | [code](/examples/joyai_image/model_training/full/JoyAI-Image-Edit.sh) | [code](/examples/joyai_image/model_training/validate_full/JoyAI-Image-Edit.py) | [code](/examples/joyai_image/model_training/lora/JoyAI-Image-Edit.sh) | [code](/examples/joyai_image/model_training/validate_lora/JoyAI-Image-Edit.py) |
+| ERNIE-Image | [PaddlePaddle/ERNIE-Image](https://www.modelscope.cn/models/PaddlePaddle/ERNIE-Image) | [code](/examples/ernie_image/model_inference/ERNIE-Image.py) | [code](/examples/ernie_image/model_inference_low_vram/ERNIE-Image.py) | [code](/examples/ernie_image/model_training/full/ERNIE-Image.sh) | [code](/examples/ernie_image/model_training/validate_full/ERNIE-Image.py) | [code](/examples/ernie_image/model_training/lora/ERNIE-Image.sh) | [code](/examples/ernie_image/model_training/validate_lora/ERNIE-Image.py) |
+| ERNIE-Image | [PaddlePaddle/ERNIE-Image-Turbo](https://www.modelscope.cn/models/PaddlePaddle/ERNIE-Image-Turbo) | [code](/examples/ernie_image/model_inference/ERNIE-Image-Turbo.py) | [code](/examples/ernie_image/model_inference_low_vram/ERNIE-Image-Turbo.py) | — | — | — | — |
+| LTX-2 | [jd-opensource/JoyAI-Echo](https://modelscope.cn/models/jd-opensource/JoyAI-Echo) | [code](/examples/ltx2/model_inference/JoyAI-Echo-T2AV.py) | [code](/examples/ltx2/model_inference_low_vram/JoyAI-Echo-T2AV.py) | [code](/examples/ltx2/model_training/full/JoyAI-Echo-T2AV-splited.sh) | [code](/examples/ltx2/model_training/validate_full/JoyAI-Echo-T2AV.py) | [code](/examples/ltx2/model_training/lora/JoyAI-Echo-T2AV-splited.sh) | [code](/examples/ltx2/model_training/validate_lora/JoyAI-Echo-T2AV.py) |
+| LTX-2 | [Lightricks/LTX-2.3: OneStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3) | [code](/examples/ltx2/model_inference/LTX-2.3-I2AV-OneStage.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2.3-I2AV-OneStage.py) | [code](/examples/ltx2/model_training/full/LTX-2.3-I2AV-splited.sh) | [code](/examples/ltx2/model_training/validate_full/LTX-2.3-I2AV.py) | [code](/examples/ltx2/model_training/lora/LTX-2.3-I2AV-splited.sh) | [code](/examples/ltx2/model_training/validate_lora/LTX-2.3-I2AV.py) |
+| LTX-2 | [Lightricks/LTX-2.3: TwoStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3) | [code](/examples/ltx2/model_inference/LTX-2.3-I2AV-TwoStage.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2.3-I2AV-TwoStage.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2.3: DistilledPipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3) | [code](/examples/ltx2/model_inference/LTX-2.3-I2AV-DistilledPipeline.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2.3-I2AV-DistilledPipeline.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2.3: OneStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3) | [code](/examples/ltx2/model_inference/LTX-2.3-T2AV-OneStage.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-OneStage.py) | [code](/examples/ltx2/model_training/full/LTX-2.3-T2AV-splited.sh) | [code](/examples/ltx2/model_training/validate_full/LTX-2.3-T2AV.py) | [code](/examples/ltx2/model_training/lora/LTX-2.3-T2AV-splited.sh) | [code](/examples/ltx2/model_training/validate_lora/LTX-2.3-T2AV.py) |
+| LTX-2 | [Lightricks/LTX-2.3: TwoStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3) | [code](/examples/ltx2/model_inference/LTX-2.3-T2AV-TwoStage.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-TwoStage.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2.3: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.3) | [code](/examples/ltx2/model_inference/LTX-2.3-T2AV-DistilledPipeline.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-DistilledPipeline.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2.3: A2V](https://www.modelscope.cn/models/Lightricks/LTX-2.3) | [code](/examples/ltx2/model_inference/LTX-2.3-A2V-TwoStage.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2.3-A2V-TwoStage.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2.3: Retake](https://www.modelscope.cn/models/Lightricks/LTX-2.3) | [code](/examples/ltx2/model_inference/LTX-2.3-T2AV-TwoStage-Retake.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-TwoStage-Retake.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control](https://www.modelscope.cn/models/Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control) | [code](/examples/ltx2/model_inference/LTX-2.3-T2AV-IC-LoRA-Union-Control.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-IC-LoRA-Union-Control.py) | - | - | [code](/examples/ltx2/model_training/lora/LTX-2.3-T2AV-IC-LoRA-splited.sh) | [code](/examples/ltx2/model_training/validate_lora/LTX-2.3-T2AV-IC-LoRA.py) |
+| LTX-2 | [Lightricks/LTX-2.3-22b-IC-LoRA-Motion-Track-Control](https://www.modelscope.cn/models/Lightricks/LTX-2.3-22b-IC-LoRA-Motion-Track-Control) | [code](/examples/ltx2/model_inference/LTX-2.3-T2AV-IC-LoRA-Motion-Track-Control.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2.3-T2AV-IC-LoRA-Motion-Track-Control.py) | - | - | [code](/examples/ltx2/model_training/lora/LTX-2.3-T2AV-IC-LoRA-splited.sh) | [code](/examples/ltx2/model_training/validate_lora/LTX-2.3-T2AV-IC-LoRA.py) |
+| LTX-2 | [Lightricks/LTX-2: OneStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2) | [code](/examples/ltx2/model_inference/LTX-2-T2AV-OneStage.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-OneStage.py) | [code](/examples/ltx2/model_training/full/LTX-2-T2AV-splited.sh) | [code](/examples/ltx2/model_training/validate_full/LTX-2-T2AV.py) | [code](/examples/ltx2/model_training/lora/LTX-2-T2AV-splited.sh) | [code](/examples/ltx2/model_training/validate_lora/LTX-2-T2AV.py) |
+| LTX-2 | [Lightricks/LTX-2-19b-IC-LoRA-Union-Control](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-IC-LoRA-Union-Control) | [code](/examples/ltx2/model_inference/LTX-2-T2AV-IC-LoRA-Union-Control.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-IC-LoRA-Union-Control.py) | - | - | [code](/examples/ltx2/model_training/lora/LTX-2-T2AV-IC-LoRA-splited.sh) | [code](/examples/ltx2/model_training/validate_lora/LTX-2-T2AV-IC-LoRA.py) |
+| LTX-2 | [Lightricks/LTX-2-19b-IC-LoRA-Detailer](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-IC-LoRA-Detailer) | [code](/examples/ltx2/model_inference/LTX-2-T2AV-IC-LoRA-Detailer.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-IC-LoRA-Detailer.py) | - | - | [code](/examples/ltx2/model_training/lora/LTX-2-T2AV-IC-LoRA-splited.sh) | [code](/examples/ltx2/model_training/validate_lora/LTX-2-T2AV-IC-LoRA.py) |
+| LTX-2 | [Lightricks/LTX-2: TwoStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2) | [code](/examples/ltx2/model_inference/LTX-2-T2AV-TwoStage.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-TwoStage.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2) | [code](/examples/ltx2/model_inference/LTX-2-T2AV-DistilledPipeline.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-DistilledPipeline.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2: OneStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2) | [code](/examples/ltx2/model_inference/LTX-2-I2AV-OneStage.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-I2AV-OneStage.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2: TwoStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2) | [code](/examples/ltx2/model_inference/LTX-2-I2AV-TwoStage.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-I2AV-TwoStage.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2: DistilledPipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2) | [code](/examples/ltx2/model_inference/LTX-2-I2AV-DistilledPipeline.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-I2AV-DistilledPipeline.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-In](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-In) | [code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Dolly-In.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Dolly-In.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Out](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Out) | [code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Dolly-Out.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Dolly-Out.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Left](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Left) | [code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Dolly-Left.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Dolly-Left.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Right](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Right) | [code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Dolly-Right.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Dolly-Right.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Up](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Up) | [code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Jib-Up.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Jib-Up.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Down](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Down) | [code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Jib-Down.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Jib-Down.py) | - | - | - | - |
+| LTX-2 | [Lightricks/LTX-2-19b-LoRA-Camera-Control-Static](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Static) | [code](/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Static.py) | [code](/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Static.py) | - | - | - | - |
+| FLUX.2 | [black-forest-labs/FLUX.2-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-dev) | [code](/examples/flux2/model_inference/FLUX.2-dev.py) | [code](/examples/flux2/model_inference_low_vram/FLUX.2-dev.py) | - | - | [code](/examples/flux2/model_training/lora/FLUX.2-dev.sh) | [code](/examples/flux2/model_training/validate_lora/FLUX.2-dev.py) |
+| FLUX.2 | [black-forest-labs/FLUX.2-klein-4B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-4B) | [code](/examples/flux2/model_inference/FLUX.2-klein-4B.py) | [code](/examples/flux2/model_inference_low_vram/FLUX.2-klein-4B.py) | [code](/examples/flux2/model_training/full/FLUX.2-klein-4B.sh) | [code](/examples/flux2/model_training/validate_full/FLUX.2-klein-4B.py) | [code](/examples/flux2/model_training/lora/FLUX.2-klein-4B.sh) | [code](/examples/flux2/model_training/validate_lora/FLUX.2-klein-4B.py) |
+| FLUX.2 | [black-forest-labs/FLUX.2-klein-9B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-9B) | [code](/examples/flux2/model_inference/FLUX.2-klein-9B.py) | [code](/examples/flux2/model_inference_low_vram/FLUX.2-klein-9B.py) | [code](/examples/flux2/model_training/full/FLUX.2-klein-9B.sh) | [code](/examples/flux2/model_training/validate_full/FLUX.2-klein-9B.py) | [code](/examples/flux2/model_training/lora/FLUX.2-klein-9B.sh) | [code](/examples/flux2/model_training/validate_lora/FLUX.2-klein-9B.py) |
+| FLUX.2 | [black-forest-labs/FLUX.2-klein-base-4B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-base-4B) | [code](/examples/flux2/model_inference/FLUX.2-klein-base-4B.py) | [code](/examples/flux2/model_inference_low_vram/FLUX.2-klein-base-4B.py) | [code](/examples/flux2/model_training/full/FLUX.2-klein-base-4B.sh) | [code](/examples/flux2/model_training/validate_full/FLUX.2-klein-base-4B.py) | [code](/examples/flux2/model_training/lora/FLUX.2-klein-base-4B.sh) | [code](/examples/flux2/model_training/validate_lora/FLUX.2-klein-base-4B.py) |
+| FLUX.2 | [black-forest-labs/FLUX.2-klein-base-9B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-base-9B) | [code](/examples/flux2/model_inference/FLUX.2-klein-base-9B.py) | [code](/examples/flux2/model_inference_low_vram/FLUX.2-klein-base-9B.py) | [code](/examples/flux2/model_training/full/FLUX.2-klein-base-9B.sh) | [code](/examples/flux2/model_training/validate_full/FLUX.2-klein-base-9B.py) | [code](/examples/flux2/model_training/lora/FLUX.2-klein-base-9B.sh) | [code](/examples/flux2/model_training/validate_lora/FLUX.2-klein-base-9B.py) |
+| FLUX.2 | [DiffSynth-Studio/Template-KleinBase4B-Aesthetic](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Aesthetic) | [code](/examples/flux2/model_inference/Template-KleinBase4B-Aesthetic.py) | [code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Aesthetic.py) | [code](/examples/flux2/model_training/full/Template-KleinBase4B-Aesthetic.sh) | [code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Aesthetic.py) | - | - |
+| FLUX.2 | [DiffSynth-Studio/Template-KleinBase4B-Brightness](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Brightness) | [code](/examples/flux2/model_inference/Template-KleinBase4B-Brightness.py) | [code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Brightness.py) | [code](/examples/flux2/model_training/full/Template-KleinBase4B-Brightness.sh) | [code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Brightness.py) | - | - |
+| FLUX.2 | [DiffSynth-Studio/Template-KleinBase4B-Age](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Age) | [code](/examples/flux2/model_inference/Template-KleinBase4B-Age.py) | [code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Age.py) | [code](/examples/flux2/model_training/full/Template-KleinBase4B-Age.sh) | [code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Age.py) | - | - |
+| FLUX.2 | [DiffSynth-Studio/Template-KleinBase4B-ControlNet](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ControlNet) | [code](/examples/flux2/model_inference/Template-KleinBase4B-ControlNet.py) | [code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-ControlNet.py) | [code](/examples/flux2/model_training/full/Template-KleinBase4B-ControlNet.sh) | [code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-ControlNet.py) | - | - |
+| FLUX.2 | [DiffSynth-Studio/Template-KleinBase4B-Edit](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Edit) | [code](/examples/flux2/model_inference/Template-KleinBase4B-Edit.py) | [code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Edit.py) | [code](/examples/flux2/model_training/full/Template-KleinBase4B-Edit.sh) | [code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Edit.py) | - | - |
+| FLUX.2 | [DiffSynth-Studio/Template-KleinBase4B-Inpaint](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Inpaint) | [code](/examples/flux2/model_inference/Template-KleinBase4B-Inpaint.py) | [code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Inpaint.py) | [code](/examples/flux2/model_training/full/Template-KleinBase4B-Inpaint.sh) | [code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Inpaint.py) | - | - |
+| FLUX.2 | [DiffSynth-Studio/Template-KleinBase4B-PandaMeme](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-PandaMeme) | [code](/examples/flux2/model_inference/Template-KleinBase4B-PandaMeme.py) | [code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-PandaMeme.py) | [code](/examples/flux2/model_training/full/Template-KleinBase4B-PandaMeme.sh) | [code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-PandaMeme.py) | - | - |
+| FLUX.2 | [DiffSynth-Studio/Template-KleinBase4B-Sharpness](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Sharpness) | [code](/examples/flux2/model_inference/Template-KleinBase4B-Sharpness.py) | [code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Sharpness.py) | [code](/examples/flux2/model_training/full/Template-KleinBase4B-Sharpness.sh) | [code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Sharpness.py) | - | - |
+| FLUX.2 | [DiffSynth-Studio/Template-KleinBase4B-SoftRGB](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-SoftRGB) | [code](/examples/flux2/model_inference/Template-KleinBase4B-SoftRGB.py) | [code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-SoftRGB.py) | [code](/examples/flux2/model_training/full/Template-KleinBase4B-SoftRGB.sh) | [code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-SoftRGB.py) | - | - |
+| FLUX.2 | [DiffSynth-Studio/Template-KleinBase4B-Upscaler](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-Upscaler) | [code](/examples/flux2/model_inference/Template-KleinBase4B-Upscaler.py) | [code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-Upscaler.py) | [code](/examples/flux2/model_training/full/Template-KleinBase4B-Upscaler.sh) | [code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-Upscaler.py) | - | - |
+| FLUX.2 | [DiffSynth-Studio/Template-KleinBase4B-ContentRef](https://www.modelscope.cn/models/DiffSynth-Studio/Template-KleinBase4B-ContentRef) | [code](/examples/flux2/model_inference/Template-KleinBase4B-ContentRef.py) | [code](/examples/flux2/model_inference_low_vram/Template-KleinBase4B-ContentRef.py) | [code](/examples/flux2/model_training/full/Template-KleinBase4B-ContentRef.sh) | [code](/examples/flux2/model_training/validate_full/Template-KleinBase4B-ContentRef.py) | - | - |
+| FLUX.2 | [DiffSynth-Studio/KleinBase4B-i2L-v2](https://www.modelscope.cn/models/DiffSynth-Studio/KleinBase4B-i2L-v2) | [code](/examples/flux2/model_inference/KleinBase4B-i2L-v2.py) | [code](/examples/flux2/model_inference_low_vram/KleinBase4B-i2L-v2.py) | [code](/examples/flux2/model_training/full/KleinBase4B-i2L-v2.sh) | [code](/examples/flux2/model_training/validate_full/KleinBase4B-i2L-v2.py) | - | - |
+| Z-Image | [Tongyi-MAI/Z-Image](https://www.modelscope.cn/models/Tongyi-MAI/Z-Image) | [code](/examples/z_image/model_inference/Z-Image.py) | [code](/examples/z_image/model_inference_low_vram/Z-Image.py) | [code](/examples/z_image/model_training/full/Z-Image.sh) | [code](/examples/z_image/model_training/validate_full/Z-Image.py) | [code](/examples/z_image/model_training/lora/Z-Image.sh) | [code](/examples/z_image/model_training/validate_lora/Z-Image.py) |
+| Z-Image | [DiffSynth-Studio/Z-Image-i2L](https://www.modelscope.cn/models/DiffSynth-Studio/Z-Image-i2L) | [code](/examples/z_image/model_inference/Z-Image-i2L.py) | [code](/examples/z_image/model_inference_low_vram/Z-Image-i2L.py) | - | - | - | - |
+| Z-Image | [Tongyi-MAI/Z-Image-Turbo](https://www.modelscope.cn/models/Tongyi-MAI/Z-Image-Turbo) | [code](/examples/z_image/model_inference/Z-Image-Turbo.py) | [code](/examples/z_image/model_inference_low_vram/Z-Image-Turbo.py) | [code](/examples/z_image/model_training/full/Z-Image-Turbo.sh) | [code](/examples/z_image/model_training/validate_full/Z-Image-Turbo.py) | [code](/examples/z_image/model_training/lora/Z-Image-Turbo.sh) | [code](/examples/z_image/model_training/validate_lora/Z-Image-Turbo.py) |
+| Z-Image | [PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1](https://www.modelscope.cn/models/PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1) | [code](/examples/z_image/model_inference/Z-Image-Turbo-Fun-Controlnet-Union-2.1.py) | [code](/examples/z_image/model_inference_low_vram/Z-Image-Turbo-Fun-Controlnet-Union-2.1.py) | [code](/examples/z_image/model_training/full/Z-Image-Turbo-Fun-Controlnet-Union-2.1.sh) | [code](/examples/z_image/model_training/validate_full/Z-Image-Turbo-Fun-Controlnet-Union-2.1.py) | [code](/examples/z_image/model_training/lora/Z-Image-Turbo-Fun-Controlnet-Union-2.1.sh) | [code](/examples/z_image/model_training/validate_lora/Z-Image-Turbo-Fun-Controlnet-Union-2.1.py) |
+| Z-Image | [PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps](https://www.modelscope.cn/models/PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1) | [code](/examples/z_image/model_inference/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.py) | [code](/examples/z_image/model_inference_low_vram/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.py) | [code](/examples/z_image/model_training/full/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.sh) | [code](/examples/z_image/model_training/validate_full/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.py) | [code](/examples/z_image/model_training/lora/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.sh) | [code](/examples/z_image/model_training/validate_lora/Z-Image-Turbo-Fun-Controlnet-Union-2.1-8steps.py) |
+| Z-Image | [PAI/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps](https://www.modelscope.cn/models/PAI/Z-Image-Turbo-Fun-Controlnet-Union-2.1) | [code](/examples/z_image/model_inference/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.py) | [code](/examples/z_image/model_inference_low_vram/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.py) | [code](/examples/z_image/model_training/full/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.sh) | [code](/examples/z_image/model_training/validate_full/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.py) | [code](/examples/z_image/model_training/lora/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.sh) | [code](/examples/z_image/model_training/validate_lora/Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.py) |
+| Z-Image | [DiffSynth-Studio/ZImage-i2L-v2](https://www.modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2) | [code](/examples/z_image/model_inference/ZImage-i2L-v2.py) | [code](/examples/z_image/model_inference_low_vram/ZImage-i2L-v2.py) | [code](/examples/z_image/model_training/full/ZImage-i2L-v2.sh) | [code](/examples/z_image/model_training/validate_full/ZImage-i2L-v2.py) | - | - |
+| Anima | [circlestone-labs/Anima](https://www.modelscope.cn/models/circlestone-labs/Anima) | [code](/examples/anima/model_inference/anima-preview.py) | [code](/examples/anima/model_inference_low_vram/anima-preview.py) | [code](/examples/anima/model_training/full/anima-preview.sh) | [code](/examples/anima/model_training/validate_full/anima-preview.py) | [code](/examples/anima/model_training/lora/anima-preview.sh) | [code](/examples/anima/model_training/validate_lora/anima-preview.py) |
+| Qwen-Image | [Qwen/Qwen-Image](https://www.modelscope.cn/models/Qwen/Qwen-Image) | [code](/examples/qwen_image/model_inference/Qwen-Image.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image.py) | [code](/examples/qwen_image/model_training/full/Qwen-Image.sh) | [code](/examples/qwen_image/model_training/validate_full/Qwen-Image.py) | [code](/examples/qwen_image/model_training/lora/Qwen-Image.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image.py) |
+| Qwen-Image | [Qwen/Qwen-Image-2512](https://www.modelscope.cn/models/Qwen/Qwen-Image-2512) | [code](/examples/qwen_image/model_inference/Qwen-Image-2512.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-2512.py) | [code](/examples/qwen_image/model_training/full/Qwen-Image-2512.sh) | [code](/examples/qwen_image/model_training/validate_full/Qwen-Image-2512.py) | [code](/examples/qwen_image/model_training/lora/Qwen-Image-2512.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-2512.py) |
+| Qwen-Image | [Qwen/Qwen-Image-Edit](https://www.modelscope.cn/models/Qwen/Qwen-Image-Edit) | [code](/examples/qwen_image/model_inference/Qwen-Image-Edit.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Edit.py) | [code](/examples/qwen_image/model_training/full/Qwen-Image-Edit.sh) | [code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Edit.py) | [code](/examples/qwen_image/model_training/lora/Qwen-Image-Edit.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Edit.py) |
+| Qwen-Image | [Qwen/Qwen-Image-Edit-2509](https://www.modelscope.cn/models/Qwen/Qwen-Image-Edit-2509) | [code](/examples/qwen_image/model_inference/Qwen-Image-Edit-2509.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Edit-2509.py) | [code](/examples/qwen_image/model_training/full/Qwen-Image-Edit-2509.sh) | [code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Edit-2509.py) | [code](/examples/qwen_image/model_training/lora/Qwen-Image-Edit-2509.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Edit-2509.py) |
+| Qwen-Image | [Qwen/Qwen-Image-Edit-2511](https://www.modelscope.cn/models/Qwen/Qwen-Image-Edit-2511) | [code](/examples/qwen_image/model_inference/Qwen-Image-Edit-2511.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Edit-2511.py) | [code](/examples/qwen_image/model_training/full/Qwen-Image-Edit-2511.sh) | [code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Edit-2511.py) | [code](/examples/qwen_image/model_training/lora/Qwen-Image-Edit-2511.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Edit-2511.py) |
+| Qwen-Image | [FireRedTeam/FireRed-Image-Edit-1.0](https://www.modelscope.cn/models/FireRedTeam/FireRed-Image-Edit-1.0) | [code](/examples/qwen_image/model_inference/FireRed-Image-Edit-1.0.py) | [code](/examples/qwen_image/model_inference_low_vram/FireRed-Image-Edit-1.0.py) | [code](/examples/qwen_image/model_training/full/FireRed-Image-Edit-1.0.sh) | [code](/examples/qwen_image/model_training/validate_full/FireRed-Image-Edit-1.0.py) | [code](/examples/qwen_image/model_training/lora/FireRed-Image-Edit-1.0.sh) | [code](/examples/qwen_image/model_training/validate_lora/FireRed-Image-Edit-1.0.py) |
+| Qwen-Image | [FireRedTeam/FireRed-Image-Edit-1.1](https://www.modelscope.cn/models/FireRedTeam/FireRed-Image-Edit-1.1) | [code](/examples/qwen_image/model_inference/FireRed-Image-Edit-1.1.py) | [code](/examples/qwen_image/model_inference_low_vram/FireRed-Image-Edit-1.1.py) | [code](/examples/qwen_image/model_training/full/FireRed-Image-Edit-1.1.sh) | [code](/examples/qwen_image/model_training/validate_full/FireRed-Image-Edit-1.1.py) | [code](/examples/qwen_image/model_training/lora/FireRed-Image-Edit-1.1.sh) | [code](/examples/qwen_image/model_training/validate_lora/FireRed-Image-Edit-1.1.py) |
+| Qwen-Image | [lightx2v/Qwen-Image-Edit-2511-Lightning](https://modelscope.cn/models/lightx2v/Qwen-Image-Edit-2511-Lightning) | [code](/examples/qwen_image/model_inference/Qwen-Image-Edit-2511-Lightning.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Edit-2511-Lightning.py) | - | - | - | - |
+| Qwen-Image | [Qwen/Qwen-Image-Layered](https://www.modelscope.cn/models/Qwen/Qwen-Image-Layered) | [code](/examples/qwen_image/model_inference/Qwen-Image-Layered.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Layered.py) | [code](/examples/qwen_image/model_training/full/Qwen-Image-Layered.sh) | [code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Layered.py) | [code](/examples/qwen_image/model_training/lora/Qwen-Image-Layered.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Layered.py) |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-Layered-Control](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Layered-Control) | [code](/examples/qwen_image/model_inference/Qwen-Image-Layered-Control.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Layered-Control.py) | [code](/examples/qwen_image/model_training/full/Qwen-Image-Layered-Control.sh) | [code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Layered-Control.py) | [code](/examples/qwen_image/model_training/lora/Qwen-Image-Layered-Control.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Layered-Control.py) |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-Layered-Control-V2](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Layered-Control-V2) | [code](/examples/qwen_image/model_inference/Qwen-Image-Layered-Control-V2.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Layered-Control-V2.py) | - | - | [code](/examples/qwen_image/model_training/lora/Qwen-Image-Layered-Control-V2.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Layered-Control-V2.py) |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-EliGen](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-EliGen) | [code](/examples/qwen_image/model_inference/Qwen-Image-EliGen.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-EliGen.py) | - | - | [code](/examples/qwen_image/model_training/lora/Qwen-Image-EliGen.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-EliGen.py) |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-EliGen-V2](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-EliGen-V2) | [code](/examples/qwen_image/model_inference/Qwen-Image-EliGen-V2.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-EliGen-V2.py) | - | - | [code](/examples/qwen_image/model_training/lora/Qwen-Image-EliGen.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-EliGen.py) |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-EliGen-Poster](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-EliGen-Poster) | [code](/examples/qwen_image/model_inference/Qwen-Image-EliGen-Poster.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-EliGen-Poster.py) | - | - | [code](/examples/qwen_image/model_training/lora/Qwen-Image-EliGen-Poster.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-EliGen-Poster.py) |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-Distill-Full](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Distill-Full) | [code](/examples/qwen_image/model_inference/Qwen-Image-Distill-Full.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Distill-Full.py) | [code](/examples/qwen_image/model_training/full/Qwen-Image-Distill-Full.sh) | [code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Distill-Full.py) | [code](/examples/qwen_image/model_training/lora/Qwen-Image-Distill-Full.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Distill-Full.py) |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-Distill-LoRA](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Distill-LoRA) | [code](/examples/qwen_image/model_inference/Qwen-Image-Distill-LoRA.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Distill-LoRA.py) | - | - | [code](/examples/qwen_image/model_training/lora/Qwen-Image-Distill-LoRA.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Distill-LoRA.py) |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Canny](https://modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Canny) | [code](/examples/qwen_image/model_inference/Qwen-Image-Blockwise-ControlNet-Canny.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Blockwise-ControlNet-Canny.py) | [code](/examples/qwen_image/model_training/full/Qwen-Image-Blockwise-ControlNet-Canny.sh) | [code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Blockwise-ControlNet-Canny.py) | [code](/examples/qwen_image/model_training/lora/Qwen-Image-Blockwise-ControlNet-Canny.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Blockwise-ControlNet-Canny.py) |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Depth](https://modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Depth) | [code](/examples/qwen_image/model_inference/Qwen-Image-Blockwise-ControlNet-Depth.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Blockwise-ControlNet-Depth.py) | [code](/examples/qwen_image/model_training/full/Qwen-Image-Blockwise-ControlNet-Depth.sh) | [code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Blockwise-ControlNet-Depth.py) | [code](/examples/qwen_image/model_training/lora/Qwen-Image-Blockwise-ControlNet-Depth.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Blockwise-ControlNet-Depth.py) |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Inpaint](https://modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Inpaint) | [code](/examples/qwen_image/model_inference/Qwen-Image-Blockwise-ControlNet-Inpaint.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Blockwise-ControlNet-Inpaint.py) | [code](/examples/qwen_image/model_training/full/Qwen-Image-Blockwise-ControlNet-Inpaint.sh) | [code](/examples/qwen_image/model_training/validate_full/Qwen-Image-Blockwise-ControlNet-Inpaint.py) | [code](/examples/qwen_image/model_training/lora/Qwen-Image-Blockwise-ControlNet-Inpaint.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-Blockwise-ControlNet-Inpaint.py) |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-In-Context-Control-Union](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-In-Context-Control-Union) | [code](/examples/qwen_image/model_inference/Qwen-Image-In-Context-Control-Union.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-In-Context-Control-Union.py) | - | - | [code](/examples/qwen_image/model_training/lora/Qwen-Image-In-Context-Control-Union.sh) | [code](/examples/qwen_image/model_training/validate_lora/Qwen-Image-In-Context-Control-Union.py) |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-Edit-Lowres-Fix](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-Edit-Lowres-Fix) | [code](/examples/qwen_image/model_inference/Qwen-Image-Edit-Lowres-Fix.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-Edit-Lowres-Fix.py) | - | - | - | - |
+| Qwen-Image | [DiffSynth-Studio/Qwen-Image-i2L](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-i2L) | [code](/examples/qwen_image/model_inference/Qwen-Image-i2L.py) | [code](/examples/qwen_image/model_inference_low_vram/Qwen-Image-i2L.py) | - | - | - | - |
+| Wan | [Wan-AI/Wan2.1-T2V-1.3B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-1.3B) | [code](/examples/wanvideo/model_inference/Wan2.1-T2V-1.3B.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-T2V-1.3B.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-T2V-1.3B.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-T2V-1.3B.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-T2V-1.3B.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-T2V-1.3B.py) |
+| Wan | [Wan-AI/Wan2.1-T2V-14B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-14B) | [code](/examples/wanvideo/model_inference/Wan2.1-T2V-14B.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-T2V-14B.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-T2V-14B.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-T2V-14B.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-T2V-14B.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-T2V-14B.py) |
+| Wan | [Wan-AI/Wan2.1-I2V-14B-480P](https://modelscope.cn/models/Wan-AI/Wan2.1-I2V-14B-480P) | [code](/examples/wanvideo/model_inference/Wan2.1-I2V-14B-480P.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-I2V-14B-480P.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-I2V-14B-480P.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-I2V-14B-480P.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-I2V-14B-480P.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-I2V-14B-480P.py) |
+| Wan | [Wan-AI/Wan2.1-I2V-14B-720P](https://modelscope.cn/models/Wan-AI/Wan2.1-I2V-14B-720P) | [code](/examples/wanvideo/model_inference/Wan2.1-I2V-14B-720P.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-I2V-14B-720P.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-I2V-14B-720P.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-I2V-14B-720P.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-I2V-14B-720P.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-I2V-14B-720P.py) |
+| Wan | [Wan-AI/Wan2.1-FLF2V-14B-720P](https://modelscope.cn/models/Wan-AI/Wan2.1-FLF2V-14B-720P) | [code](/examples/wanvideo/model_inference/Wan2.1-FLF2V-14B-720P.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-FLF2V-14B-720P.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-FLF2V-14B-720P.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-FLF2V-14B-720P.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-FLF2V-14B-720P.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-FLF2V-14B-720P.py) |
+| Wan | [iic/VACE-Wan2.1-1.3B-Preview](https://modelscope.cn/models/iic/VACE-Wan2.1-1.3B-Preview) | [code](/examples/wanvideo/model_inference/Wan2.1-VACE-1.3B-Preview.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-VACE-1.3B-Preview.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-VACE-1.3B-Preview.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-VACE-1.3B-Preview.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-VACE-1.3B-Preview.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-VACE-1.3B-Preview.py) |
+| Wan | [Wan-AI/Wan2.1-VACE-1.3B](https://modelscope.cn/models/Wan-AI/Wan2.1-VACE-1.3B) | [code](/examples/wanvideo/model_inference/Wan2.1-VACE-1.3B.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-VACE-1.3B.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-VACE-1.3B.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-VACE-1.3B.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-VACE-1.3B.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-VACE-1.3B.py) |
+| Wan | [Wan-AI/Wan2.1-VACE-14B](https://modelscope.cn/models/Wan-AI/Wan2.1-VACE-14B) | [code](/examples/wanvideo/model_inference/Wan2.1-VACE-14B.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-VACE-14B.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-VACE-14B.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-VACE-14B.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-VACE-14B.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-VACE-14B.py) |
+| Wan | [PAI/Wan2.1-Fun-1.3B-InP](https://modelscope.cn/models/PAI/Wan2.1-Fun-1.3B-InP) | [code](/examples/wanvideo/model_inference/Wan2.1-Fun-1.3B-InP.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-1.3B-InP.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-Fun-1.3B-InP.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-1.3B-InP.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-1.3B-InP.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-1.3B-InP.py) |
+| Wan | [PAI/Wan2.1-Fun-1.3B-Control](https://modelscope.cn/models/PAI/Wan2.1-Fun-1.3B-Control) | [code](/examples/wanvideo/model_inference/Wan2.1-Fun-1.3B-Control.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-1.3B-Control.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-Fun-1.3B-Control.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-1.3B-Control.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-1.3B-Control.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-1.3B-Control.py) |
+| Wan | [PAI/Wan2.1-Fun-14B-InP](https://modelscope.cn/models/PAI/Wan2.1-Fun-14B-InP) | [code](/examples/wanvideo/model_inference/Wan2.1-Fun-14B-InP.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-14B-InP.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-Fun-14B-InP.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-14B-InP.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-14B-InP.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-14B-InP.py) |
+| Wan | [PAI/Wan2.1-Fun-14B-Control](https://modelscope.cn/models/PAI/Wan2.1-Fun-14B-Control) | [code](/examples/wanvideo/model_inference/Wan2.1-Fun-14B-Control.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-14B-Control.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-Fun-14B-Control.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-14B-Control.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-14B-Control.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-14B-Control.py) |
+| Wan | [PAI/Wan2.1-Fun-V1.1-1.3B-Control](https://modelscope.cn/models/PAI/Wan2.1-Fun-V1.1-1.3B-Control) | [code](/examples/wanvideo/model_inference/Wan2.1-Fun-V1.1-1.3B-Control.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-V1.1-1.3B-Control.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-Fun-V1.1-1.3B-Control.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-V1.1-1.3B-Control.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-V1.1-1.3B-Control.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-V1.1-1.3B-Control.py) |
+| Wan | [PAI/Wan2.1-Fun-V1.1-14B-Control](https://modelscope.cn/models/PAI/Wan2.1-Fun-V1.1-14B-Control) | [code](/examples/wanvideo/model_inference/Wan2.1-Fun-V1.1-14B-Control.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-V1.1-14B-Control.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-Fun-V1.1-14B-Control.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-V1.1-14B-Control.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-V1.1-14B-Control.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-V1.1-14B-Control.py) |
+| Wan | [PAI/Wan2.1-Fun-V1.1-1.3B-InP](https://modelscope.cn/models/PAI/Wan2.1-Fun-V1.1-1.3B-InP) | [code](/examples/wanvideo/model_inference/Wan2.1-Fun-V1.1-1.3B-InP.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-V1.1-1.3B-InP.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-Fun-V1.1-1.3B-InP.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-V1.1-1.3B-InP.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-V1.1-1.3B-InP.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-V1.1-1.3B-InP.py) |
+| Wan | [PAI/Wan2.1-Fun-V1.1-14B-InP](https://modelscope.cn/models/PAI/Wan2.1-Fun-V1.1-14B-InP) | [code](/examples/wanvideo/model_inference/Wan2.1-Fun-V1.1-14B-InP.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-V1.1-14B-InP.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-Fun-V1.1-14B-InP.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-V1.1-14B-InP.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-V1.1-14B-InP.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-V1.1-14B-InP.py) |
+| Wan | [PAI/Wan2.1-Fun-V1.1-1.3B-Control-Camera](https://modelscope.cn/models/PAI/Wan2.1-Fun-V1.1-1.3B-Control-Camera) | [code](/examples/wanvideo/model_inference/Wan2.1-Fun-V1.1-1.3B-Control-Camera.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-V1.1-1.3B-Control-Camera.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-Fun-V1.1-1.3B-Control-Camera.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-V1.1-1.3B-Control-Camera.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-V1.1-1.3B-Control-Camera.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-V1.1-1.3B-Control-Camera.py) |
+| Wan | [PAI/Wan2.1-Fun-V1.1-14B-Control-Camera](https://modelscope.cn/models/PAI/Wan2.1-Fun-V1.1-14B-Control-Camera) | [code](/examples/wanvideo/model_inference/Wan2.1-Fun-V1.1-14B-Control-Camera.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-Fun-V1.1-14B-Control-Camera.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-Fun-V1.1-14B-Control-Camera.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-Fun-V1.1-14B-Control-Camera.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-Fun-V1.1-14B-Control-Camera.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-Fun-V1.1-14B-Control-Camera.py) |
+| Wan | [DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1](https://modelscope.cn/models/DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1) | [code](/examples/wanvideo/model_inference/Wan2.1-1.3b-speedcontrol-v1.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.1-1.3b-speedcontrol-v1.py) | [code](/examples/wanvideo/model_training/full/Wan2.1-1.3b-speedcontrol-v1.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.1-1.3b-speedcontrol-v1.py) | [code](/examples/wanvideo/model_training/lora/Wan2.1-1.3b-speedcontrol-v1.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.1-1.3b-speedcontrol-v1.py) |
+| Wan | [krea/krea-realtime-video](https://www.modelscope.cn/models/krea/krea-realtime-video) | [code](/examples/wanvideo/model_inference/krea-realtime-video.py) | [code](/examples/wanvideo/model_inference_low_vram/krea-realtime-video.py) | [code](/examples/wanvideo/model_training/full/krea-realtime-video.sh) | [code](/examples/wanvideo/model_training/validate_full/krea-realtime-video.py) | [code](/examples/wanvideo/model_training/lora/krea-realtime-video.sh) | [code](/examples/wanvideo/model_training/validate_lora/krea-realtime-video.py) |
+| Wan | [meituan-longcat/LongCat-Video](https://www.modelscope.cn/models/meituan-longcat/LongCat-Video) | [code](/examples/wanvideo/model_inference/LongCat-Video.py) | [code](/examples/wanvideo/model_inference_low_vram/LongCat-Video.py) | [code](/examples/wanvideo/model_training/full/LongCat-Video.sh) | [code](/examples/wanvideo/model_training/validate_full/LongCat-Video.py) | [code](/examples/wanvideo/model_training/lora/LongCat-Video.sh) | [code](/examples/wanvideo/model_training/validate_lora/LongCat-Video.py) |
+| Wan | [ByteDance/Video-As-Prompt-Wan2.1-14B](https://modelscope.cn/models/ByteDance/Video-As-Prompt-Wan2.1-14B) | [code](/examples/wanvideo/model_inference/Video-As-Prompt-Wan2.1-14B.py) | [code](/examples/wanvideo/model_inference_low_vram/Video-As-Prompt-Wan2.1-14B.py) | [code](/examples/wanvideo/model_training/full/Video-As-Prompt-Wan2.1-14B.sh) | [code](/examples/wanvideo/model_training/validate_full/Video-As-Prompt-Wan2.1-14B.py) | [code](/examples/wanvideo/model_training/lora/Video-As-Prompt-Wan2.1-14B.sh) | [code](/examples/wanvideo/model_training/validate_lora/Video-As-Prompt-Wan2.1-14B.py) |
+| Wan | [Wan-AI/Wan2.2-T2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-T2V-A14B) | [code](/examples/wanvideo/model_inference/Wan2.2-T2V-A14B.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.2-T2V-A14B.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-T2V-A14B.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-T2V-A14B.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-T2V-A14B.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-T2V-A14B.py) |
+| Wan | [Wan-AI/Wan2.2-I2V-A14B](https://modelscope.cn/models/Wan-AI/Wan2.2-I2V-A14B) | [code](/examples/wanvideo/model_inference/Wan2.2-I2V-A14B.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.2-I2V-A14B.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-I2V-A14B.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-I2V-A14B.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-I2V-A14B.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-I2V-A14B.py) |
+| Wan | [Wan-AI/Wan2.2-TI2V-5B](https://modelscope.cn/models/Wan-AI/Wan2.2-TI2V-5B) | [code](/examples/wanvideo/model_inference/Wan2.2-TI2V-5B.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.2-TI2V-5B.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-TI2V-5B.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-TI2V-5B.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-TI2V-5B.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-TI2V-5B.py) |
+| Wan | [Wan-AI/Wan2.2-Animate-14B](https://www.modelscope.cn/models/Wan-AI/Wan2.2-Animate-14B) | [code](/examples/wanvideo/model_inference/Wan2.2-Animate-14B.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.2-Animate-14B.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-Animate-14B.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-Animate-14B.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-Animate-14B.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Animate-14B.py) |
+| Wan | [Wan-AI/Wan2.2-Animate-2-14B](https://www.modelscope.cn/models/Wan-AI/Wan2.2-Animate-2-14B) | [code](/examples/wanvideo/model_inference/Wan2.2-Animate-2-14B.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.2-Animate-2-14B.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-Animate-2-14B.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-Animate-2-14B.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-Animate-2-14B.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Animate-2-14B.py) |
+| Wan | [Wan-AI/Wan2.2-Animate-2-14B: Distilled](https://www.modelscope.cn/models/Wan-AI/Wan2.2-Animate-2-14B) | [code](/examples/wanvideo/model_inference/Wan2.2-Animate-2-14B-Distilled.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.2-Animate-2-14B-Distilled.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-Animate-2-14B-Distilled.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-Animate-2-14B-Distilled.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-Animate-2-14B-Distilled.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Animate-2-14B-Distilled.py) |
+| Wan | [Wan-AI/Wan2.2-S2V-14B](https://www.modelscope.cn/models/Wan-AI/Wan2.2-S2V-14B) | [code](/examples/wanvideo/model_inference/Wan2.2-S2V-14B_multi_clips.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.2-S2V-14B_multi_clips.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-S2V-14B.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-S2V-14B.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-S2V-14B.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-S2V-14B.py) |
+| Wan | [PAI/Wan2.2-VACE-Fun-A14B](https://www.modelscope.cn/models/PAI/Wan2.2-VACE-Fun-A14B) | [code](/examples/wanvideo/model_inference/Wan2.2-VACE-Fun-A14B.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.2-VACE-Fun-A14B.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-VACE-Fun-A14B.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-VACE-Fun-A14B.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-VACE-Fun-A14B.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-VACE-Fun-A14B.py) |
+| Wan | [PAI/Wan2.2-Fun-A14B-InP](https://modelscope.cn/models/PAI/Wan2.2-Fun-A14B-InP) | [code](/examples/wanvideo/model_inference/Wan2.2-Fun-A14B-InP.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.2-Fun-A14B-InP.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-Fun-A14B-InP.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-Fun-A14B-InP.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-Fun-A14B-InP.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Fun-A14B-InP.py) |
+| Wan | [PAI/Wan2.2-Fun-A14B-Control](https://modelscope.cn/models/PAI/Wan2.2-Fun-A14B-Control) | [code](/examples/wanvideo/model_inference/Wan2.2-Fun-A14B-Control.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.2-Fun-A14B-Control.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-Fun-A14B-Control.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-Fun-A14B-Control.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-Fun-A14B-Control.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Fun-A14B-Control.py) |
+| Wan | [PAI/Wan2.2-Fun-A14B-Control-Camera](https://modelscope.cn/models/PAI/Wan2.2-Fun-A14B-Control-Camera) | [code](/examples/wanvideo/model_inference/Wan2.2-Fun-A14B-Control-Camera.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan2.2-Fun-A14B-Control-Camera.py) | [code](/examples/wanvideo/model_training/full/Wan2.2-Fun-A14B-Control-Camera.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan2.2-Fun-A14B-Control-Camera.py) | [code](/examples/wanvideo/model_training/lora/Wan2.2-Fun-A14B-Control-Camera.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan2.2-Fun-A14B-Control-Camera.py) |
+| Wan | [openmoss/MOVA-360p](https://modelscope.cn/models/openmoss/MOVA-360p) | [code](/examples/mova/model_inference/MOVA-360p-I2AV.py) | [code](/examples/mova/model_inference_low_vram/MOVA-360p-I2AV.py) | [code](/examples/mova/model_training/full/MOVA-360P-I2AV.sh) | [code](/examples/mova/model_training/validate_full/MOVA-360p-I2AV.py) | [code](/examples/mova/model_training/lora/MOVA-360P-I2AV.sh) | [code](/examples/mova/model_training/validate_lora/MOVA-360p-I2AV.py) |
+| Wan | [openmoss/MOVA-720p](https://modelscope.cn/models/openmoss/MOVA-720p) | [code](/examples/mova/model_inference/MOVA-720p-I2AV.py) | [code](/examples/mova/model_inference_low_vram/MOVA-720p-I2AV.py) | [code](/examples/mova/model_training/full/MOVA-720P-I2AV.sh) | [code](/examples/mova/model_training/validate_full/MOVA-720p-I2AV.py) | [code](/examples/mova/model_training/lora/MOVA-720P-I2AV.sh) | [code](/examples/mova/model_training/validate_lora/MOVA-720p-I2AV.py) |
+| Wan | [Wan-AI/Wan-Dancer-14B (global model)](https://modelscope.cn/models/Wan-AI/Wan-Dancer-14B) | [code](/examples/wanvideo/model_inference/Wan-Dancer-14B-global.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan-Dancer-14B-global.py) | [code](/examples/wanvideo/model_training/full/Wan-Dancer-14B-global.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan-Dancer-14B-global.py) | [code](/examples/wanvideo/model_training/lora/Wan-Dancer-14B-global.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan-Dancer-14B-global.py) |
+| Wan | [Wan-AI/Wan-Dancer-14B (local model)](https://modelscope.cn/models/Wan-AI/Wan-Dancer-14B) | [code](/examples/wanvideo/model_inference/Wan-Dancer-14B-local.py) | [code](/examples/wanvideo/model_inference_low_vram/Wan-Dancer-14B-local.py) | [code](/examples/wanvideo/model_training/full/Wan-Dancer-14B-local.sh) | [code](/examples/wanvideo/model_training/validate_full/Wan-Dancer-14B-local.py) | [code](/examples/wanvideo/model_training/lora/Wan-Dancer-14B-local.sh) | [code](/examples/wanvideo/model_training/validate_lora/Wan-Dancer-14B-local.py) |
+| FLUX.1 | [black-forest-labs/FLUX.1-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.1-dev) | [code](/examples/flux/model_inference/FLUX.1-dev.py) | [code](/examples/flux/model_inference_low_vram/FLUX.1-dev.py) | [code](/examples/flux/model_training/full/FLUX.1-dev.sh) | [code](/examples/flux/model_training/validate_full/FLUX.1-dev.py) | [code](/examples/flux/model_training/lora/FLUX.1-dev.sh) | [code](/examples/flux/model_training/validate_lora/FLUX.1-dev.py) |
+| FLUX.1 | [black-forest-labs/FLUX.1-Krea-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.1-Krea-dev) | [code](/examples/flux/model_inference/FLUX.1-Krea-dev.py) | [code](/examples/flux/model_inference_low_vram/FLUX.1-Krea-dev.py) | [code](/examples/flux/model_training/full/FLUX.1-Krea-dev.sh) | [code](/examples/flux/model_training/validate_full/FLUX.1-Krea-dev.py) | [code](/examples/flux/model_training/lora/FLUX.1-Krea-dev.sh) | [code](/examples/flux/model_training/validate_lora/FLUX.1-Krea-dev.py) |
+| FLUX.1 | [black-forest-labs/FLUX.1-Kontext-dev](https://www.modelscope.cn/models/black-forest-labs/FLUX.1-Kontext-dev) | [code](/examples/flux/model_inference/FLUX.1-Kontext-dev.py) | [code](/examples/flux/model_inference_low_vram/FLUX.1-Kontext-dev.py) | [code](/examples/flux/model_training/full/FLUX.1-Kontext-dev.sh) | [code](/examples/flux/model_training/validate_full/FLUX.1-Kontext-dev.py) | [code](/examples/flux/model_training/lora/FLUX.1-Kontext-dev.sh) | [code](/examples/flux/model_training/validate_lora/FLUX.1-Kontext-dev.py) |
+| FLUX.1 | [alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta](https://www.modelscope.cn/models/alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta) | [code](/examples/flux/model_inference/FLUX.1-dev-Controlnet-Inpainting-Beta.py) | [code](/examples/flux/model_inference_low_vram/FLUX.1-dev-Controlnet-Inpainting-Beta.py) | [code](/examples/flux/model_training/full/FLUX.1-dev-Controlnet-Inpainting-Beta.sh) | [code](/examples/flux/model_training/validate_full/FLUX.1-dev-Controlnet-Inpainting-Beta.py) | [code](/examples/flux/model_training/lora/FLUX.1-dev-Controlnet-Inpainting-Beta.sh) | [code](/examples/flux/model_training/validate_lora/FLUX.1-dev-Controlnet-Inpainting-Beta.py) |
+| FLUX.1 | [InstantX/FLUX.1-dev-Controlnet-Union-alpha](https://www.modelscope.cn/models/InstantX/FLUX.1-dev-Controlnet-Union-alpha) | [code](/examples/flux/model_inference/FLUX.1-dev-Controlnet-Union-alpha.py) | [code](/examples/flux/model_inference_low_vram/FLUX.1-dev-Controlnet-Union-alpha.py) | [code](/examples/flux/model_training/full/FLUX.1-dev-Controlnet-Union-alpha.sh) | [code](/examples/flux/model_training/validate_full/FLUX.1-dev-Controlnet-Union-alpha.py) | [code](/examples/flux/model_training/lora/FLUX.1-dev-Controlnet-Union-alpha.sh) | [code](/examples/flux/model_training/validate_lora/FLUX.1-dev-Controlnet-Union-alpha.py) |
+| FLUX.1 | [jasperai/Flux.1-dev-Controlnet-Upscaler](https://www.modelscope.cn/models/jasperai/Flux.1-dev-Controlnet-Upscaler) | [code](/examples/flux/model_inference/FLUX.1-dev-Controlnet-Upscaler.py) | [code](/examples/flux/model_inference_low_vram/FLUX.1-dev-Controlnet-Upscaler.py) | [code](/examples/flux/model_training/full/FLUX.1-dev-Controlnet-Upscaler.sh) | [code](/examples/flux/model_training/validate_full/FLUX.1-dev-Controlnet-Upscaler.py) | [code](/examples/flux/model_training/lora/FLUX.1-dev-Controlnet-Upscaler.sh) | [code](/examples/flux/model_training/validate_lora/FLUX.1-dev-Controlnet-Upscaler.py) |
+| FLUX.1 | [InstantX/FLUX.1-dev-IP-Adapter](https://www.modelscope.cn/models/InstantX/FLUX.1-dev-IP-Adapter) | [code](/examples/flux/model_inference/FLUX.1-dev-IP-Adapter.py) | [code](/examples/flux/model_inference_low_vram/FLUX.1-dev-IP-Adapter.py) | [code](/examples/flux/model_training/full/FLUX.1-dev-IP-Adapter.sh) | [code](/examples/flux/model_training/validate_full/FLUX.1-dev-IP-Adapter.py) | [code](/examples/flux/model_training/lora/FLUX.1-dev-IP-Adapter.sh) | [code](/examples/flux/model_training/validate_lora/FLUX.1-dev-IP-Adapter.py) |
+| FLUX.1 | [ByteDance/InfiniteYou](https://www.modelscope.cn/models/ByteDance/InfiniteYou) | [code](/examples/flux/model_inference/FLUX.1-dev-InfiniteYou.py) | [code](/examples/flux/model_inference_low_vram/FLUX.1-dev-InfiniteYou.py) | [code](/examples/flux/model_training/full/FLUX.1-dev-InfiniteYou.sh) | [code](/examples/flux/model_training/validate_full/FLUX.1-dev-InfiniteYou.py) | [code](/examples/flux/model_training/lora/FLUX.1-dev-InfiniteYou.sh) | [code](/examples/flux/model_training/validate_lora/FLUX.1-dev-InfiniteYou.py) |
+| FLUX.1 | [DiffSynth-Studio/Eligen](https://www.modelscope.cn/models/DiffSynth-Studio/Eligen) | [code](/examples/flux/model_inference/FLUX.1-dev-EliGen.py) | [code](/examples/flux/model_inference_low_vram/FLUX.1-dev-EliGen.py) | - | - | [code](/examples/flux/model_training/lora/FLUX.1-dev-EliGen.sh) | [code](/examples/flux/model_training/validate_lora/FLUX.1-dev-EliGen.py) |
+| FLUX.1 | [DiffSynth-Studio/LoRA-Encoder-FLUX.1-Dev](https://www.modelscope.cn/models/DiffSynth-Studio/LoRA-Encoder-FLUX.1-Dev) | [code](/examples/flux/model_inference/FLUX.1-dev-LoRA-Encoder.py) | [code](/examples/flux/model_inference_low_vram/FLUX.1-dev-LoRA-Encoder.py) | [code](/examples/flux/model_training/full/FLUX.1-dev-LoRA-Encoder.sh) | [code](/examples/flux/model_training/validate_full/FLUX.1-dev-LoRA-Encoder.py) | - | - |
+| FLUX.1 | [DiffSynth-Studio/LoRAFusion-preview-FLUX.1-dev](https://modelscope.cn/models/DiffSynth-Studio/LoRAFusion-preview-FLUX.1-dev) | [code](/examples/flux/model_inference/FLUX.1-dev-LoRA-Fusion.py) | - | - | - | - | - |
+| FLUX.1 | [stepfun-ai/Step1X-Edit](https://www.modelscope.cn/models/stepfun-ai/Step1X-Edit) | [code](/examples/flux/model_inference/Step1X-Edit.py) | [code](/examples/flux/model_inference_low_vram/Step1X-Edit.py) | [code](/examples/flux/model_training/full/Step1X-Edit.sh) | [code](/examples/flux/model_training/validate_full/Step1X-Edit.py) | [code](/examples/flux/model_training/lora/Step1X-Edit.sh) | [code](/examples/flux/model_training/validate_lora/Step1X-Edit.py) |
+| FLUX.1 | [ostris/Flex.2-preview](https://www.modelscope.cn/models/ostris/Flex.2-preview) | [code](/examples/flux/model_inference/FLEX.2-preview.py) | [code](/examples/flux/model_inference_low_vram/FLEX.2-preview.py) | [code](/examples/flux/model_training/full/FLEX.2-preview.sh) | [code](/examples/flux/model_training/validate_full/FLEX.2-preview.py) | [code](/examples/flux/model_training/lora/FLEX.2-preview.sh) | [code](/examples/flux/model_training/validate_lora/FLEX.2-preview.py) |
+| FLUX.1 | [DiffSynth-Studio/Nexus-GenV2](https://www.modelscope.cn/models/DiffSynth-Studio/Nexus-GenV2) | [code](/examples/flux/model_inference/Nexus-Gen-Editing.py) | [code](/examples/flux/model_inference_low_vram/Nexus-Gen-Editing.py) | [code](/examples/flux/model_training/full/Nexus-Gen.sh) | [code](/examples/flux/model_training/validate_full/Nexus-Gen.py) | [code](/examples/flux/model_training/lora/Nexus-Gen.sh) | [code](/examples/flux/model_training/validate_lora/Nexus-Gen.py) |
+| Stable Diffusion XL | [stabilityai/stable-diffusion-xl-base-1.0](https://www.modelscope.cn/models/stabilityai/stable-diffusion-xl-base-1.0) | [code](/examples/stable_diffusion_xl/model_inference/stable-diffusion-xl-base-1.0.py) | [code](/examples/stable_diffusion_xl/model_inference_low_vram/stable-diffusion-xl-base-1.0.py) | [code](/examples/stable_diffusion_xl/model_training/full/stable-diffusion-xl-base-1.0.sh) | [code](/examples/stable_diffusion_xl/model_training/validate_full/stable-diffusion-xl-base-1.0.py) | [code](/examples/stable_diffusion_xl/model_training/lora/stable-diffusion-xl-base-1.0.sh) | [code](/examples/stable_diffusion_xl/model_training/validate_lora/stable-diffusion-xl-base-1.0.py) |
+| Stable Diffusion | [AI-ModelScope/stable-diffusion-v1-5](https://www.modelscope.cn/models/AI-ModelScope/stable-diffusion-v1-5) | [code](/examples/stable_diffusion/model_inference/stable-diffusion-v1-5.py) | [code](/examples/stable_diffusion/model_inference_low_vram/stable-diffusion-v1-5.py) | [code](/examples/stable_diffusion/model_training/full/stable-diffusion-v1-5.sh) | [code](/examples/stable_diffusion/model_training/validate_full/stable-diffusion-v1-5.py) | [code](/examples/stable_diffusion/model_training/lora/stable-diffusion-v1-5.sh) | [code](/examples/stable_diffusion/model_training/validate_lora/stable-diffusion-v1-5.py) |

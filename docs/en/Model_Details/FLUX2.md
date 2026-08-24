@@ -2,15 +2,6 @@
 
 FLUX.2 is an image generation model trained and open-sourced by Black Forest Labs.
 
-## Model Lineage
-
-```mermaid
-graph LR;
-    FLUX.2-Series-->black-forest-labs/FLUX.2-dev;
-    FLUX.2-Series-->black-forest-labs/FLUX.2-klein-4B;
-    FLUX.2-Series-->black-forest-labs/FLUX.2-klein-9B;
-```
-
 ## Installation
 
 Before using this project for model inference and training, please install DiffSynth-Studio first.

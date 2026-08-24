@@ -2,15 +2,6 @@
 
 FLUX.2 是由 Black Forest Labs 训练并开源的图像生成模型。
 
-## 模型血缘
-
-```mermaid
-graph LR;
-    FLUX.2-Series-->black-forest-labs/FLUX.2-dev;
-    FLUX.2-Series-->black-forest-labs/FLUX.2-klein-4B;
-    FLUX.2-Series-->black-forest-labs/FLUX.2-klein-9B;
-```
-
 ## 安装
 
 在使用本项目进行模型推理和训练前，请先安装 DiffSynth-Studio。

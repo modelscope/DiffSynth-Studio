@@ -57,54 +57,6 @@ save_video(video, "video.mp4", fps=15, quality=5)
 
 ## Model Overview
 
-<details>
-
-<summary>Model Lineage</summary>
-
-```mermaid
-graph LR;
-    Wan-Series-->Wan2.1-Series;
-    Wan-Series-->Wan2.2-Series;
-    Wan2.1-Series-->Wan-AI/Wan2.1-T2V-1.3B;
-    Wan2.1-Series-->Wan-AI/Wan2.1-T2V-14B;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.1-I2V-14B-480P;
-    Wan-AI/Wan2.1-I2V-14B-480P-->Wan-AI/Wan2.1-I2V-14B-720P;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.1-FLF2V-14B-720P;
-    Wan-AI/Wan2.1-T2V-1.3B-->iic/VACE-Wan2.1-1.3B-Preview;
-    iic/VACE-Wan2.1-1.3B-Preview-->Wan-AI/Wan2.1-VACE-1.3B;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.1-VACE-14B;
-    Wan-AI/Wan2.1-T2V-1.3B-->Wan2.1-Fun-1.3B-Series;
-    Wan2.1-Fun-1.3B-Series-->PAI/Wan2.1-Fun-1.3B-InP;
-    Wan2.1-Fun-1.3B-Series-->PAI/Wan2.1-Fun-1.3B-Control;
-    Wan-AI/Wan2.1-T2V-14B-->Wan2.1-Fun-14B-Series;
-    Wan2.1-Fun-14B-Series-->PAI/Wan2.1-Fun-14B-InP;
-    Wan2.1-Fun-14B-Series-->PAI/Wan2.1-Fun-14B-Control;
-    Wan-AI/Wan2.1-T2V-1.3B-->Wan2.1-Fun-V1.1-1.3B-Series;
-    Wan2.1-Fun-V1.1-1.3B-Series-->PAI/Wan2.1-Fun-V1.1-1.3B-Control;
-    Wan2.1-Fun-V1.1-1.3B-Series-->PAI/Wan2.1-Fun-V1.1-1.3B-InP;
-    Wan2.1-Fun-V1.1-1.3B-Series-->PAI/Wan2.1-Fun-V1.1-1.3B-Control-Camera;
-    Wan-AI/Wan2.1-T2V-14B-->Wan2.1-Fun-V1.1-14B-Series;
-    Wan2.1-Fun-V1.1-14B-Series-->PAI/Wan2.1-Fun-V1.1-14B-Control;
-    Wan2.1-Fun-V1.1-14B-Series-->PAI/Wan2.1-Fun-V1.1-14B-InP;
-    Wan2.1-Fun-V1.1-14B-Series-->PAI/Wan2.1-Fun-V1.1-14B-Control-Camera;
-    Wan-AI/Wan2.1-T2V-1.3B-->DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1;
-    Wan-AI/Wan2.1-T2V-14B-->krea/krea-realtime-video;
-    Wan-AI/Wan2.1-I2V-14B-720P-->ByteDance/Video-As-Prompt-Wan2.1-14B;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.2-Animate-14B;
-    Wan2.2-Series-->Wan-AI/Wan2.2-Animate-2-14B;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.2-S2V-14B;
-    Wan2.2-Series-->Wan-AI/Wan2.2-T2V-A14B;
-    Wan2.2-Series-->Wan-AI/Wan2.2-I2V-A14B;
-    Wan2.2-Series-->Wan-AI/Wan2.2-TI2V-5B;
-    Wan-AI/Wan2.2-T2V-A14B-->Wan2.2-Fun-Series;
-    Wan2.2-Fun-Series-->PAI/Wan2.2-VACE-Fun-A14B;
-    Wan2.2-Fun-Series-->PAI/Wan2.2-Fun-A14B-InP;
-    Wan2.2-Fun-Series-->PAI/Wan2.2-Fun-A14B-Control;
-    Wan2.2-Fun-Series-->PAI/Wan2.2-Fun-A14B-Control-Camera;
-```
-
-</details>
-
 | Model ID | Extra Inputs | Inference | Low VRAM Inference | Full Training | Validation After Full Training | LoRA Training | Validation After LoRA Training |
 |-|-|-|-|-|-|-|-|
 |[Wan-AI/Wan2.1-T2V-1.3B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-1.3B)||[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference/Wan2.1-T2V-1.3B.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference_low_vram/Wan2.1-T2V-1.3B.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/full/Wan2.1-T2V-1.3B.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_full/Wan2.1-T2V-1.3B.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/lora/Wan2.1-T2V-1.3B.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_lora/Wan2.1-T2V-1.3B.py)|
