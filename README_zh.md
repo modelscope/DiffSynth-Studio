@@ -328,7 +328,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 * 论文：[TreeAdapter: Hierarchical Taxonomy-Guided Adapter Composition for Fine-Grained Species Image Generation](https://arxiv.org/abs/2607.24215)
 * 模型：[ModelScope](https://modelscope.cn/models/DiffSynth-Studio/TreeAdapter-KleinBase4B)
 
-![](https://github.com/user-attachments/assets/1b461e0f-60aa-4b38-a44d-d1646cbbbc75)
+![Image](https://github.com/user-attachments/assets/1b461e0f-60aa-4b38-a44d-d1646cbbbc75)
 
 </details>
 
