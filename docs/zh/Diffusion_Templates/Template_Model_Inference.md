@@ -182,7 +182,7 @@ image.save("image_Upscaler_Sharpness.png")
 
 |低清晰度输入|高清晰度输出|
 |-|-|
-|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_lowres_100.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Upscaler_Sharpness.png)|
+|![](https://github.com/user-attachments/assets/53f378f7-0dc5-44cd-bc39-032d0b1d0208)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Upscaler_Sharpness.png)|
 
 ### 结构控制 + 美学对齐 + 锐利激发
 
@@ -233,7 +233,7 @@ image.save("image_Controlnet_Aesthetic_Sharpness.png")
 
 |结构控制图|输出图|
 |-|-|
-|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_depth.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Controlnet_Aesthetic_Sharpness.png)|
+|![](https://github.com/user-attachments/assets/1feeb13f-f8a7-40df-958c-90463ef5eaf4)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Controlnet_Aesthetic_Sharpness.png)|
 
 ### 结构控制 + 图像编辑 + 色彩调节
 
@@ -280,7 +280,7 @@ image.save("image_Controlnet_Edit_SoftRGB.png")
 
 |结构控制图|编辑输入图|输出图|
 |-|-|-|
-|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_depth.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_reference.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Controlnet_Edit_SoftRGB.png)|
+|![](https://github.com/user-attachments/assets/1feeb13f-f8a7-40df-958c-90463ef5eaf4)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_reference.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Controlnet_Edit_SoftRGB.png)|
 
 ### 亮度控制 + 图像编辑 + 局部重绘
 
@@ -330,4 +330,4 @@ image.save("image_Brightness_Edit_Inpaint.png")
 
 |参考图|重绘区域|输出图|
 |-|-|-|
-|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_reference.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_mask_1.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Brightness_Edit_Inpaint.png)|
+|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_reference.jpg)|![](https://github.com/user-attachments/assets/52148a91-7c03-4042-944a-4c3182abe889)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Brightness_Edit_Inpaint.png)|
