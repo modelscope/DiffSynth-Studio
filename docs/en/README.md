@@ -8,17 +8,17 @@ Welcome to the magical world of Diffusion models! `DiffSynth-Studio` is an open-
 
 ```mermaid
 graph LR;
-    I_want_to_use_models_for_inference_and_training-->sec1[Section 1: Getting Started];
-    I_want_to_use_models_for_inference_and_training-->sec2[Section 2: Model Details];
-    I_want_to_use_models_for_inference_and_training-->sec3[Section 3: Training Framework];
-    I_want_to_develop_based_on_this_framework-->sec3[Section 3: Training Framework];
-    I_want_to_develop_based_on_this_framework-->sec4[Section 4: Model Integration];
-    I_want_to_develop_based_on_this_framework-->sec5[Section 5: API Reference];
-    I_want_to_explore_new_technologies_based_on_this_project-->sec4[Section 4: Model Integration];
-    I_want_to_explore_new_technologies_based_on_this_project-->sec5[Section 5: API Reference];
-    I_want_to_explore_new_technologies_based_on_this_project-->sec6[Section 6: Diffusion Templates];
-    I_want_to_explore_new_technologies_based_on_this_project-->sec7[Section 7: Research Guide];
-    I_encountered_a_problem-->sec8[Section 8: Frequently Asked Questions];
+    use["I want to use models for inference and training"]-->sec1["Section 1: Getting Started"];
+    use["I want to use models for inference and training"]-->sec2["Section 2: Model Details"];
+    use["I want to use models for inference and training"]-->sec3["Section 3: Training Framework"];
+    develop["I want to develop based on this framework"]-->sec3["Section 3: Training Framework"];
+    develop["I want to develop based on this framework"]-->sec4["Section 4: Model Integration"];
+    develop["I want to develop based on this framework"]-->sec5["Section 5: API Reference"];
+    explore["I want to explore new technologies based on this project"]-->sec4["Section 4: Model Integration"];
+    explore["I want to explore new technologies based on this project"]-->sec5["Section 5: API Reference"];
+    explore["I want to explore new technologies based on this project"]-->sec6["Section 6: Diffusion Templates"];
+    explore["I want to explore new technologies based on this project"]-->sec7["Section 7: Research Guide"];
+    problem["I encountered a problem"]-->sec8["Section 8: Frequently Asked Questions"];
 ```
 
 </details>
