@@ -328,7 +328,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 * 论文：[TreeAdapter: Hierarchical Taxonomy-Guided Adapter Composition for Fine-Grained Species Image Generation](https://arxiv.org/abs/2607.24215)
 * 模型：[ModelScope](https://modelscope.cn/models/DiffSynth-Studio/TreeAdapter-KleinBase4B)
 
-![](https://modelscope.cn/models/DiffSynth-Studio/TreeAdapter-KleinBase4B/resolve/master/example/1.png)
+![Image](https://github.com/user-attachments/assets/1b461e0f-60aa-4b38-a44d-d1646cbbbc75)
 
 </details>
 
@@ -345,7 +345,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 
 |输入样例1|输出样例1|输入样例2|输出样例2|
 |-|-|-|-|
-|![](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2/resolve/master/assets/6_input.jpg)|![](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2/resolve/master/assets/6_output.jpg)|![](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2/resolve/master/assets/1_input.jpg)|![](https://modelscope.cn/models/DiffSynth-Studio/ZImage-i2L-v2/resolve/master/assets/1_output.jpg)|
+|![Image](https://github.com/user-attachments/assets/0a1fd252-851f-414e-af24-4c656ab54277)|![Image](https://github.com/user-attachments/assets/96259993-e732-424d-bf07-9ca1ede27890)|![Image](https://github.com/user-attachments/assets/a78573a0-c2cf-4e33-ac21-276078e8cad3)|![Image](https://github.com/user-attachments/assets/8177e883-cfef-4e38-a528-cdef01a9f9b8)|
 
 </details>
 
