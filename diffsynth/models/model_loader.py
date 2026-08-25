@@ -1,6 +1,6 @@
 from ..core.loader import load_model, hash_model_file
 from ..core.vram import AutoWrappedModule
-from ..core.quant import QuantizeConfig
+from ..core.quant import QuantizeConfig, MixedQuantizeConfig
 from ..configs import MODEL_CONFIGS, VRAM_MANAGEMENT_MODULE_MAPS, VERSION_CHECKER_MAPS
 import importlib, json, torch
 
@@ -73,6 +73,10 @@ class ModelPool:
         if registered is not None:
             if quantize is not None:
                 print(f"Warning: `{config.get('model_name')}` is already a pre-quantized checkpoint; ignoring the passed quantize option.")
+            registered = dict(registered)
+            child_configs = registered.pop("configs", None)
+            if child_configs is not None:
+                return MixedQuantizeConfig(configs=[QuantizeConfig(**child) for child in child_configs], **registered)
             return QuantizeConfig(**registered)
         return quantize
 
