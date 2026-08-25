@@ -62,6 +62,28 @@ def _available_methods():
     return f"┌{'─' * (width + 2)}┐\n{body}\n└{'─' * (width + 2)}┘"
 
 
+def _format_error_report(reports):
+    if not reports:
+        return "Quantization error report: no targeted nn.Linear layers found."
+    methods = sorted({report["method"] for report in reports})
+    lines = [f"Quantization error report ({' + '.join(methods)}, {len(reports)} layers, sorted by relative_error, worst first):"]
+    mixed = len(methods) > 1
+    name_width = max(len(report["name"]) for report in reports)
+    header = f"  {'relative_error':>14}  {'max_abs':>12}  {'shape':<16}  {'name':<{name_width}}"
+    if mixed:
+        header += "  method"
+    lines.append(header)
+    for report in reports:
+        line = (
+            f"  {report['relative_error'] * 100:>13.2f}%  {report['max_abs']:>12.3e}"
+            f"  {str(report['shape']):<16}  {report['name']:<{name_width}}"
+        )
+        if mixed:
+            line += f"  {report['method']}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
 @dataclass
 class QuantizeConfig:
     """
@@ -234,6 +256,51 @@ class QuantizeConfig:
         tensors = {key: value.contiguous() for key, value in tensors.items()}
         metadata = {"format": "pt", **{key: value if isinstance(value, str) else str(value) for key, value in metadata.items()}}
         return tensors, metadata
+
+    def measure_quantization_error(self, model: torch.nn.Module, compute_device="cuda", verbose=True) -> list:
+        """
+        Measure the weight error this config's quantization introduces.
+
+        Parameters:
+            model: the fp model to analyze.
+            compute_device: where the quantize-dequantize round trip runs.
+            verbose: print the per-layer report, sorted by `relative_error`, worst first.
+
+        Returns:
+            A list of per-layer dicts: `name`, `method`, `shape`, `relative_error` and `max_abs` (worst-element absolute error).
+        """
+        reports = [
+            self._measure_layer_error(full_name, module, compute_device)
+            for full_name, module in model.named_modules()
+            if full_name != "" and self._should_quantize(full_name, module)
+        ]
+        reports.sort(key=lambda report: report["relative_error"], reverse=True)
+        if verbose:
+            print(_format_error_report(reports))
+        return reports
+
+    def _measure_layer_error(self, full_name, module, compute_device):
+        fp_weight = module.weight.detach().to(device=compute_device, dtype=torch.float32)
+        linear = torch.nn.Linear(
+            module.in_features, module.out_features,
+            bias=module.bias is not None, dtype=module.weight.dtype, device=compute_device,
+        )
+        linear.weight.data.copy_(module.weight.detach())
+        if module.bias is not None:
+            linear.bias.data.copy_(module.bias.detach().to(device=compute_device))
+        quantized = self.backend.create_quantized_linear(linear, compute_device=compute_device, model_device=compute_device)
+        restored = self.backend.dequantize_to_linear(quantized, compute_dtype=torch.float32, compute_device=compute_device, model_device=compute_device)
+        quant_weight = restored.weight.detach()
+        error = quant_weight - fp_weight
+        report = {
+            "name": full_name,
+            "method": self.method,
+            "shape": tuple(fp_weight.shape),
+            "relative_error": (torch.linalg.vector_norm(error) / torch.linalg.vector_norm(fp_weight)).item(),
+            "max_abs": error.abs().max().item(),
+        }
+        del fp_weight, linear, quantized, restored, quant_weight, error
+        return report
 
     @staticmethod
     def _name_matches(full_name, patterns):
@@ -457,6 +524,18 @@ class MixedQuantizeConfig:
         tensors = {key: value.contiguous() for key, value in flattened.items()}
         metadata = {"format": "pt", **{key: value if isinstance(value, str) else str(value) for key, value in merged_metadata.items()}}
         return tensors, metadata
+
+    def measure_quantization_error(self, model: torch.nn.Module, compute_device="cuda", verbose=True) -> list:
+        """
+        Measure the weight error of the mixed quantization.
+        """
+        reports = []
+        for config in self.configs:
+            reports.extend(config.measure_quantization_error(model, compute_device=compute_device, verbose=False))
+        reports.sort(key=lambda report: report["relative_error"], reverse=True)
+        if verbose:
+            print(_format_error_report(reports))
+        return reports
 
     def _distinct_backend_configs(self):
         seen = set()
