@@ -40,6 +40,8 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年8月25日** 我们开源了 [DiffSynth-WebUI](https://github.com/modelscope/DiffSynth-WebUI)，一键私有化部署 LoRA 训练服务，与模型参数量化功能结合，用消费级 GPU 也能训练超大模型。
+
 - **2026年8月19日** 我们发布了模型量化功能。它提供了统一的 `QuantizeConfig` 入口，支持 bitsandbytes、torchao、comfy-kitchen 等多种量化后端，具备在线量化、加载预量化权重、混合量化、保存量化模型、量化 + LoRA 训练等能力。详情请参考[文档](/docs/zh/Pipeline_Usage/Quantization.md)。
 
 - **2026年8月17日** MiniMax-Music3 开源，欢迎加入音频生成模型家族！支持文生音乐推理和低显存推理能力。详情请参考[文档](/docs/zh/Model_Details/MiniMax-Music3.md)和[示例代码](/examples/minimax_music3/)。
