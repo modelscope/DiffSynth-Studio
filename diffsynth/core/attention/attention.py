@@ -4,38 +4,38 @@ from einops import rearrange, repeat
 try:
     from flash_attn.cute import flash_attn_func as flash_attn_func_cute
     FLASH_ATTN_4_AVAILABLE = True
-except ModuleNotFoundError:
+except:
     FLASH_ATTN_4_AVAILABLE = False
 
 try:
     import flash_attn_interface
     FLASH_ATTN_3_AVAILABLE = True
-except ModuleNotFoundError:
+except:
     FLASH_ATTN_3_AVAILABLE = False
 
 try:
     import flash_attn
     FLASH_ATTN_2_AVAILABLE = True
-except ModuleNotFoundError:
+except:
     FLASH_ATTN_2_AVAILABLE = False
 
 try:
     from sageattention import sageattn
     SAGE_ATTN_AVAILABLE = True
-except ModuleNotFoundError:
+except:
     SAGE_ATTN_AVAILABLE = False
 
 try:
     import xformers.ops as xops
     XFORMERS_AVAILABLE = True
-except ModuleNotFoundError:
+except:
     XFORMERS_AVAILABLE = False
 
 try:
     from torch.nn.attention.flex_attention import flex_attention as flex_attention_func
     flex_attention_func = torch.compile(flex_attention_func, dynamic=False, mode="max-autotune-no-cudagraphs", fullgraph=True, backend="inductor")
     FLEX_ATTN_AVAILABLE = True
-except (ModuleNotFoundError, ImportError):
+except:
     FLEX_ATTN_AVAILABLE = False
 
 try:
