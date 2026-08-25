@@ -48,7 +48,3 @@ accelerate launch examples/minimax_h3/model_training/train.py \
   --lora_rank 32 \
   --use_gradient_checkpointing \
   --find_unused_parameters
-# Optional: fuse the DeCFG training adapter into the DiT while training, for a better optimization landscape on this CFG-distilled base. Training only -- do not load it at inference.
-# modelscope download --model DiffSynth-Studio/MiniMax-H3-TrainingAdapter --local_dir ./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter
-#   --preset_lora_path "./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter/model.safetensors" \
-#   --preset_lora_model "dit"
