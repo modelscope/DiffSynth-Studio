@@ -7,7 +7,7 @@ if os.environ.get("DIFFSYNTH_FLASH_ATTN_KERNEL_REPO_ID") is not None:
         kernel_module = get_kernel(os.environ.get("DIFFSYNTH_FLASH_ATTN_KERNEL_REPO_ID"), version=int(os.environ.get("DIFFSYNTH_FLASH_ATTN_KERNEL_VERSION")))
         customized_flash_attn_func = kernel_module.flash_attn_func
         CUSTOMIZED_FA_KERNEL_AVAILABLE = True
-    except:
+    except Exception:
         CUSTOMIZED_FA_KERNEL_AVAILABLE = False
 else:
     CUSTOMIZED_FA_KERNEL_AVAILABLE = False
@@ -15,38 +15,38 @@ else:
 try:
     from flash_attn.cute import flash_attn_func as flash_attn_func_cute
     FLASH_ATTN_4_AVAILABLE = True
-except:
+except Exception:
     FLASH_ATTN_4_AVAILABLE = False
 
 try:
     import flash_attn_interface
     FLASH_ATTN_3_AVAILABLE = True
-except:
+except Exception:
     FLASH_ATTN_3_AVAILABLE = False
 
 try:
     import flash_attn
     FLASH_ATTN_2_AVAILABLE = True
-except:
+except Exception:
     FLASH_ATTN_2_AVAILABLE = False
 
 try:
     from sageattention import sageattn
     SAGE_ATTN_AVAILABLE = True
-except:
+except Exception:
     SAGE_ATTN_AVAILABLE = False
 
 try:
     import xformers.ops as xops
     XFORMERS_AVAILABLE = True
-except:
+except Exception:
     XFORMERS_AVAILABLE = False
 
 try:
     from torch.nn.attention.flex_attention import flex_attention as flex_attention_func
     flex_attention_func = torch.compile(flex_attention_func, dynamic=False, mode="max-autotune-no-cudagraphs", fullgraph=True, backend="inductor")
     FLEX_ATTN_AVAILABLE = True
-except:
+except Exception:
     FLEX_ATTN_AVAILABLE = False
 
 try:
@@ -54,7 +54,7 @@ try:
         TORCH_SUPPORT_GQA = True
     else:
         TORCH_SUPPORT_GQA = False
-except:
+except Exception:
     TORCH_SUPPORT_GQA = False
 
 
