@@ -1,34 +1,31 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "diffsynth"
-version = "2.1.1"
+dynamic = ["version"]
 description = "Enjoy the magic of Diffusion models!"
+readme = "README.md"
 authors = [{name = "ModelScope Team"}]
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.10.1"
 dependencies = [
     "torch>=2.0.0",
     "torchvision",
     "transformers",
-    "imageio",
     "imageio[ffmpeg]",
     "safetensors",
     "einops",
-    "sentencepiece",
-    "protobuf",
     "modelscope",
     "ftfy",
     "pandas",
     "accelerate",
     "peft",
-    "datasets",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
 
@@ -36,17 +33,10 @@ classifiers = [
 where = ["./"]
 include = ["diffsynth", "diffsynth.*"]
 
+[tool.setuptools.dynamic]
+version = {attr = "diffsynth.version.__version__"}
+
 [project.optional-dependencies]
-npu_aarch64 = [
-    "torch==2.7.1",
-    "torch-npu==2.7.1",
-    "torchvision==0.22.1"
-]
-npu = [
-    "torch==2.7.1+cpu",
-    "torch-npu==2.7.1",
-    "torchvision==0.22.1+cpu"
-]
 audio = [
     "av",
     "torchaudio",
@@ -55,16 +45,50 @@ audio = [
 ]
 quant = [
     "bitsandbytes",
-    "torchao"
+    "comfy-kitchen",
+    "torchao>=0.16"
+]
+training = [
+    "deepspeed"
+]
+logger = [
+    "tensorboard",
+    "swanlab",
+    "wandb"
+]
+npu = [
+    "torch==2.7.1+cpu",
+    "torch-npu==2.7.1",
+    "torchvision==0.22.1+cpu"
+]
+npu_aarch64 = [
+    "torch==2.7.1",
+    "torch-npu==2.7.1",
+    "torchvision==0.22.1"
+]
+infiniteyou = [
+    "insightface",
+    "facexlib"
+]
+ses = [
+    "pywt"
+]
+nexusgen = [
+    "qwen_vl_utils",
+    "transformers==4.49.0"
 ]
 all = [
     "av",
     "torchaudio",
     "torchcodec",
     "librosa",
-    "streamlit",
     "bitsandbytes",
-    "torchao"
+    "comfy-kitchen",
+    "torchao>=0.16",
+    "deepspeed",
+    "tensorboard",
+    "swanlab",
+    "wandb"
 ]
 
 [tool.setuptools]

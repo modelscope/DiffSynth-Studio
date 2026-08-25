@@ -24,10 +24,18 @@ Using this training approach, some functionally unique LoRA models can be traine
 
 ## Model Effects
 
+### Aesthetic Enhancement
+
 We have trained several aesthetic enhancement LoRAs using differential LoRA training techniques. You can visit the corresponding model pages to view the generation effects.
 
 * [DiffSynth-Studio/Qwen-Image-LoRA-ArtAug-v1](https://modelscope.cn/models/DiffSynth-Studio/Qwen-Image-LoRA-ArtAug-v1)
 * [DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1](https://modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1)
+
+### Training LoRA on Distillation-Accelerated Models
+
+Some models (e.g., [Z-Image-Turbo](https://modelscope.cn/models/Tongyi-MAI/Z-Image-Turbo)) have undergone distillation-based acceleration training. They perform normally under the distillation-accelerated configuration (CFG disabled, 8 steps), but their output degrades under the standard configuration (CFG enabled, 30 steps). When training a LoRA on such a base model, the resulting LoRA will cause degraded output under the distillation-accelerated configuration while performing normally under the standard configuration.
+
+One solution is to first train a LoRA (e.g., [ostris/zimage_turbo_training_adapter](https://modelscope.cn/models/ostris/zimage_turbo_training_adapter)) that degenerates the model's distillation acceleration capability (degraded output under the distillation-accelerated configuration, normal output under the standard configuration), and then train a new LoRA on top of this LoRA. Note, however, that differential training prevents the LoRA model from being optimized end-to-end, so its effectiveness carries significant uncertainty.
 
 ## Using Differential LoRA Training in the Training Framework
 

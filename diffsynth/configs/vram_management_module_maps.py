@@ -14,7 +14,11 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
-    "diffsynth.models.minimax_h3_dit_comfy_pruned.MiniMaxH3DiTComfyPruned": {
+    "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfy": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfyPruned": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
@@ -469,6 +473,28 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "diffsynth.models.lingbot_video_dit.LingBotVideoGroupedExperts": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
         "diffsynth.models.lingbot_video_dit.LingBotVideoRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+    },
+    "diffsynth.models.minimax_music3_dit.MiniMaxMusic3DiT": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_music3_dit.MiniMaxMusic3FourierEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.minimax_music3_rvq_depth_decoder.MiniMaxMusic3RVQDepthDecoder": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_music3_rvq_depth_decoder.MiniMaxMusic3RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.minimax_music3_vocoder.MiniMaxMusic3Vocoder": {
+        "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_music3_vocoder.MiniMaxMusic3WeightNormConv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_music3_vocoder.MiniMaxMusic3WeightNormConvTranspose1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_music3_vocoder.MiniMaxMusic3Snake1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.minimax_music3_text_encoder.MiniMaxMusic3TextEncoder": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3.modeling_qwen3.Qwen3RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
 }
 

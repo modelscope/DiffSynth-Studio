@@ -64,7 +64,9 @@ class AutoTorchModule(torch.nn.Module):
 
     def check_free_vram(self):
         if self.computation_device_type == "mps":
-            gpu_mem_state = (torch.mps.current_allocated_memory(), torch.mps.recommended_max_memory())
+            allocated = torch.mps.current_allocated_memory()
+            recommended_max = torch.mps.recommended_max_memory()
+            gpu_mem_state = (recommended_max - allocated, recommended_max)
         else:
             device = self.computation_device if not IS_NPU_AVAILABLE else get_device_name()
             gpu_mem_state = getattr(torch, self.computation_device_type).mem_get_info(device)
@@ -487,7 +489,7 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
 
     def _disk_required_keys(self):
         if self._required_keys is None:
-            self._required_keys = self.quantize.checkpoint_keys(self.module, self.name, self.disk_map)
+            self._required_keys = [key for key in self.disk_map if key.startswith(self.name + ".")]
         return self._required_keys
 
     def _load_from_disk(self, device, target=None):

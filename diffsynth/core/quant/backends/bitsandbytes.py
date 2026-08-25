@@ -1,6 +1,14 @@
+from dataclasses import dataclass, field
+
 import torch
-from ..base import QuantBackend, register_quant_backend
+from ..base import QuantBackend, BackendConfig, register_quant_backend
 from ..config import register_quant_method
+
+try:
+    import bitsandbytes as bnb
+    BITSANDBYTES_AVAILABLE = True
+except ImportError:
+    BITSANDBYTES_AVAILABLE = False
 
 
 def _assign_params_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
@@ -29,10 +37,10 @@ def _assign_params_from_state_dict(self, state_dict, prefix, local_metadata, str
 class BitsAndBytesQuantBackend(QuantBackend):
     """Adapter over `bitsandbytes.nn.Linear4bit` (NF4 / FP4, weight-only)."""
 
+    project_url = "https://github.com/bitsandbytes-foundation/bitsandbytes"
+
     def validate_environment(self):
-        try:
-            import bitsandbytes  # noqa: F401
-        except ImportError:
+        if not BITSANDBYTES_AVAILABLE:
             raise ImportError(
                 "bitsandbytes is required for bitsandbytes quantization methods. "
                 'Please install it via `pip install bitsandbytes` or `pip install "diffsynth[quant]"`.'
@@ -47,23 +55,14 @@ class BitsAndBytesQuantBackend(QuantBackend):
         }
 
     def quantized_linear_classes(self):
-        try:
-            import bitsandbytes as bnb
-        except ImportError:
-            return ()
         return (bnb.nn.Linear4bit,)
 
     def create_quantized_linear(self, linear, compute_device=None, model_device=None):
         """The `meta` shell avoids allocating an fp weight; bnb quantizes while `Params4bit` moves to `compute_device`."""
-        import bitsandbytes as bnb
-
+        cfg = self.config
         compute_dtype = linear.weight.dtype
         if compute_device is None:
             compute_device = linear.weight.device
-        quant_type = self.config.get("quant_type", "nf4")
-        compress_statistics = self.config.get("compress_statistics", True)
-        blocksize = self.config.get("blocksize")
-        quant_storage = self.config.get("quant_storage", torch.uint8)
 
         with torch.device("meta"):
             quant_linear = bnb.nn.Linear4bit(
@@ -71,17 +70,17 @@ class BitsAndBytesQuantBackend(QuantBackend):
                 linear.out_features,
                 bias=linear.bias is not None,
                 compute_dtype=compute_dtype,
-                compress_statistics=compress_statistics,
-                quant_type=quant_type,
-                quant_storage=quant_storage,
+                compress_statistics=cfg.compress_statistics,
+                quant_type=cfg.quant_type,
+                quant_storage=cfg.quant_storage,
             )
         weight = bnb.nn.Params4bit(
             linear.weight.data.contiguous(),
             requires_grad=False,
-            compress_statistics=compress_statistics,
-            blocksize=blocksize,
-            quant_type=quant_type,
-            quant_storage=quant_storage,
+            compress_statistics=cfg.compress_statistics,
+            blocksize=cfg.blocksize,
+            quant_type=cfg.quant_type,
+            quant_storage=cfg.quant_storage,
         )
         quant_linear.weight = weight.to(compute_device)
         if linear.bias is not None:
@@ -89,22 +88,20 @@ class BitsAndBytesQuantBackend(QuantBackend):
         return quant_linear.to(device=model_device)
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
-        import bitsandbytes as bnb
         with torch.device("meta"):
             shell = bnb.nn.Linear4bit(
                 linear.in_features,
                 linear.out_features,
                 bias=linear.bias is not None,
                 compute_dtype=compute_dtype,
-                compress_statistics=self.config.get("compress_statistics", True),
-                quant_type=self.config.get("quant_type", "nf4"),
-                quant_storage=self.config.get("quant_storage", torch.uint8),
+                compress_statistics=self.config.compress_statistics,
+                quant_type=self.config.quant_type,
+                quant_storage=self.config.quant_storage,
             )
         shell._load_from_state_dict = _assign_params_from_state_dict.__get__(shell)
         return shell
 
     def unflatten_state_dict(self, state_dict, metadata):
-        import bitsandbytes as bnb
         rebuilt = {}
         quant_state = {}
         for key, value in state_dict.items():
@@ -122,7 +119,6 @@ class BitsAndBytesQuantBackend(QuantBackend):
         return rebuilt
 
     def dequantize_to_linear(self, module, compute_dtype, compute_device=None, model_device=None):
-        import bitsandbytes as bnb
         if compute_device is not None:
             module = module.to(device=compute_device)
         weight = module.weight
@@ -136,17 +132,24 @@ class BitsAndBytesQuantBackend(QuantBackend):
         return linear
 
 
-def _linear4bit_config(quant_type):
-    def factory(backend_config_kwargs):
-        return {
-            "quant_type": quant_type,
-            "compress_statistics": True,
-            "blocksize": None,
-            "quant_storage": torch.uint8,
-            **backend_config_kwargs,
-        }
-    return factory
+@dataclass
+class BitsAndBytes4bitConfig(BackendConfig):
+    """Shared 4bit knobs; `quant_type` is pinned by the per-method subclass."""
+
+    compress_statistics: bool = True
+    blocksize: int = None                                # None -> bnb default (64)
+    quant_storage: torch.dtype = torch.uint8
 
 
-register_quant_method("bitsandbytes_nf4", "bitsandbytes", _linear4bit_config("nf4"), label="4bit, nf4, weight-only")
-register_quant_method("bitsandbytes_fp4", "bitsandbytes", _linear4bit_config("fp4"), label="4bit, fp4, weight-only")
+@dataclass
+class BitsAndBytesNF4Config(BitsAndBytes4bitConfig):
+    quant_type: str = field(init=False, default="nf4")
+
+
+@dataclass
+class BitsAndBytesFP4Config(BitsAndBytes4bitConfig):
+    quant_type: str = field(init=False, default="fp4")
+
+
+register_quant_method("bitsandbytes_nf4", "bitsandbytes", BitsAndBytesNF4Config.from_kwargs, label="4bit, nf4, weight-only")
+register_quant_method("bitsandbytes_fp4", "bitsandbytes", BitsAndBytesFP4Config.from_kwargs, label="4bit, fp4, weight-only")

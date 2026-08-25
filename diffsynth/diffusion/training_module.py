@@ -1,8 +1,7 @@
 import torch, json, os, inspect
-from ..core import ModelConfig, load_state_dict
+from ..core import ModelConfig, load_state_dict, QuantizeConfig
 from ..utils.controlnet import ControlNetInput
 from .base_pipeline import PipelineUnit
-from peft import LoraConfig, inject_adapter_in_model
 
 
 class GeneralUnit_RemoveCache(PipelineUnit):
@@ -92,6 +91,7 @@ class DiffusionTrainingModule(torch.nn.Module):
     
     
     def add_lora_to_model(self, model, target_modules, lora_rank, lora_alpha=None, upcast_dtype=None):
+        from peft import LoraConfig, inject_adapter_in_model
         if lora_alpha is None:
             lora_alpha = lora_rank
         if isinstance(target_modules, list) and len(target_modules) == 1:
@@ -176,9 +176,30 @@ class DiffusionTrainingModule(torch.nn.Module):
         else:
             return {}
     
-    def parse_model_configs(self, model_paths, model_id_with_origin_paths, fp8_models=None, offload_models=None, device="cpu"):
+    def parse_quant_options(self, quant_options):
+        quant_map = {}
+        if quant_options is None:
+            return quant_map
+        for entry in quant_options.split(";"):
+            if entry == "":
+                continue
+            model_string, sep, spec = entry.rpartition(":")
+            if sep == "":
+                raise ValueError(f"Failed to parse quant option: `{entry}`. Expected `<model_string>:<method>[/<exclude_modules>]`.")
+            if spec == "":
+                continue
+            method, _, excludes = spec.partition("/")
+            exclude_modules = excludes.split(",") if excludes != "" else None
+            quant_config = QuantizeConfig(method=method, exclude_modules=exclude_modules)
+            if not quant_config.backend.capabilities().get("is_differentiable", True):
+                raise ValueError(f"Quantization method `{method}` is not differentiable, so it cannot be used for training (frozen quantized layers must pass gradients through to LoRA branches). Choose a method whose backend declares `is_differentiable=True`.")
+            quant_map[model_string] = quant_config
+        return quant_map
+
+    def parse_model_configs(self, model_paths, model_id_with_origin_paths, fp8_models=None, offload_models=None, quant_options=None, device="cpu"):
         fp8_models = [] if fp8_models is None else fp8_models.split(",")
         offload_models = [] if offload_models is None else offload_models.split(",")
+        quant_map = self.parse_quant_options(quant_options)
         model_configs = []
         if model_paths is not None:
             model_paths = json.loads(model_paths)
@@ -188,7 +209,7 @@ class DiffusionTrainingModule(torch.nn.Module):
                     offload=path in offload_models,
                     device=device
                 )
-                model_configs.append(ModelConfig(path=path, **vram_config))
+                model_configs.append(ModelConfig(path=path, quantize=quant_map.get(path), **vram_config))
         if model_id_with_origin_paths is not None:
             model_id_with_origin_paths = model_id_with_origin_paths.split(",")
             for model_id_with_origin_path in model_id_with_origin_paths:
@@ -198,7 +219,7 @@ class DiffusionTrainingModule(torch.nn.Module):
                     device=device
                 )
                 config = self.parse_path_or_model_id(model_id_with_origin_path)
-                model_configs.append(ModelConfig(model_id=config.model_id, origin_file_pattern=config.origin_file_pattern, **vram_config))
+                model_configs.append(ModelConfig(model_id=config.model_id, origin_file_pattern=config.origin_file_pattern, quantize=quant_map.get(model_id_with_origin_path), **vram_config))
         return model_configs
     
 
@@ -258,8 +279,11 @@ class DiffusionTrainingModule(torch.nn.Module):
             return pipe
         model_config = self.parse_path_or_model_id(path_or_model_id)
         pipe.load_training_template_model(model_config)
-        pipe.units.append(GeneralUnit_TemplateProcessInputs(pipe.template_data_processor))
-        pipe.units.append(GeneralUnit_TemplateForward(use_gradient_checkpointing, use_gradient_checkpointing_offload))
+        template_units = [
+            GeneralUnit_TemplateProcessInputs(pipe.template_data_processor),
+            GeneralUnit_TemplateForward(use_gradient_checkpointing, use_gradient_checkpointing_offload),
+        ]
+        pipe.units = template_units + pipe.units
         return pipe
 
 

@@ -55,22 +55,22 @@ Diffusion Templates is a controllable generation plugin framework for Diffusion 
 
 |Low Resolution Input|High Resolution Output|
 |-|-|
-|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_lowres_100.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Upscaler_Sharpness.png)|
+|![](https://github.com/user-attachments/assets/53f378f7-0dc5-44cd-bc39-032d0b1d0208)|![](https://github.com/user-attachments/assets/135bab89-6d76-4d5c-ae5e-44b2826b5c50)|
 
 * Structure Control + Aesthetic Alignment + Sharpness Enhancement: Fully-equipped ControlNet
 
 |Structure Control Image|Output Image|
 |-|-|
-|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_depth.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Controlnet_Aesthetic_Sharpness.png)|
+|![](https://github.com/user-attachments/assets/1feeb13f-f8a7-40df-958c-90463ef5eaf4)|![](https://github.com/user-attachments/assets/ea406387-9695-4efd-b0cb-980686474ab7)|
 
 * Structure Control + Image Editing + Color Adjustment: Artistic Style Creation at Will
 
 |Structure Control Image|Editing Input Image|Output Image|
 |-|-|-|
-|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_depth.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_reference.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Controlnet_Edit_SoftRGB.png)|
+|![](https://github.com/user-attachments/assets/1feeb13f-f8a7-40df-958c-90463ef5eaf4)|![](https://github.com/user-attachments/assets/4866e14b-0ac7-4099-aab5-86048a645cb7)|![](https://github.com/user-attachments/assets/0fd613a5-885b-44b0-83db-9dd08859cc24)|
 
 * Brightness Control + Image Editing + Local Redrawing: Cross-dimensional Elements in Images
 
 |Reference Image|Redrawing Area|Output Image|
 |-|-|-|
-|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_reference.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_mask_1.jpg)|![](https://modelscope.cn/datasets/DiffSynth-Studio/examples_in_diffsynth/resolve/master/templates/image_Brightness_Edit_Inpaint.png)|
+|![](https://github.com/user-attachments/assets/4866e14b-0ac7-4099-aab5-86048a645cb7)|![](https://github.com/user-attachments/assets/52148a91-7c03-4042-944a-4c3182abe889)|![](https://github.com/user-attachments/assets/3e4cbc26-f6b5-4cc7-a017-d0e0165703ca)|

@@ -57,55 +57,6 @@ save_video(video, "video.mp4", fps=15, quality=5)
 
 ## 模型总览
 
-<details>
-
-<summary>模型血缘</summary>
-
-```mermaid
-graph LR;
-    Wan-Series-->Wan2.1-Series;
-    Wan-Series-->Wan2.2-Series;
-    Wan2.1-Series-->Wan-AI/Wan2.1-T2V-1.3B;
-    Wan2.1-Series-->Wan-AI/Wan2.1-T2V-14B;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.1-I2V-14B-480P;
-    Wan-AI/Wan2.1-I2V-14B-480P-->Wan-AI/Wan2.1-I2V-14B-720P;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.1-FLF2V-14B-720P;
-    Wan-AI/Wan2.1-T2V-1.3B-->iic/VACE-Wan2.1-1.3B-Preview;
-    iic/VACE-Wan2.1-1.3B-Preview-->Wan-AI/Wan2.1-VACE-1.3B;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.1-VACE-14B;
-    Wan-AI/Wan2.1-T2V-1.3B-->Wan2.1-Fun-1.3B-Series;
-    Wan2.1-Fun-1.3B-Series-->PAI/Wan2.1-Fun-1.3B-InP;
-    Wan2.1-Fun-1.3B-Series-->PAI/Wan2.1-Fun-1.3B-Control;
-    Wan-AI/Wan2.1-T2V-14B-->Wan2.1-Fun-14B-Series;
-    Wan2.1-Fun-14B-Series-->PAI/Wan2.1-Fun-14B-InP;
-    Wan2.1-Fun-14B-Series-->PAI/Wan2.1-Fun-14B-Control;
-    Wan-AI/Wan2.1-T2V-1.3B-->Wan2.1-Fun-V1.1-1.3B-Series;
-    Wan2.1-Fun-V1.1-1.3B-Series-->PAI/Wan2.1-Fun-V1.1-1.3B-Control;
-    Wan2.1-Fun-V1.1-1.3B-Series-->PAI/Wan2.1-Fun-V1.1-1.3B-InP;
-    Wan2.1-Fun-V1.1-1.3B-Series-->PAI/Wan2.1-Fun-V1.1-1.3B-Control-Camera;
-    Wan-AI/Wan2.1-T2V-14B-->Wan2.1-Fun-V1.1-14B-Series;
-    Wan2.1-Fun-V1.1-14B-Series-->PAI/Wan2.1-Fun-V1.1-14B-Control;
-    Wan2.1-Fun-V1.1-14B-Series-->PAI/Wan2.1-Fun-V1.1-14B-InP;
-    Wan2.1-Fun-V1.1-14B-Series-->PAI/Wan2.1-Fun-V1.1-14B-Control-Camera;
-    Wan-AI/Wan2.1-T2V-1.3B-->DiffSynth-Studio/Wan2.1-1.3b-speedcontrol-v1;
-    Wan-AI/Wan2.1-T2V-14B-->krea/krea-realtime-video;
-    Wan-AI/Wan2.1-T2V-14B-->meituan-longcat/LongCat-Video;
-    Wan-AI/Wan2.1-I2V-14B-720P-->ByteDance/Video-As-Prompt-Wan2.1-14B;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.2-Animate-14B;
-    Wan2.2-Series-->Wan-AI/Wan2.2-Animate-2-14B;
-    Wan-AI/Wan2.1-T2V-14B-->Wan-AI/Wan2.2-S2V-14B;
-    Wan2.2-Series-->Wan-AI/Wan2.2-T2V-A14B;
-    Wan2.2-Series-->Wan-AI/Wan2.2-I2V-A14B;
-    Wan2.2-Series-->Wan-AI/Wan2.2-TI2V-5B;
-    Wan-AI/Wan2.2-T2V-A14B-->Wan2.2-Fun-Series;
-    Wan2.2-Fun-Series-->PAI/Wan2.2-VACE-Fun-A14B;
-    Wan2.2-Fun-Series-->PAI/Wan2.2-Fun-A14B-InP;
-    Wan2.2-Fun-Series-->PAI/Wan2.2-Fun-A14B-Control;
-    Wan2.2-Fun-Series-->PAI/Wan2.2-Fun-A14B-Control-Camera;
-```
-
-</details>
-
 |模型 ID|额外参数|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|-|
 |[Wan-AI/Wan2.1-T2V-1.3B](https://modelscope.cn/models/Wan-AI/Wan2.1-T2V-1.3B)||[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference/Wan2.1-T2V-1.3B.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_inference_low_vram/Wan2.1-T2V-1.3B.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/full/Wan2.1-T2V-1.3B.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_full/Wan2.1-T2V-1.3B.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/lora/Wan2.1-T2V-1.3B.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/wanvideo/model_training/validate_lora/Wan2.1-T2V-1.3B.py)|
@@ -275,6 +226,7 @@ Wan 系列模型统一通过 [`examples/wanvideo/model_training/train.py`](https
         * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 `"Wan-AI/Wan2.1-T2V-1.3B:diffusion_pytorch_model*.safetensors"`。用逗号分隔。
         * `--extra_inputs`: 模型 Pipeline 所需的额外输入参数，例如训练图像编辑模型时需要额外参数，以 `,` 分隔。
         * `--fp8_models`：以 FP8 格式加载的模型，格式与 `--model_paths` 或 `--model_id_with_origin_paths` 一致，目前仅支持参数不被梯度更新的模型（不需要梯度回传，或梯度仅更新其 LoRA）。
+        * `--quant_options`：对加载的模型进行动态量化。以 `;` 分隔多个条目，每个为 `<模型字符串>:<method>[/<exclude_modules>]`，`<模型字符串>` 需与 `--model_paths`/`--model_id_with_origin_paths` 中的一致，`method` 为已注册的量化方法（如 `bitsandbytes_nf4`），`exclude_modules` 为可选的保持全精度的层。
     * 训练基础配置
         * `--learning_rate`: 学习率。
         * `--num_epochs`: 轮数（Epoch）。

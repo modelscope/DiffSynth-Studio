@@ -2,7 +2,7 @@
 
 扩散模型的去噪过程通常耗时较长。为提升推理速度，可采用多种加速技术，包含多卡并行推理、计算图编译等无损加速方案，以及 Cache、量化等有损加速方案。
 
-当前扩散模型大多基于 Diffusion Transformer 构建，高效注意力机制同样是常用的加速手段。DiffSynth-Studio 目前已支持部分无损加速推理功能。本节重点从多卡并行推理和计算图编译两个维度介绍加速方法。
+当前扩散模型大多基于 [Diffusion Transformer (DiT)](https://arxiv.org/abs/2212.09748) 构建，高效注意力机制同样是常用的加速手段。DiffSynth-Studio 目前已支持部分无损加速推理功能。本节重点从多卡并行推理和计算图编译两个维度介绍加速方法。
 
 ## 高效注意力机制
 注意力机制的加速细节请参考 [注意力机制实现](../API_Reference/core/attention.md)。
@@ -67,7 +67,7 @@ PyTorch 2.0 提供了自动计算图编译接口 [torch.compile](https://docs.py
 - `mode` 指定编译模式，包含 `"default"`, `"reduce-overhead"`, `"max-autotune"` 和 `"max-autotune-no-cudagraphs"`。由于 cudagraph 对计算图要求较为严格（例如可能需要配合 `torch.compiler.cudagraph_mark_step_begin()` 使用），`"reduce-overhead"` 和 `"max-autotune"` 模式可能编译失败。
 - `dynamic` 决定是否启用动态形状。对于多数生成模型，修改 prompt、开启 CFG 或调整分辨率都会改变计算图的输入张量形状。设置为 `dynamic=True` 会增加首次运行的编译时长，但支持动态形状，形状改变时无需重编译。设置为 `dynamic=False` 时首次编译较快，但任何改变输入形状的操作都会触发重新编译。对大部分场景，建议设定为 `dynamic=True`。
 - `fullgraph` 设为 `True` 时，底层会尝试将目标模型编译为单一计算图，若失败则报错。设为 `False` 时，底层会在无法连接处设置断点，将模型编译为多个独立计算图。开发者可开启 `True` 来优化编译性能，普通用户建议仅使用 `False`。
-- 其他参数配置请查阅 [api 文档](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)。
+- 其他参数配置请查阅 [PyTorch 的 API 文档](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)。
 
 ### Compile 功能开发者文档
 若需为新接入的 pipeline 提供 compile 支持，应在 pipeline 中配置 `compilable_models` 属性以指定默认编译模型。针对该 pipeline 的 DiT 模型类，还需配置 `_repeated_blocks` 以指定参与区域编译的基础模块类型。
