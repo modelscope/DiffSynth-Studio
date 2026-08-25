@@ -41,6 +41,10 @@ accelerate launch examples/minimax_h3/model_training/train.py \
   --use_gradient_checkpointing \
   --find_unused_parameters \
   --task "sft:train"
+# Optional: fuse the DeCFG training adapter into the DiT while training, for a better optimization landscape on this CFG-distilled base. Training only -- do not load it at inference.
+# modelscope download --model DiffSynth-Studio/MiniMax-H3-TrainingAdapter --local_dir ./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter
+#   --preset_lora_path "./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter/model.safetensors" \
+#   --preset_lora_model "dit"
 
 # input_image / end_image take the first and last frame of the training video
 # FL2VA - stage 1 (data process)
@@ -84,3 +88,7 @@ accelerate launch examples/minimax_h3/model_training/train.py \
   --use_gradient_checkpointing \
   --find_unused_parameters \
   --task "sft:train"
+# Optional: fuse the DeCFG training adapter into the DiT while training, for a better optimization landscape on this CFG-distilled base. Training only -- do not load it at inference.
+# modelscope download --model DiffSynth-Studio/MiniMax-H3-TrainingAdapter --local_dir ./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter
+#   --preset_lora_path "./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter/model.safetensors" \
+#   --preset_lora_model "dit"

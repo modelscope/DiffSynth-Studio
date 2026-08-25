@@ -43,3 +43,7 @@ accelerate launch examples/minimax_h3/model_training/train.py \
   --use_gradient_checkpointing \
   --find_unused_parameters \
   --task "sft:train"
+# Optional: fuse the DeCFG training adapter into the DiT while training, for a better optimization landscape on this CFG-distilled base. This DiT uses the ComfyUI qkv layout, so take the model_for_comfy_dit variant. Training only -- do not load it at inference.
+# modelscope download --model DiffSynth-Studio/MiniMax-H3-TrainingAdapter --local_dir ./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter
+#   --preset_lora_path "./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter/model_for_comfy_dit.safetensors" \
+#   --preset_lora_model "dit"
