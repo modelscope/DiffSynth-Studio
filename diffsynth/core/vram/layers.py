@@ -442,7 +442,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule, LoRAHotLoadMixin):
         return out
 
 
-class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
+class AutoWrappedQuantizedModule(torch.nn.Linear, AutoTorchModule, LoRAHotLoadMixin):
     def __init__(
         self,
         module: torch.nn.Module,
@@ -467,7 +467,8 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
                 "Disk offload for quantized layers requires both `disk_map` and `quantize`, "
                 "so each layer can rebuild its packed weight and quant state lazily."
             )
-        super().__init__(
+        AutoTorchModule.__init__(
+            self,
             offload_dtype,
             offload_device,
             onload_dtype,
@@ -478,6 +479,8 @@ class AutoWrappedQuantizedModule(AutoTorchModule, LoRAHotLoadMixin):
             computation_device,
             vram_limit,
         )
+        self.in_features = module.in_features
+        self.out_features = module.out_features
         self.module = module
         self.name = name
         self.disk_offload = disk_offload
