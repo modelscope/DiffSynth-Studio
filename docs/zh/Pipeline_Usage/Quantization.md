@@ -236,6 +236,22 @@ accelerate launch examples/z_image/model_training/train.py \
 
 上例中 DiT 与 text encoder 都启用了 NF4 量化。`text_encoder`、`vae` 等不参与训练的模块可以放心量化；被训练的 `dit` 只能在 LoRA 训练下量化，且必须选用支持 LoRA 训练的方法——如果指定了不可微的方法，训练会直接报错退出。
 
+用本地权重训练时改用 `--model_paths`（JSON 格式），`<模型字符串>` 要与其中的条目对应。由多个文件组成的模型在 `--model_paths` 里是一个 JSON 列表，`--quant_options` 中也要把这个列表**整体**写出来：
+
+```bash
+accelerate launch examples/z_image/model_training/train.py \
+  --model_paths '[["models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00003-of-00003.safetensors"], ["models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00003-of-00003.safetensors"], "models/Tongyi-MAI/Z-Image-Turbo/vae/diffusion_pytorch_model.safetensors"]' \
+  --tokenizer_path "models/Tongyi-MAI/Z-Image-Turbo/tokenizer/" \
+  --quant_options '["models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00003-of-00003.safetensors"]:bitsandbytes_nf4;["models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00003-of-00003.safetensors"]:bitsandbytes_nf4' \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,to_out.0,w1,w2,w3" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --output_path "./models/train/Z-Image-Turbo_quant_lora"
+```
+
+只写列表中的某一个文件、或改变文件顺序都不会匹配上。启动时如果打印 `No quant option matches ...`，说明该模型没有匹配到任何量化选项，会以原精度加载，此时应对照日志里同时打印出的已解析选项检查写法。
+
 带 `exclude_modules` 的写法（保留对量化敏感的层）：
 
 ```bash

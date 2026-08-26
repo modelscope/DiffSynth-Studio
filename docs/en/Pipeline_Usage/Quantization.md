@@ -236,6 +236,22 @@ accelerate launch examples/z_image/model_training/train.py \
 
 Above, NF4 quantization is enabled for both the DiT and the text encoder. Modules that do not participate in training, such as `text_encoder` and `vae`, can be quantized freely; the trained `dit` can only be quantized under LoRA training, and the method must support LoRA training — specifying a non-differentiable method makes training fail immediately with an error.
 
+When training from local weights, use `--model_paths` (JSON) instead, and make `<model_string>` correspond to its entries. A model made of several files is a JSON list in `--model_paths`, and that list must be written out **as a whole** in `--quant_options`:
+
+```bash
+accelerate launch examples/z_image/model_training/train.py \
+  --model_paths '[["models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00003-of-00003.safetensors"], ["models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00003-of-00003.safetensors"], "models/Tongyi-MAI/Z-Image-Turbo/vae/diffusion_pytorch_model.safetensors"]' \
+  --tokenizer_path "models/Tongyi-MAI/Z-Image-Turbo/tokenizer/" \
+  --quant_options '["models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00003-of-00003.safetensors"]:bitsandbytes_nf4;["models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00003-of-00003.safetensors"]:bitsandbytes_nf4' \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,to_out.0,w1,w2,w3" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --output_path "./models/train/Z-Image-Turbo_quant_lora"
+```
+
+Naming only one file of the list, or changing the file order, will not match. If `No quant option matches ...` is printed at startup, that model matched no quant option and is loaded at its original precision; compare your model string against the parsed options printed alongside it.
+
 With `exclude_modules` to keep quantization-sensitive layers in full precision:
 
 ```bash
