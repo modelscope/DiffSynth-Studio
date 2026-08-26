@@ -193,8 +193,24 @@ class DiffusionTrainingModule(torch.nn.Module):
             quant_config = QuantizeConfig(method=method, exclude_modules=exclude_modules)
             if not quant_config.backend.capabilities().get("is_differentiable", True):
                 raise ValueError(f"Quantization method `{method}` is not differentiable, so it cannot be used for training (frozen quantized layers must pass gradients through to LoRA branches). Choose a method whose backend declares `is_differentiable=True`.")
-            quant_map[model_string] = quant_config
+            quant_map[self.normalize_quant_key(model_string)] = quant_config
         return quant_map
+
+    def normalize_quant_key(self, model_string):
+        if isinstance(model_string, str) and model_string.startswith("[") and model_string.endswith("]"):
+            try:
+                model_string = json.loads(model_string)
+            except json.JSONDecodeError:
+                raise ValueError(f"Failed to parse quant option model string: `{model_string}`. A multi-file model must be written as a JSON list of files, matching its `--model_paths` entry.")
+        if isinstance(model_string, list):
+            return tuple(model_string)
+        return model_string
+
+    def get_quant_config(self, quant_map, model_string):
+        quant_config = quant_map.get(self.normalize_quant_key(model_string))
+        if quant_config is None and len(quant_map) > 0:
+            print(f"No quant option matches `{model_string}`. This model is loaded without quantization. Parsed quant options: {({key: config.method for key, config in quant_map.items()})}.")
+        return quant_config
 
     def parse_model_configs(self, model_paths, model_id_with_origin_paths, fp8_models=None, offload_models=None, quant_options=None, device="cpu"):
         fp8_models = [] if fp8_models is None else fp8_models.split(",")
@@ -209,7 +225,7 @@ class DiffusionTrainingModule(torch.nn.Module):
                     offload=path in offload_models,
                     device=device
                 )
-                model_configs.append(ModelConfig(path=path, quantize=quant_map.get(path), **vram_config))
+                model_configs.append(ModelConfig(path=path, quantize=self.get_quant_config(quant_map, path), **vram_config))
         if model_id_with_origin_paths is not None:
             model_id_with_origin_paths = model_id_with_origin_paths.split(",")
             for model_id_with_origin_path in model_id_with_origin_paths:
@@ -219,7 +235,7 @@ class DiffusionTrainingModule(torch.nn.Module):
                     device=device
                 )
                 config = self.parse_path_or_model_id(model_id_with_origin_path)
-                model_configs.append(ModelConfig(model_id=config.model_id, origin_file_pattern=config.origin_file_pattern, quantize=quant_map.get(model_id_with_origin_path), **vram_config))
+                model_configs.append(ModelConfig(model_id=config.model_id, origin_file_pattern=config.origin_file_pattern, quantize=self.get_quant_config(quant_map, model_id_with_origin_path), **vram_config))
         return model_configs
     
 
