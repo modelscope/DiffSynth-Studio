@@ -198,7 +198,11 @@ The layer sets matched by the sub-configs must not overlap. All sub-configs must
 
 In most cases, a quantized model does not support training, but it does support LoRA training with the base model frozen, enabling training of large models with very little VRAM.
 
-Methods usable for quantization + LoRA training are listed in the last column of the [methods table](#supported-quantization-methods). The typical practice is to **train with a pre-quantized base model**: the training script points `--model_id_with_origin_paths` at the pre-quantized model:
+Methods usable for quantization + LoRA training are listed in the last column of the [methods table](#supported-quantization-methods). There are two ways to do it.
+
+### Approach 1: Train with a pre-quantized base model
+
+The training script points `--model_id_with_origin_paths` at the pre-quantized model:
 
 ```bash
 accelerate launch examples/.../train.py \
@@ -209,8 +213,58 @@ accelerate launch examples/.../train.py \
   --output_path "./models/train/xxx-nf4"
 ```
 
+### Approach 2: Online quantization with `--quant_options`
+
+If no pre-quantized weights are available, use `--quant_options` to quantize the loaded models online at training startup. The value is a semicolon-separated list of entries, each formatted as `<model_string>:<method>[/<exclude_modules>]`:
+
+- `<model_string>`: the model to quantize; must match the entry in `--model_paths` / `--model_id_with_origin_paths` exactly.
+- `<method>`: the quantization method name, see the [methods table](#supported-quantization-methods).
+- `<exclude_modules>`: optional, a comma-separated list of layer names kept in full precision.
+
+Here is quantized LoRA training for Z-Image-Turbo (full script at `examples/z_image/model_training/special/quant_training/Z-Image-Turbo-bitsandbytes_nf4.sh`):
+
+```bash
+accelerate launch examples/z_image/model_training/train.py \
+  --model_id_with_origin_paths "Tongyi-MAI/Z-Image-Turbo:transformer/*.safetensors,Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors,Tongyi-MAI/Z-Image-Turbo:vae/diffusion_pytorch_model.safetensors" \
+  --quant_options "Tongyi-MAI/Z-Image-Turbo:transformer/*.safetensors:bitsandbytes_nf4;Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors:bitsandbytes_nf4" \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,to_out.0,w1,w2,w3" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --output_path "./models/train/Z-Image-Turbo_quant_lora"
+```
+
+Above, NF4 quantization is enabled for both the DiT and the text encoder. Modules that do not participate in training, such as `text_encoder` and `vae`, can be quantized freely; the trained `dit` can only be quantized under LoRA training, and the method must support LoRA training — specifying a non-differentiable method makes training fail immediately with an error.
+
+When training from local weights, use `--model_paths` (JSON) instead, and make `<model_string>` correspond to its entries. A model made of several files is a JSON list in `--model_paths`, and that list must be written out **as a whole** in `--quant_options`:
+
+```bash
+accelerate launch examples/z_image/model_training/train.py \
+  --model_paths '[["models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00003-of-00003.safetensors"], ["models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00003-of-00003.safetensors"], "models/Tongyi-MAI/Z-Image-Turbo/vae/diffusion_pytorch_model.safetensors"]' \
+  --tokenizer_path "models/Tongyi-MAI/Z-Image-Turbo/tokenizer/" \
+  --quant_options '["models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00003-of-00003.safetensors"]:bitsandbytes_nf4;["models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00003-of-00003.safetensors"]:bitsandbytes_nf4' \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,to_out.0,w1,w2,w3" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --output_path "./models/train/Z-Image-Turbo_quant_lora"
+```
+
+Naming only one file of the list, or changing the file order, will not match. If `No quant option matches ...` is printed at startup, that model matched no quant option and is loaded at its original precision; compare your model string against the parsed options printed alongside it.
+
+With `exclude_modules` to keep quantization-sensitive layers in full precision:
+
+```bash
+  --quant_options "MiniMaxAI/MiniMax-H3:FL2VA/transformer/model*.safetensors:bitsandbytes_nf4/time_embedder.proj_in,time_embedder.proj_out,video_patch_proj,audio_patch_proj"
+```
+
+> `--quant_options` always uses `mode="dynamic"` and does not expose advanced options such as `backend_config_kwargs` or mixed quantization. For those, use Approach 1: save quantized weights with `save_quantized_model` first, then train with the pre-quantized base model.
+
+### Shared notes
+
 - During training, the quantized base model stays frozen; only the LoRA branches are updated, so what gets saved is fp-precision LoRA weights.
 - For inference, load as "quantized base model + LoRA": first load the quantized base model as described in [Loading Pre-quantized Weights](#loading-pre-quantized-weights), then `pipe.load_lora(pipe.dit, "epoch-x.safetensors")`.
+- Prefer Approach 1 for large models: online quantization has to load the full fp weights first, which makes startup slow and peak memory high.
 
 ## Custom Quantization Backends
 

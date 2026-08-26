@@ -198,7 +198,11 @@ quantize = MixedQuantizeConfig(configs=[
 
 在大多数情况下，量化后的模型不支持训练，但支持冻结基础模型后的 LoRA 训练，从而在很小的显存里训练大模型。
 
-可用于量化 + LoRA 训练的方法见[方法表](#支持的量化方法)的最后一列。典型做法是**用预量化的底模训练**，训练脚本通过 `--model_id_with_origin_paths` 指向预量化模型：
+可用于量化 + LoRA 训练的方法见[方法表](#支持的量化方法)的最后一列。有两种使用方式。
+
+### 方式一：用预量化的底模训练
+
+训练脚本通过 `--model_id_with_origin_paths` 指向预量化模型：
 
 ```bash
 accelerate launch examples/.../train.py \
@@ -209,8 +213,58 @@ accelerate launch examples/.../train.py \
   --output_path "./models/train/xxx-nf4"
 ```
 
+### 方式二：用 `--quant_options` 在线量化
+
+如果没有现成的预量化权重，可以用 `--quant_options` 在训练启动时对加载的模型做在线量化。取值以 `;` 分隔多个条目，每个条目的格式为 `<模型字符串>:<method>[/<exclude_modules>]`：
+
+- `<模型字符串>`：要量化的模型，必须与 `--model_paths` / `--model_id_with_origin_paths` 中的写法完全一致。
+- `<method>`：量化方法名，见[方法表](#支持的量化方法)。
+- `<exclude_modules>`：可选，以 `,` 分隔的层名列表，这些层保持全精度。
+
+以 Z-Image-Turbo 的量化 LoRA 训练为例（完整脚本见 `examples/z_image/model_training/special/quant_training/Z-Image-Turbo-bitsandbytes_nf4.sh`）：
+
+```bash
+accelerate launch examples/z_image/model_training/train.py \
+  --model_id_with_origin_paths "Tongyi-MAI/Z-Image-Turbo:transformer/*.safetensors,Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors,Tongyi-MAI/Z-Image-Turbo:vae/diffusion_pytorch_model.safetensors" \
+  --quant_options "Tongyi-MAI/Z-Image-Turbo:transformer/*.safetensors:bitsandbytes_nf4;Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors:bitsandbytes_nf4" \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,to_out.0,w1,w2,w3" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --output_path "./models/train/Z-Image-Turbo_quant_lora"
+```
+
+上例中 DiT 与 text encoder 都启用了 NF4 量化。`text_encoder`、`vae` 等不参与训练的模块可以放心量化；被训练的 `dit` 只能在 LoRA 训练下量化，且必须选用支持 LoRA 训练的方法——如果指定了不可微的方法，训练会直接报错退出。
+
+用本地权重训练时改用 `--model_paths`（JSON 格式），`<模型字符串>` 要与其中的条目对应。由多个文件组成的模型在 `--model_paths` 里是一个 JSON 列表，`--quant_options` 中也要把这个列表**整体**写出来：
+
+```bash
+accelerate launch examples/z_image/model_training/train.py \
+  --model_paths '[["models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00003-of-00003.safetensors"], ["models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00003-of-00003.safetensors"], "models/Tongyi-MAI/Z-Image-Turbo/vae/diffusion_pytorch_model.safetensors"]' \
+  --tokenizer_path "models/Tongyi-MAI/Z-Image-Turbo/tokenizer/" \
+  --quant_options '["models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/transformer/diffusion_pytorch_model-00003-of-00003.safetensors"]:bitsandbytes_nf4;["models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00001-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00002-of-00003.safetensors", "models/Tongyi-MAI/Z-Image-Turbo/text_encoder/model-00003-of-00003.safetensors"]:bitsandbytes_nf4' \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,to_out.0,w1,w2,w3" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --output_path "./models/train/Z-Image-Turbo_quant_lora"
+```
+
+只写列表中的某一个文件、或改变文件顺序都不会匹配上。启动时如果打印 `No quant option matches ...`，说明该模型没有匹配到任何量化选项，会以原精度加载，此时应对照日志里同时打印出的已解析选项检查写法。
+
+带 `exclude_modules` 的写法（保留对量化敏感的层）：
+
+```bash
+  --quant_options "MiniMaxAI/MiniMax-H3:FL2VA/transformer/model*.safetensors:bitsandbytes_nf4/time_embedder.proj_in,time_embedder.proj_out,video_patch_proj,audio_patch_proj"
+```
+
+> `--quant_options` 使用的是 `mode="dynamic"`，不支持配置 `backend_config_kwargs`、混合量化等更复杂的选项。有这类需求时请改用方式一：先用 `save_quantized_model` 保存量化权重，再用预量化底模训练。
+
+### 通用说明
+
 - 训练中量化底模保持冻结，只有 LoRA 分支更新，因此保存下来的是 fp 精度的 LoRA 权重。
 - 推理时按"量化底模 + LoRA"加载：先像[加载预量化权重](#加载预量化权重)那样加载量化底模，再 `pipe.load_lora(pipe.dit, "epoch-x.safetensors")`。
+- 大模型建议优先选方式一：在线量化需要先加载完整 fp 权重，启动慢且峰值内存高。
 
 ## 自定义量化后端
 
