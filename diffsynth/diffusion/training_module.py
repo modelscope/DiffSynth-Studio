@@ -2,7 +2,6 @@ import torch, json, os, inspect
 from ..core import ModelConfig, load_state_dict, QuantizeConfig
 from ..utils.controlnet import ControlNetInput
 from .base_pipeline import PipelineUnit
-from peft import LoraConfig, inject_adapter_in_model
 
 
 class GeneralUnit_RemoveCache(PipelineUnit):
@@ -92,6 +91,7 @@ class DiffusionTrainingModule(torch.nn.Module):
     
     
     def add_lora_to_model(self, model, target_modules, lora_rank, lora_alpha=None, upcast_dtype=None):
+        from peft import LoraConfig, inject_adapter_in_model
         if lora_alpha is None:
             lora_alpha = lora_rank
         if isinstance(target_modules, list) and len(target_modules) == 1:
