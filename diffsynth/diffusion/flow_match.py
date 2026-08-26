@@ -302,7 +302,7 @@ class FlowMatchScheduler():
         num_train_timesteps = 1000
         if special_case == "stage2":
             sigmas = torch.Tensor([0.909375, 0.725, 0.421875])
-        elif special_case == "ditilled_stage1":
+        elif special_case == "distilled_stage1":
             sigmas = torch.Tensor([1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875])
         else:
             dynamic_shift_len = dynamic_shift_len or 4096
