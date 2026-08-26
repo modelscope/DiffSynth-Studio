@@ -28,5 +28,5 @@ pipe = QwenVideoEditPipeline.from_pretrained(
     video_vae_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="Wan2.1_VAE.pth"),
     checkpoint=ModelConfig(model_id="yunpeng1998/Qwen-Video-Edit", origin_file_pattern="360P/step-30000.safetensors"),
 )
-video = pipe(input_video, prompts=prompts, cfg_scale=4.0, zero_cond_t=False, num_inference_steps=40, seed=42)
+video = pipe(input_video, prompts=prompts, cfg_scale=4.0, num_inference_steps=40, seed=0)
 save_video(video, "video_Qwen-Video-Edit.mp4", fps=16)
