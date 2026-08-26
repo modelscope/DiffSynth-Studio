@@ -775,6 +775,6 @@ class SdxlLoRAConverter:
             elif name.endswith(".lora_up.weight"):
                 name_ = rename_dict[name.replace("lora_up", "lora_down")].replace("lora_A", "lora_B")
             elif name.endswith(".alpha"):
-                name_ = rename_dict[name.replace(".alpha", ".lora_down.weight")].replace("lora_A.weight", ".alpha")
+                name_ = rename_dict[name.replace(".alpha", ".lora_down.weight")].replace(".lora_A.weight", ".alpha")
             state_dict_[name_] = state_dict[name]
         return state_dict_
