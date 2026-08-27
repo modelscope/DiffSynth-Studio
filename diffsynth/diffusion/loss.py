@@ -63,12 +63,7 @@ def FlowMatchSFTAudioVideoLoss(pipe: BasePipeline, **inputs):
     return loss
 
 
-def FlowMatchSFTMiniMaxH3AudioVideoLoss(
-    pipe: BasePipeline,
-    training_cfg_scale: float = 1.0,
-    inputs_nega: dict | None = None,
-    **inputs,
-):
+def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, training_cfg_scale: float = 1.0, inputs_nega: dict | None = None, **inputs):
     max_timestep_boundary = int(inputs.get("max_timestep_boundary", 1) * len(pipe.scheduler.timesteps))
     min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
 
@@ -111,12 +106,8 @@ def FlowMatchSFTMiniMaxH3AudioVideoLoss(
         # The checkpoint's conditional prediction has CFG distilled into it.
         # Rearrange the CFG equation to recover the raw velocity fitted to the
         # standard flow-matching target, using the current model as the teacher.
-        noise_pred = (
-            noise_pred + (training_cfg_scale - 1.0) * noise_pred_uncond
-        ) / training_cfg_scale
-        noise_pred_audio = (
-            noise_pred_audio + (training_cfg_scale - 1.0) * noise_pred_audio_uncond
-        ) / training_cfg_scale
+        noise_pred = (noise_pred + (training_cfg_scale - 1.0) * noise_pred_uncond) / training_cfg_scale
+        noise_pred_audio = (noise_pred_audio + (training_cfg_scale - 1.0) * noise_pred_audio_uncond) / training_cfg_scale
 
     loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
     loss = loss * pipe.scheduler.training_weight(timestep_video)

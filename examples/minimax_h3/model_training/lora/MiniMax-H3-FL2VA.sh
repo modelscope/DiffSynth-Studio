@@ -1,7 +1,12 @@
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "minimax_h3/MiniMax-H3-FL2VA/*" --local_dir ./data/diffsynth_example_dataset
 
-# Optional: add `--training_cfg_scale 4` to both stages below to enable CFG-aware training.
-# Both stages must use the same value because the unconditional embeddings are cached in stage 1.
+# Optional
+# 1. Fuse the DeCFG training adapter into the DiT while training, for a better optimization landscape on this CFG-distilled base. Training only -- do not load it at inference.
+# modelscope download --model DiffSynth-Studio/MiniMax-H3-TrainingAdapter --local_dir ./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter
+#   --preset_lora_path "./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter/model.safetensors" \
+#   --preset_lora_model "dit"
+# 2. Add `--training_cfg_scale 4` to both stages below to enable CFG-aware training. Both stages must use the same value because the unconditional embeddings are cached in stage 1.
+
 # T2VA - stage 1 (data process)
 accelerate launch examples/minimax_h3/model_training/train.py \
   --dataset_base_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA \
@@ -43,10 +48,6 @@ accelerate launch examples/minimax_h3/model_training/train.py \
   --use_gradient_checkpointing \
   --find_unused_parameters \
   --task "sft:train"
-# Optional: fuse the DeCFG training adapter into the DiT while training, for a better optimization landscape on this CFG-distilled base. Training only -- do not load it at inference.
-# modelscope download --model DiffSynth-Studio/MiniMax-H3-TrainingAdapter --local_dir ./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter
-#   --preset_lora_path "./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter/model.safetensors" \
-#   --preset_lora_model "dit"
 
 # input_image / end_image take the first and last frame of the training video
 # FL2VA - stage 1 (data process)
