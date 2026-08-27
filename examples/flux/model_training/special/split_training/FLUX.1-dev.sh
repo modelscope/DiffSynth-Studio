@@ -1,0 +1,40 @@
+set -e
+
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux/FLUX.1-dev/*" --local_dir ./data/diffsynth_example_dataset
+
+# Stage 1: cache deterministic preprocessing outputs.
+accelerate launch examples/flux/model_training/train.py \
+  --dataset_base_path data/diffsynth_example_dataset/flux/FLUX.1-dev \
+  --dataset_metadata_path data/diffsynth_example_dataset/flux/FLUX.1-dev/metadata.csv \
+  --max_pixels 1048576 \
+  --dataset_repeat 1 \
+  --model_id_with_origin_paths 'black-forest-labs/FLUX.1-dev:flux1-dev.safetensors,black-forest-labs/FLUX.1-dev:text_encoder/model.safetensors,black-forest-labs/FLUX.1-dev:text_encoder_2/*.safetensors,black-forest-labs/FLUX.1-dev:ae.safetensors' \
+  --learning_rate 1e-4 \
+  --num_epochs 5 \
+  --remove_prefix_in_ckpt pipe.dit. \
+  --output_path ./models/train/FLUX.1-dev_split_cache \
+  --lora_base_model dit \
+  --lora_target_modules a_to_qkv,b_to_qkv,ff_a.0,ff_a.2,ff_b.0,ff_b.2,a_to_out,b_to_out,proj_out,norm.linear,norm1_a.linear,norm1_b.linear,to_qkv_mlp \
+  --lora_rank 32 \
+  --align_to_opensource_format \
+  --use_gradient_checkpointing \
+  --offload_models black-forest-labs/FLUX.1-dev:flux1-dev.safetensors \
+  --task sft:data_process
+
+# Stage 2: train LoRA from the cached dataset.
+accelerate launch examples/flux/model_training/train.py \
+  --dataset_base_path ./models/train/FLUX.1-dev_split_cache \
+  --max_pixels 1048576 \
+  --dataset_repeat 50 \
+  --model_id_with_origin_paths 'black-forest-labs/FLUX.1-dev:flux1-dev.safetensors,black-forest-labs/FLUX.1-dev:text_encoder/model.safetensors,black-forest-labs/FLUX.1-dev:text_encoder_2/*.safetensors,black-forest-labs/FLUX.1-dev:ae.safetensors' \
+  --learning_rate 1e-4 \
+  --num_epochs 5 \
+  --remove_prefix_in_ckpt pipe.dit. \
+  --output_path ./models/train/FLUX.1-dev_split \
+  --lora_base_model dit \
+  --lora_target_modules a_to_qkv,b_to_qkv,ff_a.0,ff_a.2,ff_b.0,ff_b.2,a_to_out,b_to_out,proj_out,norm.linear,norm1_a.linear,norm1_b.linear,to_qkv_mlp \
+  --lora_rank 32 \
+  --align_to_opensource_format \
+  --use_gradient_checkpointing \
+  --offload_models 'black-forest-labs/FLUX.1-dev:text_encoder_2/*.safetensors,black-forest-labs/FLUX.1-dev:ae.safetensors' \
+  --task sft:train
