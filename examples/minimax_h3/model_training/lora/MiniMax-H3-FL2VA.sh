@@ -1,5 +1,7 @@
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "minimax_h3/MiniMax-H3-FL2VA/*" --local_dir ./data/diffsynth_example_dataset
 
+# Optional: add `--training_cfg_scale 4` to both stages below to enable CFG-aware training.
+# Both stages must use the same value because the unconditional embeddings are cached in stage 1.
 # T2VA - stage 1 (data process)
 accelerate launch examples/minimax_h3/model_training/train.py \
   --dataset_base_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA \
