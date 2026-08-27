@@ -28,10 +28,14 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         template_model_id_or_path=None,
         resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         silent_on_missing_audio=False,
+        training_cfg_scale=1.0,
         device="cpu",
         task="sft",
     ):
         super().__init__()
+        if training_cfg_scale < 1.0:
+            raise ValueError("training_cfg_scale must be at least 1.0")
+        self.training_cfg_scale = training_cfg_scale
         # Load models
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, quant_options=quant_options, device=device)
         pipe_kwargs = {}
@@ -43,7 +47,7 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
             task, self.pipe, trainable_models, lora_base_model,
             remove_unnecessary_params=True,
             force_remove_params_shared=("video_latents", "audio_latents"),
-            force_remove_params_nega=("prompt_embeds", "text_token_tags", "packed"),
+            force_remove_params_nega=("prompt_embeds", "text_token_tags", "packed") if training_cfg_scale == 1.0 else (),
         )
         self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
         # Training mode
@@ -64,8 +68,12 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         self.task = task
         self.task_to_loss = {
             "sft:data_process": lambda pipe, *args: args,
-            "sft": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe, **inputs_shared, **inputs_posi),
-            "sft:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe, **inputs_shared, **inputs_posi),
+            "sft": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTMiniMaxH3AudioVideoLoss(
+                pipe, training_cfg_scale=self.training_cfg_scale, inputs_nega=inputs_nega, **inputs_shared, **inputs_posi,
+            ),
+            "sft:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTMiniMaxH3AudioVideoLoss(
+                pipe, training_cfg_scale=self.training_cfg_scale, inputs_nega=inputs_nega, **inputs_shared, **inputs_posi,
+            ),
         }
 
     def parse_extra_inputs(self, data, extra_inputs, inputs_shared):
@@ -93,7 +101,7 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
 
     def get_pipeline_inputs(self, data):
         inputs_posi = {"prompt": data["prompt"]}
-        inputs_nega = {}
+        inputs_nega = {"negative_prompt": " "}
         inputs_shared = {
             # Assume you are using this pipeline for inference,
             # please fill in the input parameters.
@@ -110,7 +118,9 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
             "audio_cond_noise_aug": self.pipe.audio_cond_noise_aug,
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
-            "cfg_scale": 1,
+            # Reuse the pipeline's CFG preprocessing path to build unconditional
+            # embeddings when CFG-aware training is enabled.
+            "cfg_scale": self.training_cfg_scale,
             "seed": 42,
             "rand_device": "cpu",
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
@@ -135,6 +145,7 @@ def minimax_h3_parser():
     parser.add_argument("--processor_path", type=str, default=None, help="Path or `model_id:pattern` of the Qwen3-VL processor.")
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
     parser.add_argument("--silent_on_missing_audio", default=False, action="store_true", help="Whether to use silent audio as a fallback when no audio track is present in the video data.")
+    parser.add_argument("--training_cfg_scale", type=float, default=1.0, help="Inverse-CFG scale for preserving MiniMax-H3 guidance distillation during fine-tuning. Values greater than 1 enable a no-grad unconditional branch; 1 keeps the standard flow-matching loss.")
     return parser
 
 
@@ -208,6 +219,7 @@ if __name__ == "__main__":
         resume_from_checkpoint=args.resume_from_checkpoint,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         silent_on_missing_audio=args.silent_on_missing_audio,
+        training_cfg_scale=args.training_cfg_scale,
         task=args.task,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
     )
