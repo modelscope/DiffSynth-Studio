@@ -11,26 +11,27 @@ except ImportError:
     BITSANDBYTES_AVAILABLE = False
 
 
-def _assign_params_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
-    """`_load_from_state_dict` replacement for shells: assigns tensors as-is, since packed weights do not pass the standard shape check."""
-    local_names = set()
-    for name, current in list(self._parameters.items()) + list(self._buffers.items()):
-        if current is None:
-            continue
-        local_names.add(name)
-        key = prefix + name
-        if key in state_dict:
-            value = state_dict[key]
-            if name in self._parameters:
-                self._parameters[name] = value if isinstance(value, torch.nn.Parameter) else torch.nn.Parameter(value, requires_grad=False)
-            else:
-                self._buffers[name] = value
-        elif strict:
-            missing_keys.append(key)
-    if strict:
-        for key in state_dict:
-            if key.startswith(prefix) and key[len(prefix):].split(".", 1)[0] not in local_names:
-                unexpected_keys.append(key)
+if BITSANDBYTES_AVAILABLE:
+    class BitsAndBytesLinear4bit(bnb.nn.Linear4bit):
+        def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+            local_names = set()
+            for name, current in list(self._parameters.items()) + list(self._buffers.items()):
+                if current is None:
+                    continue
+                local_names.add(name)
+                key = prefix + name
+                if key in state_dict:
+                    value = state_dict[key]
+                    if name in self._parameters:
+                        self._parameters[name] = value if isinstance(value, torch.nn.Parameter) else torch.nn.Parameter(value, requires_grad=False)
+                    else:
+                        self._buffers[name] = value
+                elif strict:
+                    missing_keys.append(key)
+            if strict:
+                for key in state_dict:
+                    if key.startswith(prefix) and key[len(prefix):].split(".", 1)[0] not in local_names:
+                        unexpected_keys.append(key)
 
 
 @register_quant_backend("bitsandbytes")
@@ -55,7 +56,7 @@ class BitsAndBytesQuantBackend(QuantBackend):
         }
 
     def quantized_linear_classes(self):
-        return (bnb.nn.Linear4bit,)
+        return (BitsAndBytesLinear4bit,)
 
     def create_quantized_linear(self, linear, compute_device=None, model_device=None):
         """The `meta` shell avoids allocating an fp weight; bnb quantizes while `Params4bit` moves to `compute_device`."""
@@ -65,7 +66,7 @@ class BitsAndBytesQuantBackend(QuantBackend):
             compute_device = linear.weight.device
 
         with torch.device("meta"):
-            quant_linear = bnb.nn.Linear4bit(
+            quant_linear = BitsAndBytesLinear4bit(
                 linear.in_features,
                 linear.out_features,
                 bias=linear.bias is not None,
@@ -89,7 +90,7 @@ class BitsAndBytesQuantBackend(QuantBackend):
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
         with torch.device("meta"):
-            shell = bnb.nn.Linear4bit(
+            shell = BitsAndBytesLinear4bit(
                 linear.in_features,
                 linear.out_features,
                 bias=linear.bias is not None,
@@ -98,7 +99,6 @@ class BitsAndBytesQuantBackend(QuantBackend):
                 quant_type=self.config.quant_type,
                 quant_storage=self.config.quant_storage,
             )
-        shell._load_from_state_dict = _assign_params_from_state_dict.__get__(shell)
         return shell
 
     def unflatten_state_dict(self, state_dict, metadata):
