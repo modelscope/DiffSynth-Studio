@@ -63,7 +63,12 @@ def FlowMatchSFTAudioVideoLoss(pipe: BasePipeline, **inputs):
     return loss
 
 
-def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, **inputs):
+def FlowMatchSFTMiniMaxH3AudioVideoLoss(
+    pipe: BasePipeline,
+    training_cfg_scale: float = 1.0,
+    inputs_nega: dict | None = None,
+    **inputs,
+):
     max_timestep_boundary = int(inputs.get("max_timestep_boundary", 1) * len(pipe.scheduler.timesteps))
     min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
 
@@ -81,10 +86,37 @@ def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, **inputs):
         training_target_audio = pipe.scheduler_audio.training_target(inputs["audio_input_latents"], audio_noise, timestep_audio)
 
     models = {name: getattr(pipe, name) for name in pipe.in_iteration_models}
+    if training_cfg_scale > 1.0:
+        if not inputs_nega:
+            raise ValueError(
+                "MiniMax-H3 CFG-aware training requires unconditional inputs. "
+                "When using split training, rebuild the data cache with the same "
+                "--training_cfg_scale value."
+            )
+        inputs_uncond = {**inputs, **inputs_nega}
+        inputs_uncond["use_gradient_checkpointing"] = False
+        inputs_uncond["use_gradient_checkpointing_offload"] = False
+        with torch.no_grad():
+            noise_pred_uncond, noise_pred_audio_uncond = pipe.model_fn(
+                **models, **inputs_uncond,
+                timestep_video=timestep_video, timestep_audio=timestep_audio,
+            )
+
     noise_pred, noise_pred_audio = pipe.model_fn(
         **models, **inputs,
         timestep_video=timestep_video, timestep_audio=timestep_audio,
     )
+
+    if training_cfg_scale > 1.0:
+        # The checkpoint's conditional prediction has CFG distilled into it.
+        # Rearrange the CFG equation to recover the raw velocity fitted to the
+        # standard flow-matching target, using the current model as the teacher.
+        noise_pred = (
+            noise_pred + (training_cfg_scale - 1.0) * noise_pred_uncond
+        ) / training_cfg_scale
+        noise_pred_audio = (
+            noise_pred_audio + (training_cfg_scale - 1.0) * noise_pred_audio_uncond
+        ) / training_cfg_scale
 
     loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
     loss = loss * pipe.scheduler.training_weight(timestep_video)
