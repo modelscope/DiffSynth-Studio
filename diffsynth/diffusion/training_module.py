@@ -359,7 +359,7 @@ class DiffusionTrainingModule(torch.nn.Module):
         # TODO: set `remove_unnecessary_params` to `True` by default
         remove_unnecessary_params=False,
         # TODO: move `loss_required_params` to `loss.py`
-        loss_required_params=("input_latents", "max_timestep_boundary", "min_timestep_boundary", "first_frame_latents", "video_latents", "audio_input_latents", "num_inference_steps"),
+        loss_required_params=("input_latents", "max_timestep_boundary", "min_timestep_boundary", "first_frame_latents", "video_latents", "audio_input_latents", "num_inference_steps", "cfg_scale"),
         force_remove_params_shared=tuple(),
         force_remove_params_posi=tuple(),
         force_remove_params_nega=tuple(),
