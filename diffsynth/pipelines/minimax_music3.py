@@ -45,7 +45,21 @@ class MiniMaxMusic3Pipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = None,
         vram_limit: float = None,
+        redirect_common_files: bool = True,
     ):
+        if redirect_common_files:
+            redirect_dict = {
+                "MiniMax/MiniMax-Music3": "MiniMaxAI/MiniMax-Music3",
+            }
+            for model_config in model_configs:
+                if model_config.require_downloading() and model_config.parse_download_source() == "huggingface":
+                    if model_config.model_id is not None and model_config.model_id in redirect_dict:
+                        print(f"The model is detected to be downloading from HuggingFace. {model_config.model_id} is redirected to {redirect_dict[model_config.model_id]}. You can use `redirect_common_files=False` to disable file redirection.")
+                        model_config.model_id = redirect_dict[model_config.model_id]
+            if tokenizer_config is not None and tokenizer_config.require_downloading() and tokenizer_config.parse_download_source() == "huggingface":
+                if tokenizer_config.model_id is not None and tokenizer_config.model_id in redirect_dict:
+                    print(f"The model is detected to be downloading from HuggingFace. {tokenizer_config.model_id} is redirected to {redirect_dict[tokenizer_config.model_id]}. You can use `redirect_common_files=False` to disable file redirection.")
+                    tokenizer_config.model_id = redirect_dict[tokenizer_config.model_id]
         pipe = MiniMaxMusic3Pipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
         pipe.text_encoder = model_pool.fetch_model("minimax_music3_text_encoder")
