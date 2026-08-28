@@ -28,6 +28,7 @@ Welcome to DiffSynth-Studio's Documentation
    Model_Details/FLUX
    Model_Details/Wan
    Model_Details/Qwen-Image
+   Model_Details/Qwen-Video-Edit
    Model_Details/FLUX2
    Model_Details/Z-Image
    Model_Details/Anima
