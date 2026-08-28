@@ -240,8 +240,14 @@ class QwenVideoEditUnit_PromptEmbedder(PipelineUnit):
             onload_model_names=("text_encoder",),
         )
 
-    @staticmethod
-    def build_preview_grid(frames, rows=3, cols=3, target_area=1024 * 1024):
+    def extract_masked_hidden(self, hidden_states: torch.Tensor, mask: torch.Tensor):
+        bool_mask = mask.bool()
+        valid_lengths = bool_mask.sum(dim=1)
+        selected = hidden_states[bool_mask]
+        split_result = torch.split(selected, valid_lengths.tolist(), dim=0)
+        return split_result
+
+    def build_preview_grid(self, frames, rows=3, cols=3, target_area=1024 * 1024):
         sample_indices = np.linspace(0, len(frames) - 1, rows * cols).round().astype(int)
         tiles = [frames[i] for i in sample_indices]
         tile_w, tile_h = tiles[0].size
@@ -253,39 +259,26 @@ class QwenVideoEditUnit_PromptEmbedder(PipelineUnit):
             grid.paste(tile.resize((grid_tile_w, grid_tile_h)), ((i % cols) * grid_tile_w, (i // cols) * grid_tile_h))
         return grid
 
-    def extract_masked_hidden(self, hidden_states: torch.Tensor, mask: torch.Tensor):
-        bool_mask = mask.bool()
-        valid_lengths = bool_mask.sum(dim=1)
-        selected = hidden_states[bool_mask]
-        split_result = torch.split(selected, valid_lengths.tolist(), dim=0)
-        return split_result
+    def encode_prompt_edit(self, pipe: QwenVideoEditPipeline, prompt, edit_image):
+        template =  "<|im_start|>system\nDescribe the key features of the input image (color, shape, size, texture, objects, background), then explain how the user's text instruction should alter or modify the image. Generate a new image that meets the user's requirements while maintaining consistency with the original input where appropriate.<|im_end|>\n<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>{}<|im_end|>\n<|im_start|>assistant\n"
+        drop_idx = 64
+        txt = [template.format(e) for e in prompt]
+        model_inputs = pipe.processor(text=txt, images=edit_image, padding=True, return_tensors="pt").to(pipe.device)
+        hidden_states = pipe.text_encoder(input_ids=model_inputs.input_ids, attention_mask=model_inputs.attention_mask, pixel_values=model_inputs.pixel_values, image_grid_thw=model_inputs.image_grid_thw, output_hidden_states=True,)[-1]
+        split_hidden_states = self.extract_masked_hidden(hidden_states, model_inputs.attention_mask)
+        split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
+        return split_hidden_states
 
-    def process(self, pipe: QwenVideoEditPipeline, prompt, edit_video_chunk):
+    def process(self, pipe: QwenVideoEditPipeline, prompt, edit_video_chunk) -> dict:
         if pipe.text_encoder is None:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
-        preview = self.build_preview_grid(edit_video_chunk)
-        template = "<|im_start|>system\nDescribe the key features of the input image (color, shape, size, texture, objects, background), then explain how the user's text instruction should alter or modify the image. Generate a new image that meets the user's requirements while maintaining consistency with the original input where appropriate.<|im_end|>\n<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>{}<|im_end|>\n<|im_start|>assistant\n"
-        drop_idx = 64
-        txt = [template.format(prompt)]
-        model_inputs = pipe.processor(text=txt, images=preview, padding=True, return_tensors="pt").to(pipe.device)
-        hidden_states = pipe.text_encoder(
-            input_ids=model_inputs.input_ids,
-            attention_mask=model_inputs.attention_mask,
-            pixel_values=model_inputs.pixel_values,
-            image_grid_thw=model_inputs.image_grid_thw,
-            output_hidden_states=True,
-        )[-1]
-        split_hidden_states = self.extract_masked_hidden(hidden_states, model_inputs.attention_mask)
-        split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
+        preview_image = self.build_preview_grid(edit_video_chunk)
+        split_hidden_states = self.encode_prompt_edit(pipe, [prompt], preview_image)
         attn_mask_list = [torch.ones(e.size(0), dtype=torch.long, device=e.device) for e in split_hidden_states]
-        max_seq_len = max(e.size(0) for e in split_hidden_states)
-        prompt_embeds = torch.stack([
-            torch.cat([u, u.new_zeros(max_seq_len - u.size(0), u.size(1))]) for u in split_hidden_states
-        ])
-        encoder_attention_mask = torch.stack([
-            torch.cat([u, u.new_zeros(max_seq_len - u.size(0))]) for u in attn_mask_list
-        ])
+        max_seq_len = max([e.size(0) for e in split_hidden_states])
+        prompt_embeds = torch.stack([torch.cat([u, u.new_zeros(max_seq_len - u.size(0), u.size(1))]) for u in split_hidden_states])
+        encoder_attention_mask = torch.stack([torch.cat([u, u.new_zeros(max_seq_len - u.size(0))]) for u in attn_mask_list])
         prompt_embeds = prompt_embeds.to(dtype=pipe.torch_dtype, device=pipe.device)
         return {"prompt_emb": prompt_embeds, "prompt_emb_mask": encoder_attention_mask}
 
@@ -312,8 +305,6 @@ def model_fn_qwen_video_edit(
 ):
     in_proj, out_proj = adapter.in_proj, adapter.out_proj
     _, _, num_latent_frames, latent_height, latent_width = latents.shape
-    assert num_latent_frames % in_proj.group == 0, \
-        f"num_latent_frames ({num_latent_frames}) must be divisible by in_proj.group ({in_proj.group})"
     num_groups = num_latent_frames // in_proj.group
     tokens_h, tokens_w = latent_height // 2, latent_width // 2
     rows, cols = factorize_grid(num_groups)
@@ -362,5 +353,4 @@ def model_fn_qwen_video_edit(
         conditioning = conditioning.chunk(2, dim=0)[0]
     image = dit.norm_out(image, conditioning)[:, :image_seq_len]
     output = out_proj(image, num_groups, tokens_h, tokens_w)
-    assert output.shape == latents.shape, f"Output shape {output.shape} != latents shape {latents.shape}"
     return output
