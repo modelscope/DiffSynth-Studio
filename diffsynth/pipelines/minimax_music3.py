@@ -362,4 +362,4 @@ class MiniMaxMusic3Unit_Vocoder(PipelineUnit):
             waveform_chunks.append(waveform[...,
                                             left:waveform.shape[-1] - right])
         song = torch.cat(waveform_chunks, dim=-1)[0]
-        return {"audio": song.float().clamp(-1.0, 1.0)}
+        return {"audio": song.float().clamp(-1.0, 1.0).cpu()}
