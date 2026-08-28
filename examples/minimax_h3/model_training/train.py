@@ -29,6 +29,7 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         silent_on_missing_audio=False,
         training_cfg_scale=1.0,
+        audio_loss_weight=1.0,
         device="cpu",
         task="sft",
     ):
@@ -36,6 +37,7 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         if training_cfg_scale < 1.0:
             raise ValueError("training_cfg_scale must be at least 1.0")
         self.training_cfg_scale = training_cfg_scale
+        self.audio_loss_weight = audio_loss_weight
         # Load models
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, quant_options=quant_options, device=device)
         pipe_kwargs = {}
@@ -69,10 +71,12 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         self.task_to_loss = {
             "sft:data_process": lambda pipe, *args: args,
             "sft": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTMiniMaxH3AudioVideoLoss(
-                pipe, training_cfg_scale=self.training_cfg_scale, inputs_nega=inputs_nega, **inputs_shared, **inputs_posi,
+                pipe, training_cfg_scale=self.training_cfg_scale, audio_loss_weight=self.audio_loss_weight,
+                inputs_nega=inputs_nega, **inputs_shared, **inputs_posi,
             ),
             "sft:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTMiniMaxH3AudioVideoLoss(
-                pipe, training_cfg_scale=self.training_cfg_scale, inputs_nega=inputs_nega, **inputs_shared, **inputs_posi,
+                pipe, training_cfg_scale=self.training_cfg_scale, audio_loss_weight=self.audio_loss_weight,
+                inputs_nega=inputs_nega, **inputs_shared, **inputs_posi,
             ),
         }
 
@@ -146,6 +150,7 @@ def minimax_h3_parser():
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
     parser.add_argument("--silent_on_missing_audio", default=False, action="store_true", help="Whether to use silent audio as a fallback when no audio track is present in the video data.")
     parser.add_argument("--training_cfg_scale", type=float, default=1.0, help="Inverse-CFG scale for preserving MiniMax-H3 guidance distillation during fine-tuning. Values greater than 1 enable a no-grad unconditional branch; 1 keeps the standard flow-matching loss.")
+    parser.add_argument("--audio_loss_weight", type=float, default=1.0, help="Weight of the audio term in the MiniMax-H3 loss. 1 keeps video and audio equally weighted; 0 trains on the video term only while the audio stream is still noised and forwarded.")
     return parser
 
 
@@ -220,6 +225,7 @@ if __name__ == "__main__":
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         silent_on_missing_audio=args.silent_on_missing_audio,
         training_cfg_scale=args.training_cfg_scale,
+        audio_loss_weight=args.audio_loss_weight,
         task=args.task,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
     )

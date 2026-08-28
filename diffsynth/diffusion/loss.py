@@ -63,7 +63,7 @@ def FlowMatchSFTAudioVideoLoss(pipe: BasePipeline, **inputs):
     return loss
 
 
-def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, training_cfg_scale: float = 1.0, inputs_nega: dict | None = None, **inputs):
+def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, training_cfg_scale: float = 1.0, audio_loss_weight: float = 1.0, inputs_nega: dict | None = None, **inputs):
     max_timestep_boundary = int(inputs.get("max_timestep_boundary", 1) * len(pipe.scheduler.timesteps))
     min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
 
@@ -113,7 +113,7 @@ def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, training_cfg_scale: 
     loss = loss * pipe.scheduler.training_weight(timestep_video)
     if "audio_input_latents" in inputs:
         loss_audio = torch.nn.functional.mse_loss(noise_pred_audio.float(), training_target_audio.float())
-        loss_audio = loss_audio * pipe.scheduler_audio.training_weight(timestep_audio)
+        loss_audio = loss_audio * pipe.scheduler_audio.training_weight(timestep_audio) * audio_loss_weight
         loss = loss + loss_audio
     return loss
 
