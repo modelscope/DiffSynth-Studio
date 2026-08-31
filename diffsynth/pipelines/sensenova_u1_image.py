@@ -37,8 +37,7 @@ class SenseNovaU1ImagePipeline(BasePipeline):
     There is no `negative_prompt`. The unconditional prefix is fixed, as it is in the reference.
 
     Setting `think_mode` lets the model write a reasoning block before generating, which is decoded
-    into the conditioning cache. The reasoning text is exposed on `think_text` so the return value
-    stays a plain image in both modes.
+    into the conditioning cache. The reasoning shapes the image but is not returned.
     """
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
@@ -49,8 +48,6 @@ class SenseNovaU1ImagePipeline(BasePipeline):
         self.scheduler = SenseNovaU1Scheduler()
         self.dit: SenseNovaU1DiT = None
         self.tokenizer = None
-        # Populated with the reasoning text after a `think_mode=True` call.
-        self.think_text = None
 
         self.in_iteration_models = ("dit",)
         self.units = [
@@ -99,14 +96,10 @@ class SenseNovaU1ImagePipeline(BasePipeline):
         # Scheduler
         shift: float = 3.0,
         denoising_strength: float = 1.0,
-        # Flow matching
-        t_eps: float = 0.02,
         # Reasoning
         think_mode: bool = False,
         # Image editing
         edit_image: Union[Image.Image, list[Image.Image]] = None,
-        # Training
-        input_image = None,
         # Progress bar
         progress_bar_cmd=tqdm,
     ):
@@ -120,10 +113,8 @@ class SenseNovaU1ImagePipeline(BasePipeline):
             "cfg_scale": cfg_scale, "cfg_interval": cfg_interval,
             "height": height, "width": width,
             "seed": seed, "rand_device": rand_device,
-            "t_eps": t_eps,
             "think_mode": think_mode,
             "edit_image": edit_image,
-            "input_image": input_image,
         }
 
         # Units
@@ -308,8 +299,9 @@ class SenseNovaU1ImageUnit_PromptEmbedder(PipelineUnit):
                     "\n\n" + IMG_START_TOKEN, return_tensors="pt", add_special_tokens=False,
                 )["input_ids"].to(pipe.device),
             )
-            # TODO: donot need this
-            pipe.think_text = pipe.tokenizer.decode(token_ids, skip_special_tokens=False)
+            # `token_ids` holds the reasoning the model just wrote. Nothing downstream needs it,
+            # so it is left undecoded; to read it, decode it here:
+            # pipe.tokenizer.decode(token_ids, skip_special_tokens=False)
         else:
             past_key_values, _ = pipe.dit.encode_prefix(
                 input_ids=None if inputs_embeds is not None else input_ids,
@@ -346,8 +338,9 @@ class SenseNovaU1ImageUnit_NoiseInitializer(PipelineUnit):
 class SenseNovaU1ImageUnit_InputImageEmbedder(PipelineUnit):
     """Provide the training target in pixel space.
 
-    There is no VAE, so the training branch passes the preprocessed image tensor straight
-    through as `input_latents`. At inference the noise is used unchanged.
+    `input_image` reaches this unit only from the training module, since inference always starts
+    from pure noise. There is no VAE, so the preprocessed image tensor is passed straight through
+    as `input_latents`.
     """
 
     def __init__(self):
@@ -360,10 +353,7 @@ class SenseNovaU1ImageUnit_InputImageEmbedder(PipelineUnit):
         if input_image is None:
             return {"latents": noise, "input_latents": None}
         input_latents = pipe.preprocess_image(input_image).to(device=pipe.device, dtype=pipe.torch_dtype)
-        if pipe.scheduler.training:
-            return {"latents": noise, "input_latents": input_latents}
-        latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
-        return {"latents": latents, "input_latents": input_latents}
+        return {"latents": noise, "input_latents": input_latents}
 
 
 def model_fn_sensenova_u1_image(
@@ -375,7 +365,6 @@ def model_fn_sensenova_u1_image(
     height=None,
     width=None,
     noise_scale=None,
-    t_eps=0.02,
     use_gradient_checkpointing: bool = False,
     use_gradient_checkpointing_offload: bool = False,
     **kwargs,
@@ -411,4 +400,4 @@ def model_fn_sensenova_u1_image(
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
     x_pred = unpatchify(x_pred, PATCH_SIZE, height, width)
-    return (latents - x_pred) / sigma.clamp_min(t_eps)
+    return (latents - x_pred) / sigma
