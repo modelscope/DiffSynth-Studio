@@ -80,6 +80,23 @@ qwen_image_series = [
     },
 ]
 
+qwen_video_edit_series = [
+    {
+        # Example: ModelConfig(model_id="yunpeng1998/Qwen-Video-Edit", origin_file_pattern="360P/step-30000.safetensors")
+        "model_hash": "8ae0ca4ab286d00197f08986c7fbbade",
+        "model_name": "qwen_video_edit_dit",
+        "model_class": "diffsynth.models.qwen_image_dit.QwenImageDiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.qwen_video_edit.QwenVideoEditDiTStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="yunpeng1998/Qwen-Video-Edit", origin_file_pattern="360P/step-30000.safetensors")
+        "model_hash": "8ae0ca4ab286d00197f08986c7fbbade",
+        "model_name": "qwen_video_edit_adapter",
+        "model_class": "diffsynth.models.qwen_video_edit_dit.QwenVideoEditAdapter",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.qwen_video_edit.QwenVideoEditAdapterStateDictConverter",
+    },
+]
+
 wan_series = [
     {
         # Example: ModelConfig(model_id="Wan-AI/Wan2.2-Animate-2-14B", origin_file_pattern="wan_animate_2/wan_animate_2_bf16.safetensors")
@@ -1555,7 +1572,7 @@ sensenova_u1_series = [
 ]
 
 MODEL_CONFIGS = (
-    stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
+    stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + qwen_video_edit_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
     + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series + minimax_h3_series + minimax_music3_series + sensenova_u1_series
 )
