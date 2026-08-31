@@ -44,6 +44,7 @@ graph LR;
 * [FLUX.1](./Model_Details/FLUX.md)
 * [Wan](./Model_Details/Wan.md)
 * [Qwen-Image](./Model_Details/Qwen-Image.md)
+* [Qwen-Video-Edit](./Model_Details/Qwen-Video-Edit.md)
 * [FLUX.2](./Model_Details/FLUX2.md)
 * [Z-Image](./Model_Details/Z-Image.md)
 * [Anima](./Model_Details/Anima.md)
