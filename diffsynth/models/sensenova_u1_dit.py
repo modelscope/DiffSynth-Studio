@@ -771,10 +771,6 @@ class SenseNovaU1DiT(nn.Module):
             max_position_embeddings_hw=max_position_embeddings_hw,
             pad_token_id=pad_token_id,
         )
-
-        # Understanding-branch patch embedder. Separate weights from the generation-branch copy in
-        # `fm_modules`: this one encodes the images the user supplies, that one encodes the noisy
-        # image at every denoising step. The attribute name mirrors the checkpoint key prefix.
         self.vision_model = SenseNovaU1VisionEncoder(
             hidden_size=vision_hidden_size,
             llm_hidden_size=hidden_size,

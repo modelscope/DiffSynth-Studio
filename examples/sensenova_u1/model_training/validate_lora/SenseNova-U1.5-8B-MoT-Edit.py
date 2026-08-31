@@ -1,7 +1,6 @@
 import torch
 from PIL import Image
 from diffsynth.pipelines.sensenova_u1_image import SenseNovaU1ImagePipeline, ModelConfig
-from diffsynth.models.sensenova_u1_common import PATCH_SIZE, smart_resize
 
 
 pipe = SenseNovaU1ImagePipeline.from_pretrained(
@@ -15,17 +14,13 @@ pipe = SenseNovaU1ImagePipeline.from_pretrained(
 pipe.load_lora(pipe.dit, "./models/train/SenseNova-U1.5-8B-MoT-Edit_lora/epoch-4.safetensors")
 
 edit_image = Image.open("data/diffsynth_example_dataset/sensenova_u1/SenseNova-U1.5-8B-MoT-Edit/edit/image1.jpg").convert("RGB")
-height, width = smart_resize(
-    edit_image.height, edit_image.width,
-    factor=PATCH_SIZE, min_pixels=1024 * 1024, max_pixels=1024 * 1024,
-)
 
 image = pipe(
     prompt="将裙子改为粉色",
     edit_image=edit_image,
     seed=42,
-    height=height,
-    width=width,
+    height=1024,
+    width=1024,
     num_inference_steps=50,
     cfg_scale=4.0,
     shift=3.0,
