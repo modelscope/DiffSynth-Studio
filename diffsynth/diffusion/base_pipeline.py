@@ -240,6 +240,13 @@ class BasePipeline(torch.nn.Module):
                 module.computation_device = device
                 
     
+    def check_quant_hot_load(self, module: torch.nn.Module):
+        # A quantized weight cannot absorb a fused LoRA, so hot-loading is the only option for it.
+        if getattr(module, "quantize_config", None) is None:
+            return module
+        return self.enable_lora_hot_loading(module)
+
+
     def load_lora(
         self,
         module: torch.nn.Module,
@@ -249,6 +256,7 @@ class BasePipeline(torch.nn.Module):
         state_dict=None,
         verbose=1,
     ):
+        module = self.check_quant_hot_load(module)
         if state_dict is None:
             if isinstance(lora_config, str):
                 lora = load_state_dict(lora_config, torch_dtype=self.torch_dtype, device=self.device)
@@ -370,7 +378,7 @@ class BasePipeline(torch.nn.Module):
             "computation_dtype": self.torch_dtype,
             "computation_device": self.device,
         }
-        model = enable_vram_management(model, module_map, vram_config=vram_config)
+        model = enable_vram_management(model, module_map, vram_config=vram_config, quantize=getattr(model, "quantize_config", None))
         return model
 
     def compile_pipeline(self, mode: str = "default", dynamic: bool = True, fullgraph: bool = False, compile_models: list = None, **kwargs):

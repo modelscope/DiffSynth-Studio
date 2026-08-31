@@ -37,7 +37,7 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
             devices = [vram_config[k] for k in ("offload_device", "onload_device", "preparing_device", "computation_device")]
             load_device = [d for d in devices if d != "disk"][0]
             disk_map = DiskMap(path, load_device, torch_dtype=None, state_dict_converter=state_dict_converter)
-            metadata = load_metadata_from_safetensors(path[0] if isinstance(path, list) else path)
+            metadata = load_metadata_from_safetensors(path)
             model = quantize.prepare_for_prequantized_load(model, compute_dtype=vram_config["computation_dtype"])
             model = enable_vram_management(model, module_map, vram_config=vram_config, disk_map=disk_map, vram_limit=vram_limit, quantize=quantize, metadata=metadata)
         else:
@@ -119,6 +119,9 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
         # Because some models override the behavior of `to()`,
         # especially those from libraries like Transformers.
         model = model.to(dtype=torch_dtype, device=device)
+    if quantize is not None:
+        # Downstream steps (e.g. LoRA hot-loading) need the config to handle the quantized layers.
+        model.quantize_config = quantize
     if hasattr(model, "eval"):
         model = model.eval()
     return model
