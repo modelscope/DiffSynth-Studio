@@ -83,15 +83,17 @@ def enable_high_precision_for_bf16():
 
 
 def parse_device_type(device):
-    if isinstance(device, str):
-        if device.startswith("cuda"):
-            return "cuda"
-        elif device.startswith("npu"):
-            return "npu"
-        else:
-            return "cpu"
-    elif isinstance(device, torch.device):
+    if isinstance(device, torch.device):
         return device.type
+    elif isinstance(device, str):
+        # `torch.device("npu")` raises when torch_npu is not installed, so keep npu ahead of the generic parse.
+        if device.startswith("npu"):
+            return "npu"
+        try:
+            return torch.device(device).type
+        except RuntimeError:
+            # Strings that are not device names at all
+            return "cpu"
 
 
 def parse_nccl_backend(device_type):

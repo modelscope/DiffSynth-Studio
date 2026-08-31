@@ -75,6 +75,11 @@ save_video(video, "video.mp4", fps=15, quality=10)
 |[Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_t2v.py)|
 |[Robbyant/lingbot-video-dense-1.3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py)|
 |[Robbyant/lingbot-video-dense-1.3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py)|-|-|-|-|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_t2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_t2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_t2v.py)|
+|[Robbyant/lingbot-video-moe-30b-a3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/full/lingbot-video-moe-30b-a3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_full/lingbot-video-moe-30b-a3b_ti2v.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/lora/lingbot-video-moe-30b-a3b_ti2v.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_training/validate_lora/lingbot-video-moe-30b-a3b_ti2v.py)|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2i.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2i.py)|-|-|-|-|
+|[Robbyant/lingbot-video-moe-30b-a3b: T2V + Refinement](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_t2v_refiner.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_t2v_refiner.py)|-|-|-|-|
+|[Robbyant/lingbot-video-moe-30b-a3b: TI2V + Refinement](https://modelscope.cn/models/Robbyant/lingbot-video-moe-30b-a3b)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference/lingbot-video-moe-30b-a3b_ti2v_refiner.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/lingbot_video/model_inference_low_vram/lingbot-video-moe-30b-a3b_ti2v_refiner.py)|-|-|-|-|
 
 ## 模型推理
 
@@ -93,11 +98,32 @@ save_video(video, "video.mp4", fps=15, quality=10)
 * `cfg_scale`: 无分类器指导强度，默认 `3.0`。
 * `num_inference_steps`: 推理步数，默认 `40`。
 * `sigma_shift`: Flow-matching 时间步 shift，默认 `3.0`。
+* `t_thresh`: 精修起始 sigma，默认 `None`（普通生成）。设置后调度会被截断，使采样从 `sigma=t_thresh` 开始，并把 `input_video` 加噪到该噪声水平。仅在提供 `input_video` 时有意义；TI2V 还会在每个采样步之后重新写入干净的首帧 latent。官方精修配置为 `0.85`。
+* `sigma_tail_steps`: 精修调度尾部追加的额外低噪声步数，默认 `2`。仅在设置了 `t_thresh` 时生效。
 * `seed`: 随机种子，默认 `None`（完全随机）。
 * `rand_device`: 生成初始噪声的设备，默认 `"cpu"`。
 * `progress_bar_cmd`: 进度条，默认 `tqdm`，可设为 `lambda x: x` 关闭。
 
 显存不足时请参考[显存管理](../Pipeline_Usage/VRAM_management.md)启用显存管理功能。我们在示例代码中提供了每个任务的推荐低显存配置，见上方"模型总览"中的表格。
+
+### 两阶段精修
+
+MoE 的 refiner 会在更高分辨率上执行一次短程精修：官方配置先以 480×832、40 步生成，再以 1088×1920、8 步精修。加载时把分片通配符从 `transformer/` 换成 `refiner/`，将基础阶段的视频以目标分辨率通过 `input_video` 传回，并设置 `t_thresh`：
+
+```python
+input_video = VideoData("video_base.mp4", height=1088, width=1920)
+video = pipe(
+    prompt=caption,
+    negative_prompt=pipe.default_negative_prompt,
+    input_video=input_video,
+    height=1088, width=1920, num_frames=81,
+    num_inference_steps=8, cfg_scale=3.0,
+    t_thresh=0.85, sigma_tail_steps=2,
+    seed=0,
+)
+```
+
+放大后的视频会被 VAE 编码并重新加噪到 `sigma=t_thresh`，因此这一阶段保留基础阶段的结构，并在目标分辨率上重新生成细节。请使用与基础阶段相同的 caption，并保持相同的宽高比。精修分辨率决定了主要开销——1088×1920 的序列长度约为 480×832 的 5 倍——建议开启显存管理运行该阶段。
 
 ### 提示词改写
 
@@ -141,6 +167,7 @@ LingBot-Video 系列模型统一通过 [`examples/lingbot_video/model_training/t
         * `--model_id_with_origin_paths`: 带原始路径的模型 ID。用逗号分隔。
         * `--extra_inputs`: 模型 Pipeline 所需的额外输入参数，以 `,` 分隔。
         * `--fp8_models`: 以 FP8 格式加载的模型，目前仅支持参数不被梯度更新的模型。
+        * `--quant_options`：对加载的模型进行动态量化。以 `;` 分隔多个条目，每个为 `<模型字符串>:<method>[/<exclude_modules>]`，`<模型字符串>` 需与 `--model_paths`/`--model_id_with_origin_paths` 中的一致，`method` 为已注册的量化方法（如 `bitsandbytes_nf4`），`exclude_modules` 为可选的保持全精度的层。
     * 训练基础配置
         * `--learning_rate`: 学习率。
         * `--num_epochs`: 轮数（Epoch）。

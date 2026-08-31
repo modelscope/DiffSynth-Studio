@@ -2,16 +2,19 @@
 
 DiffSynth-Studio provides an Inference WebUI to help developers quickly validate model performance.
 
+> The current Inference WebUI is not fully developed yet; we will optimize the interaction logic in the future.
+
 > The Inference WebUI is a debugging tool designed for developers, not a creation tool for end-users. For a richer feature set and more user-friendly interactive experience, we recommend using the [AIGC Zone](https://modelscope.cn/aigc/home) on ModelScope (for users in China) or the [Civision Zone](https://modelscope.ai/civision/home) (for users outside China).
 
 ## Launching the Inference WebUI
 
-The Inference WebUI is built on [Streamlit](https://streamlit.io/). We recommend installing DiffSynth-Studio in `[all]` mode:
+The Inference WebUI is built on [`Streamlit`](https://streamlit.io/). In addition to DiffSynth-Studio, you also need to install `Streamlit`:
 
 ```shell
 git clone https://github.com/modelscope/DiffSynth-Studio.git
 cd DiffSynth-Studio
-pip install -e .[all]
+pip install -e .
+pip install streamlit
 ```
 
 Launch command:

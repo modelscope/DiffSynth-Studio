@@ -1,4 +1,4 @@
-import torch, os, argparse, accelerate, warnings
+import torch, os, argparse, accelerate
 from diffsynth.core import UnifiedDataset
 from diffsynth.core.data.operators import LoadAudioWithTorchaudio, ToAbsolutePath, RouteByType, SequencialProcess
 from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
@@ -19,18 +19,14 @@ class LTX2TrainingModule(DiffusionTrainingModule):
         extra_inputs=None,
         fp8_models=None,
         offload_models=None,
+        quant_options=None,
         resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         device="cpu",
         task="sft",
     ):
         super().__init__()
-        # Warning
-        if not use_gradient_checkpointing:
-            warnings.warn("Gradient checkpointing is detected as disabled. To prevent out-of-memory errors, the training framework will forcibly enable gradient checkpointing.")
-            use_gradient_checkpointing = True
-
         # Load models
-        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
+        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, quant_options=quant_options, device=device)
         tokenizer_config = ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized") if tokenizer_path is None else ModelConfig(tokenizer_path)
         self.pipe = LTX2AudioVideoPipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config)
         self.pipe = self.split_pipeline_units(
@@ -163,6 +159,7 @@ if __name__ == "__main__":
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
+        quant_options=args.quant_options,
         resume_from_checkpoint=args.resume_from_checkpoint,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         task=args.task,
@@ -176,6 +173,7 @@ if __name__ == "__main__":
         swanlab_project=args.swanlab_project,
         enable_wandb_log=args.enable_wandb_log,
         wandb_project=args.wandb_project,
+        enable_csv_log=args.enable_csv_log,
     )
     launcher_map = {
         "sft:data_process": launch_data_process_task,

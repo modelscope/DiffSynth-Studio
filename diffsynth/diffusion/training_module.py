@@ -1,8 +1,7 @@
 import torch, json, os, inspect
-from ..core import ModelConfig, load_state_dict
+from ..core import ModelConfig, load_state_dict, QuantizeConfig
 from ..utils.controlnet import ControlNetInput
 from .base_pipeline import PipelineUnit
-from peft import LoraConfig, inject_adapter_in_model
 
 
 class GeneralUnit_RemoveCache(PipelineUnit):
@@ -92,6 +91,7 @@ class DiffusionTrainingModule(torch.nn.Module):
     
     
     def add_lora_to_model(self, model, target_modules, lora_rank, lora_alpha=None, upcast_dtype=None):
+        from peft import LoraConfig, inject_adapter_in_model
         if lora_alpha is None:
             lora_alpha = lora_rank
         if isinstance(target_modules, list) and len(target_modules) == 1:
@@ -176,9 +176,46 @@ class DiffusionTrainingModule(torch.nn.Module):
         else:
             return {}
     
-    def parse_model_configs(self, model_paths, model_id_with_origin_paths, fp8_models=None, offload_models=None, device="cpu"):
+    def parse_quant_options(self, quant_options):
+        quant_map = {}
+        if quant_options is None:
+            return quant_map
+        for entry in quant_options.split(";"):
+            if entry == "":
+                continue
+            model_string, sep, spec = entry.rpartition(":")
+            if sep == "":
+                raise ValueError(f"Failed to parse quant option: `{entry}`. Expected `<model_string>:<method>[/<exclude_modules>]`.")
+            if spec == "":
+                continue
+            method, _, excludes = spec.partition("/")
+            exclude_modules = excludes.split(",") if excludes != "" else None
+            quant_config = QuantizeConfig(method=method, exclude_modules=exclude_modules)
+            if not quant_config.backend.capabilities().get("is_differentiable", True):
+                raise ValueError(f"Quantization method `{method}` is not differentiable, so it cannot be used for training (frozen quantized layers must pass gradients through to LoRA branches). Choose a method whose backend declares `is_differentiable=True`.")
+            quant_map[self.normalize_quant_key(model_string)] = quant_config
+        return quant_map
+
+    def normalize_quant_key(self, model_string):
+        if isinstance(model_string, str) and model_string.startswith("[") and model_string.endswith("]"):
+            try:
+                model_string = json.loads(model_string)
+            except json.JSONDecodeError:
+                raise ValueError(f"Failed to parse quant option model string: `{model_string}`. A multi-file model must be written as a JSON list of files, matching its `--model_paths` entry.")
+        if isinstance(model_string, list):
+            return tuple(model_string)
+        return model_string
+
+    def get_quant_config(self, quant_map, model_string):
+        quant_config = quant_map.get(self.normalize_quant_key(model_string))
+        if quant_config is None and len(quant_map) > 0:
+            print(f"No quant option matches `{model_string}`. This model is loaded without quantization. Parsed quant options: {({key: config.method for key, config in quant_map.items()})}.")
+        return quant_config
+
+    def parse_model_configs(self, model_paths, model_id_with_origin_paths, fp8_models=None, offload_models=None, quant_options=None, device="cpu"):
         fp8_models = [] if fp8_models is None else fp8_models.split(",")
         offload_models = [] if offload_models is None else offload_models.split(",")
+        quant_map = self.parse_quant_options(quant_options)
         model_configs = []
         if model_paths is not None:
             model_paths = json.loads(model_paths)
@@ -188,7 +225,7 @@ class DiffusionTrainingModule(torch.nn.Module):
                     offload=path in offload_models,
                     device=device
                 )
-                model_configs.append(ModelConfig(path=path, **vram_config))
+                model_configs.append(ModelConfig(path=path, quantize=self.get_quant_config(quant_map, path), **vram_config))
         if model_id_with_origin_paths is not None:
             model_id_with_origin_paths = model_id_with_origin_paths.split(",")
             for model_id_with_origin_path in model_id_with_origin_paths:
@@ -198,7 +235,7 @@ class DiffusionTrainingModule(torch.nn.Module):
                     device=device
                 )
                 config = self.parse_path_or_model_id(model_id_with_origin_path)
-                model_configs.append(ModelConfig(model_id=config.model_id, origin_file_pattern=config.origin_file_pattern, **vram_config))
+                model_configs.append(ModelConfig(model_id=config.model_id, origin_file_pattern=config.origin_file_pattern, quantize=self.get_quant_config(quant_map, model_id_with_origin_path), **vram_config))
         return model_configs
     
 
@@ -220,7 +257,7 @@ class DiffusionTrainingModule(torch.nn.Module):
         self,
         model: torch.nn.Module,
         search_for_linear=False,
-        linear_detector=lambda x: min(x.weight.shape) >= 512,
+        linear_detector=lambda x: min(x.in_features, x.out_features) >= 512,
         block_list_detector=lambda x: isinstance(x, torch.nn.ModuleList) and len(x) > 1,
         name_prefix="",
     ):
@@ -258,8 +295,11 @@ class DiffusionTrainingModule(torch.nn.Module):
             return pipe
         model_config = self.parse_path_or_model_id(path_or_model_id)
         pipe.load_training_template_model(model_config)
-        pipe.units.append(GeneralUnit_TemplateProcessInputs(pipe.template_data_processor))
-        pipe.units.append(GeneralUnit_TemplateForward(use_gradient_checkpointing, use_gradient_checkpointing_offload))
+        template_units = [
+            GeneralUnit_TemplateProcessInputs(pipe.template_data_processor),
+            GeneralUnit_TemplateForward(use_gradient_checkpointing, use_gradient_checkpointing_offload),
+        ]
+        pipe.units = template_units + pipe.units
         return pipe
 
 
@@ -319,7 +359,7 @@ class DiffusionTrainingModule(torch.nn.Module):
         # TODO: set `remove_unnecessary_params` to `True` by default
         remove_unnecessary_params=False,
         # TODO: move `loss_required_params` to `loss.py`
-        loss_required_params=("input_latents", "max_timestep_boundary", "min_timestep_boundary", "first_frame_latents", "video_latents", "audio_input_latents", "num_inference_steps"),
+        loss_required_params=("input_latents", "max_timestep_boundary", "min_timestep_boundary", "first_frame_latents", "video_latents", "audio_input_latents", "num_inference_steps", "cfg_scale"),
         force_remove_params_shared=tuple(),
         force_remove_params_posi=tuple(),
         force_remove_params_nega=tuple(),

@@ -2,6 +2,25 @@
 
 本文档介绍如何使用 `DiffSynth-Studio` 进行模型训练。
 
+`DiffSynth-Studio` 为 Diffusion 模型提供训练框架支持，每个模型架构的训练代码位于 [`examples`](https://github.com/modelscope/DiffSynth-Studio/tree/main/examples) 中独立编写的 `train.py`，我们为每个模型提供了用于模型训练的 `.sh` 脚本。以 Z-Image 为例，文件结构如下：
+
+```shell
+diffsynth/diffusion/   # 基础训练框架
+examples/z_image/
+├── model_inference
+├── model_inference_low_vram
+└── model_training
+    ├── train.py       # Z-Image 架构的模型训练代码在这里
+    ├── full
+    │   └── Z-Image.sh # 启动全量训练
+    ├── validate_full
+    │   └── Z-Image.py # 全量训练完成后，运行这个脚本加载模型，验证效果
+    ├── lora
+    │   └── Z-Image.sh # 启动 LoRA 训练
+    └── validate_lora
+        └── Z-Image.py # LoRA 训练完成后，运行这个脚本加载模型，验证效果
+```
+
 ## 脚本参数
 
 训练脚本通常包含以下参数：
@@ -17,6 +36,7 @@
     * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 `"Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors"`。用逗号分隔。
     * `--extra_inputs`: 模型 Pipeline 所需的额外输入参数，例如训练图像编辑模型 Qwen-Image-Edit 时需要额外参数 `edit_image`，以 `,` 分隔。
     * `--fp8_models`：以 FP8 格式加载的模型，格式与 `--model_paths` 或 `--model_id_with_origin_paths` 一致，目前仅支持参数不被梯度更新的模型（不需要梯度回传，或梯度仅更新其 LoRA）。
+    * `--quant_options`：对加载的模型进行动态量化。以 `;` 分隔多个条目，每个为 `<模型字符串>:<method>[/<exclude_modules>]`，`<模型字符串>` 需与 `--model_paths`/`--model_id_with_origin_paths` 中的一致，`method` 为已注册的量化方法（如 `bitsandbytes_nf4`），`exclude_modules` 为可选的保持全精度的层。
     * `--resume_from_checkpoint`：从 checkpoint 文件中加载模型权重并继续训练。目前仅支持非 LoRA 的单模型加载。
 * 训练基础配置
     * `--learning_rate`: 学习率。
@@ -49,7 +69,7 @@
     * `--width`: 图像或视频的宽度。将 `height` 和 `width` 留空以启用动态分辨率。
     * `--max_pixels`: 图像或视频帧的最大像素面积，当启用动态分辨率时，分辨率大于这个数值的图片都会被缩小，分辨率小于这个数值的图片保持不变。
 
-部分模型的训练脚本还包含额外的参数，详见各模型的文档。
+部分模型的训练脚本还包含额外的参数，详见[各模型的文档](../README.md#section-2-模型详解)，也可以通过 `python xxx/train.py -h` 查看支持的脚本参数。
 
 ## 准备数据集
 
@@ -248,5 +268,6 @@ accelerate launch --config_file examples/qwen_image/model_training/full/accelera
 |Gradient Checkpointing Offload|通过 `--use_gradient_checkpointing_offload` 开启）|在 Gradient Checkpointing 的基础上，将 Gradient Checkpointing 的参数从显存移至内存中|进一步减少显存占用和增加计算时间，同时增加内存占用|仅推荐在视频生成模型的训练中考虑开启这个功能|[文档](../API_Reference/core/gradient.md)|
 |DeepSpeed|通过 `accelerate config` 交互式地配置|DeepSpeed 支持将梯度、Optimizer 等参数分拆到多 GPU 上|减少显存占用，增加多 GPU 与多机之间的通信成本，增加计算时间|仅推荐在多 GPU 与多机集群训练中启用|[文档](../Training/DeepSpeed.md)|
 |FP8 训练|通过 `--fp8_models` 设置将哪些模型组件切换为 FP8 模式|将模型参数以 FP8 精度存储在显存中，在推理时临时转换为更高精度，仅支持不需要梯度更新参数的模型|减少显存占用，少量增加计算时间，引入少量训练误差|仅推荐在 `text_encoder`、`vae` 等非训练模块上启用，也可在 LoRA 训练时对 `dit` 启用|[文档](../Training/FP8_Precision.md)|
-|两阶段拆分训练|较为复杂，请参考[文档](../Training/Split_Training.md)。额外注意 Wan 系列模型的开启方式不同，请参考对应的代码样例。|将训练过程拆分为两个阶段，第一阶段进行无梯度计算并将中间结果保存至硬盘，第二阶段计算梯度并更新模型参数。|减少显存占用，增加计算速度，占用额外硬盘空间|部分模型的两阶段训练功能未验证，请谨慎使用|[文档](../Training/Split_Training.md)|
+|自定义量化精度|通过 `--quant_options` 设置每个模型组件的量化配置|FP8 训练的高阶版，将模型参数以任意量化精度存储在显存中|减少显存占用，少量增加计算时间，引入少量训练误差|仅推荐在 `text_encoder`、`vae` 等非训练模块上启用，也可在 LoRA 训练时对 `dit` 启用|[文档](./Quantization.md)|
+|两阶段拆分训练|较为复杂，请参考[文档](../Training/Split_Training.md)|将训练过程拆分为两个阶段，第一阶段进行无梯度计算并将中间结果保存至硬盘，第二阶段计算梯度并更新模型参数。|减少显存占用，增加计算速度，占用额外硬盘空间|部分模型的两阶段训练功能未验证，请谨慎使用|[文档](../Training/Split_Training.md)|
 |CPU Offload|通过 `--enable_model_cpu_offload` 启用|在训练时将模型保存在内存中，逐层移至显存中进行前向和后向传播|减少显存占用，增加计算时间，增加内存占用|仅推荐在单 GPU 且显存极为有限的设备上启用|[文档](../Training/Offload_Training.md)|

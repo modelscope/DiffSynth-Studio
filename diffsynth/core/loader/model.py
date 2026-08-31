@@ -1,20 +1,20 @@
 from ..vram.initialization import skip_model_initialization
 from ..vram.disk_map import DiskMap
 from ..vram.layers import enable_vram_management
-from .file import load_state_dict
+from .file import load_state_dict, load_metadata_from_safetensors
 import torch
 from contextlib import contextmanager
 from transformers.integrations import is_deepspeed_zero3_enabled
 from transformers.utils import ContextManagers
 
 
-def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, device="cpu", state_dict_converter=None, use_disk_map=False, module_map=None, vram_config=None, vram_limit=None, state_dict=None):
+def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, device="cpu", state_dict_converter=None, use_disk_map=False, module_map=None, vram_config=None, vram_limit=None, state_dict=None, quantize=None):
     config = {} if config is None else config
     with ContextManagers(get_init_context(torch_dtype=torch_dtype, device=device)):
         model = model_class(**config)
     # What is `module_map`?
     # This is a module mapping table for VRAM management.
-    if module_map is not None:
+    if module_map is not None and quantize is None:
         devices = [vram_config["offload_device"], vram_config["onload_device"], vram_config["preparing_device"], vram_config["computation_device"]]
         device = [d for d in devices if d != "disk"][0]
         dtypes = [vram_config["offload_dtype"], vram_config["onload_dtype"], vram_config["preparing_dtype"], vram_config["computation_dtype"]]
@@ -30,6 +30,65 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
         else:
             disk_map = DiskMap(path, device, state_dict_converter=state_dict_converter)
             model = enable_vram_management(model, module_map, vram_config=vram_config, disk_map=disk_map, vram_limit=vram_limit)
+    elif quantize is not None and module_map is not None:
+        if "disk" in vram_config.values():
+            if not quantize.load_prequantized:
+                raise ValueError("Disk offload with quantization is only supported for pre-quantized checkpoints (load_prequantized=True).")
+            devices = [vram_config[k] for k in ("offload_device", "onload_device", "preparing_device", "computation_device")]
+            load_device = [d for d in devices if d != "disk"][0]
+            disk_map = DiskMap(path, load_device, torch_dtype=None, state_dict_converter=state_dict_converter)
+            metadata = load_metadata_from_safetensors(path)
+            model = quantize.prepare_for_prequantized_load(model, compute_dtype=vram_config["computation_dtype"])
+            model = enable_vram_management(model, module_map, vram_config=vram_config, disk_map=disk_map, vram_limit=vram_limit, quantize=quantize, metadata=metadata)
+        else:
+            offload_device = vram_config["offload_device"]
+            computation_device = vram_config["computation_device"]
+            computation_dtype = vram_config["computation_dtype"]
+            load_dtype = None if quantize.load_prequantized else computation_dtype
+            if state_dict is None: state_dict = DiskMap(path, offload_device, torch_dtype=load_dtype)
+            if state_dict_converter is not None:
+                state_dict = state_dict_converter(state_dict)
+            else:
+                state_dict = {i: state_dict[i] for i in state_dict}
+
+            if quantize.load_prequantized:
+                model = quantize.prepare_for_prequantized_load(model, compute_dtype=computation_dtype)
+                state_dict = quantize.unflatten_state_dict(state_dict, load_metadata_from_safetensors(path))
+
+            model.load_state_dict(state_dict, assign=True)
+            state_dict = None
+
+            model = quantize.quantize_model(model, compute_device=computation_device, model_device=offload_device)
+            model = quantize.dequantize_model(model, compute_dtype=computation_dtype, compute_device=computation_device, model_device=offload_device)
+            model = model.to(dtype=computation_dtype, device=offload_device)
+            model = enable_vram_management(model, module_map, vram_config=vram_config, disk_map=None, vram_limit=vram_limit, quantize=quantize)
+    elif quantize is not None:
+        # Weight-only quantization (see `diffsynth.core.quant`), isolated from the normal path below.
+        if quantize.load_prequantized:
+            load_device, load_dtype = device, None
+        else:
+            load_device, load_dtype = "cpu", torch_dtype
+
+        if state_dict is not None:
+            pass
+        elif use_disk_map:
+            state_dict = DiskMap(path, load_device, torch_dtype=load_dtype)
+        else:
+            state_dict = load_state_dict(path, load_dtype, load_device)
+
+        if state_dict_converter is not None:
+            state_dict = state_dict_converter(state_dict)
+        else:
+            state_dict = {i: state_dict[i] for i in state_dict}
+
+        if quantize.load_prequantized:
+            model = quantize.prepare_for_prequantized_load(model, compute_dtype=torch_dtype or torch.bfloat16)
+            state_dict = quantize.unflatten_state_dict(state_dict, load_metadata_from_safetensors(path))
+
+        model.load_state_dict(state_dict, assign=True)
+        model = quantize.quantize_model(model, compute_device=device, model_device=device)
+        model = quantize.dequantize_model(model, compute_dtype=torch_dtype or torch.bfloat16)
+        model = model.to(dtype=torch_dtype, device=device)
     else:
         # Why do we use `DiskMap`?
         # Sometimes a model file contains multiple models,
@@ -59,11 +118,10 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
         # Why do we call `to()`?
         # Because some models override the behavior of `to()`,
         # especially those from libraries like Transformers.
-        if torch_dtype is not None:
-            # Preserve quantized weights
-            model = model.to(dtype=torch_dtype, device=device)
-        else:
-            model = model.to(device=device)
+        model = model.to(dtype=torch_dtype, device=device)
+    if quantize is not None:
+        # Downstream steps (e.g. LoRA hot-loading) need the config to handle the quantized layers.
+        model.quantize_config = quantize
     if hasattr(model, "eval"):
         model = model.eval()
     return model

@@ -1,0 +1,93 @@
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "minimax_h3/MiniMax-H3-FL2VA/*" --local_dir ./data/diffsynth_example_dataset
+
+# Optional
+# 1. Fuse the DeCFG training adapter into the DiT while training, for a better optimization landscape on this CFG-distilled base. Training only -- do not load it at inference.
+# modelscope download --model DiffSynth-Studio/MiniMax-H3-TrainingAdapter --local_dir ./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter
+#   --preset_lora_path "./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter/model.safetensors" \
+#   --preset_lora_model "dit"
+# 2. Add `--training_cfg_scale 4` to both stages below to enable CFG-aware training. Both stages must use the same value because the unconditional embeddings are cached in stage 1.
+
+# T2VA - stage 1 (data process)
+accelerate launch examples/minimax_h3/model_training/train.py \
+  --dataset_base_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA \
+  --dataset_metadata_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA/metadata.csv \
+  --data_file_keys "video,input_audio" \
+  --extra_inputs "input_audio" \
+  --height 480 \
+  --width 832 \
+  --num_frames 124 \
+  --dataset_repeat 1 \
+  --model_id_with_origin_paths "MiniMax/MiniMax-H3:FL2VA/text_encoder/model*.safetensors,MiniMax/MiniMax-H3:FL2VA/video_vae/source/model.safetensors,MiniMax/MiniMax-H3:FL2VA/audio_vae/model.safetensors" \
+  --learning_rate 1e-4 \
+  --num_epochs 1 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/MiniMax-H3-T2VA-split-cache" \
+  --lora_base_model "dit" \
+  --lora_target_modules "attn.qkv_proj,attn.out_proj,mlp.fc1,mlp.fc2" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --task "sft:data_process"
+
+# T2VA - stage 2 (train)
+accelerate launch examples/minimax_h3/model_training/train.py \
+  --dataset_base_path ./models/train/MiniMax-H3-T2VA-split-cache \
+  --data_file_keys "video,input_audio" \
+  --extra_inputs "input_audio" \
+  --height 480 \
+  --width 832 \
+  --num_frames 124 \
+  --dataset_repeat 100 \
+  --model_id_with_origin_paths "MiniMax/MiniMax-H3:FL2VA/transformer/model*.safetensors" \
+  --learning_rate 1e-4 \
+  --num_epochs 5 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/MiniMax-H3-T2VA-split" \
+  --lora_base_model "dit" \
+  --lora_target_modules "attn.qkv_proj,attn.out_proj,mlp.fc1,mlp.fc2" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --find_unused_parameters \
+  --task "sft:train"
+
+# input_image / end_image take the first and last frame of the training video
+# FL2VA - stage 1 (data process)
+accelerate launch examples/minimax_h3/model_training/train.py \
+  --dataset_base_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA \
+  --dataset_metadata_path data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA/metadata.csv \
+  --data_file_keys "video,input_audio" \
+  --extra_inputs "input_audio,input_image,end_image" \
+  --height 480 \
+  --width 832 \
+  --num_frames 124 \
+  --dataset_repeat 1 \
+  --model_id_with_origin_paths "MiniMax/MiniMax-H3:FL2VA/text_encoder/model*.safetensors,MiniMax/MiniMax-H3:FL2VA/video_vae/source/model.safetensors,MiniMax/MiniMax-H3:FL2VA/audio_vae/model.safetensors" \
+  --learning_rate 1e-4 \
+  --num_epochs 1 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/MiniMax-H3-FL2VA-split-cache" \
+  --lora_base_model "dit" \
+  --lora_target_modules "attn.qkv_proj,attn.out_proj,mlp.fc1,mlp.fc2" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --task "sft:data_process"
+
+# FL2VA - stage 2 (train)
+accelerate launch examples/minimax_h3/model_training/train.py \
+  --dataset_base_path ./models/train/MiniMax-H3-FL2VA-split-cache \
+  --data_file_keys "video,input_audio" \
+  --extra_inputs "input_audio,input_image,end_image" \
+  --height 480 \
+  --width 832 \
+  --num_frames 124 \
+  --dataset_repeat 100 \
+  --model_id_with_origin_paths "MiniMax/MiniMax-H3:FL2VA/transformer/model*.safetensors" \
+  --learning_rate 1e-4 \
+  --num_epochs 5 \
+  --remove_prefix_in_ckpt "pipe.dit." \
+  --output_path "./models/train/MiniMax-H3-FL2VA-split" \
+  --lora_base_model "dit" \
+  --lora_target_modules "attn.qkv_proj,attn.out_proj,mlp.fc1,mlp.fc2" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --find_unused_parameters \
+  --task "sft:train"

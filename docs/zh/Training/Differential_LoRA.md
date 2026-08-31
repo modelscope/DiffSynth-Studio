@@ -24,10 +24,18 @@
 
 ## 模型效果
 
+### 美学提升
+
 我们用差分 LoRA 训练技术训练了几个美学提升 LoRA，可前往对应的模型页面查看生成效果。
 
 * [DiffSynth-Studio/Qwen-Image-LoRA-ArtAug-v1](https://modelscope.cn/models/DiffSynth-Studio/Qwen-Image-LoRA-ArtAug-v1)
 * [DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1](https://modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1)
+
+### 在蒸馏加速模型上训练 LoRA
+
+部分模型（例如 [Z-Image-Turbo](https://modelscope.cn/models/Tongyi-MAI/Z-Image-Turbo)）已经过蒸馏加速训练，在蒸馏加速配置（关闭 CFG，步数为 8）下效果正常，在标准配置（开启 CFG，步数为 30）下效果崩坏。当在这样的基础模型上训练 LoRA 时，将会导致在蒸馏加速配置下效果崩坏，在标准配置下效果正常。
+
+解决这个问题的一个方案是，先训练一个 LoRA（例如 [ostris/zimage_turbo_training_adapter](https://modelscope.cn/models/ostris/zimage_turbo_training_adapter)），令模型的蒸馏加速能力退化（在蒸馏加速配置下效果崩坏，在标准配置下效果正常），然后在此 LoRA 基础上训练新的 LoRA。但需注意的是，差分训练会让 LoRA 模型不再端到端地优化，其效果存在较大的不确定性。
 
 ## 在训练框架中使用差分 LoRA 训练
 

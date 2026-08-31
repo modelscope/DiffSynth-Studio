@@ -1,5 +1,5 @@
 from safetensors import safe_open
-import torch, hashlib
+import torch, hashlib, json
 
 
 def load_state_dict(file_path, torch_dtype=None, device="cpu", pin_memory=False, verbose=0):
@@ -31,6 +31,27 @@ def load_state_dict_from_safetensors(file_path, torch_dtype=None, device="cpu"):
             if torch_dtype is not None:
                 state_dict[k] = state_dict[k].to(torch_dtype)
     return state_dict
+
+
+def load_metadata_from_safetensors(file_path):
+    if isinstance(file_path, list):
+        metadata = {}
+        for file_path_ in file_path:
+            for key, value in load_metadata_from_safetensors(file_path_).items():
+                metadata[key] = merge_metadata_value(metadata[key], value) if key in metadata else value
+        return metadata
+    with safe_open(file_path, framework="pt", device="cpu") as f:
+        return f.metadata() or {}
+
+
+def merge_metadata_value(old_value, new_value):
+    try:
+        old_items, new_items = json.loads(old_value), json.loads(new_value)
+    except (json.JSONDecodeError, TypeError):
+        return new_value
+    if isinstance(old_items, list) and isinstance(new_items, list):
+        return json.dumps(old_items + [i for i in new_items if i not in old_items])
+    return new_value
 
 
 def load_state_dict_from_bin(file_path, torch_dtype=None, device="cpu"):

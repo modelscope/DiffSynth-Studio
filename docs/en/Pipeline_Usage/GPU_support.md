@@ -12,6 +12,10 @@ All sample code provided by this project supports NVIDIA GPUs by default, requir
 
 AMD provides PyTorch packages based on ROCm, so most models can run without code changes. A small number of models may not be compatible due to their reliance on CUDA-specific instructions.
 
+### Apple Silicon
+
+On Apple Silicon devices, since VRAM and memory are unified, replace all `"cuda"` in the code with `"mps"` or `"cpu"`.
+
 ## Ascend NPU
 ### Inference
 When using Ascend NPU, you need to replace `"cuda"` with `"npu"` in your code.

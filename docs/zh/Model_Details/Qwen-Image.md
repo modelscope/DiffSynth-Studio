@@ -52,32 +52,6 @@ image.save("image.jpg")
 
 ## 模型总览
 
-<details>
-
-<summary>模型血缘</summary>
-
-```mermaid
-graph LR;
-    Qwen/Qwen-Image-->Qwen/Qwen-Image-Edit;
-    Qwen/Qwen-Image-Edit-->Qwen/Qwen-Image-Edit-2509;
-    Qwen/Qwen-Image-->EliGen-Series;
-    EliGen-Series-->DiffSynth-Studio/Qwen-Image-EliGen;
-    DiffSynth-Studio/Qwen-Image-EliGen-->DiffSynth-Studio/Qwen-Image-EliGen-V2;
-    EliGen-Series-->DiffSynth-Studio/Qwen-Image-EliGen-Poster;
-    Qwen/Qwen-Image-->Distill-Series;
-    Distill-Series-->DiffSynth-Studio/Qwen-Image-Distill-Full;
-    Distill-Series-->DiffSynth-Studio/Qwen-Image-Distill-LoRA;
-    Qwen/Qwen-Image-->ControlNet-Series;
-    ControlNet-Series-->Blockwise-ControlNet-Series;
-    Blockwise-ControlNet-Series-->DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Canny;
-    Blockwise-ControlNet-Series-->DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Depth;
-    Blockwise-ControlNet-Series-->DiffSynth-Studio/Qwen-Image-Blockwise-ControlNet-Inpaint;
-    ControlNet-Series-->DiffSynth-Studio/Qwen-Image-In-Context-Control-Union;
-    Qwen/Qwen-Image-->DiffSynth-Studio/Qwen-Image-Edit-Lowres-Fix;
-```
-
-</details>
-
 |模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
 |[Qwen/Qwen-Image](https://www.modelscope.cn/models/Qwen/Qwen-Image)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_inference/Qwen-Image.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_inference_low_vram/Qwen-Image.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_training/full/Qwen-Image.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_training/validate_full/Qwen-Image.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_training/lora/Qwen-Image.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image/model_training/validate_lora/Qwen-Image.py)|
@@ -166,6 +140,7 @@ Qwen-Image 系列模型统一通过 [`examples/qwen_image/model_training/train.p
         * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 `"Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors"`。用逗号分隔。
         * `--extra_inputs`: 模型 Pipeline 所需的额外输入参数，例如训练图像编辑模型 Qwen-Image-Edit 时需要额外参数 `edit_image`，以 `,` 分隔。
         * `--fp8_models`：以 FP8 格式加载的模型，格式与 `--model_paths` 或 `--model_id_with_origin_paths` 一致，目前仅支持参数不被梯度更新的模型（不需要梯度回传，或梯度仅更新其 LoRA）。
+        * `--quant_options`：对加载的模型进行动态量化。以 `;` 分隔多个条目，每个为 `<模型字符串>:<method>[/<exclude_modules>]`，`<模型字符串>` 需与 `--model_paths`/`--model_id_with_origin_paths` 中的一致，`method` 为已注册的量化方法（如 `bitsandbytes_nf4`），`exclude_modules` 为可选的保持全精度的层。
     * 训练基础配置
         * `--learning_rate`: 学习率。
         * `--num_epochs`: 轮数（Epoch）。

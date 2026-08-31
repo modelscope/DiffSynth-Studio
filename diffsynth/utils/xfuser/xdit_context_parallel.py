@@ -2,6 +2,7 @@ import torch
 from typing import Optional
 from einops import rearrange
 from yunchang.kernels import AttnType
+from yunchang.comm.all_to_all import SeqAllToAll4D
 from xfuser.core.distributed import (get_sequence_parallel_rank,
                                      get_sequence_parallel_world_size,
                                      get_sp_group)
@@ -35,7 +36,7 @@ def pad_freqs(original_tensor, target_len):
     seq_len, s1, s2 = original_tensor.shape
     pad_size = target_len - seq_len
     original_tensor_device = original_tensor.device
-    if original_tensor.device == "npu":
+    if original_tensor.device.type == "npu":
         original_tensor = original_tensor.cpu()
     padding_tensor = torch.ones(
         pad_size,
@@ -204,3 +205,15 @@ def gather_all_chunks(x, seq_len=None, dim=1):
         slices[dim] = slice(0, seq_len)
         x = x[tuple(slices)]
     return x
+
+
+def all_to_all_4d(x, scatter_dim, gather_dim):
+    world_size = get_sequence_parallel_world_size()
+    if world_size == 1:
+        return x
+    return SeqAllToAll4D.apply(get_sp_group().ulysses_group, x, scatter_dim, gather_dim)
+
+
+def is_evenly_divisible(seq_len):
+    world_size = get_sequence_parallel_world_size()
+    return seq_len % world_size == 0

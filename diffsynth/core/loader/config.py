@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from modelscope import snapshot_download
 from huggingface_hub import snapshot_download as hf_snapshot_download
 from typing import Optional
+from ..quant import QuantizeConfig, MixedQuantizeConfig
 
 _download_tips_printed = False
 
@@ -57,6 +58,7 @@ class ModelConfig:
     computation_dtype: Optional[torch.dtype] = None
     clear_parameters: bool = False
     state_dict: Dict[str, torch.Tensor] = None
+    quantize: Optional[Union[QuantizeConfig, MixedQuantizeConfig]] = None
     
     def check_input(self):
         if self.path is None and self.model_id is None:
@@ -73,11 +75,11 @@ class ModelConfig:
     def parse_download_source(self):
         if self.download_source is None:
             if os.environ.get('DIFFSYNTH_DOWNLOAD_SOURCE') is not None:
-                return os.environ.get('DIFFSYNTH_DOWNLOAD_SOURCE')
+                return os.environ.get('DIFFSYNTH_DOWNLOAD_SOURCE').lower()
             else:
                 return "modelscope"
         else:
-            return self.download_source
+            return self.download_source.lower()
         
     def parse_skip_download(self):
         if self.skip_download is None:

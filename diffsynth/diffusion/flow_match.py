@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-Music3", "LingBot-Video"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -20,6 +20,9 @@ class FlowMatchScheduler():
             "Ideogram4": FlowMatchScheduler.set_timesteps_ideogram4,
             "Krea-2": FlowMatchScheduler.set_timesteps_krea2,
             "Boogu": FlowMatchScheduler.set_timesteps_boogu,
+            "MiniMax-H3": FlowMatchScheduler.set_timesteps_minimax_h3,
+            "MiniMax-Music3": FlowMatchScheduler.set_timesteps_minimax_music3,
+            "LingBot-Video": FlowMatchScheduler.set_timesteps_lingbot_video,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -79,6 +82,28 @@ class FlowMatchScheduler():
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
     
+    @staticmethod
+    def set_timesteps_lingbot_video(num_inference_steps=100, denoising_strength=1.0, shift=None, t_thresh=None, sigma_tail_steps=0):
+        sigma_min = 0.0
+        sigma_max = 1.0
+        shift = 5 if shift is None else shift
+        num_train_timesteps = 1000
+        sigma_start = sigma_min + (sigma_max - sigma_min) * denoising_strength
+        sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps + 1)[:-1]
+        sigmas = shift * sigmas / (1 + (shift - 1) * sigmas)
+        if t_thresh is not None:
+            # Refinement schedule: keep the sub-threshold part of the shifted grid, pin the first
+            # sigma exactly at t_thresh, then append extra low-noise steps that end at sigma_min.
+            sigmas = sigmas[sigmas <= t_thresh + 1e-6]
+            if sigmas.numel() == 0 or abs(float(sigmas[0]) - t_thresh) > 1e-6:
+                sigmas = torch.cat([torch.tensor([t_thresh], dtype=sigmas.dtype), sigmas])
+            if sigma_tail_steps > 0:
+                tail_start = float(sigmas[-1])
+                tail = torch.linspace(tail_start, min(sigma_min, tail_start), sigma_tail_steps + 2)[1:-1]
+                sigmas = torch.cat([sigmas, tail.to(dtype=sigmas.dtype)])
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
     @staticmethod
     def set_timesteps_qwen_image_lightning(num_inference_steps=100, denoising_strength=1.0, exponential_shift_mu=None, dynamic_shift_len=None):
         sigma_min = 0.0
@@ -277,7 +302,7 @@ class FlowMatchScheduler():
         num_train_timesteps = 1000
         if special_case == "stage2":
             sigmas = torch.Tensor([0.909375, 0.725, 0.421875])
-        elif special_case == "ditilled_stage1":
+        elif special_case == "distilled_stage1":
             sigmas = torch.Tensor([1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875])
         else:
             dynamic_shift_len = dynamic_shift_len or 4096
@@ -297,6 +322,21 @@ class FlowMatchScheduler():
             one_minus_z = 1.0 - sigmas
             scale_factor = one_minus_z[-1] / (1 - terminal)
             sigmas = 1.0 - (one_minus_z / scale_factor)
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_minimax_h3(num_inference_steps=50, denoising_strength=1.0, shift=2.22):
+        num_train_timesteps = 1000
+        base = torch.linspace(denoising_strength, 0.0, num_inference_steps+1, dtype=torch.float32)[:-1]
+        sigmas = shift * base / (1 + (shift - 1) * base)
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_minimax_music3(num_inference_steps=30, denoising_strength=1.0):
+        num_train_timesteps = 1000
+        sigmas = torch.linspace(denoising_strength, denoising_strength / num_inference_steps, num_inference_steps)
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
 

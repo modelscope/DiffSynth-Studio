@@ -213,7 +213,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
         progress_bar_cmd=tqdm,
     ):
         # Scheduler
-        self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, special_case="ditilled_stage1" if use_distilled_pipeline else None)
+        self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, special_case="distilled_stage1" if use_distilled_pipeline else None)
         # Inputs
         inputs_posi = {
             "prompt": prompt,

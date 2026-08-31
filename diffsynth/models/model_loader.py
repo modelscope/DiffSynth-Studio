@@ -1,5 +1,6 @@
 from ..core.loader import load_model, hash_model_file
 from ..core.vram import AutoWrappedModule
+from ..core.quant import QuantizeConfig, MixedQuantizeConfig
 from ..configs import MODEL_CONFIGS, VRAM_MANAGEMENT_MODULE_MAPS, VERSION_CHECKER_MAPS
 import importlib, json, torch
 
@@ -30,8 +31,12 @@ class ModelPool:
             module_map = None
         return module_map
     
-    def load_model_file(self, config, path, vram_config, vram_limit=None, state_dict=None):
+    def load_model_file(self, config, path, vram_config, vram_limit=None, state_dict=None, quantize=None):
         model_class = self.import_model_class(config["model_class"])
+        # Resolve the quant config only after the model class import: a model file may
+        # register its own method/backend at import time (e.g. `ideogram4_fp8`), and
+        # `QuantizeConfig` looks the method up at construction.
+        quantize = self.resolve_quant_config(config, quantize)
         model_config = config.get("extra_kwargs", {})
         if "state_dict_converter" in config:
             state_dict_converter = self.import_model_class(config["state_dict_converter"])
@@ -40,12 +45,13 @@ class ModelPool:
         module_map = self.fetch_module_map(config["model_class"], vram_config)
         model = load_model(
             model_class, path, model_config,
-            vram_config["computation_dtype"] if not model_config.get("keep_original_dtype", False) else None,
+            vram_config["computation_dtype"],
             vram_config["computation_device"],
             state_dict_converter,
             use_disk_map=True,
             vram_config=vram_config, module_map=module_map, vram_limit=vram_limit,
             state_dict=state_dict,
+            quantize=quantize,
         )
         return model
     
@@ -62,7 +68,19 @@ class ModelPool:
         }
         return vram_config
     
-    def auto_load_model(self, path, vram_config=None, vram_limit=None, clear_parameters=False, state_dict=None):
+    def resolve_quant_config(self, config, quantize):
+        registered = config.get("quant_config")
+        if registered is not None:
+            if quantize is not None:
+                print(f"Warning: `{config.get('model_name')}` is already a pre-quantized checkpoint; ignoring the passed quantize option.")
+            registered = dict(registered)
+            child_configs = registered.pop("configs", None)
+            if child_configs is not None:
+                return MixedQuantizeConfig(configs=[QuantizeConfig(**child) for child in child_configs], **registered)
+            return QuantizeConfig(**registered)
+        return quantize
+
+    def auto_load_model(self, path, vram_config=None, vram_limit=None, clear_parameters=False, state_dict=None, quantize=None):
         print(f"Loading models from: {json.dumps(path, indent=4)}")
         if vram_config is None:
             vram_config = self.default_vram_config()
@@ -70,7 +88,7 @@ class ModelPool:
         loaded = False
         for config in MODEL_CONFIGS:
             if config["model_hash"] == model_hash:
-                model = self.load_model_file(config, path, vram_config, vram_limit=vram_limit, state_dict=state_dict)
+                model = self.load_model_file(config, path, vram_config, vram_limit=vram_limit, state_dict=state_dict, quantize=quantize)
                 if clear_parameters: self.clear_parameters(model)
                 self.model.append(model)
                 model_name = config["model_name"]

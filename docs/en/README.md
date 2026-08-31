@@ -8,17 +8,17 @@ Welcome to the magical world of Diffusion models! `DiffSynth-Studio` is an open-
 
 ```mermaid
 graph LR;
-    I_want_to_use_models_for_inference_and_training-->sec1[Section 1: Getting Started];
-    I_want_to_use_models_for_inference_and_training-->sec2[Section 2: Model Details];
-    I_want_to_use_models_for_inference_and_training-->sec3[Section 3: Training Framework];
-    I_want_to_develop_based_on_this_framework-->sec3[Section 3: Training Framework];
-    I_want_to_develop_based_on_this_framework-->sec4[Section 4: Model Integration];
-    I_want_to_develop_based_on_this_framework-->sec5[Section 5: API Reference];
-    I_want_to_explore_new_technologies_based_on_this_project-->sec4[Section 4: Model Integration];
-    I_want_to_explore_new_technologies_based_on_this_project-->sec5[Section 5: API Reference];
-    I_want_to_explore_new_technologies_based_on_this_project-->sec6[Section 6: Diffusion Templates];
-    I_want_to_explore_new_technologies_based_on_this_project-->sec7[Section 7: Research Guide];
-    I_encountered_a_problem-->sec8[Section 8: Frequently Asked Questions];
+    use["I want to use models for inference and training"]-->sec1["Section 1: Getting Started"];
+    use["I want to use models for inference and training"]-->sec2["Section 2: Model Details"];
+    use["I want to use models for inference and training"]-->sec3["Section 3: Training Framework"];
+    develop["I want to develop based on this framework"]-->sec3["Section 3: Training Framework"];
+    develop["I want to develop based on this framework"]-->sec4["Section 4: Model Integration"];
+    develop["I want to develop based on this framework"]-->sec5["Section 5: API Reference"];
+    explore["I want to explore new technologies based on this project"]-->sec4["Section 4: Model Integration"];
+    explore["I want to explore new technologies based on this project"]-->sec5["Section 5: API Reference"];
+    explore["I want to explore new technologies based on this project"]-->sec6["Section 6: Diffusion Templates"];
+    explore["I want to explore new technologies based on this project"]-->sec7["Section 7: Research Guide"];
+    problem["I encountered a problem"]-->sec8["Section 8: Frequently Asked Questions"];
 ```
 
 </details>
@@ -31,6 +31,7 @@ This section introduces the basic usage of `DiffSynth-Studio`, including how to 
 * [Model Inference](./Pipeline_Usage/Model_Inference.md)
 * [Accelerated Inference](./Pipeline_Usage/Accelerated_Inference.md)
 * [VRAM Management](./Pipeline_Usage/VRAM_management.md)
+* [Model Quantization](./Pipeline_Usage/Quantization.md)
 * [Model Training](./Pipeline_Usage/Model_Training.md)
 * [Environment Variables](./Pipeline_Usage/Environment_Variables.md)
 * [GPU/NPU Support](./Pipeline_Usage/GPU_support.md)
@@ -43,6 +44,7 @@ This section introduces the Diffusion models supported by `DiffSynth-Studio`. So
 * [FLUX.1](./Model_Details/FLUX.md)
 * [Wan](./Model_Details/Wan.md)
 * [Qwen-Image](./Model_Details/Qwen-Image.md)
+* [Qwen-Video-Edit](./Model_Details/Qwen-Video-Edit.md)
 * [FLUX.2](./Model_Details/FLUX2.md)
 * [Z-Image](./Model_Details/Z-Image.md)
 * [Anima](./Model_Details/Anima.md)
@@ -50,8 +52,16 @@ This section introduces the Diffusion models supported by `DiffSynth-Studio`. So
 * [ERNIE-Image](./Model_Details/ERNIE-Image.md)
 * [JoyAI-Image](./Model_Details/JoyAI-Image.md)
 * [ACE-Step](./Model_Details/ACE-Step.md)
+* [HiDream-O1-Image](./Model_Details/HiDream-O1-Image.md)
 * [Stable Diffusion](./Model_Details/Stable-Diffusion.md)
 * [Stable Diffusion XL](./Model_Details/Stable-Diffusion-XL.md)
+* [Image Quality Metrics](./Model_Details/Image-Quality-Metrics.md)
+* [Ideogram 4](./Model_Details/Ideogram-4.md)
+* [Krea-2](./Model_Details/Krea-2.md)
+* [Boogu-Image](./Model_Details/Boogu-Image.md)
+* [LingBot-Video](./Model_Details/LingBot-Video.md)
+* [MiniMax-H3](./Model_Details/MiniMax-H3.md)
+* [MiniMax-Music3](./Model_Details/MiniMax-Music3.md)
 
 ## Section 3: Training Framework
 
@@ -74,8 +84,9 @@ This section introduces how to integrate models into `DiffSynth-Studio` to utili
 * [Building a Pipeline](./Developer_Guide/Building_a_Pipeline.md)
 * [Enabling Fine-Grained VRAM Management](./Developer_Guide/Enabling_VRAM_management.md)
 * [Model Training Integration](./Developer_Guide/Training_Diffusion_Models.md)
+* [Integrating a Quantization Backend](./Developer_Guide/Integrating_Quantization_Backend.md)
 
-We have open-sourced [**DiffSynth-Studio Model Integration Skills**](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills). This is a composable collection of Agent Skills that automates the entire workflow of integrating external diffusion models (image / video / audio) into DiffSynth-Studio. It distills and defines the model integration standards of DiffSynth-Studio, consolidating best practices such as codebase analysis, model code integration, Pipeline design, low-VRAM management, and training support into reusable standard procedures. Following these standards can significantly lower the integration barrier, reduce repetitive debugging, and greatly improve the efficiency of integrating new models. We recommend starting from the [`diffsynth-integrator`](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator) [example](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1) to get started quickly and accelerate model integration.
+> We have open-sourced [**DiffSynth-Studio Model Integration Skills**](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills). This is a composable collection of Agent Skills that automates the entire workflow of integrating external diffusion models (image / video / audio) into DiffSynth-Studio. It distills and defines the model integration standards of DiffSynth-Studio, consolidating best practices such as codebase analysis, model code integration, Pipeline design, low-VRAM management, and training support into reusable standard procedures. Following these standards can significantly lower the integration barrier, reduce repetitive debugging, and greatly improve the efficiency of integrating new models. We recommend starting from the [`diffsynth-integrator`](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator) [example](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1) to get started quickly and accelerate model integration.
 
 ## Section 5: API Reference
 
@@ -85,6 +96,7 @@ This section introduces the independent core module `diffsynth.core` in `DiffSyn
 * [`diffsynth.core.data`](./API_Reference/core/data.md): Data processing operators and general datasets
 * [`diffsynth.core.gradient`](./API_Reference/core/gradient.md): Gradient checkpointing
 * [`diffsynth.core.loader`](./API_Reference/core/loader.md): Model download and loading
+* [`diffsynth.core.quant`](./API_Reference/core/quant.md): Model quantization
 * [`diffsynth.core.vram`](./API_Reference/core/vram.md): VRAM management
 
 ## Section 6: Diffusion Templates
