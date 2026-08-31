@@ -40,6 +40,25 @@ def unpack_audio(rows: torch.Tensor, audio_channel: int, steps: int, latent_dim:
     return rows.reshape(audio_channel, steps, latent_dim).permute(0, 2, 1).contiguous()
 
 
+def _zero3_without_deepspeed_checkpointing() -> bool:
+    """Whether ZeRO-3 is active but DeepSpeed's activation checkpointing is not configured.
+
+    In that combination `torch.utils.checkpoint` cannot recompute a frozen sharded module, because
+    the recompute happens outside DeepSpeed's parameter-gather hooks.
+    """
+    try:
+        from transformers.integrations import is_deepspeed_zero3_enabled
+    except ImportError:
+        return False
+    if not is_deepspeed_zero3_enabled():
+        return False
+    try:
+        import deepspeed
+        return not deepspeed.checkpointing.is_configured()
+    except (ImportError, AttributeError):
+        return True
+
+
 def _norm(size: int, *, eps: float) -> nn.RMSNorm:
     return nn.RMSNorm(size, eps=eps)
 
@@ -336,6 +355,9 @@ class MiniMaxH3DiT(nn.Module):
         use_gradient_checkpointing_offload=False,
         update_audio_mask=None,
         skip_mask_out_condition=False,
+        controlnet=None,
+        control_rows=None,
+        control_scale=1.0,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         inverse_indices = inverse_indices.view(-1).to(torch.long)
         token_tags = token_tags.view(-1).to(torch.long)
@@ -371,11 +393,40 @@ class MiniMaxH3DiT(nn.Module):
 
         hidden = decoder_input
         cu_seqlens = cu_seqlens.to(device)
-        for block in self.blocks:
+
+        control_hints = None
+        if controlnet is not None and control_rows is not None:
+            control_hints = controlnet(
+                decoder_input,
+                control_rows,
+                img_pos.to(device),
+                audio_pos.to(device),
+                t_emb=t_emb,
+                combined_indices=combined_indices,
+                rope_freqs=rope_freqs,
+                cu_seqlens=cu_seqlens,
+                max_seqlen=max_seqlen,
+                use_gradient_checkpointing=use_gradient_checkpointing,
+                use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+            )
+
+        # `torch.utils.checkpoint` cannot recompute a module whose parameters are frozen *and*
+        # ZeRO-3 sharded: the recompute runs outside DeepSpeed's parameter-gather hooks, so the
+        # weights come back as empty tensors and the metadata check fails. DeepSpeed's own
+        # checkpointing gathers them, so use it when it is configured (see
+        # `gradient_checkpoint_forward`); otherwise fall back to running these blocks directly,
+        # which is correct but stores their activations.
+        checkpoint_blocks = use_gradient_checkpointing
+        if control_hints is not None and use_gradient_checkpointing:
+            blocks_frozen = not any(p.requires_grad for p in self.blocks.parameters())
+            if blocks_frozen and _zero3_without_deepspeed_checkpointing():
+                checkpoint_blocks = False
+
+        for block_id, block in enumerate(self.blocks):
             hidden = gradient_checkpoint_forward(
                 block,
-                use_gradient_checkpointing,
-                use_gradient_checkpointing_offload,
+                checkpoint_blocks,
+                use_gradient_checkpointing_offload and checkpoint_blocks,
                 hidden,
                 t_emb=t_emb,
                 combined_indices=combined_indices,
@@ -383,6 +434,9 @@ class MiniMaxH3DiT(nn.Module):
                 cu_seqlens=cu_seqlens,
                 max_seqlen=max_seqlen,
             )
+            if control_hints is not None and block_id in controlnet.control_layers_mapping:
+                hint = control_hints[controlnet.control_layers_mapping[block_id]]
+                hidden = hidden + hint.to(hidden.device, hidden.dtype) * control_scale
 
         video_logits, audio_logits = self.final_layer(hidden, t_emb=t_emb, inverse_indices=inverse_indices)
 

@@ -1,6 +1,4 @@
 import torch
-import os
-os.environ['DIFFSYNTH_MODEL_BASE_PATH'] = '/root/models'
 from PIL import Image, ImageDraw
 from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
 from diffsynth.utils.data import VideoData
@@ -67,7 +65,7 @@ video, audio = pipe(
     prompt=prompt, negative_prompt=negative_prompt,
     height=height, width=width, num_frames=num_frames,
     num_inference_steps=40, seed=43,
-    control_video=control_video, control_scale=1.0,
+    control_scale=1.0,
     inpaint_video=inpaint_video, inpaint_video_mask=inpaint_video_mask,
 )
 write_video_audio(

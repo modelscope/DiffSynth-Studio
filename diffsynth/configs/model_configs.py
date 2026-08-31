@@ -1509,6 +1509,22 @@ minimax_h3_series = [
         "quant_config": {"method": "bitsandbytes_nf4", "load_prequantized": True},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_audio_vae.MiniMaxH3AudioVAEStateDictConverter"
     },
+    {
+        # Example: ModelConfig(model_id="PAI/MiniMax-H3-Fun-Controlnet-Union", origin_file_pattern="MiniMax-H3-Fun-Controlnet-Union.safetensors")
+        "model_hash": "91179e6f6150c072cd8e5fa29f58576e",
+        "model_name": "minimax_h3_controlnet",
+        "model_class": "diffsynth.models.minimax_h3_controlnet.MiniMaxH3ControlNet",
+        "extra_kwargs": {'control_layers': (0, 10, 20, 30, 40), 'control_in_dim': 49, 'control_apply_audio': False, 'hidden_size': 5376, 'num_attention_heads': 56, 'attention_head_dim': 128, 'ffn_hidden_size': 14336, 'time_embed_dim': 2688, 'adaln_out_features': 96768, 'patch_size': (1, 2, 2), 'norm_eps': 1e-05, 'qk_norm_eps': 1e-05},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_controlnet.MiniMaxH3ControlNetStateDictConverter"
+    },
+    {
+        # Example: ModelConfig(path="models/train/MiniMax-H3-Fun-Controlnet-Union-full/epoch-0.safetensors")
+        # A checkpoint saved by the training script: already in this repo's key layout, so no conversion.
+        "model_hash": "3983b7a6c8c2389d1a24ab4783fb9744",
+        "model_name": "minimax_h3_controlnet",
+        "model_class": "diffsynth.models.minimax_h3_controlnet.MiniMaxH3ControlNet",
+        "extra_kwargs": {'control_layers': (0, 10, 20, 30, 40), 'control_in_dim': 49, 'control_apply_audio': False, 'hidden_size': 5376, 'num_attention_heads': 56, 'attention_head_dim': 128, 'ffn_hidden_size': 14336, 'time_embed_dim': 2688, 'adaln_out_features': 96768, 'patch_size': (1, 2, 2), 'norm_eps': 1e-05, 'qk_norm_eps': 1e-05},
+    },
 ]
 
 minimax_music3_series = [

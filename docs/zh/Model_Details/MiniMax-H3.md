@@ -79,6 +79,7 @@ write_video_audio(
 |[Comfy-Org/MiniMax-H3: Ref2VA pruned fp8](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FP8-Pruned-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FP8-Pruned-Ref2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-FP8-Pruned-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FP8-Pruned-Ref2VA.py)|
 |[lightx2v/Minimax-h3-Turbo: FL2VA 4steps](https://www.modelscope.cn/models/lightx2v/Minimax-h3-Turbo)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA-Turbo.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA-Turbo.py)|-|-|-|-|
 |[DiffSynth-Studio/MiniMax-H3-Text-Embeddings](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Text-Embeddings)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Text-Embeddings.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Text-Embeddings.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Text-Embeddings.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Text-Embeddings.py)|-|-|
+|[PAI/MiniMax-H3-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/MiniMax-H3-Fun-Controlnet-Union)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Fun-Controlnet-Union.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Fun-Controlnet-Union.py)|-|-|
 
 模型权重分为两个分区：`FL2VA` 分区服务文生音视频与首尾帧引导生成，`Ref2VA` 分区服务参考驱动生成，两者的 DiT 与文本编码器权重不同，需按任务选择对应分区的 `origin_file_pattern`。
 
@@ -154,6 +155,10 @@ write_video_audio(
         seconds_regions_to_retake=[(0, 1), (4, 5)],              # 秒
     )
     ```
+* `control_video`: 控制视频帧列表（Canny、Depth、HED、MLSD、Pose 等），必须已经是 24fps。需要在 `model_configs` 中加载 ControlNet。帧会被缩放到目标画幅并由视频 VAE 编码，然后以零初始化门控的逐层残差注入主干。不能与 `keyframes` 或 `references` 同时使用，因为控制分支只在纯文本布局上训练过。
+* `control_scale`: 每一层控制残差加到主干前的缩放系数，默认值为 1.0。`0.0` 表示关闭控制分支，此时与基础模型完全一致；小于 1.0 会减弱控制视频的引导强度。
+* `inpaint_video`: 掩码背后的源视频帧列表，必须已经是 24fps。仅在提供 `inpaint_video_mask` 时被读取。需要 ControlNet 的 `control_in_dim` 覆盖掩码通道（已发布的 `MiniMax-H3-Fun-Controlnet-Union` 为 49）。
+* `inpaint_video_mask`: 标记重绘区域的掩码帧列表：白色表示重新生成，黑色表示保留 `inpaint_video` 的内容。掩码会被二值化，因此柔边或经过缩放的掩码也能回到分支训练时的分布。大面积静态掩码会倾向于抑制生成的音轨。
 * `progress_bar_cmd`: 进度条，默认为 `tqdm`。可通过设置为 `lambda x: x` 来屏蔽进度条。
 
 Pipeline 返回 `(video, audio)` 二元组，视频为 PIL 图像列表，音频为波形张量，可通过 `diffsynth.utils.data.audio_video.write_video_audio` 混流写出 MP4：
@@ -211,6 +216,9 @@ MiniMax-H3 系列模型统一通过 [`examples/minimax_h3/model_training/train.p
 * MiniMax-H3 专有参数
     * `--processor_path`: Qwen3-VL processor 的路径，支持 `model_id:origin_file_pattern` 形式，用于对 prompt 进行 tokenize。
     * `--initialize_model_on_cpu`: 是否在 CPU 上初始化模型。
+    * `--control_dropout_prob`: 丢弃一个 batch 控制视频的概率，默认值为 0.1。用于保持无条件分支可训练，并让分支学会在没有控制视频时也能生成。
+    * `--enable_inpaint`: 是否在控制视频之外额外送入随机重绘掩码，使同一份权重同时支持控制与重绘。需要 ControlNet 的 `control_in_dim` 覆盖掩码通道。
+    * `--fully_masked_dropout_prob`: 当随机掩码覆盖整段视频时，丢弃重绘条件的概率，默认值为 0.9。此时全零的掩码通道会被模型读作纯生成。
 
 我们构建了一个样例数据集，以方便您进行测试，通过以下命令可以下载这个数据集：
 

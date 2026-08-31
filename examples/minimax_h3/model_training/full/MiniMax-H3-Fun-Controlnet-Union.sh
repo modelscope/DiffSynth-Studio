@@ -11,7 +11,7 @@ accelerate launch examples/minimax_h3/model_training/train.py \
   --extra_inputs "input_audio,control_video" \
   --height 480 \
   --width 832 \
-  --num_frames 124 \
+  --num_frames 39 \
   --dataset_repeat 1 \
   --model_id_with_origin_paths "MiniMax/MiniMax-H3:FL2VA/text_encoder/model*.safetensors,MiniMax/MiniMax-H3:FL2VA/video_vae/source/model.safetensors,MiniMax/MiniMax-H3:FL2VA/audio_vae/model.safetensors,PAI/MiniMax-H3-Fun-Controlnet-Union:MiniMax-H3-Fun-Controlnet-Union.safetensors" \
   --processor_path "MiniMax/MiniMax-H3:FL2VA/processor/" \
@@ -23,7 +23,7 @@ accelerate launch examples/minimax_h3/model_training/train.py \
   --use_gradient_checkpointing \
   --task "sft:data_process"
 
-# Control - stage 2 (train)
+# # Control - stage 2 (train)
 accelerate launch --config_file examples/minimax_h3/model_training/full/accelerate_config_zero3.yaml \
   examples/minimax_h3/model_training/train.py \
   --dataset_base_path ./models/train/MiniMax-H3-Fun-Controlnet-Union-full-split-cache \
@@ -31,12 +31,12 @@ accelerate launch --config_file examples/minimax_h3/model_training/full/accelera
   --extra_inputs "input_audio,control_video" \
   --height 480 \
   --width 832 \
-  --num_frames 124 \
-  --dataset_repeat 100 \
+  --num_frames 39 \
+  --dataset_repeat 1 \
   --model_id_with_origin_paths "MiniMax/MiniMax-H3:FL2VA/transformer/model*.safetensors,PAI/MiniMax-H3-Fun-Controlnet-Union:MiniMax-H3-Fun-Controlnet-Union.safetensors" \
   --processor_path "MiniMax/MiniMax-H3:FL2VA/processor/" \
   --learning_rate 2e-5 \
-  --num_epochs 2 \
+  --num_epochs 1 \
   --remove_prefix_in_ckpt "pipe.controlnet." \
   --output_path "./models/train/MiniMax-H3-Fun-Controlnet-Union-full" \
   --trainable_models "controlnet" \
@@ -55,7 +55,7 @@ accelerate launch examples/minimax_h3/model_training/train.py \
   --extra_inputs "input_audio,control_video" \
   --height 480 \
   --width 832 \
-  --num_frames 124 \
+  --num_frames 39 \
   --dataset_repeat 1 \
   --model_id_with_origin_paths "MiniMax/MiniMax-H3:FL2VA/text_encoder/model*.safetensors,MiniMax/MiniMax-H3:FL2VA/video_vae/source/model.safetensors,MiniMax/MiniMax-H3:FL2VA/audio_vae/model.safetensors,PAI/MiniMax-H3-Fun-Controlnet-Union:MiniMax-H3-Fun-Controlnet-Union.safetensors" \
   --processor_path "MiniMax/MiniMax-H3:FL2VA/processor/" \
@@ -76,12 +76,12 @@ accelerate launch --config_file examples/minimax_h3/model_training/full/accelera
   --extra_inputs "input_audio,control_video" \
   --height 480 \
   --width 832 \
-  --num_frames 124 \
-  --dataset_repeat 100 \
+  --num_frames 39 \
+  --dataset_repeat 1 \
   --model_id_with_origin_paths "MiniMax/MiniMax-H3:FL2VA/transformer/model*.safetensors,PAI/MiniMax-H3-Fun-Controlnet-Union:MiniMax-H3-Fun-Controlnet-Union.safetensors" \
   --processor_path "MiniMax/MiniMax-H3:FL2VA/processor/" \
   --learning_rate 2e-5 \
-  --num_epochs 2 \
+  --num_epochs 1 \
   --remove_prefix_in_ckpt "pipe.controlnet." \
   --output_path "./models/train/MiniMax-H3-Fun-Controlnet-Union-Inpaint-full" \
   --trainable_models "controlnet" \

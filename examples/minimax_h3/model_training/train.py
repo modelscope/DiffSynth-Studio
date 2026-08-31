@@ -1,4 +1,5 @@
-import torch, os, argparse, accelerate
+import torch, os, argparse, accelerate, random
+from PIL import Image
 from diffsynth.core import UnifiedDataset
 from diffsynth.core.data.operators import LoadAudioWithTorchaudio, ToAbsolutePath
 from diffsynth.utils.data.minimax_h3 import MiniMaxH3ReferenceLoader
@@ -9,6 +10,35 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 MINIMAX_H3_FRAME_RATE = 24
 MINIMAX_H3_TIME_DIVISION_FACTOR = 17
 MINIMAX_H3_TIME_DIVISION_REMAINDER = 5
+
+
+def get_random_mask(num_frames, height, width):
+    """Draw one of the inpaint mask shapes the control branch was trained on.
+
+    Returns a `(num_frames, height, width)` tensor of {0, 1}, where 1 marks the regions to
+    regenerate. The shapes follow the reference training distribution: a whole clip, a centred
+    block, a trailing segment, and a per-frame random block.
+    """
+    mask = torch.zeros((num_frames, height, width))
+    shape = random.choices(["full", "block", "tail", "per_frame_block"], weights=[0.30, 0.35, 0.20, 0.15])[0]
+    if shape == "full":
+        mask[:] = 1
+    elif shape == "block":
+        block_h = random.randint(height // 4, height * 3 // 4)
+        block_w = random.randint(width // 4, width * 3 // 4)
+        top = random.randint(0, height - block_h)
+        left = random.randint(0, width - block_w)
+        mask[:, top:top + block_h, left:left + block_w] = 1
+    elif shape == "tail":
+        mask[random.randint(1, max(1, num_frames - 1)):] = 1
+    else:
+        for frame_id in range(num_frames):
+            block_h = random.randint(1, max(1, height // 4))
+            block_w = random.randint(1, max(1, width // 4))
+            top = random.randint(0, height - block_h)
+            left = random.randint(0, width - block_w)
+            mask[frame_id, top:top + block_h, left:left + block_w] = 1
+    return mask
 
 
 class MiniMaxH3TrainingModule(DiffusionTrainingModule):
@@ -29,6 +59,9 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         silent_on_missing_audio=False,
         training_cfg_scale=1.0,
+        control_dropout_prob=0.1,
+        enable_inpaint=False,
+        fully_masked_dropout_prob=0.9,
         device="cpu",
         task="sft",
     ):
@@ -58,8 +91,20 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
             task=task,
         )
         self.pipe.scheduler_audio.set_timesteps(1000, training=True)
+        # Training the ControlNet injects its skips partway up the frozen main stack, so gradients
+        # reach the branch only by flowing back through the DiT blocks above each injection point.
+        # `freeze_except` leaves those blocks in eval mode, and DeepSpeed ZeRO-3 asserts
+        # `sub_module.training` for every module it walks during backward. Keep the DiT in training
+        # mode -- its parameters stay frozen through `requires_grad_(False)`, so nothing is updated;
+        # only the mode flag changes, and MiniMax-H3 carries no dropout or batch-norm that would
+        # alter the forward.
+        if trainable_models is not None and "controlnet" in trainable_models.split(",") and self.pipe.dit is not None:
+            self.pipe.dit.train()
 
         # Store other configs
+        self.control_dropout_prob = control_dropout_prob
+        self.enable_inpaint = enable_inpaint
+        self.fully_masked_dropout_prob = fully_masked_dropout_prob
         self.silent_on_missing_audio = silent_on_missing_audio
         self.use_gradient_checkpointing = use_gradient_checkpointing
         self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
@@ -97,6 +142,32 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         if self.silent_on_missing_audio:
             if "input_audio" in extra_inputs and "input_audio" in inputs_shared and inputs_shared["input_audio"] is None:
                 inputs_shared["input_audio"] = (torch.zeros((2, 800 * round(len(data["video"]) / 24 * 40))), 32000)
+        if "control_video" in extra_inputs:
+            inputs_shared = self.parse_control_inputs(data, inputs_shared)
+        return inputs_shared
+
+    def parse_control_inputs(self, data, inputs_shared):
+        # Two dropouts keep the released checkpoint's generality, mirroring the reference training.
+        # Dropping the control rows keeps the unconditional path trainable and teaches the branch to
+        # generate without a control video; a fully masked clip carries nothing of the original, so
+        # most of those batches drop the inpaint condition entirely, which is the all-zero layout the
+        # pipeline pads in for pure generation.
+        if random.random() < self.control_dropout_prob:
+            inputs_shared["control_video"] = None
+        if self.enable_inpaint:
+            frames = data["video"]
+            width, height = frames[0].size
+            mask = get_random_mask(len(frames), height, width)
+            if bool(mask.min() == 1) and random.random() < self.fully_masked_dropout_prob:
+                inputs_shared["inpaint_video"] = None
+                inputs_shared["inpaint_video_mask"] = None
+            else:
+                inputs_shared["inpaint_video"] = frames
+                inputs_shared["inpaint_video_mask"] = [Image.fromarray((m * 255).numpy().astype("uint8"), mode="L") for m in mask]
+        if inputs_shared.get("control_video") is None and inputs_shared.get("inpaint_video_mask") is None:
+            # Both conditions dropped: fall back to an all-zero control video so the branch still
+            # receives its rows and every parameter keeps a gradient.
+            inputs_shared["control_video"] = [Image.new("RGB", data["video"][0].size, (0, 0, 0))] * len(data["video"])
         return inputs_shared
 
     def get_pipeline_inputs(self, data):
@@ -114,6 +185,9 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
             "references": None,
             "ref_image_short_edge": 2048,
             "ref_video_short_edge": 768, "ref_video_max_pixels": 768 * 1344,
+            "control_video": None, "control_scale": 1.0,
+            "inpaint_video": None, "inpaint_video_mask": None,
+            "tiled": True, "tile_size": 256, "tile_overlap": 64,
             "imgvid_cond_noise_aug": self.pipe.imgvid_cond_noise_aug,
             "audio_cond_noise_aug": self.pipe.audio_cond_noise_aug,
             # Please do not modify the following parameters
@@ -146,6 +220,9 @@ def minimax_h3_parser():
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
     parser.add_argument("--silent_on_missing_audio", default=False, action="store_true", help="Whether to use silent audio as a fallback when no audio track is present in the video data.")
     parser.add_argument("--training_cfg_scale", type=float, default=1.0, help="Inverse-CFG scale for preserving MiniMax-H3 guidance distillation during fine-tuning. Values greater than 1 enable a no-grad unconditional branch; 1 keeps the standard flow-matching loss.")
+    parser.add_argument("--control_dropout_prob", type=float, default=0.1, help="Probability of dropping the control video of a batch, which keeps the unconditional path trainable.")
+    parser.add_argument("--enable_inpaint", default=False, action="store_true", help="Whether to feed a random inpaint mask through the control branch alongside the control video. Requires a checkpoint whose control_in_dim covers the mask channels.")
+    parser.add_argument("--fully_masked_dropout_prob", type=float, default=0.9, help="Probability of dropping the inpaint condition when the random mask covers the whole clip, so the all-zero layout reads as pure generation.")
     return parser
 
 
@@ -220,6 +297,9 @@ if __name__ == "__main__":
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         silent_on_missing_audio=args.silent_on_missing_audio,
         training_cfg_scale=args.training_cfg_scale,
+        control_dropout_prob=args.control_dropout_prob,
+        enable_inpaint=args.enable_inpaint,
+        fully_masked_dropout_prob=args.fully_masked_dropout_prob,
         task=args.task,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
     )

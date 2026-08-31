@@ -79,6 +79,7 @@ write_video_audio(
 |[Comfy-Org/MiniMax-H3: Ref2VA pruned fp8](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FP8-Pruned-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FP8-Pruned-Ref2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-FP8-Pruned-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FP8-Pruned-Ref2VA.py)|
 |[lightx2v/Minimax-h3-Turbo: FL2VA 4steps](https://www.modelscope.cn/models/lightx2v/Minimax-h3-Turbo)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA-Turbo.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA-Turbo.py)|-|-|-|-|
 |[DiffSynth-Studio/MiniMax-H3-Text-Embeddings](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Text-Embeddings)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Text-Embeddings.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Text-Embeddings.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Text-Embeddings.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Text-Embeddings.py)|-|-|
+|[PAI/MiniMax-H3-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/MiniMax-H3-Fun-Controlnet-Union)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Fun-Controlnet-Union.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Fun-Controlnet-Union.py)|-|-|
 
 The model weights are split into two partitions: the `FL2VA` partition serves text-to-video-audio and keyframe-guided generation, while the `Ref2VA` partition serves reference-driven generation. The two partitions have different DiT and text encoder weights, so choose the `origin_file_pattern` of the matching partition for your task.
 
@@ -154,6 +155,10 @@ The input parameters for `MiniMaxH3Pipeline` inference include:
         seconds_regions_to_retake=[(0, 1), (4, 5)],              # seconds
     )
     ```
+* `control_video`: Control video frame list (Canny, Depth, HED, MLSD, Pose, ...), which must already be at 24fps. Requires a ControlNet in `model_configs`. The frames are resized onto the target canvas and encoded by the video VAE, then injected into the main block stack as zero-gated per-layer skips. Cannot be combined with `keyframes` or `references`, since the control branch is trained on the text-only layout.
+* `control_scale`: Scale applied to every control skip before it is added to the main branch, defaults to 1.0. `0.0` switches the control branch off and reproduces the base model exactly; values below 1.0 weaken the guidance of the control video.
+* `inpaint_video`: Source video frame list behind the mask, which must already be at 24fps. Only read when `inpaint_video_mask` is given. Requires a ControlNet whose `control_in_dim` covers the mask channels (49 for the released `MiniMax-H3-Fun-Controlnet-Union`).
+* `inpaint_video_mask`: Inpaint mask frame list marking the regions to regenerate: white repaints, black keeps the `inpaint_video` content. It is binarized, so a soft or resampled mask lands back in the distribution the branch was trained on. A large static mask tends to suppress the generated soundtrack.
 * `progress_bar_cmd`: Progress bar, defaults to `tqdm`. Set it to `lambda x: x` to disable the progress bar.
 
 The pipeline returns a `(video, audio)` tuple, where the video is a list of PIL images and the audio is a waveform tensor. Use `diffsynth.utils.data.audio_video.write_video_audio` to mux them into an MP4:
@@ -211,6 +216,9 @@ Models in the MiniMax-H3 series are trained uniformly via [`examples/minimax_h3/
 * MiniMax-H3 Specific Parameters
     * `--processor_path`: Path of the Qwen3-VL processor, supports the `model_id:origin_file_pattern` form, used to tokenize the prompt.
     * `--initialize_model_on_cpu`: Whether to initialize models on CPU.
+    * `--control_dropout_prob`: Probability of dropping the control video of a batch, defaults to 0.1. Keeps the unconditional path trainable and teaches the branch to generate without a control video.
+    * `--enable_inpaint`: Whether to feed a random inpaint mask through the control branch alongside the control video, so one checkpoint serves both control and inpainting. Requires a ControlNet whose `control_in_dim` covers the mask channels.
+    * `--fully_masked_dropout_prob`: Probability of dropping the inpaint condition when the random mask covers the whole clip, defaults to 0.9. The resulting all-zero mask channels read as pure generation.
 
 We provide an example dataset for testing, which can be downloaded with the following command:
 

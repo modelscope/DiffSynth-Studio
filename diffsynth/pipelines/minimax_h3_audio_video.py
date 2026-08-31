@@ -9,6 +9,7 @@ from ..core import ModelConfig
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
+from ..models.minimax_h3_controlnet import MiniMaxH3ControlNet
 from ..models.minimax_h3_dit import MiniMaxH3DiT, patchify_video, unpatchify_video, pack_audio, unpack_audio
 from ..models.minimax_h3_text_encoder import (
     MiniMaxH3TextEncoder, presentation_t2va, presentation_fl2va, presentation_ref2va,
@@ -18,6 +19,8 @@ from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
 from ..utils.data.audio import convert_to_stereo, resample_waveform
 from ..utils.lora.minimax_h3 import MiniMaxH3LoRALoader
+
+PATCH_COLUMNS = 4
 
 
 class MiniMaxH3Pipeline(BasePipeline):
@@ -30,11 +33,15 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.dit: MiniMaxH3DiT = None
         self.video_vae: MiniMaxH3VideoVAE = None
         self.audio_vae: MiniMaxH3AudioVAE = None
+        self.controlnet: MiniMaxH3ControlNet = None
+        # Channel width of one control row, used to size the rows when the ControlNet itself is not
+        # loaded: split training caches the control rows in a stage that carries no ControlNet.
+        self.control_in_dim = None
         self.tokenizer = None
         self.processor = None
         self.imgvid_cond_noise_aug = 0.999
         self.audio_cond_noise_aug = 1.0
-        self.in_iteration_models = ("dit",)
+        self.in_iteration_models = ("dit", "controlnet")
         self.units = [
             MiniMaxH3Unit_ShapeChecker(),
             MiniMaxH3Unit_NoiseInitializer(),
@@ -44,6 +51,7 @@ class MiniMaxH3Pipeline(BasePipeline):
             MiniMaxH3Unit_AudioRetakeEmbedder(),
             MiniMaxH3Unit_KeyframeEncoder(),
             MiniMaxH3Unit_ReferenceEncoder(),
+            MiniMaxH3Unit_ControlNetEncoder(),
             MiniMaxH3Unit_PromptEmbedder(),
             MiniMaxH3Unit_PackedSequenceBuilder(),
         ]
@@ -79,6 +87,9 @@ class MiniMaxH3Pipeline(BasePipeline):
         pipe.dit = model_pool.fetch_model("minimax_h3_dit")
         pipe.video_vae = model_pool.fetch_model("minimax_h3_video_vae")
         pipe.audio_vae = model_pool.fetch_model("minimax_h3_audio_vae")
+        pipe.controlnet = model_pool.fetch_model("minimax_h3_controlnet")
+        if pipe.controlnet is not None:
+            pipe.control_in_dim = pipe.controlnet.control_in_dim
         if processor_config is not None:
             processor_config.download_if_necessary()
             pipe.processor = AutoProcessor.from_pretrained(processor_config.path)
@@ -113,6 +124,11 @@ class MiniMaxH3Pipeline(BasePipeline):
         ref_image_short_edge: int = 2048,
         ref_video_short_edge: int = 768,
         ref_video_max_pixels: int = 768 * 1344,
+        # Control video to Video (ControlNet)
+        control_video: list[Image.Image] = None,
+        control_scale: float = 1.0,
+        inpaint_video: list[Image.Image] = None,
+        inpaint_video_mask: list[Image.Image] = None,
         # Video / Audio Retake
         retake_video: list[Image.Image] = None,
         frame_regions_to_retake: list[tuple[float, float]] = None,
@@ -156,6 +172,8 @@ class MiniMaxH3Pipeline(BasePipeline):
             "use_gradient_checkpointing_offload": use_gradient_checkpointing_offload,
             "keyframes": keyframes, "keyframe_indices": keyframe_indices,
             "references": references, "ref_image_short_edge": ref_image_short_edge, "ref_video_short_edge": ref_video_short_edge, "ref_video_max_pixels": ref_video_max_pixels,
+            "control_video": control_video, "control_scale": control_scale,
+            "inpaint_video": inpaint_video, "inpaint_video_mask": inpaint_video_mask,
             "retake_video": retake_video, "frame_regions_to_retake": frame_regions_to_retake,
             "retake_audio": (retake_audio, retake_audio_sample_rate) if retake_audio is not None else None, "seconds_regions_to_retake": seconds_regions_to_retake,
             "imgvid_cond_noise_aug": self.imgvid_cond_noise_aug, "audio_cond_noise_aug": self.audio_cond_noise_aug,
@@ -577,6 +595,91 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
         }
 
 
+class MiniMaxH3Unit_ControlNetEncoder(PipelineUnit):
+    """Encodes the control video, and optionally an inpaint condition, into the control rows.
+
+    Mirrors the recipe the control branch was trained on: the control video goes through the same
+    geometry and normalization as the target video and its posterior is taken at the mode
+    (deterministic conditioning). An inpaint-capable checkpoint reads two more groups of channels
+    after them, in this order: the visibility map `1 - mask` resized straight onto the latent grid,
+    and the VAE-encoded masked video `inpaint_video * (1 - mask)`. Missing trailing channels are
+    zero-padded, which is the all-zero layout training reads as pure generation.
+    """
+
+    def __init__(self):
+        super().__init__(
+            input_params=("control_video", "inpaint_video", "inpaint_video_mask", "control_scale", "height", "width", "num_frames", "keyframes", "references", "tiled", "tile_size", "tile_overlap"),
+            output_params=("control_rows", "control_scale"),
+            # Only the video VAE runs here. The ControlNet is read for its `control_in_dim` width but
+            # not evaluated, so listing it would put this unit in the trainable half of a split
+            # training run and force the VAE to be reloaded for every step.
+            onload_model_names=("video_vae",),
+        )
+
+    def encode_video_at_mode(self, pipe: MiniMaxH3Pipeline, frames, height, width, num_frames, tiled, tile_size, tile_overlap):
+        frames = [f.convert("RGB").resize((width, height), Image.LANCZOS) for f in frames[:num_frames]]
+        if len(frames) < num_frames:
+            frames += [frames[-1]] * (num_frames - len(frames))
+        frames_tensor = pipe.preprocess_video(frames, torch_dtype=torch.float32, min_value=0, device=pipe.device)
+        return pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap).to(device=pipe.device, dtype=pipe.torch_dtype)
+
+    def build_mask(self, pipe: MiniMaxH3Pipeline, mask_frames, height, width, num_frames):
+        frames = [f.convert("L").resize((width, height), Image.NEAREST) for f in mask_frames[:num_frames]]
+        if len(frames) < num_frames:
+            frames += [frames[-1]] * (num_frames - len(frames))
+        mask = torch.stack([torch.from_numpy(np.array(f, copy=True)).float() / 255.0 for f in frames])  # [T, H, W]
+        # Training only ever sees hard {0, 1} masks at pixel resolution, softened once by the drop
+        # onto the latent grid. Binarize so a soft or resampled mask lands back in that distribution.
+        return (mask > 0.5).float().to(pipe.device)[None, None]  # [1, 1, T, H, W]
+
+    def process(self, pipe: MiniMaxH3Pipeline, control_video, inpaint_video, inpaint_video_mask, control_scale, height, width, num_frames, keyframes, references, tiled, tile_size, tile_overlap):
+        if control_video is None and inpaint_video_mask is None:
+            return {"control_rows": None, "control_scale": control_scale}
+        if pipe.controlnet is None and pipe.control_in_dim is None:
+            raise ValueError("control_video / inpaint_video_mask require a ControlNet. Add ModelConfig(model_id=\"PAI/MiniMax-H3-Fun-Controlnet-Union\", origin_file_pattern=\"MiniMax-H3-Fun-Controlnet-Union.safetensors\") to model_configs.")
+        if keyframes is not None or references is not None:
+            raise ValueError("The ControlNet is trained on the text-only layout, which has no conditioning video rows; `keyframes` / `references` cannot be combined with `control_video`.")
+        if inpaint_video is not None and inpaint_video_mask is None:
+            raise ValueError("inpaint_video requires inpaint_video_mask, which marks the regions to regenerate (white = repaint, black = keep).")
+        pipe.load_models_to_device(self.onload_model_names)
+
+        if control_video is not None:
+            control_latents = self.encode_video_at_mode(pipe, control_video, height, width, num_frames, tiled, tile_size, tile_overlap)
+            control_rows = patchify_video(control_latents)
+        else:
+            # A mask without a control video zero-fills the control channels, the layout training
+            # reaches when it drops the control rows, so the inpaint condition stands on its own.
+            reference_latents = pipe.video_vae.encode_video(
+                torch.zeros((1, 3, num_frames, height, width), dtype=torch.float32, device=pipe.device),
+                dtype=pipe.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap,
+            )
+            control_rows = torch.zeros_like(patchify_video(reference_latents))
+
+        if inpaint_video_mask is not None:
+            mask = self.build_mask(pipe, inpaint_video_mask, height, width, num_frames)
+            if inpaint_video is not None:
+                frames = [f.convert("RGB").resize((width, height), Image.LANCZOS) for f in inpaint_video[:num_frames]]
+                if len(frames) < num_frames:
+                    frames += [frames[-1]] * (num_frames - len(frames))
+                masked = pipe.preprocess_video(frames, torch_dtype=torch.float32, min_value=0, device=pipe.device) * (1 - mask)
+            else:
+                print("No inpaint_video given: the visible regions behind the mask carry no content.")
+                masked = torch.zeros((1, 3, num_frames, height, width), dtype=torch.float32, device=pipe.device)
+            masked_latents = pipe.video_vae.encode_video(masked, dtype=pipe.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap).to(device=pipe.device, dtype=pipe.torch_dtype)
+            # The visibility map goes straight from pixel frames to the latent grid: the video VAE's
+            # 17 -> 5 chunked time grid has no per-latent-frame pixel packing to mirror.
+            visibility = torch.nn.functional.interpolate(1 - mask, size=masked_latents.shape[2:], mode="trilinear", align_corners=False)
+            control_rows = torch.cat([control_rows, patchify_video(visibility), patchify_video(masked_latents)], dim=-1)
+
+        control_in_dim = pipe.controlnet.control_in_dim if pipe.controlnet is not None else pipe.control_in_dim
+        expected_columns = control_in_dim * PATCH_COLUMNS
+        if control_rows.shape[-1] < expected_columns:
+            control_rows = torch.nn.functional.pad(control_rows, (0, expected_columns - control_rows.shape[-1]))
+        elif control_rows.shape[-1] > expected_columns:
+            raise ValueError(f"The control rows carry {control_rows.shape[-1]} columns but the checkpoint's control_in_dim ({control_in_dim}) expects {expected_columns}. A control-only checkpoint cannot read the inpaint channels.")
+        return {"control_rows": control_rows.to(device=pipe.device, dtype=pipe.torch_dtype), "control_scale": control_scale}
+
+
 class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
     _INTERP = 32
     _T_GROUP = 5
@@ -839,6 +942,9 @@ def model_fn_minimax_h3(
     prompt_embeds,
     timestep_video,
     timestep_audio,
+    controlnet=None,
+    control_rows=None,
+    control_scale=1.0,
     keyframe_cond_anchor=None,
     ref_visual_anchor=None,
     ref_audio_anchor=None,
@@ -913,6 +1019,9 @@ def model_fn_minimax_h3(
         refiner_packed_seq_params={"cu_seqlens_q": refiner_cu, "max_seqlen_q": text_len},
         update_mask=None,
         skip_mask_out_condition=True,
+        controlnet=controlnet,
+        control_rows=control_rows,
+        control_scale=control_scale,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )

@@ -14,6 +14,9 @@ vram_config = {
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
 }
+
+ckpt_path = "./models/train/MiniMax-H3-Fun-Controlnet-Union-full/epoch-0.safetensors"
+
 pipe = MiniMaxH3Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
@@ -22,7 +25,7 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/transformer/model*.safetensors", **vram_config),
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/video_vae/source/model.safetensors", **vram_config),
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
-        ModelConfig(path="models/train/MiniMax-H3-Fun-Controlnet-Union-full/epoch-1.safetensors", **vram_config),
+        ModelConfig(path=ckpt_path, **vram_config),
     ],
     processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 5,
