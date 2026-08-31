@@ -45,6 +45,7 @@ Welcome to DiffSynth-Studio's Documentation
    Model_Details/LingBot-Video
    Model_Details/MiniMax-H3
    Model_Details/MiniMax-Music3
+   Model_Details/SenseNova-U1
 
 .. toctree::
    :maxdepth: 2

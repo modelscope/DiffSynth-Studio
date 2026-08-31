@@ -496,6 +496,20 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3.modeling_qwen3.Qwen3RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.sensenova_u1_dit.SenseNovaU1DiT": {
+        # Registered as whole composites, not via their child layers: both read a child's
+        # `weight.dtype` inside their own forward to pick a cast target, which would report the
+        # meta placeholder dtype if the child were wrapped individually.
+        "diffsynth.models.sensenova_u1_dit.SenseNovaU1TimestepEmbedder": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.sensenova_u1_vision_encoder.SenseNovaU1VisionEmbeddings": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.sensenova_u1_dit.SenseNovaU1RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.sensenova_u1_vision_encoder.SenseNovaU1VisionEncoder": {
+        "diffsynth.models.sensenova_u1_vision_encoder.SenseNovaU1VisionEmbeddings": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
 }
 
 def QwenImageTextEncoder_Module_Map_Updater():

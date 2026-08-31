@@ -40,6 +40,8 @@ See also:
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
+- **August 31, 2026** SenseNova-U1 open-sourced, welcome a new member to the image model family! Support includes text-to-image generation, image editing, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/SenseNova-U1.md) and [example code](/examples/sensenova_u1/).
+
 - **August 25, 2026** We have open-sourced [DiffSynth-WebUI](https://github.com/modelscope/DiffSynth-WebUI), enabling one-click private deployment of LoRA training services. Combined with the model quantization feature, you can train large models even with consumer-grade GPUs.
 
 - **August 19, 2026** We have released the model quantization feature. It provides a unified `QuantizeConfig` entry point supporting multiple quantization backends including bitsandbytes, torchao, and comfy-kitchen, with capabilities such as online quantization, loading pre-quantized weights, mixed quantization, saving quantized models, and quantization + LoRA training. For details, please refer to the [documentation](/docs/en/Pipeline_Usage/Quantization.md).
@@ -306,6 +308,7 @@ Quick start: experience popular and the latest models:
 Model overview:
 
 - Image generation
+    - SenseNova-U1: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/SenseNova-U1.html), [Example code](/examples/sensenova_u1/)
     - Boogu-Image: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Boogu-Image.html), [Example code](/examples/boogu_image/)
     - Krea-2: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Krea-2.html), [Example code](/examples/krea2/)
     - Ideogram 4: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Ideogram-4.html), [Example code](/examples/ideogram4/)
@@ -573,6 +576,8 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 
 | Architecture | Model ID | Inference | Low VRAM Inference | Full Training | Validation After Full Training | LoRA Training | Validation After LoRA Training |
 |-|-|-|-|-|-|-|-|
+| SenseNova-U1 | [SenseNova/SenseNova-U1.5-8B-MoT: T2I](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT) | [code](/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT.py) | [code](/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT.py) | [code](/examples/sensenova_u1/model_training/full/SenseNova-U1.5-8B-MoT.sh) | [code](/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.5-8B-MoT.py) | [code](/examples/sensenova_u1/model_training/lora/SenseNova-U1.5-8B-MoT.sh) | [code](/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.5-8B-MoT.py) |
+| SenseNova-U1 | [SenseNova/SenseNova-U1.5-8B-MoT: Edit](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT) | [code](/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT-Edit.py) | [code](/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT-Edit.py) | [code](/examples/sensenova_u1/model_training/full/SenseNova-U1.5-8B-MoT-Edit.sh) | [code](/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.5-8B-MoT-Edit.py) | [code](/examples/sensenova_u1/model_training/lora/SenseNova-U1.5-8B-MoT-Edit.sh) | [code](/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.5-8B-MoT-Edit.py) |
 | MiniMax-Music3 | [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) | [code](/examples/minimax_music3/model_inference/MiniMax-Music3.py) | [code](/examples/minimax_music3/model_inference_low_vram/MiniMax-Music3.py) | — | — | — | — |
 | MiniMax-H3 | [MiniMax/MiniMax-H3: FL2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FL2VA.py) |
 | MiniMax-H3 | [MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Ref2VA.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py) |

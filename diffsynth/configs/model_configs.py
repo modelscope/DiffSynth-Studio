@@ -1545,8 +1545,25 @@ minimax_music3_series = [
     },
 ]
 
+sensenova_u1_series = [
+    {
+        # Example: ModelConfig(model_id="SenseNova/SenseNova-U1.5-8B-MoT", origin_file_pattern="model*.safetensors")
+        "model_hash": "90bb0c235120a99ea78f9912471de82a",
+        "model_name": "sensenova_u1_dit",
+        "model_class": "diffsynth.models.sensenova_u1_dit.SenseNovaU1DiT",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sensenova_u1_dit.SenseNovaU1DiTStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="SenseNova/SenseNova-U1.5-8B-MoT", origin_file_pattern="model*.safetensors")
+        "model_hash": "90bb0c235120a99ea78f9912471de82a",
+        "model_name": "sensenova_u1_vision_encoder",
+        "model_class": "diffsynth.models.sensenova_u1_vision_encoder.SenseNovaU1VisionEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.sensenova_u1_vision_encoder.SenseNovaU1VisionEncoderStateDictConverter",
+    },
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
-    + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series + minimax_h3_series + minimax_music3_series
+    + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series + minimax_h3_series + minimax_music3_series + sensenova_u1_series
 )
