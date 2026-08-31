@@ -84,7 +84,6 @@ class SenseNovaU1ImagePipeline(BasePipeline):
         # Prompt
         prompt: str,
         cfg_scale: float = 4.0,
-        cfg_interval: tuple[float, float] = (0.0, 1.0),
         # Shape
         height: int = 2048,
         width: int = 2048,
@@ -95,7 +94,6 @@ class SenseNovaU1ImagePipeline(BasePipeline):
         num_inference_steps: int = 50,
         # Scheduler
         shift: float = 3.0,
-        denoising_strength: float = 1.0,
         # Reasoning
         think_mode: bool = False,
         # Image editing
@@ -104,13 +102,13 @@ class SenseNovaU1ImagePipeline(BasePipeline):
         progress_bar_cmd=tqdm,
     ):
         # Scheduler
-        self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, shift=shift)
+        self.scheduler.set_timesteps(num_inference_steps, shift=shift)
 
         # Parameters
         inputs_posi = {"prompt": prompt, "prompt_is_negative": False}
         inputs_nega = {"negative_is_negative": True}
         inputs_shared = {
-            "cfg_scale": cfg_scale, "cfg_interval": cfg_interval,
+            "cfg_scale": cfg_scale,
             "height": height, "width": width,
             "seed": seed, "rand_device": rand_device,
             "think_mode": think_mode,
@@ -127,7 +125,7 @@ class SenseNovaU1ImagePipeline(BasePipeline):
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.to(dtype=torch.float32, device=self.device)
             noise_pred = self.cfg_guided_model_fn(
-                self.model_fn, self.cfg_scale_at(cfg_scale, cfg_interval, timestep),
+                self.model_fn, cfg_scale,
                 inputs_shared, inputs_posi, inputs_nega,
                 **models, timestep=timestep, progress_id=progress_id
             )
@@ -136,14 +134,6 @@ class SenseNovaU1ImagePipeline(BasePipeline):
         image = self.vae_output_to_image(inputs_shared["latents"])
         self.load_models_to_device([])
         return image
-
-    @staticmethod
-    def cfg_scale_at(cfg_scale, cfg_interval, timestep):
-        # TODO: fixthis
-        # The reference gates guidance on t = 1 - sigma falling inside cfg_interval, and
-        # disables it otherwise by falling back to the conditional prediction.
-        t = 1.0 - float(timestep) / 1000.0
-        return cfg_scale if cfg_interval[0] <= t <= cfg_interval[1] else 1.0
 
 
 class SenseNovaU1ImageUnit_ShapeChecker(PipelineUnit):
@@ -362,8 +352,6 @@ def model_fn_sensenova_u1_image(
     timestep=None,
     past_key_values=None,
     indexes_image=None,
-    height=None,
-    width=None,
     noise_scale=None,
     use_gradient_checkpointing: bool = False,
     use_gradient_checkpointing_offload: bool = False,
@@ -378,26 +366,22 @@ def model_fn_sensenova_u1_image(
     sigma = (timestep / 1000.0).flatten()[0]
     t = 1.0 - sigma
 
-    batch_size = latents.shape[0]
-    grid_h, grid_w = height // dit.patch_size, width // dit.patch_size
-    grid_hw = torch.tensor([[grid_h, grid_w]] * batch_size, device=latents.device)
+    grid_hw = torch.tensor([[latents.shape[2] // dit.patch_size, latents.shape[3] // dit.patch_size]] * latents.shape[0], device=latents.device)
 
     z = patchify(latents, PATCH_SIZE)
     num_tokens = z.shape[1]
 
     image_input = patchify(latents, dit.patch_size, channel_first=True)
-    image_embeds = dit.extract_gen_feature(
-        image_input.view(batch_size * grid_h * grid_w, -1), grid_hw
-    ).view(batch_size, num_tokens, -1)
-    image_embeds = image_embeds + dit.embed_timestep(t, noise_scale, num_tokens, batch_size=batch_size)
+    image_embeds = dit.extract_gen_feature(image_input.flatten(0, 1), grid_hw).view(latents.shape[0], num_tokens, -1)
+    image_embeds = image_embeds + dit.embed_timestep(t, noise_scale, num_tokens, batch_size=latents.shape[0])
 
     x_pred = dit(
         image_embeds=image_embeds,
         indexes_image=indexes_image,
         past_key_values=past_key_values,
-        image_size=(width, height),
+        image_size=(latents.shape[3], latents.shape[2]),
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
-    x_pred = unpatchify(x_pred, PATCH_SIZE, height, width)
+    x_pred = unpatchify(x_pred, PATCH_SIZE, latents.shape[2], latents.shape[3])
     return (latents - x_pred) / sigma
