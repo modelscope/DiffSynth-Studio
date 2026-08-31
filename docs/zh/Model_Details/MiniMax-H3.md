@@ -211,6 +211,9 @@ MiniMax-H3 系列模型统一通过 [`examples/minimax_h3/model_training/train.p
 * MiniMax-H3 专有参数
     * `--processor_path`: Qwen3-VL processor 的路径，支持 `model_id:origin_file_pattern` 形式，用于对 prompt 进行 tokenize。
     * `--initialize_model_on_cpu`: 是否在 CPU 上初始化模型。
+    * `--silent_on_missing_audio`: 视频数据不含音轨时，是否以静音音频作为兜底。
+    * `--training_cfg_scale`: 微调时用于保留 MiniMax-H3 指导蒸馏的逆 CFG 系数。大于 1 时启用一路无梯度的无条件分支，等于 1 时保持标准 flow matching 损失。
+    * `--audio_loss_weight`: MiniMax-H3 损失中音频项的权重。为 1 时视频与音频等权重，为 0 时只用视频项训练，音频流仍会加噪并送入模型。
 
 我们构建了一个样例数据集，以方便您进行测试，通过以下命令可以下载这个数据集：
 
