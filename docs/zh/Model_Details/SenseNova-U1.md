@@ -44,7 +44,7 @@ pipe = SenseNovaU1ImagePipeline.from_pretrained(
 )
 
 prompt = "A neon bar sign that clearly reads \"OPEN LATE\", dark interior, moody reflections, easy text rendering. Any text in the image must be rendered exactly as written in quotation marks, with correct spelling, clean typography, and strong readability."
-image = pipe(prompt=prompt, seed=42, height=1024, width=1024, num_inference_steps=50, cfg_scale=4.0, shift=3.0)
+image = pipe(prompt=prompt, seed=42, height=2048, width=2048, num_inference_steps=50, cfg_scale=4.0, shift=3.0)
 image.save("image_SenseNova-U1.5-8B-MoT.jpg")
 ```
 
@@ -63,16 +63,13 @@ image.save("image_SenseNova-U1.5-8B-MoT.jpg")
 
 * `prompt`: 文本提示词。图像编辑时为编辑指令。
 * `cfg_scale`: Classifier-Free Guidance 缩放系数，默认为 4.0。官方实现的无条件分支文本是固定的，不提供负向提示词，因此本 Pipeline 也没有 `negative_prompt` 参数。
-* `cfg_interval`: Classifier-Free Guidance 的生效区间，默认为 `(0.0, 1.0)`，即全程生效。
 * `height`: 输出图像高度，默认为 2048。必须为 32 的倍数。
 * `width`: 输出图像宽度，默认为 2048。必须为 32 的倍数。
 * `seed`: 随机种子，默认为随机。
 * `rand_device`: 噪声生成设备，默认为 `"cuda"`。
 * `num_inference_steps`: 推理步数，默认为 50。
 * `shift`: 时间步偏移量，影响 sigma 计算，默认为 3.0。
-* `denoising_strength`: 去噪强度，默认为 1.0。
-* `t_eps`: flow matching 的时间步下界，用于避免除零，默认为 0.02。
-* `think_mode`: 是否让模型先输出一段推理再生成图像，默认为 False。推理文本可从 `pipe.think_text` 读取。
+* `think_mode`: 是否让模型先输出一段推理再生成图像，默认为 False。
 * `edit_image`: 输入图像，可以是单张 `Image.Image` 或图像列表。传入后切换到图像编辑模式，默认为 None（文生图模式）。
 * `input_image`: 训练时提供的目标图像，推理时无需设置。
 
@@ -82,28 +79,32 @@ image.save("image_SenseNova-U1.5-8B-MoT.jpg")
 
 传入 `edit_image` 即切换到图像编辑模式。输入图像会经过理解分支的视觉编码器编码后拼接进条件前缀，负向分支携带输入图像但不带编辑指令，因此引导方向是"远离原图不变"而非"远离任意图像"。
 
-输出尺寸需显式指定。若希望沿用输入图像的宽高比，可用 `smart_resize` 按目标像素总量推导：
+输出尺寸需显式指定，不会从输入图像推导：
 
 ```python
-from diffsynth.models.sensenova_u1_common import PATCH_SIZE, smart_resize
 from PIL import Image
 
 edit_image = Image.open("input.jpg").convert("RGB")
-height, width = smart_resize(
-    edit_image.height, edit_image.width,
-    factor=PATCH_SIZE, min_pixels=2048 * 2048, max_pixels=2048 * 2048,
+image = pipe(prompt="Change the dress to pink.", edit_image=edit_image, height=2048, width=2048, seed=42)
+```
+
+传入图像列表即可进行多图编辑。图像按传入顺序编号，prompt 中可用 Figure 1、Figure 2 指代：
+
+```python
+image = pipe(
+    prompt="Change the color of the dress in Figure 1 to the color shown in Figure 2.",
+    edit_image=[edit_image, color_image],
+    height=2048, width=2048, seed=42,
 )
-image = pipe(prompt="Put a hat on this cat.", edit_image=edit_image, height=height, width=width, seed=42)
 ```
 
 ### 推理模式（Think Mode）
 
 传入 `think_mode=True` 时，模型会先自回归写出一段推理（构图、环境、光影的规划），
-再据此生成图像。推理文本不改变返回值，而是记录在 `pipe.think_text` 上：
+再据此生成图像。这段推理只影响图像内容，不作为返回值：
 
 ```python
 image = pipe(prompt="A neon bar sign that clearly reads \"OPEN LATE\"", think_mode=True, seed=42)
-print(pipe.think_text)
 image.save("image.jpg")
 ```
 

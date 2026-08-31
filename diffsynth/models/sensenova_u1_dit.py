@@ -21,38 +21,6 @@ def apply_rotary_pos_emb(q, k, cos, sin, unsqueeze_dim=1):
     return q_embed, k_embed
 
 
-def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
-    if n_rep == 1:
-        return hidden_states
-    batch, num_key_value_heads, slen, head_dim = hidden_states.shape
-    hidden_states = hidden_states[:, :, None, :, :].expand(batch, num_key_value_heads, n_rep, slen, head_dim)
-    return hidden_states.reshape(batch, num_key_value_heads * n_rep, slen, head_dim)
-
-
-def eager_attention_forward(query, key, value, attention_mask, scaling, num_key_value_groups):
-    """Attention with the softmax upcast to float32.
-
-    The understanding branch keeps this instead of the shared `attention_forward`: its
-    reference implementation upcasts the softmax to float32, whereas torch SDPA softmaxes
-    in bfloat16. That difference is ~3e-3 relative per layer and compounds to ~2e-2 across
-    the 42 layers, which would break output equivalence. This branch runs once per
-    generation to build the conditioning cache, so the cost of staying exact is negligible.
-    The image-generation branch does use `attention_forward` -- it is the per-step hot path
-    and its reference implementation also softmaxes in bfloat16.
-    """
-    key_states = repeat_kv(key, num_key_value_groups)
-    value_states = repeat_kv(value, num_key_value_groups)
-
-    attn_weights = torch.matmul(query, key_states.transpose(2, 3)) * scaling
-    if attention_mask is not None:
-        causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
-        attn_weights = attn_weights + causal_mask
-
-    attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query.dtype)
-    attn_output = torch.matmul(attn_weights, value_states)
-    return attn_output.transpose(1, 2).contiguous()
-
-
 class SenseNovaU1RMSNorm(nn.Module):
 
     def __init__(self, hidden_size, eps: float = 1e-6) -> None:
@@ -72,17 +40,6 @@ class SenseNovaU1RMSNorm(nn.Module):
 
 
 class SenseNovaU1RotaryEmbedding(nn.Module):
-    """Rotary embedding for one of the three positional axes (t / h / w).
-
-    The frequency range is derived by computing the inverse frequencies for a doubled head
-    dim and then taking every second entry, reproducing the reference implementation.
-
-    `inv_freq` is a plain attribute built lazily in float32 rather than a registered buffer:
-    the model is loaded as bfloat16, and `.to(dtype=...)` would otherwise degrade these
-    frequencies (e.g. 0.6175287 -> 0.6171875), which shifts every rotary embedding and
-    breaks output equivalence. Keeping it outside the buffer registry also keeps it out of
-    the state dict, matching the reference where it is a non-persistent buffer.
-    """
 
     def __init__(self, head_dim, rope_theta, max_position_embeddings, device=None):
         super().__init__()
@@ -133,13 +90,6 @@ class SenseNovaU1MLP(nn.Module):
 
 
 class SenseNovaU1Attention(nn.Module):
-    """Mixture-of-Transformers attention: a separate projection set per token type.
-
-    The understanding branch uses `*_proj` / `*_norm`, the image-generation branch uses
-    `*_proj_mot_gen` / `*_norm_mot_gen`. Each head dim is split into a time segment
-    (head_dim // 2) and a spatial segment (two halves of head_dim // 4 for h and w),
-    each rotated with its own RoPE frequency base.
-    """
 
     def __init__(
         self,
@@ -224,7 +174,6 @@ class SenseNovaU1Attention(nn.Module):
             return key_states, value_states
         if update_cache:
             return past_key_values.update(key_states, value_states, self.layer_idx, cache_kwargs=None)
-        # Read-only reuse of the prefix cache: the current tokens are never written back.
         layer = past_key_values.layers[self.layer_idx]
         past_k, past_v = layer.keys, layer.values
         if past_k is not None:
@@ -239,9 +188,11 @@ class SenseNovaU1Attention(nn.Module):
         )
         key_states, value_states = self._merge_cache(key_states, value_states, past_key_values, update_cache)
 
-        attn_output = eager_attention_forward(
+        attn_output = attention_forward(
             query_states, key_states, value_states,
-            attention_mask, self.scaling, self.num_key_value_groups,
+            q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b s n d",
+            attn_mask=None if attention_mask is None else attention_mask[:, :, :, : key_states.shape[-2]].to(query_states.dtype),
+            scale=self.scaling,
         )
         attn_output = attn_output.reshape(*input_shape, -1).contiguous()
         return self.o_proj(attn_output)
@@ -253,19 +204,12 @@ class SenseNovaU1Attention(nn.Module):
         )
         key_states, value_states = self._merge_cache(key_states, value_states, past_key_values, update_cache)
 
-        if attention_mask is None:
-            # Image tokens attend bidirectionally over [prefix + current image block].
-            # This is the per-step hot path; the reference also softmaxes in bfloat16 here.
-            attn_output = attention_forward(
-                query_states, key_states, value_states,
-                q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b s n d",
-                is_causal=False,
-            )
-        else:
-            attn_output = eager_attention_forward(
-                query_states, key_states, value_states,
-                attention_mask, self.scaling, self.num_key_value_groups,
-            )
+        attn_output = attention_forward(
+            query_states, key_states, value_states,
+            q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b s n d",
+            attn_mask=None if attention_mask is None else attention_mask[:, :, :, : key_states.shape[-2]].to(query_states.dtype),
+            scale=self.scaling,
+        )
         attn_output = attn_output.reshape(*input_shape, -1).contiguous()
         return self.o_proj_mot_gen(attn_output)
 
@@ -447,8 +391,6 @@ class SenseNovaU1Model(nn.Module):
             exist_non_image_gen_tokens = True
             exist_image_gen_tokens = False
         else:
-            # Resolve once before the layer loop: keeping these as device tensors would force a
-            # host readback in every layer and serialize the compute stream.
             exist_non_image_gen_tokens = bool((~image_gen_indicators).any().item())
             exist_image_gen_tokens = bool(image_gen_indicators.any().item())
 
@@ -521,7 +463,6 @@ def apply_rotary_emb_1d(x, cos_cached, sin_cached, positions):
 
 
 def apply_2d_rotary_pos_emb(x, cos_cached_x, sin_cached_x, cos_cached_y, sin_cached_y, abs_positions_x, abs_positions_y):
-    """The first half of the embedding dim carries the x axis, the second half carries the y axis."""
     dim_half = x.shape[-1] // 2
     rotated_part_1 = apply_rotary_emb_1d(x[..., :dim_half], cos_cached_x, sin_cached_x, abs_positions_x)
     rotated_part_2 = apply_rotary_emb_1d(x[..., dim_half:], cos_cached_y, sin_cached_y, abs_positions_y)
@@ -559,8 +500,6 @@ class SenseNovaU1VisionEmbeddings(nn.Module):
         self.max_position_embeddings_vision = max_position_embeddings_vision
         self.rope_theta_vision = rope_theta_vision
 
-        # Built lazily on the first real device: the model is constructed on the meta device,
-        # and these deterministic caches are absent from the checkpoint.
         self.register_buffer("cos_cached_x", None, persistent=False)
         self.register_buffer("sin_cached_x", None, persistent=False)
         self.register_buffer("cos_cached_y", None, persistent=False)
@@ -581,7 +520,7 @@ class SenseNovaU1VisionEmbeddings(nn.Module):
     def _apply_2d_rotary_pos_emb(self, patch_embeds, grid_hw):
         abs_pos_x, abs_pos_y = build_abs_positions_from_grid_hw(grid_hw, device=patch_embeds.device)
         embeddings = apply_2d_rotary_pos_emb(
-            patch_embeds.to(torch.float32),  # RoPE is more stable in float32
+            patch_embeds.to(torch.float32),
             self.cos_cached_x, self.sin_cached_x,
             self.cos_cached_y, self.sin_cached_y,
             abs_pos_x, abs_pos_y,
@@ -595,7 +534,6 @@ class SenseNovaU1VisionEmbeddings(nn.Module):
         patch_embeds = self._apply_2d_rotary_pos_emb(patch_embeds, grid_hw)
         assert (grid_hw[:, 0] * grid_hw[:, 1]).sum() == patch_embeds.shape[0]
 
-        # Each image has its own grid, so the 2x2 downsampling convolution runs per image.
         patches_list = []
         cur_position = 0
         for i in range(grid_hw.shape[0]):
@@ -615,7 +553,6 @@ class SenseNovaU1VisionEmbeddings(nn.Module):
 
 
 class SenseNovaU1VisionEncoder(nn.Module):
-    """Patch embedder for the understanding branch: pixels to LLM-dimension tokens."""
 
     def __init__(
         self,
@@ -648,7 +585,6 @@ class SenseNovaU1VisionEncoder(nn.Module):
 
 
 class SenseNovaU1TimestepEmbedder(nn.Module):
-    """Embeds scalar timesteps (or noise scales) into vector representations."""
 
     def __init__(self, hidden_size, frequency_embedding_size=256):
         super().__init__()
@@ -677,7 +613,6 @@ class SenseNovaU1TimestepEmbedder(nn.Module):
 
 
 class SenseNovaU1ConvDecoder(nn.Module):
-    """Pixel head: three PixelShuffle stages take H/32 hidden states back to full resolution."""
 
     def __init__(self, input_dim=4096, hidden_dim=1024):
         super().__init__()
@@ -697,12 +632,6 @@ class SenseNovaU1ConvDecoder(nn.Module):
 
 
 class SenseNovaU1DiT(nn.Module):
-    """Unified Mixture-of-Transformers denoiser for SenseNova-U1.
-
-    The same 42-layer backbone serves two roles: the understanding branch encodes the
-    conditioning prefix into a KV cache, and the generation branch denoises image tokens
-    against that cache. Flow matching happens directly in pixel space, so there is no VAE.
-    """
 
     _repeated_blocks = ["SenseNovaU1DecoderLayer"]
 
@@ -841,7 +770,6 @@ class SenseNovaU1DiT(nn.Module):
         use_gradient_checkpointing=False,
         use_gradient_checkpointing_offload=False,
     ):
-        """Run the understanding branch over the conditioning prefix and return its KV cache."""
         hidden_states, past_key_values = self.language_model.model(
             input_ids=input_ids,
             inputs_embeds=inputs_embeds,
@@ -862,7 +790,6 @@ class SenseNovaU1DiT(nn.Module):
         zeros = torch.zeros(seq_len, dtype=torch.long, device=device)
         indexes = torch.stack([t_indexes, zeros, zeros], dim=0)
 
-        # The appended run attends fully to the existing cache and causally within itself.
         past_len = past_key_values.get_seq_length()
         causal = torch.tril(torch.ones(seq_len, seq_len, device=device))
         attention_mask = torch.zeros(1, 1, seq_len, past_len + seq_len, device=device)
@@ -902,12 +829,6 @@ class SenseNovaU1DiT(nn.Module):
         append_ids=None,
         max_think_tokens=1024,
     ):
-        """Encode the prefix, then greedily decode a reasoning block into the same KV cache.
-
-        Decoding is greedy with no temperature or nucleus sampling, matching the reference. The
-        returned cache already contains the reasoning block plus `append_ids`, so the image tokens
-        that follow must start at `t_idx + 1` rather than at the original prefix length.
-        """
         logits, _, past_key_values = self.language_model(
             input_ids=input_ids,
             inputs_embeds=inputs_embeds,

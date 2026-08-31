@@ -18,27 +18,6 @@ from ..models.sensenova_u1_common import (
 
 
 class SenseNovaU1ImagePipeline(BasePipeline):
-    """Pipeline for SenseNova-U1 unified multimodal image generation.
-
-    Flow matching runs directly in pixel space, so there is no VAE: `latents` holds a
-    (1, 3, H, W) image tensor throughout and the final result is returned by
-    `vae_output_to_image` without a decode step.
-
-    Conditioning goes through a KV cache rather than a separate text encoder. The DiT's
-    understanding branch encodes the prompt once into `past_key_values`, and every denoising
-    step runs the image tokens through the generation branch against that cache. The two
-    branches share the same weights, which is why they cannot be split into separate models.
-
-    Passing `edit_image` switches to the editing task: the input images are encoded by the
-    understanding-branch vision encoder and spliced into that same prefix, and the negative
-    branch carries the images without an instruction. Image guidance weighted separately from
-    text guidance is not supported, since it needs a third prefix cache.
-
-    There is no `negative_prompt`. The unconditional prefix is fixed, as it is in the reference.
-
-    Setting `think_mode` lets the model write a reasoning block before generating, which is decoded
-    into the conditioning cache. The reasoning shapes the image but is not returned.
-    """
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(

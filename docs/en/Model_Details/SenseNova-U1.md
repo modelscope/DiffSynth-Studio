@@ -44,7 +44,7 @@ pipe = SenseNovaU1ImagePipeline.from_pretrained(
 )
 
 prompt = "A neon bar sign that clearly reads \"OPEN LATE\", dark interior, moody reflections, easy text rendering. Any text in the image must be rendered exactly as written in quotation marks, with correct spelling, clean typography, and strong readability."
-image = pipe(prompt=prompt, seed=42, height=1024, width=1024, num_inference_steps=50, cfg_scale=4.0, shift=3.0)
+image = pipe(prompt=prompt, seed=42, height=2048, width=2048, num_inference_steps=50, cfg_scale=4.0, shift=3.0)
 image.save("image_SenseNova-U1.5-8B-MoT.jpg")
 ```
 
@@ -63,16 +63,13 @@ The input parameters for `SenseNovaU1ImagePipeline` inference include:
 
 * `prompt`: Text prompt. Acts as the editing instruction in image editing mode.
 * `cfg_scale`: Classifier-Free Guidance scale, defaults to 4.0. The reference hardcodes the unconditional prefix text and exposes no negative prompt, so this pipeline has no `negative_prompt` parameter either.
-* `cfg_interval`: Interval in which Classifier-Free Guidance is active, defaults to `(0.0, 1.0)`, i.e. active throughout.
 * `height`: Output image height, defaults to 2048. Must be a multiple of 32.
 * `width`: Output image width, defaults to 2048. Must be a multiple of 32.
 * `seed`: Random seed, defaults to random.
 * `rand_device`: Device for noise generation, defaults to `"cuda"`.
 * `num_inference_steps`: Number of inference steps, defaults to 50.
 * `shift`: Timestep shift affecting sigma computation, defaults to 3.0.
-* `denoising_strength`: Denoising strength, defaults to 1.0.
-* `t_eps`: Lower bound on the flow matching timestep, used to avoid division by zero, defaults to 0.02.
-* `think_mode`: Whether the model writes a reasoning block before generating, defaults to False. The reasoning text is available on `pipe.think_text`.
+* `think_mode`: Whether the model writes a reasoning block before generating, defaults to False.
 * `edit_image`: Input image, either a single `Image.Image` or a list of images. Passing it switches to image editing mode, defaults to None (text-to-image mode).
 * `input_image`: Target image supplied during training, not needed for inference.
 
@@ -82,29 +79,34 @@ The input parameters for `SenseNovaU1ImagePipeline` inference include:
 
 Passing `edit_image` switches to image editing mode. The input images are encoded by the understanding branch's vision encoder and spliced into the conditioning prefix. The negative branch carries the input images without the editing instruction, so guidance points away from "the input image unchanged" rather than away from "any image".
 
-The output resolution must be specified explicitly. To keep the input image's aspect ratio, use `smart_resize` to derive it from a target pixel count:
+The output resolution must be specified explicitly; it is not derived from the input image:
 
 ```python
-from diffsynth.models.sensenova_u1_common import PATCH_SIZE, smart_resize
 from PIL import Image
 
 edit_image = Image.open("input.jpg").convert("RGB")
-height, width = smart_resize(
-    edit_image.height, edit_image.width,
-    factor=PATCH_SIZE, min_pixels=2048 * 2048, max_pixels=2048 * 2048,
+image = pipe(prompt="Change the dress to pink.", edit_image=edit_image, height=2048, width=2048, seed=42)
+```
+
+Passing a list of images performs multi-image editing. The images are numbered in the order given,
+so the prompt can refer to them as Figure 1, Figure 2, and so on:
+
+```python
+image = pipe(
+    prompt="Change the color of the dress in Figure 1 to the color shown in Figure 2.",
+    edit_image=[edit_image, color_image],
+    height=2048, width=2048, seed=42,
 )
-image = pipe(prompt="Put a hat on this cat.", edit_image=edit_image, height=height, width=width, seed=42)
 ```
 
 ### Think Mode
 
 With `think_mode=True` the model first autoregressively writes a reasoning block — planning the
 composition, environment, and lighting — and then generates the image from it. The reasoning text
-does not change the return value; it is recorded on `pipe.think_text`:
+shapes the image but is not returned:
 
 ```python
 image = pipe(prompt="A neon bar sign that clearly reads \"OPEN LATE\"", think_mode=True, seed=42)
-print(pipe.think_text)
 image.save("image.jpg")
 ```
 
