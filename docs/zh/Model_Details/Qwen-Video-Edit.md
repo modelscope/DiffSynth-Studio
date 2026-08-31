@@ -1,6 +1,6 @@
 # Qwen-Video-Edit
 
-Qwen-Video-Edit 是基于 Qwen-Image 架构的视频编辑模型。该模型接收一段输入视频和文本提示词，生成符合提示词描述的编辑后视频。模型采用 QwenImageDiT 作为核心 DiT 主干，结合 Wan2.1 VAE 进行视频编解码，并通过 QwenVideoEditAdapter 将视频特征投影到 DiT 的特征空间中。
+Qwen-Video-Edit 是基于 Qwen-Image 架构的视频编辑模型，来自开源社区开发者 [yunpeng1998](https://github.com/yunpeng1998)。该模型接收一段输入视频和文本提示词，生成符合提示词描述的编辑后视频。模型采用 QwenImageDiT 作为核心 DiT 主干，结合 Wan2.1 VAE 进行视频编解码，并通过 QwenVideoEditAdapter 将视频特征投影到 DiT 的特征空间中。
 
 ## 安装
 

@@ -1,6 +1,6 @@
 # Qwen-Video-Edit
 
-Qwen-Video-Edit is a video editing model based on the Qwen-Image architecture. The model takes an input video and a text prompt, and generates an edited video that matches the prompt description. It uses QwenImageDiT as the core DiT backbone, combined with Wan2.1 VAE for video encoding/decoding, and a QwenVideoEditAdapter to project video features into the DiT feature space.
+Qwen-Video-Edit is a video editing model based on the Qwen-Image architecture developed by user [yunpeng1998](https://github.com/yunpeng1998). The model takes an input video and a text prompt, and generates an edited video that matches the prompt description. It uses QwenImageDiT as the core DiT backbone, combined with Wan2.1 VAE for video encoding/decoding, and a QwenVideoEditAdapter to project video features into the DiT feature space.
 
 ## Installation
 
