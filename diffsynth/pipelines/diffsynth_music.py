@@ -1,17 +1,17 @@
-import re, torch, warnings, torchaudio
-from typing import Optional, Dict, Any, List, Tuple
+import torch, torchaudio
+from typing import Optional
 from tqdm import tqdm
 
+from ..core import ModelConfig
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
-from ..core import ModelConfig
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 
-from ..models.diffsynth_music_dit import DiffSynthMusicDiTModel
 from ..models.ace_step_conditioner import AceStepConditionEncoder
 from ..models.ace_step_text_encoder import AceStepTextEncoder
 from ..models.ace_step_vae import AceStepVAE
 from ..models.demucs import HTDemucs
+from ..models.diffsynth_music_dit import DiffSynthMusicDiTModel
 from transformers import AutoTokenizer
 
 
@@ -175,7 +175,7 @@ class DiffSynthMusicPipeline(BasePipeline):
         if target_audio is not None:
             audio = self.fuse_track(audio, target_audio, target_track)
         return audio
-    
+
     def vae_output_to_audio(self, vae_output, tiled=False, tile_size=512, tile_stride=256):
         audio = self.vae.decode(vae_output.transpose(1, 2), tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
         peak = torch.max(torch.abs(audio))
@@ -319,8 +319,15 @@ class DiffSynthMusic_InputAudioEmbedder(PipelineUnit):
             return {"latents": noise}
         pipe.load_models_to_device(self.onload_model_names)
         input_latents = self.encode_audio(pipe, input_audio)
-        latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
-        return {"latents": latents, "input_latents": input_latents}
+        # prevent potential size mismatch between context_latents and input_latents by cropping input_latents to the same temporal length as noise
+        input_latents = input_latents[:, :noise.shape[1]]
+        if input_latents.shape[1] < noise.shape[1]:
+            input_latents = torch.concat([input_latents, torch.zeros_like(noise)[:, :noise.shape[1] - input_latents.shape[1]]], dim=1)
+        if pipe.scheduler.training:
+            return {"input_latents": input_latents, "latents": noise}
+        else:
+            latents = pipe.scheduler.add_noise(input_latents, noise, timestep=pipe.scheduler.timesteps[0])
+            return {"latents": latents}
 
 
 def model_fn_ace_step(

@@ -1,9 +1,8 @@
-import math
-import torch
-from ..core.attention.attention import attention_forward
+import math, torch
 from ..core import gradient_checkpoint_forward
-from transformers.models.qwen3.modeling_qwen3 import Qwen3RotaryEmbedding
+from ..core.attention.attention import attention_forward
 from einops import rearrange
+from transformers.models.qwen3.modeling_qwen3 import Qwen3RotaryEmbedding
 
 
 class TimestepEmbedding(torch.nn.Module):
@@ -36,14 +35,14 @@ class TimestepEmbedding(torch.nn.Module):
         temb = self.linear_2(temb)
         timestep_proj = self.time_proj(self.act2(temb)).unflatten(1, (6, -1))
         return temb, timestep_proj
-    
+
 
 class DiffSynthMusicTimestepEmbedding(torch.nn.Module):
     def __init__(self, in_channels, time_embed_dim):
         super().__init__()
         self.time_embed = TimestepEmbedding(in_channels, time_embed_dim)
         self.time_embed_r = TimestepEmbedding(in_channels, time_embed_dim)
-    
+
     def forward(self, timestep):
         timestep_r = timestep
         temb_t, timestep_proj_t = self.time_embed(timestep)
@@ -142,7 +141,7 @@ class DiffSynthMusicDiTLayer(torch.nn.Module):
             return x, kv
         else:
             return x
-    
+
 
 class DiffSynthMusicChannelProj(torch.nn.Module):
     def __init__(self, in_channels, out_channels, patch_size, bias=False, transposed=False):
@@ -151,7 +150,7 @@ class DiffSynthMusicChannelProj(torch.nn.Module):
             self.conv = torch.nn.ConvTranspose1d(in_channels=in_channels, out_channels=out_channels, kernel_size=patch_size, stride=patch_size, bias=bias)
         else:
             self.conv = torch.nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=patch_size, stride=patch_size, bias=bias)
-    
+
     def forward(self, x):
         x = x.transpose(1, 2)
         x = self.conv(x)

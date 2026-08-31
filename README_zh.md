@@ -314,6 +314,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
     - LTX-2：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/LTX-2.html)、[样例代码](/examples/ltx2/)
     - Wan：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Wan.html)、[样例代码](/examples/wanvideo/)
 - 音频生成
+    - DiffSynth-Music：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/DiffSynth-Music.html)、[样例代码](/examples/diffsynth_music/)
     - MiniMax-Music3：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/MiniMax-Music3.html)、[样例代码](/examples/minimax_music3/)
     - ACE-Step：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/ACE-Step.html)、[样例代码](/examples/ace_step/)
 - 评测模型：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Image-Quality-Metrics.html)、[样例代码](/examples/image_quality_metric/)
@@ -537,6 +538,7 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 | 基础架构 | 模型 ID | 推理 | 低显存推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
 |-|-|-|-|-|-|-|-|
 | MiniMax-Music3 | [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) | [code](/examples/minimax_music3/model_inference/MiniMax-Music3.py) | [code](/examples/minimax_music3/model_inference_low_vram/MiniMax-Music3.py) | — | — | — | — |
+| DiffSynth-Music | [DiffSynth-Studio/DiffSynth-Music](https://www.modelscope.cn/models/DiffSynth-Studio/DiffSynth-Music) | [code](/examples/diffsynth_music/model_inference/DiffSynth-Music.py) | [code](/examples/diffsynth_music/model_inference_low_vram/DiffSynth-Music.py) | [code](/examples/diffsynth_music/model_training/full/DiffSynth-Music.sh) | [code](/examples/diffsynth_music/model_training/validate_full/DiffSynth-Music.py) | - | - |
 | MiniMax-H3 | [MiniMax/MiniMax-H3: FL2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FL2VA.py) |
 | MiniMax-H3 | [MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Ref2VA.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py) |
 | MiniMax-H3 | [MiniMax/MiniMax-H3: Retake](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Retake.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Retake.py) | - | - | - | - |

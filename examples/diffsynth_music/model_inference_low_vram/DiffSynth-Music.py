@@ -5,18 +5,49 @@ from diffsynth.core.data.operators import LoadMultiTrackAudio
 from diffsynth.utils.music_tools import extract_prosody, generate_click
 from modelscope import snapshot_download
 
+vram_config = {
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": "disk",
+    "onload_device": "disk",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+vram_config_cpu = {
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+vram_config_fp32 = {
+    "offload_dtype": torch.float32,
+    "offload_device": "cpu",
+    "onload_dtype": torch.float32,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.float32,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.float32,
+    "computation_device": "cuda",
+}
 
 pipe = DiffSynthMusicPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="transformer/model.safetensors"),
-        ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="conditioner/model.safetensors"),
-        ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="text_encoder/model.safetensors"),
-        ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="vae/model.safetensors"),
-        ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="track_separator/model.safetensors", computation_dtype=torch.float32),
+        ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="transformer/model.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="conditioner/model.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="text_encoder/model.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="vae/model.safetensors", **vram_config_cpu),
+        ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="track_separator/model.safetensors", **vram_config_fp32),
     ],
     tokenizer_config=ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="text_encoder/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 template = TemplatePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -26,6 +57,7 @@ template = TemplatePipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="template_prosody/"),
         ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music", origin_file_pattern="template_reference/"),
     ],
+    lazy_loading=True,
 )
 
 lyrics = "[Intro]\n\n清新海风里有我们旅途\n漆黑海浪上有帆依呀远征\n风暴的咆哮不把恐惧藏水手的胸襟\n祈祷你像无畏的领航人\n懂也不懂的守护航程\n你在甲板上留下的刻痕\n是我梦的风景\n\n我要送你永不沉的信念\n升起代表勇的黑旗幡\n我要送你永不沉的誓言\n锚连着锚把七海踏遍\n你就是烈焰\n你就是烈焰\n我的血未寒\n不灭的烽火燃在你身边\n我的血未寒\n\n怒海的狂涛总是起了又平\n凝望指着罗盘的星辰\n我要把酒全都灌进骨里\n陪我一起远行\n\n我要送你永不沉的信念\n升起代表勇的黑旗幡\n我要送你永不沉的誓言\n锚连着锚把七海踏遍\n你就是烈焰\n你就是烈焰\n我的血未寒\n不灭的烽火燃在你身边\n我的血未寒\n\n祈祷你像无畏的领航人\n懂也不懂的守护航程\n你在甲板上留下的刻痕\n是我梦的风景\n\n我要送你永不沉的信念\n升起代表勇的黑旗幡\n我要送你永不沉的誓言\n锚连着锚把七海踏遍\n你就是烈焰\n你就是烈焰\n我的血未寒\n不灭的烽火燃在你身边\n我的血未寒\n\n我要送你永不沉的信念\n升起代表勇的黑旗幡\n我要送你永不沉的誓言\n锚连着锚把七海踏遍\n你就是烈焰\n你就是烈焰\n我的血未寒\n不灭的烽火燃在你身边\n我的血未寒\n"
