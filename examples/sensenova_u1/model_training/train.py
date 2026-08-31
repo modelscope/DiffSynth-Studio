@@ -1,5 +1,3 @@
-# SenseNova-U1 image training module for DiffSynth-Studio.
-
 import torch, os, argparse, accelerate
 from diffsynth.core import UnifiedDataset
 from diffsynth.core.data.operators import *

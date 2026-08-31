@@ -177,14 +177,9 @@ class FlowMatchScheduler():
     @staticmethod
     def set_timesteps_sensenova_u1(num_inference_steps=50, denoising_strength=1.0, shift=3.0):
         num_train_timesteps = 1000
-        # The reference builds an ascending time grid and takes sigma = 1 - t. Building a
-        # descending linspace directly is algebraically identical but rounds differently in
-        # float32 (~9e-8), so mirror the reference arithmetic here.
-        t = torch.linspace(1.0 - denoising_strength, 1.0, num_inference_steps + 1)
-        sigmas = 1 - t
+        sigmas = torch.linspace(denoising_strength, 0.0, num_inference_steps + 1)[:-1]
         if shift is not None and shift != 1.0:
             sigmas = shift * sigmas / (1 + (shift - 1) * sigmas)
-        sigmas = sigmas[:-1]
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
 
@@ -455,37 +450,3 @@ class HiDreamO1FlashScheduler(FlowMatchScheduler):
         noise = self.clip_noise(torch.randn(denoised.shape, device=denoised.device, dtype=denoised.dtype))
         sample = sigma_ * noise * self.noise_scale_schedule[timestep_id] + (1.0 - sigma_) * denoised
         return sample
-
-
-class SenseNovaU1Scheduler(FlowMatchScheduler):
-    """SenseNova-U1 scheduler that steps in t-space.
-
-    The reference advances the image by `z += (t_next - t) * v` with `t = 1 - sigma`. Stepping
-    in sigma-space would use `sigma_ - sigma`, which is algebraically the negation of
-    `t_next - t` but not bit-identical in float32: `(1 - a) - (1 - b)` and `b - a` can differ
-    by one ULP. Across 50 bfloat16 denoising steps that difference grows into visible pixel
-    drift, so the update is performed in t-space to stay exact.
-
-    `model_output` is the noise-direction velocity, i.e. the negation of the reference
-    velocity, hence the subtraction.
-    """
-
-    def __init__(self):
-        super().__init__("SenseNova-U1")
-
-    def step(self, model_output, timestep, sample, to_final=False, **kwargs):
-        if isinstance(timestep, torch.Tensor):
-            timestep = timestep.cpu()
-        timestep_id = torch.argmin((self.timesteps - timestep).abs())
-        sigma = self.sigmas[timestep_id]
-        if to_final or timestep_id + 1 >= len(self.timesteps):
-            sigma_ = torch.zeros_like(sigma)
-        else:
-            sigma_ = self.sigmas[timestep_id + 1]
-        # The scalar is moved onto the sample's device on purpose. A 0-dim CPU float32 scalar
-        # is treated as a wrapped number, so the product is evaluated in float32 and rounded
-        # once; a device-resident 0-dim float32 scalar is instead cast down to the tensor's
-        # bfloat16 first. The reference builds its timesteps on the compute device and so takes
-        # the bfloat16 path, and the two disagree on roughly a third of all elements.
-        delta = ((1 - sigma_) - (1 - sigma)).to(device=sample.device)
-        return sample - model_output * delta

@@ -1,5 +1,3 @@
-# SenseNova-U1 Image Pipeline for DiffSynth-Studio.
-
 import torch
 from typing import Union
 from PIL import Image
@@ -7,7 +5,7 @@ from tqdm import tqdm
 
 from ..core import ModelConfig
 from ..core.device.npu_compatible_device import get_device_type
-from ..diffusion import SenseNovaU1Scheduler
+from ..diffusion import FlowMatchScheduler
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..models.sensenova_u1_dit import SenseNovaU1DiT
 from ..models.sensenova_u1_common import (
@@ -24,7 +22,7 @@ class SenseNovaU1ImagePipeline(BasePipeline):
             device=device, torch_dtype=torch_dtype,
             height_division_factor=PATCH_SIZE, width_division_factor=PATCH_SIZE,
         )
-        self.scheduler = SenseNovaU1Scheduler()
+        self.scheduler = FlowMatchScheduler("SenseNova-U1")
         self.dit: SenseNovaU1DiT = None
         self.tokenizer = None
 
@@ -128,12 +126,6 @@ class SenseNovaU1ImageUnit_ShapeChecker(PipelineUnit):
 
 
 class SenseNovaU1ImageUnit_EditImageEmbedder(PipelineUnit):
-    """Preprocess and patchify the editing input images.
-
-    The per-image pixel budget shrinks as the image count grows. This runs once in the shared
-    dict because the conditional and image-conditional prefixes are built from the same tensor.
-    """
-
     def __init__(self):
         super().__init__(
             input_params=("edit_image",),
@@ -159,21 +151,6 @@ class SenseNovaU1ImageUnit_EditImageEmbedder(PipelineUnit):
 
 
 class SenseNovaU1ImageUnit_PromptEmbedder(PipelineUnit):
-    """Encode the conditioning prefix into a KV cache via the understanding branch.
-
-    The conditional and unconditional branches are asymmetric: the conditional side carries the
-    generation system message plus an empty reasoning block, while the unconditional side uses an
-    empty system message and an empty prompt.
-
-    With editing inputs the unconditional branch changes meaning: instead of an empty prompt it
-    carries the input images with no instruction, so guidance pushes away from "the input image
-    unchanged" rather than from "any image".
-
-    Think mode leaves the reasoning block open so the model writes it itself, then greedily decodes
-    it into the same cache. Only the conditional side reasons; the unconditional side is unchanged.
-    Because the cache grows, the image tokens that follow start after the reasoning block rather
-    than after the original prompt.
-    """
 
     def __init__(self):
         super().__init__(
@@ -187,7 +164,6 @@ class SenseNovaU1ImageUnit_PromptEmbedder(PipelineUnit):
 
     @staticmethod
     def insert_image_placeholders(prompt, num_images):
-        """Prepend `<image>` placeholders for every input image the prompt does not mention."""
         missing = num_images - prompt.count(IMAGE_PLACEHOLDER)
         if missing <= 0:
             return prompt
@@ -197,7 +173,6 @@ class SenseNovaU1ImageUnit_PromptEmbedder(PipelineUnit):
 
     @staticmethod
     def expand_image_placeholders(query, grid_hw, downsample_ratio):
-        """Replace each `<image>` placeholder with that image's run of context tokens."""
         for i in range(grid_hw.shape[0]):
             num_patch_token = int(grid_hw[i, 0] * grid_hw[i, 1] * downsample_ratio ** 2)
             query = query.replace(IMAGE_PLACEHOLDER, build_image_token_block(num_patch_token), 1)
@@ -236,13 +211,9 @@ class SenseNovaU1ImageUnit_PromptEmbedder(PipelineUnit):
     def process(self, pipe: SenseNovaU1ImagePipeline, is_negative, height, width, edit_pixel_values, edit_grid_hw, think_mode, prompt=None):
         pipe.load_models_to_device(self.onload_model_names)
         num_images = 0 if edit_grid_hw is None else edit_grid_hw.shape[0]
-        # Reasoning is inference-only. An autoregressive decode inside a training step would grow the
-        # prefix by a data-dependent length with no gradient path through the sampled tokens.
         reasoning = bool(think_mode) and not is_negative and not pipe.scheduler.training
 
         if is_negative:
-            # The unconditional prefix carries the input images but no instruction and no system
-            # message. It is fixed, matching the reference, which offers no negative prompt.
             query = build_conversation_prompt(
                 IMAGE_PLACEHOLDER * num_images, system_message="", append_text=IMG_START_TOKEN,
             )
@@ -268,8 +239,8 @@ class SenseNovaU1ImageUnit_PromptEmbedder(PipelineUnit):
                     "\n\n" + IMG_START_TOKEN, return_tensors="pt", add_special_tokens=False,
                 )["input_ids"].to(pipe.device),
             )
-            # `token_ids` holds the reasoning the model just wrote. Nothing downstream needs it,
-            # so it is left undecoded; to read it, decode it here:
+            # `token_ids` holds the reasoning the model just wrote. Nothing downstream needs
+            # it, so it is left undecoded; to read it, decode it here:
             # pipe.tokenizer.decode(token_ids, skip_special_tokens=False)
         else:
             past_key_values, _ = pipe.dit.encode_prefix(
@@ -284,12 +255,6 @@ class SenseNovaU1ImageUnit_PromptEmbedder(PipelineUnit):
 
 
 class SenseNovaU1ImageUnit_NoiseInitializer(PipelineUnit):
-    """Initialize pixel-space noise scaled by the resolution-dependent noise scale.
-
-    The scale is `min(sqrt(tokens / noise_scale_base_image_seq_len), noise_scale_max_value)`,
-    which is not 1, so unit variance noise has to be rescaled before use.
-    """
-
     def __init__(self):
         super().__init__(
             input_params=("height", "width", "seed", "rand_device"),
@@ -305,13 +270,6 @@ class SenseNovaU1ImageUnit_NoiseInitializer(PipelineUnit):
 
 
 class SenseNovaU1ImageUnit_InputImageEmbedder(PipelineUnit):
-    """Provide the training target in pixel space.
-
-    `input_image` reaches this unit only from the training module, since inference always starts
-    from pure noise. There is no VAE, so the preprocessed image tensor is passed straight through
-    as `input_latents`.
-    """
-
     def __init__(self):
         super().__init__(
             input_params=("input_image", "noise"),
@@ -336,12 +294,6 @@ def model_fn_sensenova_u1_image(
     use_gradient_checkpointing_offload: bool = False,
     **kwargs,
 ):
-    """One denoising step.
-
-    Returns `(latents - x_pred) / sigma` rather than the clean-image prediction: DiffSynth's
-    scheduler steps along the noise direction, so the result is the velocity pointing from the
-    predicted clean image toward the noise.
-    """
     sigma = (timestep / 1000.0).flatten()[0]
     t = 1.0 - sigma
 

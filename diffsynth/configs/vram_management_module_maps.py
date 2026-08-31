@@ -497,9 +497,6 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "transformers.models.qwen3.modeling_qwen3.Qwen3RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.sensenova_u1_dit.SenseNovaU1DiT": {
-        # Registered as whole composites, not via their child layers: both read a child's
-        # `weight.dtype` inside their own forward to pick a cast target, which would report the
-        # meta placeholder dtype if the child were wrapped individually.
         "diffsynth.models.sensenova_u1_dit.SenseNovaU1TimestepEmbedder": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.sensenova_u1_dit.SenseNovaU1VisionEmbeddings": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",

@@ -29,8 +29,7 @@ image = pipe(
 )
 image.save("image_SenseNova-U1.5-8B-MoT-Edit.jpg")
 
-# Multiple inputs are passed as a list and are numbered in the order given, so the prompt can
-# refer to them as Figure 1, Figure 2, and so on.
+# Multi-image editing
 image = pipe(
     prompt="Change the color of the dress in Figure 1 to the color shown in Figure 2.",
     edit_image=[edit_image, color_image],
