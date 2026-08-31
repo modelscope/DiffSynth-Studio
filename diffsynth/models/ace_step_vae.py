@@ -196,13 +196,13 @@ class OobleckDiagonalGaussianDistribution(object):
 
     def sample(self, generator: torch.Generator | None = None) -> torch.Tensor:
         # make sure sample is on the same device as the parameters and has same dtype
-        sample = torch.randn(
-            self.mean.shape,
-            generator=generator,
-            device=self.parameters.device,
-            dtype=self.parameters.dtype,
-        )
-        x = self.mean + self.std * sample
+        # sample = torch.randn(
+        #     self.mean.shape,
+        #     generator=generator,
+        #     device=self.parameters.device,
+        #     dtype=self.parameters.dtype,
+        # )
+        x = self.mean
         return x
 
     def kl(self, other: "OobleckDiagonalGaussianDistribution" = None) -> torch.Tensor:
