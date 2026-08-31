@@ -16,7 +16,7 @@ pip install -e .
 
 ## 快速开始
 
-运行以下代码可以快速加载 [SenseNova/SenseNova-U1.5-8B-MoT](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 2G 显存即可运行。
+运行以下代码可以快速加载 [SenseNova/SenseNova-U1.5-8B-MoT](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 4G 显存即可运行。
 
 ```python
 from diffsynth.pipelines.sensenova_u1_image import SenseNovaU1ImagePipeline, ModelConfig
@@ -54,6 +54,9 @@ image.save("image_SenseNova-U1.5-8B-MoT.jpg")
 |-|-|-|-|-|-|-|
 |[SenseNova/SenseNova-U1.5-8B-MoT: T2I](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/full/SenseNova-U1.5-8B-MoT.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.5-8B-MoT.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/lora/SenseNova-U1.5-8B-MoT.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.5-8B-MoT.py)|
 |[SenseNova/SenseNova-U1.5-8B-MoT: Edit](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/full/SenseNova-U1.5-8B-MoT-Edit.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.5-8B-MoT-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/lora/SenseNova-U1.5-8B-MoT-Edit.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.5-8B-MoT-Edit.py)|
+|[SenseNova/SenseNova-U1.5-8B-MoT-LoRAs: 8-step](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT-LoRAs)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT-LoRA-8step.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT-LoRA-8step.py)|-|-|-|-|
+|[SenseNova/SenseNova-U1.5-8B-MoT-SFT: T2I](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT-SFT)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT-SFT.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT-SFT.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/full/SenseNova-U1.5-8B-MoT-SFT.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.5-8B-MoT-SFT.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/lora/SenseNova-U1.5-8B-MoT-SFT.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.5-8B-MoT-SFT.py)|
+|[SenseNova/SenseNova-U1.5-8B-MoT-SFT: Edit](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT-SFT)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT-SFT-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT-SFT-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/full/SenseNova-U1.5-8B-MoT-SFT-Edit.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.5-8B-MoT-SFT-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/lora/SenseNova-U1.5-8B-MoT-SFT-Edit.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.5-8B-MoT-SFT-Edit.py)|
 
 ## 模型推理
 
@@ -111,8 +114,26 @@ image.save("image.jpg")
 解码是贪心的（无 temperature / top-p），最多 1024 个 token，遇到 `</think>` 或 `<|im_end|>` 停止。
 只有正向分支参与推理，负向分支不变。
 
-> 推理阶段每生成一个 token 都要经过一次 `lm_head`（约 0.6B 参数），与 Disk Offload 叠加时会显著变慢，
-> 建议开启 think mode 时不要把 `lm_head` 放在磁盘上。
+> 每生成一个 token 都要过一次 `lm_head`（约 0.6B 参数）。与 Disk Offload 叠加时这会成为瓶颈，
+> 因此低显存推理脚本不提供该模式。
+
+### 快速推理（8-step LoRA）
+
+官方发布的蒸馏 LoRA 可以把去噪步数从 50 降到 8，并把 `cfg_scale` 设为 1.0。后者会让框架跳过负向分支，
+每步少一次 17.5B 前向，因此整体约 12 倍加速：
+
+```python
+pipe.load_lora(pipe.dit, ModelConfig(model_id="SenseNova/SenseNova-U1.5-8B-MoT-LoRAs", origin_file_pattern="SenseNova-U1.5-8B-MoT-LoRA-8step.safetensors"))
+image = pipe(prompt=prompt, seed=42, height=2048, width=2048, num_inference_steps=8, cfg_scale=1.0, shift=3.0)
+```
+
+该 LoRA 作用在生成分支的 attention 与 MLP 上（42 层 × 7 个模块，共 294 处），基座权重无需替换。
+
+### SFT 版本
+
+`SenseNova-U1.5-8B-MoT-SFT` 与上述模型架构完全一致，区别在训练阶段：它是 Unified SFT 之后的检查点，
+而正式版在此基础上又经过 Multi-Expert RL 与 MOPD 训练。追求生成质量时使用正式版；作为微调起点或做消融
+实验时可以选择 SFT 版，用法只需替换 `model_id`。
 
 ### 架构说明
 
