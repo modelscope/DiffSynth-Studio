@@ -10,7 +10,6 @@ from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import SenseNovaU1Scheduler
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..models.sensenova_u1_dit import SenseNovaU1DiT
-from ..models.sensenova_u1_vision_encoder import SenseNovaU1VisionEncoder
 from ..models.sensenova_u1_common import (
     IMAGE_PLACEHOLDER, IMG_CONTEXT_TOKEN, IMG_START_TOKEN, NON_THINK_PREFIX, PATCH_SIZE,
     SYSTEM_MESSAGE_FOR_GEN, THINK_PREFIX, build_conversation_prompt, build_image_token_block,
@@ -49,7 +48,6 @@ class SenseNovaU1ImagePipeline(BasePipeline):
         )
         self.scheduler = SenseNovaU1Scheduler()
         self.dit: SenseNovaU1DiT = None
-        self.vision_encoder: SenseNovaU1VisionEncoder = None
         self.tokenizer = None
         # Populated with the reasoning text after a `think_mode=True` call.
         self.think_text = None
@@ -76,7 +74,6 @@ class SenseNovaU1ImagePipeline(BasePipeline):
         pipe = SenseNovaU1ImagePipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
         pipe.dit = model_pool.fetch_model("sensenova_u1_dit")
-        pipe.vision_encoder = model_pool.fetch_model("sensenova_u1_vision_encoder")
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
             from transformers import Qwen2Tokenizer
@@ -225,7 +222,7 @@ class SenseNovaU1ImageUnit_PromptEmbedder(PipelineUnit):
             input_params_posi={"prompt": "prompt", "is_negative": "prompt_is_negative"},
             input_params_nega={"is_negative": "negative_is_negative"},
             output_params=("past_key_values", "indexes_image"),
-            onload_model_names=("dit", "vision_encoder"),
+            onload_model_names=("dit",),
         )
 
     @staticmethod
@@ -262,7 +259,7 @@ class SenseNovaU1ImageUnit_PromptEmbedder(PipelineUnit):
 
         inputs_embeds = pipe.dit.embed_tokens(input_ids)
         batch_size, num_tokens, channels = inputs_embeds.shape
-        vision_embeds = pipe.vision_encoder(pixel_values=pixel_values, grid_hw=grid_hw)
+        vision_embeds = pipe.dit.extract_und_feature(pixel_values, grid_hw)
         selected = input_ids.reshape(-1) == pipe.tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
         inputs_embeds = inputs_embeds.reshape(-1, channels)
         inputs_embeds[selected] = vision_embeds.reshape(-1, channels).to(inputs_embeds.device)

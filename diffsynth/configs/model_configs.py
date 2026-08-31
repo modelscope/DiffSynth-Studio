@@ -1551,14 +1551,6 @@ sensenova_u1_series = [
         "model_hash": "90bb0c235120a99ea78f9912471de82a",
         "model_name": "sensenova_u1_dit",
         "model_class": "diffsynth.models.sensenova_u1_dit.SenseNovaU1DiT",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.sensenova_u1_dit.SenseNovaU1DiTStateDictConverter",
-    },
-    {
-        # Example: ModelConfig(model_id="SenseNova/SenseNova-U1.5-8B-MoT", origin_file_pattern="model*.safetensors")
-        "model_hash": "90bb0c235120a99ea78f9912471de82a",
-        "model_name": "sensenova_u1_vision_encoder",
-        "model_class": "diffsynth.models.sensenova_u1_vision_encoder.SenseNovaU1VisionEncoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.sensenova_u1_vision_encoder.SenseNovaU1VisionEncoderStateDictConverter",
     },
 ]
 
