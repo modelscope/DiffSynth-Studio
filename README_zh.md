@@ -40,7 +40,7 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
-- **2026年8月31日** SenseNova-U1 开源，欢迎加入图像生成模型家族！支持文生图推理、图像编辑、低显存推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/SenseNova-U1.md)和[示例代码](/examples/sensenova_u1/)。
+- **2026年9月1日** SenseNova-U1 开源，欢迎加入图像生成模型家族！支持文生图推理、图像编辑、低显存推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/SenseNova-U1.md)和[示例代码](/examples/sensenova_u1/)。
 
 - **2026年8月31日** 我们接入了 [Qwen-Video-Edit](https://modelscope.cn/models/yunpeng1998/Qwen-Video-Edit)，这是开源社区用户 [yunpeng1998](https://github.com/yunpeng1998) 基于图像编辑模型 Qwen-Image-Edit 训练的视频编辑模型，是探索模型能力拓展的优秀案例。
 
