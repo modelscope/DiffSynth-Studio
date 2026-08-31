@@ -6,7 +6,8 @@ accelerate launch examples/flux2/model_training/train.py \
   --extra_inputs "template_inputs" \
   --max_pixels 1048576 \
   --dataset_repeat 1 \
-  --model_id_with_origin_paths "black-forest-labs/FLUX.2-klein-4B:text_encoder/*.safetensors,black-forest-labs/FLUX.2-klein-4B:vae/diffusion_pytorch_model.safetensors" \
+  --model_id_with_origin_paths "black-forest-labs/FLUX.2-klein-4B:text_encoder/*.safetensors,black-forest-labs/FLUX.2-klein-base-4B:transformer/*.safetensors,black-forest-labs/FLUX.2-klein-4B:vae/diffusion_pytorch_model.safetensors" \
+  --offload_models "black-forest-labs/FLUX.2-klein-base-4B:transformer/*.safetensors" \
   --template_model_id_or_path "DiffSynth-Studio/Template-KleinBase4B-Brightness:" \
   --tokenizer_path "black-forest-labs/FLUX.2-klein-4B:tokenizer/" \
   --learning_rate 1e-4 \
@@ -23,11 +24,12 @@ accelerate launch examples/flux2/model_training/train.py \
   --extra_inputs "template_inputs" \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
-  --model_id_with_origin_paths "black-forest-labs/FLUX.2-klein-base-4B:transformer/*.safetensors" \
+  --model_id_with_origin_paths "black-forest-labs/FLUX.2-klein-4B:text_encoder/*.safetensors,black-forest-labs/FLUX.2-klein-base-4B:transformer/*.safetensors,black-forest-labs/FLUX.2-klein-4B:vae/diffusion_pytorch_model.safetensors" \
+  --offload_models "black-forest-labs/FLUX.2-klein-4B:text_encoder/*.safetensors,black-forest-labs/FLUX.2-klein-4B:vae/diffusion_pytorch_model.safetensors" \
   --template_model_id_or_path "DiffSynth-Studio/Template-KleinBase4B-Brightness:" \
   --tokenizer_path "black-forest-labs/FLUX.2-klein-4B:tokenizer/" \
   --learning_rate 1e-4 \
-  --num_epochs 2 \
+  --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.template_model." \
   --output_path "./models/train/Template-KleinBase4B-Brightness_full" \
   --trainable_models "template_model" \

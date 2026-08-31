@@ -12,7 +12,7 @@ pipe = QwenImagePipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
 )
-pipe.load_lora(pipe.dit, "models/train/Qwen-Image-LoRA-splited/epoch-4.safetensors")
+pipe.load_lora(pipe.dit, './models/train/Qwen-Image-LoRA-splited/epoch-4.safetensors')
 prompt = "a dog"
 image = pipe(prompt, seed=0)
-image.save("image.jpg")
+image.save('split_training_Qwen-Image.jpg')
