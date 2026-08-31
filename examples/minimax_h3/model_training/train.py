@@ -149,6 +149,7 @@ def minimax_h3_parser():
     parser.add_argument("--processor_path", type=str, default=None, help="Path or `model_id:pattern` of the Qwen3-VL processor.")
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
     parser.add_argument("--silent_on_missing_audio", default=False, action="store_true", help="Whether to use silent audio as a fallback when no audio track is present in the video data.")
+    parser.add_argument("--reference_max_pixels", type=int, default=768 * 1344, help="Maximum number of pixels per frame for reference videos.")
     parser.add_argument("--training_cfg_scale", type=float, default=1.0, help="Inverse-CFG scale for preserving MiniMax-H3 guidance distillation during fine-tuning. Values greater than 1 enable a no-grad unconditional branch; 1 keeps the standard flow-matching loss.")
     parser.add_argument("--audio_loss_weight", type=float, default=1.0, help="Weight of the audio term in the MiniMax-H3 loss. 1 keeps video and audio equally weighted; 0 trains on the video term only while the audio stream is still noised and forwarded.")
     return parser
@@ -195,9 +196,7 @@ if __name__ == "__main__":
             ),
             "references": MiniMaxH3ReferenceLoader(
                 base_path=args.dataset_base_path,
-                height=args.height,
-                width=args.width,
-                max_pixels=args.max_pixels,
+                max_pixels=args.reference_max_pixels,
                 num_frames=args.num_frames,
                 frame_rate=MINIMAX_H3_FRAME_RATE,
             ),
