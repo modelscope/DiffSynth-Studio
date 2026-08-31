@@ -211,6 +211,10 @@ Models in the MiniMax-H3 series are trained uniformly via [`examples/minimax_h3/
 * MiniMax-H3 Specific Parameters
     * `--processor_path`: Path of the Qwen3-VL processor, supports the `model_id:origin_file_pattern` form, used to tokenize the prompt.
     * `--initialize_model_on_cpu`: Whether to initialize models on CPU.
+    * `--silent_on_missing_audio`: Whether to use silent audio as a fallback when no audio track is present in the video data.
+    * `--reference_max_pixels`: Maximum number of pixels per frame for reference videos.
+    * `--training_cfg_scale`: Inverse-CFG scale for preserving MiniMax-H3 guidance distillation during fine-tuning. Values greater than 1 enable a no-grad unconditional branch; 1 keeps the standard flow-matching loss.
+    * `--audio_loss_weight`: Weight of the audio term in the MiniMax-H3 loss. 1 keeps video and audio equally weighted; 0 trains on the video term only while the audio stream is still noised and forwarded.
 
 We provide an example dataset for testing, which can be downloaded with the following command:
 
