@@ -336,6 +336,7 @@ class MiniMaxH3DiT(nn.Module):
         use_gradient_checkpointing_offload=False,
         update_audio_mask=None,
         skip_mask_out_condition=False,
+        control_hints=None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         inverse_indices = inverse_indices.view(-1).to(torch.long)
         token_tags = token_tags.view(-1).to(torch.long)
@@ -371,7 +372,7 @@ class MiniMaxH3DiT(nn.Module):
 
         hidden = decoder_input
         cu_seqlens = cu_seqlens.to(device)
-        for block in self.blocks:
+        for block_id, block in enumerate(self.blocks):
             hidden = gradient_checkpoint_forward(
                 block,
                 use_gradient_checkpointing,
@@ -383,6 +384,8 @@ class MiniMaxH3DiT(nn.Module):
                 cu_seqlens=cu_seqlens,
                 max_seqlen=max_seqlen,
             )
+            if control_hints is not None and block_id in control_hints:
+                hidden = hidden + control_hints[block_id].to(hidden.device, hidden.dtype)
 
         video_logits, audio_logits = self.final_layer(hidden, t_emb=t_emb, inverse_indices=inverse_indices)
 

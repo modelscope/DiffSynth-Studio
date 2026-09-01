@@ -16,6 +16,7 @@ from ..models.minimax_h3_text_encoder import (
 )
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
+from ..models.minimax_h3_controlnet import MiniMaxH3ControlNet
 from ..utils.data.audio import convert_to_stereo, resample_waveform
 from ..utils.lora.minimax_h3 import MiniMaxH3LoRALoader
 
@@ -30,11 +31,12 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.dit: MiniMaxH3DiT = None
         self.video_vae: MiniMaxH3VideoVAE = None
         self.audio_vae: MiniMaxH3AudioVAE = None
+        self.controlnet: MiniMaxH3ControlNet = None
         self.tokenizer = None
         self.processor = None
         self.imgvid_cond_noise_aug = 0.999
         self.audio_cond_noise_aug = 1.0
-        self.in_iteration_models = ("dit",)
+        self.in_iteration_models = ("dit", "controlnet")
         self.units = [
             MiniMaxH3Unit_ShapeChecker(),
             MiniMaxH3Unit_NoiseInitializer(),
@@ -46,6 +48,7 @@ class MiniMaxH3Pipeline(BasePipeline):
             MiniMaxH3Unit_ReferenceEncoder(),
             MiniMaxH3Unit_PromptEmbedder(),
             MiniMaxH3Unit_PackedSequenceBuilder(),
+            MiniMaxH3Unit_ControlNetEncoder(),
         ]
         self.model_fn = model_fn_minimax_h3
         self.compilable_models = ["dit"]
@@ -79,6 +82,7 @@ class MiniMaxH3Pipeline(BasePipeline):
         pipe.dit = model_pool.fetch_model("minimax_h3_dit")
         pipe.video_vae = model_pool.fetch_model("minimax_h3_video_vae")
         pipe.audio_vae = model_pool.fetch_model("minimax_h3_audio_vae")
+        pipe.controlnet = model_pool.fetch_model("minimax_h3_controlnet")
         if processor_config is not None:
             processor_config.download_if_necessary()
             pipe.processor = AutoProcessor.from_pretrained(processor_config.path)
@@ -113,6 +117,9 @@ class MiniMaxH3Pipeline(BasePipeline):
         ref_image_short_edge: int = 2048,
         ref_video_short_edge: int = 768,
         ref_video_max_pixels: int = 768 * 1344,
+        # ControlNet
+        control_video: list[Image.Image] = None,
+        control_scale: float = 1.0,
         # Video / Audio Retake
         retake_video: list[Image.Image] = None,
         frame_regions_to_retake: list[tuple[float, float]] = None,
@@ -156,6 +163,7 @@ class MiniMaxH3Pipeline(BasePipeline):
             "use_gradient_checkpointing_offload": use_gradient_checkpointing_offload,
             "keyframes": keyframes, "keyframe_indices": keyframe_indices,
             "references": references, "ref_image_short_edge": ref_image_short_edge, "ref_video_short_edge": ref_video_short_edge, "ref_video_max_pixels": ref_video_max_pixels,
+            "control_video": control_video, "control_scale": control_scale,
             "retake_video": retake_video, "frame_regions_to_retake": frame_regions_to_retake,
             "retake_audio": (retake_audio, retake_audio_sample_rate) if retake_audio is not None else None, "seconds_regions_to_retake": seconds_regions_to_retake,
             "imgvid_cond_noise_aug": self.imgvid_cond_noise_aug, "audio_cond_noise_aug": self.audio_cond_noise_aug,
@@ -831,6 +839,106 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
         return {"packed": self._to_device(packed, pipe.device)}
 
 
+class MiniMaxH3Unit_ControlNetEncoder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("control_video", "control_scale", "height", "width", "num_frames", "tiled", "tile_size", "tile_overlap"),
+            output_params=("control_rows", "control_scale"),
+            onload_model_names=("video_vae",),
+        )
+
+    def encode_video_at_mode(self, pipe: MiniMaxH3Pipeline, frames, height, width, num_frames, tiled, tile_size, tile_overlap):
+        frames = [f.convert("RGB").resize((width, height), Image.LANCZOS) for f in frames[:num_frames]]
+        if len(frames) < num_frames:
+            frames += [frames[-1]] * (num_frames - len(frames))
+        frames_tensor = pipe.preprocess_video(frames, torch_dtype=torch.float32, min_value=0, device=pipe.device)
+        return pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap).to(device=pipe.device, dtype=pipe.torch_dtype)
+
+    def process(self, pipe: MiniMaxH3Pipeline, control_video, control_scale, height, width, num_frames, tiled, tile_size, tile_overlap):
+        pipe.load_models_to_device(self.onload_model_names)
+        if control_scale is None:
+            control_scale = 1
+
+        control_latents = self.encode_video_at_mode(pipe, control_video, height, width, num_frames, tiled, tile_size, tile_overlap)
+        control_rows = patchify_video(control_latents)
+
+        control_in_dim = 49
+        expected_columns = control_in_dim * 4
+        if control_rows.shape[-1] < expected_columns:
+            control_rows = torch.nn.functional.pad(control_rows, (0, expected_columns - control_rows.shape[-1]))
+        elif control_rows.shape[-1] > expected_columns:
+            raise ValueError(f"The control rows carry {control_rows.shape[-1]} columns but the checkpoint's control_in_dim ({control_in_dim}) expects {expected_columns}. A control-only checkpoint cannot read the inpaint channels.")
+        return {"control_rows": control_rows.to(device=pipe.device, dtype=pipe.torch_dtype), "control_scale": control_scale}
+
+
+def model_fn_minimax_h3_controlnet(
+    dit,
+    x,
+    audio_x,
+    img_position_ids,
+    unique_timesteps,
+    inverse_indices,
+    token_tags,
+    prompt_embeds,
+    img_pos_info,
+    audio_pos_info,
+    text_pos_info,
+    packed_seq_params,
+    refiner_packed_seq_params,
+    use_gradient_checkpointing=False,
+    use_gradient_checkpointing_offload=False,
+    controlnet=None,
+    control_rows=None,
+    **kwargs,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    inverse_indices = inverse_indices.view(-1).to(torch.long)
+    token_tags = token_tags.view(-1).to(torch.long)
+    text_selected = prompt_embeds
+
+    img_pos = img_pos_info["position_ids"].view(-1).to(torch.long)
+    audio_pos = audio_pos_info["position_ids"].view(-1).to(torch.long)
+    text_pos = text_pos_info["position_ids"].view(-1).to(torch.long)
+
+    cu_seqlens = packed_seq_params["cu_seqlens_q"].to(torch.int32)
+    max_seqlen = int(packed_seq_params["max_seqlen_q"])
+    refiner_cu = refiner_packed_seq_params["cu_seqlens_q"].to(torch.int32)
+    refiner_max = int(refiner_packed_seq_params["max_seqlen_q"])
+
+    if x.dim() != 3 or x.shape[0] != 1:
+        raise ValueError(f"x must be [1, S, C], got {list(x.shape)}")
+    seq_len = int(x.shape[1])
+    device = x.device
+
+    rope_freqs = dit.rope(img_position_ids).to(device)
+
+    decoder_input, t_emb = dit._embed(
+        x=x, audio_x=audio_x, text_embeddings_selected=text_selected,
+        unique_timesteps=unique_timesteps.view(-1).to(device),
+        img_pos=img_pos.to(device), audio_pos=audio_pos.to(device), text_pos=text_pos.to(device),
+        refiner_cu_seqlens=refiner_cu.to(device), refiner_max_seqlen=refiner_max,
+        seq_len=seq_len, device=device,
+    )
+
+    combined_indices = (inverse_indices * 3 + token_tags.clamp(min=0)).to(device)
+    inverse_indices = inverse_indices.to(device)
+
+    cu_seqlens = cu_seqlens.to(device)
+    control_hints = controlnet(
+        decoder_input,
+        control_rows,
+        img_pos.to(device),
+        audio_pos.to(device),
+        t_emb=t_emb,
+        combined_indices=combined_indices,
+        rope_freqs=rope_freqs,
+        cu_seqlens=cu_seqlens,
+        max_seqlen=max_seqlen,
+        use_gradient_checkpointing=use_gradient_checkpointing,
+        use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+    )
+    return control_hints
+
+
 def model_fn_minimax_h3(
     dit,
     video_latents,
@@ -848,6 +956,9 @@ def model_fn_minimax_h3(
     denoise_mask_audio=None,
     imgvid_cond_noise_aug=0.999,
     audio_cond_noise_aug=1.0,
+    controlnet=None,
+    control_rows=None,
+    control_scale=1.0,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     **kwargs,
@@ -897,6 +1008,35 @@ def model_fn_minimax_h3(
     unique_timesteps, inverse_indices = torch.unique(timesteps, sorted=True, return_inverse=True)
 
     refiner_cu = torch.tensor([0, text_len, text_len], dtype=torch.int32, device=device)
+
+    # ControlNet
+    if control_rows is not None:
+        control_residual = model_fn_minimax_h3_controlnet(
+            dit,
+            x,
+            audio_x,
+            packed["img_position_ids"],
+            unique_timesteps,
+            inverse_indices,
+            packed["token_tags"],
+            prompt_embeds,
+            {"position_ids": img_pos},
+            {"position_ids": audio_pos},
+            {"position_ids": text_pos},
+            {"cu_seqlens_q": cu, "max_seqlen_q": int(cu[1])},
+            {"cu_seqlens_q": refiner_cu, "max_seqlen_q": text_len},
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+            controlnet=controlnet,
+            control_rows=control_rows,
+        )
+        control_hints = {}
+        for block_id in range(len(dit.blocks)):
+            if block_id in controlnet.control_layers_mapping:
+                control_hints[block_id] = control_residual[controlnet.control_layers_mapping[block_id]] * control_scale
+    else:
+        control_hints = None
+
     v_video_rows, v_audio_rows = dit(
         x=x,
         audio_x=audio_x,
@@ -915,6 +1055,7 @@ def model_fn_minimax_h3(
         skip_mask_out_condition=True,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+        control_hints=control_hints,
     )
 
     v_video_rows = v_video_rows[cond_rows_count:]
