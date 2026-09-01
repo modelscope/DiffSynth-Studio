@@ -2,6 +2,7 @@ import torch
 from typing import Union
 from PIL import Image
 from tqdm import tqdm
+from transformers import Qwen2Tokenizer
 
 from ..core import ModelConfig
 from ..core.device.npu_compatible_device import get_device_type
@@ -50,7 +51,6 @@ class SenseNovaU1ImagePipeline(BasePipeline):
         pipe.dit = model_pool.fetch_model("sensenova_u1_dit")
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
-            from transformers import Qwen2Tokenizer
             pipe.tokenizer = Qwen2Tokenizer.from_pretrained(tokenizer_config.path)
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
@@ -82,8 +82,8 @@ class SenseNovaU1ImagePipeline(BasePipeline):
         self.scheduler.set_timesteps(num_inference_steps, shift=shift)
 
         # Parameters
-        inputs_posi = {"prompt": prompt, "prompt_is_negative": False}
-        inputs_nega = {"negative_is_negative": True}
+        inputs_posi = {"prompt": prompt, "is_positive": True}
+        inputs_nega = {"prompt": "", "is_positive": False}
         inputs_shared = {
             "cfg_scale": cfg_scale,
             "height": height, "width": width,
@@ -156,8 +156,8 @@ class SenseNovaU1ImageUnit_PromptEmbedder(PipelineUnit):
         super().__init__(
             seperate_cfg=True,
             input_params=("height", "width", "edit_pixel_values", "edit_grid_hw", "think_mode"),
-            input_params_posi={"prompt": "prompt", "is_negative": "prompt_is_negative"},
-            input_params_nega={"is_negative": "negative_is_negative"},
+            input_params_posi={"prompt": "prompt", "is_positive": "is_positive"},
+            input_params_nega={"prompt": "prompt", "is_positive": "is_positive"},
             output_params=("past_key_values", "indexes_image"),
             onload_model_names=("dit",),
         )
@@ -208,20 +208,20 @@ class SenseNovaU1ImageUnit_PromptEmbedder(PipelineUnit):
         w_image = idx % token_w
         return torch.stack([t_image, h_image, w_image], dim=0)
 
-    def process(self, pipe: SenseNovaU1ImagePipeline, is_negative, height, width, edit_pixel_values, edit_grid_hw, think_mode, prompt=None):
+    def process(self, pipe: SenseNovaU1ImagePipeline, prompt, is_positive, height, width, edit_pixel_values, edit_grid_hw, think_mode):
         pipe.load_models_to_device(self.onload_model_names)
         num_images = 0 if edit_grid_hw is None else edit_grid_hw.shape[0]
-        reasoning = bool(think_mode) and not is_negative and not pipe.scheduler.training
+        reasoning = bool(think_mode) and is_positive and not pipe.scheduler.training
 
-        if is_negative:
-            query = build_conversation_prompt(
-                IMAGE_PLACEHOLDER * num_images, system_message="", append_text=IMG_START_TOKEN,
-            )
-        else:
+        if is_positive:
             query = build_conversation_prompt(
                 self.insert_image_placeholders(prompt, num_images),
                 system_message=SYSTEM_MESSAGE_FOR_GEN,
                 append_text=THINK_PREFIX if reasoning else NON_THINK_PREFIX + IMG_START_TOKEN,
+            )
+        else:
+            query = build_conversation_prompt(
+                IMAGE_PLACEHOLDER * num_images, system_message="", append_text=IMG_START_TOKEN,
             )
         if num_images > 0:
             query = self.expand_image_placeholders(query, edit_grid_hw, pipe.dit.downsample_ratio)

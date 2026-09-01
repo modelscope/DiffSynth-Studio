@@ -1,8 +1,8 @@
-modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "sensenova_u1/SenseNova-U1.5-8B-MoT-Edit/*" --local_dir ./data/diffsynth_example_dataset
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "sensenova_u1/SenseNova-U1.5-8B-MoT-SFT-Edit/*" --local_dir ./data/diffsynth_example_dataset
 
 accelerate launch examples/sensenova_u1/model_training/train.py \
-  --dataset_base_path data/diffsynth_example_dataset/sensenova_u1/SenseNova-U1.5-8B-MoT-Edit \
-  --dataset_metadata_path data/diffsynth_example_dataset/sensenova_u1/SenseNova-U1.5-8B-MoT-Edit/metadata.json \
+  --dataset_base_path data/diffsynth_example_dataset/sensenova_u1/SenseNova-U1.5-8B-MoT-SFT-Edit \
+  --dataset_metadata_path data/diffsynth_example_dataset/sensenova_u1/SenseNova-U1.5-8B-MoT-SFT-Edit/metadata.json \
   --data_file_keys "image,edit_image" \
   --extra_inputs "edit_image" \
   --max_pixels 1048576 \

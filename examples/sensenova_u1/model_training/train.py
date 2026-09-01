@@ -54,8 +54,8 @@ class SenseNovaU1ImageTrainingModule(DiffusionTrainingModule):
         }
 
     def get_pipeline_inputs(self, data):
-        inputs_posi = {"prompt": data["prompt"], "prompt_is_negative": False}
-        inputs_nega = {"negative_is_negative": True}
+        inputs_posi = {"prompt": data["prompt"], "is_positive": True}
+        inputs_nega = {"prompt": "", "is_positive": False}
         image = data["image"]
         inputs_shared = {
             "input_image": image,

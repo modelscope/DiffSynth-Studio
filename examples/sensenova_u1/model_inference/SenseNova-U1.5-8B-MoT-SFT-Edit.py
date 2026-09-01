@@ -14,10 +14,10 @@ pipe = SenseNovaU1ImagePipeline.from_pretrained(
 
 dataset_snapshot_download(
     "DiffSynth-Studio/diffsynth_example_dataset",
-    allow_file_pattern="sensenova_u1/SenseNova-U1.5-8B-MoT-Edit/*",
+    allow_file_pattern="sensenova_u1/SenseNova-U1.5-8B-MoT-SFT-Edit/*",
     local_dir="data/diffsynth_example_dataset",
 )
-dataset_path = "data/diffsynth_example_dataset/sensenova_u1/SenseNova-U1.5-8B-MoT-Edit"
+dataset_path = "data/diffsynth_example_dataset/sensenova_u1/SenseNova-U1.5-8B-MoT-SFT-Edit"
 edit_image = Image.open(f"{dataset_path}/edit/image1.jpg").convert("RGB")
 color_image = Image.open(f"{dataset_path}/edit/image_color.jpg").convert("RGB")
 

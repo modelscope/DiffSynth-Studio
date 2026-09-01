@@ -13,7 +13,7 @@ pipe = SenseNovaU1ImagePipeline.from_pretrained(
 )
 pipe.load_lora(pipe.dit, "./models/train/SenseNova-U1.5-8B-MoT-SFT-Edit_lora/epoch-4.safetensors")
 
-edit_image = Image.open("data/diffsynth_example_dataset/sensenova_u1/SenseNova-U1.5-8B-MoT-Edit/edit/image1.jpg").convert("RGB")
+edit_image = Image.open("data/diffsynth_example_dataset/sensenova_u1/SenseNova-U1.5-8B-MoT-SFT-Edit/edit/image1.jpg").convert("RGB")
 
 image = pipe(
     prompt="将裙子改为粉色",
