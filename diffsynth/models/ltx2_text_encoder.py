@@ -225,6 +225,7 @@ class _BasicTransformerBlock1D(nn.Module):
         dim_head: int,
         rope_type: LTXRopeType = LTXRopeType.INTERLEAVED,
         apply_gated_attention: bool = False,
+        ff_bias: bool = True,
     ):
         super().__init__()
 
@@ -239,6 +240,7 @@ class _BasicTransformerBlock1D(nn.Module):
         self.ff = FeedForward(
             dim,
             dim_out=dim,
+            bias=ff_bias,
         )
 
     def forward(
@@ -307,6 +309,7 @@ class Embeddings1DConnector(nn.Module):
         rope_type: LTXRopeType = LTXRopeType.SPLIT,
         double_precision_rope: bool = True,
         apply_gated_attention: bool = False,
+        ff_bias: bool = True,
     ):
         super().__init__()
         self.num_attention_heads = num_attention_heads
@@ -326,6 +329,7 @@ class Embeddings1DConnector(nn.Module):
                     dim_head=attention_head_dim,
                     rope_type=rope_type,
                     apply_gated_attention=apply_gated_attention,
+                    ff_bias=ff_bias,
                 )
                 for _ in range(num_layers)
             ]
