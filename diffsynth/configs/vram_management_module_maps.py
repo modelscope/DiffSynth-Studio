@@ -500,6 +500,10 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3.modeling_qwen3.Qwen3RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.minimax_h3_controlnet.MiniMaxH3ControlNet": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
     "diffsynth.models.sensenova_u1_dit.SenseNovaU1DiT": {
         "diffsynth.models.sensenova_u1_dit.SenseNovaU1TimestepEmbedder": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.sensenova_u1_dit.SenseNovaU1VisionEmbeddings": "diffsynth.core.vram.layers.AutoWrappedModule",
