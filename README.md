@@ -40,7 +40,7 @@ See also:
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
-- **September 1, 2026** SenseNova-U1 open-sourced, welcome a new member to the image model family! Support includes text-to-image generation, image editing, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/SenseNova-U1.md) and [example code](/examples/sensenova_u1/).
+- **September 1, 2026** We have integrated [SenseNova-U1.5](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT), SenseTime's unified multimodal model, for which we provide text-to-image generation, image editing, low VRAM inference, and training support. For details, please refer to the [documentation](/docs/en/Model_Details/SenseNova-U1.md) and [example code](/examples/sensenova_u1/).
 
 - **August 31, 2026** We have integrated [Qwen-Video-Edit](https://modelscope.cn/models/yunpeng1998/Qwen-Video-Edit), a video editing model developed by open-source community contributor [yunpeng1998](https://github.com/yunpeng1998) based on the image editing model Qwen-Image-Edit. This serves as an excellent example of exploring and expanding model capabilities.
 
