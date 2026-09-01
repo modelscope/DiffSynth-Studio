@@ -855,6 +855,8 @@ class MiniMaxH3Unit_ControlNetEncoder(PipelineUnit):
         return pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap).to(device=pipe.device, dtype=pipe.torch_dtype)
 
     def process(self, pipe: MiniMaxH3Pipeline, control_video, control_scale, height, width, num_frames, tiled, tile_size, tile_overlap):
+        if control_video is None:
+            return {}
         pipe.load_models_to_device(self.onload_model_names)
         if control_scale is None:
             control_scale = 1
