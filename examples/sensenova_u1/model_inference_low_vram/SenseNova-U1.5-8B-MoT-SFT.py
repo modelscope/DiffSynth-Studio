@@ -19,7 +19,7 @@ pipe = SenseNovaU1ImagePipeline.from_pretrained(
         ModelConfig(model_id="SenseNova/SenseNova-U1.5-8B-MoT-SFT", origin_file_pattern="model*.safetensors", **vram_config),
     ],
     tokenizer_config=ModelConfig(model_id="SenseNova/SenseNova-U1.5-8B-MoT-SFT", origin_file_pattern="./"),
-    vram_limit=1,
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
 prompt = "A neon bar sign that clearly reads \"OPEN LATE\", dark interior, moody reflections, easy text rendering. Any text in the image must be rendered exactly as written in quotation marks, with correct spelling, clean typography, and strong readability."
