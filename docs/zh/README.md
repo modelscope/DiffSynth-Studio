@@ -62,6 +62,7 @@ graph LR;
 * [LingBot-Video](./Model_Details/LingBot-Video.md)
 * [MiniMax-H3](./Model_Details/MiniMax-H3.md)
 * [MiniMax-Music3](./Model_Details/MiniMax-Music3.md)
+* [SenseNova-U1](./Model_Details/SenseNova-U1.md)
 
 ## Section 3: 训练框架
 
