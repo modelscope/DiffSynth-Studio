@@ -22,7 +22,6 @@ dependencies = [
     "ftfy",
     "pandas",
     "accelerate",
-    "peft",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
