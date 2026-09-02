@@ -2,6 +2,7 @@ import torch
 from PIL import Image
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 from diffsynth import load_state_dict
+from modelscope import dataset_snapshot_download
 
 pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -16,6 +17,12 @@ pipe = QwenImagePipeline.from_pretrained(
 )
 state_dict = load_state_dict("models/train/Qwen-Image-Edit-2509_full/epoch-1.safetensors")
 pipe.dit.load_state_dict(state_dict)
+
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/example_image_dataset",
+    local_dir="./data/example_image_dataset",
+    allow_file_pattern="edit/*.jpg"
+)
 
 prompt = "Change the color of the dress in Figure 1 to the color shown in Figure 2."
 images = [

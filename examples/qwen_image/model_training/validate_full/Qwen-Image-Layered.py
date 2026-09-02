@@ -2,6 +2,7 @@ from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 from diffsynth import load_state_dict
 from PIL import Image
 import torch
+from modelscope import dataset_snapshot_download
 
 
 pipe = QwenImagePipeline.from_pretrained(
@@ -16,6 +17,12 @@ pipe = QwenImagePipeline.from_pretrained(
 )
 state_dict = load_state_dict("models/train/Qwen-Image-Layered_full/epoch-1.safetensors")
 pipe.dit.load_state_dict(state_dict)
+
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/example_image_dataset",
+    local_dir="./data/example_image_dataset",
+    allow_file_pattern="layer/image.png"
+)
 prompt = "a poster"
 input_image = Image.open("data/example_image_dataset/layer/image.png").convert("RGBA").resize((864, 480))
 images = pipe(
