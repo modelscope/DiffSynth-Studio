@@ -2,6 +2,7 @@ import torch
 from PIL import Image
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 from diffsynth import load_state_dict
+from modelscope import dataset_snapshot_download
 
 pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -16,6 +17,12 @@ pipe = QwenImagePipeline.from_pretrained(
 )
 state_dict = load_state_dict("models/train/Qwen-Image-Edit_full/epoch-1.safetensors")
 pipe.dit.load_state_dict(state_dict)
+
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/example_image_dataset",
+    local_dir="./data/example_image_dataset",
+    allow_file_pattern="edit/image1.jpg"
+)
 
 prompt = "将裙子改为粉色"
 image = Image.open("data/example_image_dataset/edit/image1.jpg").resize((1024, 1024))

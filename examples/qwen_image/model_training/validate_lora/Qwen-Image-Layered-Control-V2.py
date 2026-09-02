@@ -15,6 +15,12 @@ pipe = QwenImagePipeline.from_pretrained(
 )
 pipe.load_lora(pipe.dit, "models/train/Qwen-Image-Layered-Control-V2_lora/epoch-4.safetensors")
 
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/example_image_dataset",
+    local_dir="./data/example_image_dataset",
+    allow_file_pattern="layer_v2/*.png"
+)
+
 prompt = "Text 'APRIL'"
 input_image = Image.open("data/example_image_dataset/layer_v2/image_1.png").convert("RGBA").resize((1024, 1024))
 image = pipe(
