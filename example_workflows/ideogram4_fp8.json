@@ -1,0 +1,601 @@
+{
+  "last_node_id": 12,
+  "last_link_id": 14,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "DiffSynthVRAMConfig",
+      "pos": [
+        20,
+        20
+      ],
+      "size": {
+        "0": 280,
+        "1": 180
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "links": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthVRAMConfig"
+      },
+      "widgets_values": [
+        "cpu",
+        "bfloat16",
+        "cpu",
+        "bfloat16",
+        "cuda",
+        "bfloat16",
+        "cuda",
+        "bfloat16"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        20
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 1
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            5
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "ideogram-ai/ideogram-4-fp8",
+        "transformer/diffusion_pytorch_model.safetensors"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        210
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 2
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "ideogram-ai/ideogram-4-fp8",
+        "unconditional_transformer/diffusion_pytorch_model.safetensors"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        400
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 3
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            7
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "ideogram-ai/ideogram-4-fp8",
+        "text_encoder/model.safetensors"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        590
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 4
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            8
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "ideogram-ai/ideogram-4-fp8",
+        "vae/diffusion_pytorch_model.safetensors"
+      ]
+    },
+    {
+      "id": 6,
+      "type": "DiffSynthMergeModelConfigs",
+      "pos": [
+        700,
+        220
+      ],
+      "size": {
+        "0": 280,
+        "1": 150
+      },
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_config_1",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 5
+        },
+        {
+          "name": "model_config_2",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 6
+        },
+        {
+          "name": "model_config_3",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 7
+        },
+        {
+          "name": "model_config_4",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 8
+        },
+        {
+          "name": "model_config_5",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        },
+        {
+          "name": "model_config_6",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_configs",
+          "type": "DIFFSYNTH_MODEL_CONFIG_LIST",
+          "links": [
+            10
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthMergeModelConfigs"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 7,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        700,
+        430
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": null
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "ideogram-ai/ideogram-4-fp8",
+        "tokenizer/"
+      ]
+    },
+    {
+      "id": 9,
+      "type": "DiffSynthVRAMLimit",
+      "pos": [
+        700,
+        20
+      ],
+      "size": {
+        "0": 240,
+        "1": 100
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "vram_limit",
+          "type": "DIFFSYNTH_VRAM_LIMIT",
+          "links": [
+            11
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthVRAMLimit"
+      },
+      "widgets_values": [
+        "cuda",
+        0.5
+      ]
+    },
+    {
+      "id": 10,
+      "type": "DiffSynthIdeogram4Loader",
+      "pos": [
+        1040,
+        180
+      ],
+      "size": {
+        "0": 340,
+        "1": 200
+      },
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_configs",
+          "type": "DIFFSYNTH_MODEL_CONFIG_LIST",
+          "link": 10
+        },
+        {
+          "name": "tokenizer_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 9
+        },
+        {
+          "name": "vram_limit",
+          "type": "DIFFSYNTH_VRAM_LIMIT",
+          "link": 11
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pipe",
+          "type": "DIFFSYNTH_PIPE",
+          "links": [
+            13
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthIdeogram4Loader"
+      },
+      "widgets_values": [
+        "bfloat16",
+        "cuda"
+      ]
+    },
+    {
+      "id": 11,
+      "type": "DiffSynthIdeogram4Inference",
+      "pos": [
+        1440,
+        180
+      ],
+      "size": {
+        "0": 380,
+        "1": 420
+      },
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "pipe",
+          "type": "DIFFSYNTH_PIPE",
+          "link": 13
+        },
+        {
+          "name": "input_image",
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            14
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthIdeogram4Inference"
+      },
+      "widgets_values": [
+        "",
+        42,
+        "fixed",
+        48,
+        1024,
+        1024
+      ]
+    },
+    {
+      "id": 12,
+      "type": "SaveImage",
+      "pos": [
+        1880,
+        180
+      ],
+      "size": {
+        "0": 300,
+        "1": 140
+      },
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 14
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "DiffSynth/ideogram4_fp8"
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      2,
+      1,
+      0,
+      3,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      3,
+      1,
+      0,
+      4,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      4,
+      1,
+      0,
+      5,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      5,
+      2,
+      0,
+      6,
+      0,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      6,
+      3,
+      0,
+      6,
+      1,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      7,
+      4,
+      0,
+      6,
+      2,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      8,
+      5,
+      0,
+      6,
+      3,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      9,
+      7,
+      0,
+      10,
+      1,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      10,
+      6,
+      0,
+      10,
+      0,
+      "DIFFSYNTH_MODEL_CONFIG_LIST"
+    ],
+    [
+      11,
+      9,
+      0,
+      10,
+      2,
+      "DIFFSYNTH_VRAM_LIMIT"
+    ],
+    [
+      13,
+      10,
+      0,
+      11,
+      0,
+      "DIFFSYNTH_PIPE"
+    ],
+    [
+      14,
+      11,
+      0,
+      12,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds_source_script": "examples/ideogram4/model_inference/ideogram-4-fp8.py",
+    "ds_notes": ""
+  },
+  "version": 0.4
+}

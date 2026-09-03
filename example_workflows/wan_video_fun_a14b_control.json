@@ -1,0 +1,943 @@
+{
+  "last_node_id": 16,
+  "last_link_id": 18,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "DiffSynthVRAMConfig",
+      "pos": [
+        20,
+        20
+      ],
+      "size": {
+        "0": 280,
+        "1": 180
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "links": [
+            1,
+            2,
+            3
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthVRAMConfig"
+      },
+      "widgets_values": [
+        "cpu",
+        "bfloat16",
+        "cpu",
+        "bfloat16",
+        "cuda",
+        "bfloat16",
+        "cuda",
+        "bfloat16"
+      ]
+    },
+    {
+      "id": 6,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        700,
+        430
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": null
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            7
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "Wan-AI/Wan2.2-Fun-A14B-Control",
+        "google/umt5-xxl/"
+      ]
+    },
+    {
+      "id": 8,
+      "type": "DiffSynthVRAMLimit",
+      "pos": [
+        700,
+        20
+      ],
+      "size": {
+        "0": 240,
+        "1": 100
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "vram_limit",
+          "type": "DIFFSYNTH_VRAM_LIMIT",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthVRAMLimit"
+      },
+      "widgets_values": [
+        "cuda",
+        0.5
+      ]
+    },
+    {
+      "id": 2,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        20
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 1
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            4
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "Wan-AI/Wan2.2-Fun-A14B-Control",
+        "diffusion_pytorch_model*.safetensors"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        210
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 2
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            5
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "Wan-AI/Wan2.2-Fun-A14B-Control",
+        "models_t5_umt5-xxl-enc-bf16.pth"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        400
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 3
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "Wan-AI/Wan2.2-Fun-A14B-Control",
+        "Wan2.1_VAE.pth"
+      ]
+    },
+    {
+      "id": 14,
+      "type": "LoadVideo",
+      "pos": [
+        1040,
+        430
+      ],
+      "size": {
+        "0": 320,
+        "1": 120
+      },
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            15
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        "example.mp4"
+      ]
+    },
+    {
+      "id": 15,
+      "type": "GetVideoComponents",
+      "pos": [
+        1040,
+        580
+      ],
+      "size": {
+        "0": 320,
+        "1": 100
+      },
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 15
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            17
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [],
+          "slot_index": 1
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "links": [],
+          "slot_index": 2
+        },
+        {
+          "name": "bit_depth",
+          "type": "COMBO",
+          "links": [],
+          "slot_index": 3
+        },
+        {
+          "name": "color_space",
+          "type": "COMBO",
+          "links": [],
+          "slot_index": 4
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "GetVideoComponents"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 16,
+      "type": "LoadImage",
+      "pos": [
+        1040,
+        720
+      ],
+      "size": {
+        "0": 320,
+        "1": 300
+      },
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            18
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": [],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "example.png",
+        "image"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "DiffSynthMergeModelConfigs",
+      "pos": [
+        700,
+        220
+      ],
+      "size": {
+        "0": 280,
+        "1": 150
+      },
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_config_1",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 4
+        },
+        {
+          "name": "model_config_2",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 5
+        },
+        {
+          "name": "model_config_3",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 6
+        },
+        {
+          "name": "model_config_4",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        },
+        {
+          "name": "model_config_5",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        },
+        {
+          "name": "model_config_6",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_configs",
+          "type": "DIFFSYNTH_MODEL_CONFIG_LIST",
+          "links": [
+            8
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthMergeModelConfigs"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 9,
+      "type": "DiffSynthWanVideoLoader",
+      "pos": [
+        1040,
+        180
+      ],
+      "size": {
+        "0": 340,
+        "1": 200
+      },
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_configs",
+          "type": "DIFFSYNTH_MODEL_CONFIG_LIST",
+          "link": 8
+        },
+        {
+          "name": "tokenizer_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 7
+        },
+        {
+          "name": "audio_processor_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        },
+        {
+          "name": "redirect_common_files",
+          "type": "BOOLEAN",
+          "link": null
+        },
+        {
+          "name": "use_usp",
+          "type": "BOOLEAN",
+          "link": null
+        },
+        {
+          "name": "vram_limit",
+          "type": "DIFFSYNTH_VRAM_LIMIT",
+          "link": 9
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pipe",
+          "type": "DIFFSYNTH_PIPE",
+          "links": [
+            11
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthWanVideoLoader"
+      },
+      "widgets_values": [
+        "bfloat16",
+        "cuda",
+        true,
+        false
+      ]
+    },
+    {
+      "id": 10,
+      "type": "DiffSynthWanVideoInference",
+      "pos": [
+        1440,
+        180
+      ],
+      "size": {
+        "0": 380,
+        "1": 420
+      },
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "pipe",
+          "type": "DIFFSYNTH_PIPE",
+          "link": 11
+        },
+        {
+          "name": "input_image",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "end_image",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "input_video",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "input_audio",
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "audio_embeds",
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "s2v_pose_video",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "s2v_pose_latents",
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "motion_video",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "control_video",
+          "type": "IMAGE",
+          "link": 17
+        },
+        {
+          "name": "reference_image",
+          "type": "IMAGE",
+          "link": 18
+        },
+        {
+          "name": "vace_video",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "vace_video_mask",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "vace_reference_image",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "animate_pose_video",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "animate_face_video",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "animate_inpaint_video",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "animate_mask_video",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "animate2_reference_image",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "animate2_reference_video",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "animate2_refert_images",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "vap_video",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "longcat_video",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "wantodance_reference_image",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "wantodance_keyframes",
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "IMAGE",
+          "links": [
+            13
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthWanVideoInference"
+      },
+      "widgets_values": [
+        "",
+        42,
+        "fixed",
+        50,
+        480,
+        832,
+        "",
+        1.0,
+        16000,
+        "Left",
+        0.018518518518518517,
+        "0,0.532139961,0.946026558,0.5,0.5,0,0,1,0,0,0,0,1,0,0,0,0,1,0",
+        1.0,
+        " ",
+        false,
+        0.0,
+        " ",
+        " ",
+        81,
+        5.0,
+        false,
+        0.875,
+        5.0,
+        true,
+        "30,52",
+        "15,26"
+      ]
+    },
+    {
+      "id": 12,
+      "type": "CreateVideo",
+      "pos": [
+        1860,
+        180
+      ],
+      "size": {
+        "0": 300,
+        "1": 200
+      },
+      "flags": {},
+      "order": 53,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 13
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "widget": {
+            "min": 1.0,
+            "max": 120.0,
+            "step": 1.0,
+            "default": 30.0
+          }
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "name": "bit_depth",
+          "type": "COMBO",
+          "widget": {
+            "options": [
+              "auto",
+              8,
+              10
+            ]
+          }
+        },
+        {
+          "name": "color_space",
+          "type": "COMBO",
+          "widget": {
+            "options": [
+              "sRGB",
+              "HDR",
+              "HDR PQ"
+            ]
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            14
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CreateVideo"
+      },
+      "widgets_values": [
+        24.0,
+        "auto",
+        "sRGB"
+      ]
+    },
+    {
+      "id": 13,
+      "type": "SaveVideo",
+      "pos": [
+        2200,
+        180
+      ],
+      "size": {
+        "0": 340,
+        "1": 120
+      },
+      "flags": {},
+      "order": 54,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 14
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SaveVideo"
+      },
+      "widgets_values": [
+        "DiffSynth/wan_video_t2v_1_3b",
+        "auto",
+        {
+          "codec": "auto"
+        }
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      2,
+      1,
+      0,
+      3,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      3,
+      1,
+      0,
+      4,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      4,
+      2,
+      0,
+      5,
+      0,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      5,
+      3,
+      0,
+      5,
+      1,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      6,
+      4,
+      0,
+      5,
+      2,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      7,
+      6,
+      0,
+      9,
+      1,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      8,
+      5,
+      0,
+      9,
+      0,
+      "DIFFSYNTH_MODEL_CONFIG_LIST"
+    ],
+    [
+      9,
+      8,
+      0,
+      9,
+      5,
+      "DIFFSYNTH_VRAM_LIMIT"
+    ],
+    [
+      11,
+      9,
+      0,
+      10,
+      0,
+      "DIFFSYNTH_PIPE"
+    ],
+    [
+      13,
+      10,
+      0,
+      12,
+      0,
+      "IMAGE"
+    ],
+    [
+      14,
+      12,
+      0,
+      13,
+      0,
+      "VIDEO"
+    ],
+    [
+      15,
+      14,
+      0,
+      15,
+      0,
+      "VIDEO"
+    ],
+    [
+      17,
+      15,
+      0,
+      10,
+      9,
+      "IMAGE"
+    ],
+    [
+      18,
+      16,
+      0,
+      10,
+      10,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds_source_script": "examples/wanvideo/model_inference/Wan2.2-Fun-A14B-Control.py",
+    "ds_notes": "Wan2.2-Fun-A14B-Control"
+  },
+  "version": 0.4
+}

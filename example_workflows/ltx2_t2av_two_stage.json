@@ -1,0 +1,1123 @@
+{
+  "last_node_id": 15,
+  "last_link_id": 19,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "DiffSynthVRAMConfig",
+      "pos": [
+        20,
+        20
+      ],
+      "size": {
+        "0": 280,
+        "1": 180
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "links": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            20,
+            23
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthVRAMConfig"
+      },
+      "widgets_values": [
+        "cpu",
+        "bfloat16",
+        "cpu",
+        "bfloat16",
+        "cuda",
+        "bfloat16",
+        "cuda",
+        "bfloat16"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        20
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 1
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            7
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "google/gemma-3-12b-it-qat-q4_0-unquantized",
+        "model-*.safetensors"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        210
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 2
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            8
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "DiffSynth-Studio/LTX-2-Repackage",
+        "transformer.safetensors"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        400
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 3
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "DiffSynth-Studio/LTX-2-Repackage",
+        "text_encoder_post_modules.safetensors"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        590
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 4
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            10
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "DiffSynth-Studio/LTX-2-Repackage",
+        "video_vae_decoder.safetensors"
+      ]
+    },
+    {
+      "id": 6,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        780
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 5
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            11
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "DiffSynth-Studio/LTX-2-Repackage",
+        "audio_vae_decoder.safetensors"
+      ]
+    },
+    {
+      "id": 7,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        970
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 6
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            12
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "DiffSynth-Studio/LTX-2-Repackage",
+        "audio_vocoder.safetensors"
+      ]
+    },
+    {
+      "id": 8,
+      "type": "DiffSynthMergeModelConfigs",
+      "pos": [
+        700,
+        220
+      ],
+      "size": {
+        "0": 280,
+        "1": 200
+      },
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_config_1",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 7
+        },
+        {
+          "name": "model_config_2",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 8
+        },
+        {
+          "name": "model_config_3",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 9
+        },
+        {
+          "name": "model_config_4",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 10
+        },
+        {
+          "name": "model_config_5",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 11
+        },
+        {
+          "name": "model_config_6",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 12
+        },
+        {
+          "name": "model_config_7",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 24
+        },
+        {
+          "name": "model_config_8",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 21
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_configs",
+          "type": "DIFFSYNTH_MODEL_CONFIG_LIST",
+          "links": [
+            14
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthMergeModelConfigs"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 9,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        700,
+        430
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": null
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            13
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "google/gemma-3-12b-it-qat-q4_0-unquantized",
+        ""
+      ]
+    },
+    {
+      "id": 11,
+      "type": "DiffSynthVRAMLimit",
+      "pos": [
+        700,
+        20
+      ],
+      "size": {
+        "0": 240,
+        "1": 100
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "vram_limit",
+          "type": "DIFFSYNTH_VRAM_LIMIT",
+          "links": [
+            15
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthVRAMLimit"
+      },
+      "widgets_values": [
+        "cuda",
+        0.5
+      ]
+    },
+    {
+      "id": 12,
+      "type": "DiffSynthLTX2AudioVideoLoader",
+      "pos": [
+        1040,
+        180
+      ],
+      "size": {
+        "0": 340,
+        "1": 200
+      },
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_configs",
+          "type": "DIFFSYNTH_MODEL_CONFIG_LIST",
+          "link": 14
+        },
+        {
+          "name": "tokenizer_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 13
+        },
+        {
+          "name": "stage2_lora_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 22
+        },
+        {
+          "name": "stage2_lora_strength",
+          "type": "FLOAT",
+          "link": null
+        },
+        {
+          "name": "vram_limit",
+          "type": "DIFFSYNTH_VRAM_LIMIT",
+          "link": 15
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pipe",
+          "type": "DIFFSYNTH_PIPE",
+          "links": [
+            17
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthLTX2AudioVideoLoader"
+      },
+      "widgets_values": [
+        "bfloat16",
+        "cuda",
+        0.8
+      ]
+    },
+    {
+      "id": 13,
+      "type": "DiffSynthLTX2AudioVideoInference",
+      "pos": [
+        1440,
+        180
+      ],
+      "size": {
+        "0": 380,
+        "1": 420
+      },
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "pipe",
+          "type": "DIFFSYNTH_PIPE",
+          "link": 17
+        },
+        {
+          "name": "input_images",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "input_images_indexes",
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "in_context_videos",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "retake_video",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "retake_video_regions",
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "retake_audio",
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "retake_audio_regions",
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "IMAGE",
+          "links": [
+            25
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            26
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthLTX2AudioVideoInference"
+      },
+      "widgets_values": [
+        "",
+        43,
+        "fixed",
+        30,
+        1024,
+        1536,
+        "",
+        1.0,
+        "0",
+        1.0,
+        2,
+        48000,
+        121,
+        24,
+        3.0,
+        true,
+        512,
+        128,
+        128,
+        24,
+        true
+      ]
+    },
+    {
+      "id": 16,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        -200,
+        680
+      ],
+      "size": {
+        "0": 340,
+        "1": 80
+      },
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 20
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        },
+        {
+          "name": "path",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "multiline": false
+          }
+        },
+        {
+          "name": "download_source",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "options": [
+              "modelscope",
+              "huggingface"
+            ]
+          }
+        },
+        {
+          "name": "clear_parameters",
+          "type": "BOOLEAN",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            21
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "Lightricks/LTX-2",
+        "ltx-2-spatial-upscaler-x2-1.0.safetensors"
+      ]
+    },
+    {
+      "id": 17,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        700,
+        500
+      ],
+      "size": {
+        "0": 340,
+        "1": 80
+      },
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": null
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        },
+        {
+          "name": "path",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "multiline": false
+          }
+        },
+        {
+          "name": "download_source",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "options": [
+              "modelscope",
+              "huggingface"
+            ]
+          }
+        },
+        {
+          "name": "clear_parameters",
+          "type": "BOOLEAN",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            22
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "Lightricks/LTX-2",
+        "ltx-2-19b-distilled-lora-384.safetensors"
+      ]
+    },
+    {
+      "id": 18,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        -200,
+        800
+      ],
+      "size": {
+        "0": 340,
+        "1": 80
+      },
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 23
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            24
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "DiffSynth-Studio/LTX-2-Repackage",
+        "video_vae_encoder.safetensors"
+      ]
+    },
+    {
+      "id": 19,
+      "type": "CreateVideo",
+      "pos": [
+        1860,
+        180
+      ],
+      "size": {
+        "0": 300,
+        "1": 200
+      },
+      "flags": {},
+      "order": 50,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 25
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "widget": {
+            "min": 1.0,
+            "max": 120.0,
+            "step": 1.0,
+            "default": 30.0
+          }
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 26
+        },
+        {
+          "name": "bit_depth",
+          "type": "COMBO",
+          "widget": {
+            "options": [
+              "auto",
+              8,
+              10
+            ]
+          }
+        },
+        {
+          "name": "color_space",
+          "type": "COMBO",
+          "widget": {
+            "options": [
+              "sRGB",
+              "HDR",
+              "HDR PQ"
+            ]
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            27
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CreateVideo"
+      },
+      "widgets_values": [
+        24.0,
+        "auto",
+        "sRGB"
+      ]
+    },
+    {
+      "id": 20,
+      "type": "SaveVideo",
+      "pos": [
+        2200,
+        180
+      ],
+      "size": {
+        "0": 340,
+        "1": 120
+      },
+      "flags": {},
+      "order": 51,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 27
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SaveVideo"
+      },
+      "widgets_values": [
+        "DiffSynth/ltx2_t2av_two_stage",
+        "auto",
+        {
+          "codec": "auto"
+        }
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      2,
+      1,
+      0,
+      3,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      3,
+      1,
+      0,
+      4,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      4,
+      1,
+      0,
+      5,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      5,
+      1,
+      0,
+      6,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      6,
+      1,
+      0,
+      7,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      7,
+      2,
+      0,
+      8,
+      0,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      8,
+      3,
+      0,
+      8,
+      1,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      9,
+      4,
+      0,
+      8,
+      2,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      10,
+      5,
+      0,
+      8,
+      3,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      11,
+      6,
+      0,
+      8,
+      4,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      12,
+      7,
+      0,
+      8,
+      5,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      13,
+      9,
+      0,
+      12,
+      1,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      14,
+      8,
+      0,
+      12,
+      0,
+      "DIFFSYNTH_MODEL_CONFIG_LIST"
+    ],
+    [
+      15,
+      11,
+      0,
+      12,
+      4,
+      "DIFFSYNTH_VRAM_LIMIT"
+    ],
+    [
+      17,
+      12,
+      0,
+      13,
+      0,
+      "DIFFSYNTH_PIPE"
+    ],
+    [
+      20,
+      1,
+      0,
+      16,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      21,
+      16,
+      0,
+      8,
+      7,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      22,
+      17,
+      0,
+      12,
+      2,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      23,
+      1,
+      0,
+      18,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      24,
+      18,
+      0,
+      8,
+      6,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      25,
+      13,
+      0,
+      19,
+      0,
+      "IMAGE"
+    ],
+    [
+      26,
+      13,
+      1,
+      19,
+      2,
+      "AUDIO"
+    ],
+    [
+      27,
+      19,
+      0,
+      20,
+      0,
+      "VIDEO"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds_source_script": "examples/ltx2/model_inference/LTX-2-T2AV-TwoStage.py",
+    "ds_notes": ""
+  },
+  "version": 0.4
+}

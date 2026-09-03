@@ -1,0 +1,622 @@
+{
+  "last_node_id": 11,
+  "last_link_id": 12,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "DiffSynthVRAMConfig",
+      "pos": [
+        20,
+        20
+      ],
+      "size": {
+        "0": 280,
+        "1": 180
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "links": [
+            1,
+            2,
+            3
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthVRAMConfig"
+      },
+      "widgets_values": [
+        "cpu",
+        "bfloat16",
+        "cpu",
+        "bfloat16",
+        "cuda",
+        "bfloat16",
+        "cuda",
+        "bfloat16"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        20
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 1
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            4
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "Qwen/Qwen-Image-Edit",
+        "transformer/diffusion_pytorch_model*.safetensors"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        210
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 2
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            5
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "Qwen/Qwen-Image-Edit",
+        "text_encoder/model*.safetensors"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        400
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 3
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "Qwen/Qwen-Image-Edit",
+        "vae/diffusion_pytorch_model.safetensors"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "DiffSynthMergeModelConfigs",
+      "pos": [
+        700,
+        220
+      ],
+      "size": {
+        "0": 280,
+        "1": 150
+      },
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_config_1",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 4
+        },
+        {
+          "name": "model_config_2",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 5
+        },
+        {
+          "name": "model_config_3",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 6
+        },
+        {
+          "name": "model_config_4",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        },
+        {
+          "name": "model_config_5",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        },
+        {
+          "name": "model_config_6",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_configs",
+          "type": "DIFFSYNTH_MODEL_CONFIG_LIST",
+          "links": [
+            8
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthMergeModelConfigs"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 6,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        700,
+        430
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": null
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            7
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "Qwen/Qwen-Image-Edit",
+        "tokenizer/"
+      ]
+    },
+    {
+      "id": 8,
+      "type": "DiffSynthVRAMLimit",
+      "pos": [
+        700,
+        20
+      ],
+      "size": {
+        "0": 240,
+        "1": 100
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "vram_limit",
+          "type": "DIFFSYNTH_VRAM_LIMIT",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthVRAMLimit"
+      },
+      "widgets_values": [
+        "cuda",
+        0.5
+      ]
+    },
+    {
+      "id": 9,
+      "type": "DiffSynthQwenImageLoader",
+      "pos": [
+        1040,
+        180
+      ],
+      "size": {
+        "0": 340,
+        "1": 200
+      },
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_configs",
+          "type": "DIFFSYNTH_MODEL_CONFIG_LIST",
+          "link": 8
+        },
+        {
+          "name": "tokenizer_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 7
+        },
+        {
+          "name": "processor_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        },
+        {
+          "name": "vram_limit",
+          "type": "DIFFSYNTH_VRAM_LIMIT",
+          "link": 9
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pipe",
+          "type": "DIFFSYNTH_PIPE",
+          "links": [
+            11
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthQwenImageLoader"
+      },
+      "widgets_values": [
+        "bfloat16",
+        "cuda"
+      ]
+    },
+    {
+      "id": 10,
+      "type": "DiffSynthQwenImageInference",
+      "pos": [
+        1440,
+        180
+      ],
+      "size": {
+        "0": 380,
+        "1": 420
+      },
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "pipe",
+          "type": "DIFFSYNTH_PIPE",
+          "link": 11
+        },
+        {
+          "name": "input_image",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "inpaint_mask",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "blockwise_controlnet_inputs",
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "eligen_entity_masks",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "edit_image",
+          "type": "IMAGE",
+          "link": 13
+        },
+        {
+          "name": "layer_input_image",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "context_image",
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            12
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthQwenImageInference"
+      },
+      "widgets_values": [
+        "",
+        42,
+        "fixed",
+        30,
+        1328,
+        1328
+      ]
+    },
+    {
+      "id": 11,
+      "type": "SaveImage",
+      "pos": [
+        1880,
+        180
+      ],
+      "size": {
+        "0": 300,
+        "1": 140
+      },
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 12
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "DiffSynth/qwen_image_edit"
+      ]
+    },
+    {
+      "id": 12,
+      "type": "LoadImage",
+      "pos": [
+        1480,
+        180
+      ],
+      "size": {
+        "0": 300,
+        "1": 300
+      },
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            13
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": [],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "example.png",
+        "image"
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      2,
+      1,
+      0,
+      3,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      3,
+      1,
+      0,
+      4,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      4,
+      2,
+      0,
+      5,
+      0,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      5,
+      3,
+      0,
+      5,
+      1,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      6,
+      4,
+      0,
+      5,
+      2,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      7,
+      6,
+      0,
+      9,
+      1,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      8,
+      5,
+      0,
+      9,
+      0,
+      "DIFFSYNTH_MODEL_CONFIG_LIST"
+    ],
+    [
+      9,
+      8,
+      0,
+      9,
+      3,
+      "DIFFSYNTH_VRAM_LIMIT"
+    ],
+    [
+      11,
+      9,
+      0,
+      10,
+      0,
+      "DIFFSYNTH_PIPE"
+    ],
+    [
+      12,
+      10,
+      0,
+      11,
+      0,
+      "IMAGE"
+    ],
+    [
+      13,
+      12,
+      0,
+      10,
+      5,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds_source_script": "",
+    "ds_notes": "Qwen-Image-Edit"
+  },
+  "version": 0.4
+}

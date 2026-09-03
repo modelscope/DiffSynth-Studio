@@ -1,0 +1,423 @@
+{
+  "last_node_id": 9,
+  "last_link_id": 8,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "DiffSynthVRAMConfig",
+      "pos": [
+        20,
+        20
+      ],
+      "size": {
+        "0": 280,
+        "1": 180
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "links": [
+            1
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthVRAMConfig"
+      },
+      "widgets_values": [
+        "cpu",
+        "bfloat16",
+        "cpu",
+        "bfloat16",
+        "cuda",
+        "bfloat16",
+        "cuda",
+        "bfloat16"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        340,
+        20
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": 1
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            2
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "HiDream-ai/HiDream-O1-Image",
+        "model-*.safetensors"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "DiffSynthMergeModelConfigs",
+      "pos": [
+        700,
+        220
+      ],
+      "size": {
+        "0": 280,
+        "1": 150
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_config_1",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 2
+        },
+        {
+          "name": "model_config_2",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        },
+        {
+          "name": "model_config_3",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        },
+        {
+          "name": "model_config_4",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        },
+        {
+          "name": "model_config_5",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        },
+        {
+          "name": "model_config_6",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_configs",
+          "type": "DIFFSYNTH_MODEL_CONFIG_LIST",
+          "links": [
+            4
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthMergeModelConfigs"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 4,
+      "type": "DiffSynthModelConfig",
+      "pos": [
+        700,
+        430
+      ],
+      "size": {
+        "0": 320,
+        "1": 150
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vram_config",
+          "type": "DIFFSYNTH_VRAM_CONFIG",
+          "link": null
+        },
+        {
+          "name": "quant_config",
+          "type": "DIFFSYNTH_QUANT_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "links": [
+            3
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthModelConfig"
+      },
+      "widgets_values": [
+        "HiDream-ai/HiDream-O1-Image",
+        "./"
+      ]
+    },
+    {
+      "id": 6,
+      "type": "DiffSynthVRAMLimit",
+      "pos": [
+        700,
+        20
+      ],
+      "size": {
+        "0": 240,
+        "1": 100
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "vram_limit",
+          "type": "DIFFSYNTH_VRAM_LIMIT",
+          "links": [
+            5
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthVRAMLimit"
+      },
+      "widgets_values": [
+        "cuda",
+        0.5
+      ]
+    },
+    {
+      "id": 7,
+      "type": "DiffSynthHiDreamO1Loader",
+      "pos": [
+        1040,
+        180
+      ],
+      "size": {
+        "0": 340,
+        "1": 200
+      },
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_configs",
+          "type": "DIFFSYNTH_MODEL_CONFIG_LIST",
+          "link": 4
+        },
+        {
+          "name": "processor_config",
+          "type": "DIFFSYNTH_MODEL_CONFIG",
+          "link": 3
+        },
+        {
+          "name": "vram_limit",
+          "type": "DIFFSYNTH_VRAM_LIMIT",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pipe",
+          "type": "DIFFSYNTH_PIPE",
+          "links": [
+            7
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthHiDreamO1Loader"
+      },
+      "widgets_values": [
+        "bfloat16",
+        "cuda"
+      ]
+    },
+    {
+      "id": 8,
+      "type": "DiffSynthHiDreamO1Inference",
+      "pos": [
+        1440,
+        180
+      ],
+      "size": {
+        "0": 380,
+        "1": 420
+      },
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "pipe",
+          "type": "DIFFSYNTH_PIPE",
+          "link": 7
+        },
+        {
+          "name": "edit_image",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "layout_bboxes",
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            8
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DiffSynthHiDreamO1Inference"
+      },
+      "widgets_values": [
+        "",
+        42,
+        "fixed",
+        50,
+        2048,
+        2048
+      ]
+    },
+    {
+      "id": 9,
+      "type": "SaveImage",
+      "pos": [
+        1880,
+        180
+      ],
+      "size": {
+        "0": 300,
+        "1": 140
+      },
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 8
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "DiffSynth/hidream_o1_image"
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "DIFFSYNTH_VRAM_CONFIG"
+    ],
+    [
+      2,
+      2,
+      0,
+      3,
+      0,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      3,
+      4,
+      0,
+      7,
+      1,
+      "DIFFSYNTH_MODEL_CONFIG"
+    ],
+    [
+      4,
+      3,
+      0,
+      7,
+      0,
+      "DIFFSYNTH_MODEL_CONFIG_LIST"
+    ],
+    [
+      5,
+      6,
+      0,
+      7,
+      2,
+      "DIFFSYNTH_VRAM_LIMIT"
+    ],
+    [
+      7,
+      7,
+      0,
+      8,
+      0,
+      "DIFFSYNTH_PIPE"
+    ],
+    [
+      8,
+      8,
+      0,
+      9,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds_source_script": "examples/hidream_o1_image/model_inference/HiDream-O1-Image.py",
+    "ds_notes": ""
+  },
+  "version": 0.4
+}
