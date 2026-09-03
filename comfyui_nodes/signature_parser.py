@@ -26,7 +26,7 @@ _REQUIRED_INPUTS = [
 
 
 def _is_image(annotation):
-    if Image is not None and annotation is Image.Image:
+    if annotation is Image.Image:
         return True
     origin = get_origin(annotation)
     if origin in (list, tuple):
@@ -36,8 +36,6 @@ def _is_image(annotation):
 
 
 def _is_image_list(annotation):
-    if Image is None:
-        return False
     origin = get_origin(annotation)
     if origin in (list, tuple):
         args = get_args(annotation)
@@ -142,7 +140,7 @@ def _input_for(name, annotation, default):
             default_str = ""
         return ("STRING", {"default": default_str, "multiline": list_elem == "str"})
 
-    if _list_annotation(annotation) == "any":
+    if list_elem == "any":
         inner = _unwrap_union(annotation)
         inner_args = get_args(inner)
         if inner_args:
