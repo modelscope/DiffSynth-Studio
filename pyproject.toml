@@ -31,7 +31,7 @@ classifiers = [
 
 [tool.setuptools.packages.find]
 where = ["./"]
-include = ["diffsynth", "diffsynth.*"]
+include = ["diffsynth", "diffsynth.*", "comfyui_nodes", "comfyui_nodes.*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "diffsynth.version.__version__"}
