@@ -244,21 +244,6 @@ class SpatioTemporalScaleFactors(NamedTuple):
         spatial = patch_size * (2**spatial_steps)
         return cls(time=2**temporal_steps, height=spatial, width=spatial)
 
-    @classmethod
-    def from_model_config(cls, model_config: dict) -> "SpatioTemporalScaleFactors":
-        """Derive the video scale factors from a checkpoint's model config dict.
-        Reads the embedded VAE block list (see ``from_blocks``). Falls back to the
-        default when the config carries no VAE block list -- either no ``vae`` section
-        or a ``vae`` section without encoder/decoder blocks (e.g. audio-only
-        checkpoints), where video tools are never built.
-        """
-        vae_config = model_config.get("vae", {})
-        blocks = vae_config.get("encoder_blocks") or vae_config.get("decoder_blocks")
-        if not blocks:
-            return cls.default()
-        return cls.from_blocks(blocks, vae_config.get("patch_size", 4))
-
-
 VIDEO_SCALE_FACTORS = SpatioTemporalScaleFactors.default()
 
 
@@ -288,13 +273,6 @@ class VideoLatentShape(NamedTuple):
             height=shape[3],
             width=shape[4],
         )
-
-    def token_count(self) -> int:
-        """Number of tokens after patchification with the default patch size of 1."""
-        return self.frames * self.height * self.width
-
-    def mask_shape(self) -> "VideoLatentShape":
-        return self._replace(channels=1)
 
     @staticmethod
     def from_pixel_shape(
@@ -336,13 +314,6 @@ class AudioLatentShape(NamedTuple):
 
     def to_torch_shape(self) -> torch.Size:
         return torch.Size([self.batch, self.channels, self.frames, self.mel_bins])
-
-    def token_count(self) -> int:
-        """Number of tokens after patchification."""
-        return self.frames
-
-    def mask_shape(self) -> "AudioLatentShape":
-        return self._replace(channels=1, mel_bins=1)
 
     @staticmethod
     def from_torch_shape(shape: torch.Size) -> "AudioLatentShape":
@@ -434,11 +405,6 @@ class GeneratedKeyframeLayout:
     def num_tokens(self) -> int:
         return self.num_keyframes * self.tokens_per_keyframe
 
-    @property
-    def token_slice(self) -> slice:
-        return slice(self.first_token, self.first_token + self.num_tokens)
-
-
 @dataclass(frozen=True)
 class LatentState:
     """
@@ -500,12 +466,6 @@ def rms_norm(x: torch.Tensor, weight: torch.Tensor | None = None, eps: float = 1
     return torch.nn.functional.rms_norm(x, (x.shape[-1],), weight=weight, eps=eps)
 
 
-def check_config_value(config: dict, key: str, expected: Any) -> None:  # noqa: ANN401
-    actual = config.get(key)
-    if actual != expected:
-        raise ValueError(f"Config value {key} is {actual}, expected {expected}")
-
-
 def to_velocity(
     sample: torch.Tensor,
     sigma: float | torch.Tensor,
@@ -538,16 +498,6 @@ def to_denoised(
     if isinstance(sigma, torch.Tensor):
         sigma = sigma.to(calc_dtype)
     return (sample.to(calc_dtype) - velocity.to(calc_dtype) * sigma).to(sample.dtype)
-
-
-def find_matching_file(root_path: str, pattern: str) -> Path:
-    """
-    Recursively search for files matching a glob pattern and return the first match.
-    """
-    matches = list(Path(root_path).rglob(pattern))
-    if not matches:
-        raise FileNotFoundError(f"No files matching pattern '{pattern}' found under {root_path}")
-    return matches[0]
 
 
 def compute_trapezoidal_mask_1d(
@@ -780,28 +730,6 @@ def split_temporal_causal(size: int, overlap: int, min_tile_size: int | None = N
             replace(interval, start=interval.start - 1, left_ramp=interval.left_ramp + 1)
             for interval in dim_intervals.intervals[1:]
         ]
-        return DimensionIntervals(intervals=modified_intervals)
-
-    return split
-
-
-def split_temporal(tile_size_frames: int, overlap_frames: int) -> SplitOperation:
-    """Split a temporal axis in video frame space into overlapping tiles.
-    Args:
-        tile_size_frames: Tile length in frames.
-        overlap_frames: Overlap between consecutive tiles in frames.
-    Returns:
-        Split operation that takes frame count and returns DimensionIntervals in frame indices.
-    """
-    non_causal_split = split_by_size(tile_size_frames, overlap_frames)
-
-    def split(dimension_size: int) -> DimensionIntervals:
-        if dimension_size <= tile_size_frames:
-            return DEFAULT_SPLIT_OPERATION(dimension_size)
-        dim_intervals = non_causal_split(dimension_size)
-        modified_intervals = [
-            replace(interval, end=interval.end + 1, right_ramp=0) for interval in dim_intervals.intervals[:-1]
-        ] + [replace(dim_intervals.intervals[-1], right_ramp=0)]
         return DimensionIntervals(intervals=modified_intervals)
 
     return split
@@ -1065,25 +993,6 @@ def masks_are_complementary(
     return True
 
 
-def compute_summed_weights(
-    tiles: Sequence[Tile],
-    full_shape: Sequence[int],
-) -> torch.Tensor:
-    """Build the dense denominator for weighted blending over ``full_shape``.
-    Uses separable per-axis mask broadcasts — never ``Tile.blend_mask``.
-    Requires concrete ``out_coords`` (``stop`` not ``None``) on every axis.
-    Always builds on CPU float32 so CUDA masks / a non-CPU default device cannot
-    place a multi-GB ``[F,H,W]`` tensor on GPU.
-    """
-    weights = torch.zeros(*full_shape, dtype=torch.float32, device="cpu")
-    for tile in tiles:
-        masks = tuple(m.detach().float().cpu() for m in tile.masks_1d)
-        region_shape = tuple(s.stop - s.start for s in tile.out_coords)
-        region = torch.ones(region_shape, dtype=torch.float32, device="cpu")
-        weights[tile.out_coords] += scale_by_masks_1d(region, masks)
-    return weights.clamp(min=1e-8)
-
-
 def create_tiles_from_intervals_and_mappers(
     intervals: LatentIntervals,
     mappers: list[MappingOperation],
@@ -1189,21 +1098,6 @@ class DimensionTilingConfig:
         """True when this axis is split into more than one tile (or has overlap)."""
         return self.num_tiles > 1 or self.overlap > 0
 
-    @classmethod
-    def from_tile_size(cls, dim_size: int, tile_size: int, overlap: int = 0) -> DimensionTilingConfig:
-        """Create config by computing ``num_tiles`` from dimension size and tile size.
-        Args:
-            dim_size: Total length of the dimension.
-            tile_size: Desired tile size.
-            overlap: Overlap between consecutive tiles.
-        Returns:
-            A ``DimensionTilingConfig`` with the computed ``num_tiles``.
-        """
-        split_op = split_by_size(tile_size, overlap)
-        intervals = split_op(dim_size)
-        return cls(num_tiles=len(intervals.intervals), overlap=overlap)
-
-
 @dataclass(frozen=True)
 class DimensionSizeConfig:
     """Tile size and overlap for a single video axis (frames / height / width).
@@ -1294,12 +1188,6 @@ class TileCountConfig:
             axis_split(self.width, min_w, temporal=False),
         )
 
-    def video_chunks_number(self, num_frames: int) -> int:
-        """Number of temporal decode chunks for ``num_frames`` under this layout."""
-        del num_frames
-        return max(1, self.frames.num_tiles)
-
-
 @dataclass(frozen=True)
 class TileSizeConfig:
     """Size-based tiling layout for a ``(F, H, W)`` video — mirror of ``TileCountConfig``.
@@ -1337,49 +1225,6 @@ class TileSizeConfig:
             frames=DimensionSizeConfig(tile_size=80, overlap=24),
             height=DimensionSizeConfig(tile_size=768, overlap=64),
             width=DimensionSizeConfig(tile_size=768, overlap=64),
-        )
-
-    @classmethod
-    def from_long_side(
-        cls,
-        *,
-        long_side: DimensionSizeConfig,
-        height: int,
-        width: int,
-        scale_factors: SpatioTemporalScaleFactors,
-        frames: DimensionSizeConfig | None = None,
-    ) -> TileSizeConfig:
-        """Aspect-coupled construction — old single-spatial long-side behavior, explicit.
-        Matches main-era ``latent_tile_splitters``: scale the long-side tile in
-        *latent* units with ``round(size_lat * axis_lat / long_lat)``, then
-        multiply back by the VAE factor. Pixel-space ``round`` + ceil-snap would
-        bias the short axis up by almost one latent (e.g. 680 → 704 vs 672).
-        Both axes share ``long_side.overlap``.
-        """
-        if height < 1 or width < 1:
-            raise ValueError(f"height/width must be >= 1, got {height}x{width}")
-        if not long_side.is_tiled():
-            raise ValueError("long_side must be tiled (tile_size > 0)")
-        if scale_factors.height < 1 or scale_factors.width < 1:
-            raise ValueError(f"scale_factors height/width must be >= 1, got {scale_factors}")
-        span = max(height, width)
-
-        def axis_size(axis_len: int, factor: int) -> int:
-            # Latent-grid round (same as main decode enable_on_axis), not pixel ceil.
-            axis_lat = axis_len // factor
-            long_lat = span // factor
-            size_lat = long_side.tile_size // factor
-            overlap_lat = long_side.overlap // factor
-            lower_threshold = max(2, overlap_lat + 1)
-            tile_lat = max(lower_threshold, round(size_lat * axis_lat / long_lat))
-            tile_px = tile_lat * factor
-            min_legal = max(2 * factor, long_side.overlap + factor)
-            return max(tile_px, min_legal)
-
-        return cls(
-            frames=DimensionSizeConfig() if frames is None else frames,
-            height=DimensionSizeConfig(tile_size=axis_size(height, scale_factors.height), overlap=long_side.overlap),
-            width=DimensionSizeConfig(tile_size=axis_size(width, scale_factors.width), overlap=long_side.overlap),
         )
 
     def to_splitters(
@@ -1420,26 +1265,6 @@ class TileSizeConfig:
             enable_size_axis(scale_factors.height, min_h, self.height, "height", temporal=False),
             enable_size_axis(scale_factors.width, min_w, self.width, "width", temporal=False),
         )
-
-    def video_chunks_number(self, num_frames: int, *, time_scale: int = VIDEO_SCALE_FACTORS.time) -> int:
-        """Number of temporal decode chunks for ``num_frames`` under this layout.
-        Mirrors what decode actually does: :meth:`to_splitters` converts this axis to the
-        latent grid and hands it to :func:`split_by_size`, so the count must be taken there
-        too. Doing the arithmetic in pixel units instead over-reports by one whenever the
-        trailing tile is absorbed -- including the common case of a tile larger than the
-        clip, which is a single tile but used to report two.
-        """
-        if not self.frames.is_tiled():
-            return 1
-        # Same derivation as ``to_splitters.enable_size_axis``.
-        overlap = self.frames.overlap // time_scale
-        size = max(2, overlap + 1, self.frames.tile_size // time_scale)
-        latent_frames = (num_frames - 1) // time_scale + 1
-        if latent_frames <= size:
-            return 1
-        # Same tile count as ``split_by_size``.
-        return (latent_frames + size - 2 * overlap - 1) // (size - overlap)
-
 
 TilingConfig = TileSizeConfig | TileCountConfig
 
@@ -1529,20 +1354,6 @@ def _validate_overlap(
     ):
         if cfg.is_tiled() and cfg.overlap < recommended:
             raise ValueError(f"{axis_name} overlap {cfg.overlap} {unit} is below the required {recommended} {unit}.")
-
-
-def balanced_tile_split(num_tiles: int) -> tuple[int, int]:
-    """Factor ``num_tiles`` into ``(small, large)`` as square as possible.
-    ``small`` is the largest divisor not exceeding the square root, so
-    ``small * large == num_tiles`` and ``small <= large``. E.g. 2 -> (1, 2),
-    4 -> (2, 2), 8 -> (2, 4), 16 -> (4, 4). The caller decides which tiled
-    dimension gets which factor.
-    """
-    if num_tiles < 1:
-        raise ValueError(f"num_tiles must be >= 1, got {num_tiles}")
-    small = next(d for d in range(math.isqrt(num_tiles), 0, -1) if num_tiles % d == 0)
-    return small, num_tiles // small
-
 
 
 class DiffVAEMode(Enum):
@@ -1721,24 +1532,6 @@ class DecodeKeyframes:
         # Planes may sit outside [clip_start_frame, clip_start_frame + num_frames): Dist tiles
         # keep the nearest plane on each side so |dt| matches a whole-clip decode. A far plane
         # on a full clip is the same geometry -- joint attention ranks it by distance.
-
-    def for_frame_span(self, frame_lo: int, frame_hi: int) -> "DecodeKeyframes":
-        """Keep the planes a decode of pixel frames ``[lo, hi]`` needs; indices stay global.
-        Selection is :func:`planes_for_tile`: every plane inside the span **plus the nearest
-        plane on each side outside it**. Those two are not optional. DiffVAE's joint attention
-        picks a frame's anchors by ``|dt|``, so a window ending at frame 64 whose last inside
-        plane is 48 still has to carry the plane at 96 -- drop it and frames near the boundary
-        anchor on 48 alone, which is exactly how a split decode stops matching a whole one.
-        ``pixel_frame_indices`` are not rewritten. :attr:`clip_start_frame` becomes ``frame_lo``
-        so the decoder subtracts ``t_s(48) - t_s(56)`` rather than treating the slice as a new
-        clip that starts at pixel 0.
-        """
-        keep = planes_for_tile(self.pixel_frame_indices, frame_lo, frame_hi)
-        return DecodeKeyframes(
-            latents=self.latents[:, :, keep.to(self.latents.device)],
-            pixel_frame_indices=self.pixel_frame_indices[keep.to(self.pixel_frame_indices.device)],
-            clip_start_frame=frame_lo,
-        )
 
     def crop_spatial(self, height: slice, width: slice) -> "DecodeKeyframes":
         """Crop the planes to a spatial window, with the *same* latent slices the video used.
@@ -3052,22 +2845,6 @@ def _abs_rope_op(
     )
 
 
-@_abs_rope_op.register_fake
-def _abs_rope_fake(
-    x: torch.Tensor,
-    inv_t: torch.Tensor,
-    inv_h: torch.Tensor,
-    inv_w: torch.Tensor,
-    d_t: int,
-    d_h: int,
-    d_w: int,
-    num_tiles: int,
-    compute_dtype_is_bf16: bool,
-) -> torch.Tensor:
-    del inv_t, inv_h, inv_w, d_t, d_h, d_w, num_tiles, compute_dtype_is_bf16
-    return torch.empty(x.shape, device=x.device, dtype=x.dtype)
-
-
 def _apply_opaque_abs_rope(
     x: torch.Tensor,
     rope_split: tuple[int, int, int],
@@ -3118,23 +2895,6 @@ def _abs_rope_at_t_op(
         compute_dtype=compute_dtype,
         t_pos=t_pos,
     )
-
-
-@_abs_rope_at_t_op.register_fake
-def _abs_rope_at_t_fake(
-    x: torch.Tensor,
-    t_pos: torch.Tensor,
-    inv_t: torch.Tensor,
-    inv_h: torch.Tensor,
-    inv_w: torch.Tensor,
-    d_t: int,
-    d_h: int,
-    d_w: int,
-    num_tiles: int,
-    compute_dtype_is_bf16: bool,
-) -> torch.Tensor:
-    del t_pos, inv_t, inv_h, inv_w, d_t, d_h, d_w, num_tiles, compute_dtype_is_bf16
-    return torch.empty(x.shape, device=x.device, dtype=x.dtype)
 
 
 def _rope_config(attn: object, x: torch.Tensor) -> tuple[tuple[torch.Tensor, ...], int, torch.dtype]:
@@ -3258,15 +3018,6 @@ class SwiGLUTileSpec:
         if self.tile_size is not None and self.tile_size < 1:
             raise ValueError("tile_size must be >= 1")
 
-    @classmethod
-    def by_count(cls, num_tiles: int = DEFAULT_SWIGLU_TILES):
-        return cls(num_tiles=num_tiles)
-
-    @classmethod
-    def by_size(cls, tile_size: int = DEFAULT_SWIGLU_TILE_SIZE):
-        return cls(tile_size=tile_size)
-
-
 DEFAULT_SWIGLU_TILE_SPEC = SwiGLUTileSpec(tile_size=DEFAULT_SWIGLU_TILE_SIZE)
 
 
@@ -3313,16 +3064,6 @@ class SwiGLU(nn.Module):
 
     def forward(self, x):
         return swiglu_tiled(x, *swiglu_weights(self), self.tile)
-
-
-def configure_swiglu_tile(module_root, *, num_tiles=None, tile_size=None):
-    if num_tiles is None and tile_size is None:
-        return
-    tile = SwiGLUTileSpec(num_tiles=num_tiles, tile_size=tile_size)
-    for module in module_root.modules():
-        if isinstance(module, SwiGLU):
-            module.tile = tile
-
 
 
 """Limited-workspace 3D neighborhood attention (NATTEN ``na3d`` semantics) in pure torch.
@@ -4134,10 +3875,6 @@ except ImportError:  # pragma: no cover
     _NATTEN_AVAILABLE = False
 
 
-def natten_available() -> bool:
-    return _NATTEN_AVAILABLE
-
-
 class NAAttentionCallable(Protocol):
     """A windowed 3D neighborhood-attention backend.
     Q/K/V arrive as ``(B, T, H, W, NH, HD)``, already normed, scaled and RoPE'd;
@@ -4179,38 +3916,6 @@ class JointNAAttentionCallable(Protocol):
         keyframe_times: torch.Tensor,
         keyframe_valid: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]: ...
-
-
-class NattenAttention(NAAttentionCallable):
-    """``natten.na3d``, the default backend.
-    ``backend`` pins ``na3d``'s own kernel choice (e.g. ``"cutlass-fna"``); ``None``
-    leaves NATTEN's auto-pick (hopper-fna on H100, etc.).
-    """
-
-    def __init__(self, backend: str | None = None) -> None:
-        self._backend = backend
-
-    def __call__(
-        self,
-        attn: NeighborhoodAttention3D,
-        q: torch.Tensor,
-        k: torch.Tensor,
-        v: torch.Tensor,
-    ) -> torch.Tensor:
-        if not _NATTEN_AVAILABLE:
-            raise ImportError(
-                "natten is required for NeighborhoodAttention3D. "
-                "Install with: uv sync --package ltx-core --extra natten "
-                '(or: uv pip install "natten==0.21.7+torch2130cu132" -f https://whl.natten.org; '
-                "requires torch==2.13.0+cu132)"
-            )
-        # scale=1.0: callers already applied ``attn.scale`` to Q.
-        # RMSNorm under bf16 autocast can leave Q/K in float32 while V stays bf16;
-        # natten requires a uniform dtype (same cast pattern as flash-attn paths).
-        if q.dtype != v.dtype or k.dtype != v.dtype:
-            q = q.to(dtype=v.dtype)
-            k = k.to(dtype=v.dtype)
-        return natten.na3d(q, k, v, kernel_size=attn.kernel_size, scale=1.0, backend=self._backend)
 
 
 class NeighborhoodAttention3D(nn.Module):
@@ -4332,19 +4037,6 @@ class NeighborhoodAttention3D(nn.Module):
         out = self.proj(out.reshape(batch, t, h, w, self.dim))
         keyframe_out = self.proj(keyframe_out.reshape(batch, planes, h, w, self.dim))
         return out, dataclasses.replace(keyframes, x=keyframe_out)
-
-
-def configure_w_chunks(module_root: nn.Module, w_chunks: int = 1) -> None:
-    """Set W-chunking on ``NeighborhoodAttention3D`` under ``module_root``.
-    When ``w_chunks > 1``, also sets ``rope_num_tiles=1`` so ``chunked.attn``
-    owns the W axis (RoPE W-tiling would double-split). Pass only the diffusion
-    residual subtree — det-stage attention must keep its default RoPE tiling.
-    """
-    for module in module_root.modules():
-        if isinstance(module, NeighborhoodAttention3D):
-            module.w_chunks = w_chunks
-            if w_chunks > 1:
-                module.rope_num_tiles = 1
 
 
 """NABlock and DiffusionNABlock parameter shells for DiffVAE.
@@ -6256,15 +5948,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         """Decode via ``_decode_pixels`` with ``tiling_config=None`` (single full tile)."""
         return next(self._decode_pixels(sample, tiling_config=None, generator=generator))
 
-    def tiled_decode(
-        self,
-        latent: torch.Tensor,
-        tiling_config: TilingConfig,
-        generator: torch.Generator | None = None,
-    ) -> Iterator[torch.Tensor]:
-        """Tiled decode: stages 1-3 once, stages 4-5 per tile, pixel blend."""
-        yield from self._decode_pixels(latent, tiling_config, generator=generator)
-
     def decode_video(
         self,
         latent: torch.Tensor,
@@ -6290,16 +5973,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
 
         for chunk in self._decode_pixels(latent, tiling_config, generator=generator, as_fhwc=True):
             yield to_rgb(chunk)
-
-    def decode_single_frames(
-        self,
-        latents: Sequence[torch.Tensor],
-        generator: torch.Generator | Sequence[torch.Generator | None] | None = None,
-    ) -> Iterator[torch.Tensor]:
-        """Decode each latent as its own one-frame clip, yielding one RGB tensor per latent."""
-        yield from iter_decoded_single_frames(self, latents, generator)
-
-
 
 class LTX25DiffusionVideoDecoder(DiffusionVideoDecoder):
     """DiffSynth-facing decoder with one full/tiled/keyframe interface."""
