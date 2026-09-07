@@ -416,6 +416,13 @@ class LTX2AudioVideoUnit_VideoDecoderSelector(PipelineUnit):
                 "video_decode_kwargs": {},
                 "noise_generator": None,
             }
+        if pipe.scheduler.training:
+            # Caching stages never decode, so the decoder component is not required here.
+            return {
+                "video_decoder_name": None,
+                "video_decode_kwargs": {},
+                "noise_generator": None,
+            }
         if not pipe.is_ltx25:
             if use_diffusion_vae:
                 raise ValueError("Diffusion VAE decoding is only supported by LTX-2.5 checkpoints.")
