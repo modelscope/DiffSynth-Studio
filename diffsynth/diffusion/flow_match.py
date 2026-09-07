@@ -26,6 +26,32 @@ class FlowMatchScheduler():
             "SenseNova-U1": FlowMatchScheduler.set_timesteps_sensenova_u1,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
+        self.step_mode = "euler"
+        self.ancestral_eta = 1.0
+        self.ancestral_s_noise = 1.0
+        self.ancestral_generator = None
+        self.roundtrip_denoised = False
+
+    def set_step_mode(
+        self,
+        mode="euler",
+        eta=1.0,
+        s_noise=1.0,
+        noise_seed=None,
+        device="cpu",
+        roundtrip_denoised=False,
+    ):
+        if mode not in ("euler", "euler_ancestral"):
+            raise ValueError(f"Unsupported flow-matching step mode: {mode}")
+        self.step_mode = mode
+        self.ancestral_eta = eta
+        self.ancestral_s_noise = s_noise
+        self.ancestral_generator = None
+        self.roundtrip_denoised = roundtrip_denoised
+        if mode == "euler_ancestral":
+            if noise_seed is None:
+                raise ValueError("noise_seed is required for ancestral Euler sampling.")
+            self.ancestral_generator = torch.Generator(device=device).manual_seed(noise_seed)
 
     @staticmethod
     def set_timesteps_flux(num_inference_steps=100, denoising_strength=1.0, shift=None):
@@ -368,6 +394,7 @@ class FlowMatchScheduler():
             denoising_strength=denoising_strength,
             **kwargs,
         )
+        self.set_step_mode("euler")
         if training:
             self.set_training_weight()
             self.training = True
@@ -380,11 +407,42 @@ class FlowMatchScheduler():
         timestep_id = torch.argmin((self.timesteps - timestep).abs())
         sigma = self.sigmas[timestep_id]
         if to_final or timestep_id + 1 >= len(self.timesteps):
-            sigma_ = 0
+            sigma_ = torch.zeros_like(sigma)
         else:
             sigma_ = self.sigmas[timestep_id + 1]
-        prev_sample = sample + model_output * (sigma_ - sigma)
-        return prev_sample
+        denoised = sample.float() - model_output.float() * sigma.float()
+        if self.roundtrip_denoised:
+            denoised = denoised.to(sample.dtype).float()
+        if self.step_mode == "euler":
+            if not self.roundtrip_denoised:
+                return sample + model_output * (sigma_ - sigma)
+            velocity = ((sample.float() - denoised) / sigma.float()).to(sample.dtype)
+            return (sample.float() + velocity.float() * (sigma_ - sigma).float()).to(sample.dtype)
+
+        if sigma_ == 0:
+            return denoised.to(sample.dtype)
+        downstep_ratio = 1.0 + (sigma_ / sigma - 1.0) * self.ancestral_eta
+        sigma_down = sigma_ * downstep_ratio
+        sigma_down_ratio = sigma_down / sigma
+        prev_sample = sigma_down_ratio * sample.float() + (1.0 - sigma_down_ratio) * denoised
+        alpha_next = 1.0 - sigma_
+        alpha_down = 1.0 - sigma_down
+        renoise_coeff = (
+            sigma_ ** 2 - sigma_down ** 2 * alpha_next ** 2 / alpha_down ** 2
+        ).clamp(min=0).sqrt()
+        noise_shape = kwargs.get("ancestral_noise_shape", sample.shape)
+        noise = torch.randn(
+            noise_shape,
+            generator=self.ancestral_generator,
+            dtype=sample.dtype,
+            device=sample.device,
+        )
+        noise_transform = kwargs.get("ancestral_noise_transform")
+        if noise_transform is not None:
+            noise = noise_transform(noise)
+        prev_sample = alpha_next / alpha_down * prev_sample
+        prev_sample = prev_sample + noise.float() * self.ancestral_s_noise * renoise_coeff
+        return prev_sample.to(sample.dtype)
     
     def return_to_timestep(self, timestep, sample, sample_stablized):
         if isinstance(timestep, torch.Tensor):

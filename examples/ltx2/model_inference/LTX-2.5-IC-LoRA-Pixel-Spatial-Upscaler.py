@@ -5,10 +5,10 @@ from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
 from modelscope import dataset_snapshot_download
 
 vram_config = {
-    "offload_dtype": torch.float8_e5m2,
+    "offload_dtype": torch.bfloat16,
     "offload_device": "cpu",
-    "onload_dtype": torch.float8_e5m2,
-    "onload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cuda",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
@@ -24,7 +24,6 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
         ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="vae/ltx-2.5-audio-vae-bf16.safetensors", **vram_config),
         ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors", **vram_config),
     ],
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 pipe.load_lora(
     pipe.dit,

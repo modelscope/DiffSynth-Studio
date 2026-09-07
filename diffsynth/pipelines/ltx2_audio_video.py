@@ -1,28 +1,28 @@
-import torch, types
-import numpy as np
-from PIL import Image
-from einops import repeat
+from functools import partial
+from pathlib import Path
 from typing import Optional, Union
-from einops import rearrange
+
 import numpy as np
+import torch
+from einops import repeat
 from PIL import Image
 from tqdm import tqdm
-from typing import Optional
 from transformers import AutoImageProcessor, Gemma3Processor
 
+from ..core import ModelConfig
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
-from ..core import ModelConfig
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
-
-from ..models.ltx2_text_encoder import LTX2TextEncoder, LTX2TextEncoderPostModules, LTXVGemmaTokenizer
+from ..models.ltx2_audio_vae import LTX2AudioDecoder, LTX2AudioEncoder, LTX2Vocoder, AudioPatchifier, AudioProcessor
+from ..models.ltx2_common import AudioLatentShape, VIDEO_SCALE_FACTORS, VideoLatentShape, VideoPixelShape, get_pixel_coords
 from ..models.ltx2_dit import LTXModel
-from ..models.ltx2_video_vae import LTX2VideoEncoder, LTX2VideoDecoder, VideoLatentPatchifier
-from ..models.ltx2_audio_vae import LTX2AudioEncoder, LTX2AudioDecoder, LTX2Vocoder, AudioPatchifier, AudioProcessor
+from ..models.ltx2_text_encoder import LTX2TextEncoder, LTX2TextEncoderPostModules, LTXVGemmaTokenizer
 from ..models.ltx2_upsampler import LTX2LatentUpsampler
-from ..models.ltx2_common import VideoLatentShape, AudioLatentShape, VideoPixelShape, get_pixel_coords, VIDEO_SCALE_FACTORS
-from ..utils.data.media_io_ltx2 import ltx2_preprocess
+from ..models.ltx2_video_vae import LTX2VideoDecoder, LTX2VideoEncoder, VideoLatentPatchifier
+from ..models.ltx25_text_encoder import LTX25TextEncoderPostModules
+from ..models.ltx25_tokenizer import LTX25GemmaTokenizer
 from ..utils.data.audio import convert_to_stereo
+from ..utils.data.media_io_ltx2 import ltx2_preprocess
 
 
 class LTX2AudioVideoPipeline(BasePipeline):
@@ -44,10 +44,14 @@ class LTX2AudioVideoPipeline(BasePipeline):
         self.dit: LTXModel = None
         self.video_vae_encoder: LTX2VideoEncoder = None
         self.video_vae_decoder: LTX2VideoDecoder = None
+        self.diffusion_video_vae_decoder = None
+        self.conv_video_vae_decoder: LTX2VideoDecoder = None
         self.audio_vae_encoder: LTX2AudioEncoder = None
         self.audio_vae_decoder: LTX2AudioDecoder = None
         self.audio_vocoder: LTX2Vocoder = None
         self.upsampler: LTX2LatentUpsampler = None
+        self.duration_head = None
+        self.is_ltx25 = False
 
         self.video_patchifier: VideoLatentPatchifier = VideoLatentPatchifier(patch_size=1)
         self.audio_patchifier: AudioPatchifier = AudioPatchifier(patch_size=1)
@@ -56,8 +60,11 @@ class LTX2AudioVideoPipeline(BasePipeline):
         self.in_iteration_models = ("dit",)
         self.units = [
             LTX2AudioVideoUnit_PipelineChecker(),
-            LTX2AudioVideoUnit_ShapeChecker(),
+            LTX2AudioVideoUnit_VideoDecoderSelector(),
             LTX2AudioVideoUnit_PromptEmbedder(),
+            LTX2AudioVideoUnit_AutoDuration(),
+            LTX2AudioVideoUnit_ShapeChecker(),
+            LTX25AudioVideoUnit_SetScheduleStage1Ancestral(),
             LTX2AudioVideoUnit_NoiseInitializer(),
             LTX2AudioVideoUnit_VideoRetakeEmbedder(),
             LTX2AudioVideoUnit_AudioRetakeEmbedder(),
@@ -116,33 +123,70 @@ class LTX2AudioVideoPipeline(BasePipeline):
         stage2_lora_config: Optional[ModelConfig] = None,
         stage2_lora_strength: float = 0.8,
         vram_limit: float = None,
+        gemma_path: Union[str, Path, None] = None,
+        load_duration_head: bool = False,
     ):
-        # Initialize pipeline
         pipe = LTX2AudioVideoPipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
 
-        # Fetch models
-        pipe.text_encoder = model_pool.fetch_model("ltx2_text_encoder")
-        tokenizer_config.download_if_necessary()
-        pipe.tokenizer = LTXVGemmaTokenizer(tokenizer_path=tokenizer_config.path)
-        image_processor = AutoImageProcessor.from_pretrained(tokenizer_config.path, local_files_only=True)
-        pipe.processor = Gemma3Processor(image_processor=image_processor, tokenizer=pipe.tokenizer.tokenizer)
+        ltx25_text_encoder = model_pool.fetch_model("ltx25_text_encoder")
+        ltx25_dit = model_pool.fetch_model("ltx25_dit")
+        pipe.is_ltx25 = ltx25_text_encoder is not None or ltx25_dit is not None
+        if pipe.is_ltx25:
+            if ltx25_text_encoder is None or ltx25_dit is None:
+                raise ValueError("LTX-2.5 requires both ltx25_text_encoder and ltx25_dit components.")
+            if gemma_path is None:
+                for model_config in model_configs:
+                    if isinstance(model_config.path, str) and "text_encoders" in model_config.path:
+                        gemma_path = model_config.path
+                        break
+            if gemma_path is None:
+                raise ValueError("gemma_path is required for the packed LTX-2.5 Gemma4 tokenizer assets.")
+            pipe.text_encoder = ltx25_text_encoder
+            pipe.text_encoder.reset_non_persistent_buffers()
+            pipe.tokenizer = LTX25GemmaTokenizer(gemma_path)
+            feature_extractor = model_pool.fetch_model("ltx25_feature_extractor")
+            connectors = model_pool.fetch_model("ltx25_embeddings_connectors")
+            if feature_extractor is None or connectors is None:
+                raise ValueError("LTX-2.5 requires ltx25_feature_extractor and ltx25_embeddings_connectors components.")
+            pipe.text_encoder_post_modules = LTX25TextEncoderPostModules(
+                feature_extractor=feature_extractor,
+                connectors=connectors,
+            )
+            # The container holds VRAM-wrapped modules but is not itself wrapped, so mark it
+            # for load_models_to_device to offload/onload its wrapped children.
+            pipe.text_encoder_post_modules.vram_management_enabled = True
+            pipe.dit = ltx25_dit
+            pipe.video_vae_encoder = model_pool.fetch_model("ltx25_video_vae_encoder")
+            if pipe.video_vae_encoder is None:
+                pipe.video_vae_encoder = model_pool.fetch_model("ltx25_conv_video_vae_encoder")
+            pipe.diffusion_video_vae_decoder = model_pool.fetch_model("ltx25_diffusion_video_vae_decoder")
+            pipe.conv_video_vae_decoder = model_pool.fetch_model("ltx25_conv_video_vae_decoder")
+            pipe.audio_vae_decoder = model_pool.fetch_model("ltx25_audio_vae_decoder")
+            pipe.audio_vocoder = model_pool.fetch_model("ltx25_audio_vocoder")
+            pipe.audio_vae_encoder = model_pool.fetch_model("ltx25_audio_vae_encoder")
+            pipe.duration_head = model_pool.fetch_model("ltx25_duration_head")
+            if load_duration_head and pipe.duration_head is None:
+                raise ValueError("load_duration_head=True requires an ltx25_duration_head ModelConfig.")
+        else:
+            pipe.text_encoder = model_pool.fetch_model("ltx2_text_encoder")
+            tokenizer_config.download_if_necessary()
+            pipe.tokenizer = LTXVGemmaTokenizer(tokenizer_path=tokenizer_config.path)
+            image_processor = AutoImageProcessor.from_pretrained(tokenizer_config.path, local_files_only=True)
+            pipe.processor = Gemma3Processor(image_processor=image_processor, tokenizer=pipe.tokenizer.tokenizer)
+            pipe.text_encoder_post_modules = model_pool.fetch_model("ltx2_text_encoder_post_modules")
+            pipe.dit = model_pool.fetch_model("ltx2_dit")
+            pipe.video_vae_encoder = model_pool.fetch_model("ltx2_video_vae_encoder")
+            pipe.video_vae_decoder = model_pool.fetch_model("ltx2_video_vae_decoder")
+            pipe.audio_vae_decoder = model_pool.fetch_model("ltx2_audio_vae_decoder")
+            pipe.audio_vocoder = model_pool.fetch_model("ltx2_audio_vocoder")
+            pipe.audio_vae_encoder = model_pool.fetch_model("ltx2_audio_vae_encoder")
 
-        pipe.text_encoder_post_modules = model_pool.fetch_model("ltx2_text_encoder_post_modules")
-        pipe.dit = model_pool.fetch_model("ltx2_dit")
-        pipe.video_vae_encoder = model_pool.fetch_model("ltx2_video_vae_encoder")
-        pipe.video_vae_decoder = model_pool.fetch_model("ltx2_video_vae_decoder")
-        pipe.audio_vae_decoder = model_pool.fetch_model("ltx2_audio_vae_decoder")
-        pipe.audio_vocoder = model_pool.fetch_model("ltx2_audio_vocoder")
         pipe.upsampler = model_pool.fetch_model("ltx2_latent_upsampler")
-        pipe.audio_vae_encoder = model_pool.fetch_model("ltx2_audio_vae_encoder")
-
-        # Stage 2
         if stage2_lora_config is not None:
             pipe.stage2_lora_config = stage2_lora_config
             pipe.stage2_lora_strength = stage2_lora_strength
 
-        # VRAM Management
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
 
@@ -151,18 +195,39 @@ class LTX2AudioVideoPipeline(BasePipeline):
             return inputs_shared, inputs_posi, inputs_nega
         for unit in units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
+        cfg_scale = inputs_shared.get("cfg_scale", cfg_scale)
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
+        timestep_dtype = torch.float32 if self.is_ltx25 else self.torch_dtype
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
-            timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
+            if self.is_ltx25:
+                timestep = self.scheduler.sigmas[progress_id]
+            timestep = timestep.unsqueeze(0).to(dtype=timestep_dtype, device=self.device)
             noise_pred_video, noise_pred_audio = self.cfg_guided_model_fn(
                 self.model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega,
                 **models, timestep=timestep, progress_id=progress_id
             )
-            inputs_shared["video_latents"] = self.step(self.scheduler, inputs_shared["video_latents"], progress_id=progress_id, noise_pred=noise_pred_video,
-                                                       inpaint_mask=inputs_shared.get("denoise_mask_video", None), input_latents=inputs_shared.get("input_latents_video", None), **inputs_shared)
-            inputs_shared["audio_latents"] = self.step(self.scheduler, inputs_shared["audio_latents"], progress_id=progress_id, noise_pred=noise_pred_audio,
-                                                       inpaint_mask=inputs_shared.get("denoise_mask_audio", None), input_latents=inputs_shared.get("input_latents_audio", None), **inputs_shared)
+            if inputs_shared.get("video_latents") is not None and noise_pred_video is not None:
+                inputs_shared["video_latents"] = self.step(
+                    self.scheduler,
+                    inputs_shared["video_latents"],
+                    progress_id=progress_id,
+                    noise_pred=noise_pred_video,
+                    inpaint_mask=inputs_shared.get("denoise_mask_video", None),
+                    input_latents=inputs_shared.get("input_latents_video", None),
+                    ancestral_noise_shape=inputs_shared.get("video_ancestral_noise_shape"),
+                    ancestral_noise_transform=inputs_shared.get("video_ancestral_noise_transform"),
+                )
+            inputs_shared["audio_latents"] = self.step(
+                self.scheduler,
+                inputs_shared["audio_latents"],
+                progress_id=progress_id,
+                noise_pred=noise_pred_audio,
+                inpaint_mask=inputs_shared.get("denoise_mask_audio", None),
+                input_latents=inputs_shared.get("input_latents_audio", None),
+                ancestral_noise_shape=inputs_shared.get("audio_ancestral_noise_shape"),
+                ancestral_noise_transform=inputs_shared.get("audio_ancestral_noise_transform"),
+            )
         return inputs_shared, inputs_posi, inputs_nega
 
     @torch.no_grad()
@@ -194,6 +259,10 @@ class LTX2AudioVideoPipeline(BasePipeline):
         width: int = 768,
         num_frames: int = 121,
         frame_rate: int = 24,
+        auto_duration: bool = False,
+        auto_duration_min_seconds: float = 1.0,
+        auto_duration_max_seconds: float = 20.0,
+        generate_video: bool = True,
         # Classifier-free guidance
         cfg_scale: float = 3.0,
         # Scheduler
@@ -204,6 +273,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
         tile_overlap_in_pixels: int = 128,
         tile_size_in_frames: int = 128,
         tile_overlap_in_frames: int = 24,
+        use_diffusion_vae: Optional[bool] = None,
         # Special Pipelines
         use_two_stage_pipeline: bool = False,
         stage2_spatial_upsample_factor: int = 2,
@@ -212,15 +282,13 @@ class LTX2AudioVideoPipeline(BasePipeline):
         # progress_bar
         progress_bar_cmd=tqdm,
     ):
-        # Scheduler
-        self.scheduler.set_timesteps(num_inference_steps, denoising_strength=denoising_strength, special_case="distilled_stage1" if use_distilled_pipeline else None)
-        # Inputs
-        inputs_posi = {
-            "prompt": prompt,
-        }
-        inputs_nega = {
-            "negative_prompt": negative_prompt,
-        }
+        self.scheduler.set_timesteps(
+            num_inference_steps,
+            denoising_strength=denoising_strength,
+            special_case="distilled_stage1" if use_distilled_pipeline else None,
+        )
+        inputs_posi = {"prompt": prompt}
+        inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
             "input_images": input_images, "input_images_indexes": input_images_indexes, "input_images_strength": input_images_strength,
             "retake_video": retake_video, "retake_video_regions": retake_video_regions,
@@ -228,21 +296,38 @@ class LTX2AudioVideoPipeline(BasePipeline):
             "in_context_videos": in_context_videos, "in_context_downsample_factor": in_context_downsample_factor,
             "seed": seed, "rand_device": rand_device,
             "height": height, "width": width, "num_frames": num_frames, "frame_rate": frame_rate,
+            "auto_duration": auto_duration,
+            "auto_duration_min_seconds": auto_duration_min_seconds,
+            "auto_duration_max_seconds": auto_duration_max_seconds,
+            "generate_video": generate_video,
             "cfg_scale": cfg_scale,
             "tiled": tiled, "tile_size_in_pixels": tile_size_in_pixels, "tile_overlap_in_pixels": tile_overlap_in_pixels,
             "tile_size_in_frames": tile_size_in_frames, "tile_overlap_in_frames": tile_overlap_in_frames,
+            "use_diffusion_vae": use_diffusion_vae,
             "use_two_stage_pipeline": use_two_stage_pipeline, "use_distilled_pipeline": use_distilled_pipeline, "clear_lora_before_state_two": clear_lora_before_state_two, "stage2_spatial_upsample_factor": stage2_spatial_upsample_factor,
             "video_patchifier": self.video_patchifier, "audio_patchifier": self.audio_patchifier,
+            "timestep_scale": 1.0 if self.is_ltx25 else 1000.0,
         }
-        # Stage 1
-        inputs_shared, inputs_posi, inputs_nega = self.denoise_stage(inputs_shared, inputs_posi, inputs_nega, self.units, cfg_scale, progress_bar_cmd)
-        # Stage 2
-        inputs_shared, inputs_posi, inputs_nega = self.denoise_stage(inputs_shared, inputs_posi, inputs_nega, self.stage2_units, 1.0, progress_bar_cmd, not inputs_shared["use_two_stage_pipeline"])
-        # Decode
-        self.load_models_to_device(['video_vae_decoder'])
-        video = self.video_vae_decoder.decode(inputs_shared["video_latents"], tiled, tile_size_in_pixels, tile_overlap_in_pixels, tile_size_in_frames, tile_overlap_in_frames)
-        video = self.vae_output_to_video(video)
-        self.load_models_to_device(['audio_vae_decoder', 'audio_vocoder'])
+        inputs_shared, inputs_posi, inputs_nega = self.denoise_stage(
+            inputs_shared, inputs_posi, inputs_nega, self.units, cfg_scale, progress_bar_cmd
+        )
+        inputs_shared, inputs_posi, inputs_nega = self.denoise_stage(
+            inputs_shared,
+            inputs_posi,
+            inputs_nega,
+            self.stage2_units,
+            1.0,
+            progress_bar_cmd,
+            not inputs_shared["use_two_stage_pipeline"],
+        )
+        video = None
+        if inputs_shared.get("generate_video", True):
+            video_decoder_name = inputs_shared["video_decoder_name"]
+            self.load_models_to_device([video_decoder_name])
+            video_decoder = getattr(self, video_decoder_name)
+            video = video_decoder.decode(inputs_shared["video_latents"], **inputs_shared["video_decode_kwargs"])
+            video = self.vae_output_to_video(video)
+        self.load_models_to_device(["audio_vae_decoder", "audio_vocoder"])
         decoded_audio = self.audio_vae_decoder(inputs_shared["audio_latents"])
         decoded_audio = self.audio_vocoder(decoded_audio)
         decoded_audio = self.output_audio_format_check(decoded_audio)
@@ -251,24 +336,169 @@ class LTX2AudioVideoPipeline(BasePipeline):
 
 class LTX2AudioVideoUnit_PipelineChecker(PipelineUnit):
     def __init__(self):
-        super().__init__(
-            take_over=True,
-            input_params=("use_distilled_pipeline", "use_two_stage_pipeline"),
-            output_params=("use_two_stage_pipeline", "cfg_scale")
-        )
+        super().__init__(take_over=True)
 
     def process(self, pipe: LTX2AudioVideoPipeline, inputs_shared, inputs_posi, inputs_nega):
-        if inputs_shared.get("use_distilled_pipeline", False):
+        use_distilled_pipeline = inputs_shared.get("use_distilled_pipeline", False)
+        use_two_stage_pipeline = inputs_shared.get("use_two_stage_pipeline", False)
+        if use_distilled_pipeline:
             inputs_shared["cfg_scale"] = 1.0
-            print(f"Distilled pipeline requested, disable CFG by setting cfg_scale to 1.0.")
-        if inputs_shared.get("use_two_stage_pipeline", False):
-            # distill pipeline also uses two-stage, but it does not needs lora
-            if not inputs_shared.get("use_distilled_pipeline", False):
+            print("Distilled pipeline requested, disable CFG by setting cfg_scale to 1.0.")
+        if pipe.is_ltx25 and use_distilled_pipeline:
+            if not use_two_stage_pipeline:
+                raise ValueError("LTX-2.5 distilled inference requires use_two_stage_pipeline=True.")
+            if inputs_shared.get("seed") is None:
+                raise ValueError("LTX-2.5 distilled ancestral sampling requires an explicit seed.")
+        if use_two_stage_pipeline:
+            if not use_distilled_pipeline:
                 if not (hasattr(pipe, "stage2_lora_config") and pipe.stage2_lora_config is not None):
                     raise ValueError("Two-stage pipeline requested, but stage2_lora_config is not set in the pipeline.")
-            if not (hasattr(pipe, "upsampler") and pipe.upsampler is not None):
+            if pipe.upsampler is None:
                 raise ValueError("Two-stage pipeline requested, but upsampler model is not loaded in the pipeline.")
+        if inputs_shared.get("auto_duration", False):
+            if pipe.duration_head is None:
+                raise ValueError(
+                    "Automatic duration requires an ltx25_duration_head ModelConfig in from_pretrained()."
+                )
+            min_seconds = inputs_shared["auto_duration_min_seconds"]
+            max_seconds = inputs_shared["auto_duration_max_seconds"]
+            if min_seconds <= 0 or max_seconds < min_seconds:
+                raise ValueError("Automatic duration requires 0 < min_seconds <= max_seconds.")
         return inputs_shared, inputs_posi, inputs_nega
+
+
+class LTX2AudioVideoUnit_VideoDecoderSelector(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=(
+                "use_diffusion_vae",
+                "seed",
+                "rand_device",
+                "tiled",
+                "tile_size_in_pixels",
+                "tile_overlap_in_pixels",
+                "tile_size_in_frames",
+                "tile_overlap_in_frames",
+                "generate_video",
+            ),
+            output_params=("video_decoder_name", "video_decode_kwargs", "noise_generator"),
+        )
+
+    def process(
+        self,
+        pipe: LTX2AudioVideoPipeline,
+        use_diffusion_vae,
+        seed,
+        rand_device,
+        tiled,
+        tile_size_in_pixels,
+        tile_overlap_in_pixels,
+        tile_size_in_frames,
+        tile_overlap_in_frames,
+        generate_video=True,
+    ):
+        if not generate_video:
+            return {
+                "video_decoder_name": None,
+                "video_decode_kwargs": {},
+                "noise_generator": None,
+            }
+        if not pipe.is_ltx25:
+            if use_diffusion_vae:
+                raise ValueError("Diffusion VAE decoding is only supported by LTX-2.5 checkpoints.")
+            decoder_name = "video_vae_decoder"
+        elif use_diffusion_vae is not False:
+            decoder_name = "diffusion_video_vae_decoder"
+        else:
+            decoder_name = "conv_video_vae_decoder"
+
+        if getattr(pipe, decoder_name) is None:
+            requested = "DiffusionVAE" if decoder_name == "diffusion_video_vae_decoder" else "ConvVAE"
+            raise ValueError(f"{requested} decoder was requested but its model component is not loaded.")
+
+        decode_kwargs = {
+            "tiled": tiled,
+            "tile_size_in_pixels": tile_size_in_pixels,
+            "tile_overlap_in_pixels": tile_overlap_in_pixels,
+            "tile_size_in_frames": tile_size_in_frames,
+            "tile_overlap_in_frames": tile_overlap_in_frames,
+        }
+        if decoder_name == "diffusion_video_vae_decoder":
+            conv_defaults = (512, 128, 128, 24)
+            current_values = (
+                tile_size_in_pixels,
+                tile_overlap_in_pixels,
+                tile_size_in_frames,
+                tile_overlap_in_frames,
+            )
+            if any(value is None for value in current_values) or current_values == conv_defaults:
+                decode_kwargs.update(dict.fromkeys((
+                    "tile_size_in_pixels",
+                    "tile_overlap_in_pixels",
+                    "tile_size_in_frames",
+                    "tile_overlap_in_frames",
+                )))
+        noise_generator = None
+        if pipe.is_ltx25 and seed is not None:
+            noise_generator = torch.Generator(device=rand_device).manual_seed(seed)
+        if decoder_name == "diffusion_video_vae_decoder":
+            decode_kwargs["generator"] = noise_generator
+        return {
+            "video_decoder_name": decoder_name,
+            "video_decode_kwargs": decode_kwargs,
+            "noise_generator": noise_generator,
+        }
+
+
+class LTX2AudioVideoUnit_AutoDuration(PipelineUnit):
+    def __init__(self):
+        super().__init__(take_over=True)
+
+    @staticmethod
+    def seconds_to_num_frames(seconds, frame_rate, min_seconds, max_seconds):
+        min_frames = round(min_seconds * frame_rate)
+        max_frames = round(max_seconds * frame_rate)
+        raw_frames = max(min_frames, min(round(seconds * frame_rate), max_frames))
+        frames = ((raw_frames - 1) // 8) * 8 + 1
+        if frames < min_frames:
+            frames = min(-(-(min_frames - 1) // 8) * 8 + 1, max_frames)
+        return frames
+
+    def process(self, pipe: LTX2AudioVideoPipeline, inputs_shared, inputs_posi, inputs_nega):
+        if not inputs_shared.get("auto_duration", False):
+            return inputs_shared, inputs_posi, inputs_nega
+        pipe.load_models_to_device(("duration_head",))
+        seconds = float(
+            pipe.duration_head(inputs_posi["video_context"], inputs_posi["audio_context"]).item()
+        )
+        inputs_shared["num_frames"] = self.seconds_to_num_frames(
+            seconds,
+            inputs_shared["frame_rate"],
+            inputs_shared["auto_duration_min_seconds"],
+            inputs_shared["auto_duration_max_seconds"],
+        )
+        return inputs_shared, inputs_posi, inputs_nega
+
+
+class LTX25AudioVideoUnit_SetScheduleStage1Ancestral(PipelineUnit):
+    def __init__(self):
+        super().__init__(input_params=("use_distilled_pipeline", "seed"))
+
+    def process(self, pipe: LTX2AudioVideoPipeline, use_distilled_pipeline, seed):
+        if not pipe.is_ltx25:
+            return {}
+        if use_distilled_pipeline:
+            pipe.scheduler.set_step_mode(
+                "euler_ancestral",
+                eta=1.0,
+                s_noise=1.0,
+                noise_seed=seed + 10000,
+                device=pipe.device,
+                roundtrip_denoised=True,
+            )
+        else:
+            pipe.scheduler.set_step_mode("euler", roundtrip_denoised=True)
+        return {}
 
 
 class LTX2AudioVideoUnit_ShapeChecker(PipelineUnit):
@@ -310,9 +540,20 @@ class LTX2AudioVideoUnit_PromptEmbedder(PipelineUnit):
         text: str,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         token_pairs = pipe.tokenizer.tokenize_with_weights(text)["gemma"]
-        input_ids = torch.tensor([[t[0] for t in token_pairs]], device=pipe.device)
-        attention_mask = torch.tensor([[w[1] for w in token_pairs]], device=pipe.device)
-        outputs = pipe.text_encoder(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True)
+        input_ids = torch.tensor([[token_id for token_id, _ in token_pairs]], device=pipe.device)
+        attention_mask = torch.tensor([[weight for _, weight in token_pairs]], device=pipe.device)
+        if pipe.is_ltx25:
+            outputs = pipe.text_encoder.model.model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                output_hidden_states=True,
+            )
+        else:
+            outputs = pipe.text_encoder(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                output_hidden_states=True,
+            )
         return outputs.hidden_states, attention_mask
     def encode_prompt(self, pipe, text, padding_side="left"):
         hidden_states, attention_mask = self._preprocess_text(pipe, text)
@@ -329,34 +570,179 @@ class LTX2AudioVideoUnit_PromptEmbedder(PipelineUnit):
 class LTX2AudioVideoUnit_NoiseInitializer(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("height", "width", "num_frames", "seed", "rand_device", "frame_rate"),
-            output_params=("video_noise", "audio_noise", "video_positions", "audio_positions", "video_latent_shape", "audio_latent_shape")
+            input_params=(
+                "height",
+                "width",
+                "num_frames",
+                "seed",
+                "rand_device",
+                "frame_rate",
+                "noise_generator",
+                "generate_video",
+            ),
+            output_params=(
+                "video_noise",
+                "audio_noise",
+                "video_positions",
+                "audio_positions",
+                "video_latent_shape",
+                "audio_latent_shape",
+                "video_keyframes_mask",
+                "video_ancestral_noise_shape",
+                "video_ancestral_noise_transform",
+                "audio_ancestral_noise_shape",
+                "audio_ancestral_noise_transform",
+                "noise_generator",
+            ),
         )
 
-    def process_stage(self, pipe: LTX2AudioVideoPipeline, height, width, num_frames, seed, rand_device, frame_rate=24.0):
+    @staticmethod
+    def unpatchify_video_noise(noise, patchifier, latent_shape):
+        return patchifier.unpatchify_video(
+            noise,
+            latent_shape.frames,
+            latent_shape.height,
+            latent_shape.width,
+        )
+
+    @staticmethod
+    def unpatchify_audio_noise(noise, patchifier, latent_shape):
+        return patchifier.unpatchify_audio(noise, latent_shape.channels, latent_shape.mel_bins)
+
+    def process_stage(
+        self,
+        pipe: LTX2AudioVideoPipeline,
+        height,
+        width,
+        num_frames,
+        seed,
+        rand_device,
+        frame_rate=24.0,
+        noise_generator=None,
+        generate_video=True,
+    ):
         video_pixel_shape = VideoPixelShape(batch=1, frames=num_frames, width=width, height=height, fps=frame_rate)
         video_latent_shape = VideoLatentShape.from_pixel_shape(shape=video_pixel_shape, latent_channels=128)
-        video_noise = pipe.generate_noise(video_latent_shape.to_torch_shape(), seed=seed, rand_device=rand_device)
+        noise_dtype = pipe.torch_dtype if pipe.is_ltx25 else torch.float32
+        video_noise = None
+        video_positions = None
+        video_keyframes_mask = None
+        video_ancestral_noise_shape = None
+        video_ancestral_noise_transform = None
+        if generate_video:
+            video_noise_shape = video_latent_shape.to_torch_shape()
+            if pipe.is_ltx25:
+                video_noise_shape = (
+                    video_latent_shape.batch,
+                    video_latent_shape.frames * video_latent_shape.height * video_latent_shape.width,
+                    video_latent_shape.channels,
+                )
+            video_noise = pipe.generate_noise(
+                video_noise_shape,
+                seed=seed,
+                rand_device=rand_device,
+                rand_torch_dtype=noise_dtype,
+                generator=noise_generator,
+            )
+            if pipe.is_ltx25:
+                video_noise = pipe.video_patchifier.unpatchify_video(
+                    video_noise,
+                    video_latent_shape.frames,
+                    video_latent_shape.height,
+                    video_latent_shape.width,
+                )
 
-        latent_coords = pipe.video_patchifier.get_patch_grid_bounds(output_shape=video_latent_shape, device=pipe.device)
-        video_positions = get_pixel_coords(latent_coords, VIDEO_SCALE_FACTORS, True).float()
-        video_positions[:, 0, ...] = video_positions[:, 0, ...] / frame_rate
-        video_positions = video_positions.to(pipe.torch_dtype)
+            latent_coords = pipe.video_patchifier.get_patch_grid_bounds(output_shape=video_latent_shape, device=pipe.device)
+            video_positions = get_pixel_coords(latent_coords, VIDEO_SCALE_FACTORS, True).float()
+            video_positions[:, 0, ...] = video_positions[:, 0, ...] / frame_rate
+            if not pipe.is_ltx25:
+                video_positions = video_positions.to(pipe.torch_dtype)
 
         audio_latent_shape = AudioLatentShape.from_video_pixel_shape(video_pixel_shape)
-        audio_noise = pipe.generate_noise(audio_latent_shape.to_torch_shape(), seed=seed, rand_device=rand_device)
+        audio_noise_shape = audio_latent_shape.to_torch_shape()
+        if pipe.is_ltx25:
+            audio_noise_shape = (
+                audio_latent_shape.batch,
+                audio_latent_shape.frames,
+                audio_latent_shape.channels * audio_latent_shape.mel_bins,
+            )
+        audio_noise = pipe.generate_noise(
+            audio_noise_shape,
+            seed=seed,
+            rand_device=rand_device,
+            rand_torch_dtype=noise_dtype,
+            generator=noise_generator,
+        )
+        if pipe.is_ltx25:
+            audio_noise = pipe.audio_patchifier.unpatchify_audio(
+                audio_noise,
+                audio_latent_shape.channels,
+                audio_latent_shape.mel_bins,
+            )
         audio_positions = pipe.audio_patchifier.get_patch_grid_bounds(audio_latent_shape, device=pipe.device)
+        audio_ancestral_noise_shape = None
+        audio_ancestral_noise_transform = None
+        if pipe.is_ltx25 and generate_video:
+            video_keyframes_mask = torch.zeros(
+                video_latent_shape.batch,
+                1,
+                video_latent_shape.frames,
+                video_latent_shape.height,
+                video_latent_shape.width,
+                dtype=torch.float32,
+                device=pipe.device,
+            )
+            video_keyframes_mask[:, :, 0] = 1.0
+            video_ancestral_noise_shape = video_noise_shape
+            video_ancestral_noise_transform = partial(
+                self.unpatchify_video_noise,
+                patchifier=pipe.video_patchifier,
+                latent_shape=video_latent_shape,
+            )
+            audio_ancestral_noise_shape = audio_noise_shape
+            audio_ancestral_noise_transform = partial(
+                self.unpatchify_audio_noise,
+                patchifier=pipe.audio_patchifier,
+                latent_shape=audio_latent_shape,
+            )
         return {
             "video_noise": video_noise,
             "audio_noise": audio_noise,
             "video_positions": video_positions,
             "audio_positions": audio_positions,
             "video_latent_shape": video_latent_shape,
-            "audio_latent_shape": audio_latent_shape
+            "audio_latent_shape": audio_latent_shape,
+            "video_keyframes_mask": video_keyframes_mask,
+            "video_ancestral_noise_shape": video_ancestral_noise_shape,
+            "video_ancestral_noise_transform": video_ancestral_noise_transform,
+            "audio_ancestral_noise_shape": audio_ancestral_noise_shape,
+            "audio_ancestral_noise_transform": audio_ancestral_noise_transform,
+            "noise_generator": noise_generator,
         }
 
-    def process(self, pipe: LTX2AudioVideoPipeline, height, width, num_frames, seed, rand_device, frame_rate=24.0):
-        return self.process_stage(pipe, height, width, num_frames, seed, rand_device, frame_rate)
+    def process(
+        self,
+        pipe: LTX2AudioVideoPipeline,
+        height,
+        width,
+        num_frames,
+        seed,
+        rand_device,
+        frame_rate=24.0,
+        noise_generator=None,
+        generate_video=True,
+    ):
+        return self.process_stage(
+            pipe,
+            height,
+            width,
+            num_frames,
+            seed,
+            rand_device,
+            frame_rate,
+            noise_generator,
+            generate_video,
+        )
 
 
 class LTX2AudioVideoUnit_InputVideoEmbedder(PipelineUnit):
@@ -620,7 +1006,9 @@ class LTX2AudioVideoUnit_SetScheduleStage2(PipelineUnit):
 
     def process(self, pipe: LTX2AudioVideoPipeline, video_latents, video_noise, audio_latents, audio_noise):
         pipe.scheduler.set_timesteps(special_case="stage2")
-        video_latents = pipe.scheduler.add_noise(video_latents, video_noise, pipe.scheduler.timesteps[0])
+        pipe.scheduler.set_step_mode("euler", roundtrip_denoised=pipe.is_ltx25)
+        if video_latents is not None and video_noise is not None:
+            video_latents = pipe.scheduler.add_noise(video_latents, video_noise, pipe.scheduler.timesteps[0])
         audio_latents = pipe.scheduler.add_noise(audio_latents, audio_noise, pipe.scheduler.timesteps[0])
         return {"video_latents": video_latents, "audio_latents": audio_latents}
 
@@ -667,18 +1055,28 @@ def model_fn_ltx2(
     # Audio Inputs
     input_latents_audio=None,
     denoise_mask_audio=None,
+    # LTX-2.5 keyframe class embedding
+    video_keyframes_mask=None,
+    timestep_scale=1000.0,
     # Gradient Checkpointing
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     **kwargs,
 ):
-    timestep = timestep.float() / 1000.
+    timestep = timestep.float() / timestep_scale
 
-    # patchify
-    b, c_v, f, h, w = video_latents.shape
-    video_latents = video_patchifier.patchify(video_latents)
-    seq_len_video = video_latents.shape[1]
-    video_timesteps = timestep.repeat(1, video_latents.shape[1], 1)
+    video_timesteps = None
+    if video_latents is not None:
+        # patchify
+        b, c_v, f, h, w = video_latents.shape
+        video_latents = video_patchifier.patchify(video_latents)
+        if video_keyframes_mask is not None:
+            # Target LTX-2.5 keeps patchified video tokens as a channel-first view.
+            # Preserve that layout because BF16 GEMM reduction order depends on strides.
+            video_latents = video_latents.transpose(1, 2).contiguous().transpose(1, 2)
+            video_keyframes_mask = video_patchifier.patchify(video_keyframes_mask)
+        seq_len_video = video_latents.shape[1]
+        video_timesteps = timestep.repeat(1, video_latents.shape[1], 1)
     # Frist frame conditioning by replacing the video latents
     if input_latents_video is not None:
         denoise_mask_video = video_patchifier.patchify(denoise_mask_video)
@@ -697,6 +1095,16 @@ def model_fn_ltx2(
             video_latents = torch.cat([video_latents, ref_frames_latent], dim=1)
             video_positions = torch.cat([video_positions, ref_frames_position], dim=2)
             video_timesteps = torch.cat([video_timesteps, ref_frames_timestep], dim=1)
+            if video_keyframes_mask is not None:
+                # Target marks appended single-frame guiding latents as keyframe tokens too.
+                ref_keyframes_mask = torch.ones(
+                    ref_frames_latent.shape[0],
+                    ref_frames_latent.shape[1],
+                    1,
+                    dtype=video_keyframes_mask.dtype,
+                    device=video_keyframes_mask.device,
+                )
+                video_keyframes_mask = torch.cat([video_keyframes_mask, ref_keyframes_mask], dim=1)
 
     if audio_latents is not None:
         _, c_a, _, mel_bins  = audio_latents.shape
@@ -719,12 +1127,14 @@ def model_fn_ltx2(
         audio_context=audio_context,
         audio_timesteps=audio_timesteps,
         sigma=timestep,
+        video_keyframes_mask=video_keyframes_mask,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
 
-    vx = vx[:, :seq_len_video, ...]
-    # unpatchify
-    vx = video_patchifier.unpatchify_video(vx, f, h, w)
+    if vx is not None:
+        vx = vx[:, :seq_len_video, ...]
+        # unpatchify
+        vx = video_patchifier.unpatchify_video(vx, f, h, w)
     ax = audio_patchifier.unpatchify_audio(ax, c_a, mel_bins) if ax is not None else None
     return vx, ax

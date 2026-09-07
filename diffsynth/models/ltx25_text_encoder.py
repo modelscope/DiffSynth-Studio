@@ -160,6 +160,45 @@ class LTX25TextEncoder(torch.nn.Module):
 
         self.config = Gemma4UnifiedConfig(**copy.deepcopy(LTX25_GEMMA_CONFIG))
         self.model = Gemma4UnifiedForConditionalGeneration(self.config)
+        self.reset_non_persistent_buffers()
+
+    def reset_non_persistent_buffers(self):
+        from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
+
+        language_model = self.model.model.language_model
+        text_config = self.config.text_config
+        rotary_embedding = language_model.rotary_emb
+        # VRAM management replaces submodules with wrappers; buffers live on the inner module.
+        rotary_embedding = getattr(rotary_embedding, "module", rotary_embedding)
+        for layer_type in dict.fromkeys(text_config.layer_types):
+            rope_parameters = text_config.rope_parameters[layer_type]
+            if rope_parameters is None:
+                continue
+            rope_type = rope_parameters["rope_type"]
+            if rope_type == "default":
+                inv_freq, attention_scaling = rotary_embedding.compute_default_rope_parameters(
+                    text_config, layer_type=layer_type
+                )
+            else:
+                init_kwargs = {"layer_type": layer_type}
+                if layer_type == "full_attention" and rope_type == "proportional":
+                    init_kwargs["head_dim_key"] = "global_head_dim"
+                inv_freq, attention_scaling = ROPE_INIT_FUNCTIONS[rope_type](text_config, **init_kwargs)
+            for buffer_name, buffer_value in (
+                (f"{layer_type}_inv_freq", inv_freq),
+                (f"{layer_type}_original_inv_freq", inv_freq.clone()),
+            ):
+                if hasattr(rotary_embedding, buffer_name):
+                    delattr(rotary_embedding, buffer_name)
+                rotary_embedding.register_buffer(buffer_name, buffer_value, persistent=False)
+            setattr(rotary_embedding, f"{layer_type}_attention_scaling", attention_scaling)
+
+        embed_scale = torch.tensor(text_config.hidden_size**0.5, device="cpu")
+        embed_tokens = language_model.embed_tokens
+        embed_tokens = getattr(embed_tokens, "module", embed_tokens)
+        if hasattr(embed_tokens, "embed_scale"):
+            delattr(embed_tokens, "embed_scale")
+        embed_tokens.register_buffer("embed_scale", embed_scale, persistent=False)
 
     def forward(self, *args, **kwargs):
         return self.model(*args, **kwargs)
@@ -183,13 +222,18 @@ def _rescale_norm(x: torch.Tensor, target_dim: int, source_dim: int) -> torch.Te
 class LTX25FeatureExtractorV2(torch.nn.Module):
     def __init__(
         self,
-        video_aggregate_embed: torch.nn.Linear,
-        embedding_dim: int,
-        audio_aggregate_embed: torch.nn.Linear | None = None,
+        embedding_dim: int = 3840,
+        num_layers: int = 49,
+        video_out_features: int = 4096,
+        audio_out_features: int = 2048,
     ):
         super().__init__()
-        self.video_aggregate_embed = video_aggregate_embed
-        self.audio_aggregate_embed = audio_aggregate_embed
+        self.video_aggregate_embed = torch.nn.Linear(embedding_dim * num_layers, video_out_features, bias=True)
+        self.audio_aggregate_embed = (
+            torch.nn.Linear(embedding_dim * num_layers, audio_out_features, bias=True)
+            if audio_out_features is not None
+            else None
+        )
         self.embedding_dim = embedding_dim
 
     def forward(
@@ -347,11 +391,9 @@ def _right_pad_order(additive_attention_mask: torch.Tensor) -> tuple[torch.Tenso
     return sort_indices, additive[:, None, None, :]
 
 
-class LTX25TextEncoderPostModules(torch.nn.Module):
+class LTX25EmbeddingsConnectors(torch.nn.Module):
     def __init__(
         self,
-        embedding_dim: int = 3840,
-        num_layers: int = 49,
         video_attention_heads: int = 32,
         video_attention_head_dim: int = 128,
         audio_attention_heads: int = 32,
@@ -361,19 +403,6 @@ class LTX25TextEncoderPostModules(torch.nn.Module):
         connector_ff_bias: bool = True,
     ):
         super().__init__()
-        self.feature_extractor = LTX25FeatureExtractorV2(
-            video_aggregate_embed=torch.nn.Linear(
-                embedding_dim * num_layers,
-                video_attention_heads * video_attention_head_dim,
-                bias=True,
-            ),
-            embedding_dim=embedding_dim,
-            audio_aggregate_embed=torch.nn.Linear(
-                embedding_dim * num_layers,
-                audio_attention_heads * audio_attention_head_dim,
-                bias=True,
-            ),
-        )
         connector_max_positions = [4096] if connector_max_positions is None else connector_max_positions
         self.video_connector = LTX25Embeddings1DConnector(
             attention_head_dim=video_attention_head_dim,
@@ -389,6 +418,55 @@ class LTX25TextEncoderPostModules(torch.nn.Module):
             positional_embedding_max_pos=connector_max_positions,
             ff_bias=connector_ff_bias,
         )
+
+
+class LTX25TextEncoderPostModules(torch.nn.Module):
+    def __init__(
+        self,
+        embedding_dim: int = 3840,
+        num_layers: int = 49,
+        video_attention_heads: int = 32,
+        video_attention_head_dim: int = 128,
+        audio_attention_heads: int = 32,
+        audio_attention_head_dim: int = 64,
+        num_connector_layers: int = 8,
+        connector_max_positions: list[int] | None = None,
+        connector_ff_bias: bool = True,
+        feature_extractor: LTX25FeatureExtractorV2 | None = None,
+        connectors: LTX25EmbeddingsConnectors | None = None,
+    ):
+        super().__init__()
+        self.feature_extractor = (
+            feature_extractor
+            if feature_extractor is not None
+            else LTX25FeatureExtractorV2(
+                embedding_dim=embedding_dim,
+                num_layers=num_layers,
+                video_out_features=video_attention_heads * video_attention_head_dim,
+                audio_out_features=audio_attention_heads * audio_attention_head_dim,
+            )
+        )
+        self.connectors = (
+            connectors
+            if connectors is not None
+            else LTX25EmbeddingsConnectors(
+                video_attention_heads=video_attention_heads,
+                video_attention_head_dim=video_attention_head_dim,
+                audio_attention_heads=audio_attention_heads,
+                audio_attention_head_dim=audio_attention_head_dim,
+                num_connector_layers=num_connector_layers,
+                connector_max_positions=connector_max_positions,
+                connector_ff_bias=connector_ff_bias,
+            )
+        )
+
+    @property
+    def video_connector(self):
+        return self.connectors.video_connector
+
+    @property
+    def audio_connector(self):
+        return self.connectors.audio_connector
 
     def create_embeddings(
         self,

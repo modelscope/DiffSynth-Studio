@@ -271,6 +271,7 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
     },
     "diffsynth.models.ltx2_dit.LTXModel": {
+        "diffsynth.models.ltx2_dit.BasicAVTransformerBlock": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
@@ -282,15 +283,23 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "transformers.models.gemma4_unified.modeling_gemma4_unified.Gemma4UnifiedRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.gemma4_unified.modeling_gemma4_unified.Gemma4UnifiedTextRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
-    "diffsynth.models.ltx25_text_encoder.LTX25TextEncoderPostModules": {
+    "diffsynth.models.ltx25_text_encoder.LTX25EmbeddingsConnectors": {
+        "diffsynth.models.ltx25_text_encoder.LTX25Embeddings1DConnector": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx25_text_encoder.LTX25BasicTransformerBlock1D": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
-    "diffsynth.models.ltx25_diffvae.model.video_vae.diffusion_video_decoder.DiffusionVideoDecoder": {
+    "diffsynth.models.ltx25_text_encoder.LTX25FeatureExtractorV2": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+    },
+    "diffsynth.models.ltx25_diffusion_video_vae.LTX25DiffusionVideoDecoder": {
+        "diffsynth.models.ltx25_diffusion_video_vae.PerChannelStatistics": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx25_diffusion_video_vae.NABlock": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx25_diffusion_video_vae.CombinedDiffusionNABlock": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx25_diffusion_video_vae.SwiGLU": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx25_diffusion_video_vae.ChannelLinear": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "diffsynth.models.ltx25_diffvae.model.video_vae.transformer.swiglu.SwiGLU": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "diffsynth.models.ltx25_diffvae.model.video_vae.transformer.combined.block.CombinedDiffusionNABlock": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.ltx2_upsampler.LTX2LatentUpsampler": {
         "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
@@ -298,15 +307,40 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.GroupNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.ltx2_video_vae.LTX2VideoEncoder": {
+        "diffsynth.models.ltx2_video_vae.PerChannelStatistics": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.ltx2_video_vae.LTX2VideoDecoder": {
+        "diffsynth.models.ltx2_video_vae.PerChannelStatistics": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.ltx2_audio_vae.LTX2AudioEncoder": {
+        "diffsynth.models.ltx2_audio_vae.PerChannelStatistics": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
     "diffsynth.models.ltx2_audio_vae.LTX2AudioDecoder": {
+        "diffsynth.models.ltx2_audio_vae.PerChannelStatistics": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.ltx2_audio_vae.LTX2Vocoder": {
+        "diffsynth.models.ltx2_audio_vae.Snake": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.SnakeBeta": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.Activation1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.MelSTFT": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.LowPassFilter1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.UpSample1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.DownSample1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.ConvTranspose1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.ltx2_audio_vae.LTX2VocoderWithBWE": {
+        "diffsynth.models.ltx2_audio_vae.Snake": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.SnakeBeta": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.Activation1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.MelSTFT": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.LowPassFilter1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.UpSample1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.DownSample1d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.ConvTranspose1d": "diffsynth.core.vram.layers.AutoWrappedModule",
     },

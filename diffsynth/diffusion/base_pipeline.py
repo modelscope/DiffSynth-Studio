@@ -180,9 +180,10 @@ class BasePipeline(torch.nn.Module):
                                     module.onload()
 
 
-    def generate_noise(self, shape, seed=None, rand_device="cpu", rand_torch_dtype=torch.float32, device=None, torch_dtype=None):
+    def generate_noise(self, shape, seed=None, rand_device="cpu", rand_torch_dtype=torch.float32, device=None, torch_dtype=None, generator=None):
         # Initialize Gaussian noise
-        generator = None if seed is None else torch.Generator(rand_device).manual_seed(seed)
+        if generator is None:
+            generator = None if seed is None else torch.Generator(rand_device).manual_seed(seed)
         noise = torch.randn(shape, generator=generator, device=rand_device, dtype=rand_torch_dtype)
         noise = noise.to(dtype=torch_dtype or self.torch_dtype, device=device or self.device)
         return noise
@@ -223,7 +224,12 @@ class BasePipeline(torch.nn.Module):
         if inpaint_mask is not None:
             noise_pred_expected = scheduler.return_to_timestep(scheduler.timesteps[progress_id], latents, input_latents)
             noise_pred = self.blend_with_mask(noise_pred_expected, noise_pred, inpaint_mask)
-        latents_next = scheduler.step(noise_pred, timestep, latents)
+        scheduler_kwargs = {}
+        if "ancestral_noise_shape" in kwargs:
+            scheduler_kwargs["ancestral_noise_shape"] = kwargs["ancestral_noise_shape"]
+        if "ancestral_noise_transform" in kwargs:
+            scheduler_kwargs["ancestral_noise_transform"] = kwargs["ancestral_noise_transform"]
+        latents_next = scheduler.step(noise_pred, timestep, latents, **scheduler_kwargs)
         return latents_next
     
     
@@ -346,8 +352,9 @@ class BasePipeline(torch.nn.Module):
             
             if isinstance(noise_pred_posi, tuple):
                 # Separately handling different output types of latents, eg. video and audio latents.
+                # Disabled modalities return None and stay None under CFG.
                 noise_pred = tuple(
-                    n_nega + cfg_scale * (n_posi - n_nega)
+                    None if n_posi is None or n_nega is None else n_nega + cfg_scale * (n_posi - n_nega)
                     for n_posi, n_nega in zip(noise_pred_posi, noise_pred_nega)
                 )
             else:

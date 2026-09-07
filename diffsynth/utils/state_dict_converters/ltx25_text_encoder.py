@@ -16,12 +16,18 @@ def LTX25TextEncoderStateDictConverter(state_dict):
     return state_dict_
 
 
-def LTX25TextEncoderPostModulesStateDictConverter(state_dict):
+def LTX25FeatureExtractorStateDictConverter(state_dict):
     state_dict_ = {}
     for name in state_dict:
         if name.startswith("text_embedding_projection."):
-            new_name = "feature_extractor." + name.removeprefix("text_embedding_projection.")
-        elif name.startswith("model.diffusion_model.video_embeddings_connector."):
+            state_dict_[name.removeprefix("text_embedding_projection.")] = state_dict[name]
+    return state_dict_
+
+
+def LTX25EmbeddingsConnectorsStateDictConverter(state_dict):
+    state_dict_ = {}
+    for name in state_dict:
+        if name.startswith("model.diffusion_model.video_embeddings_connector."):
             new_name = "video_connector." + name.removeprefix("model.diffusion_model.video_embeddings_connector.")
         elif name.startswith("model.diffusion_model.audio_embeddings_connector."):
             new_name = "audio_connector." + name.removeprefix("model.diffusion_model.audio_embeddings_connector.")

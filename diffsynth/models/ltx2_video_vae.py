@@ -1335,6 +1335,12 @@ class LTX2VideoEncoder(nn.Module):
         encoder_version: str = "ltx-2",
     ):
         super().__init__()
+        if isinstance(norm_layer, str):
+            norm_layer = NormLayerType(norm_layer)
+        if isinstance(latent_log_var, str):
+            latent_log_var = LogVarianceType(latent_log_var)
+        if isinstance(encoder_spatial_padding_mode, str):
+            encoder_spatial_padding_mode = PaddingModeType(encoder_spatial_padding_mode)
         if encoder_version == "ltx-2":
             encoder_blocks = [
                 ['res_x', {'num_layers': 4}],
@@ -1794,6 +1800,10 @@ class LTX2VideoDecoder(nn.Module):
         base_channels: int = 128,
     ):
         super().__init__()
+        if isinstance(norm_layer, str):
+            norm_layer = NormLayerType(norm_layer)
+        if isinstance(decoder_spatial_padding_mode, str):
+            decoder_spatial_padding_mode = PaddingModeType(decoder_spatial_padding_mode)
 
         # Spatiotemporal downscaling between decoded video space and VAE latents.
         # According to the LTXV paper, the standard configuration downsamples
