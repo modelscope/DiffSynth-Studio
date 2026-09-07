@@ -1285,10 +1285,8 @@ def get_padding(kernel_size: int, dilation: int = 1) -> int:
     return int((kernel_size * dilation - dilation) / 2)
 
 
-# ---------------------------------------------------------------------------
 # Anti-aliased resampling helpers (kaiser-sinc filters) for BigVGAN v2
 # Adopted from https://github.com/NVIDIA/BigVGAN
-# ---------------------------------------------------------------------------
 
 
 def _sinc(x: torch.Tensor) -> torch.Tensor:
