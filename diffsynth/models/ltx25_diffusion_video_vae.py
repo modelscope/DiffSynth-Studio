@@ -3215,6 +3215,15 @@ def det_qkv_rope(attn: object, x: torch.Tensor) -> tuple[torch.Tensor, torch.Ten
 
 
 
+def vram_ready_linear(module: nn.Module) -> tuple[torch.Tensor, torch.Tensor | None]:
+    # This decoder calls several projections functionally, bypassing the VRAM wrappers'
+    # forward, so ask the wrapper for computation-ready weights instead of reading them raw.
+    computation = getattr(module, "computation", None)
+    if computation is not None:
+        return computation()
+    return module.weight, module.bias
+
+
 class QKVProjections(nn.Module):
     """Checkpoint-fused QKV weights executed as the target's three projections."""
 
@@ -3225,8 +3234,10 @@ class QKVProjections(nn.Module):
         self.bias = linear.bias
 
     def forward(self, x):
-        weights = self.weight.chunk(3, dim=0)
-        biases = self.bias.chunk(3, dim=0)
+        weight = self.weight.to(device=x.device, dtype=x.dtype)
+        bias = self.bias.to(device=x.device, dtype=x.dtype)
+        weights = weight.chunk(3, dim=0)
+        biases = bias.chunk(3, dim=0)
         return tuple(F.linear(x, weight, bias) for weight, bias in zip(weights, biases, strict=True))
 
 
@@ -3277,11 +3288,19 @@ def swiglu_tiled(x, w_gate, w_up, w_down, tile, *, use_triton=None):
     return output.reshape(*leading, output.shape[-1])
 
 
+def swiglu_weights(mlp) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    return (
+        vram_ready_linear(mlp.w_gate)[0],
+        vram_ready_linear(mlp.w_up)[0],
+        vram_ready_linear(mlp.w_down)[0],
+    )
+
+
 def plain_mlp(x, mlp, norm, tile):
     y = norm(x)
     if y.numel() == 0:
         return x
-    return x + swiglu_tiled(y, mlp.w_gate.weight, mlp.w_up.weight, mlp.w_down.weight, tile)
+    return x + swiglu_tiled(y, *swiglu_weights(mlp), tile)
 
 
 class SwiGLU(nn.Module):
@@ -3293,7 +3312,7 @@ class SwiGLU(nn.Module):
         self.tile = tile
 
     def forward(self, x):
-        return swiglu_tiled(x, self.w_gate.weight, self.w_up.weight, self.w_down.weight, self.tile)
+        return swiglu_tiled(x, *swiglu_weights(self), self.tile)
 
 
 def configure_swiglu_tile(module_root, *, num_tiles=None, tile_size=None):
@@ -4425,8 +4444,9 @@ class DiffusionNABlock(nn.Module):
     def _modulation(
         self, modulation: tuple[torch.Tensor, ...]
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        scale_shift_table = self.scale_shift_table.to(dtype=modulation[0].dtype, device=modulation[0].device)
         scale_msa, shift_msa, _, scale_mlp, shift_mlp, _, _ = [
-            modulation[i] + self.scale_shift_table[i].view(1, 1, 1, 1, -1) for i in range(AdaLNZero.NUM_CHUNKS)
+            modulation[i] + scale_shift_table[i].view(1, 1, 1, 1, -1) for i in range(AdaLNZero.NUM_CHUNKS)
         ]
         return scale_msa, shift_msa, scale_mlp, shift_mlp
 
@@ -4658,7 +4678,7 @@ def residual_mlp(
     y = modulate(norm(x), scale, shift)
     if y.numel() == 0:
         return x
-    return x + swiglu_tiled(y, mlp.w_gate.weight, mlp.w_up.weight, mlp.w_down.weight, tile)
+    return x + swiglu_tiled(y, *swiglu_weights(mlp), tile)
 
 
 """CombinedDiffusionNABlock: context_and_x inject + full-volume attn + residual MLP."""
@@ -4683,8 +4703,9 @@ class CombinedDiffusionNABlock(DiffusionNABlock):
         masking. Both asymmetries are upstream's.
         """
         scale_msa, shift_msa, scale_mlp, shift_mlp = self._modulation(modulation)
-        x = inject_context(context_and_x, self.context_proj.weight, self.context_proj.bias)
-        keyframe_x = inject_context(keyframe_context_and_x, self.context_proj.weight, self.context_proj.bias)
+        w_proj, b_proj = vram_ready_linear(self.context_proj)
+        x = inject_context(context_and_x, w_proj, b_proj)
+        keyframe_x = inject_context(keyframe_context_and_x, w_proj, b_proj)
         x, keyframe_x = residual_attn_with_keyframes(
             x,
             keyframe_x,
@@ -4705,7 +4726,8 @@ class CombinedDiffusionNABlock(DiffusionNABlock):
         modulation: tuple[torch.Tensor, ...],
     ) -> torch.Tensor:
         scale_msa, shift_msa, scale_mlp, shift_mlp = self._modulation(modulation)
-        x = inject_context(context_and_x, self.context_proj.weight, self.context_proj.bias)
+        w_proj, b_proj = vram_ready_linear(self.context_proj)
+        x = inject_context(context_and_x, w_proj, b_proj)
         x = residual_attn(x, self.attn, self.norm1, scale_msa, shift_msa)
         x = residual_mlp(x, self.mlp, self.norm2, scale_mlp, shift_mlp, self.mlp.tile)
         return x

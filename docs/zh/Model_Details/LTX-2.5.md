@@ -1,82 +1,125 @@
 # LTX-2.5
 
-DiffSynth-Studio 通过 `LTX25AudioVideoPipeline` 提供可移植的 LTX-2.5
-音视频联合推理。该实现从本地加载官方 BF16 分组件权重，运行时不依赖
-`ltx_core`、NATTEN、Triton 或 ltx-kernels。
+LTX-2.5 是 Lightricks 发布的音视频联合生成模型。DiffSynth-Studio 通过 `LTX2AudioVideoPipeline` 提供其推理与训练支持（与 LTX-2 / LTX-2.3 共用同一个 Pipeline 类）。相比 LTX-2.3，LTX-2.5 引入了微调版 Gemma4 12B 文本编码器（内嵌 tokenizer 资产与音视频双 connector）、DiffVAE 扩散视频解码器、Duration Head 自动时长预测，以及 INT8 量化权重。
 
-> LTX-2.5 权重受门控保护。运行示例前，请先在 Lightricks 页面申请访问权限，
-> 并将权重放到本地模型目录。
+## 安装
 
-## 已实现的组件
+在使用本项目进行模型推理和训练前，请先安装 DiffSynth-Studio。
 
-- LTX-2.5 22B Distilled 和 Dev DiT
-- LTX 微调 Gemma4 12B 编码器、内嵌 tokenizer 资产和音视频双 connector
-- Duration Head 与因果帧网格的自动帧数预测
-- DiffVAE 视频编码器和纯 PyTorch eager diffusion 解码器
-- 音频 VAE、48 kHz BWE vocoder、空间 x2 latent upsampler 及时域 x2
-  upsampler 注册
-- Dev 第二阶段 distilled-LoRA 加载
-
-Eager DiffVAE 解码器使用 tiled scaled-dot-product attention 实现可移植的
-邻域注意力后备路径。固定输入下，其确定性解码阶段和一个 x0 diffusion step
-与上游 eager 实现数值一致。
-
-## 推理模式
-
-公开的 `LTX25AudioVideoPipeline` API 与现有 LTX-2.3 API 对齐。
-
-| 模式 | Pipeline 参数 | 状态 |
-|---|---|---|
-| Distilled 两阶段 T2AV | `use_distilled_pipeline=True`，`use_two_stage_pipeline=True` | 支持 |
-| Distilled 两阶段 I2AV | `input_images`，`input_images_indexes` | 支持 |
-| Dev 单阶段 T2AV | `use_distilled_pipeline=False`，`use_two_stage_pipeline=False` | 支持 |
-| Dev 单阶段 I2AV | `input_images`，`use_two_stage_pipeline=False` | 支持 |
-| Dev 两阶段 T2AV/I2AV | `stage2_lora_config`，`use_two_stage_pipeline=True` | 支持 |
-| A2V | `retake_audio`，`audio_sample_rate`，可选 `retake_audio_regions` | 支持 |
-| Video/audio Retake | `retake_video`，`retake_video_regions`，`retake_audio_regions` | 支持 |
-| Keyframe interpolation | 多个 `input_images` 和 `input_images_indexes` | 支持 |
-| Pixel Spatial Upscaler IC-LoRA | `in_context_videos`，`in_context_downsample_factor=2` | 支持 |
-
-Dev 两阶段推理需要通过 `stage2_lora_config` 提供发布的第二阶段 distilled-LoRA。
-Distilled 推理必须使用两阶段；Dev 同时支持不加载第二阶段 LoRA 的单阶段路径。
-
-Pixel Spatial Upscaler 需要官方的 LTX-2.5 Pixel IC-LoRA。通过
-`pipe.load_lora(pipe.dit, ModelConfig(path=...))` 加载它，将参考视频传给
-`in_context_videos`，并设置 `clear_lora_before_state_two=True`。参考视频的
-宽高应为最终输出的四分之一：第一阶段为半分辨率，adapter 的
-`reference_downscale_factor` 为 2。不要将 LTX-2.3 adapter 加载到
-LTX-2.5 DiT 中。
-
-## 几何与显存要求
-
-- `num_frames % 8 == 1`
-- 单阶段的高度、宽度必须是 32 的倍数。
-- 两阶段的高度、宽度必须是 64 的倍数。
-- 低显存示例使用 BF16 计算、FP8 CPU 权重卸载，并为 DiT、Gemma4 编码器、
-  text connector 和 DiffVAE decoder 启用细粒度显存管理。
-- `LTX25_VRAM_LIMIT_GB` 控制保留在 GPU 上的预加载模型层预算，默认值为 16；
-  它不是端到端显存硬上限。
-- 在 `LTX25_VRAM_LIMIT_GB=16` 下，960×576×121 distilled T2AV 实测 PyTorch
-  allocated 峰值为 31.8 GiB、reserved 峰值为 44.4 GiB。48 GiB 仅是该分辨率
-  的实测下界，不代表已在 48 GiB 显存卡上验证，并应为驱动预留余量。
-- 当前 `tiled=True` 不会切分 portable DiffVAE 的完整 decode volume。decoder
-  决定了目前的全分辨率峰值；要支持更低显存卡，需要实现 tiled decoder。
-
-运行低显存示例：
-
-```bash
-python examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-DistilledPipeline.py
-python examples/ltx2/model_inference_low_vram/LTX-2.5-Keyframe-Interpolation.py
-python examples/ltx2/model_inference_low_vram/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py
+```shell
+git clone https://github.com/modelscope/DiffSynth-Studio.git
+cd DiffSynth-Studio
+pip install -e .
 ```
 
-分组件权重默认位于 `models/Lightricks/LTX-2.5`。Pixel 示例还需要单独门控的
-adapter，默认位于
-`models/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler`。显存充足时可以
-通过 `LTX25_VRAM_LIMIT_GB=24` 增大预加载层预算以改善速度，但它不会降低 decoder
-峰值。如本地模型目录不同，请修改示例中的路径。
+更多关于安装的信息，请参考[安装依赖](../Pipeline_Usage/Setup.md)。LTX-2.5 的 Gemma4 文本编码器需要 `transformers>=5.8,<5.15`。
 
-## 范围
+## 快速开始
 
-该接入仅覆盖推理。训练、LTX-2.5 专有 DFR、Dub-It 和 HDR/EXR
-pipeline 不在本次范围内。
+运行以下代码可以快速加载 [Lightricks/LTX-2.5](https://www.modelscope.cn/models/Lightricks/LTX-2.5) 模型并进行推理。开启 `auto_duration` 后，Pipeline 会先用 Duration Head 从提示词预测视频时长，再完成音视频生成，整个过程只需一次 `pipe(...)` 调用。
+
+```python
+import torch
+from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
+from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
+
+vram_config = {
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cuda",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+pipe = LTX2AudioVideoPipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors", **vram_config),
+        ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors", **vram_config),
+        ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="vae/ltx-2.5-video-vae-bf16.safetensors", **vram_config),
+        ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="vae/ltx-2.5-audio-vae-bf16.safetensors", **vram_config),
+        ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors", **vram_config),
+        ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="model_patches/ltx-2.5-duration-head-bf16.safetensors", **vram_config),
+    ],
+    load_duration_head=True,
+)
+prompt = "A girl is very happy, she is speaking: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
+negative_prompt = pipe.default_negative_prompt["LTX-2.3"]
+video, audio = pipe(
+    prompt=prompt,
+    negative_prompt=negative_prompt,
+    seed=43,
+    height=1024, width=1536, frame_rate=24,
+    auto_duration=True,
+    cfg_scale=1.0, num_inference_steps=8,
+    use_distilled_pipeline=True, use_two_stage_pipeline=True,
+    tiled=True,
+)
+write_video_audio_ltx2(video=video, audio=audio, output_path='video.mp4', fps=24, audio_sample_rate=pipe.audio_vocoder.output_sampling_rate)
+```
+
+## 模型总览
+
+|模型 ID|额外参数|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
+|-|-|-|-|-|-|-|-|
+|[Lightricks/LTX-2.5: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`auto_duration`,`load_duration_head=True`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_training/full/LTX-2.5-T2AV-splited.sh)|[code](/examples/ltx2/model_training/validate_full/LTX-2.5-T2AV.py)|[code](/examples/ltx2/model_training/lora/LTX-2.5-T2AV-splited.sh)|[code](/examples/ltx2/model_training/validate_lora/LTX-2.5-T2AV.py)|
+|[Lightricks/LTX-2.5: DistilledPipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`input_images`,`input_images_indexes`|[code](/examples/ltx2/model_inference/LTX-2.5-I2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-I2AV-DistilledPipeline.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: TwoStagePipeline-A2V](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`retake_audio`,`audio_sample_rate`,`stage2_lora_config`|[code](/examples/ltx2/model_inference/LTX-2.5-A2V-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-A2V-TwoStage.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: TwoStagePipeline-Retake](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`retake_video`,`retake_video_regions`,`stage2_lora_config`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-TwoStage-Retake.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-TwoStage-Retake.py)|-|-|-|-|
+|[Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler](https://www.modelscope.cn/models/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler)|`in_context_videos`,`in_context_downsample_factor`|[code](/examples/ltx2/model_inference/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: T2A](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`generate_video=False`|[code](/examples/ltx2/model_inference/LTX-2.5-T2A.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2A.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: INT8-ConvRot](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|INT8 DiT + INT8 Gemma4|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-INT8-ConvRot.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-INT8-ConvRot.py)|-|-|-|-|
+
+## 模型推理
+
+模型通过 `LTX2AudioVideoPipeline.from_pretrained` 加载，详见[加载模型](../Pipeline_Usage/Model_Inference.md#加载模型)。LTX-2.5 与 LTX-2.3 共用 `LTX2AudioVideoPipeline`，框架根据加载到的权重自动识别模型版本。
+
+`from_pretrained` 的 LTX-2.5 相关参数：
+
+* `load_duration_head`: 是否要求加载 Duration Head（自动时长预测所需），默认为 `False`。
+* `gemma_path`: Gemma4 权重路径，用于加载内嵌的 tokenizer 资产。留空时自动从 `model_configs` 中的 text encoder 路径推导。
+* `stage2_lora_config`: Dev 权重两阶段推理时使用的第二阶段 distilled-LoRA。
+
+`LTX2AudioVideoPipeline` 的通用推理参数见 [LTX-2 文档](LTX-2.md#模型推理)，LTX-2.5 新增或特有的参数为：
+
+* `auto_duration`: 是否根据提示词自动预测视频时长，默认为 `False`。开启后无需传入 `num_frames`，需要加载 Duration Head。
+* `auto_duration_min_seconds` / `auto_duration_max_seconds`: 自动时长的上下界（秒），默认为 1.0 和 20.0。
+* `generate_video`: 是否生成视频，默认为 `True`。设置为 `False` 时只生成音频（T2A），此时无需加载视频 VAE 与 latent upsampler。
+* `use_diffusion_vae`: 视频解码器选择。`None`（默认）表示按模型版本自动选择（LTX-2.5 使用 DiffVAE 扩散解码器），`False` 表示使用 ConvVAE 卷积解码器（需加载 `ltx-2.5-video-vae-conv-bf16.safetensors`）。
+* `input_images` / `input_images_indexes`: 关键帧图像及其帧索引。传入首帧即为图生视频，传入首尾（或多帧）即为关键帧插值。
+* `retake_audio` / `audio_sample_rate` / `retake_audio_regions`: 音频驱动视频（A2V）与音频区域重生成。
+
+几何约束：`num_frames % 8 == 1`；单阶段的宽高为 32 的倍数，两阶段的宽高为 64 的倍数。
+
+如果显存不足，请开启[显存管理](../Pipeline_Usage/VRAM_management.md)，我们在示例代码中提供了每个模型推荐的低显存配置（FP8 CPU 权重卸载 + 细粒度显存管理），详见前文"模型总览"中的表格。
+
+## 模型训练
+
+LTX-2.5 与 LTX-2 / LTX-2.3 共用训练脚本 [`examples/ltx2/model_training/train.py`](/examples/ltx2/model_training/train.py)，通用训练参数的说明见 [LTX-2 文档](LTX-2.md#模型训练)。
+
+由于 22B DiT 与 12B Gemma4 编码器无法同时放入单卡，LTX-2.5 的训练脚本采用双阶段（splited）方案：
+
+1. `--task "sft:data_process"`：运行文本编码与 VAE 编码，把结果缓存到硬盘。
+2. `--task "sft:train"`：从缓存读取前处理结果，只训练 DiT。
+
+两个阶段都保留完整的 `--model_id_with_origin_paths`，并用 `--fp8_models` 声明该阶段不需要前向的模型（阶段二的 TextEncoder 与 VAE 使用 FP8 加载）。训练数据集的字段为 `video,prompt,input_audio,frame_rate`，对应 `--data_file_keys "video,input_audio"` 与 `--extra_inputs "input_audio"`。
+
+我们构建了一个样例视频数据集，以方便您进行测试，通过以下命令可以下载这个数据集：
+
+```shell
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "ltx2/LTX-2.3-T2AV-splited/*" --local_dir ./data/diffsynth_example_dataset
+```
+
+训练完成后，可以使用 `examples/ltx2/model_training/validate_lora/LTX-2.5-T2AV.py`（LoRA）或 `examples/ltx2/model_training/validate_full/LTX-2.5-T2AV.py`（全量）加载训练产物进行推理验证。关于如何编写模型训练脚本，请参考[模型训练](../Pipeline_Usage/Model_Training.md)。
+
+## 暂不支持的功能
+
+以下 LTX-2.5 官方能力暂未接入：
+
+* DFR（Diffusion Frame Rate）
+* Native HDR / EXR 输出
+* HDR IC-LoRA
+* Dub-It 配音

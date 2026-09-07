@@ -397,7 +397,7 @@ class LTX2AudioVideoUnit_VideoDecoderSelector(PipelineUnit):
         tile_overlap_in_frames,
         generate_video=True,
     ):
-        if not generate_video:
+        if generate_video is False:
             return {
                 "video_decoder_name": None,
                 "video_decode_kwargs": {},
@@ -621,6 +621,8 @@ class LTX2AudioVideoUnit_NoiseInitializer(PipelineUnit):
         noise_generator=None,
         generate_video=True,
     ):
+        # The unit runner passes None for params missing from inputs_shared (e.g. in training).
+        generate_video = generate_video is not False
         video_pixel_shape = VideoPixelShape(batch=1, frames=num_frames, width=width, height=height, fps=frame_rate)
         video_latent_shape = VideoLatentShape.from_pixel_shape(shape=video_pixel_shape, latent_channels=128)
         noise_dtype = pipe.torch_dtype if pipe.is_ltx25 else torch.float32
