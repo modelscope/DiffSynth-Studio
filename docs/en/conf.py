@@ -51,6 +51,7 @@ extensions = [
     "sphinx_rtd_theme",
     'sphinx.ext.mathjax',
     'myst_parser',
+    'sphinxcontrib.mermaid',
 ]
 # build the templated autosummary files
 autosummary_generate = True
@@ -122,3 +123,25 @@ myst_enable_extensions = [
     'dollarmath',
     'colon_fence',
 ]
+
+myst_fence_as_directive = ['mermaid']
+
+mermaid_version = '11.12.1'
+
+
+def setup(app):
+    old_cdn = 'cdn.jsdelivr.net/npm/mermaid@'
+    new_cdn = 'fastly.jsdelivr.net/npm/mermaid@'
+
+    def _use_china_cdn(app_, pagename, templatename, context, doctree):
+        for item in context.get('script_files') or []:
+            state = vars(item) if hasattr(item, '__dict__') else {}
+            attributes = state.get('attributes') or {}
+            body = attributes.get('body') or ''
+            filename = str(state.get('filename') or '')
+            if old_cdn in body:
+                attributes['body'] = body.replace(old_cdn, new_cdn)
+            if old_cdn in filename:
+                item.filename = filename.replace(old_cdn, new_cdn)
+
+    app.connect('html-page-context', _use_china_cdn)

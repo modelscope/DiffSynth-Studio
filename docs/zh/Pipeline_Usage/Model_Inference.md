@@ -133,6 +133,8 @@ image.save("image.jpg")
 
 * 热加载：当基础模型开启[显存管理](../Pipeline_Usage/VRAM_management.md)时，LoRA 不会融合进基础模型权重，此时推理速度会变慢，LoRA 加载后可通过 `pipe.clear_lora()` 卸载。
 
+如果不希望启用显存管理，可以通过 `pipe.enable_lora_hotloading(pipe.dit)` 来单独启用 LoRA 热加载。
+
 ```python
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 import torch

@@ -248,3 +248,7 @@ def model_fn_new(dit=None, latents=None, timestep=None, prompt_emb=None, **kwarg
 ```
 
 For models with rich open-source ecosystems, `model_fn` usually contains complex and chaotic cross-model inference. Taking `diffsynth/pipelines/qwen_image.py` as an example, the additional calculations implemented in this function include: entity partition control, three types of ControlNet, Gradient Checkpointing, etc. Developers need to be extra careful when implementing this part to avoid conflicts between module functions.
+
+## Compilation Acceleration
+
+To enable compilation acceleration, please refer to [Inference Acceleration](../Pipeline_Usage/Accelerated_Inference.md).

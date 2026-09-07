@@ -24,26 +24,32 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         extra_inputs=None,
         fp8_models=None,
         offload_models=None,
+        quant_options=None,
         template_model_id_or_path=None,
         resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         silent_on_missing_audio=False,
+        training_cfg_scale=1.0,
+        audio_loss_weight=1.0,
         device="cpu",
         task="sft",
     ):
         super().__init__()
+        if training_cfg_scale < 1.0:
+            raise ValueError("training_cfg_scale must be at least 1.0")
+        self.training_cfg_scale = training_cfg_scale
+        self.audio_loss_weight = audio_loss_weight
         # Load models
-        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, device=device)
+        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, quant_options=quant_options, device=device)
         pipe_kwargs = {}
         if processor_path is not None:
-            processor_config = self.parse_path_or_model_id(processor_path)
-            pipe_kwargs["processor_config"] = ModelConfig(model_id=processor_config.model_id, origin_file_pattern=processor_config.origin_file_pattern)
+            pipe_kwargs["processor_config"] = self.parse_path_or_model_id(processor_path)
         self.pipe = MiniMaxH3Pipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, **pipe_kwargs)
         self.pipe = self.load_training_template_model(self.pipe, template_model_id_or_path, use_gradient_checkpointing, use_gradient_checkpointing_offload)
         self.pipe = self.split_pipeline_units(
             task, self.pipe, trainable_models, lora_base_model,
             remove_unnecessary_params=True,
             force_remove_params_shared=("video_latents", "audio_latents"),
-            force_remove_params_nega=("prompt_embeds", "text_token_tags", "packed"),
+            force_remove_params_nega=("prompt_embeds", "text_token_tags", "packed") if training_cfg_scale == 1.0 else (),
         )
         self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
         # Training mode
@@ -64,8 +70,14 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         self.task = task
         self.task_to_loss = {
             "sft:data_process": lambda pipe, *args: args,
-            "sft": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe, **inputs_shared, **inputs_posi),
-            "sft:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe, **inputs_shared, **inputs_posi),
+            "sft": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTMiniMaxH3AudioVideoLoss(
+                pipe, training_cfg_scale=self.training_cfg_scale, audio_loss_weight=self.audio_loss_weight,
+                inputs_nega=inputs_nega, **inputs_shared, **inputs_posi,
+            ),
+            "sft:train": lambda pipe, inputs_shared, inputs_posi, inputs_nega: FlowMatchSFTMiniMaxH3AudioVideoLoss(
+                pipe, training_cfg_scale=self.training_cfg_scale, audio_loss_weight=self.audio_loss_weight,
+                inputs_nega=inputs_nega, **inputs_shared, **inputs_posi,
+            ),
         }
 
     def parse_extra_inputs(self, data, extra_inputs, inputs_shared):
@@ -93,7 +105,7 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
 
     def get_pipeline_inputs(self, data):
         inputs_posi = {"prompt": data["prompt"]}
-        inputs_nega = {}
+        inputs_nega = {"negative_prompt": " "}
         inputs_shared = {
             # Assume you are using this pipeline for inference,
             # please fill in the input parameters.
@@ -108,9 +120,14 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
             "ref_video_short_edge": 768, "ref_video_max_pixels": 768 * 1344,
             "imgvid_cond_noise_aug": self.pipe.imgvid_cond_noise_aug,
             "audio_cond_noise_aug": self.pipe.audio_cond_noise_aug,
+            "tiled": True,
+            "tile_size": 256,
+            "tile_overlap": 64,
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
-            "cfg_scale": 1,
+            # Reuse the pipeline's CFG preprocessing path to build unconditional
+            # embeddings when CFG-aware training is enabled.
+            "cfg_scale": self.training_cfg_scale,
             "seed": 42,
             "rand_device": "cpu",
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
@@ -135,6 +152,8 @@ def minimax_h3_parser():
     parser.add_argument("--processor_path", type=str, default=None, help="Path or `model_id:pattern` of the Qwen3-VL processor.")
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
     parser.add_argument("--silent_on_missing_audio", default=False, action="store_true", help="Whether to use silent audio as a fallback when no audio track is present in the video data.")
+    parser.add_argument("--training_cfg_scale", type=float, default=1.0, help="Inverse-CFG scale for preserving MiniMax-H3 guidance distillation during fine-tuning. Values greater than 1 enable a no-grad unconditional branch; 1 keeps the standard flow-matching loss.")
+    parser.add_argument("--audio_loss_weight", type=float, default=1.0, help="Weight of the audio term in the MiniMax-H3 loss. 1 keeps video and audio equally weighted; 0 trains on the video term only while the audio stream is still noised and forwarded.")
     return parser
 
 
@@ -203,10 +222,13 @@ if __name__ == "__main__":
         extra_inputs=args.extra_inputs,
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
+        quant_options=args.quant_options,
         template_model_id_or_path=args.template_model_id_or_path,
         resume_from_checkpoint=args.resume_from_checkpoint,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         silent_on_missing_audio=args.silent_on_missing_audio,
+        training_cfg_scale=args.training_cfg_scale,
+        audio_loss_weight=args.audio_loss_weight,
         task=args.task,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
     )
@@ -218,6 +240,7 @@ if __name__ == "__main__":
         swanlab_project=args.swanlab_project,
         enable_wandb_log=args.enable_wandb_log,
         wandb_project=args.wandb_project,
+        enable_csv_log=args.enable_csv_log,
     )
     launcher_map = {
         "sft:data_process": launch_data_process_task,

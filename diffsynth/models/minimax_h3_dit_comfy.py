@@ -57,7 +57,16 @@ def _to_comfy_pruned_adaln_proj(proj: MiniMaxH3AdalnProj) -> MiniMaxH3ComfyPrune
     return curve_proj
 
 
-class MiniMaxH3DiTComfyPruned(MiniMaxH3DiT):
+class MiniMaxH3DiTComfy(MiniMaxH3DiT):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        for block in self.blocks:
+            block.attn.forward = types.MethodType(_comfy_attention_forward, block.attn)
+        for block in self.token_refiner.blocks:
+            block.attn.forward = types.MethodType(_comfy_attention_forward, block.attn)
+
+
+class MiniMaxH3DiTComfyPruned(MiniMaxH3DiTComfy):
     def __init__(self, adaln_curve_grid: int = 1025, time_embed_dim: int = 8, **kwargs):
         super().__init__(time_embed_dim=time_embed_dim, **kwargs)
         self.register_buffer(
@@ -66,7 +75,4 @@ class MiniMaxH3DiTComfyPruned(MiniMaxH3DiT):
         self.time_embedder = MiniMaxH3ComfyPrunedTimeEmbedder(lambda: self.adaln_t_table)
         for block in self.blocks:
             block.adaln_proj = _to_comfy_pruned_adaln_proj(block.adaln_proj)
-            block.attn.forward = types.MethodType(_comfy_attention_forward, block.attn)
-        for block in self.token_refiner.blocks:
-            block.attn.forward = types.MethodType(_comfy_attention_forward, block.attn)
         self.final_layer.adaln_proj = _to_comfy_pruned_adaln_proj(self.final_layer.adaln_proj)

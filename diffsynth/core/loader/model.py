@@ -37,14 +37,13 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
             devices = [vram_config[k] for k in ("offload_device", "onload_device", "preparing_device", "computation_device")]
             load_device = [d for d in devices if d != "disk"][0]
             disk_map = DiskMap(path, load_device, torch_dtype=None, state_dict_converter=state_dict_converter)
-            metadata = load_metadata_from_safetensors(path[0] if isinstance(path, list) else path)
+            metadata = load_metadata_from_safetensors(path)
             model = quantize.prepare_for_prequantized_load(model, compute_dtype=vram_config["computation_dtype"])
             model = enable_vram_management(model, module_map, vram_config=vram_config, disk_map=disk_map, vram_limit=vram_limit, quantize=quantize, metadata=metadata)
         else:
             offload_device = vram_config["offload_device"]
             computation_device = vram_config["computation_device"]
             computation_dtype = vram_config["computation_dtype"]
-            offload_dtype = vram_config["offload_dtype"]
             load_dtype = None if quantize.load_prequantized else computation_dtype
             if state_dict is None: state_dict = DiskMap(path, offload_device, torch_dtype=load_dtype)
             if state_dict_converter is not None:
@@ -61,7 +60,7 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
 
             model = quantize.quantize_model(model, compute_device=computation_device, model_device=offload_device)
             model = quantize.dequantize_model(model, compute_dtype=computation_dtype, compute_device=computation_device, model_device=offload_device)
-            model = model.to(dtype=offload_dtype, device=offload_device)
+            model = model.to(dtype=computation_dtype, device=offload_device)
             model = enable_vram_management(model, module_map, vram_config=vram_config, disk_map=None, vram_limit=vram_limit, quantize=quantize)
     elif quantize is not None:
         # Weight-only quantization (see `diffsynth.core.quant`), isolated from the normal path below.
@@ -120,6 +119,9 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
         # Because some models override the behavior of `to()`,
         # especially those from libraries like Transformers.
         model = model.to(dtype=torch_dtype, device=device)
+    if quantize is not None:
+        # Downstream steps (e.g. LoRA hot-loading) need the config to handle the quantized layers.
+        model.quantize_config = quantize
     if hasattr(model, "eval"):
         model = model.eval()
     return model

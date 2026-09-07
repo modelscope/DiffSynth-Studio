@@ -28,5 +28,13 @@ def SiglipStateDictConverter(state_dict):
     new_state_dict = {}
     for key in state_dict:
         if key.startswith("vision_model."):
-            new_state_dict[key] = state_dict[key] 
+            new_state_dict[key] = state_dict[key]
+    return new_state_dict
+
+
+def SiglipReduxStateDictConverter(state_dict):
+    new_state_dict = {}
+    for key in state_dict:
+        if key.startswith("vision_model."):
+            new_state_dict[key[len("vision_model."):]] = state_dict[key]
     return new_state_dict

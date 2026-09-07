@@ -15,6 +15,7 @@
    Pipeline_Usage/Model_Inference
    Pipeline_Usage/Accelerated_Inference
    Pipeline_Usage/VRAM_management
+   Pipeline_Usage/Quantization
    Pipeline_Usage/Model_Training
    Pipeline_Usage/Environment_Variables
    Pipeline_Usage/GPU_support
@@ -27,6 +28,7 @@
    Model_Details/FLUX
    Model_Details/Wan
    Model_Details/Qwen-Image
+   Model_Details/Qwen-Video-Edit
    Model_Details/FLUX2
    Model_Details/Z-Image
    Model_Details/Anima
@@ -45,6 +47,7 @@
    Model_Details/LingBot-Video
    Model_Details/MiniMax-H3
    Model_Details/MiniMax-Music3
+   Model_Details/SenseNova-U1
 
 .. toctree::
    :maxdepth: 2
@@ -67,6 +70,7 @@
    Developer_Guide/Building_a_Pipeline
    Developer_Guide/Enabling_VRAM_management
    Developer_Guide/Training_Diffusion_Models
+   Developer_Guide/Integrating_Quantization_Backend
 
 .. toctree::
    :maxdepth: 2
@@ -76,6 +80,7 @@
    API_Reference/core/data
    API_Reference/core/gradient
    API_Reference/core/loader
+   API_Reference/core/quant
    API_Reference/core/vram
 
 .. toctree::

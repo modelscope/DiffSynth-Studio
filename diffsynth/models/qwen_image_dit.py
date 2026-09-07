@@ -393,6 +393,7 @@ class QwenDoubleStreamAttention(nn.Module):
         image_rotary_emb: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
         attention_mask: Optional[torch.FloatTensor] = None,
         enable_fp8_attention: bool = False,
+        kv_cache = None,
     ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         img_q, img_k, img_v = self.to_q(image), self.to_k(image), self.to_v(image)
         txt_q, txt_k, txt_v = self.add_q_proj(text), self.add_k_proj(text), self.add_v_proj(text)
@@ -419,6 +420,21 @@ class QwenDoubleStreamAttention(nn.Module):
         joint_q = torch.cat([txt_q, img_q], dim=2)
         joint_k = torch.cat([txt_k, img_k], dim=2)
         joint_v = torch.cat([txt_v, img_v], dim=2)
+
+        if kv_cache is not None:
+            template_k, template_v = kv_cache
+            if template_k.shape[2] == self.num_heads and template_k.shape[3] == self.head_dim:
+                template_k = rearrange(template_k, "b s h d -> b h s d")
+                template_v = rearrange(template_v, "b s h d -> b h s d")
+
+            template_k = template_k.to(device=joint_k.device, dtype=joint_k.dtype)
+            template_v = template_v.to(device=joint_v.device, dtype=joint_v.dtype)
+            template_length = template_k.shape[2]
+            joint_k = torch.cat([joint_k, template_k], dim=2)
+            joint_v = torch.cat([joint_v, template_v], dim=2)
+
+            if attention_mask is not None:
+                attention_mask = torch.nn.functional.pad(attention_mask, (0, template_length), value=0.0)
 
         joint_attn_out = qwen_image_flash_attention(joint_q, joint_k, joint_v, num_heads=joint_q.shape[1], attention_mask=attention_mask, enable_fp8_attention=enable_fp8_attention).to(joint_q.dtype)
 
@@ -509,6 +525,7 @@ class QwenImageTransformerBlock(nn.Module):
         attention_mask: Optional[torch.Tensor] = None,
         enable_fp8_attention = False,
         modulate_index: Optional[List[int]] = None,
+        kv_cache = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
         img_mod_attn, img_mod_mlp = self.img_mod(temb).chunk(2, dim=-1)  # [B, 3*dim] each
@@ -528,6 +545,7 @@ class QwenImageTransformerBlock(nn.Module):
             image_rotary_emb=image_rotary_emb,
             attention_mask=attention_mask,
             enable_fp8_attention=enable_fp8_attention,
+            kv_cache=kv_cache,
         )
         
         image = image + img_gate * img_attn_out

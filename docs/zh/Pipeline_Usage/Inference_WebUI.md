@@ -2,16 +2,19 @@
 
 DiffSynth-Studio 提供推理 WebUI，帮助开发者快速验证模型效果。
 
+> 现阶段的推理 WebUI 功能还不完善，我们会在未来优化交互逻辑。
+
 > 推理 WebUI 是面向开发者的调试工具，而非面向创作者的设计工具。如需功能更丰富、交互更友好的创作体验，推荐使用魔搭社区 [AIGC 专区](https://modelscope.cn/aigc/home)（中国用户）或 [Civision 专区](https://modelscope.ai/civision/home)（非中国用户）。
 
 ## 启动推理 WebUI
 
-推理 WebUI 基于 [Streamlit](https://streamlit.io/) 构建。建议以 `[all]` 模式安装 DiffSynth-Studio：
+推理 WebUI 基于 [`Streamlit`](https://streamlit.io/) 构建。除 DiffSynth-Studio 外还需安装 `Streamlit`：
 
 ```shell
 git clone https://github.com/modelscope/DiffSynth-Studio.git
 cd DiffSynth-Studio
-pip install -e .[all]
+pip install -e .
+pip install streamlit
 ```
 
 启动命令：

@@ -1,6 +1,6 @@
 from ..core.loader import load_model, hash_model_file
 from ..core.vram import AutoWrappedModule
-from ..core.quant import QuantizeConfig
+from ..core.quant import QuantizeConfig, MixedQuantizeConfig
 from ..configs import MODEL_CONFIGS, VRAM_MANAGEMENT_MODULE_MAPS, VERSION_CHECKER_MAPS
 import importlib, json, torch
 
@@ -69,13 +69,16 @@ class ModelPool:
         return vram_config
     
     def resolve_quant_config(self, config, quantize):
-        # No merging: an explicit user config wins wholesale; otherwise the registry
-        # `quant_config` of a published quantized variant is instantiated as-is.
-        if quantize is not None:
-            return quantize
-        if "quant_config" not in config:
-            return None
-        return QuantizeConfig(**config["quant_config"])
+        registered = config.get("quant_config")
+        if registered is not None:
+            if quantize is not None:
+                print(f"Warning: `{config.get('model_name')}` is already a pre-quantized checkpoint; ignoring the passed quantize option.")
+            registered = dict(registered)
+            child_configs = registered.pop("configs", None)
+            if child_configs is not None:
+                return MixedQuantizeConfig(configs=[QuantizeConfig(**child) for child in child_configs], **registered)
+            return QuantizeConfig(**registered)
+        return quantize
 
     def auto_load_model(self, path, vram_config=None, vram_limit=None, clear_parameters=False, state_dict=None, quantize=None):
         print(f"Loading models from: {json.dumps(path, indent=4)}")

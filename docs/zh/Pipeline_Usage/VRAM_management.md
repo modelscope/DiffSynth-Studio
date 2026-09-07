@@ -196,11 +196,19 @@ vram_config = {
 * Preparing：Onload 和 Computation 的中间状态，在显存允许的前提下的暂存状态，这个状态由显存管理机制控制切换，当且仅当【vram_limit 设置为无限制】或【vram_limit 已设置且有空余显存】时会进入这一状态
 * Computation：模型正在计算过程中，这个状态由显存管理机制控制切换，仅在 `forward` 中临时进入
 
-如果你是模型开发者，希望自行控制某个模型的显存管理粒度，请参考[../Developer_Guide/Enabling_VRAM_management.md](../Developer_Guide/Enabling_VRAM_management.md)。
+如果你是模型开发者，希望自行控制某个模型的显存管理粒度，请参考[启用显存管理](../Developer_Guide/Enabling_VRAM_management.md)。
 
-## 最佳实践
+显存管理可以与模型量化同时启用，模型量化会带来精度损失，但可以让更多模型参数保存在显存中，从而避免 Offload 到内存和硬盘中带来的速度损失，请参考[模型量化](./Quantization.md)。
 
-* 显存足够 -> 使用[基础推理](#基础推理)
-* 显存不足
-    * 内存足够 -> 使用[动态显存管理](#动态显存管理)
-    * 内存不足 -> 使用[Disk Offload](#disk-offload)
+## 选择最佳推理方案
+
+```mermaid
+graph TD;
+    A[显存是否足够?] -->|是| B[使用基础推理]
+    A -->|否| C[是否允许精度损失?]
+    C -->|是| D[使用模型量化]
+    C -->|否| E[内存是否足够?]
+    D --> E
+    E -->|是| F[使用动态显存管理]
+    E -->|否| G[使用 Disk Offload]
+```

@@ -99,6 +99,7 @@ stable_diffusion_xl 系列模型通过 `examples/stable_diffusion_xl/model_train
         * `--model_id_with_origin_paths`: 带原始路径的模型 ID。用逗号分隔。
         * `--extra_inputs`: 模型 Pipeline 所需的额外输入参数，以 `,` 分隔。
         * `--fp8_models`: 以 FP8 格式加载的模型，目前仅支持参数不被梯度更新的模型。
+        * `--quant_options`：对加载的模型进行动态量化。以 `;` 分隔多个条目，每个为 `<模型字符串>:<method>[/<exclude_modules>]`，`<模型字符串>` 需与 `--model_paths`/`--model_id_with_origin_paths` 中的一致，`method` 为已注册的量化方法（如 `bitsandbytes_nf4`），`exclude_modules` 为可选的保持全精度的层。
     * 训练基础配置
         * `--learning_rate`: 学习率。
         * `--num_epochs`: 轮数（Epoch）。

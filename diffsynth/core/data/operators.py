@@ -307,8 +307,8 @@ class LoadAudioWithTorchaudio(DataProcessingOperator, FrameSamplerByRateMixin):
                 padding = target_samples - current_samples
                 waveform = torch.nn.functional.pad(waveform, (0, padding))
             return waveform, sample_rate
-        except:
-            warnings.warn(f"Cannot load audio in {data}. The audio will be `None`.")
+        except Exception as e:
+            warnings.warn(f"Cannot load audio in {data} due to {e}. The audio will be `None`.")
             return None
 
 

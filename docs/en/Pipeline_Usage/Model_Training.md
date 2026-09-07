@@ -2,6 +2,25 @@
 
 This document introduces how to use `DiffSynth-Studio` for model training.
 
+`DiffSynth-Studio` provides a training framework for Diffusion models. The training code for each model architecture is written as a standalone `train.py` in [`examples`](https://github.com/modelscope/DiffSynth-Studio/tree/main/examples), and we provide `.sh` scripts for model training for each model. Taking Z-Image as an example, the file structure is as follows:
+
+```shell
+diffsynth/diffusion/   # Basic training framework
+examples/z_image/
+├── model_inference
+├── model_inference_low_vram
+└── model_training
+    ├── train.py       # Model training code for the Z-Image architecture
+    ├── full
+    │   └── Z-Image.sh # Launch full training
+    ├── validate_full
+    │   └── Z-Image.py # After full training, run this script to load the model and validate the results
+    ├── lora
+    │   └── Z-Image.sh # Launch LoRA training
+    └── validate_lora
+        └── Z-Image.py # After LoRA training, run this script to load the model and validate the results
+```
+
 ## Script Parameters
 
 Training scripts typically include the following parameters:
@@ -17,6 +36,7 @@ Training scripts typically include the following parameters:
     * `--model_id_with_origin_paths`: Model IDs with original paths, for example `"Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors"`. Separated by commas.
     * `--extra_inputs`: Extra input parameters required by the model Pipeline, for example, training image editing model Qwen-Image-Edit requires extra parameter `edit_image`, separated by `,`.
     * `--fp8_models`: Models loaded in FP8 format, consistent with the format of `--model_paths` or `--model_id_with_origin_paths`. Currently only supports models whose parameters are not updated by gradients (no gradient backpropagation, or gradients only update their LoRA).
+    * `--quant_options`: Dynamically quantize loaded models. Semicolon-separated entries, each `<model_string>:<method>[/<exclude_modules>]`, where `<model_string>` matches an entry in `--model_paths`/`--model_id_with_origin_paths`, `method` is a registered method (e.g. `bitsandbytes_nf4`), and `exclude_modules` optionally lists layers kept in full precision.
     * `--resume_from_checkpoint`: Load model weights from a checkpoint file and resume training. Currently only supports single model loading without LoRA.
 * Training base configuration
     * `--learning_rate`: Learning rate.
@@ -49,7 +69,7 @@ Training scripts typically include the following parameters:
     * `--width`: Width of images or videos. Leave `height` and `width` blank to enable dynamic resolution.
     * `--max_pixels`: Maximum pixel area of images or video frames. When dynamic resolution is enabled, images with resolution larger than this value will be scaled down, and images with resolution smaller than this value will remain unchanged.
 
-Some models' training scripts also contain additional parameters. See the documentation for each model for details.
+Some models' training scripts also contain additional parameters. See [the documentation for each model](../README.md#section-2-model-details), or run `python xxx/train.py -h` to view the supported script parameters.
 
 ## Preparing Datasets
 
@@ -247,5 +267,6 @@ The framework supports multiple methods to reduce VRAM usage during training:
 |Gradient Checkpointing Offload|Enable via `--use_gradient_checkpointing_offload`|On top of Gradient Checkpointing, moves checkpointed parameters from VRAM to RAM|Further reduces VRAM usage and increases computation time, also increases RAM usage|Only recommended for video generation model training|[Docs](../API_Reference/core/gradient.md)|
 |DeepSpeed|Configure interactively via `accelerate config`|DeepSpeed supports sharding gradients, optimizer states, etc. across multiple GPUs|Reduces VRAM usage, increases communication cost between GPUs and machines, increases computation time|Only recommended for multi-GPU and multi-node cluster training|[Docs](../Training/DeepSpeed.md)|
 |FP8 Training|Set which model components to switch to FP8 mode via `--fp8_models`|Stores model parameters in FP8 precision in VRAM, temporarily converts to higher precision during inference; only supports models that don't require gradient updates|Reduces VRAM usage, slightly increases computation time, introduces minor training error|Only recommended for non-training modules like `text_encoder` and `vae`; can also be enabled for `dit` during LoRA training|[Docs](../Training/FP8_Precision.md)|
-|Two-Stage Split Training|Complex setup, please refer to the [docs](../Training/Split_Training.md). Note that Wan series models have different activation methods, please refer to the corresponding code examples.|Splits training into two stages: first stage performs gradient-free computation and saves intermediate results to disk; second stage computes gradients and updates model parameters.|Reduces VRAM usage, increases computation speed, uses additional disk space|Some models' two-stage training has not been verified, use with caution|[Docs](../Training/Split_Training.md)|
+|Custom Quantization Precision|Set the quantization configuration of each model component via `--quant_options`|An advanced version of FP8 training, storing model parameters in VRAM at arbitrary quantization precision|Reduces VRAM usage, slightly increases computation time, introduces minor training error|Only recommended for non-training modules like `text_encoder` and `vae`; can also be enabled for `dit` during LoRA training|[Docs](./Quantization.md)|
+|Two-Stage Split Training|Complex setup, please refer to the [docs](../Training/Split_Training.md)|Splits training into two stages: first stage performs gradient-free computation and saves intermediate results to disk; second stage computes gradients and updates model parameters.|Reduces VRAM usage, increases computation speed, uses additional disk space|Some models' two-stage training has not been verified, use with caution|[Docs](../Training/Split_Training.md)|
 |CPU Offload|Enable via `--enable_model_cpu_offload`|Keeps model in RAM during training, moves layers to VRAM one by one for forward and backward passes|Reduces VRAM usage, increases computation time, increases RAM usage|Only recommended for single GPU with extremely limited VRAM|[Docs](../Training/Offload_Training.md)|

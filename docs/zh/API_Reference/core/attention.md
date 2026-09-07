@@ -40,6 +40,7 @@ output_1 = attention(query, key, value)
 ## 更高效的实现
 
 注意到，注意力机制中 Attention Score（公式中的 $\text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)$，代码中的 `attn_weight`）的维度为 $(b, n, s, s)$，其中序列长度 $s$ 通常非常大，这导致计算的时间和空间复杂度达到平方级。以图像生成模型为例，图像的宽度和高度每增加到 2 倍，序列长度增加到 4 倍，计算量和显存需求增加到 16 倍。为了避免高昂的计算成本，需采用更高效的注意力机制实现，包括
+* Flash Attention 4: [GitHub](https://github.com/Dao-AILab/flash-attention)、[论文](https://arxiv.org/abs/2603.05451)
 * Flash Attention 3：[GitHub](https://github.com/Dao-AILab/flash-attention)、[论文](https://arxiv.org/abs/2407.08608)
 * Flash Attention 2：[GitHub](https://github.com/Dao-AILab/flash-attention)、[论文](https://arxiv.org/abs/2307.08691)
 * Sage Attention：[GitHub](https://github.com/thu-ml/SageAttention)、[论文](https://arxiv.org/abs/2505.11594)

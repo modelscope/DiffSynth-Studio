@@ -1,7 +1,7 @@
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import dataclass, field, fields
 from typing import Any, Callable, Optional
 import torch
-from .base import QUANT_BACKENDS, resolve_checkpoint_keys
+from .base import QUANT_BACKENDS
 
 
 QUANT_METHODS = {}
@@ -20,6 +20,8 @@ def register_quant_method(name, backend, config_factory, label=""):
 
 def describe_quant_method(name):
     """Print a method's backend, label, and the accepted `backend_config_kwargs` with defaults."""
+    from . import backends
+    backends.load_all_backends()
     if name not in QUANT_METHODS:
         raise ValueError(f"Unknown quantization method: {name}. Available methods:\n{_available_methods()}")
     spec = QUANT_METHODS[name]
@@ -28,23 +30,26 @@ def describe_quant_method(name):
         config = spec.config_factory({})
     except Exception as error:
         lines.append(f"backend config: could not be built with default kwargs: {error}")
-    else:
-        if is_dataclass(config):
-            cls = type(config)
-            lines.append(f"backend config: {cls.__module__}.{cls.__qualname__}")
-            lines.append("backend_config_kwargs: any constructor kwarg of that class; defaults:")
-            width = max(len(f.name) for f in fields(config))
-            lines += [f"  {f.name:<{width}} = {getattr(config, f.name)!r}" for f in fields(config)]
-        elif isinstance(config, dict) and config:
-            lines.append("backend_config_kwargs: merged into the config dict below (defaults shown):")
-            width = max(len(key) for key in config)
-            lines += [f"  {key:<{width}} = {value!r}" for key, value in config.items()]
-        else:
-            lines.append("backend_config_kwargs: (none)")
+        print("\n".join(lines))
+        return
+    cls = type(config)
+    lines.append(f"backend config: {cls.__module__}.{cls.__qualname__}")
+    all_fields = fields(config)
+    user_fields = [f for f in all_fields if f.init]
+    pinned_fields = [f for f in all_fields if not f.init]
+    if user_fields:
+        lines.append("backend_config_kwargs (user-tunable):")
+        width = max(len(f.name) for f in user_fields)
+        lines += [f"  {f.name:<{width}} = {getattr(config, f.name)!r}" for f in user_fields]
+    if pinned_fields:
+        lines.append("pinned by method (not overridable):")
+        lines += [f"  {f.name} = {getattr(config, f.name)!r}" for f in pinned_fields]
     print("\n".join(lines))
 
 
 def _available_methods():
+    from . import backends
+    backends.load_all_backends()
     methods = sorted(QUANT_METHODS.items())
     if len(methods) == 0:
         return "  (no method registered)"
@@ -55,6 +60,28 @@ def _available_methods():
     width = max(len(line) for line in lines)
     body = "\n".join(f"│ {line:<{width}} │" for line in lines)
     return f"┌{'─' * (width + 2)}┐\n{body}\n└{'─' * (width + 2)}┘"
+
+
+def _format_error_report(reports):
+    if not reports:
+        return "Quantization error report: no targeted nn.Linear layers found."
+    methods = sorted({report["method"] for report in reports})
+    lines = [f"Quantization error report ({' + '.join(methods)}, {len(reports)} layers, sorted by relative_error, worst first):"]
+    mixed = len(methods) > 1
+    name_width = max(len(report["name"]) for report in reports)
+    header = f"  {'relative_error':>14}  {'max_abs':>12}  {'shape':<16}  {'name':<{name_width}}"
+    if mixed:
+        header += "  method"
+    lines.append(header)
+    for report in reports:
+        line = (
+            f"  {report['relative_error'] * 100:>13.2f}%  {report['max_abs']:>12.3e}"
+            f"  {str(report['shape']):<16}  {report['name']:<{name_width}}"
+        )
+        if mixed:
+            line += f"  {report['method']}"
+        lines.append(line)
+    return "\n".join(lines)
 
 
 @dataclass
@@ -113,12 +140,18 @@ class QuantizeConfig:
         self.backend = self._build_backend()
 
     def _build_backend(self):
+        from . import backends
+        backends.load_backend_for_method(self.method)
         if self.method not in QUANT_METHODS:
             raise ValueError(f"Unknown quantization method: {self.method}. Available methods:\n{_available_methods()}")
         spec = QUANT_METHODS[self.method]
         if spec.backend not in QUANT_BACKENDS:
             raise ValueError(f"Quantization backend `{spec.backend}` (required by method `{self.method}`) is not registered.")
-        return QUANT_BACKENDS[spec.backend](spec.config_factory(dict(self.backend_config_kwargs)))
+        backend = QUANT_BACKENDS[spec.backend]()
+        backend.validate_environment()
+        backend.announce_environment()
+        backend.config = spec.config_factory(dict(self.backend_config_kwargs))
+        return backend
 
     def quantize_model(self, model: torch.nn.Module, compute_device=None, model_device=None):
         """
@@ -136,7 +169,6 @@ class QuantizeConfig:
         """
         if self.load_prequantized:
             return model
-        self.backend.validate_environment()
 
         def quantize(linear):
             return self.backend.create_quantized_linear(linear, compute_device=compute_device, model_device=model_device)
@@ -166,28 +198,6 @@ class QuantizeConfig:
         """Whether `module` is one of this config's backend-native quantized Linears."""
         return self.backend.is_quantized_linear(module)
 
-    def checkpoint_keys(self, module, layer_name: str, available_keys) -> list:
-        """
-        Resolve the backend's `checkpoint_key_patterns` for `layer_name` against
-        `available_keys` (anything supporting `in` and iteration, including a `DiskMap`).
-        Raises when the layer contributes no key at all, since silently loading a
-        quantized layer without its packed weight or scale corrupts it without any error.
-
-        Parameters:
-            module: the quantized layer the keys are fetched for.
-            layer_name: its dotted name inside the checkpoint.
-            available_keys: the key index of the whole checkpoint.
-        """
-        keys = resolve_checkpoint_keys(self.backend.checkpoint_key_patterns(), layer_name, available_keys)
-        if not keys:
-            raise ValueError(
-                f"Found no checkpoint entry for the quantized layer `{layer_name}` "
-                f"(backend `{self.backend.name}`, patterns {list(self.backend.checkpoint_key_patterns())}). "
-                "Check that the checkpoint really holds this layer quantized and that "
-                "`target_modules` matches the layers it quantized."
-            )
-        return keys
-
     def build_quantized_shell(self, module, compute_dtype: torch.dtype, **kwargs):
         """
         Build an empty quantized Linear matching `module`, used to release a layer's
@@ -209,8 +219,6 @@ class QuantizeConfig:
             model: the freshly constructed model whose targeted layers become shells.
             compute_dtype: dtype the quantized layers dequantize to at forward time.
         """
-        self.backend.validate_environment()
-
         def build_shell(linear):
             return self.backend.create_quantized_linear_shell(linear, compute_dtype)
 
@@ -248,6 +256,51 @@ class QuantizeConfig:
         tensors = {key: value.contiguous() for key, value in tensors.items()}
         metadata = {"format": "pt", **{key: value if isinstance(value, str) else str(value) for key, value in metadata.items()}}
         return tensors, metadata
+
+    def measure_quantization_error(self, model: torch.nn.Module, compute_device="cuda", verbose=True) -> list:
+        """
+        Measure the weight error this config's quantization introduces.
+
+        Parameters:
+            model: the fp model to analyze.
+            compute_device: where the quantize-dequantize round trip runs.
+            verbose: print the per-layer report, sorted by `relative_error`, worst first.
+
+        Returns:
+            A list of per-layer dicts: `name`, `method`, `shape`, `relative_error` and `max_abs` (worst-element absolute error).
+        """
+        reports = [
+            self._measure_layer_error(full_name, module, compute_device)
+            for full_name, module in model.named_modules()
+            if full_name != "" and self._should_quantize(full_name, module)
+        ]
+        reports.sort(key=lambda report: report["relative_error"], reverse=True)
+        if verbose:
+            print(_format_error_report(reports))
+        return reports
+
+    def _measure_layer_error(self, full_name, module, compute_device):
+        fp_weight = module.weight.detach().to(device=compute_device, dtype=torch.float32)
+        linear = torch.nn.Linear(
+            module.in_features, module.out_features,
+            bias=module.bias is not None, dtype=module.weight.dtype, device=compute_device,
+        )
+        linear.weight.data.copy_(module.weight.detach())
+        if module.bias is not None:
+            linear.bias.data.copy_(module.bias.detach().to(device=compute_device))
+        quantized = self.backend.create_quantized_linear(linear, compute_device=compute_device, model_device=compute_device)
+        restored = self.backend.dequantize_to_linear(quantized, compute_dtype=torch.float32, compute_device=compute_device, model_device=compute_device)
+        quant_weight = restored.weight.detach()
+        error = quant_weight - fp_weight
+        report = {
+            "name": full_name,
+            "method": self.method,
+            "shape": tuple(fp_weight.shape),
+            "relative_error": (torch.linalg.vector_norm(error) / torch.linalg.vector_norm(fp_weight)).item(),
+            "max_abs": error.abs().max().item(),
+        }
+        del fp_weight, linear, quantized, restored, quant_weight, error
+        return report
 
     @staticmethod
     def _name_matches(full_name, patterns):
@@ -388,18 +441,6 @@ class MixedQuantizeConfig:
         """Whether `module` is a quantized Linear of any config's backend."""
         return any(config.is_quantized_linear(module) for config in self.configs)
 
-    def checkpoint_keys(self, module, layer_name: str, available_keys) -> list:
-        """
-        Resolve the checkpoint keys of `layer_name` using the config whose backend owns
-        that layer, so each layer set is read with its own key shape.
-
-        Parameters:
-            module: the quantized layer the keys are fetched for.
-            layer_name: its dotted name inside the checkpoint.
-            available_keys: the key index of the whole checkpoint.
-        """
-        return self._owning_config(module, layer_name).checkpoint_keys(module, layer_name, available_keys)
-
     def build_quantized_shell(self, module, compute_dtype: torch.dtype, layer_name: str = None):
         """
         Build an empty quantized Linear for `module` using the config that owns it.
@@ -483,6 +524,18 @@ class MixedQuantizeConfig:
         tensors = {key: value.contiguous() for key, value in flattened.items()}
         metadata = {"format": "pt", **{key: value if isinstance(value, str) else str(value) for key, value in merged_metadata.items()}}
         return tensors, metadata
+
+    def measure_quantization_error(self, model: torch.nn.Module, compute_device="cuda", verbose=True) -> list:
+        """
+        Measure the weight error of the mixed quantization.
+        """
+        reports = []
+        for config in self.configs:
+            reports.extend(config.measure_quantization_error(model, compute_device=compute_device, verbose=False))
+        reports.sort(key=lambda report: report["relative_error"], reverse=True)
+        if verbose:
+            print(_format_error_report(reports))
+        return reports
 
     def _distinct_backend_configs(self):
         seen = set()

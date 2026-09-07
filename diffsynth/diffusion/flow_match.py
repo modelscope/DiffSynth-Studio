@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-Music3", "LingBot-Video"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -23,6 +23,7 @@ class FlowMatchScheduler():
             "MiniMax-H3": FlowMatchScheduler.set_timesteps_minimax_h3,
             "MiniMax-Music3": FlowMatchScheduler.set_timesteps_minimax_music3,
             "LingBot-Video": FlowMatchScheduler.set_timesteps_lingbot_video,
+            "SenseNova-U1": FlowMatchScheduler.set_timesteps_sensenova_u1,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -174,6 +175,15 @@ class FlowMatchScheduler():
         return sigmas, timesteps
 
     @staticmethod
+    def set_timesteps_sensenova_u1(num_inference_steps=50, denoising_strength=1.0, shift=3.0):
+        num_train_timesteps = 1000
+        sigmas = torch.linspace(denoising_strength, 0.0, num_inference_steps + 1)[:-1]
+        if shift is not None and shift != 1.0:
+            sigmas = shift * sigmas / (1 + (shift - 1) * sigmas)
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
+    @staticmethod
     def set_timesteps_ace_step(num_inference_steps=8, denoising_strength=1.0, shift=3.0):
         num_train_timesteps = 1000
         sigma_start = denoising_strength
@@ -302,7 +312,7 @@ class FlowMatchScheduler():
         num_train_timesteps = 1000
         if special_case == "stage2":
             sigmas = torch.Tensor([0.909375, 0.725, 0.421875])
-        elif special_case == "ditilled_stage1":
+        elif special_case == "distilled_stage1":
             sigmas = torch.Tensor([1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875])
         else:
             dynamic_shift_len = dynamic_shift_len or 4096

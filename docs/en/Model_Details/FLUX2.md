@@ -2,15 +2,6 @@
 
 FLUX.2 is an image generation model trained and open-sourced by Black Forest Labs.
 
-## Model Lineage
-
-```mermaid
-graph LR;
-    FLUX.2-Series-->black-forest-labs/FLUX.2-dev;
-    FLUX.2-Series-->black-forest-labs/FLUX.2-klein-4B;
-    FLUX.2-Series-->black-forest-labs/FLUX.2-klein-9B;
-```
-
 ## Installation
 
 Before using this project for model inference and training, please install DiffSynth-Studio first.
@@ -125,6 +116,7 @@ FLUX.2 series models are uniformly trained through [`examples/flux2/model_traini
         * `--model_id_with_origin_paths`: Model IDs with original paths, e.g., `"black-forest-labs/FLUX.2-dev:text_encoder/*.safetensors"`. Separated by commas.
         * `--extra_inputs`: Extra input parameters required by the model Pipeline, e.g., `controlnet_inputs` when training ControlNet models, separated by `,`.
         * `--fp8_models`: Models loaded in FP8 format, consistent with `--model_paths` or `--model_id_with_origin_paths` format. Currently only supports models whose parameters are not updated by gradients (no gradient backpropagation, or gradients only update their LoRA).
+        * `--quant_options`: Dynamically quantize loaded models. Semicolon-separated entries, each `<model_string>:<method>[/<exclude_modules>]`, where `<model_string>` matches an entry in `--model_paths`/`--model_id_with_origin_paths`, `method` is a registered method (e.g. `bitsandbytes_nf4`), and `exclude_modules` optionally lists layers kept in full precision.
     * Training Basic Configuration
         * `--learning_rate`: Learning rate.
         * `--num_epochs`: Number of epochs.

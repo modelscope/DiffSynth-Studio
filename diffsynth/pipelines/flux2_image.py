@@ -65,7 +65,9 @@ class Flux2ImagePipeline(BasePipeline):
         pipe.vae = model_pool.fetch_model("flux2_vae")
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()
-            pipe.tokenizer = AutoTokenizer.from_pretrained(tokenizer_config.path)
+            # Mistral3 needs its multimodal processor for structured chat content.
+            tokenizer_class = AutoTokenizer if pipe.text_encoder_qwen3 is not None else AutoProcessor
+            pipe.tokenizer = tokenizer_class.from_pretrained(tokenizer_config.path)
         
         # VRAM Management
         pipe.vram_management_enabled = pipe.check_vram_management_state()

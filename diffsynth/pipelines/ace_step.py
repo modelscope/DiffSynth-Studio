@@ -70,7 +70,8 @@ class AceStepPipeline(BasePipeline):
         pipe.conditioner = model_pool.fetch_model("ace_step_conditioner")
         pipe.dit = model_pool.fetch_model("ace_step_dit")
         pipe.vae = model_pool.fetch_model("ace_step_vae")
-        pipe.vae.remove_weight_norm()
+        if pipe.vae is not None:
+            pipe.vae.remove_weight_norm()
         pipe.tokenizer_model = model_pool.fetch_model("ace_step_tokenizer")
 
         if text_tokenizer_config is not None:

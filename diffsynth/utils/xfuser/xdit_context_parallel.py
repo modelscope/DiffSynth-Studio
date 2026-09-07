@@ -36,7 +36,7 @@ def pad_freqs(original_tensor, target_len):
     seq_len, s1, s2 = original_tensor.shape
     pad_size = target_len - seq_len
     original_tensor_device = original_tensor.device
-    if original_tensor.device == "npu":
+    if original_tensor.device.type == "npu":
         original_tensor = original_tensor.cpu()
     padding_tensor = torch.ones(
         pad_size,

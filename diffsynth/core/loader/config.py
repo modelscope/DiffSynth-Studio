@@ -75,11 +75,11 @@ class ModelConfig:
     def parse_download_source(self):
         if self.download_source is None:
             if os.environ.get('DIFFSYNTH_DOWNLOAD_SOURCE') is not None:
-                return os.environ.get('DIFFSYNTH_DOWNLOAD_SOURCE')
+                return os.environ.get('DIFFSYNTH_DOWNLOAD_SOURCE').lower()
             else:
                 return "modelscope"
         else:
-            return self.download_source
+            return self.download_source.lower()
         
     def parse_skip_download(self):
         if self.skip_download is None:

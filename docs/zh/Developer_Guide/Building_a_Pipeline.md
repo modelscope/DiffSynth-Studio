@@ -248,3 +248,7 @@ def model_fn_new(dit=None, latents=None, timestep=None, prompt_emb=None, **kwarg
 ```
 
 对于开源生态丰富的模型，`model_fn` 通常包含复杂且混乱的跨模型推理，以 `diffsynth/pipelines/qwen_image.py` 为例，这个函数中实现的额外计算包括：实体分区控制、三种 ControlNet、Gradient Checkpointing 等，开发者在实现这一部分时要格外小心，避免模块功能之间的冲突。
+
+## 编译加速
+
+如需启用编译加速，请参考[推理加速](../Pipeline_Usage/Accelerated_Inference.md)。

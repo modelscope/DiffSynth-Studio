@@ -196,11 +196,19 @@ Specifically, the VRAM management module divides model Layers into the following
 * Preparing: Intermediate state between Onload and Computation. A temporary storage state when VRAM allows. This state is controlled by the VRAM management mechanism and enters this state if and only if [vram_limit is set to unlimited] or [vram_limit is set and there is spare VRAM]
 * Computation: The model is being computed. This state is controlled by the VRAM management mechanism and is temporarily entered only during `forward`
 
-If you are a model developer and want to control the VRAM management granularity of a specific model, please refer to [../Developer_Guide/Enabling_VRAM_management.md](../Developer_Guide/Enabling_VRAM_management.md).
+If you are a model developer and want to control the VRAM management granularity of a specific model, please refer to [Enabling VRAM Management](../Developer_Guide/Enabling_VRAM_management.md).
 
-## Best Practices
+VRAM management can be combined with model quantization. Quantization introduces precision loss, but it allows more model parameters to reside in VRAM, thereby avoiding the speed loss caused by offloading to RAM and disk. Please refer to [Model Quantization](./Quantization.md).
 
-* Sufficient VRAM -> Use [Basic Inference](#basic-inference)
-* Insufficient VRAM
-    * Sufficient memory -> Use [Dynamic VRAM Management](#dynamic-vram-management)
-    * Insufficient memory -> Use [Disk Offload](#disk-offload)
+## Choosing the Best Inference Solution
+
+```mermaid
+graph TD;
+    A[Is VRAM sufficient?] -->|Yes| B[Use Basic Inference]
+    A -->|No| C[Is precision loss acceptable?]
+    C -->|Yes| D[Use Model Quantization]
+    C -->|No| E[Is RAM sufficient?]
+    D --> E
+    E -->|Yes| F[Use Dynamic VRAM Management]
+    E -->|No| G[Use Disk Offload]
+```

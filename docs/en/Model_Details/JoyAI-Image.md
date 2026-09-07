@@ -116,6 +116,7 @@ Models in the joyai_image series are trained uniformly via `examples/joyai_image
         * `--model_id_with_origin_paths`: Model IDs with original paths, separated by commas.
         * `--extra_inputs`: Additional input parameters required by the model Pipeline, separated by `,`.
         * `--fp8_models`: Models to load in FP8 format, currently only supported for models whose parameters are not updated by gradients.
+        * `--quant_options`: Dynamically quantize loaded models. Semicolon-separated entries, each `<model_string>:<method>[/<exclude_modules>]`, where `<model_string>` matches an entry in `--model_paths`/`--model_id_with_origin_paths`, `method` is a registered method (e.g. `bitsandbytes_nf4`), and `exclude_modules` optionally lists layers kept in full precision.
     * Basic Training Configuration
         * `--learning_rate`: Learning rate.
         * `--num_epochs`: Number of epochs.

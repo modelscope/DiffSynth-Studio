@@ -100,6 +100,7 @@ Anima models are trained through [`examples/anima/model_training/train.py`](http
         * `--model_id_with_origin_paths`: Model IDs with origin paths (e.g., `"anima-team/anima-1B:text_encoder/*.safetensors"`).
         * `--extra_inputs`: Additional pipeline inputs (e.g., `controlnet_inputs` for ControlNet).
         * `--fp8_models`: FP8-formatted models (same format as `--model_paths`).
+        * `--quant_options`: Dynamically quantize loaded models. Semicolon-separated entries, each `<model_string>:<method>[/<exclude_modules>]`, where `<model_string>` matches an entry in `--model_paths`/`--model_id_with_origin_paths`, `method` is a registered method (e.g. `bitsandbytes_nf4`), and `exclude_modules` optionally lists layers kept in full precision.
     * Training Configuration
         * `--learning_rate`: Learning rate.
         * `--num_epochs`: Training epochs.
