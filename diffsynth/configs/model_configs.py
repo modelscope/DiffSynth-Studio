@@ -850,7 +850,7 @@ ltx2_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_text_encoder.LTX2TextEncoderPostModulesStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="Lightricks/LTX-2.3", origin_file_pattern="ltx-2.3-spatial-upscaler-x2-1.0.safetensors")
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.3", origin_file_pattern="ltx-2.3-spatial-upscaler-x2-1.1.safetensors")
         "model_hash": "aed408774d694a2452f69936c32febb5",
         "model_name": "ltx2_latent_upsampler",
         "model_class": "diffsynth.models.ltx2_upsampler.LTX2LatentUpsampler",
