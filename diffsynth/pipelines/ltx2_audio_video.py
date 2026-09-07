@@ -21,7 +21,7 @@ from ..models.ltx2_upsampler import LTX2LatentUpsampler
 from ..models.ltx2_video_vae import LTX2VideoDecoder, LTX2VideoEncoder, VideoLatentPatchifier
 from ..models.ltx25_text_encoder import LTX25TextEncoderPostModules
 from ..models.ltx25_tokenizer import LTX25GemmaTokenizer
-from ..utils.data.audio import convert_to_stereo
+from ..utils.data.audio import convert_to_stereo, resample_waveform
 from ..utils.data.media_io_ltx2 import ltx2_preprocess
 
 
@@ -121,7 +121,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
         stage2_lora_config: Optional[ModelConfig] = None,
-        stage2_lora_strength: float = 0.8,
+        stage2_lora_strength: float = 1.0,
         vram_limit: float = None,
         gemma_path: Union[str, Path, None] = None,
         load_duration_head: bool = False,
@@ -327,10 +327,23 @@ class LTX2AudioVideoPipeline(BasePipeline):
             video_decoder = getattr(self, video_decoder_name)
             video = video_decoder.decode(inputs_shared["video_latents"], **inputs_shared["video_decode_kwargs"])
             video = self.vae_output_to_video(video)
-        self.load_models_to_device(["audio_vae_decoder", "audio_vocoder"])
-        decoded_audio = self.audio_vae_decoder(inputs_shared["audio_latents"])
-        decoded_audio = self.audio_vocoder(decoded_audio)
-        decoded_audio = self.output_audio_format_check(decoded_audio)
+        retake_audio = inputs_shared.get("retake_audio")
+        denoise_mask_audio = inputs_shared.get("denoise_mask_audio")
+        audio_fully_frozen = (
+            retake_audio is not None
+            and denoise_mask_audio is not None
+            and float(denoise_mask_audio.abs().max()) == 0.0
+        )
+        if audio_fully_frozen:
+            waveform, waveform_sample_rate = retake_audio
+            decoded_audio = resample_waveform(waveform, waveform_sample_rate, self.audio_vocoder.output_sampling_rate)
+            num_samples = int(inputs_shared["num_frames"] / inputs_shared["frame_rate"] * self.audio_vocoder.output_sampling_rate)
+            decoded_audio = self.output_audio_format_check(decoded_audio[..., :num_samples])
+        else:
+            self.load_models_to_device(["audio_vae_decoder", "audio_vocoder"])
+            decoded_audio = self.audio_vae_decoder(inputs_shared["audio_latents"])
+            decoded_audio = self.audio_vocoder(decoded_audio)
+            decoded_audio = self.output_audio_format_check(decoded_audio)
         return video, decoded_audio
 
 
@@ -1003,7 +1016,7 @@ class LTX2AudioVideoUnit_SetScheduleStage2(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("video_latents", "video_noise", "audio_latents", "audio_noise"),
-            output_params=("video_latents", "audio_latents"),
+            output_params=("video_latents", "audio_latents", "cfg_scale"),
         )
 
     def process(self, pipe: LTX2AudioVideoPipeline, video_latents, video_noise, audio_latents, audio_noise):
@@ -1012,7 +1025,8 @@ class LTX2AudioVideoUnit_SetScheduleStage2(PipelineUnit):
         if video_latents is not None and video_noise is not None:
             video_latents = pipe.scheduler.add_noise(video_latents, video_noise, pipe.scheduler.timesteps[0])
         audio_latents = pipe.scheduler.add_noise(audio_latents, audio_noise, pipe.scheduler.timesteps[0])
-        return {"video_latents": video_latents, "audio_latents": audio_latents}
+        # The refinement stage runs without classifier-free guidance.
+        return {"video_latents": video_latents, "audio_latents": audio_latents, "cfg_scale": 1.0}
 
 
 class LTX2AudioVideoUnit_LatentsUpsampler(PipelineUnit):
