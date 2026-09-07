@@ -19,7 +19,7 @@ accelerate launch examples/ltx2/model_training/train.py \
   --use_gradient_checkpointing \
   --task "sft:data_process"
 
-accelerate launch --config_file examples/ltx2/model_training/full/accelerate_config_zero3.yaml examples/ltx2/model_training/train.py \
+accelerate launch --config_file examples/ltx2/model_training/full/accelerate_config_zero2offload.yaml examples/ltx2/model_training/train.py \
   --dataset_base_path ./models/train/LTX2.5-T2AV-full-splited-cache \
   --data_file_keys "video,input_audio" \
   --extra_inputs "input_audio" \
