@@ -90,7 +90,7 @@ For the arguments shared with LTX-2.3, see the [LTX-2 documentation](LTX-2.md#in
 * `auto_duration`: predict the clip duration from the prompt. Defaults to `False`. When enabled, `num_frames` is not required and the Duration Head must be loaded.
 * `auto_duration_min_seconds` / `auto_duration_max_seconds`: lower and upper bounds (seconds) for the predicted duration. Default to 1.0 and 20.0.
 * `generate_video`: whether to generate video. Defaults to `True`. Set it to `False` to generate audio only (T2A); the video VAE and latent upsampler are then not required.
-* `use_diffusion_vae`: video decoder selection. `None` (default) prefers the loaded ConvVAE convolutional decoder and falls back to the DiffVAE diffusion decoder when it is absent; `True`/`False` force DiffVAE/ConvVAE respectively (ConvVAE requires `ltx-2.5-video-vae-conv-bf16.safetensors`).
+* The video decoder is selected by the loaded components: the ConvVAE convolutional decoder is used when `ltx-2.5-video-vae-conv-bf16.safetensors` is loaded, otherwise the DiffVAE diffusion decoder.
 * Default negative prompt: `pipe.default_negative_prompt["LTX-2.5"]` prefixes the LTX-2/2.3 list with the 2.5-specific tags (`has_subtitles`, `has_blurbox`, `transition from black`, `transition to black`, `speech_ending_short`); all example scripts use this key.
 * `input_images` / `input_images_indexes`: keyframe images and their frame indexes. A single first frame gives image-to-video; first and last (or more) frames give keyframe interpolation.
 * `retake_audio` / `audio_sample_rate` / `retake_audio_regions`: audio-to-video (A2V) and audio region retake.

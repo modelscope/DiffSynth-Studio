@@ -2187,6 +2187,7 @@ class LTX2VideoDecoder(nn.Module):
         tile_overlap_in_pixels: Optional[int] = 128,
         tile_size_in_frames: Optional[int] = 128,
         tile_overlap_in_frames: Optional[int] = 24,
+        **kwargs,
     ) -> torch.Tensor:
         if tiled:
             tiling_config = TilingConfig(

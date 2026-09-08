@@ -940,17 +940,6 @@ class TileSizeConfig:
 TilingConfig = TileSizeConfig | TileCountConfig
 
 
-class AutoTiling:
-    __slots__ = ()
-
-    def __repr__(self) -> str:
-        return "AUTO_TILING"
-
-
-AUTO_TILING = AutoTiling()
-
-
-PipelineTiling = TilingConfig | AutoTiling | None
 
 
 def _assert_video_on_vae_grid(
@@ -4997,33 +4986,17 @@ class LTX25DiffusionVideoDecoder(DiffusionVideoDecoder):
         self,
         latent,
         tiled=False,
-        tile_size_in_pixels=None,
-        tile_overlap_in_pixels=None,
-        tile_size_in_frames=None,
-        tile_overlap_in_frames=None,
-        generator=None,
+        seed=None,
+        rand_device="cpu",
         keyframes=None,
+        **kwargs,
     ):
+        generator = torch.Generator(device=rand_device).manual_seed(seed) if seed is not None else None
         tiling_config = None
-        if tiled is True or tiled is AUTO_TILING:
-            if tiled is AUTO_TILING or tile_size_in_pixels is None or tile_overlap_in_pixels is None or tile_size_in_frames is None or tile_overlap_in_frames is None:
-                tiling_config = self.auto_tiling_config(latent, keyframes=keyframes)
-                if tiling_config is None:
-                    raise ValueError("Automatic DiffVAE tiling requires a CUDA device with queryable free memory.")
-            else:
-                if isinstance(tile_size_in_pixels, Sequence) and not isinstance(tile_size_in_pixels, (str, bytes)):
-                    tile_height, tile_width = tile_size_in_pixels
-                else:
-                    tile_height = tile_width = int(tile_size_in_pixels)
-                if isinstance(tile_overlap_in_pixels, Sequence) and not isinstance(tile_overlap_in_pixels, (str, bytes)):
-                    overlap_height, overlap_width = tile_overlap_in_pixels
-                else:
-                    overlap_height = overlap_width = int(tile_overlap_in_pixels)
-                tiling_config = TileSizeConfig(
-                    frames=DimensionSizeConfig(int(tile_size_in_frames), int(tile_overlap_in_frames)),
-                    height=DimensionSizeConfig(int(tile_height), int(overlap_height)),
-                    width=DimensionSizeConfig(int(tile_width), int(overlap_width)),
-                )
+        if tiled:
+            tiling_config = self.auto_tiling_config(latent, keyframes=keyframes)
+            if tiling_config is None:
+                raise ValueError("Automatic DiffVAE tiling requires a CUDA device with queryable free memory.")
         iterator = (
             self._decode_pixels_with_keyframes(latent, keyframes, tiling_config, generator=generator)
             if keyframes is not None
