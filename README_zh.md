@@ -40,6 +40,8 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年9月8日** 我们为 CFG 蒸馏的 MiniMax-H3 基座训练了 [MiniMax-H3 Training Adapter](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter)，这是一个 DeCFG LoRA 训练 Adapter，提供 FL2VA 与 Ref2VA 两个版本。训练数据来自自生成数据集 [MiniMax-H3-Self-Generated-Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/MiniMax-H3-Self-Generated-Dataset)。基于该 Adapter，我们训练了两个 toy 模型，[MiniMax-H3-Songyu-LoRA](https://www.modelscope.cn/models/mibei0804/MiniMax-H3-Songyu-LoRA)（角色身份，FL2VA）与 [MiniMax-H3-Ref2VA-FirstFrame-Lineart](https://www.modelscope.cn/models/mibei0804/MiniMax-H3-Ref2VA-FirstFrame-Lineart)（线稿首帧控制，Ref2VA），供推理与微调参考。
+
 - **2026年9月1日** 我们接入了 [SenseNova-U1.5](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT)，这是商汤科技开源的统一多模态模型，我们为其提供了文生图、图像编辑、低显存推理和训练支持。详情请参考[文档](/docs/zh/Model_Details/SenseNova-U1.md)和[示例代码](/examples/sensenova_u1/)。
 
 - **2026年8月31日** 我们接入了 [Qwen-Video-Edit](https://modelscope.cn/models/yunpeng1998/Qwen-Video-Edit)，这是开源社区用户 [yunpeng1998](https://github.com/yunpeng1998) 基于图像编辑模型 Qwen-Image-Edit 训练的视频编辑模型，是探索模型能力拓展的优秀案例。

@@ -2,7 +2,7 @@ modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --inclu
 
 # Optional
 # 1. Fuse the DeCFG training adapter into the DiT while training, for a better optimization landscape on this CFG-distilled base. Training only -- do not load it at inference.
-# modelscope download --model DiffSynth-Studio/MiniMax-H3-TrainingAdapter --local_dir ./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter
+# modelscope download --model DiffSynth-Studio/MiniMax-H3-TrainingAdapter --include model.safetensors --local_dir ./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter
 #   --preset_lora_path "./models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter/model.safetensors" \
 #   --preset_lora_model "dit"
 # 2. Add `--training_cfg_scale 4` to both stages below to enable CFG-aware training. Both stages must use the same value because the unconditional embeddings are cached in stage 1.
