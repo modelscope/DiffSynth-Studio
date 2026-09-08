@@ -22,10 +22,9 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
         ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="vae/ltx-2.5-audio-vae-bf16.safetensors", **vram_config),
     ],
 )
-pipe.load_lora(pipe.dit, "models/train/LTX2.5-T2AV_lora/epoch-4.safetensors")
-prompt = "A beautiful sunset over the ocean."
+prompt = "A girl is very happy, she is speaking: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
 negative_prompt = pipe.default_negative_prompt["LTX-2.5"]
-height, width, num_frames = 512, 768, 121
+height, width, num_frames = 512 * 2, 768 * 2, 121
 video, audio = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,
@@ -34,12 +33,12 @@ video, audio = pipe(
     width=width,
     num_frames=num_frames,
     tiled=True,
-    cfg_scale=4.0,
+    cfg_scale=3.0,
 )
 write_video_audio_ltx2(
     video=video,
     audio=audio,
-    output_path="ltx2.5_t2av_lora.mp4",
+    output_path="ltx2.5_onestage_t2av.mp4",
     fps=24,
     audio_sample_rate=pipe.audio_vocoder.output_sampling_rate,
 )

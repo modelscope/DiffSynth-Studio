@@ -32,7 +32,7 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
 dataset_snapshot_download("DiffSynth-Studio/example_video_dataset", allow_file_pattern="ltx2/*", local_dir="data/example_video_dataset")
 # The example video comes from the shared sample dataset, so reuse its paired prompt.
 prompt = "A beautiful woman with a flower crown is singing happily under a blooming cherry tree. She sings: 'Mummy don't know daddy's getting hot. At the body shop'"
-negative_prompt = pipe.default_negative_prompt["LTX-2.3"]
+negative_prompt = pipe.default_negative_prompt["LTX-2.5"]
 
 height, width, num_frames, frame_rate = 512 * 2, 768 * 2, 121, 24
 path = "data/example_video_dataset/ltx2/video2.mp4"
