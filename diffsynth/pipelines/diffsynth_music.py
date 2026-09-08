@@ -111,6 +111,7 @@ class DiffSynthMusicPipeline(BasePipeline):
         prompt: str = "",
         negative_prompt: str = "",
         lyrics: str = "",
+        vocal_language: str = None,
         cfg_scale: float = 1.0,
         # Metadata
         bpm: float = None,
@@ -146,7 +147,7 @@ class DiffSynthMusicPipeline(BasePipeline):
         inputs_nega = {"prompt": negative_prompt, "lyrics": "", "kv_cache": negative_kv_cache}
         inputs_shared = {
             "cfg_scale": cfg_scale,
-            "bpm": bpm, "timesignature": timesignature, "keyscale": keyscale,
+            "bpm": bpm, "timesignature": timesignature, "keyscale": keyscale, "vocal_language": vocal_language,
             "input_audio": input_audio,
             "duration": duration,
             "seed": seed,
@@ -193,7 +194,7 @@ class DiffSynthMusic_PromptEmbedder(PipelineUnit):
             seperate_cfg=True,
             input_params_posi={"prompt": "prompt", "lyrics": "lyrics"},
             input_params_nega={"prompt": "prompt", "lyrics": "lyrics"},
-            input_params=("bpm", "timesignature", "keyscale", "duration"),
+            input_params=("bpm", "timesignature", "keyscale", "duration", "vocal_language"),
             output_params=("text_hidden_states", "text_attention_mask", "lyric_hidden_states", "lyric_attention_mask"),
             onload_model_names=("text_encoder",)
         )
@@ -222,7 +223,7 @@ class DiffSynthMusic_PromptEmbedder(PipelineUnit):
         hidden_states = pipe.text_encoder.model.embed_tokens(input_ids)
         return hidden_states, attention_mask
 
-    def process(self, pipe: DiffSynthMusicPipeline, prompt, lyrics, bpm, timesignature, keyscale, duration):
+    def process(self, pipe: DiffSynthMusicPipeline, prompt, lyrics, bpm, timesignature, keyscale, duration, vocal_language):
         pipe.load_models_to_device(['text_encoder'])
         if bpm is None: bpm = 100
         if timesignature is None: timesignature = "4"
@@ -243,7 +244,8 @@ Fill the audio semantic mask based on the given conditions:
 <|endoftext|>
 """.strip()
         text_hidden_states, text_attention_mask = self._encode_text(pipe, prompt, max_length=256)
-        lyric_text = self.LYRIC_PROMPT.format("N/A", lyrics)
+        if vocal_language is None: vocal_language = "N/A"
+        lyric_text = self.LYRIC_PROMPT.format(vocal_language, lyrics)
         lyric_hidden_states, lyric_attention_mask = self._encode_lyrics(pipe, lyric_text, max_length=2048)
         return {
             "text_hidden_states": text_hidden_states,
