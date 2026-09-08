@@ -8,7 +8,6 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 from typing import Optional
-from transformers import AutoImageProcessor, Gemma3Processor
 from functools import partial
 
 from ..core.device.npu_compatible_device import get_device_type
@@ -41,7 +40,6 @@ class LTX2AudioVideoPipeline(BasePipeline):
         self.scheduler = FlowMatchScheduler("LTX-2")
         self.text_encoder: LTX2TextEncoder = None
         self.tokenizer: LTXVGemmaTokenizer = None
-        self.processor: Gemma3Processor = None
         self.text_encoder_post_modules: LTX2TextEncoderPostModules = None
         self.dit: LTXModel = None
         self.video_vae_encoder: LTX2VideoEncoder = None
@@ -148,12 +146,8 @@ class LTX2AudioVideoPipeline(BasePipeline):
         pipe.dit = model_pool.fetch_model("ltx2_dit")
         pipe.is_ltx25 = getattr(pipe.dit, "use_tokenwise_av_ca_scale_shift", False)
         tokenizer_config.download_if_necessary()
-        if pipe.is_ltx25:
-            pipe.tokenizer = LTX25GemmaTokenizer(tokenizer_config.path)
-        else:
-            pipe.tokenizer = LTXVGemmaTokenizer(tokenizer_path=tokenizer_config.path)
-            image_processor = AutoImageProcessor.from_pretrained(tokenizer_config.path, local_files_only=True)
-            pipe.processor = Gemma3Processor(image_processor=image_processor, tokenizer=pipe.tokenizer.tokenizer)
+        tokenizer_class = LTX25GemmaTokenizer if pipe.is_ltx25 else LTXVGemmaTokenizer
+        pipe.tokenizer = tokenizer_class(tokenizer_path=tokenizer_config.path)
         pipe.text_encoder_post_modules = model_pool.fetch_model("ltx2_text_encoder_post_modules")
         pipe.video_vae_encoder = model_pool.fetch_model("ltx2_video_vae_encoder")
         pipe.video_vae_decoder = model_pool.fetch_model("ltx2_video_vae_decoder")

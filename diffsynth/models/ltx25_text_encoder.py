@@ -168,8 +168,8 @@ class LTX25TextEncoder(torch.nn.Module):
 
 
 class LTX25GemmaTokenizer:
-    def __init__(self, model_path: str | Path, max_length: int = 1024):
-        self.tokenizer = PreTrainedTokenizerFast.from_pretrained(str(model_path), local_files_only=True, model_max_length=max_length)
+    def __init__(self, tokenizer_path: str | Path, max_length: int = 1024):
+        self.tokenizer = PreTrainedTokenizerFast.from_pretrained(tokenizer_path, local_files_only=True, model_max_length=max_length)
         self.tokenizer.model_max_length = max_length
         self.tokenizer.padding_side = "left"
         if self.tokenizer.pad_token is None:
