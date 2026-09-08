@@ -15,7 +15,7 @@ pipe = QwenImagePipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
 )
 
-snapshot_download("MusePublic/Qwen-Image-Distill", allow_file_pattern="qwen_image_distill_3step.safetensors", cache_dir="models")
+snapshot_download("MusePublic/Qwen-Image-Distill", allow_file_pattern="qwen_image_distill_3step.safetensors", local_dir="models/MusePublic/Qwen-Image-Distill")
 lora_state_dict = load_state_dict("models/MusePublic/Qwen-Image-Distill/qwen_image_distill_3step.safetensors")
 lora_state_dict = {i.replace("base_model.model.", ""): j for i, j in lora_state_dict.items()}
 pipe.load_lora(pipe.dit, state_dict=lora_state_dict)

@@ -23,6 +23,7 @@ To keep the framework lightweight, the base installation only installs the neces
 * `[npu]`: For Ascend NPU devices with x86 architecture.
 * `[npu_aarch64]`: For Ascend NPU devices with aarch64/ARM architecture.
 * Dependencies of specific models
+   * `[controlnet]`: For the ControlNet annotator detectors (Canny, depth, OpenPose, etc.) used by the ControlNet examples under `examples/flux` and `examples/qwen_image`.
    * `[infiniteyou]`: https://arxiv.org/abs/2503.16418
    * `[ses]`: https://arxiv.org/abs/2602.03208
    * `[nexusgen]`: https://arxiv.org/pdf/2504.21356

@@ -47,6 +47,7 @@
    Model_Details/MiniMax-H3
    Model_Details/DiffSynth-Music
    Model_Details/MiniMax-Music3
+   Model_Details/SenseNova-U1
 
 .. toctree::
    :maxdepth: 2

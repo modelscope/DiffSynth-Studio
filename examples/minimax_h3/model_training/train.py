@@ -120,6 +120,9 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
             "ref_video_short_edge": 768, "ref_video_max_pixels": 768 * 1344,
             "imgvid_cond_noise_aug": self.pipe.imgvid_cond_noise_aug,
             "audio_cond_noise_aug": self.pipe.audio_cond_noise_aug,
+            "tiled": True,
+            "tile_size": 256,
+            "tile_overlap": 64,
             # Please do not modify the following parameters
             # unless you clearly know what this will cause.
             # Reuse the pipeline's CFG preprocessing path to build unconditional

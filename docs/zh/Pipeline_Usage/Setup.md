@@ -23,6 +23,7 @@ pip install diffsynth
 * `[npu]`: 用于 x86 架构的 Ascend NPU 设备
 * `[npu_aarch64]`: 用于 aarch64/ARM 架构的 Ascend NPU 设备
 * 特定模型的依赖
+   * `[controlnet]`: 用于 `examples/flux` 和 `examples/qwen_image` 下 ControlNet 示例所需的 ControlNet 注解器（Canny、深度图、OpenPose 等）
    * `[infiniteyou]`: https://arxiv.org/abs/2503.16418
    * `[ses]`: https://arxiv.org/abs/2602.03208
    * `[nexusgen]`: https://arxiv.org/pdf/2504.21356

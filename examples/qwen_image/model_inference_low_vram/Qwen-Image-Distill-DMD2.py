@@ -26,7 +26,7 @@ pipe = QwenImagePipeline.from_pretrained(
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
-snapshot_download("MusePublic/Qwen-Image-Distill", allow_file_pattern="qwen_image_distill_3step.safetensors", cache_dir="models")
+snapshot_download("MusePublic/Qwen-Image-Distill", allow_file_pattern="qwen_image_distill_3step.safetensors", local_dir="models/MusePublic/Qwen-Image-Distill")
 lora_state_dict = load_state_dict("models/MusePublic/Qwen-Image-Distill/qwen_image_distill_3step.safetensors", device="cuda", torch_dtype=torch.bfloat16)
 lora_state_dict = {i.replace("base_model.model.", "").replace(".weight", ".default.weight"): j for i, j in lora_state_dict.items()}
 pipe.load_lora(pipe.dit, state_dict=lora_state_dict, hotload=True)

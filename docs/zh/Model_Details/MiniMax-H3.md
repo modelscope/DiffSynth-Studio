@@ -79,8 +79,11 @@ write_video_audio(
 |[Comfy-Org/MiniMax-H3: Ref2VA pruned fp8](https://www.modelscope.cn/models/Comfy-Org/MiniMax-H3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FP8-Pruned-Ref2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FP8-Pruned-Ref2VA.py)|-|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-FP8-Pruned-Ref2VA.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FP8-Pruned-Ref2VA.py)|
 |[lightx2v/Minimax-h3-Turbo: FL2VA 4steps](https://www.modelscope.cn/models/lightx2v/Minimax-h3-Turbo)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA-Turbo.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA-Turbo.py)|-|-|-|-|
 |[DiffSynth-Studio/MiniMax-H3-Text-Embeddings](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Text-Embeddings)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Text-Embeddings.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Text-Embeddings.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Text-Embeddings.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Text-Embeddings.py)|-|-|
+|[PAI/MiniMax-H3-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/MiniMax-H3-Fun-Controlnet-Union)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Fun-Controlnet-Union.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Fun-Controlnet-Union.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Fun-Controlnet-Union.py)|
 
 模型权重分为两个分区：`FL2VA` 分区服务文生音视频与首尾帧引导生成，`Ref2VA` 分区服务参考驱动生成，两者的 DiT 与文本编码器权重不同，需按任务选择对应分区的 `origin_file_pattern`。
+
+此外，[PAI/MiniMax-H3-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/MiniMax-H3-Fun-Controlnet-Union) 提供 ControlNet 条件控制能力，需配合 `FL2VA` 分区的基础权重使用。通过 `control_video` 传入控制视频（canny / depth / hed / mlsd / pose 等控制模式），即可生成与结构条件一致的视频与音频。
 
 ## 模型推理
 
@@ -126,6 +129,8 @@ write_video_audio(
 * `ref_image_short_edge`: 参考图像的短边目标长度，默认值为 2048。参考图像保持长宽比缩放至该短边（允许放大），两轴各自向最近的 32 倍数取整，不受面积上限约束。
 * `ref_video_short_edge`: 参考视频的短边目标长度，默认值为 768。
 * `ref_video_max_pixels`: 参考视频的面积软上限，默认值为 `768 * 1344`。参考视频先按短边定标，若面积超过该上限则等比缩回，最后两轴各自取整到 32 的倍数。宽于 16:9 的素材通常会触发该上限。
+* `control_video`: 控制视频帧列表（PIL 图像），用于 ControlNet 条件控制生成，支持 canny / depth / hed / mlsd / pose 等控制模式（由控制视频的内容决定），生成结果会跟随控制视频的画面结构。帧列表须已是 24fps，不足 `num_frames` 帧时会重复最后一帧补齐，多出的部分会被截断。使用该参数前，需在 `model_configs` 中加载 `PAI/MiniMax-H3-Fun-Controlnet-Union` 的 ControlNet 权重。
+* `control_scale`: ControlNet 控制强度，默认值为 1.0。增大该值会加强控制视频对生成结构的约束。
 * `retake_video`: 视频重绘（retake）的源视频帧列表，必须已经是 24fps。帧会被缩放到目标画幅并截取前 `num_frames` 帧。由于 `num_frames` 会先向上对齐到最近的 `17n+5`，源视频常常会差几帧（例如 121 帧的素材对应对齐后的 124 帧），此时会重复最后一帧补齐，且补出的尾部会被重新生成而非冻结。源素材帧数不少于 `num_frames` 即可避免。
 * `frame_regions_to_retake`: `retake_video` 中需要重新生成的**帧号**区间，左闭右开、帧从 0 计数，例如 `[(17, 51)]`。区间之外的内容会从源视频原样保留。一个 VAE clip 的 17 帧在隐空间是耦合的，重绘 clip 内任何一帧就等于重绘整个 clip，因此区间会向外扩展到 clip 边界；传 17 的倍数即可得到与请求完全一致的范围。不传该参数（或传入空列表）时整段源视频都会被保留，此时 `retake_video` 相当于视频驱动的音频生成。
 * `retake_audio`: 音频重绘（retake）的源波形 `Tensor[C, L]`。会被转为立体声并重采样到音频 VAE 的采样率，再按视频时长截断或补齐。
@@ -242,5 +247,7 @@ NF4 量化版本的 LoRA 训练为单阶段流程：量化后所有组件可同�
 ```
 
 `references` 需同时出现在 `--data_file_keys` 与 `--extra_inputs` 中，前者负责按类型加载文件，后者负责将参考块注入 Pipeline。参考图像以原生分辨率交给 Pipeline（其内部会按参考短边重新缩放），参考视频则裁剪到训练画布并按 24fps 采样。
+
+ControlNet（控制视频驱动）训练同样基于 `metadata.json`，在数据条目中提供 `control_video` 字段（控制视频路径），并将 `control_video` 追加到 `--data_file_keys` 与 `--extra_inputs` 中。全量训练以 `--trainable_models "controlnet"` 训练 ControlNet 网络（DiT 冻结），并以 `--remove_prefix_in_ckpt "pipe.controlnet."` 保存权重；LoRA 训练则保持 ControlNet 冻结，对 DiT 施加 LoRA，从而让模型在保持控制能力的同时适配新的数据分布。
 
 我们为每个模型编写了推荐的训练脚本，请参考前文“模型总览”中的表格。关于如何编写模型训练脚本，请参考[模型训练](../Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/zh/Training/)。
