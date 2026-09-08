@@ -70,7 +70,7 @@ write_video_audio_ltx2(video=video, audio=audio, output_path='video.mp4', fps=24
 |[Lightricks/LTX-2.5: TwoStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`input_images`,`input_images_indexes`|[code](/examples/ltx2/model_inference/LTX-2.5-I2AV-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-I2AV-TwoStage.py)|-|-|-|-|
 |[Lightricks/LTX-2.5: TwoStagePipeline-A2V](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`retake_audio`,`audio_sample_rate`,`stage2_lora_config`|[code](/examples/ltx2/model_inference/LTX-2.5-A2V-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-A2V-TwoStage.py)|-|-|-|-|
 |[Lightricks/LTX-2.5: TwoStagePipeline-Retake](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`retake_video`,`retake_video_regions`,`stage2_lora_config`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-TwoStage-Retake.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-TwoStage-Retake.py)|-|-|-|-|
-|[Lightricks/LTX-2.5: T2A](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`generate_video=False`|[code](/examples/ltx2/model_inference/LTX-2.5-T2A.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2A.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: T2A](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`audio_only=True`|[code](/examples/ltx2/model_inference/LTX-2.5-T2A.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2A.py)|-|-|-|-|
 |[Lightricks/LTX-2.5: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`auto_duration`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-DistilledPipeline.py)|-|-|-|-|
 |[Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler](https://www.modelscope.cn/models/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler)|`in_context_videos`,`in_context_downsample_factor`|[code](/examples/ltx2/model_inference/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py)|-|-|-|-|
 |[Lightricks/LTX-2.5: INT8-ConvRot](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|INT8 DiT + INT8 Gemma4|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-INT8-ConvRot.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-INT8-ConvRot.py)|-|-|-|-|
@@ -89,7 +89,7 @@ write_video_audio_ltx2(video=video, audio=audio, output_path='video.mp4', fps=24
 
 * `auto_duration`: 是否根据提示词自动预测视频时长，默认为 `False`。开启后无需传入 `num_frames`，需要加载 Duration Head。
 * `auto_duration_min_seconds` / `auto_duration_max_seconds`: 自动时长的上下界（秒），默认为 1.0 和 20.0。
-* `generate_video`: 是否生成视频，默认为 `True`。设置为 `False` 时只生成音频（T2A），此时无需加载视频 VAE 与 latent upsampler。
+* `audio_only`: 是否只生成音频（T2A），默认为 `False`。设置为 `True` 时无需加载视频 VAE 与 latent upsampler。
 * 视频解码器按已加载组件自动选择：加载了 `ltx-2.5-video-vae-conv-bf16.safetensors` 就用 ConvVAE 卷积解码器，否则使用 DiffVAE 扩散解码器。
 * 默认负向提示词：`pipe.default_negative_prompt["LTX-2.5"]` 在 LTX-2/2.3 的列表之前增加了 2.5 专有标签（`has_subtitles`、`has_blurbox`、`transition from black`、`transition to black`、`speech_ending_short`），示例脚本均使用该键。
 * `input_images` / `input_images_indexes`: 关键帧图像及其帧索引。传入首帧即为图生视频，传入首尾（或多帧）即为关键帧插值。

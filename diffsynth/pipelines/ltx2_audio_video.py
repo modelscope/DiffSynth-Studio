@@ -8,7 +8,6 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 from typing import Optional
-from functools import partial
 
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
@@ -191,8 +190,6 @@ class LTX2AudioVideoPipeline(BasePipeline):
                     noise_pred=noise_pred_video,
                     inpaint_mask=inputs_shared.get("denoise_mask_video", None),
                     input_latents=inputs_shared.get("input_latents_video", None),
-                    ancestral_noise_shape=inputs_shared.get("video_ancestral_noise_shape"),
-                    ancestral_noise_transform=inputs_shared.get("video_ancestral_noise_transform"),
                 )
             inputs_shared["audio_latents"] = self.step(
                 self.scheduler,
@@ -201,8 +198,6 @@ class LTX2AudioVideoPipeline(BasePipeline):
                 noise_pred=noise_pred_audio,
                 inpaint_mask=inputs_shared.get("denoise_mask_audio", None),
                 input_latents=inputs_shared.get("input_latents_audio", None),
-                ancestral_noise_shape=inputs_shared.get("audio_ancestral_noise_shape"),
-                ancestral_noise_transform=inputs_shared.get("audio_ancestral_noise_transform"),
             )
         return inputs_shared, inputs_posi, inputs_nega
 
@@ -238,7 +233,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
         auto_duration: bool = False,
         auto_duration_min_seconds: float = 1.0,
         auto_duration_max_seconds: float = 20.0,
-        generate_video: bool = True,
+        audio_only: bool = False,
         # Classifier-free guidance
         cfg_scale: float = 3.0,
         # Scheduler
@@ -276,7 +271,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
             "auto_duration": auto_duration,
             "auto_duration_min_seconds": auto_duration_min_seconds,
             "auto_duration_max_seconds": auto_duration_max_seconds,
-            "generate_video": generate_video,
+            "audio_only": audio_only,
             "cfg_scale": cfg_scale,
             "tiled": tiled, "tile_size_in_pixels": tile_size_in_pixels, "tile_overlap_in_pixels": tile_overlap_in_pixels,
             "tile_size_in_frames": tile_size_in_frames, "tile_overlap_in_frames": tile_overlap_in_frames,
@@ -300,7 +295,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
         )
         # Decode
         video = None
-        if inputs_shared.get("generate_video", True):
+        if not inputs_shared.get("audio_only", False):
             if self.video_vae_decoder is None:
                 raise ValueError("No video decoder component is loaded.")
             self.load_models_to_device(["video_vae_decoder"])
@@ -466,138 +461,33 @@ class LTX2AudioVideoUnit_PromptEmbedder(PipelineUnit):
 class LTX2AudioVideoUnit_NoiseInitializer(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=(
-                "height",
-                "width",
-                "num_frames",
-                "seed",
-                "rand_device",
-                "frame_rate",
-                "generate_video",
-            ),
-            output_params=(
-                "video_noise",
-                "audio_noise",
-                "video_positions",
-                "audio_positions",
-                "video_latent_shape",
-                "audio_latent_shape",
-                "video_keyframes_mask",
-                "video_ancestral_noise_shape",
-                "video_ancestral_noise_transform",
-                "audio_ancestral_noise_shape",
-                "audio_ancestral_noise_transform",
-            ),
+            input_params=("height", "width", "num_frames", "seed", "rand_device", "frame_rate", "audio_only"),
+            output_params=("video_noise", "audio_noise", "video_positions", "audio_positions", "video_latent_shape", "audio_latent_shape", "video_keyframes_mask")
         )
 
-    @staticmethod
-    def unpatchify_video_noise(noise, patchifier, latent_shape):
-        return patchifier.unpatchify_video(
-            noise,
-            latent_shape.frames,
-            latent_shape.height,
-            latent_shape.width,
-        )
+    def build_video_keyframes_mask(self, pipe, video_latent_shape):
+        if not pipe.is_ltx25:
+            return None
+        video_keyframes_mask = torch.zeros(video_latent_shape.batch, 1, video_latent_shape.frames, video_latent_shape.height, video_latent_shape.width, dtype=torch.float32, device=pipe.device)
+        video_keyframes_mask[:, :, 0] = 1.0
+        return video_keyframes_mask
 
-    @staticmethod
-    def unpatchify_audio_noise(noise, patchifier, latent_shape):
-        return patchifier.unpatchify_audio(noise, latent_shape.channels, latent_shape.mel_bins)
-
-    def process_stage(
-        self,
-        pipe: LTX2AudioVideoPipeline,
-        height,
-        width,
-        num_frames,
-        seed,
-        rand_device,
-        frame_rate=24.0,
-        generate_video=True,
-    ):
-        # The unit runner passes None for params missing from inputs_shared (e.g. in training).
-        generate_video = generate_video is not False
+    def process_stage(self, pipe: LTX2AudioVideoPipeline, height, width, num_frames, seed, rand_device, frame_rate=24.0, audio_only=False):
         video_pixel_shape = VideoPixelShape(batch=1, frames=num_frames, width=width, height=height, fps=frame_rate)
         video_latent_shape = VideoLatentShape.from_pixel_shape(shape=video_pixel_shape, latent_channels=128)
-        noise_dtype = pipe.torch_dtype if pipe.is_ltx25 else torch.float32
-        video_noise = None
-        video_positions = None
-        video_keyframes_mask = None
-        video_ancestral_noise_shape = None
-        video_ancestral_noise_transform = None
-        if generate_video:
-            video_noise_shape = video_latent_shape.to_torch_shape()
-            if pipe.is_ltx25:
-                video_noise_shape = (
-                    video_latent_shape.batch,
-                    video_latent_shape.frames * video_latent_shape.height * video_latent_shape.width,
-                    video_latent_shape.channels,
-                )
-            video_noise = pipe.generate_noise(
-                video_noise_shape,
-                seed=seed,
-                rand_device=rand_device,
-                rand_torch_dtype=noise_dtype,
-            )
-            if pipe.is_ltx25:
-                video_noise = pipe.video_patchifier.unpatchify_video(
-                    video_noise,
-                    video_latent_shape.frames,
-                    video_latent_shape.height,
-                    video_latent_shape.width,
-                )
+        video_noise = video_positions = video_keyframes_mask = None
+        if not audio_only:
+            video_noise = pipe.generate_noise(video_latent_shape.to_torch_shape(), seed=seed, rand_device=rand_device)
 
             latent_coords = pipe.video_patchifier.get_patch_grid_bounds(output_shape=video_latent_shape, device=pipe.device)
             video_positions = get_pixel_coords(latent_coords, VIDEO_SCALE_FACTORS, True).float()
             video_positions[:, 0, ...] = video_positions[:, 0, ...] / frame_rate
-            if not pipe.is_ltx25:
-                video_positions = video_positions.to(pipe.torch_dtype)
+            video_positions = video_positions.to(pipe.torch_dtype)
+            video_keyframes_mask = self.build_video_keyframes_mask(pipe, video_latent_shape)
 
         audio_latent_shape = AudioLatentShape.from_video_pixel_shape(video_pixel_shape)
-        audio_noise_shape = audio_latent_shape.to_torch_shape()
-        if pipe.is_ltx25:
-            audio_noise_shape = (
-                audio_latent_shape.batch,
-                audio_latent_shape.frames,
-                audio_latent_shape.channels * audio_latent_shape.mel_bins,
-            )
-        audio_noise = pipe.generate_noise(
-            audio_noise_shape,
-            seed=seed,
-            rand_device=rand_device,
-            rand_torch_dtype=noise_dtype,
-        )
-        if pipe.is_ltx25:
-            audio_noise = pipe.audio_patchifier.unpatchify_audio(
-                audio_noise,
-                audio_latent_shape.channels,
-                audio_latent_shape.mel_bins,
-            )
+        audio_noise = pipe.generate_noise(audio_latent_shape.to_torch_shape(), seed=seed, rand_device=rand_device)
         audio_positions = pipe.audio_patchifier.get_patch_grid_bounds(audio_latent_shape, device=pipe.device)
-        audio_ancestral_noise_shape = None
-        audio_ancestral_noise_transform = None
-        if pipe.is_ltx25 and generate_video:
-            video_keyframes_mask = torch.zeros(
-                video_latent_shape.batch,
-                1,
-                video_latent_shape.frames,
-                video_latent_shape.height,
-                video_latent_shape.width,
-                dtype=torch.float32,
-                device=pipe.device,
-            )
-            video_keyframes_mask[:, :, 0] = 1.0
-            video_ancestral_noise_shape = video_noise_shape
-            video_ancestral_noise_transform = partial(
-                self.unpatchify_video_noise,
-                patchifier=pipe.video_patchifier,
-                latent_shape=video_latent_shape,
-            )
-            audio_ancestral_noise_shape = audio_noise_shape
-            audio_ancestral_noise_transform = partial(
-                self.unpatchify_audio_noise,
-                patchifier=pipe.audio_patchifier,
-                latent_shape=audio_latent_shape,
-            )
         return {
             "video_noise": video_noise,
             "audio_noise": audio_noise,
@@ -605,34 +495,11 @@ class LTX2AudioVideoUnit_NoiseInitializer(PipelineUnit):
             "audio_positions": audio_positions,
             "video_latent_shape": video_latent_shape,
             "audio_latent_shape": audio_latent_shape,
-            "video_keyframes_mask": video_keyframes_mask,
-            "video_ancestral_noise_shape": video_ancestral_noise_shape,
-            "video_ancestral_noise_transform": video_ancestral_noise_transform,
-            "audio_ancestral_noise_shape": audio_ancestral_noise_shape,
-            "audio_ancestral_noise_transform": audio_ancestral_noise_transform,
+            "video_keyframes_mask": video_keyframes_mask
         }
 
-    def process(
-        self,
-        pipe: LTX2AudioVideoPipeline,
-        height,
-        width,
-        num_frames,
-        seed,
-        rand_device,
-        frame_rate=24.0,
-        generate_video=True,
-    ):
-        return self.process_stage(
-            pipe,
-            height,
-            width,
-            num_frames,
-            seed,
-            rand_device,
-            frame_rate,
-            generate_video,
-        )
+    def process(self, pipe: LTX2AudioVideoPipeline, height, width, num_frames, seed, rand_device, frame_rate=24.0, audio_only=False):
+        return self.process_stage(pipe, height, width, num_frames, seed, rand_device, frame_rate, audio_only)
 
 
 class LTX2AudioVideoUnit_InputVideoEmbedder(PipelineUnit):

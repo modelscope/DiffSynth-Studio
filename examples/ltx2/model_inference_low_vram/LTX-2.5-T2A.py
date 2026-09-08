@@ -35,6 +35,6 @@ _, audio = pipe(
     num_frames=121,
     frame_rate=24,
     num_inference_steps=30,
-    generate_video=False,
+    audio_only=True,
 )
 save_audio(audio, pipe.audio_vocoder.output_sampling_rate, "ltx2.5_t2a.wav")
