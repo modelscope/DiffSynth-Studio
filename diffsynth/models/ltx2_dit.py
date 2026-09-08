@@ -833,6 +833,10 @@ class MultiModalTransformerArgsPreprocessor:
             if cross_modality.sigma.ndim != 1:
                 raise ValueError("Cross modality sigma must be a 1D tensor")
 
+        cross_timestep = cross_modality.sigma.view(
+            modality.timesteps.shape[0], 1, *[1] * len(modality.timesteps.shape[2:])
+        )
+
         cross_pe = self.simple_preprocessor._prepare_positional_embeddings(
             positions=modality.positions[:, 0:1, :],
             inner_dim=self.audio_cross_attention_dim,
@@ -843,11 +847,11 @@ class MultiModalTransformerArgsPreprocessor:
         )
 
         cross_scale_shift_timestep, cross_gate_timestep = self._prepare_cross_attention_timestep(
-            modality_timesteps=modality.timesteps,
-            cross_modality_sigma=cross_modality.sigma,
+            timestep=modality.timesteps if self.use_tokenwise_av_ca_scale_shift else cross_timestep,
             timestep_scale_multiplier=self.simple_preprocessor.timestep_scale_multiplier,
             batch_size=transformer_args.x.shape[0],
             hidden_dtype=modality.latent.dtype,
+            gate_timestep=cross_timestep if self.use_tokenwise_av_ca_scale_shift else None,
         )
 
         return replace(
@@ -859,24 +863,26 @@ class MultiModalTransformerArgsPreprocessor:
 
     def _prepare_cross_attention_timestep(
         self,
-        modality_timesteps: torch.Tensor,
-        cross_modality_sigma: torch.Tensor,
+        timestep: torch.Tensor | None,
         timestep_scale_multiplier: int,
         batch_size: int,
         hidden_dtype: torch.dtype,
+        gate_timestep: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Prepare A-V cross-attention AdaLN inputs."""
+        """Prepare cross attention timestep embeddings."""
+        timestep = timestep * timestep_scale_multiplier
+
         av_ca_factor = self.av_ca_timestep_scale_multiplier / timestep_scale_multiplier
-        cross_timestep = cross_modality_sigma.view(batch_size, 1, *[1] * (modality_timesteps.ndim - 2))
-        scale_shift_input = modality_timesteps if self.use_tokenwise_av_ca_scale_shift else cross_timestep
+        # LTX-2.5 drives the scale/shift AdaLN per token while the gate stays scalar.
+        gate_input = (gate_timestep * timestep_scale_multiplier).flatten() if gate_timestep is not None else timestep.flatten()
 
         scale_shift_timestep, _ = self.cross_scale_shift_adaln(
-            (scale_shift_input * timestep_scale_multiplier).flatten(),
+            timestep.flatten(),
             hidden_dtype=hidden_dtype,
         )
         scale_shift_timestep = scale_shift_timestep.view(batch_size, -1, scale_shift_timestep.shape[-1])
         gate_noise_timestep, _ = self.cross_gate_adaln(
-            (cross_timestep * timestep_scale_multiplier * av_ca_factor).flatten(),
+            gate_input * av_ca_factor,
             hidden_dtype=hidden_dtype,
         )
         gate_noise_timestep = gate_noise_timestep.view(batch_size, -1, gate_noise_timestep.shape[-1])
@@ -1400,21 +1406,6 @@ class LTXModel(torch.nn.Module):
     def _keyframes_embedding(self) -> torch.Tensor | None:
         return getattr(self, "keyframes_abs_pos_embedding", None)
 
-    @property
-    def supports_keyframes_abs_pos_embedding(self) -> bool:
-        embedding = self._keyframes_embedding()
-        return embedding is not None and not embedding.is_meta
-
-    def enable_keyframes_abs_pos_embedding(self) -> None:
-        if not self.model_type.is_video_enabled():
-            raise ValueError("The keyframe absolute-position embedding is a video-stream parameter")
-        existing = self._keyframes_embedding()
-        if existing is not None and not existing.is_meta:
-            return
-        shape = existing.shape if existing is not None else (1, self.inner_dim)
-        self.use_keyframes_abs_pos_embedding = True
-        self.keyframes_abs_pos_embedding = torch.nn.Parameter(torch.zeros(shape, dtype=torch.bfloat16))
-
     def _init_video(
         self,
         in_channels: int,
@@ -1426,12 +1417,8 @@ class LTXModel(torch.nn.Module):
         # Video input components
         self.patchify_proj = torch.nn.Linear(in_channels, self.inner_dim, bias=True)
         self.adaln_single = AdaLayerNormSingle(self.inner_dim, embedding_coefficient=self._adaln_embedding_coefficient)
-        self.prompt_adaln_single = AdaLayerNormSingle(
-            self.inner_dim, embedding_coefficient=2
-        ) if self.cross_attention_adaln and self.use_prompt_adaln_single else None
-        self.keyframes_abs_pos_embedding = (
-            torch.nn.Parameter(torch.zeros(1, self.inner_dim)) if self.use_keyframes_abs_pos_embedding else None
-        )
+        self.prompt_adaln_single = AdaLayerNormSingle(self.inner_dim, embedding_coefficient=2) if self.cross_attention_adaln and self.use_prompt_adaln_single else None
+        self.keyframes_abs_pos_embedding = torch.nn.Parameter(torch.zeros(1, self.inner_dim)) if self.use_keyframes_abs_pos_embedding else None
 
         # Video caption projection
         if caption_channels is not None:
@@ -1458,9 +1445,7 @@ class LTXModel(torch.nn.Module):
         self.audio_patchify_proj = torch.nn.Linear(in_channels, self.audio_inner_dim, bias=True)
 
         self.audio_adaln_single = AdaLayerNormSingle(self.audio_inner_dim, embedding_coefficient=self._adaln_embedding_coefficient)
-        self.audio_prompt_adaln_single = AdaLayerNormSingle(
-            self.audio_inner_dim, embedding_coefficient=2
-        ) if self.cross_attention_adaln and self.use_prompt_adaln_single else None
+        self.audio_prompt_adaln_single = AdaLayerNormSingle(self.audio_inner_dim, embedding_coefficient=2) if self.cross_attention_adaln and self.use_prompt_adaln_single else None
 
         # Audio caption projection
         if caption_channels is not None:
@@ -1632,6 +1617,13 @@ class LTXModel(torch.nn.Module):
         )
 
     def set_gradient_checkpointing(self, enable: bool) -> None:
+        """Enable or disable gradient checkpointing for transformer blocks.
+        Gradient checkpointing trades compute for memory by recomputing activations
+        during the backward pass instead of storing them. This can significantly
+        reduce memory usage at the cost of ~20-30% slower training.
+        Args:
+            enable: Whether to enable gradient checkpointing
+        """
         self._enable_gradient_checkpointing = enable
 
     def _process_transformer_blocks(
@@ -1740,49 +1732,13 @@ class LTXModel(torch.nn.Module):
         sigma,
         use_gradient_checkpointing=False,
         use_gradient_checkpointing_offload=False,
-        video_context_mask=None,
-        audio_context_mask=None,
-        video_attention_mask=None,
-        audio_attention_mask=None,
         video_keyframes_mask=None,
-        perturbations=None,
     ):
         cross_pe_max_pos = None
         if self.model_type.is_video_enabled() and self.model_type.is_audio_enabled():
             cross_pe_max_pos = max(self.positional_embedding_max_pos[0], self.audio_positional_embedding_max_pos[0])
         self._init_preprocessors(cross_pe_max_pos)
-        video = (
-            Modality(
-                video_latents,
-                sigma,
-                video_timesteps,
-                video_positions,
-                video_context,
-                context_mask=video_context_mask,
-                attention_mask=video_attention_mask,
-                keyframes_mask=video_keyframes_mask,
-            )
-            if video_latents is not None
-            else None
-        )
-        audio = (
-            Modality(
-                audio_latents,
-                sigma,
-                audio_timesteps,
-                audio_positions,
-                audio_context,
-                context_mask=audio_context_mask,
-                attention_mask=audio_attention_mask,
-            )
-            if audio_latents is not None
-            else None
-        )
-        vx, ax = self._forward(
-            video=video,
-            audio=audio,
-            perturbations=perturbations,
-            use_gradient_checkpointing=use_gradient_checkpointing,
-            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
-        )
+        video = Modality(video_latents, sigma, video_timesteps, video_positions, video_context, keyframes_mask=video_keyframes_mask) if video_latents is not None else None
+        audio = Modality(audio_latents, sigma, audio_timesteps, audio_positions, audio_context) if audio_latents is not None else None
+        vx, ax = self._forward(video=video, audio=audio, perturbations=None, use_gradient_checkpointing=use_gradient_checkpointing, use_gradient_checkpointing_offload=use_gradient_checkpointing_offload)
         return vx, ax
