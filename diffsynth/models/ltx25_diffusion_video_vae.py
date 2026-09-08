@@ -1,10 +1,3 @@
-"""LTX-2.5 diffusion video decoder with eager attention and internal tiling.
-
-The implementation is intentionally self-contained so DiffSynth does not depend on
-``ltx-core`` or a nested source package at runtime.  It preserves checkpoint names
-and provides full, tiled, and keyframe-aware decode through one public interface.
-"""
-
 from __future__ import annotations
 
 import dataclasses
@@ -27,13 +20,9 @@ from torch.nn import functional
 
 
 class Disposable:
-    """Compatibility marker used by the target implementation."""
-
-
+    pass
 class VideoDecoder:
-    """Structural marker for video decoders."""
-
-
+    pass
 def _clip_generators(count, generator):
     if isinstance(generator, Sequence):
         if len(generator) != count:
@@ -55,7 +44,6 @@ def iter_decoded_single_frames(decoder, latents, generator=None):
         yield torch.cat(chunks, dim=0)
 
 
-
 def get_timestep_embedding(
     timesteps: torch.Tensor,
     embedding_dim: int,
@@ -64,24 +52,6 @@ def get_timestep_embedding(
     scale: float = 1,
     max_period: int = 10000,
 ) -> torch.Tensor:
-    """
-    This matches the implementation in Denoising Diffusion Probabilistic Models: Create sinusoidal timestep embeddings.
-    Args
-        timesteps (torch.Tensor):
-            a 1-D Tensor of N indices, one per batch element. These may be fractional.
-        embedding_dim (int):
-            the dimension of the output.
-        flip_sin_to_cos (bool):
-            Whether the embedding order should be `cos, sin` (if True) or `sin, cos` (if False)
-        downscale_freq_shift (float):
-            Controls the delta between frequencies between dimensions
-        scale (float):
-            Scaling factor applied to the embeddings.
-        max_period (int):
-            Controls the maximum frequency of the embeddings
-    Returns
-        torch.Tensor: an [N x dim] Tensor of positional embeddings.
-    """
     assert len(timesteps.shape) == 1, "Timesteps should be a 1d-array"
 
     half_dim = embedding_dim // 2
@@ -169,12 +139,6 @@ class Timesteps(torch.nn.Module):
 
 
 class PixArtAlphaCombinedTimestepSizeEmbeddings(torch.nn.Module):
-    """
-    For PixArt-Alpha.
-    Reference:
-    https://github.com/PixArt-alpha/PixArt-alpha/blob/0f55e922376d8b797edd44d25d0e7464b260dcab/diffusion/model/nets/PixArtMS.py#L164C9-L168C29
-    """
-
     def __init__(
         self,
         embedding_dim: int,
@@ -197,10 +161,6 @@ class PixArtAlphaCombinedTimestepSizeEmbeddings(torch.nn.Module):
 
 
 class VideoPixelShape(NamedTuple):
-    """
-    Shape of the tensor representing the video pixel array. Assumes BGR channel format.
-    """
-
     batch: int
     frames: int
     height: int
@@ -209,13 +169,6 @@ class VideoPixelShape(NamedTuple):
 
 
 class SpatioTemporalScaleFactors(NamedTuple):
-    """
-    Describes the spatiotemporal downscaling between decoded video space and
-    the corresponding VAE latent grid.
-    Field order matches the (frame/time, height, width) axis layout used by
-    latent tensors and meshgrid coordinates elsewhere in the codebase.
-    """
-
     time: int
     height: int
     width: int
@@ -226,14 +179,6 @@ class SpatioTemporalScaleFactors(NamedTuple):
 
     @classmethod
     def from_blocks(cls, blocks: list, patch_size: int) -> "SpatioTemporalScaleFactors":
-        """Derive the scale factors from a VAE encoder/decoder block list.
-        Each ``compress_*`` block halves (encoder) or doubles (decoder) its target
-        axes by a stride of 2, independent of any channel ``multiplier``. The initial
-        patchify contributes an extra ``patch_size`` of spatial compression. Deriving
-        the factors from the blocks keeps a single source of truth that stays correct
-        across VAE variants (e.g. the 32x32x8 default and the 16x16x4 variant) instead
-        of relying on a hardcoded constant.
-        """
         spatial_steps = 0
         temporal_steps = 0
         for block_name, _ in blocks:
@@ -248,13 +193,6 @@ VIDEO_SCALE_FACTORS = SpatioTemporalScaleFactors.default()
 
 
 class VideoLatentShape(NamedTuple):
-    """
-    Shape of the tensor representing video in VAE latent space.
-    The latent representation is a 5D tensor with dimensions ordered as
-    (batch, channels, frames, height, width). Spatial and temporal dimensions
-    are downscaled relative to pixel space according to the VAE's scale factors.
-    """
-
     batch: int
     channels: int
     frames: int
@@ -302,11 +240,6 @@ class VideoLatentShape(NamedTuple):
 
 
 class AudioLatentShape(NamedTuple):
-    """
-    Shape of audio in VAE latent space: (batch, channels, frames, mel_bins).
-    mel_bins is the number of frequency bins from the mel-spectrogram encoding.
-    """
-
     batch: int
     channels: int
     frames: int
@@ -365,13 +298,6 @@ class AudioLatentShape(NamedTuple):
 
 @dataclass(frozen=True)
 class Audio:
-    """
-    Container for decoded audio samples and metadata.
-    Attributes:
-        waveform: Audio waveform tensor.
-        sampling_rate: Sampling rate (Hz) of the waveform.
-    """
-
     waveform: torch.Tensor
     sampling_rate: int
 
@@ -381,18 +307,6 @@ class Audio:
 
 @dataclass(frozen=True)
 class GeneratedKeyframeLayout:
-    """Where a state's generated-keyframe slot tokens live, and what they represent.
-    Recorded by :class:`~ltx_core.conditioning.types.keyframe_slots.VideoGeneratedKeyframeSlots`
-    when it appends the slots, so they can later be located and extracted *exactly* rather
-    than by assuming they are the trailing tokens. Conditioning items are applied in list
-    order and each appends to the end, so a state built with slots plus any other appending
-    conditioning item has no fixed trailing layout.
-    Attributes:
-        pixel_frame_indices: Target pixel-frame index of each slot, in token order.
-        tokens_per_keyframe: Number of tokens one slot occupies (one latent frame's worth).
-        first_token: Index of the first slot token in the token sequence.
-    """
-
     pixel_frame_indices: tuple[int, ...]
     tokens_per_keyframe: int
     first_token: int
@@ -407,33 +321,6 @@ class GeneratedKeyframeLayout:
 
 @dataclass(frozen=True)
 class LatentState:
-    """
-    State of latents during the diffusion denoising process.
-    Attributes:
-        latent: The current noisy latent tensor being denoised.
-        denoise_mask: Mask encoding the denoising strength for each token (1 = full denoising, 0 = no denoising).
-        positions: Positional indices for each latent element, used for positional embeddings.
-        clean_latent: Initial state of the latent before denoising, may include conditioning latents.
-        attention_mask: Optional 2D self-attention mask of shape (B, T, T). Values in [0, 1] where 1 = full attention,
-            0 = no attention. None means full attention everywhere. Built incrementally by conditioning items.
-        keyframes_mask: Optional per-token marker of shape (B, T, 1) -- same layout as
-            ``denoise_mask`` -- non-zero on tokens whose latent encodes a *single standalone pixel
-            frame* rather than the usual multi-frame span. That set is the target's first latent
-            frame (the video encoder is causal, so its first temporal latent frame covers 1 pixel
-            frame while the rest cover 8) plus any generated keyframe slots. Selects the tokens
-            that receive the model's learned keyframe absolute-position embedding; ignored
-            entirely by models built without ``use_keyframes_abs_pos_embedding``.
-        generated_keyframe_layout: Set when generated keyframe slots were appended; locates them.
-        generated_keyframes: Populated by ``clear_conditioning`` when a layout is present: the
-            denoised slot content as an unpatchified ``(B, C, K, H, W)`` latent, one latent frame
-            per keyframe. Each frame must be decoded as a standalone one-frame clip, never as a
-            K-frame video -- a causal decode would blend slots that were never adjacent.
-        frozen: When True, this stream is held fixed: token denoising is disabled (``denoise_mask``
-            should be all zeros; pipeline builders enforce that) and the scalar noise level used for
-            prompt / cross-modality AdaLN gates is forced to 0 when the state is converted for the
-            transformer.
-    """
-
     latent: torch.Tensor
     denoise_mask: torch.Tensor
     positions: torch.Tensor
@@ -459,10 +346,6 @@ class LatentState:
 
 
 def rms_norm(x: torch.Tensor, weight: torch.Tensor | None = None, eps: float = 1e-6) -> torch.Tensor:
-    """Root-mean-square (RMS) normalize `x` over its last dimension.
-    Thin wrapper around `torch.nn.functional.rms_norm` that infers the normalized
-    shape and forwards `weight` and `eps`.
-    """
     return torch.nn.functional.rms_norm(x, (x.shape[-1],), weight=weight, eps=eps)
 
 
@@ -472,11 +355,6 @@ def to_velocity(
     denoised_sample: torch.Tensor,
     calc_dtype: torch.dtype = torch.float32,
 ) -> torch.Tensor:
-    """
-    Convert the sample and its denoised version to velocity.
-    Returns:
-        Velocity
-    """
     if isinstance(sigma, torch.Tensor):
         sigma = sigma.to(calc_dtype).item()
     if sigma == 0:
@@ -490,11 +368,6 @@ def to_denoised(
     sigma: float | torch.Tensor,
     calc_dtype: torch.dtype = torch.float32,
 ) -> torch.Tensor:
-    """
-    Convert the sample and its denoising velocity to denoised sample.
-    Returns:
-        Denoised sample
-    """
     if isinstance(sigma, torch.Tensor):
         sigma = sigma.to(calc_dtype)
     return (sample.to(calc_dtype) - velocity.to(calc_dtype) * sigma).to(sample.dtype)
@@ -506,17 +379,6 @@ def compute_trapezoidal_mask_1d(
     ramp_right: int,
     left_starts_from_0: bool = False,
 ) -> torch.Tensor:
-    """
-    Generate a 1D trapezoidal blending mask with linear ramps.
-    Args:
-        length: Output length of the mask.
-        ramp_left: Fade-in length on the left.
-        ramp_right: Fade-out length on the right.
-        left_starts_from_0: Whether the ramp starts from 0 or first non-zero value.
-            Useful for temporal tiles where the first tile is causal.
-    Returns:
-        A 1D tensor of shape `(length,)` with values in [0, 1].
-    """
     if length <= 0:
         raise ValueError("Mask length must be positive.")
 
@@ -544,15 +406,6 @@ def compute_rectangular_mask_1d(
     left_ramp: int,
     right_ramp: int,
 ) -> torch.Tensor:
-    """
-    Generate a 1D rectangular (pulse) mask.
-    Args:
-        length: Output length of the mask.
-        left_ramp: Number of elements at the start of the mask to set to 0.
-        right_ramp: Number of elements at the end of the mask to set to 0.
-    Returns:
-        A 1D tensor of shape `(length,)` with values 0 or 1.
-    """
     if length <= 0:
         raise ValueError("Mask length must be positive.")
 
@@ -574,23 +427,11 @@ class DimensionInterval:
 
 @dataclass(frozen=True)
 class DimensionIntervals:
-    """Intervals which a single dimension of the latent space is split into.
-    Each interval is defined by its start, end, left ramp, and right ramp.
-    The start and end are the indices of the first and last element (exclusive) in the interval.
-    Ramps are regions of the interval where the value of the mask tensor is
-    interpolated between 0 and 1 for blending with neighboring intervals.
-    The left ramp and right ramp values are the lengths of the left and right ramps.
-    """
-
     intervals: list[DimensionInterval]
 
 
 @dataclass(frozen=True)
 class LatentIntervals:
-    """Intervals which the latent tensor of given shape is split into.
-    Each dimension of the latent space is split into intervals based on the length along said dimension.
-    """
-
     original_shape: torch.Size
     dimension_intervals: tuple[DimensionIntervals, ...]
 
@@ -609,7 +450,6 @@ DEFAULT_SPLIT_OPERATION: SplitOperation = default_split_operation
 
 
 def untiled_mask_1d() -> torch.Tensor:
-    """Length-1 ones that broadcast over an untiled axis (historical ``None`` mask)."""
     return torch.ones(1)
 
 
@@ -623,7 +463,6 @@ DEFAULT_MAPPING_OPERATION: MappingOperation = default_mapping_operation
 
 
 def _grow_last_tile_to_min(intervals: list[DimensionInterval], min_tile_size: int) -> list[DimensionInterval]:
-    """Grow a short last tile left to ``min_tile_size``; widen penultimate ``right_ramp``."""
     if len(intervals) <= 1:
         return list(intervals)
     last = intervals[-1]
@@ -640,7 +479,6 @@ def _grow_last_tile_to_min(intervals: list[DimensionInterval], min_tile_size: in
 
 
 def _validate_tile_intervals(intervals: list[DimensionInterval], *, dim_size: int, min_tile_size: int) -> None:
-    """Validate coverage, ramp/overlap consistency, and ``min_tile_size``."""
     if not intervals or intervals[0].start != 0 or intervals[-1].end != dim_size:
         raise ValueError(f"tiles must cover [0, {dim_size})")
     for i, iv in enumerate(intervals):
@@ -657,20 +495,6 @@ def _validate_tile_intervals(intervals: list[DimensionInterval], *, dim_size: in
 
 
 def split_by_size(size: int, overlap: int, min_tile_size: int | None = None) -> SplitOperation:
-    """Split a dimension into overlapping tiles of a given size.
-    Tiles are sized ``size`` with ``overlap`` shared elements between
-    consecutive tiles.  The last tile may be shorter if the dimension
-    doesn't divide evenly.  If ``min_tile_size`` is set and the last tile is
-    shorter, it is grown leftward (penultimate ``right_ramp`` widens); the
-    result is validated and invalid layouts raise ``ValueError``.
-    Args:
-        size: Target tile size (in axis units).
-        overlap: Overlap between consecutive tiles.
-        min_tile_size: Optional minimum tile length. ``None`` keeps legacy
-            short-last-tile behavior.
-    Returns:
-        A split operation that divides a dimension into tiles.
-    """
     if size <= 0:
         raise ValueError(f"size must be > 0, got {size}")
     if overlap < 0 or overlap >= size:
@@ -708,16 +532,6 @@ def split_by_size(size: int, overlap: int, min_tile_size: int | None = None) -> 
 
 
 def split_temporal_causal(size: int, overlap: int, min_tile_size: int | None = None) -> SplitOperation:
-    """Split a temporal axis into overlapping tiles with causal handling.
-    Each tile after the first is shifted back by 1 and its left ramp is
-    increased by 1, ensuring causal continuity through the blend ramps.
-    Args:
-        size: Tile size in axis units.
-        overlap: Overlap between tiles in the same units.
-        min_tile_size: Optional floor forwarded to :func:`split_by_size`.
-    Returns:
-        Split operation that divides temporal dimension with causal handling.
-    """
     non_causal_split = split_by_size(size, overlap, min_tile_size=min_tile_size)
 
     def split(dimension_size: int) -> DimensionIntervals:
@@ -738,17 +552,6 @@ def split_temporal_causal(size: int, overlap: int, min_tile_size: int | None = N
 def split_by_count_temporal_causal(
     num_tiles: int, overlap: int = 0, min_tile_size: int | None = None
 ) -> SplitOperation:
-    """Split a temporal dimension by count with causal handling.
-    Wraps :func:`split_by_count` with the same causal adjustment as
-    :func:`split_temporal_causal`: each tile after the first is shifted
-    back by 1 and its left ramp is increased by 1.
-    Args:
-        num_tiles: Number of tiles. Must be >= 1.
-        overlap: Overlap between adjacent tiles (default 0).
-        min_tile_size: Optional floor forwarded to :func:`split_by_count`.
-    Returns:
-        A split operation that divides a temporal dimension into tiles.
-    """
     non_causal_split = split_by_count(num_tiles, overlap, min_tile_size=min_tile_size)
 
     def split(dimension_size: int) -> DimensionIntervals:
@@ -765,24 +568,6 @@ def split_by_count_temporal_causal(
 
 
 def split_at_seams(boundaries: Sequence[int], num_tiles: int, overlap: int = 0) -> SplitOperation:
-    """Split a dimension on boundary cells whose content is already known, dropping the overlap.
-    ``boundaries`` are the ``K + 1`` segment edges in grid cells, starting at 0 and ending at the
-    last cell of the dimension. The ``K`` segments are dealt largest-first so leftover segments go to the leading tiles;
-    ``num_tiles`` larger than ``K`` is clamped. Each tile but the first starts ``overlap`` cells
-    before the boundary it resumes after. That run-up is context only: it lands in the interval's
-    ``left_ramp``, which :func:`identity_mapping_operation` with ``rectangular=True`` masks to zero,
-    so the earlier tile keeps the boundary cell and this one contributes strictly after it.
-    The point of cutting here is that nothing needs blending. A ramp is what a pair of tiles needs
-    when neither of them knows the truth at the seam; on a boundary cell both reproduce the same
-    known frame, so averaging them only smears it.
-    Args:
-        boundaries: Segment edges in grid cells, strictly increasing, starting at 0.
-        num_tiles: Number of tiles. Must be >= 1. Extra tiles beyond the segment count are dropped.
-        overlap: Context cells each non-first tile denoises before the cell it resumes at, in grid
-            units. Clamped at the start of the dimension.
-    Returns:
-        A split operation that divides a dimension on ``boundaries``.
-    """
     boundaries = tuple(boundaries)
     if num_tiles < 1:
         raise ValueError(f"num_tiles must be >= 1, got {num_tiles}")
@@ -820,23 +605,6 @@ def split_at_seams(boundaries: Sequence[int], num_tiles: int, overlap: int = 0) 
 
 
 def split_by_count(num_tiles: int, overlap: int = 0, min_tile_size: int | None = None) -> SplitOperation:
-    """Split a dimension into a given number of tiles with overlap.
-    Computes the tile size as
-    ``(dim_size + overlap * (num_tiles - 1)) // num_tiles`` so that
-    ``num_tiles`` tiles of that size with ``overlap`` shared elements
-    cover the dimension evenly.  Delegates to :func:`split_by_size` for
-    the actual interval construction.
-    When the total ``dim_size + overlap * (num_tiles - 1)`` is not evenly
-    divisible by ``num_tiles``, the first ``remainder`` tiles each absorb
-    one extra unit.
-    Args:
-        num_tiles: Number of tiles. Must be >= 1.
-        overlap: Overlap between adjacent tiles (default 0). Must be >= 0
-            and less than the computed tile size.
-        min_tile_size: Optional floor forwarded to last-tile growth / validation.
-    Returns:
-        A split operation that divides a dimension into tiles.
-    """
     if num_tiles < 1:
         raise ValueError(f"num_tiles must be >= 1, got {num_tiles}")
     if overlap < 0:
@@ -884,13 +652,6 @@ def identity_mapping_operation(
     *,
     rectangular: bool = False,
 ) -> tuple[list[slice], list[torch.Tensor]]:
-    """Map each DimensionInterval to an output region at the same position.
-    For every interval the output start/end matches the input start/end and a 1-D mask is built
-    from the interval's left_ramp and right_ramp. The default mask is trapezoidal (blend on the
-    ramps). ``rectangular=True`` drops the ramps outright: the overlap is context the tile denoised
-    but does not contribute. Pair that with a split whose ramps are one-sided, such as
-    :func:`split_at_seams` -- ramps on both sides of an interval would leave a hole between tiles.
-    """
     mask_1d = compute_rectangular_mask_1d if rectangular else compute_trapezoidal_mask_1d
     out_slices: list[slice] = []
     masks: list[torch.Tensor] = []
@@ -901,22 +662,6 @@ def identity_mapping_operation(
 
 
 class Tile(NamedTuple):
-    """
-    Represents a single tile.
-    Attributes:
-        in_coords:
-            Tuple of slices specifying where to cut the tile from the INPUT tensor.
-        out_coords:
-            Tuple of slices specifying where this tile's OUTPUT should be placed in the reconstructed OUTPUT tensor.
-        masks_1d:
-            Per-dimension masks in OUTPUT units.
-            Untiled axes use a length-1 ones tensor (broadcasts). These are used
-            for separable blending (and for the dense ``blend_mask`` property).
-    Methods:
-        blend_mask:
-            Create a single N-D mask from the per-dimension masks.
-    """
-
     in_coords: tuple[slice, ...]
     out_coords: tuple[slice, ...]
     masks_1d: tuple[torch.Tensor, ...]
@@ -942,10 +687,6 @@ class Tile(NamedTuple):
 
 
 def scale_by_masks_1d(x: torch.Tensor, masks_1d: Sequence[torch.Tensor]) -> torch.Tensor:
-    """Multiply ``x`` by separable 1d masks with broadcasting.
-    ``len(masks_1d)`` must equal ``x.ndim``. Prefer float32 masks so bf16/fp16 ``x`` promotes.
-    Length-1 masks (untiled axes) broadcast over that dimension.
-    """
     if len(masks_1d) != x.ndim:
         raise ValueError(f"masks_1d length {len(masks_1d)} != x.ndim {x.ndim}")
     out = x
@@ -962,11 +703,6 @@ def masks_are_complementary(
     *,
     atol: float = 1e-5,
 ) -> bool:
-    """Return whether per-axis 1d blend masks partition unity (sum to 1).
-    Checks each axis independently over the unique out-slices on that axis
-    (cartesian tile products would otherwise multi-count the same 1d interval).
-    When True, weighted accumulation needs no denominator.
-    """
     if not tiles:
         return True
     ndim = len(full_shape)
@@ -1046,11 +782,6 @@ def create_tiles(
 
 
 def group_tiles_by_temporal_slice(tiles: list[Tile]) -> list[list[Tile]]:
-    """Group consecutive tiles that share the same temporal ``out_coords`` slice.
-    Assumes ``tiles`` is ordered with the temporal axis varying slowest (true
-    for every tile list this codebase builds via ``itertools.product`` with
-    the temporal axis first), so equal temporal slices are always contiguous.
-    """
     if not tiles:
         return []
 
@@ -1075,16 +806,6 @@ def group_tiles_by_temporal_slice(tiles: list[Tile]) -> list[list[Tile]]:
 
 @dataclass(frozen=True)
 class DimensionTilingConfig:
-    """Tiling parameters for a single dimension of the patchified grid.
-    Attributes:
-        num_tiles: Number of tiles along this dimension. ``1`` with ``overlap=0``
-            means the axis is not tiled.
-        overlap: Overlap between adjacent tiles, in latent grid units.
-            Adjacent tiles share ``overlap`` grid cells at their
-            boundary, producing an overlap zone blended with
-            trapezoidal masks.
-    """
-
     num_tiles: int = 1
     overlap: int = 0
 
@@ -1095,18 +816,10 @@ class DimensionTilingConfig:
             raise ValueError(f"overlap must be >= 0, got {self.overlap}")
 
     def is_tiled(self) -> bool:
-        """True when this axis is split into more than one tile (or has overlap)."""
         return self.num_tiles > 1 or self.overlap > 0
 
 @dataclass(frozen=True)
 class DimensionSizeConfig:
-    """Tile size and overlap for a single video axis (frames / height / width).
-    Mirrors :class:`DimensionTilingConfig`, but specifies tile *size* rather than
-    tile *count*. ``tile_size=0`` means the axis is not tiled (covers the whole
-    length).     Axis-specific VAE pixel constraints (divisibility / minimums) are
-    enforced by :meth:`TileSizeConfig.validate` for tiled axes only.
-    """
-
     tile_size: int = 0
     overlap: int = 0
 
@@ -1123,29 +836,16 @@ class DimensionSizeConfig:
             raise ValueError(f"Overlap must be less than tile size, got {self.overlap} and {self.tile_size}")
 
     def is_tiled(self) -> bool:
-        """True when this axis has a positive tile size (caller intends to split it)."""
         return self.tile_size > 0
 
 
 @dataclass(frozen=True)
 class TileCountConfig:
-    """Tiling layout for a ``(F, H, W)`` grid by tile *counts*.
-    Overlaps are in latent-grid units. Mirror of :class:`TileSizeConfig`.
-    Attributes:
-        frames: Tiling along the temporal (frames) dimension.
-        height: Tiling along the latent height dimension.
-        width: Tiling along the latent width dimension.
-    """
-
     frames: DimensionTilingConfig = DimensionTilingConfig()
     height: DimensionTilingConfig = DimensionTilingConfig()
     width: DimensionTilingConfig = DimensionTilingConfig()
 
     def validate(self, scale_factors: SpatioTemporalScaleFactors, video_shape: VideoPixelShape) -> None:
-        """Raise if this count layout cannot tile ``video_shape`` under ``scale_factors``.
-        Counts/overlaps are in latent-grid units. ``video_shape.frames <= 0`` skips the
-        temporal axis (duration not yet known). Spatial axes always checked.
-        """
         check_temporal = _assert_video_on_vae_grid(scale_factors, video_shape)
         latent_h = video_shape.height // scale_factors.height
         latent_w = video_shape.width // scale_factors.width
@@ -1162,14 +862,6 @@ class TileCountConfig:
         *,
         causal_temporal: bool = True,
     ) -> tuple[SplitOperation, SplitOperation, SplitOperation]:
-        """Build ``(T, H, W)`` latent-grid split operations for this count layout.
-        ``scale_factors`` is accepted for signature parity with
-        :meth:`TileSizeConfig.to_splitters` and ignored — counts are already in
-        grid units. When ``causal_temporal`` is True (VAE encode/decode), the
-        frames axis uses :func:`split_by_count_temporal_causal`; otherwise plain
-        :func:`split_by_count`. ``min_tile_size`` is a per-axis floor in the same
-        units as the split.
-        """
         del scale_factors
         min_t = min_h = min_w = None
         if min_tile_size is not None:
@@ -1190,29 +882,11 @@ class TileCountConfig:
 
 @dataclass(frozen=True)
 class TileSizeConfig:
-    """Size-based tiling layout for a ``(F, H, W)`` video — mirror of ``TileCountConfig``.
-    Each axis is a non-optional :class:`DimensionSizeConfig`; ``tile_size=0`` means
-    untiled on that axis (:meth:`DimensionSizeConfig.is_tiled`). Sizes and overlaps
-    are in pixel / frame units. Conversion to a split grid is an explicit
-    ``scale_factors`` argument to :meth:`to_splitters` (not stored on the config).
-    Legality vs a VAE grid is checked by :meth:`validate` (same factors decode will
-    pass to :meth:`to_splitters`), not at construction.
-    Attributes:
-        frames: Temporal tile size/overlap in frames.
-        height: Spatial height tile size/overlap in pixels.
-        width: Spatial width tile size/overlap in pixels.
-    """
-
     frames: DimensionSizeConfig = DimensionSizeConfig()
     height: DimensionSizeConfig = DimensionSizeConfig()
     width: DimensionSizeConfig = DimensionSizeConfig()
 
     def validate(self, scale_factors: SpatioTemporalScaleFactors, video_shape: VideoPixelShape) -> None:
-        """Raise if this size layout is illegal for ``video_shape`` under ``scale_factors``.
-        Checks tile/overlap divisibility and minimums against the VAE grid, and that
-        the video extents are compatible with that grid. ``video_shape.frames <= 0``
-        skips the temporal axis (duration not yet known); height/width always checked.
-        """
         check_temporal = _assert_video_on_vae_grid(scale_factors, video_shape)
         _validate_size_axis(self.height, scale_factors.height, "height")
         _validate_size_axis(self.width, scale_factors.width, "width")
@@ -1234,9 +908,6 @@ class TileSizeConfig:
         *,
         causal_temporal: bool = True,
     ) -> tuple[SplitOperation, SplitOperation, SplitOperation]:
-        """Build ``(T, H, W)`` grid split ops from pixel/frame sizes via ``scale_factors``.
-        When ``causal_temporal`` is True, frames use :func:`split_temporal_causal`.
-        """
         min_t = min_h = min_w = None
         if min_tile_size is not None:
             min_t, min_h, min_w = min_tile_size
@@ -1270,10 +941,6 @@ TilingConfig = TileSizeConfig | TileCountConfig
 
 
 class AutoTiling:
-    """Sentinel: pipeline should recommend decode tiling (DiffVAE-aware / Conv default).
-    Distinct from ``None``, which means untiled decode.
-    """
-
     __slots__ = ()
 
     def __repr__(self) -> str:
@@ -1290,10 +957,6 @@ def _assert_video_on_vae_grid(
     scale_factors: SpatioTemporalScaleFactors,
     video_shape: VideoPixelShape,
 ) -> bool:
-    """Raise if ``video_shape`` is incompatible with the VAE ``scale_factors`` grid.
-    Returns whether the temporal axis is known (``video_shape.frames > 0``). When
-    False, callers skip frames-axis checks (duration not yet resolved).
-    """
     if scale_factors.time < 1 or scale_factors.height < 1 or scale_factors.width < 1:
         raise ValueError(f"scale_factors must be >= 1 on each axis, got {scale_factors}")
     if video_shape.height < 1 or video_shape.width < 1:
@@ -1310,7 +973,6 @@ def _assert_video_on_vae_grid(
 
 
 def _validate_size_axis(cfg: DimensionSizeConfig, factor: int, axis_name: str) -> None:
-    """Pixel/frame size-axis legality vs VAE ``factor``."""
     if not cfg.is_tiled():
         return
     min_size = 2 * factor
@@ -1323,7 +985,6 @@ def _validate_size_axis(cfg: DimensionSizeConfig, factor: int, axis_name: str) -
 
 
 def _validate_count_axis(cfg: DimensionTilingConfig, latent_extent: int, axis_name: str) -> None:
-    """Latent count-axis legality vs latent ``extent``."""
     if not cfg.is_tiled():
         return
     if cfg.num_tiles > latent_extent:
@@ -1343,7 +1004,6 @@ def _validate_overlap(
     min_overlap_frames: int,
     min_overlap_pixels: int,
 ) -> None:
-    """Raise if any tiled ``TileSizeConfig`` axis overlap is below the given floors."""
     if not isinstance(tiling_config, TileSizeConfig):
         return
 
@@ -1387,18 +1047,7 @@ def frames_per_yuv_gemm(height: int, width: int) -> int:
     return 2**31 - 1
 
 
-
 def patchify(x: torch.Tensor, patch_size_hw: int, patch_size_t: int = 1) -> torch.Tensor:
-    """
-    Rearrange spatial dimensions into channels. Divides image into patch_size x patch_size blocks
-    and moves pixels from each block into separate channels (space-to-depth).
-    Args:
-        x: Input tensor (4D or 5D)
-        patch_size_hw: Spatial patch size for height and width. With patch_size_hw=4, divides HxW into 4x4 blocks.
-        patch_size_t: Temporal patch size for frames. Default=1 (no temporal patching).
-    For 5D: (B, C, F, H, W) -> (B, Cx(patch_size_hw^2)x(patch_size_t), F/patch_size_t, H/patch_size_hw, W/patch_size_hw)
-    Example: (B, 3, 33, 512, 512) with patch_size_hw=4, patch_size_t=1 -> (B, 48, 33, 128, 128)
-    """
     if patch_size_hw == 1 and patch_size_t == 1:
         return x
     if x.dim() == 4:
@@ -1418,16 +1067,6 @@ def patchify(x: torch.Tensor, patch_size_hw: int, patch_size_t: int = 1) -> torc
 
 
 def unpatchify(x: torch.Tensor, patch_size_hw: int, patch_size_t: int = 1) -> torch.Tensor:
-    """
-    Rearrange channels back into spatial dimensions. Inverse of patchify - moves pixels from
-    channels back into patch_size x patch_size blocks (depth-to-space).
-    Args:
-        x: Input tensor (4D or 5D)
-        patch_size_hw: Spatial patch size for height and width. With patch_size_hw=4, expands HxW by 4x.
-        patch_size_t: Temporal patch size for frames. Default=1 (no temporal expansion).
-    For 5D: (B, Cx(patch_size_hw^2)x(patch_size_t), F, H, W) -> (B, C, Fxpatch_size_t, Hxpatch_size_hw, Wxpatch_size_hw)
-    Example: (B, 48, 33, 128, 128) with patch_size_hw=4, patch_size_t=1 -> (B, 3, 33, 512, 512)
-    """
     if patch_size_hw == 1 and patch_size_t == 1:
         return x
 
@@ -1446,13 +1085,6 @@ def unpatchify(x: torch.Tensor, patch_size_hw: int, patch_size_t: int = 1) -> to
 
 
 class PerChannelStatistics(nn.Module):
-    """
-    Per-channel statistics for normalizing and denormalizing the latent representation.
-    This statics is computed over the entire dataset and stored in model's checkpoint under VAE state_dict.
-    Defaults are identity (std=1, mean=0) so models constructed without a checkpoint
-    do not inherit allocator garbage / NaNs from ``torch.empty``.
-    """
-
     def __init__(self, latent_channels: int = 128):
         super().__init__()
         self.register_buffer("std-of-means", torch.ones(latent_channels))
@@ -1488,27 +1120,11 @@ KEYFRAME_CONTEXT_SLOTS = 2
 
 @dataclass(frozen=True)
 class DecodeKeyframes:
-    """Caller-facing keyframe input to a DiffVAE decode.
-    Attributes:
-        latents: ``(B, C, P, H, W)`` per-channel-normalized latents, exactly one latent
-            frame per keyframe. Each plane must have been encoded as a standalone
-            one-pixel-frame clip -- the VAE is causal, so a ``P``-frame encode would
-            blend planes that were never temporally adjacent.
-        pixel_frame_indices: ``(P,)`` int64 **global** pixel frame index of each plane.
-            Never rebased onto a tile. A Dist slice whose first pixel is 56 still carries
-            a plane at 48 as ``48``; :attr:`clip_start_frame` is how DiffVAE learns the
-            8-frame gap.
-        clip_start_frame: first global pixel frame of the video latent in this decode
-            call. ``0`` for a full-clip decode. Dist sets it to the tile origin so stage
-            times are ``t_s(index) - t_s(clip_start)``.
-    """
-
     latents: torch.Tensor
     pixel_frame_indices: torch.Tensor
     clip_start_frame: int = 0
 
     def validate(self, *, num_frames: int | None = None) -> None:
-        """Raise if shapes/indices are inconsistent (optionally against a frame count)."""
         if self.latents.ndim != 5:
             raise ValueError(f"keyframe latents must be (B, C, P, H, W), got {tuple(self.latents.shape)}")
         if self.pixel_frame_indices.ndim != 1:
@@ -1534,15 +1150,6 @@ class DecodeKeyframes:
         # on a full clip is the same geometry -- joint attention ranks it by distance.
 
     def crop_spatial(self, height: slice, width: slice) -> "DecodeKeyframes":
-        """Crop the planes to a spatial window, with the *same* latent slices the video used.
-        For a decode that splits the latent across workers (see
-        :class:`~ltx_core.multigpu.vae.distributed_decoder.DistributedVideoDecoder`): each worker
-        holds a crop of the video latent, so it must hold the matching crop of every keyframe
-        plane. Cropping one and not the other offsets every plane from the video by the
-        difference, which reads as ghosting rather than as an obvious failure.
-        Plane count, ``pixel_frame_indices``, and :attr:`clip_start_frame` are untouched -- a
-        spatial split leaves every worker the full frame range.
-        """
         return DecodeKeyframes(
             latents=self.latents[:, :, :, height, width],
             pixel_frame_indices=self.pixel_frame_indices,
@@ -1556,40 +1163,19 @@ class DecodeKeyframes:
 
 @dataclass(frozen=True)
 class KeyframeStream:
-    """The keyframe half of the dual stream at one decoder stage.
-    Attributes:
-        x: ``(B, P, H, W, C)`` channels-last activations. ``H``/``W`` always match the
-            video stream at the same stage; ``P`` is invariant across the whole decode.
-        times: ``(P,)`` float32 plane position in *this stage's* temporal units and
-            *local to the current tile* -- the same origin the video stream's RoPE uses.
-            Both streams must share one origin or the joint softmax sees wrong offsets.
-        valid: ``(P,)`` bool. Invalid planes are masked out of every softmax and their
-            activations are re-zeroed after each upsample.
-    """
-
     x: torch.Tensor
     times: torch.Tensor
     valid: torch.Tensor
 
     def masked(self) -> KeyframeStream:
-        """Re-zero invalid planes' activations (channels-last plane axis)."""
         return KeyframeStream(x=self.x * self.valid[None, :, None, None, None], times=self.times, valid=self.valid)
 
     def select_planes(self, keep: torch.Tensor) -> KeyframeStream:
-        """Subset the plane axis, keeping ``x``/``times``/``valid`` in step.
-        ``keep`` is a ``(P,)`` bool mask. Used by tiled decode, which gives each tile only the
-        planes near it -- see :func:`planes_for_tile`.
-        """
         if keep.shape != (self.num_planes,):
             raise ValueError(f"keep must be ({self.num_planes},) bool, got {tuple(keep.shape)}")
         return KeyframeStream(x=self.x[:, keep], times=self.times[keep], valid=self.valid[keep])
 
     def crop_spatial(self, height: slice, width: slice) -> KeyframeStream:
-        """Crop H/W with the *same* slices the video stream's tile used.
-        Cropping only one stream offsets every plane from the video by the difference, which
-        reads as ghosting rather than as an obvious failure -- the same hazard as the spatial
-        padding rule.
-        """
         return KeyframeStream(x=self.x[:, :, height, width, :], times=self.times, valid=self.valid)
 
     @property
@@ -1598,15 +1184,6 @@ class KeyframeStream:
 
 
 def keyframe_stage_times(pixel_frame_indices: torch.Tensor, remaining_time_stride: int) -> torch.Tensor:
-    """Chunk-center position of each keyframe in a stage's temporal units.
-    A stage whose remaining temporal upsampling is ``r`` has cells covering ``r`` pixel
-    frames each, except cell 0 which covers only pixel frame 0 (the causal first frame).
-    So ``t_s(0) = 0`` and ``t_s(f) = (f + (r - 1) / 2) / r`` -- the center of the chunk
-    holding ``f``. At stage 5 ``r == 1``, making the times the raw pixel indices.
-    Args:
-        pixel_frame_indices: ``(P,)`` global pixel frame index per plane.
-        remaining_time_stride: product of the temporal strides *still to come*.
-    """
     if remaining_time_stride < 1:
         raise ValueError(f"remaining_time_stride must be positive, got {remaining_time_stride}")
     frames = pixel_frame_indices.to(torch.float32)
@@ -1621,15 +1198,6 @@ def keyframe_clip_times(
     clip_start_frame: int,
     extra_origin: float = 0.0,
 ) -> torch.Tensor:
-    """Stage times relative to a decode whose first pixel frame is ``clip_start_frame``.
-    ``t_s(global) - t_s(clip_start)`` is the gap joint attention should see. Rebasing the
-    indices onto the tile (``48 -> -8``) and then calling :func:`keyframe_stage_times` is not
-    the same: ``t_s`` is not linear through a fake clip start, so stages with ``r > 1`` get
-    the wrong ``|dt|``.
-    Single-GPU tiled decode uses ``clip_start_frame=0`` and passes the in-volume tile origin
-    as ``extra_origin``. A Dist slice whose first pixel is global 56 uses
-    ``clip_start_frame=56`` and ``extra_origin=0``.
-    """
     times = keyframe_stage_times(pixel_frame_indices, remaining_time_stride)
     origin = keyframe_stage_times(
         torch.as_tensor([clip_start_frame], dtype=torch.int64, device=pixel_frame_indices.device),
@@ -1645,22 +1213,6 @@ def planes_for_tile(
     *,
     clip_start_frame: int = 0,
 ) -> torch.Tensor:
-    """``(P,)`` bool: which planes a tile spanning pixel frames ``[lo, hi]`` should carry.
-    Every plane inside the span, **plus the nearest plane on each side outside it**. Those two
-    boundary planes are the point: without them a video frame at a tile edge ranks only
-    in-tile planes and attends to the wrong one, which is what made tiled keyframe decode
-    non-invariant. They arrive with negative / past-the-end tile-local times, and the
-    ``(|dt|, index)`` slot ranking already handles those, so nothing downstream changes.
-    Selection is by *value*, not position: ``pixel_frame_indices`` is not required to be
-    sorted.
-    Args:
-        pixel_frame_indices: ``(P,)`` global pixel frame index per plane.
-        frame_lo: first pixel frame in the tile, relative to ``clip_start_frame``.
-        frame_hi: last pixel frame in the tile (inclusive), relative to ``clip_start_frame``.
-        clip_start_frame: first global pixel of this latent. A full-clip decode leaves it 0.
-            Dist tiles keep global indices and pass the slice origin so a local ``[0, 72)``
-            still selects global ``[56, 127]``.
-    """
     frame_lo = frame_lo + clip_start_frame
     frame_hi = frame_hi + clip_start_frame
     indices = pixel_frame_indices.to(torch.int64)
@@ -1678,10 +1230,6 @@ def planes_for_tile(
 
 
 def remaining_time_strides(upsamples: Sequence[torch.nn.Module]) -> tuple[int, ...]:
-    """Remaining temporal upsampling at each stage input, plus 1 for stage 5.
-    For the production ladder (temporal strides ``1, 2, 2, 2``) this is
-    ``(8, 8, 4, 2, 1)``: stage ``i``'s blocks see the product of strides ``i..end``.
-    """
     strides = [int(up.stride[0]) for up in upsamples]
     remaining: list[int] = []
     for index in range(len(strides)):
@@ -1694,17 +1242,6 @@ def remaining_time_strides(upsamples: Sequence[torch.nn.Module]) -> tuple[int, .
 
 
 def upsample_keyframe_planes(upsample: torch.nn.Module, x: torch.Tensor) -> torch.Tensor:
-    """Spatially upsample keyframe planes, keeping the plane count invariant.
-    Each plane is folded into the batch as its own ``T=1`` clip and pushed through the
-    *same* upsample module as video, always with ``drop_leading_frame=True``: a temporal
-    stride of 2 expands ``T=1`` to 2 and the leading-frame drop takes it back to 1,
-    keeping phase 1. So temporal strides collapse and only ``H``/``W`` grow.
-    Passing ``drop_leading_frame=False`` here (as tiled video does for non-origin tiles)
-    would invent a second temporal plane per keyframe and is always wrong.
-    Args:
-        upsample: the video stream's ``LinearPixelShuffleUpsample`` for this stage.
-        x: ``(B, P, H, W, C)`` keyframe activations.
-    """
     planes = x.shape[1]
     flat = rearrange(x, "b p h w c -> (b p) 1 h w c")
     upsampled = upsample(flat, drop_leading_frame=True)
@@ -1722,10 +1259,6 @@ def _nearest_slots(
     candidate_valid: torch.Tensor | None,
     num_slots: int,
 ) -> torch.Tensor:
-    """``(Q, num_slots)`` candidate indices ranked by ``(|dt|, index)``, ``-1`` when empty.
-    A stable argsort on ``|dt|`` breaks ties by ascending candidate index, which is
-    exactly upstream's ``distances + arange * 1e-6`` tie-break.
-    """
     distances = (query_times[:, None] - candidate_times[None, :]).abs().to(torch.float32)
     if candidate_valid is not None:
         distances = distances.masked_fill(~candidate_valid[None, :], float("inf"))
@@ -1747,10 +1280,6 @@ def video_keyframe_slots(
     video_length: int,
     num_slots: int = KEYFRAME_CONTEXT_SLOTS,
 ) -> torch.Tensor:
-    """``(T, num_slots)`` keyframe plane index per video frame, ``-1`` for an empty slot.
-    Ranked by ``(|t_s(plane) - t|, plane)``. Deliberately independent of the temporal
-    kernel: the nearest planes are visible even when they lie outside ``K_t``.
-    """
     query = torch.arange(video_length, dtype=torch.float32, device=keyframe_times.device)
     return _nearest_slots(query, keyframe_times.to(torch.float32), keyframe_valid, num_slots)
 
@@ -1761,9 +1290,6 @@ def keyframe_video_slots(
     video_length: int,
     num_slots: int = KEYFRAME_CONTEXT_SLOTS,
 ) -> torch.Tensor:
-    """``(P, num_slots)`` video frame index per keyframe plane, ``-1`` for an empty slot.
-    Ranked by ``(|t' - t_s(plane)|, t')``. Rows of invalid planes are all ``-1``.
-    """
     candidates = torch.arange(video_length, dtype=torch.float32, device=keyframe_times.device)
     slots = _nearest_slots(keyframe_times.to(torch.float32), candidates, None, num_slots)
     return torch.where(keyframe_valid[:, None], slots, torch.full_like(slots, -1))
@@ -1783,8 +1309,6 @@ _GIB: int = 1 << 30
 
 @dataclass(frozen=True, slots=True)
 class _StageFiveBudget:
-    """One mode's stage-5 multiplicity and withheld reserve, with and without keyframes."""
-
     coef: float
     coef_keyframes: float
     reserve_bytes: int
@@ -1814,20 +1338,11 @@ _BUDGET_SAFETY_BYTES_JOINT_MATERIALIZED: int = 2 * _GIB
 
 
 def _falls_back_to_eager_na(mode: DiffVAEMode) -> bool:
-    """True when this host has no natten and the mode's NA remaps to Triton/eager.
-    For chunked modes that remap also switches ``compile_blocks`` off, so the peak is the eager
-    one; :func:`resolve_attention_for_host` is the single owner of that decision.
-    """
     resolved = resolve_attention_for_host(mode.resolve())
     return resolved.attention in (NAttentionKind.TRITON, NAttentionKind.EAGER_SDPA) and not resolved.compile_blocks
 
 
 def stage5_mem_coef(mode: DiffVAEMode, *, keyframes: bool = False) -> float:
-    """Stage-5 working-set multiplicity for auto tiling, after host NA resolve.
-    Args:
-        mode: the decode preset.
-        keyframes: whether this decode carries a keyframe stream, which runs eager blocks.
-    """
     try:
         budget = _BUDGET_BY_MODE[mode]
     except KeyError as exc:
@@ -1849,14 +1364,6 @@ _PACK_PEAK_UINT8_BYTES_X2 = 3  # 1.5 B/px
 
 
 def max_emitted_frames(*, num_frames: int, tile_frames: int, overlap_frames: int) -> int:
-    """Longest chunk the tiled decode yields, in pixel frames.
-    ``_decode_groups_with_keyframes`` yields only a group's *exclusive* span -- one
-    stride -- and keeps the trailing overlap as a stub for the next group. Only the
-    final group yields its whole buffer. Charging ``tile_frames`` for every chunk
-    therefore roughly doubles the estimate on long clips, which blocks layouts that
-    would have fit. ``+1`` covers the causal shift, which moves each group after the
-    first back by one frame.
-    """
     if tile_frames >= num_frames:
         return num_frames
     stride = tile_frames - overlap_frames
@@ -1875,19 +1382,6 @@ def emit_convert_bytes(
     out_channels: int,
     element_size: int,
 ) -> int:
-    """Downstream bytes a yielded chunk costs while the encoder consumes it.
-    The decode budget alone is not enough to size a tile: whatever ``_emit`` yields is
-    handed straight to the video encoder, and that peak overlaps the decode because the
-    decoder is a generator -- it stays suspended holding stage-4 features and the
-    accumulator while the consumer converts the chunk it just yielded. A layout that
-    decodes comfortably can therefore still die in the encoder, and because the
-    recommender spends spare VRAM on *larger* temporal tiles, more free memory used to
-    make that failure more likely rather than less.
-    ``out_channels`` is the width of the intermediate **YUV** tensor, not a second copy
-    of the emitted RGB: the chunk itself is charged by the accumulator term. On the
-    write-back path YUV lands in that same RGB storage, so it is not charged here at all
-    and only the GEMM temporary is.
-    """
     frames = int(tile_frames)
     gemm_frames = min(frames, frames_per_yuv_gemm(height, width))
     # Write-back reuses the RGB storage, so no full YUV tensor survives into the pack.
@@ -1909,14 +1403,6 @@ def budget_safety_bytes(
     keyframes: bool = False,
     joint_sdpa_materializes: bool = False,
 ) -> int:
-    """Extra bytes withheld from the recommend budget.
-    Args:
-        mode: the decode preset.
-        keyframes: whether this decode carries a keyframe stream.
-        joint_sdpa_materializes: whether the joint attention will run on torch's MATH SDPA kernel
-            (see ``fallback_na.joint_eager.sdpa_materializes_scores``). Ignored without keyframes,
-            and irrelevant when a fused joint kernel serves the decode.
-    """
     try:
         budget = _BUDGET_BY_MODE[mode]
     except KeyError as exc:
@@ -1929,9 +1415,6 @@ def budget_safety_bytes(
 
 
 def accumulator_element_size(feature_dtype: torch.dtype) -> int:
-    """Bytes per accumulator element; mirrors ``_decode_temporal_group_isolated``.
-    ``accum_dtype = float16 if feat_s4.dtype == bfloat16 else feat_s4.dtype``.
-    """
     if feature_dtype is torch.bfloat16:
         return 2  # stored as fp16
     return int(torch.tensor([], dtype=feature_dtype).element_size())
@@ -1947,10 +1430,6 @@ def stage4_feature_bytes(
     element_size: int = _DEFAULT_ELEMENT_SIZE,
     natten_trailing_pad_latent_frames: int = 0,
 ) -> int:
-    """Resident stages-1-3 output size (full volume tiled into stage 4).
-    Matches ``DiffusionVideoDecoder.forward_stages_1_to_3`` after optional NATTEN
-    trailing latent pad: channels-last ``(B, T, H, W, C)`` at stage-4 input resolution.
-    """
     if stage4_channels < 1:
         raise ValueError(f"stage4_channels must be >= 1, got {stage4_channels}")
     if element_size < 1:
@@ -1998,37 +1477,6 @@ def recommended_decode_tiling_config(  # noqa: PLR0913
     keyframes: bool = False,
     joint_sdpa_materializes: bool = False,
 ) -> TileSizeConfig:
-    """Pick DiffVAE decode tiling from stage-4/5 halos and free VRAM.
-    Always enables both spatial and temporal tiling (temporal-only full-frame slabs
-    are unsafe on Hopper / some natten builds).
-    Selection (size-grid, accumulator-aware):
-      1. Enumerate legal tile **sizes** on the LCM of DiffVAE ``pixel_scale`` and
-         :data:`~ltx_core.types.VIDEO_SCALE_FACTORS` (so configs also pass
-         :class:`~ltx_core.tiling.TileSizeConfig` construction); derive tile
-         counts from :func:`~ltx_core.tiling.split_by_size` (same as decode).
-      2. Drop triples whose peak-bytes estimate exceeds ``usable`` bytes
-         (``free - max(model, 1 GiB) - safety - stage4_feature``; safety is
-         1 GiB eager / 2 GiB compiled, see :func:`budget_safety_bytes`).
-         Stage-4 input features stay resident for the whole tiled decode.
-      3. Among feasible triples, pick minimal :func:`volumetric_overlap_waste`.
-    Peak-bytes estimate::
-        stage4_feature_bytes(...)                         # hard, full volume
-        + H * W * (2 * tile_t) * out_channels * element_size
-        + stage5_tokens * stage5_channels * element_size * coef
-    Accumulator is full output HxW (not spatially tiled) with temporal extent
-    ``2 * tile_t``: current group buffer plus the still-live previous exclusive
-    emit / overlap stub during handoff (not merely ``tile_t + overlap_t``).
-    RGBx``element_size`` by default. ``element_size`` is the activation width:
-    production bf16 features use fp16 accumulators (2), matching
-    :func:`accumulator_element_size`. Stage-5 uses the same element size x
-    ``stage5_channels`` x ``coef``, which :func:`stage5_mem_coef` reads off the
-    mode and ``keyframes`` (11 / 7 / 5 / 2.5 by mode; 15 / 5 / 5 / 2.5 with a
-    keyframe stream, which runs eager blocks).
-    Args beyond the geometry:
-        keyframes: this decode carries a keyframe stream (joint attention, eager blocks).
-        joint_sdpa_materializes: the joint attention will run on torch's MATH SDPA kernel;
-            costs one more GiB of reserve. See :func:`budget_safety_bytes`.
-    """
     if height < 1 or width < 1 or num_frames < 1:
         raise ValueError(f"height/width/num_frames must be >= 1, got {height}x{width}x{num_frames}")
     if patch_size < 1:
@@ -2146,14 +1594,6 @@ def prepare_tile_schedule(
     min_tile_size: Tuple[int, int, int],
     tile_halos: Tuple[Tuple[int, int, int], Tuple[int, int, int]],
 ) -> List[Tile]:
-    """Build pixel-blend tiles whose ``in_coords`` land on the stage-4 input grid.
-    DiffVAE temporal tiling deliberately skips ConvVAE causal split/mask tricks
-    (``split_temporal_causal``, ``left_starts_from_0``): pixel overlap already
-    covers blend+halo, and interval propagation follows
-    :class:`~ltx_core.model.video_vae.transformer.layers.LinearPixelShuffleUpsample`
-    (``drop_leading_frame`` only on the origin tile) with *symmetric* trapezoid
-    ramps so masks stay complementary without a weight buffer.
-    """
     pixel_scale = stage4_to_pixel_scale_factors(upsample3_stride, patch_size)
     if tiling_config is None:
         return [
@@ -2230,7 +1670,6 @@ def slice_stage4_tile(
     *,
     content_frames: int,
 ) -> tuple[torch.Tensor, bool, bool, tuple[int, int, int]]:
-    """Slice a stage-4 feature tile, extending trailing tiles to include ghost frames."""
     is_origin = tile.in_coords[1].start in (0, None)
     _, stop, _ = tile.in_coords[1].indices(content_frames)
     pad_trailing = stop == content_frames
@@ -2247,8 +1686,6 @@ def slice_stage4_tile(
 
 @dataclass(frozen=True)
 class AxisPad:
-    """How many elements were added (pad) or removed (crop) on each side of one axis."""
-
     before: int
     after: int
 
@@ -2260,15 +1697,6 @@ def resize_axis(
     *,
     mode: ResizeAxisMode,
 ) -> tuple[torch.Tensor, AxisPad]:
-    """Pad or crop axis ``dim`` so its length becomes ``size``.
-    Pad (``len < size``):
-      ``repeat_last`` - append copies of the last slice.
-      ``symmetric`` - edge-replicate first/last; leftover goes to the end
-      (``before = need // 2``, ``after = need - before``).
-    Crop (``len > size``):
-      ``repeat_last`` - drop from the end.
-      ``symmetric`` - drop from both ends with the same split rule as pad.
-    """
     if size < 1:
         raise ValueError(f"resize_axis target size must be >= 1, got {size}")
     if dim < 0:
@@ -2318,7 +1746,6 @@ def ensure_min_latent_shape(
     latent: torch.Tensor,
     min_tile_sizes: Tuple[int, int, int],
 ) -> tuple[torch.Tensor, tuple[AxisPad, AxisPad, AxisPad]]:
-    """Pad latent ``(B, C, T, H, W)`` up to ``min_tile_sizes`` if needed."""
     min_t, min_h, min_w = min_tile_sizes
     t_pad = AxisPad(0, 0)
     h_pad = AxisPad(0, 0)
@@ -2334,7 +1761,6 @@ def ensure_min_latent_shape(
 
 
 def scale_axis_pad(pad: AxisPad, scale: int) -> AxisPad:
-    """Scale a latent-grid ``AxisPad`` into pixel (or other) units."""
     return AxisPad(pad.before * scale, pad.after * scale)
 
 
@@ -2348,12 +1774,6 @@ def crop_pixels_to_content(
     w_pad: AxisPad | None = None,
     spatial_scale: Tuple[int, int] = (1, 1),
 ) -> torch.Tensor:
-    """Crop padded decode output ``(B, C, F, H, W)`` back to the content shape.
-    Temporal pad is always trailing (``repeat_last``), so T is cropped from the
-    end. Spatial size-floor pads must pass the recorded ``h_pad`` / ``w_pad``
-    (latent units) plus ``spatial_scale`` ``(H, W)`` so odd leftovers are not
-    re-split by a center-crop after upscaling.
-    """
     x, _ = resize_axis(pixels, 2, frames, mode="repeat_last")
     scale_h, scale_w = spatial_scale
     if h_pad is not None:
@@ -2384,7 +1804,6 @@ def stage5_pixel_shape_from_stage4(
     drop_leading_frame: bool,
     pad_trailing: bool,
 ) -> tuple[int, int, int]:
-    """Pixel ``(F, H, W)`` for a stage-4-input extent (one remaining NA hop + patch)."""
     st, sh, sw = upsample_stride
     frames = stage4_t * st - 1 if drop_leading_frame and st == 2 else stage4_t * st
     if pad_trailing:
@@ -2393,7 +1812,6 @@ def stage5_pixel_shape_from_stage4(
 
 
 def pad_trailing_latent_for_natten_border(latent: torch.Tensor, n_frames: int) -> torch.Tensor:
-    """Replicate the last latent frame ``n_frames`` times for NATTEN last-frame border."""
     if n_frames <= 0:
         return latent
     padded, _ = resize_axis(latent, 2, latent.shape[2] + n_frames, mode="repeat_last")
@@ -2407,7 +1825,6 @@ def crop_trailing_context_natten_pad(
     time_scale: int,
     stage5_kernel_t: int,
 ) -> torch.Tensor:
-    """Crop ghosting appendix before stage 5, leaving at least ``stage5_kernel_t``."""
     if n_latent_frames <= 0:
         return context
     ghost = n_latent_frames * time_scale
@@ -2418,7 +1835,6 @@ def crop_trailing_context_natten_pad(
 
 
 def _weight_floor(dtype: torch.dtype) -> float:
-    """Smallest divisor that safely guards ``buffer / weights`` in ``dtype``."""
     return max(1e-8, torch.finfo(dtype).tiny)
 
 
@@ -2430,7 +1846,6 @@ def stage4_thw_from_latent(
     *,
     drop_leading_frame: bool = True,
 ) -> Tuple[int, int, int]:
-    """Stage-4 input ``(T, H, W)`` after the first three upsample hops."""
     t, h, w = latent_t, latent_h, latent_w
     for st, sh, sw in upsample_strides[:3]:
         t, h, w = t * st, h * sh, w * sw
@@ -2443,7 +1858,6 @@ def stage4_to_pixel_scale_factors(
     upsample_stride: Tuple[int, int, int],
     patch_size: int,
 ) -> SpatioTemporalScaleFactors:
-    """Pixel/frame units per stage-4-input cell (last NA hop + unpatchify)."""
     st, sh, sw = upsample_stride
     return SpatioTemporalScaleFactors(time=st, height=sh * patch_size, width=sw * patch_size)
 
@@ -2453,7 +1867,6 @@ def compute_tile_min_size(
     stage5_kernel: Tuple[int, int, int],
     upsample3_stride: Tuple[int, int, int],
 ) -> Tuple[int, int, int]:
-    """Min stage-4-input ``(T, H, W)`` so stages 4 and 5 each see ``>= kernel``."""
     return tuple(max(stage4_kernel[a], -(-stage5_kernel[a] // upsample3_stride[a])) for a in range(3))
 
 
@@ -2464,7 +1877,6 @@ def compute_tile_halos(
     stage5_depth: int,
     upsample3_stride: Tuple[int, int, int],
 ) -> Tuple[Tuple[int, int, int], Tuple[int, int, int]]:
-    """One-sided halos in stage-4-input units for stages 4 and 5."""
     halo4 = tuple(stage4_depth * (stage4_kernel[a] // 2) for a in range(3))
     halo5 = tuple(-(-(stage5_depth * (stage5_kernel[a] // 2)) // upsample3_stride[a]) for a in range(3))
     return halo4, halo5  # type: ignore[return-value]
@@ -2473,7 +1885,6 @@ def compute_tile_halos(
 def _cumulative_upsample_strides(
     upsamples: Sequence[Tuple[Tuple[int, int, int], int]],
 ) -> List[Tuple[int, int, int]]:
-    """Per-axis product of hop strides for ``upsamples[:i]`` (``cumulative[0] = (1,1,1)``)."""
     cumulative = [(1, 1, 1)]
     t, h, w = 1, 1, 1
     for stride, _ in upsamples:
@@ -2487,7 +1898,6 @@ def all_stages_min_tile_size(
     upsamples: Sequence[Tuple[Tuple[int, int, int], int]],
     stage5_kernel: Tuple[int, int, int],
 ) -> Tuple[int, int, int]:
-    """Per-axis latent-grid floor so every stage's NA sees dims ``>= kernel_size``."""
     cumulative = _cumulative_upsample_strides(upsamples)
     mins = [1, 1, 1]
     for stage_i in range(len(upsamples)):
@@ -2516,11 +1926,6 @@ def recommended_pixel_overlaps(
     tile_halos: Tuple[Tuple[int, int, int], Tuple[int, int, int]],
     pixel_scale: SpatioTemporalScaleFactors,
 ) -> Tuple[int, int]:
-    """Stage-4/5-safe ``(temporal_overlap_frames, spatial_overlap_pixels)``.
-    Shared by :func:`recommended_decode_tiling_config` (to *set* overlaps) and
-    :func:`~ltx_core.tiling._validate_overlap` (to reject undersized configs).
-    """
-
     def dominant(axis: int) -> int:
         return max(tile_halos[i][axis] for i in range(len(tile_halos)))
 
@@ -2537,14 +1942,12 @@ def stage5_tokens_for_pixel_tile(
     *,
     patch_size: int,
 ) -> int:
-    """Pre-unpatchify stage-5 token count for a pixel-space tile (NATTEN volume)."""
     h5 = max(1, tile_height // patch_size)
     w5 = max(1, tile_width // patch_size)
     return tile_frames * h5 * w5
 
 
 def _axis_candidates(length: int, overlap: int, min_size: int, multiple: int) -> list[tuple[int, int]]:
-    """``(tile_size, num_tiles)`` for every legal size on ``multiple``'s grid."""
     out: list[tuple[int, int]] = []
     max_size = max(_round_up(length, multiple), min_size)
     for size in range(min_size, max_size + multiple, multiple):
@@ -2567,7 +1970,6 @@ def volumetric_overlap_waste(
     n_h: int,
     n_w: int,
 ) -> float:
-    """``processed_volume / unique_volume`` (>= 1). Lower means less overlap recompute."""
     processed = n_t * n_h * n_w * tile_frames * tile_height * tile_width
     unique = max(1, num_frames * height * width)
     return processed / unique
@@ -2578,16 +1980,6 @@ def _propagate_interval_through_upsample_hops(
     strides: Sequence[int],
     causal: bool,
 ) -> DimensionInterval:
-    """Forward-propagate one interval through a sequence of upsample hops on one axis.
-    Mirrors :class:`~ltx_core.model.video_vae.transformer.layers.LinearPixelShuffleUpsample`:
-    multiply by ``stride``, and for the causal temporal axis when ``stride == 2`` apply
-    the duplicate-frame drop (``end -= 1``; non-origin also ``start -= 1``).
-    This is *not* :func:`~ltx_core.model.video_vae.video_vae.map_temporal_slice` (ConvVAE).
-    DiffVAE non-origin tiles run with ``drop_leading_frame=False`` and must keep length
-    ``tile_t * stride``; the ConvVAE ``1+(L-1)*stride`` mapping is one frame short and
-    shifts non-origin ``out_coords``, which breaks tiled↔untiled temporal blend even
-    when masks are complementary.
-    """
     x = interval
     for stride in strides:
         if stride < 1:
@@ -2608,8 +2000,6 @@ def _propagate_interval_through_upsample_hops(
 
 
 class ChannelLinear(nn.Linear):
-    """``nn.Linear`` exposing ``in_channels``/``out_channels`` for config introspection."""
-
     @property
     def in_channels(self) -> int:
         return self.in_features
@@ -2620,8 +2010,6 @@ class ChannelLinear(nn.Linear):
 
 
 class LinearPixelShuffleUpsample(nn.Module):
-    """Decoder-side resampler: Linear channel-expand, then channels-last PixelShuffle."""
-
     def __init__(
         self,
         in_channels: int,
@@ -2635,15 +2023,6 @@ class LinearPixelShuffleUpsample(nn.Module):
         self.proj = nn.Linear(in_channels, self.proj_out_channels, bias=True)
 
     def forward(self, x: torch.Tensor, drop_leading_frame: bool = True) -> torch.Tensor:
-        """Upsample; when ``stride[0] == 2`` the pixel-shuffle produces a duplicate
-        leading frame that must be dropped to preserve the causal 1:2 (then
-        composed 1:8) frame mapping. ``drop_leading_frame`` gates that drop: it
-        must be ``True`` only for the chunk that contains the tensor's true
-        temporal origin (t=0). Tiled callers processing a later chunk in
-        isolation must pass ``False`` -- that chunk has no duplicate leading
-        frame of its own to drop, since the one duplicate frame in the full
-        (untiled) tensor belongs solely to the origin chunk.
-        """
         x = self.proj(x)
         x = rearrange(
             x,
@@ -2658,11 +2037,6 @@ class LinearPixelShuffleUpsample(nn.Module):
 
 
 class AdaLNZero(nn.Module):
-    """Per-block AdaLN-Zero modulation: ``t_emb`` -> 7 (scale/shift/gate) chunks.
-    Zero-init output projection so the block is an identity at every timestep
-    until the modulation pathway opens up during training.
-    """
-
     NUM_CHUNKS: int = 7  # scale_msa, shift_msa, gate_msa, scale_mlp, shift_mlp, gate_mlp, gate_ctx
 
     def __init__(self, dim: int, t_emb_dim: int) -> None:
@@ -2679,7 +2053,6 @@ class AdaLNZero(nn.Module):
 
 
 def modulate(x: torch.Tensor, scale: torch.Tensor, shift: torch.Tensor) -> torch.Tensor:
-    """Apply AdaLN-style scale + shift modulation to a channels-last tensor."""
     return x * (1.0 + scale) + shift
 
 
@@ -2698,7 +2071,6 @@ def h_positions(h: int, device: torch.device) -> torch.Tensor:
 
 
 def default_rope_dim_split(head_dim: int) -> tuple[int, int, int]:
-    """Default split of head_dim across (T, H, W) RoPE chunks."""
     assert head_dim % 8 == 0, f"head_dim={head_dim} must be a multiple of 8 for default split"
     d_t = (head_dim // 4) // 2 * 2
     d_hw = (head_dim - d_t) // 2
@@ -2711,7 +2083,6 @@ def default_rope_dim_split(head_dim: int) -> tuple[int, int, int]:
 
 
 def rope_inv_freqs(dim: int, base: float = 10000.0) -> torch.Tensor:
-    """Inverse RoPE frequencies: ``1 / base**(i/dim)`` for ``i`` in ``[0, dim, 2)``."""
     assert dim % 2 == 0, f"RoPE dim must be even, got {dim}"
     exponents = np.arange(0, dim, 2, dtype=np.float64) / dim
     inv_freqs = 1.0 / np.power(float(base), exponents)
@@ -2726,7 +2097,6 @@ def rot_abs_axis_impl(
     *,
     compute_dtype: torch.dtype,
 ) -> torch.Tensor:
-    """Absolute RoPE on one axis chunk ``xc[..., D]`` (D even) → new tensor."""
     out_dtype = xc.dtype
     pairs = xc.reshape(*xc.shape[:-1], xc.shape[-1] // 2, 2)
     xe = pairs[..., 0].to(compute_dtype)
@@ -2767,10 +2137,6 @@ def _apply_opaque_rope_slab(
     compute_dtype: torch.dtype,
     t_pos: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    """Rotate one W-extent with raw abs-RoPE (runs inside the opaque op).
-    ``t_pos`` overrides the default integer ``arange`` on the first axis; the keyframe
-    stream passes its (possibly fractional) plane times there.
-    """
     d_t, d_h, _ = rope_split
     inv_t, inv_h, inv_w = inv_freqs
     t = x.shape[1]
@@ -2797,11 +2163,6 @@ def _apply_opaque_tiled_rope(
     compute_dtype: torch.dtype,
     t_pos: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    """Fixed-``num_tiles`` W split + per-slab rotation (body of the opaque op).
-    The keyframe stream shares the video stream's W extent at every stage, so passing the
-    same ``num_tiles`` yields identical slab boundaries and identical ``w_pos`` -- which
-    is what keeps the two streams' W phases comparable inside the joint softmax.
-    """
     slabs = torch.chunk(x, num_tiles, dim=3)
     w_off = 0
     parts: list[torch.Tensor] = []
@@ -2834,7 +2195,6 @@ def _abs_rope_op(
     num_tiles: int,
     compute_dtype_is_bf16: bool,
 ) -> torch.Tensor:
-    """Opaque out-of-place abs-RoPE: Dynamo sees one node."""
     compute_dtype = torch.bfloat16 if compute_dtype_is_bf16 else torch.float32
     return _apply_opaque_tiled_rope(
         x,
@@ -2885,7 +2245,6 @@ def _abs_rope_at_t_op(
     num_tiles: int,
     compute_dtype_is_bf16: bool,
 ) -> torch.Tensor:
-    """Opaque abs-RoPE with caller-supplied (possibly fractional) first-axis positions."""
     compute_dtype = torch.bfloat16 if compute_dtype_is_bf16 else torch.float32
     return _apply_opaque_tiled_rope(
         x,
@@ -2898,7 +2257,6 @@ def _abs_rope_at_t_op(
 
 
 def _rope_config(attn: object, x: torch.Tensor) -> tuple[tuple[torch.Tensor, ...], int, torch.dtype]:
-    """``(inv_freqs, num_tiles, compute_dtype)`` read off an attention module."""
     inv_freqs = (
         attn.rope_inv_t.to(device=x.device),  # type: ignore[attr-defined]
         attn.rope_inv_h.to(device=x.device),  # type: ignore[attr-defined]
@@ -2910,7 +2268,6 @@ def _rope_config(attn: object, x: torch.Tensor) -> tuple[tuple[torch.Tensor, ...
 
 
 def _det_project_qkv(attn: object, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Shared Q/K/V proj + norm + scale for :func:`det_qkv_rope` and ``_at_times``."""
     q, k, v = attn.project_qkv(x)  # type: ignore[attr-defined]
     q = attn.q_norm(q)  # type: ignore[attr-defined]
     k = attn.k_norm(k)  # type: ignore[attr-defined]
@@ -2923,13 +2280,6 @@ def det_qkv_rope_at_times(
     x: torch.Tensor,
     t_pos: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Q/K/V proj + norm/scale + abs-RoPE with explicit first-axis positions.
-    The keyframe-stream counterpart of :func:`det_qkv_rope`. ``t_pos`` is ``(P,)`` float
-    stage times *in the same origin* the video stream's RoPE uses, so the joint softmax
-    sees true relative offsets: absolute-vs-local RoPE only cancels as a global phase
-    when every token in the softmax shares one origin, which no longer holds once
-    keyframe tokens join a video window.
-    """
     if t_pos.ndim != 1 or t_pos.shape[0] != x.shape[1]:
         raise ValueError(f"t_pos must be ({x.shape[1]},) to match the plane axis, got {tuple(t_pos.shape)}")
     q, k, v = _det_project_qkv(attn, x)
@@ -2954,7 +2304,6 @@ def det_qkv_rope_at_times(
 
 
 def det_qkv_rope(attn: object, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Q/K/V proj + norm/scale + opaque full-volume abs-RoPE."""
     q, k, v = _det_project_qkv(attn, x)
     inv_freqs, num_tiles, compute_dtype = _rope_config(attn, x)
     q = _apply_opaque_abs_rope(
@@ -2974,7 +2323,6 @@ def det_qkv_rope(attn: object, x: torch.Tensor) -> tuple[torch.Tensor, torch.Ten
     return q, k, v
 
 
-
 def vram_ready_linear(module: nn.Module) -> tuple[torch.Tensor, torch.Tensor | None]:
     # This decoder calls several projections functionally, bypassing the VRAM wrappers'
     # forward, so ask the wrapper for computation-ready weights instead of reading them raw.
@@ -2985,8 +2333,6 @@ def vram_ready_linear(module: nn.Module) -> tuple[torch.Tensor, torch.Tensor | N
 
 
 class QKVProjections(nn.Module):
-    """Checkpoint-fused QKV weights executed as the target's three projections."""
-
     def __init__(self, dim: int) -> None:
         super().__init__()
         linear = nn.Linear(dim, dim * 3, bias=True)
@@ -3080,7 +2426,6 @@ NA_KV_STACK_BUDGET = 2**28
 
 
 def _window_bounds(length: int, kernel: int, causal: bool) -> tuple[list[int], list[int]]:
-    """Per-index (start, end) of the attended window along one axis."""
     starts: list[int] = []
     ends: list[int] = []
     if causal:
@@ -3099,7 +2444,6 @@ def _window_bounds(length: int, kernel: int, causal: bool) -> tuple[list[int], l
 
 
 def _pick_tiles(dims: tuple[int, int, int], kernels: list[int]) -> list[int]:
-    """Per-axis query-tile lengths keeping one tile's [Nq, Nk] under budget."""
     tiles = list(dims)
 
     def cost(ts: list[int]) -> int:
@@ -3120,7 +2464,6 @@ def _group_mask(
     dtype: torch.dtype,
     device: torch.device,
 ) -> torch.Tensor:
-    """Additive ``[1, 1, Nq, Nk]`` mask for one tile-geometry group."""
     bools = []
     for starts, ends in rel_bounds:
         st = torch.tensor(starts, device=device)
@@ -3147,9 +2490,6 @@ def na3d(
     is_causal: list[bool] | None = None,
     scale: float | None = None,
 ) -> torch.Tensor:
-    """3D neighborhood attention over ``(B, T, H, W, NH, HD)`` tensors.
-    ``scale`` defaults to ``head_dim**-0.5``. Pass ``scale=1.0`` when Q is already scaled.
-    """
     batch, t, h, w, nh, hd = q.shape
     dims = (t, h, w)
     causal = [False, False, False] if is_causal is None else list(is_causal)
@@ -3294,26 +2634,18 @@ _STAGING_FACTOR_MATERIALIZED = 22.1
 
 
 def sdpa_materializes_scores(device: torch.device) -> bool:
-    """Whether torch's SDPA will materialize this backend's score block on ``device``.
-    CUDA takes the memory-efficient (or cuDNN) kernel for this backend's broadcast mask and
-    aligned head dim. Everywhere else the math path runs and the ``(G, NH, Nq, Nk)`` scores land
-    in memory -- notably MPS. Auto tiling reads this to size its reserve.
-    """
     return device.type != "cuda"
 
 
 def staging_factor(device: torch.device) -> float:
-    """The peak-to-staging multiplier for this host, from the table above."""
     return _STAGING_FACTOR_MATERIALIZED if sdpa_materializes_scores(device) else _STAGING_FACTOR_FUSED
 
 
 def _key_channels(head_dim: int) -> int:
-    """Key/query channel count: ``head_dim``, the bias channel, and alignment padding."""
     return -(-(head_dim + 1) // _HEAD_DIM_ALIGN) * _HEAD_DIM_ALIGN
 
 
 def _window(kernel: int) -> tuple[int, int]:
-    """``(lo, hi)`` halo for one axis: the offsets ``range(-k // 2, k - k // 2)`` reach."""
     lo = kernel // 2
     return lo, kernel - lo - 1
 
@@ -3325,17 +2657,11 @@ def pick_brick(
     target: int = DEFAULT_BRICK_QUERIES,
     depth: int = DEFAULT_BRICK_DEPTH,
 ) -> tuple[int, int, int]:
-    """``(bt, bh, bw)``: ``depth`` frames deep with the squarest ~``target``-query face.
-    Square minimizes the key slab ``(bh + Kh - 1) * (bw + Kw - 1)`` at a fixed query count, which
-    is exactly the wasted-work term.
-    """
     side = max(1, round(math.sqrt(target)))
     return min(depth, time), min(side, height), min(side, width)
 
 
 class _Geometry:
-    """Brick decomposition of a volume, plus the padding and slab extents it implies."""
-
     def __init__(
         self,
         height: int,
@@ -3363,16 +2689,10 @@ class _Geometry:
         self.padded_width = width + sum(self.pad_w)
 
     def row_extent(self, rows: int) -> int:
-        """Padded ``H`` extent a group of ``rows`` brick rows needs from the staged volume."""
         return (rows - 1) * self.brick[1] + self.span[0]
 
 
 class _Schedule:
-    """How the nested loops are cut so transient memory stays inside the budget.
-    ``group_axis`` counts *bricks* along the volume's leading axis (frames for the video pass,
-    planes for the keyframe pass); ``stage_axis`` counts them per staging pass.
-    """
-
     def __init__(
         self,
         geometry: _Geometry,
@@ -3404,18 +2724,12 @@ class _Schedule:
 
 
 def _banded(queries: int, span: int, kernel: int, device: torch.device) -> torch.Tensor:
-    """``(queries, span)`` bool: key ``i`` is visible to query ``j`` iff ``j <= i < j + kernel``."""
     key = torch.arange(span, device=device)[None, :]
     query = torch.arange(queries, device=device)[:, None]
     return (key >= query) & (key < query + kernel)
 
 
 def _joint_mask(geometry: _Geometry, num_slots: int, device: torch.device) -> torch.Tensor:
-    """``(1, 1, Nq, Nk)`` visibility, shared by every brick.
-    Query order is ``(jt, jh, jw)``; key order is the video slab ``(it, p, r)`` followed by the
-    keyframe slab ``(slot, p, r)``. Keyframe keys carry no temporal condition -- a plane is visible
-    to every frame in the brick, which is what makes the run grouping legal.
-    """
     brick_t, brick_h, brick_w = geometry.brick
     kernel_t, kernel_h, kernel_w = geometry.kernel
     spatial = (
@@ -3441,10 +2755,6 @@ def _stage(
     *,
     with_bias_channel: bool,
 ) -> torch.Tensor:
-    """``(B, A, H, W, NH, HD)`` -> padded head-major ``(B, NH, A + pad, Hp, Wp, C)``.
-    Head-major so a brick slab's innermost ``(ew, C)`` block is contiguous in both source and
-    destination; channels-last staging makes the same gather markedly slower.
-    """
     batch, axis, height, width, heads, head_dim = x.shape
     channels = _key_channels(head_dim) if with_bias_channel else head_dim
     out = x.new_zeros((batch, heads, axis + sum(pad_t), geometry.padded_height, geometry.padded_width, channels))
@@ -3472,12 +2782,6 @@ def _slabs(
     *,
     group_stride: int,
 ) -> torch.Tensor:
-    """Overlapping brick slabs as a *view*: ``(B, bricks, rows, Gw, NH, blocks, eh, ew, C)``.
-    ``staged`` is head-major ``(B, NH, A, Hp, Wp, C)``, already sliced to this group's first brick
-    and brick row, so the view inherits its storage offset. ``group_stride`` is how far consecutive
-    bricks advance along ``A``: the brick depth for the sliding video window, and **zero** for the
-    keyframe planes, which every brick in a run shares.
-    """
     batch, heads = staged.shape[0], staged.shape[1]
     stride_b, stride_nh, stride_a, stride_h, stride_w, _ = staged.stride()
     return staged.as_strided(
@@ -3497,11 +2801,6 @@ def _slabs(
 
 
 def _query_bricks(x: torch.Tensor, geometry: _Geometry, bricks: int, rows: int) -> torch.Tensor:
-    """``(B, A, h, W, NH, HD)`` -> ``(B * bricks * rows * Gw, NH, Nq, C)``, unit channel set.
-    ``x`` is this group's slice, so ``A`` may be short of ``bricks * bt`` and ``h`` short of
-    ``rows * bh`` at a volume edge; the shortfall is zero-padded here and cropped by
-    :func:`_unbrick`.
-    """
     batch, axis, height, width, heads, head_dim = x.shape
     brick_t, brick_h, brick_w = geometry.brick
     pad_t, pad_h, pad_w = bricks * brick_t - axis, rows * brick_h - height, geometry.grid[1] * brick_w - width
@@ -3526,7 +2825,6 @@ def _unbrick(
     rows: int,
     extent: tuple[int, int],
 ) -> torch.Tensor:
-    """Inverse of :func:`_query_bricks`, cropping to ``extent`` frames/rows and the real width."""
     brick_t, brick_h, brick_w = geometry.brick
     heads, head_dim = attended.shape[1], attended.shape[3]
     plane = (
@@ -3538,12 +2836,10 @@ def _unbrick(
 
 
 def _with_null(slots: torch.Tensor, null_index: int) -> torch.Tensor:
-    """Map empty slots (``-1``) onto the appended null row, which biases itself out."""
     return torch.where(slots < 0, torch.full_like(slots, null_index), slots)
 
 
 def _append_null(keys: torch.Tensor, values: torch.Tensor, head_dim: int) -> tuple[torch.Tensor, torch.Tensor]:
-    """Append one all-dead key plane (and a zero value plane) along the staged plane axis."""
     shape = (keys.shape[0], keys.shape[1], 1, *keys.shape[3:])
     null_key = keys.new_zeros(shape)
     null_key[..., head_dim] = _DEAD
@@ -3552,12 +2848,6 @@ def _append_null(keys: torch.Tensor, values: torch.Tensor, head_dim: int) -> tup
 
 
 def _slot_runs(slots: torch.Tensor) -> list[tuple[int, int]]:
-    """Maximal ``[start, stop)`` runs of leading-axis positions whose slot row is identical.
-    A brick spanning several frames shares one keyframe key slab, so it may not straddle a change
-    of slot row. At production keyframe spacing these runs are ~16 frames long, so the constraint
-    costs little; carrying every frame's slots in the slab instead would more than give back what
-    brick depth wins.
-    """
     rows = slots.tolist()
     runs: list[tuple[int, int]] = []
     start = 0
@@ -3577,10 +2867,6 @@ def _attend_group(
     shape: tuple[int, int],
     mask: torch.Tensor,
 ) -> torch.Tensor:
-    """Gather one ``(bricks x brick rows)`` block's keys, attend, and un-brick the result.
-    ``key_views`` / ``value_views`` are the strided slab views to concatenate along the key axis,
-    in order. ``shape`` is ``(bricks, rows)``.
-    """
     bricks, rows = shape
     batch = query_slice.shape[0]
     heads, head_dim = query_slice.shape[4], query_slice.shape[5]
@@ -3606,7 +2892,6 @@ def _attend_group(
 
 
 def _row_groups(geometry: _Geometry, schedule: _Schedule) -> list[tuple[int, int, slice, slice]]:
-    """``(row, rows, staged H slice, output H slice)`` per brick-row group."""
     brick_h = geometry.brick[1]
     groups = []
     for row in range(0, geometry.grid[0], schedule.group_rows):
@@ -3633,7 +2918,6 @@ def _video_query_pass(
     workspace_bytes: int,
     factor: float,
 ) -> torch.Tensor:
-    """Video queries: the local ``Kt x Kh x Kw`` window plus the nearest keyframe planes."""
     time, heads, head_dim = q.shape[1], q.shape[4], q.shape[5]
     brick_t = geometry.brick[0]
     lo_t, hi_t = geometry.pad_t
@@ -3724,10 +3008,6 @@ def _keyframe_query_pass(
     workspace_bytes: int,
     factor: float,
 ) -> torch.Tensor:
-    """Keyframe queries: own plane only (``d_t == 0``) plus the nearest video frames.
-    Runs one plane per brick: planes have no temporal window, so depth would buy nothing, and each
-    plane's video slots differ anyway.
-    """
     planes_total, heads, head_dim = keyframe_q.shape[1], keyframe_q.shape[4], keyframe_q.shape[5]
     num_slots = slots.shape[1]
     blocks = 1 + num_slots
@@ -3801,21 +3081,6 @@ def joint_na3d(  # noqa: PLR0913
     workspace_bytes: int = DEFAULT_WORKSPACE_BYTES,
     factor: float | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Joint neighborhood attention over a video volume and a keyframe plane stack.
-    Args:
-        q, k, v: ``(B, T, H, W, NH, HD)`` video stream. ``q`` must arrive pre-scaled by
-            ``head_dim ** -0.5``, as the shared attention module does.
-        keyframe_q, keyframe_k, keyframe_v: ``(B, P, H, W, NH, HD)`` keyframe stream.
-        keyframe_times: ``(P,)`` float32 plane times, same origin as the video RoPE.
-        keyframe_valid: ``(P,)`` bool.
-        kernel_size: ``(Kt, Kh, Kw)``.
-        num_slots: cross-stream slots per query.
-        brick: query brick ``(bt, bh, bw)``; defaults to :func:`pick_brick`.
-        workspace_bytes: transient budget bounding the staged window and key/value block.
-        factor: peak-to-staging multiplier; :func:`staging_factor` supplies it when omitted.
-    Returns:
-        ``(video_out, keyframe_out)``, each shaped like its stream's ``q``.
-    """
     time, height, width = q.shape[1], q.shape[2], q.shape[3]
     video_slots = video_keyframe_slots(keyframe_times, keyframe_valid, time, num_slots)
     keyframe_slots = keyframe_video_slots(keyframe_times, keyframe_valid, time, num_slots)
@@ -3839,7 +3104,6 @@ def joint_na3d(  # noqa: PLR0913
     )
 
 
-
 class EagerNAAttention:
     def __call__(self, attn, q, k, v):
         return na3d(q, k, v, kernel_size=attn.kernel_size, scale=1.0)
@@ -3851,7 +3115,6 @@ class EagerJointNAAttention:
             q, k, v, keyframe_q, keyframe_k, keyframe_v,
             keyframe_times, keyframe_valid, kernel_size=attn.kernel_size,
         )
-
 
 
 """3D Neighborhood Attention via NATTEN + absolute RoPE prelude.
@@ -3876,13 +3139,6 @@ except ImportError:  # pragma: no cover
 
 
 class NAAttentionCallable(Protocol):
-    """A windowed 3D neighborhood-attention backend.
-    Q/K/V arrive as ``(B, T, H, W, NH, HD)``, already normed, scaled and RoPE'd;
-    the return is ``(B, T, H, W, NH*HD)`` or anything reshapeable to it. The owning
-    module is passed so a backend can read configuration (``kernel_size``, softmax
-    bound, …). Backend-specific settings (NATTEN's kernel pin) live on the callable.
-    """
-
     def __call__(
         self,
         attn: NeighborhoodAttention3D,
@@ -3893,17 +3149,6 @@ class NAAttentionCallable(Protocol):
 
 
 class JointNAAttentionCallable(Protocol):
-    """A windowed 3D NA backend that also carries a keyframe plane stack.
-    Same conventions as :class:`NAAttentionCallable` -- Q/K/V already normed, scaled and
-    absolutely RoPE'd -- with a second stream shaped ``(B, P, H, W, NH, HD)`` whose plane
-    axis sits in video's temporal slot. Both streams' RoPE must share one origin, so
-    ``keyframe_times`` are tile-local. Returns one output per stream.
-    NATTEN and the CuTe DSL kernel cannot express a joint window, so this is a separate
-    slot from ``attention_function`` rather than a widening of it: it keeps the shipping
-    keyframe-less hot path untouched, and it is immune to the install-order hazard that
-    ``configure_natten_backend`` creates by overwriting ``attention_function`` wholesale.
-    """
-
     def __call__(
         self,
         attn: NeighborhoodAttention3D,
@@ -3919,16 +3164,6 @@ class JointNAAttentionCallable(Protocol):
 
 
 class NeighborhoodAttention3D(nn.Module):
-    """3D Neighborhood Attention with absolute RoPE + pluggable NA backend.
-    Q/K receive absolute RoPE; attention is ``attention_function`` (NATTEN by
-    default; Triton or eager SDPA when natten is missing; CuTe DSL via
-    DiffVAE BLACKWELL_DSL install). Relative gather-based NA is not used as a
-    production gather path on this branch.
-    NATTEN shifts its window inward at grid boundaries instead of
-    clamp-and-mask; interior positions match the gather reference closely,
-    boundary positions may differ slightly.
-    """
-
     def __init__(
         self,
         dim: int,
@@ -3972,18 +3207,12 @@ class NeighborhoodAttention3D(nn.Module):
         self.w_chunks = 1  # 1 = no chunking
 
     def project_qkv(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Q/K/V as owned contiguous ``(B,T,H,W,NH,HD)`` tensors."""
         batch, t, h, w, _ = x.shape
         q, k, v = self.qkv(x)
         shape = (batch, t, h, w, self.num_heads, self.head_dim)
         return q.view(shape), k.view(shape), v.view(shape)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Det-stage NA: opaque abs-RoPE via ``det_attn_rope`` + ``attention_function``.
-        ``x``/output: (B, T, H, W, C) — channels-last. RoPE positions are local
-        0-based (see ``det_attn_rope`` module docstring for why that is
-        equivalent under tiled decode).
-        """
         batch, t, h, w, _ = x.shape
         kt, kh, kw = self.kernel_size
         if t < kt or h < kh or w < kw:
@@ -4004,10 +3233,6 @@ class NeighborhoodAttention3D(nn.Module):
         x: torch.Tensor,
         keyframes: KeyframeStream,
     ) -> tuple[torch.Tensor, KeyframeStream]:
-        """Dual-stream det NA: one joint softmax over video and keyframe planes.
-        Unlike :meth:`forward` there is no ``dims >= kernel_size`` floor: the joint window
-        is clamp-and-mask, so an undersized axis simply masks its out-of-range offsets.
-        """
         if self.joint_attention_function is None:
             raise RuntimeError(
                 "keyframe decode needs joint_attention_function installed; build the decoder "
@@ -4057,8 +3282,6 @@ __all__ = [
 
 
 class NABlock(nn.Module):
-    """Pre-norm transformer block: NA -> SwiGLU MLP with residual adds."""
-
     def __init__(
         self,
         dim: int,
@@ -4075,7 +3298,6 @@ class NABlock(nn.Module):
         self.mlp = SwiGLU(dim, hidden)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Channels-last in/out: (B, T, H, W, C)."""
         x = x + self.attn(self.norm1(x))
         x = plain_mlp(x, self.mlp, self.norm2, self.mlp.tile)
         return x
@@ -4085,13 +3307,6 @@ class NABlock(nn.Module):
         x: torch.Tensor,
         keyframes: KeyframeStream,
     ) -> tuple[torch.Tensor, KeyframeStream]:
-        """Dual-stream block: video ``(B,T,H,W,C)`` and keyframe planes ``(B,P,H,W,C)``.
-        Every weight is shared with :meth:`forward`; the streams meet only inside the
-        joint attention softmax. Invalid planes are deliberately *not* re-zeroed here --
-        the decoder re-zeroes after each upsample instead, matching upstream, so a masked
-        plane's hidden state may drift within a stage. It is masked out of every softmax
-        regardless, so this is cosmetic; reproducing it keeps us comparable.
-        """
         attn_out, keyframe_attn = self.attn.forward_with_keyframes(
             self.norm1(x),
             dataclasses.replace(keyframes, x=self.norm1(keyframes.x)),
@@ -4104,14 +3319,6 @@ class NABlock(nn.Module):
 
 
 class DiffusionNABlock(nn.Module):
-    """Parameter shell for diffusion NA + SwiGLU with shared AdaLN-Zero.
-    Mode-specific subclasses (:class:`~ltx_core.model.video_vae.transformer.combined.block.CombinedDiffusionNABlock`,
-    :class:`~ltx_core.model.video_vae.transformer.chunked.block.ChunkedDiffusionNABlock`)
-    are installed via ModuleOps ``__class__`` swap and own the forward path.
-    Not a ``Protocol``: must be a concrete ``nn.Module`` so checkpoint load and
-    ``__class__`` swap keep one parameter identity.
-    """
-
     def __init__(
         self,
         dim: int,
@@ -4151,10 +3358,6 @@ def combined(
     w_proj: torch.Tensor,
     b_proj: torch.Tensor | None,
 ) -> torch.Tensor:
-    """Split ``context_and_x`` via ``w_proj.shape[1]`` (context channels), add projected ctx.
-    Returns the updated ``x`` half (not the full concatenated buffer).
-    ``w_proj`` is ``context_proj.weight`` with shape ``(dim, context_channels)``.
-    """
     context_channels = w_proj.shape[1]
     latent_context = context_and_x[..., :context_channels]
     x = context_and_x[..., context_channels:]
@@ -4182,10 +3385,6 @@ def _apply_nested_abs_rope_slab(
     compute_dtype: torch.dtype,
     t_pos: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    """Rotate one W-extent with nested per-axis abs-RoPE.
-    ``t_pos`` overrides the integer ``arange`` on the first axis; the keyframe stream passes
-    its fractional plane times there so both streams' RoPE shares one origin.
-    """
     d_t, d_h, _ = rope_split
     inv_t, inv_h, inv_w = inv_freqs
     t = x.shape[1]
@@ -4212,11 +3411,6 @@ def _apply_nested_full_volume_rope(
     compute_dtype: torch.dtype,
     t_pos: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    """Fixed-``num_tiles`` W split + nested per-slab rotation (Dynamo-safe).
-    Both streams share the same W extent at stage 5, so the same ``num_tiles`` gives
-    identical slab boundaries and ``w_pos`` -- required for their W phases to be comparable
-    inside the joint softmax.
-    """
     slabs = torch.chunk(x, num_tiles, dim=3)
     w_off = 0
     parts: list[torch.Tensor] = []
@@ -4242,10 +3436,6 @@ def _qkv_nested_rope(
     x: torch.Tensor,
     t_pos: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Q/K/V proj + norm/scale + nested abs-RoPE.
-    ``t_pos`` overrides the integer first-axis positions; the keyframe stream passes
-    its (possibly fractional) plane times there.
-    """
     q, k, v = attn.project_qkv(x)
     q = attn.q_norm(q) * attn.scale
     k = attn.k_norm(k)
@@ -4284,15 +3474,6 @@ def full_with_keyframes(
     keyframe_times: torch.Tensor,
     keyframe_valid: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Dual-stream AdaLN residual attention: one joint softmax, shared weights.
-    Plain tensors rather than a ``KeyframeStream`` here: this is the stage-5 hot path, and
-    rebuilding a dataclass per block inside a compiled region buys nothing.
-    Both streams take the *same* ``scale``/``shift``. Upstream computes a separate keyframe
-    modulation, but the two are identical unless per-frame timestep conditioning supplies a
-    conditioning mask, which we deliberately do not implement yet.
-    No ``dims >= kernel_size`` floor, unlike :func:`full`: the joint window is
-    clamp-and-mask, so undersized axes simply mask their out-of-range offsets.
-    """
     if attn.joint_attention_function is None:
         raise RuntimeError(
             "keyframe decode needs joint_attention_function installed; build the decoder "
@@ -4334,7 +3515,6 @@ def full(
     scale: torch.Tensor,
     shift: torch.Tensor,
 ) -> torch.Tensor:
-    """``x + NA(modulate(norm(x)))`` with nested full-volume abs-RoPE."""
     y = norm(x) * (1.0 + scale) + shift
     batch, t, h, w, _ = y.shape
     kt, kh, kw = attn.kernel_size
@@ -4366,7 +3546,6 @@ def residual_mlp(
     shift: torch.Tensor,
     tile: SwiGLUTileSpec,
 ) -> torch.Tensor:
-    """Combined*: ``x + swiglu_tiled(modulate(norm(x), scale, shift))``."""
     y = modulate(norm(x), scale, shift)
     if y.numel() == 0:
         return x
@@ -4377,8 +3556,6 @@ def residual_mlp(
 
 
 class CombinedDiffusionNABlock(DiffusionNABlock):
-    """Combined-context diffusion block: ``forward`` / ``forward_combined``."""
-
     def forward_combined_with_keyframes(
         self,
         context_and_x: torch.Tensor,
@@ -4387,13 +3564,6 @@ class CombinedDiffusionNABlock(DiffusionNABlock):
         keyframe_times: torch.Tensor,
         keyframe_valid: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Dual-stream block; returns the two updated x halves (not the concat buffers).
-        Each stream gets its own ``context_proj(context)`` injection from its own
-        ``[context | x]`` buffer, then both meet in one joint attention softmax, then each
-        runs the shared MLP. Invalid keyframe planes are re-zeroed on the way out -- unlike
-        the deterministic ``NABlock``, which leaves that to the decoder's post-upsample
-        masking. Both asymmetries are upstream's.
-        """
         scale_msa, shift_msa, scale_mlp, shift_mlp = self._modulation(modulation)
         w_proj, b_proj = vram_ready_linear(self.context_proj)
         x = inject_context(context_and_x, w_proj, b_proj)
@@ -4471,22 +3641,6 @@ _DIFF_STAGE_DEPTHS_DEFAULT: Tuple[int, ...] = (*_L_STAGE_DEPTHS[:-1], _DIFF_STAG
 
 
 class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
-    """Diffusion-based video VAE decoder (Neighborhood-Attention backbone).
-    Minimal port of the reference ``NADiffusionDecoder``.
-    Stages 1-4 deterministically upsample the latent into a context volume
-    (same NA-upsample path as the non-diffusion NA decoder). Stage 5 runs
-    ``DiffusionNABlock``s that denoise the patchified noised pixels ``x_t``,
-    guided by that context via AdaLN-Zero scale/shift (ungated residuals;
-    legacy static gates are folded into Linear weights at load time).
-    Last-frame NATTEN window-shift is mitigated by temporarily replicating the
-    last latent frame ``(stage1_K_t // 2) * 2`` times through stages 1-4, then
-    cropping that appendix from context before stage 5 - but only down to
-    ``max(original_context_T, stage5_kernel[0])`` so undersized clips (e.g. a
-    single latent frame) still satisfy NATTEN's kernel floor. Latents / tiles
-    below ``stage_min_tile_sizes`` are edge-padded first via ``diffusion_tiling``;
-    leftover pad is cropped from the final pixels.
-    """
-
     def __init__(  # noqa: PLR0913
         self,
         in_channels: int = 128,
@@ -4620,7 +3774,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         self._keyframe_time_strides: Tuple[int, ...] = remaining_time_strides(self.upsamples)
 
     def _run_det_stage(self, x: torch.Tensor, stage_i: int, drop_leading_frame: bool) -> torch.Tensor:
-        """One deterministic stage: NA blocks + upsample."""
         if self.mark_dynamic_shapes:
             for dim in (1, 2, 3):
                 torch._dynamo.mark_dynamic(x, dim)
@@ -4633,11 +3786,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         z_noisy: torch.Tensor,
         drop_leading_frame: bool = True,
     ) -> torch.Tensor:
-        """Stages 1-3 on a full (or already ghost-padded) latent → stage-4 input feature.
-        Output is channels-last ``(B, T, H, W, C)`` at stage-4 input resolution.
-        Callers that want NATTEN trailing ghosting should pad the latent first via
-        ``pad_trailing_latent_for_natten_border``.
-        """
         z_noisy = self.per_channel_statistics.un_normalize(z_noisy)
         x = z_noisy.permute(0, 2, 3, 4, 1)
         x = self.conv_in(x)
@@ -4651,14 +3799,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         *,
         valid: torch.Tensor | None = None,
     ) -> KeyframeStream:
-        """Keyframe latents to a stage-1-input stream: un-normalize, tag, ``conv_in``, mask.
-        Stages 1-3 always run on the whole volume, so times stay in the global stage-1
-        origin. Tile-local rebasing happens later, at stage 4.
-        Unlike upstream we un-normalize first, because our ``conv_in`` consumes
-        un-normalized latents (``forward_stages_1_to_3`` does the same for video) while
-        upstream un-normalizes above the decoder. ``type_emb`` still lands in exactly the
-        same place: on the latents, immediately before the shared ``conv_in``.
-        """
         latents = self.per_channel_statistics.un_normalize(keyframes.latents)
         x = latents.permute(0, 2, 3, 4, 1)
         x = x + self.type_emb.to(dtype=x.dtype, device=x.device).view(1, 1, 1, 1, -1)
@@ -4683,16 +3823,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         next_time_origin: float,
         clip_start_frame: int = 0,
     ) -> tuple[torch.Tensor, KeyframeStream]:
-        """One deterministic stage over both streams: joint NA blocks + upsample.
-        The keyframe upsample is spatial-only and always drops its leading frame; the video
-        stream's ``drop_leading_frame`` is a tiling property and must not leak into it.
-        Times are rebuilt from the *next* stage's remaining stride after upsampling.
-        ``next_time_origin`` is in the **next** stage's temporal units, because that is the
-        scale the times it rebases are expressed in. Zero everywhere except the stage-4 hop of
-        a tiled decode, whose next stage is 5 and whose origin is therefore a pixel frame.
-        ``clip_start_frame`` is the first global pixel of *this* video latent (0 for a full
-        clip; Dist's tile origin for a slice).
-        """
         if self.mark_dynamic_shapes:
             for dim in (1, 2, 3):
                 torch._dynamo.mark_dynamic(x, dim)
@@ -4720,16 +3850,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         *,
         keyframe_valid: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, KeyframeStream]:
-        """Dual-stream stages 1-3: video latent + keyframe planes to stage-4 inputs.
-        Keyframe counterpart of :meth:`forward_stages_1_to_3`. ``z_noisy`` and
-        ``keyframes.latents`` must already carry identical spatial padding -- the pad is
-        applied symmetrically, so padding only one stream would offset every keyframe plane
-        from the video by half the pad and read as ghosting rather than a failure.
-        Times are relative to :attr:`DecodeKeyframes.clip_start_frame`. For a full-clip decode
-        that is 0, so they match global ``t_s``. For a Dist slice they are ``t_s(index) -
-        t_s(clip_start)`` from stage 1, because this path's "whole volume" *is* the slice.
-        Additional in-volume tile origins are applied in :meth:`forward_stage_4_with_keyframes`.
-        """
         keyframes.validate()
         if z_noisy.shape[-2:] != keyframes.latents.shape[-2:]:
             raise ValueError(
@@ -4763,25 +3883,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         pixel_time_origin: float = 0.0,
         clip_start_frame: int = 0,
     ) -> tuple[torch.Tensor, KeyframeStream]:
-        """Dual-stream stage 4 to stage-5 context. Keyframe counterpart of
-        :meth:`forward_stage_4`.
-        The ghost-pad crop applies to the video stream only: the trailing replicate is a
-        temporal-border workaround and the keyframe planes have no temporal extent to pad.
-        On the deferred (chunked) pathway neither stream is upsampled here: each stage-5
-        block folds ``upsamples[3]`` into its own context inject. The returned stream's
-        ``times`` are nonetheless the *stage-5* times, because that is where they are
-        consumed -- the same asymmetry the video stream already has, whose returned
-        ``x`` is a pre-upsample feature rather than stage-5 context.
-        **Two origins, at two scales.** The video stream's RoPE is tile-local 0-based at every
-        stage, so keyframe times must be rebased to whatever the tile's frame 0 is -- and this
-        method spans two different temporal resolutions. ``stage4_time_origin`` is the tile's
-        start in stage-4 input units (for the blocks); ``pixel_time_origin`` is its first
-        global pixel frame (for stage 5). They are taken separately from the tile rather than
-        derived from one another: ``drop_leading_frame`` and the causal first frame make
-        ``pixel_origin == stride_t * stage4_origin`` an off-by-one trap, not an identity. Both
-        are 0.0 for an untiled full-clip decode. ``clip_start_frame`` is subtracted in stage
-        units as well, so a Dist slice whose first pixel is 56 still sees ``t_s(48) - t_s(56)``.
-        """
         # Rebuild from global indices rather than trusting the caller's stream: stages 1-3 of a
         # full-clip decode are global, and Dist has already folded clip_start into clip times.
         keyframes = dataclasses.replace(
@@ -4824,10 +3925,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         pixel_time_origin: float,
         clip_start_frame: int = 0,
     ) -> tuple[torch.Tensor, KeyframeStream]:
-        """Stage-4 blocks only, both streams, for the deferred (chunked) pathway.
-        Mirrors :meth:`forward_stage_4`'s deferred branch: no ``upsamples[3]`` on either
-        stream, ghost cropped at pre-upsample temporal resolution (video only).
-        """
         if self.mark_dynamic_shapes:
             for dim in (1, 2, 3):
                 torch._dynamo.mark_dynamic(x, dim)
@@ -4859,12 +3956,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         drop_leading_frame: bool = True,
         pad_trailing: bool = True,
     ) -> torch.Tensor:
-        """Stage 4 on a stage-4-input feature tile → stage-5 context (or pre-upsample feat).
-        ``x`` is channels-last. When ``pad_trailing``, soft-crop the ghosting
-        appendix before returning (ghost pad must already be present upstream).
-        When ``deferred_stage4_upsample`` is set, runs NA blocks only (no
-        ``upsamples[3]``) and crops ghost at pre-upsample temporal resolution.
-        """
         if self.deferred_stage4_upsample:
             if self.mark_dynamic_shapes:
                 for dim in (1, 2, 3):
@@ -4892,7 +3983,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         return x
 
     def _context_and_x_for_diff_step(self, context: torch.Tensor, x_t: torch.Tensor) -> torch.Tensor:
-        """Build block-ready ``[context | conv_in_x_t(patched x)]`` for ``forward_diff_step``."""
         noised_pixels_patched = patchify(x_t, patch_size_hw=self.patch_size, patch_size_t=1)
         x = self.conv_in_x_t(noised_pixels_patched.permute(0, 2, 3, 4, 1))
         return torch.cat([context, x], dim=-1)
@@ -4903,24 +3993,16 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         keyframe_x_t: torch.Tensor,
         keyframe_valid: torch.Tensor,
     ) -> torch.Tensor:
-        """Keyframe ``[context | conv_in_x_t(patched x)]``, mask-zeroed.
-        ``keyframe_x_t`` is ``(B, C_pix, P, H_pix, W_pix)`` -- the keyframe planes' own noised
-        pixels, one pixel frame per plane, through the *shared* ``conv_in_x_t``.
-        """
         patched = patchify(keyframe_x_t, patch_size_hw=self.patch_size, patch_size_t=1)
         x = self.conv_in_x_t(patched.permute(0, 2, 3, 4, 1))
         x = x * keyframe_valid[None, :, None, None, None]
         return torch.cat([keyframe_context, x], dim=-1)
 
     def _x_for_diff_step(self, x_t: torch.Tensor) -> torch.Tensor:
-        """Conv-processed noised pixels only (deferred-context path)."""
         noised_pixels_patched = patchify(x_t, patch_size_hw=self.patch_size, patch_size_t=1)
         return self.conv_in_x_t(noised_pixels_patched.permute(0, 2, 3, 4, 1))
 
     def _keyframe_x_for_diff_step(self, keyframe_x_t: torch.Tensor, keyframe_valid: torch.Tensor) -> torch.Tensor:
-        """Mask-zeroed keyframe noised pixels only (deferred-context path).
-        Contiguous by construction: the chunked pathway mutates this buffer in place.
-        """
         patched = patchify(keyframe_x_t, patch_size_hw=self.patch_size, patch_size_t=1)
         x = self.conv_in_x_t(patched.permute(0, 2, 3, 4, 1))
         return (x * keyframe_valid[None, :, None, None, None]).contiguous()
@@ -4930,13 +4012,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         context_and_x: torch.Tensor,
         t: torch.Tensor,
     ) -> torch.Tensor:
-        """One stage-5 diffusion step. Returns the model prediction in pixel space.
-        ``context_and_x`` is ``[latent_context | conv_in_x_t(x)]`` (channels-last), built
-        at the call site via ``_context_and_x_for_diff_step``. That single buffer is
-        reused across ``diff_blocks``: each block writes its output x-half back
-        with ``copy_`` (no per-block ``cat``). One-tensor layout keeps Dynamo
-        T/H/W symbols identical under ``mark_dynamic``.
-        """
         x_half = context_and_x[..., self.context_channels :]
         t_emb = self.t_embedder(self.timestep_scale_multiplier * t, hidden_dtype=x_half.dtype)
         modulation = self.shared_adaln(t_emb)
@@ -4957,17 +4032,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         keyframe_times: torch.Tensor,
         keyframe_valid: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """One dual-stream stage-5 step. Returns ``(video_pred, keyframe_pred)`` in pixel space.
-        The keyframe stream at stage 5 is a genuine second *pixel* diffusion stream -- its own
-        noised pixels through the shared ``conv_in_x_t``, its own per-block
-        ``context_proj(keyframe_context)``, the same AdaLN modulation -- not a zero tensor and
-        not the context. It is evolved through the same Euler loop as video so the hidden
-        state the joint attention reads sits at the noise level it was trained to see, then
-        discarded: callers use the video prediction only.
-        Both buffers follow ``forward_diff_step``'s ``[context | x]`` layout and the same
-        ``copy_``-into-a-view discipline. Video T/H/W stay dynamic; the keyframe plane axis is
-        specialized, since ``keyframe_times`` / ``keyframe_valid`` pin it.
-        """
         x_half = context_and_x[..., self.context_channels :]
         keyframe_half = keyframe_context_and_x[..., self.context_channels :]
         t_emb = self.t_embedder(self.timestep_scale_multiplier * t, hidden_dtype=x_half.dtype)
@@ -4995,7 +4059,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         return self._pixels_from_stage5(x_half), self._pixels_from_stage5(keyframe_half)
 
     def _pixels_from_stage5(self, x: torch.Tensor) -> torch.Tensor:
-        """Shared stage-5 tail: ``norm_out`` -> ``conv_out`` -> channels-first -> unpatchify."""
         x = self.norm_out(x)
         x = self.conv_out(x)
         x = x.permute(0, 4, 1, 2, 3).contiguous()
@@ -5009,13 +4072,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         *,
         drop_leading_frame: bool = True,
     ) -> torch.Tensor:
-        """Stage-5 step with deferred context: only ``x`` + low-res ``stage4_feat``.
-        Marks T/H/W dynamic on both tensors. CHUNKED blocks upsample then
-        ``context_proj`` on the host before attn+mlp; BLACKWELL_DSL
-        (``DSLDiffusionBlockChain``) folds that hop into the fused kernel and never
-        materialises full-resolution context. ``drop_leading_frame`` must match the
-        flag used for this tile's stage-4 path (origin tile vs non-origin).
-        """
         t_emb = self.t_embedder(self.timestep_scale_multiplier * t, hidden_dtype=x.dtype)
         modulation = self.shared_adaln(t_emb)
 
@@ -5050,13 +4106,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         *,
         drop_leading_frame: bool = True,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Dual-stream stage-5 step with deferred context. Keyframe counterpart of
-        :meth:`forward_diff_step_deferred`.
-        Each stream carries its own pre-upsample stage-4 feature and injects it per block,
-        so full-resolution context is never materialised for either. ``drop_leading_frame``
-        is the video stream's tiling property; the keyframe inject always collapses its
-        temporal stride.
-        """
         t_emb = self.t_embedder(self.timestep_scale_multiplier * t, hidden_dtype=x.dtype)
         modulation = self.shared_adaln(t_emb)
 
@@ -5103,9 +4152,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
     def _euler_step(
         self, x_t: torch.Tensor, model_out: torch.Tensor, t_now: torch.Tensor, t_next: torch.Tensor
     ) -> torch.Tensor:
-        """One reverse-diffusion Euler update: advance ``x_t`` from ``t_now`` to
-        ``t_next`` given the model's prediction at ``t_now``.
-        """
         compute_dtype = x_t.dtype
         dt = (t_now - t_next).view(-1, *([1] * (x_t.ndim - 1))).to(torch.float32)
         x_t_fp32 = x_t.to(torch.float32)
@@ -5121,7 +4167,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         timestep: torch.Tensor,
         pad_trailing: bool,
     ) -> torch.Tensor:
-        """Run stage 4 + diffusion on one stage-4 feature tile (isolation)."""
         context_tile = self.forward_stage_4(
             feat_tile,
             drop_leading_frame=is_origin,
@@ -5160,14 +4205,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         *,
         drop_leading_frame: bool,
     ) -> tuple[int, int, int]:
-        """``(T, H_pix, W_pix)`` of the stage-5 pixel canvas a context tile implies.
-        On the combined pathway the context is already at stage-5 resolution and
-        ``_context_and_x_for_diff_step`` patchifies ``x_t`` by ``patch_size``, so the canvas
-        is just ``(T, H * patch_size, W * patch_size)``. On the deferred pathway the tile is
-        still pre-upsample: each stage-5 block folds ``upsamples[3]`` into its inject, so
-        apply that stride here -- including the leading-frame drop the fold performs when the
-        temporal stride is 2.
-        """
         t, h, w = context_tile.shape[1], context_tile.shape[2], context_tile.shape[3]
         if self.deferred_stage4_upsample:
             # Context is still pre-upsample, so this is the same geometry as a stage-4
@@ -5200,19 +4237,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         pixel_time_origin: float = 0.0,
         clip_start_frame: int = 0,
     ) -> torch.Tensor:
-        """Stage 4 + dual-stream diffusion on one stage-4 feature tile.
-        Both streams are Euler-stepped together; only the video pixels are returned. The
-        keyframe pixel stream exists so the hidden state the joint attention reads stays at
-        the noise level it was trained on, and is discarded here (upstream exposes it only
-        through its explicit per-step entry points, which the trainer uses).
-        Noise is sized from the stage-5 context rather than from a re-derived tile geometry;
-        see :meth:`_stage5_canvas_from_context` for the deferred-pathway correction. The
-        keyframe canvas differs only in its frame count -- one pixel frame per plane, since
-        keyframe upsampling collapses its temporal stride.
-        ``x_t_tile_init`` lets a tiled decode share one global noise field across tiles (edge
-        policy applied by the caller, as the plain path does); ``None`` draws fresh noise. The
-        keyframe stream always draws its own -- its planes are not part of the video canvas.
-        """
         context_tile, keyframes = self.forward_stage_4_with_keyframes(
             feat_tile,
             keyframes,
@@ -5289,14 +4313,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         complementary: bool,
         clip_start_frame: int = 0,
     ) -> Tuple[torch.Tensor, torch.Tensor | None]:
-        """Decode one temporal group's tiles with keyframes and blend into a group buffer.
-        Keyframe counterpart of :meth:`_decode_temporal_group_isolated`. Each tile carries
-        only the planes near it -- those inside its pixel-frame span plus the nearest plane on
-        each *side* of it (:func:`planes_for_tile`) -- and the two origins that plane set has
-        to be rebased against come from the tile, never from each other.
-        Tile ``out_coords`` are local to this latent. Dist slices keep global
-        ``pixel_frame_indices`` and pass ``clip_start_frame`` so selection lines up.
-        """
         group_temporal_len = curr_temporal_slice.stop - curr_temporal_slice.start
         group_shape = full_video_shape._replace(frames=group_temporal_len)
         full_torch_shape = full_video_shape.to_torch_shape()
@@ -5418,13 +4434,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         as_fhwc: bool,
         clip_start_frame: int = 0,
     ) -> Iterator[torch.Tensor]:
-        """Tiled keyframe decode, streaming one temporal group at a time.
-        Same shape as :meth:`_decode_pixels`: only the trailing overlap of the previous group
-        is retained between iterations, and a group's exclusive frames are yielded before the
-        next group decodes. That keeps residency at roughly two tile extents rather than a
-        whole video, which matters more here than on the plain path -- a keyframe decode also
-        carries a second pixel stream through stage 5.
-        """
         full_video_shape = (
             VideoLatentShape.from_torch_shape(latent.shape)
             .upscale(self.video_downscale_factors)
@@ -5471,7 +4480,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         overlap_stub_weights: torch.Tensor | None = None
 
         def _emit(buf: torch.Tensor, wts: torch.Tensor | None, global_start: int) -> torch.Tensor | None:
-            """Finalize, crop to content, and lay out one emitted run of frames."""
             if global_start >= content_pixel.frames or buf.shape[2] < 1:
                 return None
             frames_keep = min(buf.shape[2], content_pixel.frames - global_start)
@@ -5558,11 +4566,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         *,
         as_fhwc: bool = False,
     ) -> Iterator[torch.Tensor]:
-        """Keyframe-aware decode, yielding one chunk of ``(B, C, F, H, W)`` in ``[-1, 1]``.
-        Stages 1-3 run once on the whole volume for both streams -- so the keyframe stream
-        reaches stage 4 with *global* times -- then stages 4-5 run per tile with pixel blend.
-        With ``tiling_config=None`` that is a single tile and the whole thing is one pass.
-        """
         content_shape = VideoLatentShape.from_torch_shape(latent.shape)
         content_pixel = content_shape.upscale(self.video_downscale_factors)._replace(channels=self.out_channels)
         keyframes.validate(num_frames=content_pixel.frames)
@@ -5642,12 +4645,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         tiling_config: TilingConfig | None = None,
         generator: torch.Generator | None = None,
     ) -> Iterator[torch.Tensor]:
-        """Keyframe-aware decode, yielding float chunk(s) ``[f, h, w, c]`` in ``[0, 1]``.
-        Implementation of :meth:`decode_video` when ``keyframes`` is set. ``keyframes`` carries
-        single-frame latents plus their global pixel frame indices; every video token then
-        attends to the nearest planes through a joint neighborhood-attention window.
-        """
-
         def to_rgb(frames: torch.Tensor) -> torch.Tensor:
             return frames.add_(1).mul_(0.5).clamp_(0, 1)
 
@@ -5669,7 +4666,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         *,
         complementary: bool,
     ) -> Tuple[torch.Tensor, torch.Tensor | None]:
-        """Decode every tile of one temporal group in isolation and blend."""
         group_temporal_len = curr_temporal_slice.stop - curr_temporal_slice.start
         group_shape = full_video_shape._replace(frames=group_temporal_len)
         full_torch_shape = full_video_shape.to_torch_shape()
@@ -5751,18 +4747,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         *,
         as_fhwc: bool = False,
     ) -> Iterator[torch.Tensor]:
-        """Decode latent to pixels, yielding temporal chunks.
-        Default yields raw ``(B, C, F, H, W)`` in ``[-1, 1]``. With ``as_fhwc=True``
-        (used by :meth:`decode_video`), each chunk is materialized once as
-        contiguous ``[F, H, W, C]`` still in ``[-1, 1]`` - layout copy only;
-        range mapping stays in ``to_rgb``.
-        Stages 1-3 run once on the full volume; stages 4-5 run per tile with
-        pixel blend (one tile / one group when untiled or no real split).
-        Across temporal groups only the trailing overlap is retained between
-        iterations; exclusive frames are yielded before the next group decodes.
-        Peak residency is ~two tile extents (current buffer + still-live emit /
-        overlap stub), not a single ``tile + overlap`` slab.
-        """
         content_shape = VideoLatentShape.from_torch_shape(latent.shape)
         content_pixel = content_shape.upscale(self.video_downscale_factors)._replace(channels=self.out_channels)
 
@@ -5824,7 +4808,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
             return (buf / wts).to(latent.dtype)
 
         def _narrow_content_cfhw(t: torch.Tensor, frames_keep: int) -> torch.Tensor:
-            """Spatial/temporal content crop as views (no ``.contiguous()``)."""
             x = t[:, :, :frames_keep]
             th, tw = content_pixel.height, content_pixel.width
             scale_h, scale_w = spatial_scale
@@ -5945,7 +4928,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         sample: torch.Tensor,
         generator: torch.Generator | None = None,
     ) -> torch.Tensor:
-        """Decode via ``_decode_pixels`` with ``tiling_config=None`` (single full tile)."""
         return next(self._decode_pixels(sample, tiling_config=None, generator=generator))
 
     def decode_video(
@@ -5956,14 +4938,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         *,
         keyframes: DecodeKeyframes | None = None,
     ) -> Iterator[torch.Tensor]:
-        """Decode latent video, yielding float chunk(s) ``[f, h, w, c]`` in ``[0, 1]``.
-        Untiled and tiled both go through ``_decode_pixels``. Tiled decode may yield
-        multiple times when ``tiling_config.frames`` splits the video.
-        With ``keyframes`` this is :meth:`_decode_video_with_keyframes`; the argument exists on
-        every decoder so a caller can pass planes without first asking which VAE it holds.
-        Layout is packed once to contiguous FHWC on emit; ``to_rgb`` only does
-        inplace ``[-1, 1]→[0, 1]`` (no second realloc).
-        """
         if keyframes is not None:
             yield from self._decode_video_with_keyframes(latent, keyframes, tiling_config, generator)
             return
@@ -5975,8 +4949,6 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
             yield to_rgb(chunk)
 
 class LTX25DiffusionVideoDecoder(DiffusionVideoDecoder):
-    """DiffSynth-facing decoder with one full/tiled/keyframe interface."""
-
     def forward(self, sample, generator=None, keyframes=None):
         return self.decode(sample, generator=generator, keyframes=keyframes)
 
