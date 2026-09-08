@@ -1285,8 +1285,10 @@ def get_padding(kernel_size: int, dilation: int = 1) -> int:
     return int((kernel_size * dilation - dilation) / 2)
 
 
+# ---------------------------------------------------------------------------
 # Anti-aliased resampling helpers (kaiser-sinc filters) for BigVGAN v2
 # Adopted from https://github.com/NVIDIA/BigVGAN
+# ---------------------------------------------------------------------------
 
 
 def _sinc(x: torch.Tensor) -> torch.Tensor:
@@ -1716,8 +1718,7 @@ class _STFTFn(nn.Module):
             y = y.unsqueeze(1)  # (B, 1, T)
         left_pad = max(0, self.win_length - self.hop_length)  # causal: left-only
         y = F.pad(y, (left_pad, 0))
-        forward_basis = self.forward_basis.to(device=y.device, dtype=y.dtype)
-        spec = F.conv1d(y, forward_basis, stride=self.hop_length, padding=0)
+        spec = F.conv1d(y, self.forward_basis, stride=self.hop_length, padding=0)
         n_freqs = spec.shape[1] // 2
         real, imag = spec[:, :n_freqs], spec[:, n_freqs:]
         magnitude = torch.sqrt(real**2 + imag**2)
@@ -1760,7 +1761,7 @@ class MelSTFT(nn.Module):
         """
         magnitude, phase = self.stft_fn(y)
         energy = torch.norm(magnitude, dim=1)
-        mel = torch.matmul(self.mel_basis.to(device=magnitude.device, dtype=magnitude.dtype), magnitude)
+        mel = torch.matmul(self.mel_basis.to(magnitude.dtype), magnitude)
         log_mel = torch.log(torch.clamp(mel, min=1e-5))
         return log_mel, magnitude, phase, energy
 

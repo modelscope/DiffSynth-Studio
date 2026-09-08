@@ -19,8 +19,7 @@ from ..models.ltx2_dit import LTXModel
 from ..models.ltx2_text_encoder import LTX2TextEncoder, LTX2TextEncoderPostModules, LTXVGemmaTokenizer
 from ..models.ltx2_upsampler import LTX2LatentUpsampler
 from ..models.ltx2_video_vae import LTX2VideoDecoder, LTX2VideoEncoder, VideoLatentPatchifier
-from ..models.ltx25_text_encoder import LTX25TextEncoderPostModules
-from ..models.ltx25_tokenizer import LTX25GemmaTokenizer
+from ..models.ltx25_text_encoder import LTX25GemmaTokenizer, LTX25TextEncoderPostModules
 from ..utils.data.audio import convert_to_stereo, resample_waveform
 from ..utils.data.media_io_ltx2 import ltx2_preprocess
 

@@ -896,7 +896,7 @@ ltx2_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_text_encoder.LTX2TextEncoderPostModulesStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="diffusion_models/ltx-2.5-22b-*-transformer-bf16.safetensors")
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors")
         "model_hash": "7960c5dc4626650824e36f65a8e992e9",
         "model_name": "ltx25_dit",
         "model_class": "diffsynth.models.ltx2_dit.LTXModel",
@@ -904,7 +904,14 @@ ltx2_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_dit.LTXModelStateDictConverter",
     },
     {
-        # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="diffusion_models/ltx-2.5-22b-*-transformer-comfy-int8-convrot.safetensors")
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors")
+        "model_hash": "7960c5dc4626650824e36f65a8e992e9",
+        "model_name": "ltx25_embeddings_connectors",
+        "model_class": "diffsynth.models.ltx25_text_encoder.LTX25EmbeddingsConnectors",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx25_text_encoder.LTX25EmbeddingsConnectorsStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors")
         "model_hash": "57343d320cac0bbba58a488b8ebe7187",
         "model_name": "ltx25_dit",
         "model_class": "diffsynth.models.ltx2_dit.LTXModel",
@@ -913,11 +920,26 @@ ltx2_series = [
         "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["timestep_embedder.linear_1", "timestep_embedder.linear_2", "adaln_single.linear", "audio_adaln_single.linear", "prompt_adaln_single.linear", "audio_prompt_adaln_single.linear", "av_ca_a2v_gate_adaln_single.linear", "av_ca_audio_scale_shift_adaln_single.linear", "av_ca_v2a_gate_adaln_single.linear", "av_ca_video_scale_shift_adaln_single.linear", "patchify_proj", "audio_patchify_proj", "proj_out", "audio_proj_out", "to_gate_logits"]},
     },
     {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors")
+        "model_hash": "57343d320cac0bbba58a488b8ebe7187",
+        "model_name": "ltx25_embeddings_connectors",
+        "model_class": "diffsynth.models.ltx25_text_encoder.LTX25EmbeddingsConnectors",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx25_text_encoder.LTX25EmbeddingsConnectorsStateDictConverter",
+        "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["to_gate_logits"]},
+    },
+    {
         # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors")
         "model_hash": "055700dc619165899bebb5162f699cd2",
         "model_name": "ltx25_text_encoder",
         "model_class": "diffsynth.models.ltx25_text_encoder.LTX25TextEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx25_text_encoder.LTX25TextEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors")
+        "model_hash": "055700dc619165899bebb5162f699cd2",
+        "model_name": "ltx25_feature_extractor",
+        "model_class": "diffsynth.models.ltx25_text_encoder.LTX25FeatureExtractorV2",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx25_text_encoder.LTX25FeatureExtractorStateDictConverter",
     },
     {
         # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors")
@@ -928,20 +950,6 @@ ltx2_series = [
         "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["lm_head", "embedding_projection", "patch_dense"]},
     },
     {
-        # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors")
-        "model_hash": "055700dc619165899bebb5162f699cd2",
-        "model_name": "ltx25_feature_extractor",
-        "model_class": "diffsynth.models.ltx25_text_encoder.LTX25FeatureExtractorV2",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx25_text_encoder.LTX25FeatureExtractorStateDictConverter",
-    },
-    {
-        # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors")
-        "model_hash": "7960c5dc4626650824e36f65a8e992e9",
-        "model_name": "ltx25_embeddings_connectors",
-        "model_class": "diffsynth.models.ltx25_text_encoder.LTX25EmbeddingsConnectors",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx25_text_encoder.LTX25EmbeddingsConnectorsStateDictConverter",
-    },
-    {
         # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors")
         "model_hash": "4743ded7a5725b6589bccdb62512723b",
         "model_name": "ltx25_feature_extractor",
@@ -950,19 +958,11 @@ ltx2_series = [
         "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["video_aggregate_embed", "audio_aggregate_embed"]},
     },
     {
-        # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors")
-        "model_hash": "57343d320cac0bbba58a488b8ebe7187",
-        "model_name": "ltx25_embeddings_connectors",
-        "model_class": "diffsynth.models.ltx25_text_encoder.LTX25EmbeddingsConnectors",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx25_text_encoder.LTX25EmbeddingsConnectorsStateDictConverter",
-        "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["to_gate_logits"]},
-    },
-    {
         # Example: ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="vae/ltx-2.5-video-vae-bf16.safetensors")
         "model_hash": "e19205490f01801d0a7b6d3aba61e26e",
         "model_name": "ltx25_video_vae_encoder",
         "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoEncoder",
-        "extra_kwargs": {"encoder_version": "ltx-2.3", "latent_log_var": "constant"},
+        "extra_kwargs": {"encoder_version": "ltx-2.3"},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoEncoderStateDictConverter",
     },
     {
@@ -978,7 +978,7 @@ ltx2_series = [
         "model_hash": "a1d642eecae96baa9c31d4e405564f49",
         "model_name": "ltx25_conv_video_vae_encoder",
         "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoEncoder",
-        "extra_kwargs": {"encoder_version": "ltx-2.3", "latent_log_var": "uniform"},
+        "extra_kwargs": {"encoder_version": "ltx-2.3"},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoEncoderStateDictConverter",
     },
     {
@@ -986,7 +986,7 @@ ltx2_series = [
         "model_hash": "a1d642eecae96baa9c31d4e405564f49",
         "model_name": "ltx25_conv_video_vae_decoder",
         "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoDecoder",
-        "extra_kwargs": {"decoder_version": "ltx-2.3", "decoder_spatial_padding_mode": "zeros"},
+        "extra_kwargs": {"decoder_version": "ltx-2.3"},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoDecoderStateDictConverter",
     },
     {
