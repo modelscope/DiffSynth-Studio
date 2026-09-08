@@ -44,7 +44,6 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
         ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors", **vram_config),
         ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="model_patches/ltx-2.5-duration-head-bf16.safetensors", **vram_config),
     ],
-    load_duration_head=True,
 )
 prompt = "A girl is very happy, she is speaking: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
 negative_prompt = pipe.default_negative_prompt["LTX-2.3"]
@@ -72,7 +71,7 @@ write_video_audio_ltx2(video=video, audio=audio, output_path='video.mp4', fps=24
 |[Lightricks/LTX-2.5: TwoStagePipeline-A2V](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`retake_audio`,`audio_sample_rate`,`stage2_lora_config`|[code](/examples/ltx2/model_inference/LTX-2.5-A2V-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-A2V-TwoStage.py)|-|-|-|-|
 |[Lightricks/LTX-2.5: TwoStagePipeline-Retake](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`retake_video`,`retake_video_regions`,`stage2_lora_config`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-TwoStage-Retake.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-TwoStage-Retake.py)|-|-|-|-|
 |[Lightricks/LTX-2.5: T2A](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`generate_video=False`|[code](/examples/ltx2/model_inference/LTX-2.5-T2A.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2A.py)|-|-|-|-|
-|[Lightricks/LTX-2.5: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`auto_duration`,`load_duration_head=True`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-DistilledPipeline.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`auto_duration`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-DistilledPipeline.py)|-|-|-|-|
 |[Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler](https://www.modelscope.cn/models/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler)|`in_context_videos`,`in_context_downsample_factor`|[code](/examples/ltx2/model_inference/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py)|-|-|-|-|
 |[Lightricks/LTX-2.5: INT8-ConvRot](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|INT8 DiT + INT8 Gemma4|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-INT8-ConvRot.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-INT8-ConvRot.py)|-|-|-|-|
 
@@ -82,8 +81,8 @@ Models are loaded with `LTX2AudioVideoPipeline.from_pretrained`; see [Load Model
 
 LTX-2.5 related `from_pretrained` arguments:
 
-* `load_duration_head`: require the Duration Head (needed for automatic duration prediction). Defaults to `False`.
-* `gemma_path`: path to the Gemma4 checkpoint, used to load the packed tokenizer assets. When omitted, it is derived from the text encoder entry in `model_configs`.
+* `tokenizer_config`: source of the tokenizer assets. The LTX-2.5 tokenizer is unpacked into the HF-style directory `DiffSynth-Studio/LTX-2.5-Repackage/tokenizer` (produced by `examples/ltx2/model_training/scripts/split_model_statedicts_ltx2.5.py`), matching how LTX-2.3 references its tokenizer.
+* `text_encoder_post_modules`: the LTX-2.5 feature extractor and embeddings connectors weights are packed into `DiffSynth-Studio/LTX-2.5-Repackage/text_encoder_post_modules.safetensors` (produced by `examples/ltx2/model_training/scripts/split_model_statedicts_ltx2.5.py` from the TE and transformer checkpoints) and must be included in `model_configs`.
 * `stage2_lora_config`: the stage-2 distilled LoRA used for two-stage inference with the Dev weights.
 
 For the arguments shared with LTX-2.3, see the [LTX-2 documentation](LTX-2.md#inference). The new or LTX-2.5 specific `LTX2AudioVideoPipeline` arguments are:
@@ -91,7 +90,7 @@ For the arguments shared with LTX-2.3, see the [LTX-2 documentation](LTX-2.md#in
 * `auto_duration`: predict the clip duration from the prompt. Defaults to `False`. When enabled, `num_frames` is not required and the Duration Head must be loaded.
 * `auto_duration_min_seconds` / `auto_duration_max_seconds`: lower and upper bounds (seconds) for the predicted duration. Default to 1.0 and 20.0.
 * `generate_video`: whether to generate video. Defaults to `True`. Set it to `False` to generate audio only (T2A); the video VAE and latent upsampler are then not required.
-* `use_diffusion_vae`: video decoder selection. `None` (default) selects by model version (LTX-2.5 uses the DiffVAE diffusion decoder); `False` uses the ConvVAE convolutional decoder (requires `ltx-2.5-video-vae-conv-bf16.safetensors`).
+* `use_diffusion_vae`: video decoder selection. `None` (default) prefers the loaded ConvVAE convolutional decoder and falls back to the DiffVAE diffusion decoder when it is absent; `True`/`False` force DiffVAE/ConvVAE respectively (ConvVAE requires `ltx-2.5-video-vae-conv-bf16.safetensors`).
 * Default negative prompt: `pipe.default_negative_prompt["LTX-2.5"]` prefixes the LTX-2/2.3 list with the 2.5-specific tags (`has_subtitles`, `has_blurbox`, `transition from black`, `transition to black`, `speech_ending_short`); all example scripts use this key.
 * `input_images` / `input_images_indexes`: keyframe images and their frame indexes. A single first frame gives image-to-video; first and last (or more) frames give keyframe interpolation.
 * `retake_audio` / `audio_sample_rate` / `retake_audio_regions`: audio-to-video (A2V) and audio region retake.

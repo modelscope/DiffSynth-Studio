@@ -44,7 +44,6 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
         ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors", **vram_config),
         ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="model_patches/ltx-2.5-duration-head-bf16.safetensors", **vram_config),
     ],
-    load_duration_head=True,
 )
 prompt = "A girl is very happy, she is speaking: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
 negative_prompt = pipe.default_negative_prompt["LTX-2.3"]
@@ -72,7 +71,7 @@ write_video_audio_ltx2(video=video, audio=audio, output_path='video.mp4', fps=24
 |[Lightricks/LTX-2.5: TwoStagePipeline-A2V](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`retake_audio`,`audio_sample_rate`,`stage2_lora_config`|[code](/examples/ltx2/model_inference/LTX-2.5-A2V-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-A2V-TwoStage.py)|-|-|-|-|
 |[Lightricks/LTX-2.5: TwoStagePipeline-Retake](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`retake_video`,`retake_video_regions`,`stage2_lora_config`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-TwoStage-Retake.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-TwoStage-Retake.py)|-|-|-|-|
 |[Lightricks/LTX-2.5: T2A](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`generate_video=False`|[code](/examples/ltx2/model_inference/LTX-2.5-T2A.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2A.py)|-|-|-|-|
-|[Lightricks/LTX-2.5: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`auto_duration`,`load_duration_head=True`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-DistilledPipeline.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`auto_duration`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-DistilledPipeline.py)|-|-|-|-|
 |[Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler](https://www.modelscope.cn/models/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler)|`in_context_videos`,`in_context_downsample_factor`|[code](/examples/ltx2/model_inference/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py)|-|-|-|-|
 |[Lightricks/LTX-2.5: INT8-ConvRot](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|INT8 DiT + INT8 Gemma4|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-INT8-ConvRot.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-INT8-ConvRot.py)|-|-|-|-|
 
@@ -82,8 +81,8 @@ write_video_audio_ltx2(video=video, audio=audio, output_path='video.mp4', fps=24
 
 `from_pretrained` 的 LTX-2.5 相关参数：
 
-* `load_duration_head`: 是否要求加载 Duration Head（自动时长预测所需），默认为 `False`。
-* `gemma_path`: Gemma4 权重路径，用于加载内嵌的 tokenizer 资产。留空时自动从 `model_configs` 中的 text encoder 路径推导。
+* `tokenizer_config`：tokenizer 资产来源。LTX-2.5 的 tokenizer 已解包为 HF 目录形式 `DiffSynth-Studio/LTX-2.5-Repackage/tokenizer`（由 `examples/ltx2/model_training/scripts/split_model_statedicts_ltx2.5.py` 生成），与 LTX-2.3 的用法一致。
+* `text_encoder_post_modules`：LTX-2.5 的 feature extractor 与 embeddings connectors 权重打包在 `DiffSynth-Studio/LTX-2.5-Repackage/text_encoder_post_modules.safetensors`（由 `examples/ltx2/model_training/scripts/split_model_statedicts_ltx2.5.py` 从 TE 与 transformer 权重中提取），需要在 `model_configs` 中一并加载。
 * `stage2_lora_config`: Dev 权重两阶段推理时使用的第二阶段 distilled-LoRA。
 
 `LTX2AudioVideoPipeline` 的通用推理参数见 [LTX-2 文档](LTX-2.md#模型推理)，LTX-2.5 新增或特有的参数为：
@@ -91,7 +90,7 @@ write_video_audio_ltx2(video=video, audio=audio, output_path='video.mp4', fps=24
 * `auto_duration`: 是否根据提示词自动预测视频时长，默认为 `False`。开启后无需传入 `num_frames`，需要加载 Duration Head。
 * `auto_duration_min_seconds` / `auto_duration_max_seconds`: 自动时长的上下界（秒），默认为 1.0 和 20.0。
 * `generate_video`: 是否生成视频，默认为 `True`。设置为 `False` 时只生成音频（T2A），此时无需加载视频 VAE 与 latent upsampler。
-* `use_diffusion_vae`: 视频解码器选择。`None`（默认）表示按模型版本自动选择（LTX-2.5 使用 DiffVAE 扩散解码器），`False` 表示使用 ConvVAE 卷积解码器（需加载 `ltx-2.5-video-vae-conv-bf16.safetensors`）。
+* `use_diffusion_vae`：视频解码器选择。`None`（默认）优先使用已加载的 ConvVAE 卷积解码器，未加载时回退到 DiffVAE 扩散解码器；`True`/`False` 分别强制指定 DiffVAE/ConvVAE（ConvVAE 需加载 `ltx-2.5-video-vae-conv-bf16.safetensors`）。
 * 默认负向提示词：`pipe.default_negative_prompt["LTX-2.5"]` 在 LTX-2/2.3 的列表之前增加了 2.5 专有标签（`has_subtitles`、`has_blurbox`、`transition from black`、`transition to black`、`speech_ending_short`），示例脚本均使用该键。
 * `input_images` / `input_images_indexes`: 关键帧图像及其帧索引。传入首帧即为图生视频，传入首尾（或多帧）即为关键帧插值。
 * `retake_audio` / `audio_sample_rate` / `retake_audio_regions`: 音频驱动视频（A2V）与音频区域重生成。

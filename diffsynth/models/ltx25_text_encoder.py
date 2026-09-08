@@ -1,13 +1,9 @@
 import copy
-import json
 import math
 from pathlib import Path
 from typing import NamedTuple
 
-import numpy as np
 import torch
-from safetensors import safe_open
-from tokenizers import Tokenizer
 from transformers import PreTrainedTokenizerFast
 
 from .ltx2_common import rms_norm
@@ -173,23 +169,7 @@ class LTX25TextEncoder(torch.nn.Module):
 
 class LTX25GemmaTokenizer:
     def __init__(self, model_path: str | Path, max_length: int = 1024):
-        model_path = Path(model_path)
-        with safe_open(model_path, framework="pt", device="cpu") as handle:
-            metadata = handle.metadata() or {}
-            if "tokenizer_json" not in handle.keys():
-                raise ValueError(f"{model_path} does not contain packed tokenizer_json assets.")
-            tokenizer_bytes = handle.get_tensor("tokenizer_json").detach().cpu().numpy().astype(np.uint8).tobytes()
-            raw_config = metadata.get("tokenizer_config.json")
-            if raw_config is None and "hf_asset__tokenizer_config.json" in handle.keys():
-                raw_config = handle.get_tensor("hf_asset__tokenizer_config.json").detach().cpu().numpy().astype(np.uint8).tobytes().decode()
-        config = json.loads(raw_config) if raw_config else {}
-        ignored = {"tokenizer_class", "auto_map", "model_max_length", "backend", "is_local", "local_files_only", "processor_class", "added_tokens_decoder"}
-        config = {key: value for key, value in config.items() if key not in ignored}
-        self.tokenizer = PreTrainedTokenizerFast(
-            tokenizer_object=Tokenizer.from_buffer(tokenizer_bytes),
-            model_max_length=max_length,
-            **config,
-        )
+        self.tokenizer = PreTrainedTokenizerFast.from_pretrained(str(model_path), local_files_only=True, model_max_length=max_length)
         self.tokenizer.model_max_length = max_length
         self.tokenizer.padding_side = "left"
         if self.tokenizer.pad_token is None:

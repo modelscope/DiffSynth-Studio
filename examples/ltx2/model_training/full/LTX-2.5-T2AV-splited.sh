@@ -10,7 +10,8 @@ accelerate launch examples/ltx2/model_training/train.py \
   --width 768 \
   --num_frames 121 \
   --dataset_repeat 1 \
-  --model_id_with_origin_paths "Lightricks/LTX-2.5:text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors,Lightricks/LTX-2.5:diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors,Lightricks/LTX-2.5:vae/ltx-2.5-video-vae-bf16.safetensors,Lightricks/LTX-2.5:vae/ltx-2.5-audio-vae-bf16.safetensors" \
+  --tokenizer_path "./models/DiffSynth-Studio/LTX-2.5-Repackage/tokenizer" \
+  --model_id_with_origin_paths "Lightricks/LTX-2.5:text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors,Lightricks/LTX-2.5:diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors,Lightricks/LTX-2.5:vae/ltx-2.5-video-vae-bf16.safetensors,Lightricks/LTX-2.5:vae/ltx-2.5-audio-vae-bf16.safetensors,DiffSynth-Studio/LTX-2.5-Repackage:text_encoder_post_modules.safetensors" \
   --learning_rate 1e-5 \
   --num_epochs 2 \
   --remove_prefix_in_ckpt "pipe.dit." \
@@ -27,8 +28,9 @@ accelerate launch --config_file examples/ltx2/model_training/full/accelerate_con
   --width 768 \
   --num_frames 121 \
   --dataset_repeat 100 \
-  --model_id_with_origin_paths "Lightricks/LTX-2.5:text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors,Lightricks/LTX-2.5:diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors,Lightricks/LTX-2.5:vae/ltx-2.5-video-vae-bf16.safetensors,Lightricks/LTX-2.5:vae/ltx-2.5-audio-vae-bf16.safetensors" \
-  --fp8_models "Lightricks/LTX-2.5:text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors,Lightricks/LTX-2.5:vae/ltx-2.5-video-vae-bf16.safetensors,Lightricks/LTX-2.5:vae/ltx-2.5-audio-vae-bf16.safetensors" \
+  --tokenizer_path "./models/DiffSynth-Studio/LTX-2.5-Repackage/tokenizer" \
+  --model_id_with_origin_paths "Lightricks/LTX-2.5:text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors,Lightricks/LTX-2.5:diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors,Lightricks/LTX-2.5:vae/ltx-2.5-video-vae-bf16.safetensors,Lightricks/LTX-2.5:vae/ltx-2.5-audio-vae-bf16.safetensors,DiffSynth-Studio/LTX-2.5-Repackage:text_encoder_post_modules.safetensors" \
+  --fp8_models "Lightricks/LTX-2.5:text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors,Lightricks/LTX-2.5:vae/ltx-2.5-video-vae-bf16.safetensors,Lightricks/LTX-2.5:vae/ltx-2.5-audio-vae-bf16.safetensors,DiffSynth-Studio/LTX-2.5-Repackage:text_encoder_post_modules.safetensors" \
   --learning_rate 1e-5 \
   --num_epochs 2 \
   --remove_prefix_in_ckpt "pipe.dit." \

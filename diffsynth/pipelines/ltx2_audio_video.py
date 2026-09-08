@@ -1,27 +1,30 @@
-from functools import partial
-from pathlib import Path
-from typing import Optional, Union
-
+import torch, types
 import numpy as np
-import torch
+from PIL import Image
 from einops import repeat
+from typing import Optional, Union
+from einops import rearrange
+import numpy as np
 from PIL import Image
 from tqdm import tqdm
+from typing import Optional
 from transformers import AutoImageProcessor, Gemma3Processor
+from functools import partial
 
-from ..core import ModelConfig
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
+from ..core import ModelConfig
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
-from ..models.ltx2_audio_vae import LTX2AudioDecoder, LTX2AudioEncoder, LTX2Vocoder, AudioPatchifier, AudioProcessor
-from ..models.ltx2_common import AudioLatentShape, VIDEO_SCALE_FACTORS, VideoLatentShape, VideoPixelShape, get_pixel_coords
-from ..models.ltx2_dit import LTXModel
+
 from ..models.ltx2_text_encoder import LTX2TextEncoder, LTX2TextEncoderPostModules, LTXVGemmaTokenizer
+from ..models.ltx2_dit import LTXModel
+from ..models.ltx2_video_vae import LTX2VideoEncoder, LTX2VideoDecoder, VideoLatentPatchifier
+from ..models.ltx2_audio_vae import LTX2AudioEncoder, LTX2AudioDecoder, LTX2Vocoder, AudioPatchifier, AudioProcessor
 from ..models.ltx2_upsampler import LTX2LatentUpsampler
-from ..models.ltx2_video_vae import LTX2VideoDecoder, LTX2VideoEncoder, VideoLatentPatchifier
-from ..models.ltx25_text_encoder import LTX25GemmaTokenizer, LTX25TextEncoderPostModules
-from ..utils.data.audio import convert_to_stereo, resample_waveform
+from ..models.ltx2_common import VideoLatentShape, AudioLatentShape, VideoPixelShape, get_pixel_coords, VIDEO_SCALE_FACTORS
+from ..models.ltx25_text_encoder import LTX25GemmaTokenizer
 from ..utils.data.media_io_ltx2 import ltx2_preprocess
+from ..utils.data.audio import convert_to_stereo, resample_waveform
 
 
 class LTX2AudioVideoPipeline(BasePipeline):
@@ -44,7 +47,6 @@ class LTX2AudioVideoPipeline(BasePipeline):
         self.video_vae_encoder: LTX2VideoEncoder = None
         self.video_vae_decoder: LTX2VideoDecoder = None
         self.diffusion_video_vae_decoder = None
-        self.conv_video_vae_decoder: LTX2VideoDecoder = None
         self.audio_vae_encoder: LTX2AudioEncoder = None
         self.audio_vae_decoder: LTX2AudioDecoder = None
         self.audio_vocoder: LTX2Vocoder = None
@@ -136,70 +138,38 @@ class LTX2AudioVideoPipeline(BasePipeline):
         stage2_lora_config: Optional[ModelConfig] = None,
         stage2_lora_strength: float = 0.8,
         vram_limit: float = None,
-        gemma_path: Union[str, Path, None] = None,
-        load_duration_head: bool = False,
     ):
+        # Initialize pipeline
         pipe = LTX2AudioVideoPipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
 
-        ltx25_text_encoder = model_pool.fetch_model("ltx25_text_encoder")
-        ltx25_dit = model_pool.fetch_model("ltx25_dit")
-        pipe.is_ltx25 = ltx25_text_encoder is not None or ltx25_dit is not None
+        # Fetch models
+        pipe.text_encoder = model_pool.fetch_model("ltx2_text_encoder")
+        pipe.dit = model_pool.fetch_model("ltx2_dit")
+        pipe.is_ltx25 = getattr(pipe.dit, "use_tokenwise_av_ca_scale_shift", False)
+        tokenizer_config.download_if_necessary()
         if pipe.is_ltx25:
-            if ltx25_text_encoder is None or ltx25_dit is None:
-                raise ValueError("LTX-2.5 requires both ltx25_text_encoder and ltx25_dit components.")
-            if gemma_path is None:
-                for model_config in model_configs:
-                    if isinstance(model_config.path, str) and "text_encoders" in model_config.path:
-                        gemma_path = model_config.path
-                        break
-            if gemma_path is None:
-                raise ValueError("gemma_path is required for the packed LTX-2.5 Gemma4 tokenizer assets.")
-            pipe.text_encoder = ltx25_text_encoder
-            pipe.text_encoder.reset_non_persistent_buffers()
-            pipe.tokenizer = LTX25GemmaTokenizer(gemma_path)
-            feature_extractor = model_pool.fetch_model("ltx25_feature_extractor")
-            connectors = model_pool.fetch_model("ltx25_embeddings_connectors")
-            if feature_extractor is None or connectors is None:
-                raise ValueError("LTX-2.5 requires ltx25_feature_extractor and ltx25_embeddings_connectors components.")
-            pipe.text_encoder_post_modules = LTX25TextEncoderPostModules(
-                feature_extractor=feature_extractor,
-                connectors=connectors,
-            )
-            # The container holds VRAM-wrapped modules but is not itself wrapped, so mark it
-            # for load_models_to_device to offload/onload its wrapped children.
-            pipe.text_encoder_post_modules.vram_management_enabled = True
-            pipe.dit = ltx25_dit
-            pipe.video_vae_encoder = model_pool.fetch_model("ltx25_video_vae_encoder")
-            if pipe.video_vae_encoder is None:
-                pipe.video_vae_encoder = model_pool.fetch_model("ltx25_conv_video_vae_encoder")
-            pipe.diffusion_video_vae_decoder = model_pool.fetch_model("ltx25_diffusion_video_vae_decoder")
-            pipe.conv_video_vae_decoder = model_pool.fetch_model("ltx25_conv_video_vae_decoder")
-            pipe.audio_vae_decoder = model_pool.fetch_model("ltx25_audio_vae_decoder")
-            pipe.audio_vocoder = model_pool.fetch_model("ltx25_audio_vocoder")
-            pipe.audio_vae_encoder = model_pool.fetch_model("ltx25_audio_vae_encoder")
-            pipe.duration_head = model_pool.fetch_model("ltx25_duration_head")
-            if load_duration_head and pipe.duration_head is None:
-                raise ValueError("load_duration_head=True requires an ltx25_duration_head ModelConfig.")
+            pipe.tokenizer = LTX25GemmaTokenizer(tokenizer_config.path)
         else:
-            pipe.text_encoder = model_pool.fetch_model("ltx2_text_encoder")
-            tokenizer_config.download_if_necessary()
             pipe.tokenizer = LTXVGemmaTokenizer(tokenizer_path=tokenizer_config.path)
             image_processor = AutoImageProcessor.from_pretrained(tokenizer_config.path, local_files_only=True)
             pipe.processor = Gemma3Processor(image_processor=image_processor, tokenizer=pipe.tokenizer.tokenizer)
-            pipe.text_encoder_post_modules = model_pool.fetch_model("ltx2_text_encoder_post_modules")
-            pipe.dit = model_pool.fetch_model("ltx2_dit")
-            pipe.video_vae_encoder = model_pool.fetch_model("ltx2_video_vae_encoder")
-            pipe.video_vae_decoder = model_pool.fetch_model("ltx2_video_vae_decoder")
-            pipe.audio_vae_decoder = model_pool.fetch_model("ltx2_audio_vae_decoder")
-            pipe.audio_vocoder = model_pool.fetch_model("ltx2_audio_vocoder")
-            pipe.audio_vae_encoder = model_pool.fetch_model("ltx2_audio_vae_encoder")
-
+        pipe.text_encoder_post_modules = model_pool.fetch_model("ltx2_text_encoder_post_modules")
+        pipe.video_vae_encoder = model_pool.fetch_model("ltx2_video_vae_encoder")
+        pipe.video_vae_decoder = model_pool.fetch_model("ltx2_video_vae_decoder")
+        pipe.diffusion_video_vae_decoder = model_pool.fetch_model("ltx25_diffusion_video_vae_decoder")
+        pipe.audio_vae_decoder = model_pool.fetch_model("ltx2_audio_vae_decoder")
+        pipe.audio_vocoder = model_pool.fetch_model("ltx2_audio_vocoder")
         pipe.upsampler = model_pool.fetch_model("ltx2_latent_upsampler")
+        pipe.audio_vae_encoder = model_pool.fetch_model("ltx2_audio_vae_encoder")
+        pipe.duration_head = model_pool.fetch_model("ltx25_duration_head")
+
+        # Stage 2
         if stage2_lora_config is not None:
             pipe.stage2_lora_config = stage2_lora_config
             pipe.stage2_lora_strength = stage2_lora_strength
 
+        # VRAM Management
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
 
@@ -295,11 +265,13 @@ class LTX2AudioVideoPipeline(BasePipeline):
         # progress_bar
         progress_bar_cmd=tqdm,
     ):
+        # Scheduler
         self.scheduler.set_timesteps(
             num_inference_steps,
             denoising_strength=denoising_strength,
             special_case="distilled_stage1" if use_distilled_pipeline else None,
         )
+        # Inputs
         inputs_posi = {"prompt": prompt}
         inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
@@ -321,9 +293,11 @@ class LTX2AudioVideoPipeline(BasePipeline):
             "video_patchifier": self.video_patchifier, "audio_patchifier": self.audio_patchifier,
             "timestep_scale": 1.0 if self.is_ltx25 else 1000.0,
         }
+        # Stage 1
         inputs_shared, inputs_posi, inputs_nega = self.denoise_stage(
             inputs_shared, inputs_posi, inputs_nega, self.units, cfg_scale, progress_bar_cmd
         )
+        # Stage 2
         inputs_shared, inputs_posi, inputs_nega = self.denoise_stage(
             inputs_shared,
             inputs_posi,
@@ -333,6 +307,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
             progress_bar_cmd,
             not inputs_shared["use_two_stage_pipeline"],
         )
+        # Decode
         video = None
         if inputs_shared.get("generate_video", True):
             video_decoder_name = inputs_shared["video_decoder_name"]
@@ -440,10 +415,12 @@ class LTX2AudioVideoUnit_VideoDecoderSelector(PipelineUnit):
             if use_diffusion_vae:
                 raise ValueError("Diffusion VAE decoding is only supported by LTX-2.5 checkpoints.")
             decoder_name = "video_vae_decoder"
-        elif use_diffusion_vae is not False:
+        elif use_diffusion_vae is True:
             decoder_name = "diffusion_video_vae_decoder"
+        elif use_diffusion_vae is False:
+            decoder_name = "video_vae_decoder"
         else:
-            decoder_name = "conv_video_vae_decoder"
+            decoder_name = "video_vae_decoder" if pipe.video_vae_decoder is not None else "diffusion_video_vae_decoder"
 
         if getattr(pipe, decoder_name) is None:
             requested = "DiffusionVAE" if decoder_name == "diffusion_video_vae_decoder" else "ConvVAE"
