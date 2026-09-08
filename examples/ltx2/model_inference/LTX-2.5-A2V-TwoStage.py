@@ -25,6 +25,7 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
         ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors", **vram_config),
     ],
     stage2_lora_config=ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="loras/ltx-2.5-22b-distilled-lora-450-bf16.safetensors"),
+    stage2_lora_strength=1.0,
 )
 
 dataset_snapshot_download("DiffSynth-Studio/example_video_dataset", allow_file_pattern="ltx2/*", local_dir="data/example_video_dataset")

@@ -135,7 +135,7 @@ class LTX2AudioVideoPipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="google/gemma-3-12b-it-qat-q4_0-unquantized"),
         stage2_lora_config: Optional[ModelConfig] = None,
-        stage2_lora_strength: float = 1.0,
+        stage2_lora_strength: float = 0.8,
         vram_limit: float = None,
         gemma_path: Union[str, Path, None] = None,
         load_duration_head: bool = False,

@@ -613,25 +613,6 @@ class TransformerArgs:
     )
 
 
-class OwnerModuleProxy:
-    # Preprocessors are plain objects holding references to modules owned by the model.
-    # VRAM management replaces the owned modules with wrappers, so resolve them lazily
-    # through the owner to avoid calling stale unwrapped modules.
-    def __init__(self, owner: torch.nn.Module, name: str):
-        self.owner = owner
-        self.name = name
-
-    @property
-    def module(self):
-        return getattr(self.owner, self.name)
-
-    def __call__(self, *args, **kwargs):
-        return self.module(*args, **kwargs)
-
-    def __getattr__(self, item):
-        return getattr(self.module, item)
-
-
 class TransformerArgsPreprocessor:
     def __init__(  # noqa: PLR0913
         self,
@@ -1368,7 +1349,6 @@ class LTXModel(torch.nn.Module):
         self.use_prompt_adaln_single = use_prompt_adaln_single
         self.use_keyframes_abs_pos_embedding = use_keyframes_abs_pos_embedding
         self.use_tokenwise_av_ca_scale_shift = use_tokenwise_av_ca_scale_shift
-        cross_pe_max_pos = None
         if model_type.is_video_enabled():
             if positional_embedding_max_pos is None:
                 positional_embedding_max_pos = [20, 2048, 2048]
@@ -1396,12 +1376,10 @@ class LTXModel(torch.nn.Module):
             )
 
         if model_type.is_video_enabled() and model_type.is_audio_enabled():
-            cross_pe_max_pos = max(self.positional_embedding_max_pos[0], self.audio_positional_embedding_max_pos[0])
             self.av_ca_timestep_scale_multiplier = av_ca_timestep_scale_multiplier
             self.audio_cross_attention_dim = audio_cross_attention_dim
             self._init_audio_video(num_scale_shift_values=4)
 
-        self._init_preprocessors(cross_pe_max_pos)
         # Initialize transformer blocks
         self._init_transformer_blocks(
             num_layers=num_layers,
@@ -1600,24 +1578,6 @@ class LTXModel(torch.nn.Module):
                 caption_projection=getattr(self, "audio_caption_projection", None),
                 prompt_adaln=getattr(self, "audio_prompt_adaln_single", None),
             )
-        self._bind_preprocessor_modules()
-
-    def _bind_preprocessor_modules(self) -> None:
-        owned_names = {id(module): name for name, module in self.named_children()}
-        pending = [
-            getattr(self, "video_args_preprocessor", None),
-            getattr(self, "audio_args_preprocessor", None),
-        ]
-        while pending:
-            preprocessor = pending.pop()
-            if preprocessor is None:
-                continue
-            for attr_name, value in list(vars(preprocessor).items()):
-                if isinstance(value, torch.nn.Module):
-                    if id(value) in owned_names:
-                        setattr(preprocessor, attr_name, OwnerModuleProxy(self, owned_names[id(value)]))
-                elif isinstance(value, (TransformerArgsPreprocessor, MultiModalTransformerArgsPreprocessor)):
-                    pending.append(value)
 
     def _init_transformer_blocks(
         self,
@@ -1787,6 +1747,10 @@ class LTXModel(torch.nn.Module):
         video_keyframes_mask=None,
         perturbations=None,
     ):
+        cross_pe_max_pos = None
+        if self.model_type.is_video_enabled() and self.model_type.is_audio_enabled():
+            cross_pe_max_pos = max(self.positional_embedding_max_pos[0], self.audio_positional_embedding_max_pos[0])
+        self._init_preprocessors(cross_pe_max_pos)
         video = (
             Modality(
                 video_latents,
