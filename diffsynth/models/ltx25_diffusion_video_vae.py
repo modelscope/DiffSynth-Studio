@@ -4,6 +4,8 @@ import dataclasses
 import itertools
 import logging
 import math
+
+from tqdm import tqdm
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
@@ -4313,7 +4315,7 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         compute_dtype = feat_s4.dtype
         up3_stride = tuple(self.upsamples[3].stride)
 
-        for tile_index, tile in enumerate(tiles):
+        for tile_index, tile in tqdm(enumerate(tiles), total=len(tiles), desc="DiffVAE decode", leave=False):
             feat_tile, is_origin, pad_trailing, content_thw = slice_stage4_tile(
                 feat_s4, tile, content_frames=content_s4_frames
             )
@@ -4667,7 +4669,7 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         randn_device = generator.device if generator is not None else feat_s4.device
         up3_stride = tuple(self.upsamples[3].stride)
 
-        for tile in tiles:
+        for tile in tqdm(tiles, total=len(tiles), desc="DiffVAE decode", leave=False):
             feat_tile, is_origin, pad_trailing, content_thw = slice_stage4_tile(
                 feat_s4, tile, content_frames=content_s4_frames
             )
@@ -4947,40 +4949,44 @@ class LTX25DiffusionVideoDecoder(DiffusionVideoDecoder):
             .upscale(self.video_downscale_factors)
             ._replace(channels=self.out_channels)
         )
-        device = latent.device
-        if device.type == "cuda":
-            # Cached allocator blocks from a previous decode would otherwise make the
-            # free-memory query report a budget of zero for back-to-back decodes.
-            torch.cuda.empty_cache()
-            free_bytes = torch.cuda.mem_get_info(device.index)[0]
-        else:
-            free_bytes = 0
-        if free_bytes <= 0:
-            return None
-
-        # Budget estimate must not read weight dtype/device: parameters may be meta
-        # or disk-offloaded here, so assume bf16 storage for the footprint estimate.
-        model_bytes = sum(parameter.numel() for parameter in self.parameters()) * 2
         upsample_strides = [tuple(upsample.stride) for upsample in self.upsamples]
-        element_size = accumulator_element_size(latent.dtype)
-        return recommended_decode_tiling_config(
-            tile_halos=self.tile_halos,
-            pixel_scale=stage4_to_pixel_scale_factors(upsample_strides[3], self.patch_size),
-            min_tile_size_s4=self.tile_min_sizes,
-            patch_size=self.patch_size,
-            height=pixel_shape.height,
-            width=pixel_shape.width,
-            num_frames=pixel_shape.frames,
-            mode=DiffVAEMode.CHUNKED_EAGER,
-            free_bytes=free_bytes,
-            stage5_channels=self.stage_channels[-1],
-            stage4_channels=self.stage_channels[3],
-            upsample_strides=upsample_strides,
-            model_bytes=model_bytes,
-            element_size=element_size,
-            natten_trailing_pad_latent_frames=self._natten_trailing_pad_latent_frames,
-            keyframes=keyframes is not None,
+        pixel_scale = stage4_to_pixel_scale_factors(upsample_strides[3], self.patch_size)
+        overlap_t, overlap_hw = recommended_pixel_overlaps(self.tile_halos, pixel_scale)
+        ft, fh, fw = pixel_scale.time, pixel_scale.height, pixel_scale.width
+        step_t = math.lcm(ft, VIDEO_SCALE_FACTORS.time)
+        step_h = math.lcm(fh, VIDEO_SCALE_FACTORS.height)
+        step_w = math.lcm(fw, VIDEO_SCALE_FACTORS.width)
+        min_t = _round_up(max(2 * ft, 2 * overlap_t, _round_up(self.tile_min_sizes[0] * ft, ft), 16), step_t)
+        min_h = _round_up(max(2 * fh, 2 * overlap_hw, _round_up(self.tile_min_sizes[1] * fh, fh), 512), step_h)
+        min_w = _round_up(max(2 * fw, 2 * overlap_hw, _round_up(self.tile_min_sizes[2] * fw, fw), 512), step_w)
+        return TileSizeConfig(
+            frames=DimensionSizeConfig(min_t, overlap_t),
+            height=DimensionSizeConfig(min_h, overlap_hw),
+            width=DimensionSizeConfig(min_w, overlap_hw),
         )
+
+    def _resolve_tiling_config(self, latent, tiled, keyframes=None, tile_size_in_pixels=None, tile_size_in_frames=None):
+        if not tiled:
+            return None
+        if tile_size_in_pixels is not None and tile_size_in_frames is not None:
+            try:
+                pixel_scale = stage4_to_pixel_scale_factors([tuple(upsample.stride) for upsample in self.upsamples][3], self.patch_size)
+                overlap_t, overlap_hw = recommended_pixel_overlaps(self.tile_halos, pixel_scale)
+                tiling_config = TileSizeConfig(
+                    frames=DimensionSizeConfig(tile_size_in_frames, overlap_t),
+                    height=DimensionSizeConfig(tile_size_in_pixels, overlap_hw),
+                    width=DimensionSizeConfig(tile_size_in_pixels, overlap_hw),
+                )
+                pixel_shape = (
+                    VideoLatentShape.from_torch_shape(latent.shape)
+                    .upscale(self.video_downscale_factors)
+                    ._replace(channels=self.out_channels)
+                )
+                tiling_config.validate(pixel_scale, pixel_shape)
+                return tiling_config
+            except ValueError:
+                pass
+        return self.auto_tiling_config(latent, keyframes=keyframes)
 
     def decode(
         self,
@@ -4989,14 +4995,12 @@ class LTX25DiffusionVideoDecoder(DiffusionVideoDecoder):
         seed=None,
         rand_device="cpu",
         keyframes=None,
+        tile_size_in_pixels=None,
+        tile_size_in_frames=None,
         **kwargs,
     ):
-        generator = torch.Generator(device=rand_device).manual_seed(seed) if seed is not None else None
-        tiling_config = None
-        if tiled:
-            tiling_config = self.auto_tiling_config(latent, keyframes=keyframes)
-            if tiling_config is None:
-                raise ValueError("Automatic DiffVAE tiling requires a CUDA device with queryable free memory.")
+        generator = torch.Generator(device=rand_device).manual_seed(42 if seed is None else seed + 42)
+        tiling_config = self._resolve_tiling_config(latent, tiled, keyframes, tile_size_in_pixels, tile_size_in_frames)
         iterator = (
             self._decode_pixels_with_keyframes(latent, keyframes, tiling_config, generator=generator)
             if keyframes is not None
@@ -5006,4 +5010,3 @@ class LTX25DiffusionVideoDecoder(DiffusionVideoDecoder):
         if not chunks:
             raise RuntimeError("Diffusion decoder produced no output chunks")
         return torch.cat(chunks, dim=2)
-

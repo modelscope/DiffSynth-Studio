@@ -23,6 +23,8 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/LTX-2.5-Repackage", origin_file_pattern="text_encoder_post_modules.safetensors", **vram_config),
         ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="diffusion_models/ltx-2.5-22b-dev-transformer-bf16.safetensors", **vram_config),
         ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="vae/ltx-2.5-video-vae-bf16.safetensors", **vram_config),
+        # For lower VRAM and faster decoding, replace the line above with the conv vae decoder:
+        # ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="vae/ltx-2.5-video-vae-conv-bf16.safetensors", **vram_config),
         ModelConfig(model_id="Lightricks/LTX-2.5", origin_file_pattern="vae/ltx-2.5-audio-vae-bf16.safetensors", **vram_config),
     ],
 )
@@ -40,6 +42,7 @@ video, audio = pipe(
     width=width,
     num_frames=num_frames,
     tiled=True,
+    tile_size_in_frames=80,
     cfg_scale=3.0,
     input_images=[first_frame],
     input_images_indexes=[0],
