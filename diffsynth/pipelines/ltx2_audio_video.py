@@ -429,7 +429,7 @@ class LTX2AudioVideoUnit_NoiseInitializer(PipelineUnit):
             "audio_positions": audio_positions,
             "video_latent_shape": video_latent_shape,
             "audio_latent_shape": audio_latent_shape,
-            "video_keyframes_mask": video_keyframes_mask
+            "video_keyframes_mask": video_keyframes_mask,
         }
 
     def process(self, pipe: LTX2AudioVideoPipeline, height, width, num_frames, seed, rand_device, frame_rate=24.0, audio_only=False):
@@ -786,14 +786,7 @@ def model_fn_ltx2(
             video_positions = torch.cat([video_positions, ref_frames_position], dim=2)
             video_timesteps = torch.cat([video_timesteps, ref_frames_timestep], dim=1)
             if video_keyframes_mask is not None:
-                # Target marks appended single-frame guiding latents as keyframe tokens too.
-                ref_keyframes_mask = torch.ones(
-                    ref_frames_latent.shape[0],
-                    ref_frames_latent.shape[1],
-                    1,
-                    dtype=video_keyframes_mask.dtype,
-                    device=video_keyframes_mask.device,
-                )
+                ref_keyframes_mask = torch.zeros(ref_frames_latent.shape[0], ref_frames_latent.shape[1], 1, dtype=video_keyframes_mask.dtype, device=video_keyframes_mask.device)
                 video_keyframes_mask = torch.cat([video_keyframes_mask, ref_keyframes_mask], dim=1)
 
     if audio_latents is not None:
