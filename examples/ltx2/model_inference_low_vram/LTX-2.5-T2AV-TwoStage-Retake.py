@@ -35,7 +35,6 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
 )
 
 dataset_snapshot_download("DiffSynth-Studio/example_video_dataset", allow_file_pattern="ltx2/*", local_dir="data/example_video_dataset")
-# The example video comes from the shared sample dataset, so reuse its paired prompt.
 prompt = "A beautiful woman with a flower crown is singing happily under a blooming cherry tree. She sings: 'Mummy don't know daddy's getting hot. At the body shop'"
 negative_prompt = pipe.default_negative_prompt["LTX-2.5"]
 
@@ -45,7 +44,6 @@ video = VideoData(path, height=height, width=width).raw_data()[:num_frames]
 assert len(video) == num_frames, f"Input video has {len(video)} frames, but expected {num_frames} frames based on the specified num_frames argument."
 audio, audio_sample_rate = read_audio(path)
 
-# Regenerate the video within time regions. Retake regions are in seconds.
 video, audio = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,

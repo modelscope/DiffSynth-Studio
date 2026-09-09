@@ -33,7 +33,6 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
 )
 
 dataset_snapshot_download("DiffSynth-Studio/example_video_dataset", allow_file_pattern="ltx2/*", local_dir="data/example_video_dataset")
-# The example audio comes from the shared sample dataset, so reuse its paired prompt.
 prompt = "A beautiful woman with a flower crown is singing happily under a blooming cherry tree."
 negative_prompt = pipe.default_negative_prompt["LTX-2.5"]
 height, width, num_frames, frame_rate = 512 * 2, 768 * 2, 121, 24
@@ -44,7 +43,7 @@ video, audio = pipe(
     negative_prompt=negative_prompt,
     retake_audio=audio,
     audio_sample_rate=audio_sample_rate,
-    seed=43,
+    seed=42,
     height=height,
     width=width,
     num_frames=num_frames,

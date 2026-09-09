@@ -33,7 +33,6 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
 prompt = "A girl is very happy, she is speaking: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
 negative_prompt = pipe.default_negative_prompt["LTX-2.5"]
 height, width = 512 * 2, 768 * 2
-# Automatic duration: one pipe call predicts the clip length from the prompt and generates it.
 video, audio = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,

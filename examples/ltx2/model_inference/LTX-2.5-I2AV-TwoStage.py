@@ -32,7 +32,6 @@ pipe = LTX2AudioVideoPipeline.from_pretrained(
     stage2_lora_strength=1.0,
 )
 dataset_snapshot_download("DiffSynth-Studio/example_video_dataset", allow_file_pattern="ltx2/*", local_dir="data/example_video_dataset")
-# The example images come from the shared sample dataset, so reuse its paired prompt.
 prompt = "A beautiful woman with a flower crown is singing happily under a blooming cherry tree. She sings: 'Mummy don't know daddy's getting hot. At the body shop'"
 negative_prompt = pipe.default_negative_prompt["LTX-2.5"]
 height, width, num_frames = 512 * 2, 768 * 2, 121
@@ -63,7 +62,6 @@ write_video_audio_ltx2(
 )
 pipe.clear_lora()
 
-# Keyframe interpolation: any frames can be used by setting input_images and input_images_indexes within the range of num_frames.
 video, audio = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,

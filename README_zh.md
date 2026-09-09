@@ -40,7 +40,7 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
-- **2026年9月7日** 我们接入了 [LTX-2.5](https://modelscope.cn/models/Lightricks/LTX-2.5)，这是 Lightricks 最新的音视频联合生成模型。支持的功能包括自动时长预测的文生音视频、关键帧插值的图生音视频、音频驱动视频、音视频区域重生成、IC-LoRA 像素空间上采样、文生音频、INT8 量化推理、低显存推理以及模型训练。详情请参考[文档](/docs/zh/Model_Details/LTX-2.5.md)和[示例代码](/examples/ltx2/)。
+- **2026年9月10日** 我们接入了 [LTX-2.5](https://modelscope.cn/models/Lightricks/LTX-2.5)，这是 Lightricks 最新的音视频联合生成模型。支持的功能包括自动时长预测的文生音视频、关键帧插值的图生音视频、音频驱动视频、音视频区域重生成、IC-LoRA 像素空间上采样、文生音频、INT8 量化推理、低显存推理以及模型训练。详情请参考[文档](/docs/zh/Model_Details/LTX-2.md)和[示例代码](/examples/ltx2/)。
 
 - **2026年9月1日** 我们接入了 [SenseNova-U1.5](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT)，这是商汤科技开源的统一多模态模型，我们为其提供了文生图、图像编辑、低显存推理和训练支持。详情请参考[文档](/docs/zh/Model_Details/SenseNova-U1.md)和[示例代码](/examples/sensenova_u1/)。
 

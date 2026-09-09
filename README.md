@@ -40,7 +40,7 @@ See also:
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
-- **September 7, 2026** We have integrated [LTX-2.5](https://modelscope.cn/models/Lightricks/LTX-2.5), the latest audio-video generation model from Lightricks. The features include text-to-audio/video with automatic duration prediction, image-to-audio/video with keyframe interpolation, audio-to-video, audio-video retake, IC-LoRA pixel spatial upscaling, text-to-audio, INT8 quantized inference, low VRAM inference, and training. For details, please refer to the [documentation](/docs/en/Model_Details/LTX-2.5.md) and [code](/examples/ltx2/).
+- **September 10, 2026** We have integrated [LTX-2.5](https://modelscope.cn/models/Lightricks/LTX-2.5), the latest audio-video generation model from Lightricks. The features include text-to-audio/video with automatic duration prediction, image-to-audio/video with keyframe interpolation, audio-to-video, audio-video retake, IC-LoRA pixel spatial upscaling, text-to-audio, INT8 quantized inference, low VRAM inference, and training. For details, please refer to the [documentation](/docs/en/Model_Details/LTX-2.md) and [code](/examples/ltx2/).
 
 - **September 1, 2026** We have integrated [SenseNova-U1.5](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT), SenseTime's unified multimodal model, for which we provide text-to-image generation, image editing, low VRAM inference, and training support. For details, please refer to the [documentation](/docs/en/Model_Details/SenseNova-U1.md) and [example code](/examples/sensenova_u1/).
 
@@ -329,7 +329,6 @@ Model overview:
 - Video generation
     - MiniMax-H3: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/MiniMax-H3.html), [Example code](/examples/minimax_h3/)
     - LingBot-Video: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/LingBot-Video.html), [Example code](/examples/lingbot_video/)
-    - LTX-2.5: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/LTX-2.5.html), [Example code](/examples/ltx2/)
     - LTX-2: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/LTX-2.html), [Example code](/examples/ltx2/)
     - Wan: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Wan.html), [Example code](/examples/wanvideo/)
 - Audio generation

@@ -403,7 +403,8 @@ class LTX2AudioVideoUnit_NoiseInitializer(PipelineUnit):
             latent_coords = pipe.video_patchifier.get_patch_grid_bounds(output_shape=video_latent_shape, device=pipe.device)
             video_positions = get_pixel_coords(latent_coords, VIDEO_SCALE_FACTORS, True).float()
             video_positions[:, 0, ...] = video_positions[:, 0, ...] / frame_rate
-            video_positions = video_positions.to(pipe.torch_dtype)
+            if not pipe.is_ltx25:
+                video_positions = video_positions.to(pipe.torch_dtype)
             video_keyframes_mask = self.build_video_keyframes_mask(pipe, video_latent_shape)
 
         audio_latent_shape = AudioLatentShape.from_video_pixel_shape(video_pixel_shape)
@@ -595,7 +596,8 @@ class LTX2AudioVideoUnit_InputImagesEmbedder(PipelineUnit):
                     latent_coords = pipe.video_patchifier.get_patch_grid_bounds(output_shape=VideoLatentShape.from_torch_shape(latents.shape), device=pipe.device)
                     video_positions = get_pixel_coords(latent_coords, VIDEO_SCALE_FACTORS, False).float()
                     video_positions[:, 0, ...] = (video_positions[:, 0, ...] + index) / frame_rate
-                    video_positions = video_positions.to(pipe.torch_dtype)
+                    if not pipe.is_ltx25:
+                        video_positions = video_positions.to(pipe.torch_dtype)
                     frame_conditions["ref_frames_latents"].append(latents)
                     frame_conditions["ref_frames_positions"].append(video_positions)
             if len(frame_conditions["ref_frames_latents"]) == 0:
@@ -642,7 +644,8 @@ class LTX2AudioVideoUnit_InContextVideoEmbedder(PipelineUnit):
                 video_positions[:, 0, ...] = video_positions[:, 0, ...] / frame_rate
                 video_positions[:, 1, ...] *= in_context_downsample_factor  # height axis
                 video_positions[:, 2, ...] *= in_context_downsample_factor  # width axis
-                video_positions = video_positions.to(pipe.torch_dtype)
+                if not pipe.is_ltx25:
+                    video_positions = video_positions.to(pipe.torch_dtype)
 
                 latents.append(in_context_latents)
                 positions.append(video_positions)

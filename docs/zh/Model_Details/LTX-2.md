@@ -85,6 +85,16 @@ write_video_audio_ltx2(video=video, audio=audio, output_path='video.mp4', fps=24
 |[Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Up](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Up)||[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Jib-Up.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Jib-Up.py)|-|-|-|-|
 |[Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Down](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Jib-Down)||[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Jib-Down.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Jib-Down.py)|-|-|-|-|
 |[Lightricks/LTX-2-19b-LoRA-Camera-Control-Static](https://www.modelscope.cn/models/Lightricks/LTX-2-19b-LoRA-Camera-Control-Static)||[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ltx2/model_inference/LTX-2-T2AV-Camera-Control-Static.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ltx2/model_inference_low_vram/LTX-2-T2AV-Camera-Control-Static.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: OneStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|-|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-OneStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-OneStage.py)|[code](/examples/ltx2/model_training/full/LTX-2.5-T2AV-splited.sh)|[code](/examples/ltx2/model_training/validate_full/LTX-2.5-T2AV.py)|[code](/examples/ltx2/model_training/lora/LTX-2.5-T2AV-splited.sh)|[code](/examples/ltx2/model_training/validate_lora/LTX-2.5-T2AV.py)|
+|[Lightricks/LTX-2.5: TwoStagePipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|-|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-TwoStage.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: OneStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`input_images`,`input_images_indexes`|[code](/examples/ltx2/model_inference/LTX-2.5-I2AV-OneStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-I2AV-OneStage.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: TwoStagePipeline-I2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`input_images`,`input_images_indexes`|[code](/examples/ltx2/model_inference/LTX-2.5-I2AV-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-I2AV-TwoStage.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: TwoStagePipeline-A2V](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`retake_audio`,`audio_sample_rate`,`stage2_lora_config`|[code](/examples/ltx2/model_inference/LTX-2.5-A2V-TwoStage.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-A2V-TwoStage.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: TwoStagePipeline-Retake](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`retake_video`,`retake_video_regions`,`stage2_lora_config`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-TwoStage-Retake.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-TwoStage-Retake.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: T2A](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`audio_only=True`|[code](/examples/ltx2/model_inference/LTX-2.5-T2A.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2A.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`auto_duration`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-DistilledPipeline.py)|-|-|-|-|
+|[Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler](https://www.modelscope.cn/models/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler)|`in_context_videos`,`in_context_downsample_factor`|[code](/examples/ltx2/model_inference/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: INT8-ConvRot](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|INT8 DiT + INT8 Gemma4|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-INT8-ConvRot.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-INT8-ConvRot.py)|-|-|-|-|
 
 ## 模型推理
 
@@ -94,16 +104,19 @@ write_video_audio_ltx2(video=video, audio=audio, output_path='video.mp4', fps=24
 
 * `prompt`: 提示词，描述视频中出现的内容。
 * `negative_prompt`: 负向提示词，描述视频中不应该出现的内容，默认值为 `""`。
-* `cfg_scale`: Classifier-free guidance 的参数，默认值为 3.0。
+* `denoising_strength`: 去噪强度，范围是 0～1，默认值为 1.0。
 * `input_images`: 输入图像列表，用于图生视频。
 * `input_images_indexes`: 输入图像在视频中的帧索引列表。
 * `input_images_strength`: 输入图像的强度，默认值为 1.0。
-* `denoising_strength`: 去噪强度，范围是 0～1，默认值为 1.0。
 * `seed`: 随机种子。默认为 `None`，即完全随机。
 * `rand_device`: 生成随机高斯噪声矩阵的计算设备，默认为 `"cpu"`。当设置为 `cuda` 时，在不同 GPU 上会导致不同的生成结果。
 * `height`: 视频高度，需保证高度为 32 的倍数（单阶段）或 64 的倍数（两阶段）。
 * `width`: 视频宽度，需保证宽度为 32 的倍数（单阶段）或 64 的倍数（两阶段）。
 * `num_frames`: 视频帧数，默认值为 121，需保证为 8 的倍数 + 1。
+* `auto_duration`: 是否根据提示词自动预测视频时长，默认为 `False`。开启后无需传入 `num_frames`，需要加载 Duration Head。
+* `auto_duration_min_seconds` / `auto_duration_max_seconds`: 自动时长的上下界（秒），默认为 1.0 和 20.0。
+* `audio_only`: 是否只生成音频（T2A），默认为 `False`。设置为 `True` 时无需加载视频 VAE 与 latent upsampler。
+* `cfg_scale`: Classifier-free guidance 的参数，默认值为 3.0。
 * `num_inference_steps`: 推理次数，默认值为 40。
 * `tiled`: 是否启用 VAE 分块推理，默认为 `True`。设置为 `True` 时可显著减少 VAE 编解码阶段的显存占用，会产生少许误差，以及少量推理时间延长。
 * `tile_size_in_pixels`: VAE 编解码阶段的像素分块大小，默认为 512。
@@ -114,7 +127,7 @@ write_video_audio_ltx2(video=video, audio=audio, output_path='video.mp4', fps=24
 * `use_distilled_pipeline`: 是否使用蒸馏管道，默认为 `False`。
 * `progress_bar_cmd`: 进度条，默认为 `tqdm.tqdm`。可通过设置为 `lambda x:x` 来屏蔽进度条。
 
-如果显存不足，请开启[显存管理](../Pipeline_Usage/VRAM_management.md)，我们在示例代码中提供了每个模型推荐的低显存配置，详见前文"支持的推理脚本"中的表格。
+如果显存不足，请开启[显存管理](../Pipeline_Usage/VRAM_management.md)，我们在示例代码中提供了每个模型推荐的低显存配置，详见前文"模型总览"中的表格。
 
 ## 模型训练
 
