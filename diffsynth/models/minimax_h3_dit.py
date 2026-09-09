@@ -287,6 +287,45 @@ def _block_body(block, x, t_emb, combined_indices, rope_freqs, cu_seqlens, max_s
 
 _compiled_block_forward = torch.compile(_block_body, dynamic=False)
 
+# Selective activation checkpointing for the training path: the block is recomputed in backward except
+# the fused attention output (the one op whose recompute is expensive relative to the memory it saves:
+# ~240 MB per block, ~12 GB for 50 blocks, vs ~3 GB per block for a full set of activations). With the
+# checkpoint inside the compiled function the partitioner applies the policy to the compiled graph.
+_SAC_SAVE_OPS = {
+    torch.ops.aten._scaled_dot_product_cudnn_attention.default,
+    torch.ops.aten._scaled_dot_product_flash_attention.default,
+    torch.ops.aten._scaled_dot_product_efficient_attention.default,
+}
+
+
+def _sac_policy(ctx, op, *args, **kwargs):
+    from torch.utils.checkpoint import CheckpointPolicy
+    return CheckpointPolicy.MUST_SAVE if op in _SAC_SAVE_OPS else CheckpointPolicy.PREFER_RECOMPUTE
+
+
+def _block_body_checkpointed(block, x, t_emb, combined_indices, rope_freqs, cu_seqlens, max_seqlen, seq_bounds):
+    import functools
+    from torch.utils.checkpoint import checkpoint, create_selective_checkpoint_contexts
+    return checkpoint(
+        _block_body, block, x, t_emb, combined_indices, rope_freqs, cu_seqlens, max_seqlen, seq_bounds,
+        use_reentrant=False, context_fn=functools.partial(create_selective_checkpoint_contexts, _sac_policy),
+    )
+
+
+_compiled_block_checkpointed = torch.compile(_block_body_checkpointed, dynamic=False)
+
+
+def _use_compiled_checkpoint(use_gradient_checkpointing, use_gradient_checkpointing_offload):
+    if not (use_gradient_checkpointing and not use_gradient_checkpointing_offload and _compile_blocks()):
+        return False
+    try:
+        from ..core.gradient.gradient_checkpoint import _HAS_DEEPSPEED, deepspeed
+        if _HAS_DEEPSPEED and deepspeed.checkpointing.is_configured():
+            return False   # the repo's DeepSpeed checkpoint path keeps its own behaviour
+    except ImportError:
+        pass
+    return True
+
 
 class MiniMaxH3FinalLayer(nn.Module):
     def __init__(self, hidden_size, time_embed_dim, final_adaln_out_features, latents_dim, audio_latents_dim, patch_size, final_norm_eps):
@@ -427,7 +466,13 @@ class MiniMaxH3DiT(nn.Module):
         hidden = decoder_input
         cu_seqlens = cu_seqlens.to(device)
         seq_bounds = tuple(cu_seqlens.tolist())   # one sync per forward instead of one per block execution
+        compiled_ckpt = _use_compiled_checkpoint(use_gradient_checkpointing, use_gradient_checkpointing_offload)
         for block_id, block in enumerate(self.blocks):
+            if compiled_ckpt:
+                hidden = _compiled_block_checkpointed(block, hidden, t_emb, combined_indices, rope_freqs, cu_seqlens, max_seqlen, seq_bounds)
+                if control_hints is not None and block_id in control_hints:
+                    hidden = hidden + control_hints[block_id].to(hidden.device, hidden.dtype)
+                continue
             hidden = gradient_checkpoint_forward(
                 block,
                 use_gradient_checkpointing,
