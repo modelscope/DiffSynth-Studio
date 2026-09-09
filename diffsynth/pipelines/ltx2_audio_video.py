@@ -22,7 +22,7 @@ from ..models.ltx2_upsampler import LTX2LatentUpsampler
 from ..models.ltx2_common import VideoLatentShape, AudioLatentShape, VideoPixelShape, get_pixel_coords, VIDEO_SCALE_FACTORS
 from ..models.ltx25_text_encoder import LTX25GemmaTokenizer
 from ..utils.data.media_io_ltx2 import ltx2_preprocess
-from ..utils.data.audio import convert_to_stereo, resample_waveform
+from ..utils.data.audio import convert_to_stereo
 
 
 class LTX2AudioVideoPipeline(BasePipeline):
@@ -269,23 +269,10 @@ class LTX2AudioVideoPipeline(BasePipeline):
                 inputs_shared["video_latents"], tiled=tiled, tile_size_in_pixels=tile_size_in_pixels, tile_overlap_in_pixels=tile_overlap_in_pixels,
                 tile_size_in_frames=tile_size_in_frames, tile_overlap_in_frames=tile_overlap_in_frames, seed=seed, rand_device=rand_device)
             video = self.vae_output_to_video(video)
-        retake_audio = inputs_shared.get("retake_audio")
-        denoise_mask_audio = inputs_shared.get("denoise_mask_audio")
-        audio_fully_frozen = (
-            retake_audio is not None
-            and denoise_mask_audio is not None
-            and float(denoise_mask_audio.abs().max()) == 0.0
-        )
-        if audio_fully_frozen:
-            waveform, waveform_sample_rate = retake_audio
-            decoded_audio = resample_waveform(waveform, waveform_sample_rate, self.audio_vocoder.output_sampling_rate)
-            num_samples = int(inputs_shared["num_frames"] / inputs_shared["frame_rate"] * self.audio_vocoder.output_sampling_rate)
-            decoded_audio = self.output_audio_format_check(decoded_audio[..., :num_samples])
-        else:
-            self.load_models_to_device(["audio_vae_decoder", "audio_vocoder"])
-            decoded_audio = self.audio_vae_decoder(inputs_shared["audio_latents"])
-            decoded_audio = self.audio_vocoder(decoded_audio)
-            decoded_audio = self.output_audio_format_check(decoded_audio)
+        self.load_models_to_device(["audio_vae_decoder", "audio_vocoder"])
+        decoded_audio = self.audio_vae_decoder(inputs_shared["audio_latents"])
+        decoded_audio = self.audio_vocoder(decoded_audio)
+        decoded_audio = self.output_audio_format_check(decoded_audio)
         return video, decoded_audio
 
 
@@ -761,8 +748,6 @@ def model_fn_ltx2(
         b, c_v, f, h, w = video_latents.shape
         video_latents = video_patchifier.patchify(video_latents)
         if video_keyframes_mask is not None:
-            # Target LTX-2.5 keeps patchified video tokens as a channel-first view.
-            # Preserve that layout because BF16 GEMM reduction order depends on strides.
             video_latents = video_latents.transpose(1, 2).contiguous().transpose(1, 2)
             video_keyframes_mask = video_patchifier.patchify(video_keyframes_mask)
         seq_len_video = video_latents.shape[1]
