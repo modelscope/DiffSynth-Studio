@@ -1,10 +1,9 @@
-import copy
 import math
 from pathlib import Path
 from typing import NamedTuple
 
 import torch
-from transformers import PreTrainedTokenizerFast
+from transformers import Gemma4UnifiedConfig, Gemma4UnifiedForConditionalGeneration, PreTrainedTokenizerFast
 
 from .ltx2_common import rms_norm
 from .ltx2_dit import (
@@ -17,154 +16,106 @@ from .ltx2_dit import (
 )
 
 
-LTX25_GEMMA_CONFIG = {
-    "architectures": ["Gemma4UnifiedForConditionalGeneration"],
-    "audio_config": {
-        "_name_or_path": "",
-        "architectures": None,
-        "audio_embed_dim": 640,
-        "chunk_size_feed_forward": 0,
-        "dtype": "bfloat16",
-        "id2label": {"0": "LABEL_0", "1": "LABEL_1"},
-        "initializer_range": 0.02,
-        "is_encoder_decoder": False,
-        "label2id": {"LABEL_0": 0, "LABEL_1": 1},
-        "model_type": "gemma4_unified_audio",
-        "output_attentions": False,
-        "output_hidden_states": False,
-        "problem_type": None,
-        "return_dict": True,
-        "rms_norm_eps": 1e-06,
-    },
-    "audio_token_id": 258881,
-    "boa_token_id": 256000,
-    "boi_token_id": 255999,
-    "dtype": "bfloat16",
-    "eoa_token_index": 258883,
-    "eoi_token_id": 258882,
-    "eos_token_id": [1, 106],
-    "gemma_version": "gemma4-12b-ltx-v1",
-    "image_token_id": 258880,
-    "initializer_range": 0.02,
-    "model_type": "gemma4_unified",
-    "text_config": {
-        "attention_bias": False,
-        "attention_dropout": 0.0,
-        "attention_k_eq_v": True,
-        "bos_token_id": 2,
-        "dtype": "bfloat16",
-        "enable_moe_block": False,
-        "eos_token_id": 1,
-        "final_logit_softcapping": 30.0,
-        "global_head_dim": 512,
-        "head_dim": 256,
-        "hidden_activation": "gelu_pytorch_tanh",
-        "hidden_size": 3840,
-        "hidden_size_per_layer_input": 0,
-        "initializer_range": 0.02,
-        "intermediate_size": 15360,
-        "layer_types": (["sliding_attention"] * 5 + ["full_attention"]) * 8,
-        "max_position_embeddings": 262144,
-        "model_type": "gemma4_unified_text",
-        "moe_intermediate_size": None,
-        "num_attention_heads": 16,
-        "num_experts": None,
-        "num_global_key_value_heads": 1,
-        "num_hidden_layers": 48,
-        "num_key_value_heads": 8,
-        "num_kv_shared_layers": 0,
-        "pad_token_id": 0,
-        "rms_norm_eps": 1e-06,
-        "rope_parameters": {
-            "full_attention": {"partial_rotary_factor": 0.25, "rope_theta": 1000000.0, "rope_type": "proportional"},
-            "sliding_attention": {"rope_theta": 10000.0, "rope_type": "default"},
-        },
-        "sliding_window": 1024,
-        "tie_word_embeddings": True,
-        "top_k_experts": None,
-        "use_bidirectional_attention": "vision",
-        "use_cache": True,
-        "use_double_wide_mlp": False,
-        "vocab_size": 262144,
-        "vocab_size_per_layer_input": 262144,
-    },
-    "tie_word_embeddings": True,
-    "transformers_version": "5.10.1",
-    "video_token_id": 258884,
-    "vision_config": {
-        "_name_or_path": "",
-        "architectures": None,
-        "chunk_size_feed_forward": 0,
-        "dtype": "bfloat16",
-        "id2label": {"0": "LABEL_0", "1": "LABEL_1"},
-        "initializer_range": 0.02,
-        "is_encoder_decoder": False,
-        "label2id": {"LABEL_0": 0, "LABEL_1": 1},
-        "mm_embed_dim": 3840,
-        "mm_posemb_size": 1120,
-        "model_type": "gemma4_unified_vision",
-        "num_soft_tokens": 280,
-        "output_attentions": False,
-        "output_hidden_states": False,
-        "output_proj_dims": 3840,
-        "patch_size": 16,
-        "pooling_kernel_size": 3,
-        "problem_type": None,
-        "return_dict": True,
-        "rms_norm_eps": 1e-06,
-    },
-}
-
-
-class LTX25TextEncoder(torch.nn.Module):
+class LTX25TextEncoder(Gemma4UnifiedForConditionalGeneration):
     def __init__(self):
-        super().__init__()
-        from transformers import Gemma4UnifiedConfig, Gemma4UnifiedForConditionalGeneration
-
-        self.config = Gemma4UnifiedConfig(**copy.deepcopy(LTX25_GEMMA_CONFIG))
-        self.model = Gemma4UnifiedForConditionalGeneration(self.config)
-        self.reset_non_persistent_buffers()
-
-    def reset_non_persistent_buffers(self):
-        from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
-
-        language_model = self.model.model.language_model
-        text_config = self.config.text_config
-        rotary_embedding = language_model.rotary_emb
-        # VRAM management replaces submodules with wrappers; buffers live on the inner module.
-        rotary_embedding = getattr(rotary_embedding, "module", rotary_embedding)
-        for layer_type in dict.fromkeys(text_config.layer_types):
-            rope_parameters = text_config.rope_parameters[layer_type]
-            if rope_parameters is None:
-                continue
-            rope_type = rope_parameters["rope_type"]
-            if rope_type == "default":
-                inv_freq, attention_scaling = rotary_embedding.compute_default_rope_parameters(
-                    text_config, layer_type=layer_type
-                )
-            else:
-                init_kwargs = {"layer_type": layer_type}
-                if layer_type == "full_attention" and rope_type == "proportional":
-                    init_kwargs["head_dim_key"] = "global_head_dim"
-                inv_freq, attention_scaling = ROPE_INIT_FUNCTIONS[rope_type](text_config, **init_kwargs)
-            for buffer_name, buffer_value in (
-                (f"{layer_type}_inv_freq", inv_freq),
-                (f"{layer_type}_original_inv_freq", inv_freq.clone()),
-            ):
-                if hasattr(rotary_embedding, buffer_name):
-                    delattr(rotary_embedding, buffer_name)
-                rotary_embedding.register_buffer(buffer_name, buffer_value, persistent=False)
-            setattr(rotary_embedding, f"{layer_type}_attention_scaling", attention_scaling)
-
-        embed_scale = torch.tensor(text_config.hidden_size**0.5, device="cpu")
-        embed_tokens = language_model.embed_tokens
-        embed_tokens = getattr(embed_tokens, "module", embed_tokens)
-        if hasattr(embed_tokens, "embed_scale"):
-            delattr(embed_tokens, "embed_scale")
-        embed_tokens.register_buffer("embed_scale", embed_scale, persistent=False)
-
-    def forward(self, input_ids=None, attention_mask=None, output_hidden_states=False, **kwargs):
-        return self.model.model(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=output_hidden_states, **kwargs)
+        config = {
+            "architectures": ["Gemma4UnifiedForConditionalGeneration"],
+            "audio_config": {
+                "_name_or_path": "",
+                "architectures": None,
+                "audio_embed_dim": 640,
+                "chunk_size_feed_forward": 0,
+                "dtype": "bfloat16",
+                "id2label": {"0": "LABEL_0", "1": "LABEL_1"},
+                "initializer_range": 0.02,
+                "is_encoder_decoder": False,
+                "label2id": {"LABEL_0": 0, "LABEL_1": 1},
+                "model_type": "gemma4_unified_audio",
+                "output_attentions": False,
+                "output_hidden_states": False,
+                "problem_type": None,
+                "return_dict": True,
+                "rms_norm_eps": 1e-06,
+            },
+            "audio_token_id": 258881,
+            "boa_token_id": 256000,
+            "boi_token_id": 255999,
+            "dtype": "bfloat16",
+            "eoa_token_index": 258883,
+            "eoi_token_id": 258882,
+            "eos_token_id": [1, 106],
+            "gemma_version": "gemma4-12b-ltx-v1",
+            "image_token_id": 258880,
+            "initializer_range": 0.02,
+            "model_type": "gemma4_unified",
+            "text_config": {
+                "attention_bias": False,
+                "attention_dropout": 0.0,
+                "attention_k_eq_v": True,
+                "bos_token_id": 2,
+                "dtype": "bfloat16",
+                "enable_moe_block": False,
+                "eos_token_id": 1,
+                "final_logit_softcapping": 30.0,
+                "global_head_dim": 512,
+                "head_dim": 256,
+                "hidden_activation": "gelu_pytorch_tanh",
+                "hidden_size": 3840,
+                "hidden_size_per_layer_input": 0,
+                "initializer_range": 0.02,
+                "intermediate_size": 15360,
+                "layer_types": (["sliding_attention"] * 5 + ["full_attention"]) * 8,
+                "max_position_embeddings": 262144,
+                "model_type": "gemma4_unified_text",
+                "moe_intermediate_size": None,
+                "num_attention_heads": 16,
+                "num_experts": None,
+                "num_global_key_value_heads": 1,
+                "num_hidden_layers": 48,
+                "num_key_value_heads": 8,
+                "num_kv_shared_layers": 0,
+                "pad_token_id": 0,
+                "rms_norm_eps": 1e-06,
+                "rope_parameters": {
+                    "full_attention": {"partial_rotary_factor": 0.25, "rope_theta": 1000000.0, "rope_type": "proportional"},
+                    "sliding_attention": {"rope_theta": 10000.0, "rope_type": "default"},
+                },
+                "sliding_window": 1024,
+                "tie_word_embeddings": True,
+                "top_k_experts": None,
+                "use_bidirectional_attention": "vision",
+                "use_cache": True,
+                "use_double_wide_mlp": False,
+                "vocab_size": 262144,
+                "vocab_size_per_layer_input": 262144,
+            },
+            "tie_word_embeddings": True,
+            "transformers_version": "5.10.1",
+            "video_token_id": 258884,
+            "vision_config": {
+                "_name_or_path": "",
+                "architectures": None,
+                "chunk_size_feed_forward": 0,
+                "dtype": "bfloat16",
+                "id2label": {"0": "LABEL_0", "1": "LABEL_1"},
+                "initializer_range": 0.02,
+                "is_encoder_decoder": False,
+                "label2id": {"LABEL_0": 0, "LABEL_1": 1},
+                "mm_embed_dim": 3840,
+                "mm_posemb_size": 1120,
+                "model_type": "gemma4_unified_vision",
+                "num_soft_tokens": 280,
+                "output_attentions": False,
+                "output_hidden_states": False,
+                "output_proj_dims": 3840,
+                "patch_size": 16,
+                "pooling_kernel_size": 3,
+                "problem_type": None,
+                "return_dict": True,
+                "rms_norm_eps": 1e-06,
+            },
+        }
+        super().__init__(Gemma4UnifiedConfig(**config))
 
 
 class LTX25GemmaTokenizer:
