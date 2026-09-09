@@ -870,6 +870,7 @@ class TransformerConfig:
     context_dim: int
     apply_gated_attention: bool = False
     cross_attention_adaln: bool = False
+    ff_bias: bool = True
 
 
 class BasicAVTransformerBlock(torch.nn.Module):
@@ -903,7 +904,7 @@ class BasicAVTransformerBlock(torch.nn.Module):
                 norm_eps=norm_eps,
                 apply_gated_attention=video.apply_gated_attention,
             )
-            self.ff = FeedForward(video.dim, dim_out=video.dim)
+            self.ff = FeedForward(video.dim, dim_out=video.dim, bias=video.ff_bias)
             video_sst_size = adaln_embedding_coefficient(video.cross_attention_adaln)
             self.scale_shift_table = torch.nn.Parameter(torch.empty(video_sst_size, video.dim))
 
@@ -926,7 +927,7 @@ class BasicAVTransformerBlock(torch.nn.Module):
                 norm_eps=norm_eps,
                 apply_gated_attention=audio.apply_gated_attention,
             )
-            self.audio_ff = FeedForward(audio.dim, dim_out=audio.dim)
+            self.audio_ff = FeedForward(audio.dim, dim_out=audio.dim, bias=audio.ff_bias)
             audio_sst_size = adaln_embedding_coefficient(audio.cross_attention_adaln)
             self.audio_scale_shift_table = torch.nn.Parameter(torch.empty(audio_sst_size, audio.dim))
 
@@ -1243,22 +1244,21 @@ def apply_cross_attention_adaln(
 
 
 class GELUApprox(torch.nn.Module):
-    def __init__(self, dim_in: int, dim_out: int) -> None:
+    def __init__(self, dim_in: int, dim_out: int, bias: bool = True) -> None:
         super().__init__()
-        self.proj = torch.nn.Linear(dim_in, dim_out)
+        self.proj = torch.nn.Linear(dim_in, dim_out, bias=bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return torch.nn.functional.gelu(self.proj(x), approximate="tanh")
 
 
 class FeedForward(torch.nn.Module):
-    def __init__(self, dim: int, dim_out: int, mult: int = 4) -> None:
+    def __init__(self, dim: int, dim_out: int, mult: int = 4, bias: bool = True) -> None:
         super().__init__()
         inner_dim = int(dim * mult)
-        project_in = GELUApprox(dim, inner_dim)
+        project_in = GELUApprox(dim, inner_dim, bias=bias)
 
-        self.net = torch.nn.Sequential(project_in, torch.nn.Identity(), torch.nn.Linear(inner_dim, dim_out))
-
+        self.net = torch.nn.Sequential(project_in, torch.nn.Identity(), torch.nn.Linear(inner_dim, dim_out, bias=bias))
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)
 
@@ -1309,6 +1309,10 @@ class LTXModel(torch.nn.Module):
         double_precision_rope: bool = True,
         apply_gated_attention: bool = False,
         cross_attention_adaln: bool = False,
+        use_prompt_adaln_single: bool = True,
+        ff_bias: bool = True,
+        audio_ff_bias: bool = True,
+        use_keyframes_abs_pos_embedding: bool = False,
     ):
         super().__init__()
         self._enable_gradient_checkpointing = False
@@ -1319,6 +1323,8 @@ class LTXModel(torch.nn.Module):
         self.positional_embedding_theta = positional_embedding_theta
         self.model_type = model_type
         self.cross_attention_adaln = cross_attention_adaln
+        self.use_prompt_adaln_single = use_prompt_adaln_single
+        self.use_keyframes_abs_pos_embedding = use_keyframes_abs_pos_embedding
         cross_pe_max_pos = None
         if model_type.is_video_enabled():
             if positional_embedding_max_pos is None:
@@ -1362,6 +1368,8 @@ class LTXModel(torch.nn.Module):
             audio_cross_attention_dim=audio_cross_attention_dim,
             norm_eps=norm_eps,
             apply_gated_attention=apply_gated_attention,
+            ff_bias=ff_bias,
+            audio_ff_bias=audio_ff_bias,
         )
 
     @property
@@ -1379,7 +1387,12 @@ class LTXModel(torch.nn.Module):
         # Video input components
         self.patchify_proj = torch.nn.Linear(in_channels, self.inner_dim, bias=True)
         self.adaln_single = AdaLayerNormSingle(self.inner_dim, embedding_coefficient=self._adaln_embedding_coefficient)
-        self.prompt_adaln_single = AdaLayerNormSingle(self.inner_dim, embedding_coefficient=2) if self.cross_attention_adaln else None
+        self.prompt_adaln_single = AdaLayerNormSingle(
+            self.inner_dim, embedding_coefficient=2
+        ) if self.cross_attention_adaln and self.use_prompt_adaln_single else None
+        self.keyframes_abs_pos_embedding = (
+            torch.nn.Parameter(torch.zeros(1, self.inner_dim)) if self.use_keyframes_abs_pos_embedding else None
+        )
 
         # Video caption projection
         if caption_channels is not None:
@@ -1406,7 +1419,9 @@ class LTXModel(torch.nn.Module):
         self.audio_patchify_proj = torch.nn.Linear(in_channels, self.audio_inner_dim, bias=True)
 
         self.audio_adaln_single = AdaLayerNormSingle(self.audio_inner_dim, embedding_coefficient=self._adaln_embedding_coefficient)
-        self.audio_prompt_adaln_single = AdaLayerNormSingle(self.audio_inner_dim, embedding_coefficient=2) if self.cross_attention_adaln else None
+        self.audio_prompt_adaln_single = AdaLayerNormSingle(
+            self.audio_inner_dim, embedding_coefficient=2
+        ) if self.cross_attention_adaln and self.use_prompt_adaln_single else None
 
         # Audio caption projection
         if caption_channels is not None:
@@ -1530,6 +1545,8 @@ class LTXModel(torch.nn.Module):
         audio_cross_attention_dim: int,
         norm_eps: float,
         apply_gated_attention: bool,
+        ff_bias: bool,
+        audio_ff_bias: bool,
     ) -> None:
         """Initialize transformer blocks for LTX."""
         video_config = (
@@ -1540,6 +1557,7 @@ class LTXModel(torch.nn.Module):
                 context_dim=cross_attention_dim,
                 apply_gated_attention=apply_gated_attention,
                 cross_attention_adaln=self.cross_attention_adaln,
+                ff_bias=ff_bias,
             )
             if self.model_type.is_video_enabled()
             else None
@@ -1552,6 +1570,7 @@ class LTXModel(torch.nn.Module):
                 context_dim=audio_cross_attention_dim,
                 apply_gated_attention=apply_gated_attention,
                 cross_attention_adaln=self.cross_attention_adaln,
+                ff_bias=audio_ff_bias,
             )
             if self.model_type.is_audio_enabled()
             else None

@@ -895,6 +895,83 @@ ltx2_series = [
         "extra_kwargs": {"separated_audio_video": True, "embedding_dim_gemma": 3840, "num_layers_gemma": 49, "video_attention_heads": 32, "video_attention_head_dim": 128, "audio_attention_heads": 32, "audio_attention_head_dim": 64, "num_connector_layers": 8, "apply_gated_attention": True},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_text_encoder.LTX2TextEncoderPostModulesStateDictConverter",
     },
+    {
+        "model_hash": "7960c5dc4626650824e36f65a8e992e9",
+        "model_name": "ltx25_dit",
+        "model_class": "diffsynth.models.ltx2_dit.LTXModel",
+        "extra_kwargs": {"caption_channels": None, "apply_gated_attention": True, "cross_attention_adaln": True, "ff_bias": False, "use_keyframes_abs_pos_embedding": True},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_dit.LTXModelStateDictConverter",
+    },
+    {
+        "model_hash": "4bc194ac62f5648db68d419916a25688",
+        "model_name": "ltx25_text_encoder",
+        "model_class": "diffsynth.models.ltx25_text_encoder.LTX25TextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx25_text_encoder.LTX25TextEncoderStateDictConverter",
+    },
+    {
+        "model_hash": "f1c63402b49c39c739f13cdb90714f9e",
+        "model_name": "ltx25_text_encoder_post_modules",
+        "model_class": "diffsynth.models.ltx25_text_encoder.LTX25TextEncoderPostModules",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx25_text_encoder.LTX25TextEncoderPostModulesStateDictConverter",
+    },
+    {
+        "model_hash": "e19205490f01801d0a7b6d3aba61e26e",
+        "model_name": "ltx25_video_vae_encoder",
+        "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoEncoder",
+        "extra_kwargs": {"encoder_version": "ltx-2.3"},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoEncoderStateDictConverter",
+    },
+    {
+        "model_hash": "e19205490f01801d0a7b6d3aba61e26e",
+        "model_name": "ltx25_diffusion_video_vae_decoder",
+        "model_class": "diffsynth.models.ltx25_diffvae.model.video_vae.diffusion_video_decoder.DiffusionVideoDecoder",
+        "extra_kwargs": {"stage_channels": [2048, 1024, 512, 512, 256], "stage_depths": [4, 6, 4, 2, 8], "stage_kernels": [[3, 7, 7], [3, 7, 7], [3, 5, 5], [3, 5, 5], [11, 11, 11]], "stage5_kernel": [11, 11, 11], "timestep_scale_multiplier": 1000.0, "default_num_inference_steps": 1, "model_output_type": "x0"},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx25_diffusion_video_vae.LTX25DiffusionVideoDecoderStateDictConverter",
+    },
+    {
+        "model_hash": "a1d642eecae96baa9c31d4e405564f49",
+        "model_name": "ltx25_conv_video_vae_encoder",
+        "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoEncoder",
+        "extra_kwargs": {"encoder_version": "ltx-2.3"},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoEncoderStateDictConverter",
+    },
+    {
+        "model_hash": "a1d642eecae96baa9c31d4e405564f49",
+        "model_name": "ltx25_conv_video_vae_decoder",
+        "model_class": "diffsynth.models.ltx2_video_vae.LTX2VideoDecoder",
+        "extra_kwargs": {"decoder_version": "ltx-2.3"},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_video_vae.LTX2VideoDecoderStateDictConverter",
+    },
+    {
+        "model_hash": "c2488315f13356abb806f9f217f1e803",
+        "model_name": "ltx25_audio_vae_decoder",
+        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2AudioDecoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2AudioDecoderStateDictConverter",
+    },
+    {
+        "model_hash": "c2488315f13356abb806f9f217f1e803",
+        "model_name": "ltx25_audio_vocoder",
+        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2VocoderWithBWE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2VocoderStateDictConverter",
+    },
+    {
+        "model_hash": "c2488315f13356abb806f9f217f1e803",
+        "model_name": "ltx25_audio_vae_encoder",
+        "model_class": "diffsynth.models.ltx2_audio_vae.LTX2AudioEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx2_audio_vae.LTX2AudioEncoderStateDictConverter",
+    },
+    {
+        "model_hash": "35840495e440a4f00946450269299bd6",
+        "model_name": "ltx25_duration_head",
+        "model_class": "diffsynth.models.ltx25_duration_head.LTX25DurationHead",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.ltx25_duration_head.LTX25DurationHeadStateDictConverter",
+    },
+    {
+        "model_hash": "5fbb28ecc6becd9513cee69b2dfb1053",
+        "model_name": "ltx25_temporal_upsampler",
+        "model_class": "diffsynth.models.ltx2_upsampler.LTX2LatentUpsampler",
+        "extra_kwargs": {"mid_channels": 512, "spatial_upsample": False, "temporal_upsample": True, "spatial_scale": 1.0, "rational_resampler": True},
+    },
 ]
 anima_series = [
     {
