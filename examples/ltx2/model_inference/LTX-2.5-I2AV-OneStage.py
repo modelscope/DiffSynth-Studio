@@ -32,7 +32,7 @@ dataset_snapshot_download("DiffSynth-Studio/example_video_dataset", allow_file_p
 # The example image comes from the shared sample dataset, so reuse its paired prompt.
 prompt = "A beautiful woman with a flower crown is singing happily under a blooming cherry tree. She sings: 'Mummy don't know daddy's getting hot. At the body shop'"
 negative_prompt = pipe.default_negative_prompt["LTX-2.5"]
-height, width, num_frames = 512 * 2, 768 * 2, 121
+height, width, num_frames = 512, 768, 121
 first_frame = Image.open("data/example_video_dataset/ltx2/first_frame.png").convert("RGB").resize((width, height))
 video, audio = pipe(
     prompt=prompt,

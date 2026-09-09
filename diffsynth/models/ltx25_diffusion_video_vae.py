@@ -4315,7 +4315,7 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         compute_dtype = feat_s4.dtype
         up3_stride = tuple(self.upsamples[3].stride)
 
-        for tile_index, tile in tqdm(enumerate(tiles), total=len(tiles), desc="DiffVAE decode", leave=False):
+        for tile_index, tile in tqdm(enumerate(tiles), total=len(tiles), desc="DiffVAE decode"):
             feat_tile, is_origin, pad_trailing, content_thw = slice_stage4_tile(
                 feat_s4, tile, content_frames=content_s4_frames
             )
@@ -4669,7 +4669,7 @@ class DiffusionVideoDecoder(nn.Module, Disposable, VideoDecoder):
         randn_device = generator.device if generator is not None else feat_s4.device
         up3_stride = tuple(self.upsamples[3].stride)
 
-        for tile in tqdm(tiles, total=len(tiles), desc="DiffVAE decode", leave=False):
+        for tile in tqdm(tiles, total=len(tiles), desc="DiffVAE decode"):
             feat_tile, is_origin, pad_trailing, content_thw = slice_stage4_tile(
                 feat_s4, tile, content_frames=content_s4_frames
             )

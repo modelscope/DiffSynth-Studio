@@ -163,8 +163,8 @@ class LTX25TextEncoder(torch.nn.Module):
             delattr(embed_tokens, "embed_scale")
         embed_tokens.register_buffer("embed_scale", embed_scale, persistent=False)
 
-    def forward(self, *args, **kwargs):
-        return self.model(*args, **kwargs)
+    def forward(self, input_ids=None, attention_mask=None, output_hidden_states=False, **kwargs):
+        return self.model.model(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=output_hidden_states, **kwargs)
 
 
 class LTX25GemmaTokenizer:
