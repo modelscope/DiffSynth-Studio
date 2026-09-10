@@ -273,6 +273,7 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
     "diffsynth.models.ltx2_dit.LTXModel": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_dit.BasicAVTransformerBlock": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.ltx25_text_encoder.LTX25TextEncoder": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
@@ -285,24 +286,24 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
     "diffsynth.models.ltx25_text_encoder.LTX25TextEncoderPostModules": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx25_text_encoder.LTX25Embeddings1DConnector": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.ltx25_diffusion_video_vae.LTX25DiffusionVideoDecoder": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx25_diffusion_video_vae.DiffusionVideoDecoder": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.ltx2_upsampler.LTX2LatentUpsampler": {
-        "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "torch.nn.GroupNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_upsampler.LTX2LatentUpsampler": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.ltx2_video_vae.LTX2VideoEncoder": {
-        "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_video_vae.LTX2VideoEncoder": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.ltx2_video_vae.LTX2VideoDecoder": {
-        "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_video_vae.LTX2VideoDecoder": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.ltx2_audio_vae.LTX2AudioDecoder": {
-        "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_audio_vae.LTX2AudioDecoder": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.ltx2_audio_vae.LTX2Vocoder": {
         "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",

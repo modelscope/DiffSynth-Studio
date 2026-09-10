@@ -3,10 +3,10 @@ from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelCo
 from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
 
 vram_config = {
-    "offload_dtype": torch.float8_e5m2,
-    "offload_device": "cpu",
-    "onload_dtype": torch.float8_e5m2,
-    "onload_device": "cpu",
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": "disk",
+    "onload_device": "disk",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
@@ -36,7 +36,7 @@ height, width, num_frames = 512 * 2, 768 * 2, 121
 video, audio = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,
-    seed=43,
+    seed=42,
     height=height,
     width=width,
     num_frames=num_frames,

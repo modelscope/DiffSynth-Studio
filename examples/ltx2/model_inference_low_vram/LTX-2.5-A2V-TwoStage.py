@@ -5,10 +5,10 @@ from diffsynth.utils.data.audio import read_audio
 from modelscope import dataset_snapshot_download
 
 vram_config = {
-    "offload_dtype": torch.float8_e5m2,
-    "offload_device": "cpu",
-    "onload_dtype": torch.float8_e5m2,
-    "onload_device": "cpu",
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": "disk",
+    "onload_device": "disk",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
@@ -44,7 +44,7 @@ video, audio = pipe(
     negative_prompt=negative_prompt,
     retake_audio=audio,
     audio_sample_rate=audio_sample_rate,
-    seed=43,
+    seed=42,
     height=height,
     width=width,
     num_frames=num_frames,

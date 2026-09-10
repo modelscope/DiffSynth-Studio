@@ -553,15 +553,17 @@ class PerChannelStatistics(nn.Module):
 
     def __init__(self, latent_channels: int = 128):
         super().__init__()
-        self.register_buffer("std-of-means", torch.empty(latent_channels))
-        self.register_buffer("mean-of-means", torch.empty(latent_channels))
+        # Frozen parameters, not buffers: disk-offload reload restores only named_parameters(),
+        # so persistent buffers would be skipped and strict load_state_dict would report them missing.
+        self.register_parameter("std-of-means", nn.Parameter(torch.empty(latent_channels), requires_grad=False))
+        self.register_parameter("mean-of-means", nn.Parameter(torch.empty(latent_channels), requires_grad=False))
 
     def un_normalize(self, x: torch.Tensor) -> torch.Tensor:
-        return (x * self.get_buffer("std-of-means").view(1, -1, 1, 1, 1).to(x)) + self.get_buffer("mean-of-means").view(
+        return (x * getattr(self, "std-of-means").view(1, -1, 1, 1, 1).to(x)) + getattr(self, "mean-of-means").view(
             1, -1, 1, 1, 1).to(x)
 
     def normalize(self, x: torch.Tensor) -> torch.Tensor:
-        return (x - self.get_buffer("mean-of-means").view(1, -1, 1, 1, 1).to(x)) / self.get_buffer("std-of-means").view(
+        return (x - getattr(self, "mean-of-means").view(1, -1, 1, 1, 1).to(x)) / getattr(self, "std-of-means").view(
             1, -1, 1, 1, 1).to(x)
 
 

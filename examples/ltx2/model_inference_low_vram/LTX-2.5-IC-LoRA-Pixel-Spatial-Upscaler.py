@@ -5,10 +5,10 @@ from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
 from modelscope import dataset_snapshot_download
 
 vram_config = {
-    "offload_dtype": torch.float8_e5m2,
-    "offload_device": "cpu",
-    "onload_dtype": torch.float8_e5m2,
-    "onload_device": "cpu",
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": "disk",
+    "onload_device": "disk",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,

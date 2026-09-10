@@ -699,7 +699,7 @@ class LTX2AudioVideoUnit_LatentsUpsampler(PipelineUnit):
         super().__init__(
             input_params=("video_latents",),
             output_params=("video_latents",),
-            onload_model_names=("upsampler",),
+            onload_model_names=("upsampler", "video_vae_encoder"),
         )
 
     def process(self, pipe: LTX2AudioVideoPipeline, video_latents):

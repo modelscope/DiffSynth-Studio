@@ -116,6 +116,12 @@ class LTX25TextEncoder(Gemma4UnifiedForConditionalGeneration):
             },
         }
         super().__init__(Gemma4UnifiedConfig(**config))
+        # Gemma4 registers a constant `layer_scalar` as a persistent buffer on each decoder layer.
+        # Disk-offload reload restores only named_parameters(), so a persistent buffer is never fetched
+        # from disk and strict load_state_dict fails; register it as a frozen parameter instead.
+        for module in self.modules():
+            if "layer_scalar" in module._buffers:
+                module.register_parameter("layer_scalar", torch.nn.Parameter(module._buffers.pop("layer_scalar"), requires_grad=False))
 
 
 class LTX25GemmaTokenizer:

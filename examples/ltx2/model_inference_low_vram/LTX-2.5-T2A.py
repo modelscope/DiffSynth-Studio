@@ -3,10 +3,10 @@ from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelCo
 from diffsynth.utils.data.audio import save_audio
 
 vram_config = {
-    "offload_dtype": torch.float8_e5m2,
-    "offload_device": "cpu",
-    "onload_dtype": torch.float8_e5m2,
-    "onload_device": "cpu",
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": "disk",
+    "onload_device": "disk",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
