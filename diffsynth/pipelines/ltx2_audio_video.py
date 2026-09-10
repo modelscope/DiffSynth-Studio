@@ -298,8 +298,6 @@ class LTX2AudioVideoUnit_PipelineChecker(PipelineUnit):
         return inputs_shared, inputs_posi, inputs_nega
 
 
-
-
 class LTX2AudioVideoUnit_AutoDuration(PipelineUnit):
     def __init__(self):
         super().__init__(take_over=True, onload_model_names=("duration_head",))

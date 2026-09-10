@@ -273,13 +273,13 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
     "diffsynth.models.ltx2_dit.LTXModel": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "diffsynth.models.ltx2_dit.BasicAVTransformerBlock": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ltx2_dit.BasicAVTransformerBlock": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
     },
     "diffsynth.models.ltx25_text_encoder.LTX25TextEncoder": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "transformers.models.gemma4_unified.modeling_gemma4_unified.Gemma4UnifiedTextDecoderLayer": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.gemma4_unified.modeling_gemma4_unified.Gemma4UnifiedTextDecoderLayer": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
         "transformers.models.gemma4_unified.modeling_gemma4_unified.Gemma4UnifiedRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.gemma4_unified.modeling_gemma4_unified.Gemma4UnifiedTextRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
