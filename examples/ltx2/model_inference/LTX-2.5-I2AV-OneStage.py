@@ -42,7 +42,6 @@ video, audio = pipe(
     num_frames=num_frames,
     tiled=True,
     tile_size_in_frames=80,
-    cfg_scale=3.0,
     input_images=[first_frame],
     input_images_indexes=[0],
     input_images_strength=1.0,

@@ -36,7 +36,6 @@ video, audio = pipe(
     width=width,
     num_frames=num_frames,
     tiled=True,
-    cfg_scale=4.0,
 )
 write_video_audio_ltx2(
     video=video,
