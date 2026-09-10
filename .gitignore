@@ -2,10 +2,6 @@
 /models
 /scripts
 /diffusers
-# Local inference media and isolated upstream/environment artifacts.
-# These can contain machine-specific paths, authenticated inspection logs, or large binaries.
-/outputs
-/packages
 /.vscode
 /.opencode
 *.pkl
