@@ -1,6 +1,7 @@
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 import torch
 from PIL import Image
+from modelscope import dataset_snapshot_download
 
 
 pipe = QwenImagePipeline.from_pretrained(
@@ -14,6 +15,12 @@ pipe = QwenImagePipeline.from_pretrained(
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
 )
 pipe.load_lora(pipe.dit, "models/train/Qwen-Image-EliGen-Poster_lora/epoch-4.safetensors")
+
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/example_image_dataset",
+    local_dir="./data/example_image_dataset",
+    allow_file_pattern="eligen/*.png"
+)
 
 
 entity_prompts = ["A beautiful girl", "sign 'Entity Control'", "shorts", "shirt"]

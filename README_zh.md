@@ -30,6 +30,7 @@
 
 查看更多：
 
+* [DiffSynth-ComfyUI](https://github.com/modelscope/DiffSynth-ComfyUI): 基于 DiffSynth-Studio 构建的 [ComfyUI](https://github.com/Comfy-Org/ComfyUI) 节点包，可在 ComfyUI 中构建 Workflow 运行模型推理。
 * [DiffSynth-WebUI](https://github.com/modelscope/DiffSynth-WebUI): 基于 DiffSynth-Studio 构建的轻量化 LoRA 训练工具，可在消费级 GPU 上训练 LoRA 模型。
 * [魔搭社区 AIGC 专区 (面向中国用户)](https://modelscope.cn/aigc/home): 以 DiffSynth-Studio 为核心推理和训练引擎的产品化功能，体验开源模型生态的丰富潜力。
 * [ModelScope Civision (for global users)](https://modelscope.ai/civision/home): Unlock the vast potential of the open-source model ecosystem through productized capabilities powered by DiffSynth-Studio.
@@ -41,6 +42,10 @@
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
 - **2026年9月10日** 我们接入了 [LTX-2.5](https://modelscope.cn/models/Lightricks/LTX-2.5)，这是 Lightricks 最新的音视频联合生成模型。支持的功能包括自动时长预测的文生音视频、关键帧插值的图生音视频、音频驱动视频、音视频区域重生成、IC-LoRA 像素空间上采样、文生音频、INT8 量化推理、低显存推理以及模型训练。详情请参考[文档](/docs/zh/Model_Details/LTX-2.md)和[示例代码](/examples/ltx2/)。
+
+- **2026年9月10日** 我们开源了 [DiffSynth-ComfyUI](https://github.com/modelscope/DiffSynth-ComfyUI)，现在，你可以在 [ComfyUI](https://github.com/Comfy-Org/ComfyUI) 中使用 DiffSynth-Studio 运行模型推理了。
+
+- **2026年9月8日** 我们为 CFG 蒸馏的 MiniMax-H3 基座训练了 [MiniMax-H3 Training Adapter](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter)，这是一个 DeCFG LoRA 训练 Adapter，提供 FL2VA 与 Ref2VA 两个版本。训练数据来自自生成数据集 [MiniMax-H3-Self-Generated-Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/MiniMax-H3-Self-Generated-Dataset)。基于该 Adapter，我们训练了两个 toy 模型，[MiniMax-H3-Songyu-LoRA](https://www.modelscope.cn/models/mibei0804/MiniMax-H3-Songyu-LoRA)（角色身份，FL2VA）与 [MiniMax-H3-Ref2VA-FirstFrame-Lineart](https://www.modelscope.cn/models/mibei0804/MiniMax-H3-Ref2VA-FirstFrame-Lineart)（线稿首帧控制，Ref2VA），供推理与微调参考。
 
 - **2026年9月1日** 我们接入了 [SenseNova-U1.5](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT)，这是商汤科技开源的统一多模态模型，我们为其提供了文生图、图像编辑、低显存推理和训练支持。详情请参考[文档](/docs/zh/Model_Details/SenseNova-U1.md)和[示例代码](/examples/sensenova_u1/)。
 
@@ -319,6 +324,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
     - LTX-2：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/LTX-2.html)、[样例代码](/examples/ltx2/)
     - Wan：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Wan.html)、[样例代码](/examples/wanvideo/)
 - 音频生成
+    - DiffSynth-Music：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/DiffSynth-Music.html)、[样例代码](/examples/diffsynth_music/)
     - MiniMax-Music3：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/MiniMax-Music3.html)、[样例代码](/examples/minimax_music3/)
     - ACE-Step：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/ACE-Step.html)、[样例代码](/examples/ace_step/)
 - 评测模型：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Image-Quality-Metrics.html)、[样例代码](/examples/image_quality_metric/)
@@ -547,6 +553,7 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 | SenseNova-U1 | [SenseNova/SenseNova-U1.5-8B-MoT-SFT: T2I](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT-SFT) | [code](/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT-SFT.py) | [code](/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT-SFT.py) | [code](/examples/sensenova_u1/model_training/full/SenseNova-U1.5-8B-MoT-SFT.sh) | [code](/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.5-8B-MoT-SFT.py) | [code](/examples/sensenova_u1/model_training/lora/SenseNova-U1.5-8B-MoT-SFT.sh) | [code](/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.5-8B-MoT-SFT.py) |
 | SenseNova-U1 | [SenseNova/SenseNova-U1.5-8B-MoT-SFT: Edit](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT-SFT) | [code](/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT-SFT-Edit.py) | [code](/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT-SFT-Edit.py) | [code](/examples/sensenova_u1/model_training/full/SenseNova-U1.5-8B-MoT-SFT-Edit.sh) | [code](/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.5-8B-MoT-SFT-Edit.py) | [code](/examples/sensenova_u1/model_training/lora/SenseNova-U1.5-8B-MoT-SFT-Edit.sh) | [code](/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.5-8B-MoT-SFT-Edit.py) |
 | MiniMax-Music3 | [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) | [code](/examples/minimax_music3/model_inference/MiniMax-Music3.py) | [code](/examples/minimax_music3/model_inference_low_vram/MiniMax-Music3.py) | — | — | — | — |
+| DiffSynth-Music | [DiffSynth-Studio/DiffSynth-Music](https://www.modelscope.cn/models/DiffSynth-Studio/DiffSynth-Music) | [code](/examples/diffsynth_music/model_inference/DiffSynth-Music.py) | [code](/examples/diffsynth_music/model_inference_low_vram/DiffSynth-Music.py) | [code](/examples/diffsynth_music/model_training/full/DiffSynth-Music.sh) | [code](/examples/diffsynth_music/model_training/validate_full/DiffSynth-Music.py) | - | - |
 | MiniMax-H3 | [MiniMax/MiniMax-H3: FL2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FL2VA.py) |
 | MiniMax-H3 | [MiniMax/MiniMax-H3: Ref2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Ref2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Ref2VA.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Ref2VA.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Ref2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Ref2VA.py) |
 | MiniMax-H3 | [MiniMax/MiniMax-H3: Retake](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Retake.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Retake.py) | - | - | - | - |

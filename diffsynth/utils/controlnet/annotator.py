@@ -9,31 +9,39 @@ Processor_id: TypeAlias = Literal[
 class Annotator:
     def __init__(self, processor_id: Processor_id, model_path="models/Annotators", detect_resolution=None, device=get_device_type(), skip_processor=False):
         if not skip_processor:
-            if processor_id == "canny":
-                from controlnet_aux.processor import CannyDetector
-                self.processor = CannyDetector()
-            elif processor_id == "depth":
-                from controlnet_aux.processor import MidasDetector
-                self.processor = MidasDetector.from_pretrained(model_path).to(device)
-            elif processor_id == "softedge":
-                from controlnet_aux.processor import HEDdetector
-                self.processor = HEDdetector.from_pretrained(model_path).to(device)
-            elif processor_id == "lineart":
-                from controlnet_aux.processor import LineartDetector
-                self.processor = LineartDetector.from_pretrained(model_path).to(device)
-            elif processor_id == "lineart_anime":
-                from controlnet_aux.processor import LineartAnimeDetector
-                self.processor = LineartAnimeDetector.from_pretrained(model_path).to(device)
-            elif processor_id == "openpose":
-                from controlnet_aux.processor import OpenposeDetector
-                self.processor = OpenposeDetector.from_pretrained(model_path).to(device)
-            elif processor_id == "normal":
-                from controlnet_aux.processor import NormalBaeDetector
-                self.processor = NormalBaeDetector.from_pretrained(model_path).to(device)
-            elif processor_id == "tile" or processor_id == "none" or processor_id == "inpaint":
+            if processor_id == "tile" or processor_id == "none" or processor_id == "inpaint":
                 self.processor = None
             else:
-                raise ValueError(f"Unsupported processor_id: {processor_id}")
+                if processor_id not in ("canny", "depth", "softedge", "lineart", "lineart_anime", "openpose", "normal"):
+                    raise ValueError(f"Unsupported processor_id: {processor_id}")
+                try:
+                    import controlnet_aux  # noqa: F401
+                except ImportError:
+                    raise ImportError(
+                        "The ControlNet annotator detectors require the 'controlnet_aux' package. "
+                        "Install it with `pip install -e .[controlnet]`."
+                    ) from None
+                if processor_id == "canny":
+                    from controlnet_aux.processor import CannyDetector
+                    self.processor = CannyDetector()
+                elif processor_id == "depth":
+                    from controlnet_aux.processor import MidasDetector
+                    self.processor = MidasDetector.from_pretrained(model_path).to(device)
+                elif processor_id == "softedge":
+                    from controlnet_aux.processor import HEDdetector
+                    self.processor = HEDdetector.from_pretrained(model_path).to(device)
+                elif processor_id == "lineart":
+                    from controlnet_aux.processor import LineartDetector
+                    self.processor = LineartDetector.from_pretrained(model_path).to(device)
+                elif processor_id == "lineart_anime":
+                    from controlnet_aux.processor import LineartAnimeDetector
+                    self.processor = LineartAnimeDetector.from_pretrained(model_path).to(device)
+                elif processor_id == "openpose":
+                    from controlnet_aux.processor import OpenposeDetector
+                    self.processor = OpenposeDetector.from_pretrained(model_path).to(device)
+                elif processor_id == "normal":
+                    from controlnet_aux.processor import NormalBaeDetector
+                    self.processor = NormalBaeDetector.from_pretrained(model_path).to(device)
         else:
             self.processor = None
 

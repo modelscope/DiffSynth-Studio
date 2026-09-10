@@ -208,6 +208,7 @@ class FlowMatchScheduler():
             for timestep in target_timesteps:
                 timestep_id = torch.argmin((timesteps - timestep).abs())
                 timesteps[timestep_id] = timestep
+                sigmas[timestep_id] = timestep / num_train_timesteps
         return sigmas, timesteps
 
     @staticmethod
