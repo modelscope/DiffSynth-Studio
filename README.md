@@ -30,6 +30,7 @@ References:
 
 See also:
 
+* [DiffSynth-ComfyUI](https://github.com/modelscope/DiffSynth-ComfyUI): A [ComfyUI](https://github.com/Comfy-Org/ComfyUI) node package built on DiffSynth-Studio, enabling you to build workflows in ComfyUI to run model inference.
 * [DiffSynth-WebUI](https://github.com/modelscope/DiffSynth-WebUI): A lightweight LoRA training tool built on DiffSynth-Studio, enabling LoRA training of models on consumer-grade GPUs.
 * [ModelScope AIGC Zone (for Chinese users)](https://modelscope.cn/aigc/home): Productized features powered by DiffSynth-Studio as the core inference and training engine; experience the rich potential of the open-source model ecosystem.
 * [ModelScope Civision (for global users)](https://modelscope.ai/civision/home): Unlock the vast potential of the open-source model ecosystem through productized capabilities powered by DiffSynth-Studio.
@@ -39,6 +40,8 @@ See also:
 > DiffSynth-Studio has undergone major version updates, and some old features are no longer maintained. If you need to use old features, please switch to the [last historical version](https://github.com/modelscope/DiffSynth-Studio/tree/afd101f3452c9ecae0c87b79adfa2e22d65ffdc3) before the major version update.
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
+
+- **September 10, 2026** We have open-sourced [DiffSynth-ComfyUI](https://github.com/modelscope/DiffSynth-ComfyUI). Now you can run model inference with DiffSynth-Studio in [ComfyUI](https://github.com/Comfy-Org/ComfyUI).
 
 - **September 8, 2026** We trained a [MiniMax-H3 Training Adapter](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-TrainingAdapter) for the CFG-distilled MiniMax-H3 base, a DeCFG LoRA training adapter offered in FL2VA and Ref2VA versions. The training data comes from the self-generated [MiniMax-H3-Self-Generated-Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/MiniMax-H3-Self-Generated-Dataset). Based on this adapter, we trained two toy models, [MiniMax-H3-Songyu-LoRA](https://www.modelscope.cn/models/mibei0804/MiniMax-H3-Songyu-LoRA) (character identity, FL2VA) and [MiniMax-H3-Ref2VA-FirstFrame-Lineart](https://www.modelscope.cn/models/mibei0804/MiniMax-H3-Ref2VA-FirstFrame-Lineart) (lineart first-frame control, Ref2VA), as references for inference and fine-tuning.
 
