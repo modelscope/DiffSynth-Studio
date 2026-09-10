@@ -4,6 +4,7 @@ import math
 
 import torch
 import torch.nn as nn
+from torch.nn.attention import sdpa_kernel, SDPBackend
 
 from ..core.attention import attention_forward
 from ..core.gradient import gradient_checkpoint_forward
@@ -67,16 +68,43 @@ def _modulate_gate(x, gate, other, indices):
     return (x + gate.index_select(0, indices) * other).to(x.dtype)
 
 
-def _sdpa_varlen_attention(q, k, v, cu_seqlens, softmax_scale):
+def _prefer_cudnn_sdpa(device) -> bool:
+    """On Hopper/Blackwell the cuDNN fused attention in torch SDPA is several times faster than the
+    FlashAttention-2 kernels the repo-wide dispatch would pick (FA2 is an sm80 design; measured 3.4x on
+    B200 at this model's shape, same error vs an fp32 reference). Older GPUs keep the default dispatch."""
+    if device.type != "cuda":
+        return False
+    cached = _CUDNN_PREF.get(device.index)
+    if cached is None:
+        major, _ = torch.cuda.get_device_capability(device)
+        cached = _CUDNN_PREF[device.index] = major >= 9
+    return cached
+
+
+_CUDNN_PREF = {}
+
+
+def _segment_attention(seg_q, seg_k, seg_v, softmax_scale):
+    if _prefer_cudnn_sdpa(seg_q.device):
+        with sdpa_kernel([SDPBackend.CUDNN_ATTENTION, SDPBackend.FLASH_ATTENTION, SDPBackend.EFFICIENT_ATTENTION, SDPBackend.MATH], set_priority=True):
+            return torch.nn.functional.scaled_dot_product_attention(seg_q, seg_k, seg_v, scale=softmax_scale)
+    return attention_forward(seg_q, seg_k, seg_v, scale=softmax_scale)
+
+
+def _sdpa_varlen_attention(q, k, v, cu_seqlens, softmax_scale, seq_bounds=None):
+    # seq_bounds: cu_seqlens as python ints, computed once per model forward so that the 50 blocks (and
+    # their checkpoint recomputes) do not each pay a device sync here.
+    bounds = cu_seqlens.tolist() if seq_bounds is None else seq_bounds
+    if len(bounds) == 2:
+        return _segment_attention(q.transpose(0, 1).unsqueeze(0), k.transpose(0, 1).unsqueeze(0), v.transpose(0, 1).unsqueeze(0), softmax_scale).squeeze(0).transpose(0, 1)
     out = torch.empty_like(q)
-    bounds = cu_seqlens.tolist()
     for start, stop in zip(bounds[:-1], bounds[1:]):
         if stop == start:
             continue
         seg_q = q[start:stop].transpose(0, 1).unsqueeze(0)
         seg_k = k[start:stop].transpose(0, 1).unsqueeze(0)
         seg_v = v[start:stop].transpose(0, 1).unsqueeze(0)
-        seg_out = attention_forward(seg_q, seg_k, seg_v, scale=softmax_scale)
+        seg_out = _segment_attention(seg_q, seg_k, seg_v, softmax_scale)
         out[start:stop] = seg_out.squeeze(0).transpose(0, 1)
     return out
 
@@ -133,7 +161,7 @@ class MiniMaxH3Attention(nn.Module):
         self.k_norm = _norm(attention_head_dim, eps=qk_norm_eps)
         self.out_proj = nn.Linear(inner_dim, hidden_size, bias=False)
 
-    def forward(self, x, *, rope_freqs, cu_seqlens, max_seqlen=None):
+    def forward(self, x, *, rope_freqs, cu_seqlens, max_seqlen=None, seq_bounds=None):
         total = x.shape[0]
         qkv = self.qkv_proj(x)
         qkv = qkv.view(total, self.num_heads, 3, self.head_dim)
@@ -145,7 +173,7 @@ class MiniMaxH3Attention(nn.Module):
         if rope_freqs is not None:
             q = _apply_rope(q, rope_freqs)
             k = _apply_rope(k, rope_freqs)
-        out = _sdpa_varlen_attention(q, k, v, cu_seqlens=cu_seqlens, softmax_scale=self.softmax_scale)
+        out = _sdpa_varlen_attention(q, k, v, cu_seqlens=cu_seqlens, softmax_scale=self.softmax_scale, seq_bounds=seq_bounds)
         out = out.reshape(total, self.num_heads * self.head_dim)
         return self.out_proj(out)
 
@@ -220,18 +248,83 @@ class MiniMaxH3DiTBlock(nn.Module):
         self.mlp = MiniMaxH3MLP(hidden_size, ffn_hidden_size)
         self.adaln_proj = MiniMaxH3AdalnProj(hidden_size, time_embed_dim, adaln_out_features, expand_ratio=6, modality_num=MINIMAX_H3_ADALN_MODALITY_NUM)
 
-    def forward(self, x, *, t_emb, combined_indices, rope_freqs, cu_seqlens, max_seqlen):
+    def forward(self, x, *, t_emb, combined_indices, rope_freqs, cu_seqlens, max_seqlen, seq_bounds=None):
+        if _compile_blocks() and seq_bounds is not None:
+            return _compiled_block_forward(self, x, t_emb, combined_indices, rope_freqs, cu_seqlens, max_seqlen, seq_bounds)
+        return self._forward(x, t_emb=t_emb, combined_indices=combined_indices, rope_freqs=rope_freqs, cu_seqlens=cu_seqlens, max_seqlen=max_seqlen, seq_bounds=seq_bounds)
+
+    def _forward(self, x, *, t_emb, combined_indices, rope_freqs, cu_seqlens, max_seqlen, seq_bounds=None):
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaln_proj(t_emb)
         residual = x
         h = self.norm1(x)
         h = _modulate_scale_shift(h, shift_msa, scale_msa, combined_indices)
-        h = self.attn(h, rope_freqs=rope_freqs, cu_seqlens=cu_seqlens, max_seqlen=max_seqlen)
+        h = self.attn(h, rope_freqs=rope_freqs, cu_seqlens=cu_seqlens, max_seqlen=max_seqlen, seq_bounds=seq_bounds)
         x = _modulate_gate(residual, gate_msa, h, combined_indices)
         residual = x
         h = self.norm2(x)
         h = _modulate_scale_shift(h, shift_mlp, scale_mlp, combined_indices)
         h = self.mlp(h)
         return _modulate_gate(residual, gate_mlp, h, combined_indices)
+
+
+_COMPILE_BLOCKS = None
+
+
+def _compile_blocks() -> bool:
+    """torch.compile the DiT block body (norm + AdaLN modulation + RoPE + SwiGLU fuse into a few kernels;
+    the GEMMs and attention stay library calls). Off with DIFFSYNTH_COMPILE_DIT=0. Only used for CUDA
+    with grad enabled, i.e. training; inference keeps the eager path."""
+    global _COMPILE_BLOCKS
+    if _COMPILE_BLOCKS is None:
+        import os
+        _COMPILE_BLOCKS = os.environ.get("DIFFSYNTH_COMPILE_DIT", "1") != "0" and torch.cuda.is_available()
+    return _COMPILE_BLOCKS and torch.is_grad_enabled()
+
+
+def _block_body(block, x, t_emb, combined_indices, rope_freqs, cu_seqlens, max_seqlen, seq_bounds):
+    return block._forward(x, t_emb=t_emb, combined_indices=combined_indices, rope_freqs=rope_freqs, cu_seqlens=cu_seqlens, max_seqlen=max_seqlen, seq_bounds=seq_bounds)
+
+
+_compiled_block_forward = torch.compile(_block_body, dynamic=False)
+
+# Selective activation checkpointing for the training path: the block is recomputed in backward except
+# the fused attention output (the one op whose recompute is expensive relative to the memory it saves:
+# ~240 MB per block, ~12 GB for 50 blocks, vs ~3 GB per block for a full set of activations). With the
+# checkpoint inside the compiled function the partitioner applies the policy to the compiled graph.
+_SAC_SAVE_OPS = {
+    torch.ops.aten._scaled_dot_product_cudnn_attention.default,
+    torch.ops.aten._scaled_dot_product_flash_attention.default,
+    torch.ops.aten._scaled_dot_product_efficient_attention.default,
+}
+
+
+def _sac_policy(ctx, op, *args, **kwargs):
+    from torch.utils.checkpoint import CheckpointPolicy
+    return CheckpointPolicy.MUST_SAVE if op in _SAC_SAVE_OPS else CheckpointPolicy.PREFER_RECOMPUTE
+
+
+def _block_body_checkpointed(block, x, t_emb, combined_indices, rope_freqs, cu_seqlens, max_seqlen, seq_bounds):
+    import functools
+    from torch.utils.checkpoint import checkpoint, create_selective_checkpoint_contexts
+    return checkpoint(
+        _block_body, block, x, t_emb, combined_indices, rope_freqs, cu_seqlens, max_seqlen, seq_bounds,
+        use_reentrant=False, context_fn=functools.partial(create_selective_checkpoint_contexts, _sac_policy),
+    )
+
+
+_compiled_block_checkpointed = torch.compile(_block_body_checkpointed, dynamic=False)
+
+
+def _use_compiled_checkpoint(use_gradient_checkpointing, use_gradient_checkpointing_offload):
+    if not (use_gradient_checkpointing and not use_gradient_checkpointing_offload and _compile_blocks()):
+        return False
+    try:
+        from ..core.gradient.gradient_checkpoint import _HAS_DEEPSPEED, deepspeed
+        if _HAS_DEEPSPEED and deepspeed.checkpointing.is_configured():
+            return False   # the repo's DeepSpeed checkpoint path keeps its own behaviour
+    except ImportError:
+        pass
+    return True
 
 
 class MiniMaxH3FinalLayer(nn.Module):
@@ -372,7 +465,14 @@ class MiniMaxH3DiT(nn.Module):
 
         hidden = decoder_input
         cu_seqlens = cu_seqlens.to(device)
+        seq_bounds = tuple(cu_seqlens.tolist())   # one sync per forward instead of one per block execution
+        compiled_ckpt = _use_compiled_checkpoint(use_gradient_checkpointing, use_gradient_checkpointing_offload)
         for block_id, block in enumerate(self.blocks):
+            if compiled_ckpt:
+                hidden = _compiled_block_checkpointed(block, hidden, t_emb, combined_indices, rope_freqs, cu_seqlens, max_seqlen, seq_bounds)
+                if control_hints is not None and block_id in control_hints:
+                    hidden = hidden + control_hints[block_id].to(hidden.device, hidden.dtype)
+                continue
             hidden = gradient_checkpoint_forward(
                 block,
                 use_gradient_checkpointing,
@@ -383,6 +483,7 @@ class MiniMaxH3DiT(nn.Module):
                 rope_freqs=rope_freqs,
                 cu_seqlens=cu_seqlens,
                 max_seqlen=max_seqlen,
+                seq_bounds=seq_bounds,
             )
             if control_hints is not None and block_id in control_hints:
                 hidden = hidden + control_hints[block_id].to(hidden.device, hidden.dtype)
