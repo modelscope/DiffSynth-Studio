@@ -1706,8 +1706,24 @@ sensenova_u1_series = [
     },
 ]
 
+yue2_series = [
+    {
+        # Example: ModelConfig(model_id="m-a-p/YuE2-3B", origin_file_pattern="model.safetensors")
+        "model_hash": "bbf2429c299689138aaea6cd6a9b80ab",
+        "model_name": "yue2_mot",
+        "model_class": "diffsynth.models.yue2_mot.YuE2MoT",
+    },
+    {
+        # Example: ModelConfig(model_id="m-a-p/YuE2-Vae", origin_file_pattern="model.safetensors")
+        "model_hash": "2c8808833766c8bb497b44aaa90bfb45",
+        "model_name": "yue2_vae",
+        "model_class": "diffsynth.models.yue2_vae.YuE2VAEModel",
+    },
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + qwen_video_edit_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
     + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series + minimax_h3_series + minimax_music3_series + sensenova_u1_series
+    + yue2_series
 )

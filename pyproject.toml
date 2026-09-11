@@ -80,6 +80,9 @@ nexusgen = [
     "qwen_vl_utils",
     "transformers==4.49.0"
 ]
+yue2 = [
+    "tiktoken"
+]
 all = [
     "av",
     "torchaudio",
