@@ -266,6 +266,8 @@ class Modality:
             attention. ``None`` means unrestricted (full) attention between
             all tokens. Built incrementally by conditioning items; see
             :class:`~ltx_core.conditioning.types.attention_strength_wrapper.ConditioningItemAttentionStrengthWrapper`.
+        keyframes_mask: Optional per-token marker of shape ``(B, T, 1)``. Non-zero
+            entries receive the LTX 2.5 keyframe absolute-position embedding.
     """
 
     latent: (
@@ -280,6 +282,7 @@ class Modality:
     enabled: bool = True
     context_mask: torch.Tensor | None = None
     attention_mask: torch.Tensor | None = None
+    keyframes_mask: torch.Tensor | None = None
 
 
 def to_denoised(

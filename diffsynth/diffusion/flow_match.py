@@ -462,3 +462,28 @@ class HiDreamO1FlashScheduler(FlowMatchScheduler):
         noise = self.clip_noise(torch.randn(denoised.shape, device=denoised.device, dtype=denoised.dtype))
         sample = sigma_ * noise * self.noise_scale_schedule[timestep_id] + (1.0 - sigma_) * denoised
         return sample
+
+
+class AncestralFlowMatchScheduler(FlowMatchScheduler):
+
+    def __init__(self, template="LTX-2", eta=1.0, s_noise=1.0, noise_seed=0, rand_device="cpu"):
+        super().__init__(template)
+        self.eta = eta
+        self.s_noise = s_noise
+        self.generator = torch.Generator(device=rand_device).manual_seed(noise_seed)
+
+    def step(self, model_output, timestep, sample, **kwargs):
+        timestep_id = torch.argmin((self.timesteps - timestep).abs())
+        sigma = self.sigmas[timestep_id]
+        sigma_ = self.sigmas[timestep_id + 1] if timestep_id + 1 < len(self.timesteps) else torch.zeros_like(sigma)
+        denoised = sample.float() - model_output.float() * sigma.float()
+        if sigma_ == 0:
+            return denoised.to(sample.dtype)
+        sigma_down = sigma_ * (1.0 + (sigma_ / sigma - 1.0) * self.eta)
+        ratio = sigma_down / sigma
+        prev_sample = ratio * sample.float() + (1.0 - ratio) * denoised
+        alpha_next, alpha_down = 1.0 - sigma_, 1.0 - sigma_down
+        renoise_coeff = (sigma_ ** 2 - sigma_down ** 2 * alpha_next ** 2 / alpha_down ** 2).clamp(min=0).sqrt()
+        noise = torch.randn(sample.shape, generator=self.generator, dtype=sample.dtype, device=self.generator.device).to(sample.device)
+        prev_sample = alpha_next / alpha_down * prev_sample + noise.float() * self.s_noise * renoise_coeff
+        return prev_sample.to(sample.dtype)
