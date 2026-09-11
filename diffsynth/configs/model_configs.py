@@ -1547,6 +1547,22 @@ minimax_h3_series = [
         "extra_kwargs": {'control_layers': (0, 10, 20, 30, 40), 'control_in_dim': 49, 'control_apply_audio': False, 'hidden_size': 5376, 'num_attention_heads': 56, 'attention_head_dim': 128, 'ffn_hidden_size': 14336, 'time_embed_dim': 2688, 'adaln_out_features': 96768, 'patch_size': (1, 2, 2), 'norm_eps': 1e-05, 'qk_norm_eps': 1e-05},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_controlnet.MiniMaxH3ControlNetStateDictConverter"
     },
+    {
+        # Example: ModelConfig(model_id="WarmBloodAban/Minimax-h3_Singularity", origin_file_pattern="Minimax-h3_Singularity_ref2va_Pruned_v1.3_int8.safetensors")
+        "model_hash": "c00577940e5a11f0fb5a0a754ac6003d",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfyPruned",
+        "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["video_patch_proj", "audio_patch_proj", "condition_proj", "adaln_proj.linear", "final_layer.video_out", "final_layer.audio_out", "token_refiner.blocks.0.attn.qkv_proj", "token_refiner.blocks.0.attn.out_proj", "token_refiner.blocks.0.mlp.fc1", "token_refiner.blocks.0.mlp.fc2", "token_refiner.blocks.1.attn.qkv_proj", "token_refiner.blocks.1.attn.out_proj", "token_refiner.blocks.1.mlp.fc1", "token_refiner.blocks.1.mlp.fc2"]},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit.MiniMaxH3DiTSingularityStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="WarmBloodAban/Minimax-h3_Singularity", origin_file_pattern="Minimax-h3_Singularity_ref2va_v1.3_int8.safetensors")
+        "model_hash": "dea0301a17c3e68100ecc6cf9f52e2e5",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfy",
+        "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["video_patch_proj", "audio_patch_proj", "condition_proj", "time_embedder.proj_in", "time_embedder.proj_out", "final_layer.adaln_proj.linear", "final_layer.video_out", "final_layer.audio_out", "token_refiner.blocks.0.attn.qkv_proj", "token_refiner.blocks.0.attn.out_proj", "token_refiner.blocks.0.mlp.fc1", "token_refiner.blocks.0.mlp.fc2", "token_refiner.blocks.1.attn.qkv_proj", "token_refiner.blocks.1.attn.out_proj", "token_refiner.blocks.1.mlp.fc1", "token_refiner.blocks.1.mlp.fc2"]},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit.MiniMaxH3DiTSingularityStateDictConverter",
+    },
 ]
 
 minimax_music3_series = [
