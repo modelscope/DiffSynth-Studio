@@ -821,14 +821,16 @@ class PerChannelStatistics(nn.Module):
 
     def __init__(self, latent_channels: int = 128) -> None:
         super().__init__()
-        self.register_buffer("std-of-means", torch.empty(latent_channels))
-        self.register_buffer("mean-of-means", torch.empty(latent_channels))
+        # Frozen parameters, not buffers: disk-offload reload restores only named_parameters(),
+        # so persistent buffers would be skipped and strict load_state_dict would report them missing.
+        self.register_parameter("std-of-means", nn.Parameter(torch.empty(latent_channels), requires_grad=False))
+        self.register_parameter("mean-of-means", nn.Parameter(torch.empty(latent_channels), requires_grad=False))
 
     def un_normalize(self, x: torch.Tensor) -> torch.Tensor:
-        return (x * self.get_buffer("std-of-means").to(x)) + self.get_buffer("mean-of-means").to(x)
+        return (x * getattr(self, "std-of-means").to(x)) + getattr(self, "mean-of-means").to(x)
 
     def normalize(self, x: torch.Tensor) -> torch.Tensor:
-        return (x - self.get_buffer("mean-of-means").to(x)) / self.get_buffer("std-of-means").to(x)
+        return (x - getattr(self, "mean-of-means").to(x)) / getattr(self, "std-of-means").to(x)
 
 
 LATENT_DOWNSAMPLE_FACTOR = 4
@@ -1342,7 +1344,8 @@ class LowPassFilter1d(nn.Module):
         self.stride = stride
         self.padding = padding
         self.padding_mode = padding_mode
-        self.register_buffer("filter", kaiser_sinc_filter1d(cutoff, half_width, kernel_size))
+        # Parameter, not buffer, so disk-offload reload (named_parameters() only) restores it from the checkpoint.
+        self.register_parameter("filter", nn.Parameter(kaiser_sinc_filter1d(cutoff, half_width, kernel_size), requires_grad=False))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         _, n_channels, _ = x.shape
@@ -1388,7 +1391,12 @@ class UpSample1d(nn.Module):
                 kernel_size=self.kernel_size,
             )
 
-        self.register_buffer("filter", sinc_filter, persistent=persistent)
+        if persistent:
+            # Checkpoint-stored: parameter so disk-offload reload (named_parameters() only) restores it.
+            self.register_parameter("filter", nn.Parameter(sinc_filter, requires_grad=False))
+        else:
+            # Not stored in the checkpoint: keep as a non-persistent buffer (recomputed above).
+            self.register_buffer("filter", sinc_filter, persistent=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         _, n_channels, _ = x.shape
@@ -1701,8 +1709,10 @@ class _STFTFn(nn.Module):
         self.hop_length = hop_length
         self.win_length = win_length
         n_freqs = filter_length // 2 + 1
-        self.register_buffer("forward_basis", torch.zeros(n_freqs * 2, 1, filter_length))
-        self.register_buffer("inverse_basis", torch.zeros(n_freqs * 2, 1, filter_length))
+        # Parameters, not buffers: disk-offload reload restores only named_parameters();
+        # the zeros here are overwritten by load_state_dict from the checkpoint.
+        self.register_parameter("forward_basis", nn.Parameter(torch.zeros(n_freqs * 2, 1, filter_length), requires_grad=False))
+        self.register_parameter("inverse_basis", nn.Parameter(torch.zeros(n_freqs * 2, 1, filter_length), requires_grad=False))
 
     def forward(self, y: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute magnitude and phase spectrogram from a batch of waveforms.
@@ -1746,8 +1756,9 @@ class MelSTFT(nn.Module):
 
         # Initialized to zeros; load_state_dict overwrites with the checkpoint's
         # exact bfloat16 filterbank (vocoder.mel_stft.mel_basis, shape [n_mels, n_freqs]).
+        # Parameter, not buffer, so disk-offload reload (named_parameters() only) restores it.
         n_freqs = filter_length // 2 + 1
-        self.register_buffer("mel_basis", torch.zeros(n_mel_channels, n_freqs))
+        self.register_parameter("mel_basis", nn.Parameter(torch.zeros(n_mel_channels, n_freqs), requires_grad=False))
 
     def mel_spectrogram(self, y: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Compute log-mel spectrogram and auxiliary spectral quantities.
