@@ -11,7 +11,7 @@ import torchvision.transforms as T
 from .wan_video_dit import flash_attention
 
 
-class SelfAttention(nn.Module):
+class XLMRobertaSelfAttention(nn.Module):
 
     def __init__(self, dim, num_heads, dropout=0.1, eps=1e-5):
         assert dim % num_heads == 0
@@ -50,7 +50,7 @@ class SelfAttention(nn.Module):
         return x
 
 
-class AttentionBlock(nn.Module):
+class XLMRobertaAttentionBlock(nn.Module):
 
     def __init__(self, dim, num_heads, post_norm, dropout=0.1, eps=1e-5):
         super().__init__()
@@ -60,7 +60,7 @@ class AttentionBlock(nn.Module):
         self.eps = eps
 
         # layers
-        self.attn = SelfAttention(dim, num_heads, dropout, eps)
+        self.attn = XLMRobertaSelfAttention(dim, num_heads, dropout, eps)
         self.norm1 = nn.LayerNorm(dim, eps=eps)
         self.ffn = nn.Sequential(
             nn.Linear(dim, dim * 4), nn.GELU(), nn.Linear(dim * 4, dim),
@@ -112,7 +112,7 @@ class XLMRoberta(nn.Module):
 
         # blocks
         self.blocks = nn.ModuleList([
-            AttentionBlock(dim, num_heads, post_norm, dropout, eps)
+            XLMRobertaAttentionBlock(dim, num_heads, post_norm, dropout, eps)
             for _ in range(num_layers)
         ])
 
