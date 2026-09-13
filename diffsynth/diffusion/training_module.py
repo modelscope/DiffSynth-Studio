@@ -1,5 +1,5 @@
 import torch, json, os, inspect
-from ..core import ModelConfig, load_state_dict, QuantizeConfig
+from ..core import ModelConfig, load_state_dict, QuantizeConfig, inject_lora_into_model
 from ..utils.controlnet import ControlNetInput
 from .base_pipeline import PipelineUnit
 
@@ -91,27 +91,14 @@ class DiffusionTrainingModule(torch.nn.Module):
     
     
     def add_lora_to_model(self, model, target_modules, lora_rank, lora_alpha=None, upcast_dtype=None):
-        from peft import LoraConfig, inject_adapter_in_model
-        if lora_alpha is None:
-            lora_alpha = lora_rank
-        if isinstance(target_modules, list) and len(target_modules) == 1:
-            target_modules = target_modules[0]
-        lora_config = LoraConfig(r=lora_rank, lora_alpha=lora_alpha, target_modules=target_modules)
-        model = inject_adapter_in_model(lora_config, model)
-        if upcast_dtype is not None:
-            for param in model.parameters():
-                if param.requires_grad:
-                    param.data = param.to(upcast_dtype)
-        return model
+        return inject_lora_into_model(model, target_modules, lora_rank, lora_alpha=lora_alpha, dtype=upcast_dtype)
 
 
     def mapping_lora_state_dict(self, state_dict):
         new_state_dict = {}
         for key, value in state_dict.items():
-            if "lora_A.weight" in key or "lora_B.weight" in key:
-                new_key = key.replace("lora_A.weight", "lora_A.default.weight").replace("lora_B.weight", "lora_B.default.weight")
-                new_state_dict[new_key] = value
-            elif "lora_A.default.weight" in key or "lora_B.default.weight" in key:
+            key = key.replace("lora_A.default.weight", "lora_A.weight").replace("lora_B.default.weight", "lora_B.weight")
+            if key.endswith("lora_A.weight") or key.endswith("lora_B.weight"):
                 new_state_dict[key] = value
         return new_state_dict
 
