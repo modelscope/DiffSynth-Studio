@@ -41,6 +41,11 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年9月14日** 我们训练并开源了 DiffSynth-Music，基于 ACE-Step 的音乐可控生成模型，支持 Beats、Vocals、Accompany、Prosody、Reference 五种控制方式。更多信息请参考：
+    * 模型：https://modelscope.cn/models/DiffSynth-Studio/DiffSynth-Music
+    * 技术报告：https://arxiv.org/abs/2609.12774
+    * 代码：[./examples/diffsynth_music/](./examples/diffsynth_music/)
+
 - **2026年9月11日** 我们已支持 YuE2，一个新的音乐生成模型。详情请参考[文档](/docs/zh/Model_Details/YuE2.md)和[示例代码](/examples/yue2/)。
 
 - **2026年9月10日** 我们接入了 [LTX-2.5](https://modelscope.cn/models/Lightricks/LTX-2.5)，这是 Lightricks 最新的音视频联合生成模型。支持的功能包括自动时长预测的文生音视频、关键帧插值的图生音视频、音频驱动视频、音视频区域重生成、IC-LoRA 像素空间上采样、文生音频、INT8 量化推理、低显存推理以及模型训练。详情请参考[文档](/docs/zh/Model_Details/LTX-2.md)和[示例代码](/examples/ltx2/)。
@@ -57,6 +62,9 @@
 
 - **2026年8月19日** 我们发布了模型量化功能。它提供了统一的 `QuantizeConfig` 入口，支持 bitsandbytes、torchao、comfy-kitchen 等多种量化后端，具备在线量化、加载预量化权重、混合量化、保存量化模型、量化 + LoRA 训练等能力。详情请参考[文档](/docs/zh/Pipeline_Usage/Quantization.md)。
 
+<details>
+<summary>更多</summary>
+
 - **2026年8月17日** MiniMax-Music3 开源，欢迎加入音频生成模型家族！支持文生音乐推理和低显存推理能力。详情请参考[文档](/docs/zh/Model_Details/MiniMax-Music3.md)和[示例代码](/examples/minimax_music3/)。
 
 - **2026年8月7日** 我们为 Wan 系列新增了 Wan-Animate-2，输入一张参考图和一段驱动视频，即可让参考角色演绎驱动视频中的动作，生成高质量角色动画，包含标准与蒸馏两个变体。详情请参考[文档](/docs/zh/Model_Details/Wan.md)和[示例代码](/examples/wanvideo/)。
@@ -66,9 +74,6 @@
 - **2026年7月28日** LingBot-Video 开源，欢迎加入视频生成模型家族！本次开源包含 Dense-1.3B 和 MoE-30B-A3B 两个版本（MoE 版总参数量 30B、每个 token 激活约 3B），均支持文生视频、图生视频、文生图推理、低显存推理以及 LoRA / 全量训练能力。详情请参考[文档](/docs/zh/Model_Details/LingBot-Video.md)和[示例代码](/examples/lingbot_video/)。特别感谢 [NancyFyong](https://github.com/NancyFyong) 贡献了本模型的接入代码！
 
 - **2026年7月21日** 我们开源了 [DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills)。这是一套可组合的 Agent Skill 合集，将外部扩散模型接入 DiffSynth-Studio 的全流程自动化，大幅提升模型接入标准化程度与效率。从[使用示例](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1)开始体验吧！
-
-<details>
-<summary>更多</summary>
 
 - **2026年6月29日** Boogu-Image 开源，已支持文生图推理、图像编辑、低显存推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/Boogu-Image.md)和[示例代码](/examples/boogu_image/)。
 

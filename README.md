@@ -41,6 +41,11 @@ See also:
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
+- **September 14, 2026** We trained and open-sourced DiffSynth-Music, a controllable music generation model based on ACE-Step, which supports five control modes: Beats, Vocals, Accompany, Prosody, and Reference. For more information, please refer to:
+    * Model: https://modelscope.cn/models/DiffSynth-Studio/DiffSynth-Music
+    * Technical Report: https://arxiv.org/abs/2609.12774
+    * Code: [./examples/diffsynth_music/](./examples/diffsynth_music/)
+
 - **September 11, 2026** We have added support for YuE2, a new music generation model. For details, please refer to the [documentation](/docs/zh/Model_Details/YuE2.md) and [example code](/examples/yue2/).
 
 - **September 10, 2026** We have integrated [LTX-2.5](https://modelscope.cn/models/Lightricks/LTX-2.5), the latest audio-video generation model from Lightricks. The features include text-to-audio/video with automatic duration prediction, image-to-audio/video with keyframe interpolation, audio-to-video, audio-video retake, IC-LoRA pixel spatial upscaling, text-to-audio, INT8 quantized inference, low VRAM inference, and training. For details, please refer to the [documentation](/docs/en/Model_Details/LTX-2.md) and [code](/examples/ltx2/).
@@ -57,6 +62,9 @@ See also:
 
 - **August 19, 2026** We have released the model quantization feature. It provides a unified `QuantizeConfig` entry point supporting multiple quantization backends including bitsandbytes, torchao, and comfy-kitchen, with capabilities such as online quantization, loading pre-quantized weights, mixed quantization, saving quantized models, and quantization + LoRA training. For details, please refer to the [documentation](/docs/en/Pipeline_Usage/Quantization.md).
 
+<details>
+<summary>More</summary>
+
 - **August 17, 2026** MiniMax-Music3 open-sourced, welcome a new member to the audio model family! Support includes text-to-music generation and low VRAM inference. For details, please refer to the [documentation](/docs/en/Model_Details/MiniMax-Music3.md) and [example code](/examples/minimax_music3/).
 
 - **August 7, 2026** We add support for Wan-Animate-2 in the Wan series. Given a reference image and a driving video, it makes the reference character perform the motions in the driving video, generating high-quality character animation, with both standard and distilled variants. For details, please refer to the [documentation](/docs/en/Model_Details/Wan.md) and [example code](/examples/wanvideo/).
@@ -66,9 +74,6 @@ See also:
 - **July 28, 2026** LingBot-Video open-sourced, welcome a new member to the video model family! This release includes two variants, Dense-1.3B and MoE-30B-A3B (30B total parameters, ~3B active per token), both supporting text-to-video, image-to-video and text-to-image generation, low VRAM inference, and LoRA / full training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/LingBot-Video.md) and [example code](/examples/lingbot_video/). Huge thanks to [NancyFyong](https://github.com/NancyFyong) for contributing the integration of this model!
 
 - **July 21, 2026** We have open-sourced [DiffSynth-Studio Model Integration Skills](https://www.modelscope.cn/collections/DiffSynth-Studio/DiffSynth-Studio-Model-Integration-Skills). This is a composable collection of Agent Skills that automates the entire workflow of integrating external diffusion models into DiffSynth-Studio, significantly improving the standardization and efficiency of model integration. Get started with the [example](https://www.modelscope.cn/skills/DiffSynth-Studio/diffsynth-integrator/file/view/master/example.md?status=1)!
-
-<details>
-<summary>More</summary>
 
 - **June 29, 2026** Boogu-Image open-sourced. Support includes text-to-image generation, image editing, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/Boogu-Image.md) and [example code](/examples/boogu_image/).
 
