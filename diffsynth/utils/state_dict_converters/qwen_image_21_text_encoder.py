@@ -1,4 +1,4 @@
-def JoyAIImageTextEncoderStateDictConverter(state_dict):
+def QwenImage21TextEncoderStateDictConverter(state_dict):
     """Convert HuggingFace Qwen3VL checkpoint keys to DiffSynth wrapper keys.
 
     Mapping (checkpoint -> wrapper):
