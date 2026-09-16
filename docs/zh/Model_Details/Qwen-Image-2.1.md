@@ -1,6 +1,6 @@
-# Qwen-Image2.1
+# Qwen-Image-2.1
 
-Qwen-Image2.1 是由阿里巴巴通义实验室通义千问团队训练并开源的统一文生图与图像编辑模型，采用单流 block-causal DiT、64 通道 RGBA VAE 与 Qwen3-VL 文本编码器，可以直接生成带透明通道的 RGBA 图像。
+Qwen-Image-2.1 是由阿里巴巴通义实验室通义千问团队训练并开源的统一文生图与图像编辑模型，采用单流 block-causal DiT、64 通道 RGBA VAE 与 Qwen3-VL 文本编码器，可以直接生成带透明通道的 RGBA 图像。
 
 ## 安装
 
@@ -16,7 +16,7 @@ pip install -e .
 
 ## 快速开始
 
-运行以下代码可以快速加载 [Qwen/Qwen-Image2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image2.1) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 7G 显存即可运行。
+运行以下代码可以快速加载 [Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 7G 显存即可运行。
 
 ```python
 from diffsynth.pipelines.qwen_image_21 import QwenImage21Pipeline, ModelConfig
@@ -37,11 +37,11 @@ pipe = QwenImage21Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="vae/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="vae/diffusion_pytorch_model*.safetensors", **vram_config),
     ],
-    processor_config=ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="processor/"),
+    processor_config=ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="processor/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
@@ -65,7 +65,7 @@ image_3.save("image3.png")
 
 |模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
-|[Qwen/Qwen-Image2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image2.1)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_inference/Qwen-Image2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_inference_low_vram/Qwen-Image2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_training/full/Qwen-Image2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_training/validate_full/Qwen-Image2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_training/lora/Qwen-Image2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_training/validate_lora/Qwen-Image2.1.py)|
+|[Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/full/Qwen-Image-2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1.py)|
 
 ## 模型推理
 
@@ -103,7 +103,7 @@ Pipeline 的返回值为 PIL 图像（RGBA 模式）。
 
 ## 模型训练
 
-Qwen-Image2.1 系列模型统一通过 [`examples/qwen_image21/model_training/train.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_training/train.py) 进行训练，脚本的参数包括：
+Qwen-Image-2.1 系列模型统一通过 [`examples/qwen_image_21/model_training/train.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/train.py) 进行训练，脚本的参数包括：
 
 * 通用训练参数
     * 数据集基础配置
@@ -114,7 +114,7 @@ Qwen-Image2.1 系列模型统一通过 [`examples/qwen_image21/model_training/tr
         * `--data_file_keys`: 元数据中需要加载的字段名称，通常是图像或视频文件的路径，以 `,` 分隔。
     * 模型加载配置
         * `--model_paths`: 要加载的模型路径。JSON 格式。
-        * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 `"Qwen/Qwen-Image2.1:transformer/diffusion_pytorch_model*.safetensors"`。用逗号分隔。
+        * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 `"Qwen/Qwen-Image-2.1:transformer/diffusion_pytorch_model*.safetensors"`。用逗号分隔。
         * `--extra_inputs`: 模型 Pipeline 所需的额外输入参数，例如训练图像编辑时需要额外参数 `edit_image`，以 `,` 分隔。
         * `--fp8_models`：以 FP8 格式加载的模型，格式与 `--model_paths` 或 `--model_id_with_origin_paths` 一致，目前仅支持参数不被梯度更新的模型（不需要梯度回传，或梯度仅更新其 LoRA）。
         * `--quant_options`：对加载的模型进行动态量化。以 `;` 分隔多个条目，每个为 `<模型字符串>:<method>[/<exclude_modules>]`，`<模型字符串>` 需与 `--model_paths`/`--model_id_with_origin_paths` 中的一致，`method` 为已注册的量化方法（如 `bitsandbytes_nf4`），`exclude_modules` 为可选的保持全精度的层。
@@ -144,7 +144,7 @@ Qwen-Image2.1 系列模型统一通过 [`examples/qwen_image21/model_training/tr
         * `--height`: 图像或视频的高度。将 `height` 和 `width` 留空以启用动态分辨率。
         * `--width`: 图像或视频的宽度。将 `height` 和 `width` 留空以启用动态分辨率。
         * `--max_pixels`: 图像或视频帧的最大像素面积，当启用动态分辨率时，分辨率大于这个数值的图片都会被缩小，分辨率小于这个数值的图片保持不变。
-* Qwen-Image2.1 专有参数
+* Qwen-Image-2.1 专有参数
     * `--processor_path`: processor 的路径，留空则自动从远程下载。
     * `--initialize_model_on_cpu`: 是否在 CPU 上初始化模型，用于降低多卡训练启动阶段的显存峰值。
 

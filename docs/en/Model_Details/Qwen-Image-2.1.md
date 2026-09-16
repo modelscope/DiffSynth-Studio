@@ -1,6 +1,6 @@
-# Qwen-Image2.1
+# Qwen-Image-2.1
 
-Qwen-Image2.1 is a unified text-to-image and image editing model open-sourced by the Qwen team, built on a single-stream block-causal DiT, a 64-channel RGBA VAE and a Qwen3-VL text encoder. It can directly generate RGBA images with an alpha channel.
+Qwen-Image-2.1 is a unified text-to-image and image editing model open-sourced by the Qwen team, built on a single-stream block-causal DiT, a 64-channel RGBA VAE and a Qwen3-VL text encoder. It can directly generate RGBA images with an alpha channel.
 
 ## Installation
 
@@ -16,7 +16,7 @@ For more information on installation, please refer to [Setup Dependencies](../Pi
 
 ## Quick Start
 
-Running the following code will load the [Qwen/Qwen-Image2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image2.1) model for inference. VRAM management is enabled, the framework automatically controls parameter loading based on available VRAM, requiring a minimum of 7GB VRAM.
+Running the following code will load the [Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1) model for inference. VRAM management is enabled, the framework automatically controls parameter loading based on available VRAM, requiring a minimum of 7GB VRAM.
 
 ```python
 from diffsynth.pipelines.qwen_image_21 import QwenImage21Pipeline, ModelConfig
@@ -37,11 +37,11 @@ pipe = QwenImage21Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
-        ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="vae/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="vae/diffusion_pytorch_model*.safetensors", **vram_config),
     ],
-    processor_config=ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="processor/"),
+    processor_config=ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="processor/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
@@ -65,7 +65,7 @@ image_3.save("image3.png")
 
 |Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
 |-|-|-|-|-|-|-|
-|[Qwen/Qwen-Image2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image2.1)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_inference/Qwen-Image2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_inference_low_vram/Qwen-Image2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_training/full/Qwen-Image2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_training/validate_full/Qwen-Image2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_training/lora/Qwen-Image2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_training/validate_lora/Qwen-Image2.1.py)|
+|[Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/full/Qwen-Image-2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1.py)|
 
 ## Model Inference
 
@@ -103,7 +103,7 @@ Subjects with hair, ribbons or water-like lighting tend to produce wide semi-tra
 
 ## Model Training
 
-Models in the Qwen-Image2.1 series are trained uniformly via [`examples/qwen_image21/model_training/train.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image21/model_training/train.py). The script parameters include:
+Models in the Qwen-Image-2.1 series are trained uniformly via [`examples/qwen_image_21/model_training/train.py`](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/train.py). The script parameters include:
 
 * General Training Parameters
     * Dataset Basic Configuration
@@ -114,7 +114,7 @@ Models in the Qwen-Image2.1 series are trained uniformly via [`examples/qwen_ima
         * `--data_file_keys`: Field names to be loaded from metadata, usually image or video file paths, separated by `,`.
     * Model Loading Configuration
         * `--model_paths`: Paths of models to be loaded. JSON format.
-        * `--model_id_with_origin_paths`: Model IDs with original paths, e.g., `"Qwen/Qwen-Image2.1:transformer/diffusion_pytorch_model*.safetensors"`. Separated by commas.
+        * `--model_id_with_origin_paths`: Model IDs with original paths, e.g., `"Qwen/Qwen-Image-2.1:transformer/diffusion_pytorch_model*.safetensors"`. Separated by commas.
         * `--extra_inputs`: Extra input parameters required by the model Pipeline, e.g., the extra parameter `edit_image` when training image editing, separated by `,`.
         * `--fp8_models`: Models loaded in FP8 format, consistent with `--model_paths` or `--model_id_with_origin_paths` format. Currently only supports models whose parameters are not updated by gradients (no gradient backpropagation, or gradients only update their LoRA).
         * `--quant_options`: Dynamically quantize loaded models. Semicolon-separated entries, each `<model_string>:<method>[/<exclude_modules>]`, where `<model_string>` matches an entry in `--model_paths`/`--model_id_with_origin_paths`, `method` is a registered method (e.g. `bitsandbytes_nf4`), and `exclude_modules` optionally lists layers kept in full precision.
@@ -144,7 +144,7 @@ Models in the Qwen-Image2.1 series are trained uniformly via [`examples/qwen_ima
         * `--height`: Height of image or video. Leave `height` and `width` blank to enable dynamic resolution.
         * `--width`: Width of image or video. Leave `height` and `width` blank to enable dynamic resolution.
         * `--max_pixels`: Maximum pixel area of image or video frames. When dynamic resolution is enabled, images with resolution larger than this value will be downscaled, and images with resolution smaller than this value will remain unchanged.
-* Qwen-Image2.1 Specific Parameters
+* Qwen-Image-2.1 Specific Parameters
     * `--processor_path`: Path of the processor, leave blank to automatically download from remote.
     * `--initialize_model_on_cpu`: Whether to initialize the models on CPU, which lowers the peak VRAM usage when launching multi-GPU training.
 

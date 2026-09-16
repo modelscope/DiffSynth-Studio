@@ -64,7 +64,7 @@ This section introduces the Diffusion models supported by `DiffSynth-Studio`. So
 * [MiniMax-Music3](./Model_Details/MiniMax-Music3.md)
 * [SenseNova-U1](./Model_Details/SenseNova-U1.md)
 * [YuE2](./Model_Details/YuE2.md)
-* [Qwen-Image2.1](./Model_Details/Qwen-Image2.1.md)
+* [Qwen-Image-2.1](./Model_Details/Qwen-Image-2.1.md)
 
 ## Section 3: Training Framework
 

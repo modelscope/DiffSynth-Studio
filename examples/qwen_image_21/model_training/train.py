@@ -26,7 +26,7 @@ class QwenImage21TrainingModule(DiffusionTrainingModule):
         super().__init__()
         # Load models
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, quant_options=quant_options, device=device)
-        processor_config = ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="processor/") if processor_path is None else ModelConfig(processor_path)
+        processor_config = ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="processor/") if processor_path is None else ModelConfig(processor_path)
         self.pipe = QwenImage21Pipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, processor_config=processor_config)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
         self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
@@ -80,7 +80,7 @@ class QwenImage21TrainingModule(DiffusionTrainingModule):
         return loss
 
 
-def qwen_image21_parser():
+def qwen_image_21_parser():
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser = add_general_config(parser)
     parser = add_image_size_config(parser)
@@ -90,7 +90,7 @@ def qwen_image21_parser():
 
 
 if __name__ == "__main__":
-    parser = qwen_image21_parser()
+    parser = qwen_image_21_parser()
     args = parser.parse_args()
     accelerator = accelerate.Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,

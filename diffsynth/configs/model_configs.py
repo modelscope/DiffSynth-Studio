@@ -1715,19 +1715,19 @@ yue2_series = [
 
 qwen_image_21_series = [
     {
-        # Example: ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
         "model_hash": "4c9f4f5bdeb5c737742ad8e4080221d1",
         "model_name": "qwen_image_21_dit",
         "model_class": "diffsynth.models.qwen_image_21_dit.QwenImage21DiT",
     },
     {
-        # Example: ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
         "model_hash": "959403bfea52f7c5a3ccf82274f7e9ef",
         "model_name": "qwen_image_21_vae",
         "model_class": "diffsynth.models.qwen_image_21_vae.QwenImage21VAE",
     },
     {
-        # Example: ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="text_encoder/model*.safetensors")
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="text_encoder/model*.safetensors")
         # Example: ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/model-*.safetensors")
         # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="UnifiedReward-Edit-qwen3vl-8b/model-*.safetensors")
         "model_hash": "2d11bf14bba8b4e87477c8199a895403",

@@ -2,15 +2,26 @@ from diffsynth.pipelines.qwen_image_21 import QwenImage21Pipeline, ModelConfig
 import torch
 from PIL import Image
 
+vram_config = {
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": "disk",
+    "onload_device": "disk",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
 pipe = QwenImage21Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors"),
-        ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="text_encoder/model*.safetensors"),
-        ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="vae/diffusion_pytorch_model*.safetensors"),
+        ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
+        ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="vae/diffusion_pytorch_model*.safetensors", **vram_config),
     ],
-    processor_config=ModelConfig(model_id="Qwen/Qwen-Image2.1", origin_file_pattern="processor/"),
+    processor_config=ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="processor/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
 # Text-to-Image, the output is an RGBA image

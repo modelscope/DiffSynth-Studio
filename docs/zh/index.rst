@@ -50,7 +50,7 @@
    Model_Details/MiniMax-Music3
    Model_Details/YuE2
    Model_Details/SenseNova-U1
-   Model_Details/Qwen-Image2.1
+   Model_Details/Qwen-Image-2.1
 
 .. toctree::
    :maxdepth: 2
