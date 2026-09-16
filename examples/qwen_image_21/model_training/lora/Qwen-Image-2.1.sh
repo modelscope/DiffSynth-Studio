@@ -11,7 +11,7 @@ accelerate launch examples/qwen_image_21/model_training/train.py \
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/Qwen-Image-2.1_lora" \
   --lora_base_model "dit" \
-  --lora_target_modules "to_q,to_k,to_v,to_out.0" \
+  --lora_target_modules "" \
   --lora_rank 32 \
   --use_gradient_checkpointing \
   --find_unused_parameters
@@ -33,7 +33,7 @@ accelerate launch examples/qwen_image_21/model_training/train.py \
 #   --remove_prefix_in_ckpt "pipe.dit." \
 #   --output_path "./models/train/Qwen-Image-2.1_lora" \
 #   --lora_base_model "dit" \
-#   --lora_target_modules "to_q,to_k,to_v,to_out.0" \
+#   --lora_target_modules "" \
 #   --lora_rank 32 \
 #   --use_gradient_checkpointing \
 #   --find_unused_parameters
