@@ -6,7 +6,6 @@ from typing_extensions import Literal
 class FlowMatchScheduler():
 
     def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "Qwen-Image-2.1", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2"] = "FLUX.1"):
-        self.step_compute_dtype = torch.float32 if template == "Qwen-Image-2.1" else None
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -90,8 +89,7 @@ class FlowMatchScheduler():
     def set_timesteps_qwen_image_21(num_inference_steps=50, denoising_strength=1.0, dynamic_shift_len=None, shift_terminal=0.02):
         del denoising_strength
         num_train_timesteps = 1000
-        # The target builds the base grid with np.linspace (float64) before casting to float32.
-        sigmas = torch.linspace(1.0, 1.0 / num_inference_steps, num_inference_steps, dtype=torch.float64).to(torch.float32)
+        sigmas = torch.linspace(1.0, 1.0 / num_inference_steps, num_inference_steps)
         dynamic_shift_len = 256 if dynamic_shift_len is None else dynamic_shift_len
         mu = FlowMatchScheduler._calculate_shift_qwen_image(dynamic_shift_len, base_seq_len=256, max_seq_len=8192, base_shift=0.5, max_shift=0.9)
         sigmas = math.exp(mu) / (math.exp(mu) + (1 / sigmas - 1))
@@ -413,12 +411,6 @@ class FlowMatchScheduler():
             sigma_ = 0
         else:
             sigma_ = self.sigmas[timestep_id + 1]
-        if self.step_compute_dtype is not None:
-            sample_dtype = sample.dtype
-            sigma_next = torch.as_tensor(sigma_, dtype=self.step_compute_dtype, device=sample.device)
-            sigma = sigma.to(dtype=self.step_compute_dtype, device=sample.device)
-            prev_sample = sample.to(self.step_compute_dtype) + model_output.to(self.step_compute_dtype) * (sigma_next - sigma)
-            return prev_sample.to(sample_dtype)
         prev_sample = sample + model_output * (sigma_ - sigma)
         return prev_sample
     
