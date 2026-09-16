@@ -19,7 +19,7 @@ class QwenImage21Pipeline(BasePipeline):
 
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(device=device, torch_dtype=torch_dtype, height_division_factor=32, width_division_factor=32)
-        self.scheduler = FlowMatchScheduler("Qwen-Image-2.1")
+        self.scheduler = FlowMatchScheduler("Qwen-Image")
         self.text_encoder: QwenImage21TextEncoder = None
         self.dit: QwenImage21DiT = None
         self.vae: QwenImage21VAE = None
