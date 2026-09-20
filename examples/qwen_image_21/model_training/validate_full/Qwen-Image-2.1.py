@@ -13,5 +13,5 @@ pipe = QwenImage21Pipeline.from_pretrained(
     processor_config=ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="processor/"),
 )
 prompt = "dog,white and brown dog, sitting on wall, under pink flowers"
-image = pipe(prompt, seed=0, num_inference_steps=50, height=1024, width=1024)
+image = pipe(prompt, seed=0, height=1024, width=1024)
 image.save("image.png")

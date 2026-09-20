@@ -226,8 +226,8 @@ class QwenImage21AttnProcessor:
 
         if kv_cache is not None:
             if cache_write_slice is not None:
-                kv_cache["key"] = key[:, cache_write_slice].contiguous()
-                kv_cache["value"] = value[:, cache_write_slice].contiguous()
+                kv_cache["key"] = key[:, cache_write_slice].clone()
+                kv_cache["value"] = value[:, cache_write_slice].clone()
             else:
                 key = torch.cat([kv_cache["key"], key], dim=1)
                 value = torch.cat([kv_cache["value"], value], dim=1)
