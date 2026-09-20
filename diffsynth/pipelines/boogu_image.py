@@ -9,7 +9,7 @@ from ..core import ModelConfig
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..diffusion.flow_match import FlowMatchScheduler
 from ..models.boogu_image_dit import BooguImageDiT, BooguImageDoubleStreamRotaryPosEmbed
-from ..models.joyai_image_text_encoder import JoyAIImageTextEncoder
+from ..models.qwen_image_21_text_encoder import QwenImage21TextEncoder
 from ..models.flux_vae import FluxVAEEncoder, FluxVAEDecoder
 
 
@@ -30,7 +30,7 @@ class BooguImagePipeline(BasePipeline):
     def __init__(self, device=get_device_type(), torch_dtype=torch.bfloat16):
         super().__init__(device=device, torch_dtype=torch_dtype, height_division_factor=16, width_division_factor=16)
         self.scheduler = FlowMatchScheduler("Boogu")
-        self.text_encoder: JoyAIImageTextEncoder = None
+        self.text_encoder: QwenImage21TextEncoder = None
         self.dit: BooguImageDiT = None
         self.vae_encoder: FluxVAEEncoder = None
         self.vae_decoder: FluxVAEDecoder = None
@@ -57,7 +57,7 @@ class BooguImagePipeline(BasePipeline):
     ):
         pipe = BooguImagePipeline(device=device, torch_dtype=torch_dtype)
         model_pool = pipe.download_and_load_models(model_configs, vram_limit)
-        pipe.text_encoder = model_pool.fetch_model("joyai_image_text_encoder")
+        pipe.text_encoder = model_pool.fetch_model("qwen_image_21_text_encoder")
         pipe.dit = model_pool.fetch_model("boogu_image_dit")
         pipe.vae_encoder = model_pool.fetch_model("flux_vae_encoder")
         pipe.vae_decoder = model_pool.fetch_model("flux_vae_decoder")

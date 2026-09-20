@@ -1214,14 +1214,6 @@ joyai_image_series = [
         "model_name": "joyai_image_dit",
         "model_class": "diffsynth.models.joyai_image_dit.JoyAIImageDiT",
     },
-    {
-        # Example: ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/model-*.safetensors")
-        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="UnifiedReward-Edit-qwen3vl-8b/model-*.safetensors")
-        "model_hash": "2d11bf14bba8b4e87477c8199a895403",
-        "model_name": "joyai_image_text_encoder",
-        "model_class": "diffsynth.models.joyai_image_text_encoder.JoyAIImageTextEncoder",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.joyai_image_text_encoder.JoyAIImageTextEncoderStateDictConverter",
-    },
 ]
 
 boogu_image_series = [
@@ -1721,9 +1713,33 @@ yue2_series = [
     },
 ]
 
+qwen_image_21_series = [
+    {
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        "model_hash": "4c9f4f5bdeb5c737742ad8e4080221d1",
+        "model_name": "qwen_image_21_dit",
+        "model_class": "diffsynth.models.qwen_image_21_dit.QwenImage21DiT",
+    },
+    {
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "959403bfea52f7c5a3ccf82274f7e9ef",
+        "model_name": "qwen_image_21_vae",
+        "model_class": "diffsynth.models.qwen_image_21_vae.QwenImage21VAE",
+    },
+    {
+        # Example: ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="text_encoder/model*.safetensors")
+        # Example: ModelConfig(model_id="jd-opensource/JoyAI-Image-Edit", origin_file_pattern="JoyAI-Image-Und/model-*.safetensors")
+        # Example: ModelConfig(model_id="DiffSynth-Studio/ImageMetrics", origin_file_pattern="UnifiedReward-Edit-qwen3vl-8b/model-*.safetensors")
+        "model_hash": "2d11bf14bba8b4e87477c8199a895403",
+        "model_name": "qwen_image_21_text_encoder",
+        "model_class": "diffsynth.models.qwen_image_21_text_encoder.QwenImage21TextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.qwen_image_21_text_encoder.QwenImage21TextEncoderStateDictConverter",
+    },
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + qwen_video_edit_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
     + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series + minimax_h3_series + minimax_music3_series + sensenova_u1_series
-    + yue2_series
+    + yue2_series + qwen_image_21_series
 )

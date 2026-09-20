@@ -44,7 +44,7 @@ except Exception:
 
 try:
     from torch.nn.attention.flex_attention import flex_attention as flex_attention_func
-    flex_attention_func = torch.compile(flex_attention_func, dynamic=False, mode="max-autotune-no-cudagraphs", fullgraph=True, backend="inductor")
+    flex_attention_func = torch.compile(flex_attention_func)
     FLEX_ATTN_AVAILABLE = True
 except Exception:
     FLEX_ATTN_AVAILABLE = False
