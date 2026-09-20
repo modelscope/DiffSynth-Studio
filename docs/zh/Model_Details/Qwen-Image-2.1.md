@@ -47,17 +47,17 @@ pipe = QwenImage21Pipeline.from_pretrained(
 
 # Text-to-Image, the output is an RGBA image
 prompt = "完全透明背景，无背景，alpha 通道抠图，PNG 透明贴纸风格，边缘干净利落：水下少女精致肖像，蓝裙在水中飘逸，发丝轻扬，面容恬静，人物周围环绕少量气泡，光影只作用于人物本身，除人物与气泡外没有任何背景元素，细节精致，梦幻唯美。"
-image = pipe(prompt, seed=0, num_inference_steps=50)
+image = pipe(prompt, seed=0)
 image.save("image1.png")
 
 prompt = "精致肖像，阳光帅哥，剑眉星目，轮廓分明，发型利落，浅笑温柔，光影柔和，气质出众，细节精致，梦幻唯美。"
-image_2 = pipe(prompt=prompt, seed=0, num_inference_steps=50)
+image_2 = pipe(prompt=prompt, seed=0)
 image_2.save("image2.png")
 
 # Image Editing, the generated RGBA image is fed back as the condition
 prompt = "生成这两个人的合影"
 edit_image = [Image.open("image1.png"), Image.open("image2.png")]
-image_3 = pipe(prompt, edit_image=edit_image, seed=1, num_inference_steps=50)
+image_3 = pipe(prompt, edit_image=edit_image, seed=1)
 image_3.save("image3.png")
 ```
 
@@ -73,15 +73,15 @@ image_3.save("image3.png")
 
 `QwenImage21Pipeline` 推理的输入参数包括：
 
-* `prompt`: 提示词，描述画面中出现的内容。
-* `negative_prompt`: 负向提示词，默认 `""`，在 `cfg_scale` 大于 1 时作为负向分支条件。
+* `prompt`: 提示词，描述画面中出现的内容。默认 `" "`；传入空字符串时会按单个空格处理，因为 Qwen 没有 bos token，空串会让文本编码器无内容可读。
+* `negative_prompt`: 负向提示词，默认 `" "`，在 `cfg_scale` 大于 1 时作为负向分支条件。
 * `cfg_scale`: CFG 强度，默认值为 1.0，是否启用 CFG 仅由该值是否大于 1 决定。
 * `edit_image`: 待编辑图像，仅支持 PIL 图像（`PIL.Image`）或 PIL 图像列表。留空时执行文生图，提供时执行图像编辑。
 * `height`: 图像高度，默认 1024，会对齐到 32 的倍数；编辑模式下 `edit_image` 按自身宽高比缩放到 `height * width` 的面积内。
 * `width`: 图像宽度，默认 1024，规则同 `height`。
 * `seed`: 随机种子。默认为 `None`，即完全随机。
 * `rand_device`: 生成随机高斯噪声矩阵的计算设备，默认为 `"cpu"`。
-* `num_inference_steps`: 推理次数，默认值为 50。
+* `num_inference_steps`: 推理次数，默认值为 40。
 * `use_kv_cache`: 是否在 block-causal 条件下启用逐层 KV cache，默认值为 `True`。
 * `tiled`: 是否启用 VAE 分块推理，默认为 `False`。
 * `tile_size`: VAE 编解码阶段的分块大小，默认为 256，仅在 `tiled=True` 时生效。

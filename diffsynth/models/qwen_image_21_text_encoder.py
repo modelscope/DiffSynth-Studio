@@ -84,36 +84,6 @@ class QwenImage21TextEncoder(torch.nn.Module):
 
     def forward(
         self,
-        input_ids: Optional[torch.LongTensor] = None,
-        attention_mask: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        past_key_values=None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
-        pixel_values: Optional[torch.Tensor] = None,
-        pixel_values_videos: Optional[torch.FloatTensor] = None,
-        image_grid_thw: Optional[torch.LongTensor] = None,
-        video_grid_thw: Optional[torch.LongTensor] = None,
-        mm_token_type_ids: Optional[torch.IntTensor] = None,
-        **kwargs,
-    ) -> torch.Tensor:
-        kwargs["return_dict"] = True
-        outputs = self.model.model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            position_ids=position_ids,
-            past_key_values=past_key_values,
-            inputs_embeds=inputs_embeds,
-            pixel_values=pixel_values,
-            pixel_values_videos=pixel_values_videos,
-            image_grid_thw=image_grid_thw,
-            video_grid_thw=video_grid_thw,
-            mm_token_type_ids=mm_token_type_ids,
-            **kwargs,
-        )
-        return outputs.last_hidden_state
-
-    def forward_joyaiimage(
-        self,
         input_ids: torch.LongTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
         pixel_values: Optional[torch.Tensor] = None,
@@ -121,10 +91,10 @@ class QwenImage21TextEncoder(torch.nn.Module):
         **kwargs,
     ):
         pre_norm_output = [None]
-        def hook_fn(module, args, kwargs_output=None):
+        def hook_fn(module, args, output):
             pre_norm_output[0] = args[0]
         self.model.model.language_model.norm.register_forward_hook(hook_fn)
-        _ = self.model(
+        self.model(
             input_ids=input_ids,
             pixel_values=pixel_values,
             image_grid_thw=image_grid_thw,

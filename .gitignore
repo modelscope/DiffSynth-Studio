@@ -3,6 +3,7 @@
 /scripts
 /diffusers
 /.vscode
+/.qoder
 /.opencode
 *.pkl
 *.safetensors

@@ -47,17 +47,17 @@ pipe = QwenImage21Pipeline.from_pretrained(
 
 # Text-to-Image, the output is an RGBA image
 prompt = "完全透明背景，无背景，alpha 通道抠图，PNG 透明贴纸风格，边缘干净利落：水下少女精致肖像，蓝裙在水中飘逸，发丝轻扬，面容恬静，人物周围环绕少量气泡，光影只作用于人物本身，除人物与气泡外没有任何背景元素，细节精致，梦幻唯美。"
-image = pipe(prompt, seed=0, num_inference_steps=50)
+image = pipe(prompt, seed=0)
 image.save("image1.png")
 
 prompt = "精致肖像，阳光帅哥，剑眉星目，轮廓分明，发型利落，浅笑温柔，光影柔和，气质出众，细节精致，梦幻唯美。"
-image_2 = pipe(prompt=prompt, seed=0, num_inference_steps=50)
+image_2 = pipe(prompt=prompt, seed=0)
 image_2.save("image2.png")
 
 # Image Editing, the generated RGBA image is fed back as the condition
 prompt = "生成这两个人的合影"
 edit_image = [Image.open("image1.png"), Image.open("image2.png")]
-image_3 = pipe(prompt, edit_image=edit_image, seed=1, num_inference_steps=50)
+image_3 = pipe(prompt, edit_image=edit_image, seed=1)
 image_3.save("image3.png")
 ```
 
@@ -73,15 +73,15 @@ The model is loaded via `QwenImage21Pipeline.from_pretrained`, see [Loading Mode
 
 The input parameters for `QwenImage21Pipeline` inference include:
 
-* `prompt`: Prompt describing the content of the image.
-* `negative_prompt`: Negative prompt, defaults to `""`. It conditions the negative branch when `cfg_scale` is greater than 1.
+* `prompt`: Prompt describing the content of the image. Defaults to `" "`; an empty string is treated as a single space, because Qwen has no bos token and an empty string would leave the text encoder with nothing to read.
+* `negative_prompt`: Negative prompt, defaults to `" "`. It conditions the negative branch when `cfg_scale` is greater than 1.
 * `cfg_scale`: CFG strength, defaults to 1.0. Whether CFG is enabled is decided solely by whether this value is greater than 1.
 * `edit_image`: Image(s) to edit, only a `PIL.Image` or a list of `PIL.Image` is accepted. Text-to-image runs when it is left empty, image editing runs when it is provided.
 * `height`: Image height, defaults to 1024 and is aligned to a multiple of 32; in editing mode `edit_image` is resized to the `height * width` area following its own aspect ratio.
 * `width`: Image width, defaults to 1024, same rule as `height`.
 * `seed`: Random seed. Defaults to `None`, i.e. fully random.
 * `rand_device`: Device used to generate the Gaussian noise, defaults to `"cpu"`.
-* `num_inference_steps`: Number of inference steps, defaults to 50.
+* `num_inference_steps`: Number of inference steps, defaults to 40.
 * `use_kv_cache`: Whether to enable the per-layer KV cache under the block-causal condition, defaults to `True`.
 * `tiled`: Whether to enable tiled VAE inference, defaults to `False`.
 * `tile_size`: Tile size for VAE encoding/decoding, defaults to 256, effective only when `tiled=True`.

@@ -1,4 +1,4 @@
-import math, random
+import math
 from typing import Union
 
 import torch
@@ -60,8 +60,8 @@ class QwenImage21Pipeline(BasePipeline):
     def __call__(
         self,
         # Prompt
-        prompt: str = "",
-        negative_prompt: str = "",
+        prompt: str = " ",
+        negative_prompt: str = " ",
         cfg_scale: float = 1.0,
         # Editing
         edit_image: Union[Image.Image, list[Image.Image]] = None,
@@ -72,7 +72,7 @@ class QwenImage21Pipeline(BasePipeline):
         seed: int = None,
         rand_device: str = "cpu",
         # Steps
-        num_inference_steps: int = 50,
+        num_inference_steps: int = 40,
         # KV cache
         use_kv_cache: bool = True,
         # VAE tiling
@@ -139,10 +139,9 @@ class QwenImage21Unit_PromptEmbedder(PipelineUnit):
     )
     prompt_template_ti2i = (
         f"<|im_start|>system\n{sys_prompt}<|im_end|>\n"
-        "<|im_start|>user\nPicture 1: <|vision_start|><|image_pad|><|vision_end|>{}<|im_end|>\n"
+        "<|im_start|>user\n<image1><|vision_start|><|image_pad|><|vision_end|>{}<|im_end|>\n"
         "<|im_start|>assistant\n"
     )
-    ref_token_list = ("Picture ", "Image ", "图 ", "图片 ")
 
     def __init__(self):
         super().__init__(
@@ -163,6 +162,15 @@ class QwenImage21Unit_PromptEmbedder(PipelineUnit):
         selected = hidden_states[bool_mask]
         return torch.split(selected, valid_lengths.tolist(), dim=0)
 
+    @staticmethod
+    def composite_over_white(image):
+        if image.mode != "RGBA":
+            return image
+        # The vision encoder saw the alpha composited over white during training; the VAE still reads all four channels.
+        canvas = Image.new("RGB", image.size, (255, 255, 255))
+        canvas.paste(image, mask=image.getchannel("A"))
+        return canvas
+
     def process(self, pipe, prompt, edit_image):
         if pipe.text_encoder is None or pipe.processor is None:
             return {}
@@ -172,26 +180,26 @@ class QwenImage21Unit_PromptEmbedder(PipelineUnit):
             sys_tokens = pipe.processor.apply_chat_template(sys_message, tokenize=True, return_dict=False)
             self._drop_idx = len(sys_tokens) if not sys_tokens or isinstance(sys_tokens[0], int) else len(sys_tokens[0])
             self._img_token_id = pipe.processor.tokenizer.encode("<|image_pad|>")[0]
-        prompt = [prompt]
+        # Qwen has no bos token, so an empty string leaves the encoder with nothing to read.
+        prompt = [" " if not prompt else prompt]
         if edit_image is None:
             prompts = [self.prompt_template_t2i.format(text) for text in prompt]
         else:
-            replacement = "Picture 1: <|vision_start|><|image_pad|><|vision_end|>"
+            replacement = "<image1><|vision_start|><|image_pad|><|vision_end|>"
             for index in range(2, len(edit_image) + 1):
-                replacement += f" Picture {index}: <|vision_start|><|image_pad|><|vision_end|>"
-            template = self.prompt_template_ti2i.replace(
-                "Picture 1: <|vision_start|><|image_pad|><|vision_end|>",
-                replacement.replace("Picture ", random.choice(self.ref_token_list)),
-            )
+                replacement += f" <image{index}><|vision_start|><|image_pad|><|vision_end|>"
+            template = self.prompt_template_ti2i.replace("<image1><|vision_start|><|image_pad|><|vision_end|>", replacement)
             prompts = [template.format(text) for text in prompt]
 
         processor_kwargs = {"text": prompts, "padding": True, "return_tensors": "pt"}
         if edit_image is not None:
-            processor_kwargs["images"] = edit_image
+            processor_kwargs["images"] = [self.composite_over_white(image) for image in edit_image]
         model_inputs = pipe.processor(**processor_kwargs).to(pipe.device)
-        forward_kwargs = {"input_ids": model_inputs.input_ids, "attention_mask": model_inputs.attention_mask, "output_hidden_states": True}
+        forward_kwargs = {"input_ids": model_inputs.input_ids, "attention_mask": model_inputs.attention_mask}
         if edit_image is not None:
-            forward_kwargs.update(pixel_values=model_inputs.pixel_values, image_grid_thw=model_inputs.image_grid_thw, mm_token_type_ids=model_inputs.mm_token_type_ids)
+            forward_kwargs.update(pixel_values=model_inputs.pixel_values, image_grid_thw=model_inputs.image_grid_thw)
+        if hasattr(model_inputs, "mm_token_type_ids"):
+            forward_kwargs["mm_token_type_ids"] = model_inputs.mm_token_type_ids
         hidden_states = pipe.text_encoder(**forward_kwargs)
         split_hidden_states = list(self._extract_masked_hidden(hidden_states, model_inputs.attention_mask))
         split_hidden_states = [hidden_state[self._drop_idx :] for hidden_state in split_hidden_states]
@@ -208,6 +216,9 @@ class QwenImage21Unit_PromptEmbedder(PipelineUnit):
             for hidden_state in split_hidden_states
         ]).to(dtype=pipe.torch_dtype, device=pipe.device)
         prompt_embeds_mask = torch.stack([torch.cat([mask, mask.new_zeros(max_seq_len - mask.size(0))]) for mask in attention_masks])
+
+        if prompt_embeds_mask.all():
+            prompt_embeds_mask = None
         image_pad_mask = torch.stack([torch.cat([mask, mask.new_zeros(max_seq_len - mask.size(0))]) for mask in image_pad_mask])
         return {"prompt_embeds": prompt_embeds, "prompt_embeds_mask": prompt_embeds_mask, "edit_image_pad_mask": image_pad_mask}
 
@@ -250,21 +261,34 @@ class QwenImage21Unit_EditImageEmbedder(PipelineUnit):
         )
 
     @staticmethod
-    def calculate_dimensions(target_area, ratio):
+    def calculate_dimensions(target_area, ratio, min_pixels=None):
         width = math.sqrt(target_area * ratio)
         height = width / ratio
-        return round(width / 32) * 32, round(height / 32) * 32
+        width = round(width / 32) * 32
+        height = round(height / 32) * 32
+        if min_pixels is not None and width * height < min_pixels:
+            beta = math.sqrt(min_pixels / (width * height))
+            width = math.ceil(width * beta / 32) * 32
+            height = math.ceil(height * beta / 32) * 32
+        return width, height
 
-    def resize_edit_image(self, edit_image, target_area):
-        return [image.resize(self.calculate_dimensions(target_area, image.size[0] / image.size[1]), resample=Image.Resampling.LANCZOS) for image in edit_image]
+    @staticmethod
+    def get_processor_min_pixels(pipe):
+        size = getattr(getattr(pipe.processor, "image_processor", None), "size", None)
+        return size.get("shortest_edge") if isinstance(size, dict) else getattr(size, "shortest_edge", None)
+
+    def resize_edit_image(self, pipe, edit_image, target_area):
+        min_pixels = self.get_processor_min_pixels(pipe)
+        return [image.resize(self.calculate_dimensions(target_area, image.size[0] / image.size[1], min_pixels), resample=Image.Resampling.LANCZOS) for image in edit_image]
 
     def process(self, pipe, edit_image, height, width, tiled, tile_size, tile_stride):
         edit_image = [] if edit_image is None else (edit_image if isinstance(edit_image, list) else [edit_image])
         if len(edit_image) == 0:
             return {"edit_image": None}
-        edit_image = self.resize_edit_image(edit_image, height * width)
+        edit_image = [image.convert("RGBA") for image in edit_image]
+        edit_image = self.resize_edit_image(pipe, edit_image, height * width)
         pipe.load_models_to_device(self.onload_model_names)
-        edit_latents = [pipe.vae.encode(pipe.preprocess_image(image.convert("RGBA")), tiled=tiled, tile_size=tile_size, tile_stride=tile_stride) for image in edit_image]
+        edit_latents = [pipe.vae.encode(pipe.preprocess_image(image), tiled=tiled, tile_size=tile_size, tile_stride=tile_stride) for image in edit_image]
         return {"edit_image": edit_image, "edit_latents": edit_latents}
 
 
