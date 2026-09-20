@@ -212,3 +212,9 @@ graph TD;
     E -->|Yes| F[Use Dynamic VRAM Management]
     E -->|No| G[Use Disk Offload]
 ```
+
+## CPU checkpoint staging for ZeRO-3
+
+For standard DeepSpeed ZeRO-3 loading, set `ModelConfig(..., zero3_load_state_dict_on_cpu=True)` to read checkpoint tensors into CPU memory before the ZeRO-3 loader loads partitioned parameters. This can avoid a full checkpoint allocation on the GPU during loading. The option is disabled by default, is inactive outside ZeRO-3, and does not change the model's initialization or computation device.
+
+The MiniMax-H3 training script exposes the same option as `--zero3_load_state_dict_on_cpu`. Both DiskMap and ordinary checkpoint loading honor it. A caller-supplied `state_dict` is used unchanged. Host RAM must hold the loaded checkpoint; this is not streaming loading and does not lower steady-state training memory. Combining the option with quantization or VRAM management under ZeRO-3 raises an error; those paths retain their existing loading policies.

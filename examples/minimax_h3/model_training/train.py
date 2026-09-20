@@ -1,3 +1,4 @@
+# Modified by Hygon Information Technology Co., Ltd., 2026.
 import torch, os, argparse, accelerate
 from diffsynth.core import UnifiedDataset
 from diffsynth.core.data.operators import LoadAudioWithTorchaudio, ToAbsolutePath
@@ -32,6 +33,7 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         audio_loss_weight=1.0,
         device="cpu",
         task="sft",
+        zero3_load_state_dict_on_cpu=False,
     ):
         super().__init__()
         if training_cfg_scale < 1.0:
@@ -40,6 +42,8 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         self.audio_loss_weight = audio_loss_weight
         # Load models
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, quant_options=quant_options, device=device)
+        for model_config in model_configs:
+            model_config.zero3_load_state_dict_on_cpu = zero3_load_state_dict_on_cpu
         pipe_kwargs = {}
         if processor_path is not None:
             pipe_kwargs["processor_config"] = self.parse_path_or_model_id(processor_path)
@@ -154,6 +158,7 @@ def minimax_h3_parser():
     parser.add_argument("--silent_on_missing_audio", default=False, action="store_true", help="Whether to use silent audio as a fallback when no audio track is present in the video data.")
     parser.add_argument("--training_cfg_scale", type=float, default=1.0, help="Inverse-CFG scale for preserving MiniMax-H3 guidance distillation during fine-tuning. Values greater than 1 enable a no-grad unconditional branch; 1 keeps the standard flow-matching loss.")
     parser.add_argument("--audio_loss_weight", type=float, default=1.0, help="Weight of the audio term in the MiniMax-H3 loss. 1 keeps video and audio equally weighted; 0 trains on the video term only while the audio stream is still noised and forwarded.")
+    parser.add_argument("--zero3_load_state_dict_on_cpu", action="store_true", help="Read checkpoint tensors on CPU during standard ZeRO-3 loading to reduce GPU loading memory; requires host RAM for the checkpoint.")
     return parser
 
 
@@ -230,6 +235,7 @@ if __name__ == "__main__":
         training_cfg_scale=args.training_cfg_scale,
         audio_loss_weight=args.audio_loss_weight,
         task=args.task,
+        zero3_load_state_dict_on_cpu=args.zero3_load_state_dict_on_cpu,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
     )
     model_logger = ModelLogger(
