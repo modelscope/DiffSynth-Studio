@@ -41,6 +41,8 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年9月20日** Qwen-Image-2.1 开源，模型支持文生图、图像编辑、带透明通道的 RGBA 输出，DiffSynth-Studio 已为其提供全面支持。详情请参考[文档](/docs/zh/Model_Details/Qwen-Image-2.1.md)和[示例代码](/examples/qwen_image_21/)。
+
 - **2026年9月14日** 我们训练并开源了 DiffSynth-Music，基于 ACE-Step 的音乐可控生成模型，支持 Beats、Vocals、Accompany、Prosody、Reference 五种控制方式。更多信息请参考：
     * 模型：https://modelscope.cn/models/DiffSynth-Studio/DiffSynth-Music
     * 技术报告：https://arxiv.org/abs/2609.12774
@@ -301,6 +303,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 
 | 基础架构 | 模型 ID | 推理 | 低显存推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
 |-|-|-|-|-|-|-|-|
+| Qwen-Image-2.1 | [Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1) | [code](/examples/qwen_image_21/model_inference/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_training/full/Qwen-Image-2.1.sh) | [code](/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1.sh) | [code](/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1.py) |
 | MiniMax-H3 | [MiniMax/MiniMax-H3: FL2VA](https://www.modelscope.cn/models/MiniMax/MiniMax-H3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-FL2VA.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-FL2VA.py) |
 | MiniMax-H3 | [DiffSynth-Studio/MiniMax-H3-NF4: FL2VA pruned](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-NF4) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-NF4-Pruned-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-NF4-Pruned-FL2VA.py) | - | - | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-NF4-Pruned-FL2VA.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-NF4-Pruned-FL2VA.py) |
 | ACE-Step | [ACE-Step/acestep-v15-xl-sft](https://www.modelscope.cn/models/ACE-Step/acestep-v15-xl-sft) | [code](/examples/ace_step/model_inference/acestep-v15-xl-sft.py) | [code](/examples/ace_step/model_inference_low_vram/acestep-v15-xl-sft.py) | [code](/examples/ace_step/model_training/full/acestep-v15-xl-sft.sh) | [code](/examples/ace_step/model_training/validate_full/acestep-v15-xl-sft.py) | [code](/examples/ace_step/model_training/lora/acestep-v15-xl-sft.sh) | [code](/examples/ace_step/model_training/validate_lora/acestep-v15-xl-sft.py) |
@@ -311,6 +314,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 模型一览：
 
 - 图像生成
+    - Qwen-Image-2.1：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Qwen-Image-2.1.html)、[样例代码](/examples/qwen_image_21/)
     - SenseNova-U1：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/SenseNova-U1.html)、[样例代码](/examples/sensenova_u1/)
     - Boogu-Image：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Boogu-Image.html)、[样例代码](/examples/boogu_image/)
     - Krea-2：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Krea-2.html)、[样例代码](/examples/krea2/)
@@ -555,6 +559,7 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 
 | 基础架构 | 模型 ID | 推理 | 低显存推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
 |-|-|-|-|-|-|-|-|
+| Qwen-Image-2.1 | [Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1) | [code](/examples/qwen_image_21/model_inference/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_training/full/Qwen-Image-2.1.sh) | [code](/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1.sh) | [code](/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1.py) |
 | SenseNova-U1 | [SenseNova/SenseNova-U1.5-8B-MoT: T2I](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT) | [code](/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT.py) | [code](/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT.py) | [code](/examples/sensenova_u1/model_training/full/SenseNova-U1.5-8B-MoT.sh) | [code](/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.5-8B-MoT.py) | [code](/examples/sensenova_u1/model_training/lora/SenseNova-U1.5-8B-MoT.sh) | [code](/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.5-8B-MoT.py) |
 | SenseNova-U1 | [SenseNova/SenseNova-U1.5-8B-MoT: Edit](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT) | [code](/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT-Edit.py) | [code](/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT-Edit.py) | [code](/examples/sensenova_u1/model_training/full/SenseNova-U1.5-8B-MoT-Edit.sh) | [code](/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.5-8B-MoT-Edit.py) | [code](/examples/sensenova_u1/model_training/lora/SenseNova-U1.5-8B-MoT-Edit.sh) | [code](/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.5-8B-MoT-Edit.py) |
 | SenseNova-U1 | [SenseNova/SenseNova-U1.5-8B-MoT-LoRAs: 8-step](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT-LoRAs) | [code](/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT-LoRA-8step.py) | [code](/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT-LoRA-8step.py) | - | - | - | - |
