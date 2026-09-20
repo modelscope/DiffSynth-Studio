@@ -198,8 +198,6 @@ def build_qwenimage21_block_causal_mask(
 
 
 def _qwenimage21_prefix_segments(image_ids: torch.Tensor, prefix_len: int) -> list[tuple[int, int, bool]]:
-    # Maximal runs of equal image_ids, as (start, end, is_text). Derived once per forward rather than per block:
-    # tolist() is a device sync, and there is one processor call per layer.
     prefix_ids = image_ids[:prefix_len].tolist()
     segments = []
     start = 0
