@@ -25,16 +25,16 @@ pipe = QwenImage21Pipeline.from_pretrained(
 )
 
 # Text-to-Image, the output is an RGBA image
-prompt = "完全透明背景，无背景，alpha 通道抠图，PNG 透明贴纸风格，边缘干净利落：水下少女精致肖像，蓝裙在水中飘逸，发丝轻扬，面容恬静，人物周围环绕少量气泡，光影只作用于人物本身，除人物与气泡外没有任何背景元素，细节精致，梦幻唯美。"
+prompt = "Flat anime-style illustration, a girl with long black hair, wearing a JK uniform."
 image = pipe(prompt, seed=0)
 image.save("image1.png")
 
-prompt = "精致肖像，阳光帅哥，剑眉星目，轮廓分明，发型利落，浅笑温柔，光影柔和，气质出众，细节精致，梦幻唯美。"
+prompt = "Flat anime-style illustration, a sunny and cheerful high school girl."
 image_2 = pipe(prompt=prompt, seed=0)
 image_2.save("image2.png")
 
 # Image Editing, the generated RGBA image is fed back as the condition
-prompt = "生成这两个人的合影"
+prompt = "Generate a group photo of these two characters."
 edit_image = [Image.open("image1.png"), Image.open("image2.png")]
 image_3 = pipe(prompt, edit_image=edit_image, seed=1)
 image_3.save("image3.png")
