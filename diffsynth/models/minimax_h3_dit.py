@@ -1,3 +1,4 @@
+# Modified by Hygon Information Technology Co., Ltd., 2026.
 from __future__ import annotations
 
 import math
@@ -137,9 +138,7 @@ class MiniMaxH3Attention(nn.Module):
         total = x.shape[0]
         qkv = self.qkv_proj(x)
         qkv = qkv.view(total, self.num_heads, 3, self.head_dim)
-        q = qkv[:, :, 0, :]
-        k = qkv[:, :, 1, :]
-        v = qkv[:, :, 2, :]
+        q, k, v = qkv.unbind(dim=2)
         q = self.q_norm(q)
         k = self.k_norm(k)
         if rope_freqs is not None:
