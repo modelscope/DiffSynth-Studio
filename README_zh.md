@@ -41,7 +41,8 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
-- **2026年9月16日** Qwen-Image-2.1 开源，欢迎加入图像生成模型家族！支持文生图推理、图像编辑、带透明通道的 RGBA 输出、低显存推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/Qwen-Image-2.1.md)和[示例代码](/examples/qwen_image_21/)。
+- **2026年9月20日** Qwen-Image-2.1 开源，模型支持文生图、图像编辑、带透明通道的 RGBA 输出，DiffSynth-Studio 已为其提供全面支持。详情请参考[文档](/docs/zh/Model_Details/Qwen-Image-2.1.md)和[示例代码](/examples/qwen_image_21/)。
+
 - **2026年9月14日** 我们训练并开源了 DiffSynth-Music，基于 ACE-Step 的音乐可控生成模型，支持 Beats、Vocals、Accompany、Prosody、Reference 五种控制方式。更多信息请参考：
     * 模型：https://modelscope.cn/models/DiffSynth-Studio/DiffSynth-Music
     * 技术报告：https://arxiv.org/abs/2609.12774

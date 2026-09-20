@@ -41,7 +41,8 @@ See also:
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
-- **September 16, 2026** Qwen-Image-2.1 open-sourced, welcome a new member to the image model family! Support includes text-to-image generation, image editing, RGBA output with a transparent background, low VRAM inference, and training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/Qwen-Image-2.1.md) and [example code](/examples/qwen_image_21/).
+- **September 20, 2026** Qwen-Image-2.1 was open-sourced. The model supports text-to-image generation, image editing, and RGBA output with a transparency channel. DiffSynth-Studio now provides full support for it. For details, please refer to the [documentation](/docs/zh/Model_Details/Qwen-Image-2.1.md) and [example code](/examples/qwen_image_21/).
+
 - **September 14, 2026** We trained and open-sourced DiffSynth-Music, a controllable music generation model based on ACE-Step, which supports five control modes: Beats, Vocals, Accompany, Prosody, and Reference. For more information, please refer to:
     * Model: https://modelscope.cn/models/DiffSynth-Studio/DiffSynth-Music
     * Technical Report: https://arxiv.org/abs/2609.12774
