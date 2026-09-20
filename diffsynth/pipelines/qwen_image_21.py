@@ -60,8 +60,8 @@ class QwenImage21Pipeline(BasePipeline):
     def __call__(
         self,
         # Prompt
-        prompt: str = "",
-        negative_prompt: str = "",
+        prompt: str = " ",
+        negative_prompt: str = " ",
         cfg_scale: float = 1.0,
         # Editing
         edit_image: Union[Image.Image, list[Image.Image]] = None,
@@ -180,7 +180,8 @@ class QwenImage21Unit_PromptEmbedder(PipelineUnit):
             sys_tokens = pipe.processor.apply_chat_template(sys_message, tokenize=True, return_dict=False)
             self._drop_idx = len(sys_tokens) if not sys_tokens or isinstance(sys_tokens[0], int) else len(sys_tokens[0])
             self._img_token_id = pipe.processor.tokenizer.encode("<|image_pad|>")[0]
-        prompt = [prompt]
+        # Qwen has no bos token, so an empty string leaves the encoder with nothing to read.
+        prompt = [" " if not prompt else prompt]
         if edit_image is None:
             prompts = [self.prompt_template_t2i.format(text) for text in prompt]
         else:
@@ -215,6 +216,9 @@ class QwenImage21Unit_PromptEmbedder(PipelineUnit):
             for hidden_state in split_hidden_states
         ]).to(dtype=pipe.torch_dtype, device=pipe.device)
         prompt_embeds_mask = torch.stack([torch.cat([mask, mask.new_zeros(max_seq_len - mask.size(0))]) for mask in attention_masks])
+
+        if prompt_embeds_mask.all():
+            prompt_embeds_mask = None
         image_pad_mask = torch.stack([torch.cat([mask, mask.new_zeros(max_seq_len - mask.size(0))]) for mask in image_pad_mask])
         return {"prompt_embeds": prompt_embeds, "prompt_embeds_mask": prompt_embeds_mask, "edit_image_pad_mask": image_pad_mask}
 

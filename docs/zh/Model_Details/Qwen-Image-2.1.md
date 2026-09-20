@@ -73,8 +73,8 @@ image_3.save("image3.png")
 
 `QwenImage21Pipeline` 推理的输入参数包括：
 
-* `prompt`: 提示词，描述画面中出现的内容。
-* `negative_prompt`: 负向提示词，默认 `""`，在 `cfg_scale` 大于 1 时作为负向分支条件。
+* `prompt`: 提示词，描述画面中出现的内容。默认 `" "`；传入空字符串时会按单个空格处理，因为 Qwen 没有 bos token，空串会让文本编码器无内容可读。
+* `negative_prompt`: 负向提示词，默认 `" "`，在 `cfg_scale` 大于 1 时作为负向分支条件。
 * `cfg_scale`: CFG 强度，默认值为 1.0，是否启用 CFG 仅由该值是否大于 1 决定。
 * `edit_image`: 待编辑图像，仅支持 PIL 图像（`PIL.Image`）或 PIL 图像列表。留空时执行文生图，提供时执行图像编辑。
 * `height`: 图像高度，默认 1024，会对齐到 32 的倍数；编辑模式下 `edit_image` 按自身宽高比缩放到 `height * width` 的面积内。

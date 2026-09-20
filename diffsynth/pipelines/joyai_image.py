@@ -183,7 +183,7 @@ class JoyAIImageUnit_PromptEmbedder(PipelineUnit):
         prompt = prompt.replace('<image>\n', '<|vision_start|><|image_pad|><|vision_end|>')
         prompt = template.format(prompt)
         inputs = pipe.processor(text=[prompt], images=[edit_image], padding=True, return_tensors="pt").to(pipe.device)
-        last_hidden_states = pipe.text_encoder.forward_joyaiimage(**inputs)
+        last_hidden_states = pipe.text_encoder(**inputs)
 
         prompt_embeds = last_hidden_states[:, drop_idx:]
         prompt_embeds_mask = inputs['attention_mask'][:, drop_idx:]

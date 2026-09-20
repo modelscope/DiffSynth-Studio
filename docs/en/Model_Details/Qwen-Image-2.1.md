@@ -73,8 +73,8 @@ The model is loaded via `QwenImage21Pipeline.from_pretrained`, see [Loading Mode
 
 The input parameters for `QwenImage21Pipeline` inference include:
 
-* `prompt`: Prompt describing the content of the image.
-* `negative_prompt`: Negative prompt, defaults to `""`. It conditions the negative branch when `cfg_scale` is greater than 1.
+* `prompt`: Prompt describing the content of the image. Defaults to `" "`; an empty string is treated as a single space, because Qwen has no bos token and an empty string would leave the text encoder with nothing to read.
+* `negative_prompt`: Negative prompt, defaults to `" "`. It conditions the negative branch when `cfg_scale` is greater than 1.
 * `cfg_scale`: CFG strength, defaults to 1.0. Whether CFG is enabled is decided solely by whether this value is greater than 1.
 * `edit_image`: Image(s) to edit, only a `PIL.Image` or a list of `PIL.Image` is accepted. Text-to-image runs when it is left empty, image editing runs when it is provided.
 * `height`: Image height, defaults to 1024 and is aligned to a multiple of 32; in editing mode `edit_image` is resized to the `height * width` area following its own aspect ratio.
