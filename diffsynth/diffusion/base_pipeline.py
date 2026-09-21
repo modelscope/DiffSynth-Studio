@@ -316,6 +316,7 @@ class BasePipeline(torch.nn.Module):
                 clear_parameters=model_config.clear_parameters,
                 state_dict=model_config.state_dict,
                 quantize=model_config.quantize,
+                zero3_load_state_dict_on_cpu=model_config.zero3_load_state_dict_on_cpu,
             )
         return model_pool
     

@@ -59,6 +59,7 @@ class ModelConfig:
     clear_parameters: bool = False
     state_dict: Dict[str, torch.Tensor] = None
     quantize: Optional[Union[QuantizeConfig, MixedQuantizeConfig]] = None
+    zero3_load_state_dict_on_cpu: bool = False
     
     def check_input(self):
         if self.path is None and self.model_id is None:
