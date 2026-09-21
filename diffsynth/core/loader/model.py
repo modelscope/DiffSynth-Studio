@@ -1,4 +1,3 @@
-# Modified by Hygon Information Technology Co., Ltd., 2026.
 from ..vram.initialization import skip_model_initialization
 from ..vram.disk_map import DiskMap
 from ..vram.layers import enable_vram_management

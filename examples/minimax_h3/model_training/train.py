@@ -1,4 +1,3 @@
-# Modified by Hygon Information Technology Co., Ltd., 2026.
 import torch, os, argparse, accelerate
 from diffsynth.core import UnifiedDataset
 from diffsynth.core.data.operators import LoadAudioWithTorchaudio, ToAbsolutePath

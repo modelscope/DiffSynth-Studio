@@ -1,4 +1,3 @@
-# Modified by Hygon Information Technology Co., Ltd., 2026.
 from ..core.loader import load_model, hash_model_file
 from ..core.vram import AutoWrappedModule
 from ..core.quant import QuantizeConfig, MixedQuantizeConfig

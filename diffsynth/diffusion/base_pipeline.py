@@ -1,4 +1,3 @@
-# Modified by Hygon Information Technology Co., Ltd., 2026.
 from PIL import Image
 import torch
 import numpy as np

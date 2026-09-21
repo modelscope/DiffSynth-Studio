@@ -1,4 +1,3 @@
-# Modified by Hygon Information Technology Co., Ltd., 2026.
 import torch, glob, os, sys
 from typing import Optional, Union, Dict
 from dataclasses import dataclass
