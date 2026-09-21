@@ -193,7 +193,7 @@ def build_qwenimage21_block_causal_mask(
         Q_LEN=padded_seq_len,
         KV_LEN=padded_seq_len,
         device=device,
-        _compile=False,
+        _compile=True,
     )
 
 
