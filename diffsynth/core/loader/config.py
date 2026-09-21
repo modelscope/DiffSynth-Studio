@@ -161,6 +161,8 @@ class ModelConfig:
                 self.path = os.path.join(self.local_model_path, self.model_id)
             else:
                 self.path = glob.glob(os.path.join(self.local_model_path, self.model_id, self.origin_file_pattern))
+                if len(self.path) == 0:
+                    raise ValueError(f"""No file matches `origin_file_pattern="{self.origin_file_pattern}"` in `{os.path.join(self.local_model_path, self.model_id)}`. Please check `model_id` and `origin_file_pattern`. If `skip_download=True` (or `DIFFSYNTH_SKIP_DOWNLOAD=True`) is enabled, these files must be downloaded to this path in advance.""")
         if isinstance(self.path, list) and len(self.path) == 1:
             self.path = self.path[0]
 
