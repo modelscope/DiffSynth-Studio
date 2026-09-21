@@ -23,8 +23,8 @@ class LoRATrainerBlock(torch.nn.Module):
         for lora_pattern, layer in zip(self.lora_patterns, self.layers):
             name = lora_pattern[0]
             lora_a, lora_b = layer(x, residual=residual)
-            lora[f"{self.prefix}.{self.block_id}.{name}.lora_A.default.weight"] = lora_a
-            lora[f"{self.prefix}.{self.block_id}.{name}.lora_B.default.weight"] = lora_b
+            lora[f"{self.prefix}.{self.block_id}.{name}.lora_A.weight"] = lora_a
+            lora[f"{self.prefix}.{self.block_id}.{name}.lora_B.weight"] = lora_b
         return lora
 
 
@@ -170,7 +170,7 @@ class ZImageImage2LoRAModelCompressed(torch.nn.Module):
         lora = {}
         for name, module in self.module_dict.items():
             name = name.replace("___", ".")
-            name_a, name_b = f"{name}.lora_A.default.weight", f"{name}.lora_B.default.weight"
+            name_a, name_b = f"{name}.lora_A.weight", f"{name}.lora_B.weight"
             lora_a, lora_b = module(x)
             lora[name_a] = lora_a
             lora[name_b] = lora_b

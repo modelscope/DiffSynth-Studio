@@ -6,3 +6,4 @@ from .loader import *
 from .vram import *
 from .device import *
 from .offload_training import *
+from .lora_train import *
