@@ -197,6 +197,24 @@ def build_qwenimage21_block_causal_mask(
     )
 
 
+def _qwenimage21_prefix_segments(image_ids: torch.Tensor, prefix_len: int) -> list[tuple[int, int, bool]]:
+    prefix_ids = image_ids[:prefix_len].tolist()
+    segments = []
+    start = 0
+    for index in range(1, prefix_len + 1):
+        if index == prefix_len or prefix_ids[index] != prefix_ids[start]:
+            segments.append((start, index, prefix_ids[start] < 0))
+            start = index
+    return segments
+
+
+def _attention(query, key, value, attn_mask=None, use_flex=False):
+    return attention_forward(
+        query, key, value, q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
+        attn_mask=attn_mask, use_flex=use_flex,
+    )
+
+
 class QwenImage21AttnProcessor:
     def __call__(
         self,
@@ -206,7 +224,8 @@ class QwenImage21AttnProcessor:
         rotary_emb: torch.Tensor | None = None,
         kv_cache: dict[str, torch.Tensor] | None = None,
         cache_write_slice: slice | None = None,
-        is_causal: bool = False,
+        segments: list[tuple[int, int, bool]] | None = None,
+        key_valid: torch.Tensor | None = None,
     ) -> torch.Tensor:
         query = attn.to_q(hidden_states)
         key = attn.to_k(hidden_states)
@@ -223,17 +242,21 @@ class QwenImage21AttnProcessor:
             query = apply_rotary_emb_qwen(query, rotary_emb, use_real=False)
             key = apply_rotary_emb_qwen(key, rotary_emb, use_real=False)
 
+        decode = kv_cache is not None and "key" in kv_cache
         if kv_cache is not None:
-            if cache_write_slice is not None:
-                kv_cache["key"] = key[:, cache_write_slice].clone()
-                kv_cache["value"] = value[:, cache_write_slice].clone()
-            else:
+            if decode:
                 key = torch.cat([kv_cache["key"], key], dim=1)
                 value = torch.cat([kv_cache["value"], value], dim=1)
+            else:
+                kv_cache["key"] = key[:, cache_write_slice].clone()
+                kv_cache["value"] = value[:, cache_write_slice].clone()
 
         seq_len_q, seq_len_kv = query.shape[1], key.shape[1]
-        use_flex = FLEX_ATTN_AVAILABLE and isinstance(attention_mask, BlockMask)
-        if use_flex:
+        if decode:
+            # Fast decode path with kv cache
+            hidden_states = _attention(query, key, value, attn_mask=attention_mask)
+        elif FLEX_ATTN_AVAILABLE and isinstance(attention_mask, BlockMask):
+            # Flex attention route on the first step or without kv cache
             pad_q = int(math.ceil(seq_len_q / _FLEX_BLOCK_SIZE) * _FLEX_BLOCK_SIZE) - seq_len_q
             pad_kv = int(math.ceil(seq_len_kv / _FLEX_BLOCK_SIZE) * _FLEX_BLOCK_SIZE) - seq_len_kv
             if pad_q:
@@ -241,20 +264,27 @@ class QwenImage21AttnProcessor:
             if pad_kv:
                 key = F.pad(key.transpose(1, 3), (0, pad_kv)).transpose(1, 3)
                 value = F.pad(value.transpose(1, 3), (0, pad_kv)).transpose(1, 3)
-
-        hidden_states = attention_forward(
-            query,
-            key,
-            value,
-            q_pattern="b s n d",
-            k_pattern="b s n d",
-            v_pattern="b s n d",
-            out_pattern="b s n d",
-            attn_mask=attention_mask if not is_causal else None,
-            is_causal=is_causal,
-            use_flex=use_flex,
-        )
-        hidden_states = hidden_states[:, :seq_len_q]
+            hidden_states = _attention(query, key, value, attn_mask=attention_mask, use_flex=True)[:, :seq_len_q]
+        else:
+            # Splited attention route on the first step or without kv cache
+            valid = None if key_valid is None else key_valid[:, None, None, :]
+            prefix_len = segments[-1][1] if segments else 0
+            outputs = []
+            for start, end, is_text in segments:
+                seg_mask = valid if valid is None else valid[..., :end]
+                if is_text:
+                    seg_len = end - start
+                    causal = torch.cat(
+                        [
+                            torch.ones(seg_len, start, dtype=torch.bool, device=query.device),
+                            torch.tril(torch.ones(seg_len, seg_len, dtype=torch.bool, device=query.device)),
+                        ],
+                        dim=1,
+                    )[None, None]
+                    seg_mask = causal if seg_mask is None else seg_mask & causal
+                outputs.append(_attention(query[:, start:end], key[:, :end], value[:, :end], attn_mask=seg_mask))
+            outputs.append(_attention(query[:, prefix_len:], key, value, attn_mask=valid))
+            hidden_states = torch.cat(outputs, dim=1)
         hidden_states = hidden_states.flatten(2, 3).type_as(query)
         hidden_states = attn.to_out[0](hidden_states)
         return attn.to_out[1](hidden_states)
@@ -314,7 +344,8 @@ class QwenImage21TransformerBlock(nn.Module):
         target_token_mask: torch.Tensor | None = None,
         kv_cache: dict[str, torch.Tensor] | None = None,
         cache_write_slice: slice | None = None,
-        is_causal: bool = False,
+        segments: list[tuple[int, int, bool]] | None = None,
+        key_valid: torch.Tensor | None = None,
     ) -> torch.Tensor:
         mod1, mod2 = modulation.chunk(2, dim=-1)
 
@@ -325,7 +356,8 @@ class QwenImage21TransformerBlock(nn.Module):
             rotary_emb=rotary_emb,
             kv_cache=kv_cache,
             cache_write_slice=cache_write_slice,
-            is_causal=is_causal,
+            segments=segments,
+            key_valid=key_valid,
         )
         hidden_states = hidden_states + img_gate1.tanh() * attn_output
 
@@ -405,13 +437,11 @@ class QwenImage21DiT(nn.Module):
         axes_dims_rope: tuple[int, int, int] = (16, 56, 56),
         eps: float = 1e-6,
         causal_condition: bool = True,
-        causal_block: bool = True,
     ):
         super().__init__()
         self.out_channels = out_channels or in_channels
         self.inner_dim = num_attention_heads * attention_head_dim
         self.causal_condition = causal_condition
-        self.causal_block = causal_block
 
         self.pos_embed = QwenImage21Rope(theta=10000, axes_dim=list(axes_dims_rope))
         self.time_text_embed = QwenImage21TimestepProjEmbeddings(embedding_dim=self.inner_dim)
@@ -498,10 +528,10 @@ class QwenImage21DiT(nn.Module):
         temb = self.time_text_embed(timestep, hidden_states)
         modulation = self.modulation(temb)
 
-        if kv_cache is not None and (not self.causal_condition or not self.causal_block):
+        if kv_cache is not None and not self.causal_condition:
             raise ValueError(
-                "kv_cache requires both `causal_condition=True` and `causal_block=True`; otherwise the condition "
-                "prefix depends on the changing target latent across denoising steps."
+                "kv_cache requires `causal_condition=True`; otherwise the condition prefix depends on the "
+                "changing target latent across denoising steps."
             )
         if kv_cache is not None and len(kv_cache) != len(self.transformer_blocks):
             raise ValueError(
@@ -520,76 +550,37 @@ class QwenImage21DiT(nn.Module):
 
         prefix_len = int((~target_token_mask).sum())
         is_decode = kv_cache is not None and len(kv_cache[0]) > 0
-        use_flex = FLEX_ATTN_AVAILABLE and self.causal_block
-
+        cache_write_slice = None if is_decode or kv_cache is None else slice(0, prefix_len)
+        segments = None
         if is_decode:
             joint_hidden_states = joint_hidden_states[:, prefix_len:]
             rotary_emb = rotary_emb[prefix_len:]
             modulation_mask = modulation_mask[prefix_len:]
             attention_mask = None if joint_key_valid is None else joint_key_valid[:, None, None, :]
-            cache_write_slice = None
-            use_two_pass = False
-        elif use_flex:
-            cache_write_slice = slice(0, prefix_len) if kv_cache is not None else None
+        elif FLEX_ATTN_AVAILABLE:
             attention_mask = build_qwenimage21_block_causal_mask(
                 image_ids, joint_key_valid, batch_size, hidden_states.device
             )
-            use_two_pass = False
-        elif self.causal_block:
-            use_two_pass = True
-            cache_write_slice = slice(0, prefix_len) if kv_cache is not None else None
         else:
-            cache_write_slice = slice(0, prefix_len) if kv_cache is not None else None
-            attention_mask = None if joint_key_valid is None else joint_key_valid[:, None, None, :]
-            use_two_pass = False
+            attention_mask = None
+            segments = _qwenimage21_prefix_segments(image_ids, prefix_len)
 
-        if use_two_pass:
-            prefix_hs = joint_hidden_states[:, :prefix_len]
-            target_hs = joint_hidden_states[:, prefix_len:]
-            prefix_rope = rotary_emb[:prefix_len]
-            target_rope = rotary_emb[prefix_len:]
-            prefix_mod_mask = modulation_mask[:prefix_len] if modulation_mask is not None else None
-            target_mod_mask = modulation_mask[prefix_len:] if modulation_mask is not None else None
-            for index_block, block in enumerate(self.transformer_blocks):
-                block_kv_cache = kv_cache[index_block] if kv_cache is not None else {}
-                prefix_cache = {}
-                prefix_hs = block(
-                    hidden_states=prefix_hs,
-                    modulation=modulation,
-                    rotary_emb=prefix_rope,
-                    attention_mask=None,
-                    target_token_mask=prefix_mod_mask,
-                    kv_cache=prefix_cache,
-                    cache_write_slice=slice(0, prefix_len),
-                    is_causal=True,
-                )
-                block_kv_cache.update(prefix_cache)
-                target_hs = block(
-                    hidden_states=target_hs,
-                    modulation=modulation,
-                    rotary_emb=target_rope,
-                    attention_mask=None,
-                    target_token_mask=target_mod_mask,
-                    kv_cache=block_kv_cache,
-                    cache_write_slice=None,
-                )
-
-            joint_hidden_states = torch.cat([prefix_hs, target_hs], dim=1)
-        else:
-            for index_block, block in enumerate(self.transformer_blocks):
-                block_kv_cache = kv_cache[index_block] if kv_cache is not None else None
-                joint_hidden_states = gradient_checkpoint_forward(
-                    block,
-                    use_gradient_checkpointing,
-                    use_gradient_checkpointing_offload,
-                    hidden_states=joint_hidden_states,
-                    modulation=modulation,
-                    rotary_emb=rotary_emb,
-                    attention_mask=attention_mask,
-                    target_token_mask=modulation_mask,
-                    kv_cache=block_kv_cache,
-                    cache_write_slice=cache_write_slice,
-                )
+        for index_block, block in enumerate(self.transformer_blocks):
+            block_kv_cache = kv_cache[index_block] if kv_cache is not None else None
+            joint_hidden_states = gradient_checkpoint_forward(
+                block,
+                use_gradient_checkpointing,
+                use_gradient_checkpointing_offload,
+                hidden_states=joint_hidden_states,
+                modulation=modulation,
+                rotary_emb=rotary_emb,
+                attention_mask=attention_mask,
+                target_token_mask=modulation_mask,
+                kv_cache=block_kv_cache,
+                cache_write_slice=cache_write_slice,
+                segments=segments,
+                key_valid=joint_key_valid,
+            )
 
         joint_hidden_states = self.norm_out(joint_hidden_states, temb, modulation_mask)
         return self.proj_out(joint_hidden_states)
