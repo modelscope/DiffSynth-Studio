@@ -97,6 +97,22 @@ class LTX2TrainingModule(DiffusionTrainingModule):
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
         return inputs_shared, inputs_posi, inputs_nega
     
+    def transfer_data_to_device(self, data, device, torch_float_dtype=None):
+        if isinstance(data, dict):
+            # LTX-2.5 RoPE consumes physical coordinates in FP32. Casting a
+            # split cache to BF16 loses information before model_fn can use it.
+            position_keys = {
+                "video_positions", "audio_positions", "ref_frames_positions",
+                "in_context_video_positions",
+            }
+            return {
+                key: self.transfer_data_to_device(
+                    value, device, None if key in position_keys else torch_float_dtype
+                )
+                for key, value in data.items()
+            }
+        return super().transfer_data_to_device(data, device, torch_float_dtype)
+
     def forward(self, data, inputs=None):
         if inputs is None: inputs = self.get_pipeline_inputs(data)
         inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)
