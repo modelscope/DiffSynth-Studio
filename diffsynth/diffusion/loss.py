@@ -54,7 +54,16 @@ def FlowMatchSFTAudioVideoLoss(pipe: BasePipeline, **inputs):
     models = {name: getattr(pipe, name) for name in pipe.in_iteration_models}
     noise_pred, noise_pred_audio = pipe.model_fn(**models, **inputs, timestep=timestep)
 
-    loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
+    video_mse = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float(), reduction="none")
+    denoise_mask_video = inputs.get("denoise_mask_video")
+    if denoise_mask_video is not None:
+        # First-frame (or otherwise conditioned) tokens carry denoise
+        # strength 0 and timestep 0; exclude them from the video loss so
+        # I2V/I2AV training matches native LTX conditioning semantics.
+        generated = denoise_mask_video.to(dtype=torch.float32).expand_as(video_mse)
+        loss = (video_mse * generated).sum() / generated.sum().clamp_min(1e-8)
+    else:
+        loss = video_mse.mean()
     loss = loss * pipe.scheduler.training_weight(timestep)
     if inputs.get("audio_input_latents") is not None:
         loss_audio = torch.nn.functional.mse_loss(noise_pred_audio.float(), training_target_audio.float())
