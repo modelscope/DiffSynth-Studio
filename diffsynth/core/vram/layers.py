@@ -263,7 +263,14 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
             getattr(self, name).to("meta")
     
     def cast_to(self, module, dtype, device):
-        # Parameter casting is implemented in the model architecture.
+        # Children (e.g. AutoWrappedLinear) manage their own devices.
+        # Move only tensors owned directly by this layer (e.g. Gemma
+        # layer_scalar) so the forward sees a single device. Device-only:
+        # no dtype change, no numeric effect.
+        for _, param in module.named_parameters(recurse=False):
+            param.data = param.data.to(device=device)
+        for name, buf in module.named_buffers(recurse=False):
+            module._buffers[name] = buf.to(device=device)
         return module
     
     def __getattr__(self, name):
