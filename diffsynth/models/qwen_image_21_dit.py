@@ -497,6 +497,7 @@ class QwenImage21DiT(nn.Module):
         kv_cache: list[dict[str, torch.Tensor]] | None = None,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
+        use_flex_attention: bool = True,
     ) -> torch.Tensor:
         batch_size = hidden_states.shape[0]
         hidden_states = self.img_in(hidden_states)
@@ -557,7 +558,7 @@ class QwenImage21DiT(nn.Module):
             rotary_emb = rotary_emb[prefix_len:]
             modulation_mask = modulation_mask[prefix_len:]
             attention_mask = None if joint_key_valid is None else joint_key_valid[:, None, None, :]
-        elif FLEX_ATTN_AVAILABLE:
+        elif use_flex_attention and FLEX_ATTN_AVAILABLE:
             attention_mask = build_qwenimage21_block_causal_mask(
                 image_ids, joint_key_valid, batch_size, hidden_states.device
             )

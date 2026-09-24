@@ -83,6 +83,7 @@ image_3.save("image3.png")
 * `rand_device`: 生成随机高斯噪声矩阵的计算设备，默认为 `"cpu"`。
 * `num_inference_steps`: 推理次数，默认值为 40。
 * `use_kv_cache`: 是否在 block-causal 条件下启用逐层 KV cache，默认值为 `True`。
+* `use_flex_attention`: prefill 阶段的注意力实现，默认值为 `True`，使用 flex_attention；设为 `False` 时改用分段 SDPA，无需构建 BlockMask，长序列下显存更低，出图等价。decode 阶段不受该参数影响。
 * `tiled`: 是否启用 VAE 分块推理，默认为 `False`。
 * `tile_size`: VAE 编解码阶段的分块大小，默认为 256，仅在 `tiled=True` 时生效。
 * `tile_stride`: VAE 编解码阶段的分块步长，默认为 192，仅在 `tiled=True` 时生效。
