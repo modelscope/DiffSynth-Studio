@@ -1016,7 +1016,11 @@ class QwenImage21VAE(nn.Module):
         iter_ = 1 + (num_frame - 1) // 4
         for i in range(iter_):
             self._enc_conv_idx = [0]
-            if i == 0:
+            if num_frame == 1:
+                # Single frame: every conv is image-specialized and never reads feat_cache back,
+                # so skip it instead of pinning one full-resolution clone per conv until encode ends.
+                out_ = self.encoder(x)
+            elif i == 0:
                 out_ = self.encoder(x[:, :, :1, :, :], feat_cache=self._enc_feat_map, feat_idx=self._enc_conv_idx)
             else:
                 out_ = self.encoder(x[:, :, 1 + 4 * (i - 1) : 1 + 4 * i, :, :], feat_cache=self._enc_feat_map, feat_idx=self._enc_conv_idx)
@@ -1146,7 +1150,10 @@ class QwenImage21VAE(nn.Module):
                         tile = x[:, :, :1, i : i + self.tile_sample_min_height, j : j + self.tile_sample_min_width]
                     else:
                         tile = x[:, :, 1 + 4 * (k - 1) : 1 + 4 * k, i : i + self.tile_sample_min_height, j : j + self.tile_sample_min_width]
-                    tile = self.encoder(tile, feat_cache=self._enc_feat_map, feat_idx=self._enc_conv_idx)
+                    if num_frames == 1:
+                        tile = self.encoder(tile)
+                    else:
+                        tile = self.encoder(tile, feat_cache=self._enc_feat_map, feat_idx=self._enc_conv_idx)
                     tile = self.quant_conv(tile)
                     time.append(tile)
                 row.append(torch.cat(time, dim=2))
@@ -1204,7 +1211,10 @@ class QwenImage21VAE(nn.Module):
                     self._conv_idx = [0]
                     tile = z[:, :, k : k + 1, i : i + tile_latent_min_height, j : j + tile_latent_min_width]
                     tile = self.post_quant_conv(tile)
-                    decoded = self.decoder(tile, feat_cache=self._feat_map, feat_idx=self._conv_idx, first_chunk=(k == 0))
+                    if num_frames == 1:
+                        decoded = self.decoder(tile, first_chunk=True)
+                    else:
+                        decoded = self.decoder(tile, feat_cache=self._feat_map, feat_idx=self._conv_idx, first_chunk=(k == 0))
                     time.append(decoded)
                 row.append(torch.cat(time, dim=2))
             rows.append(row)
