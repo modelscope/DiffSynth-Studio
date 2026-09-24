@@ -1058,7 +1058,12 @@ class QwenImage21VAE(nn.Module):
         out = None
         for i in range(num_frame):
             self._conv_idx = [0]
-            out_ = self.decoder(x[:, :, i : i + 1, :, :], feat_cache=self._feat_map, feat_idx=self._conv_idx, first_chunk=i == 0)
+            if num_frame == 1:
+                # Single frame: every conv is image-specialized and never reads feat_cache back,
+                # so skip it instead of pinning one full-resolution clone per conv until decode ends.
+                out_ = self.decoder(x, first_chunk=True)
+            else:
+                out_ = self.decoder(x[:, :, i : i + 1, :, :], feat_cache=self._feat_map, feat_idx=self._conv_idx, first_chunk=i == 0)
             out = out_ if out is None else torch.cat([out, out_], dim=2)
 
         if self.patch_size is not None:

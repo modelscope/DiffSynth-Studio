@@ -75,6 +75,8 @@ class QwenImage21Pipeline(BasePipeline):
         num_inference_steps: int = 40,
         # KV cache
         use_kv_cache: bool = True,
+        # Attention Implementation
+        use_flex_attention: bool = True,
         # VAE tiling
         tiled: bool = False,
         tile_size: int = 256,
@@ -91,6 +93,7 @@ class QwenImage21Pipeline(BasePipeline):
             "seed": seed, "rand_device": rand_device,
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
             "use_kv_cache": use_kv_cache,
+            "use_flex_attention": use_flex_attention,
         }
         for unit in self.units:
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
@@ -322,6 +325,7 @@ def model_fn_qwen_image_21(
     kv_cache=None,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
+    use_flex_attention=True,
     **kwargs,
 ):
     latent_height, latent_width = latents.shape[2], latents.shape[3]
@@ -343,6 +347,7 @@ def model_fn_qwen_image_21(
         kv_cache=kv_cache,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+        use_flex_attention=use_flex_attention,
     )
     return unpatchify(model_output[:, -target_seq_len:], latent_height, latent_width)
 
