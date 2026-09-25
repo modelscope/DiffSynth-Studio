@@ -16,15 +16,21 @@ PY="$(command -v python3 || command -v python)"
 echo "[1/5] python: $($PY --version) at $PY"
 
 # --- uv ---------------------------------------------------------------------
-if ! command -v uv >/dev/null 2>&1; then
-  echo "[2/5] installing uv ..."
-  "$PY" -m pip install -q uv -i https://mirrors.aliyun.com/pypi/simple/ || \
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-  export PATH="$HOME/.local/bin:$PATH"
-else
-  echo "[2/5] uv already present: $(uv --version)"
-fi
+# Managed images (Baidu AI Studio) may put pip console scripts in a directory
+# that is not on PATH, so drive uv through a wrapper that falls back to
+# `python -m uv` (the uv wheel ships a __main__ entry point).
 export PATH="$HOME/.local/bin:$PATH"
+if ! command -v uv >/dev/null 2>&1 && ! "$PY" -m uv --version >/dev/null 2>&1; then
+  echo "[2/5] installing uv ..."
+  "$PY" -m pip install uv -i https://mirrors.aliyun.com/pypi/simple/
+fi
+if command -v uv >/dev/null 2>&1; then
+  UV() { uv "$@"; }
+  echo "[2/5] uv: $(uv --version)"
+else
+  UV() { "$PY" -m uv "$@"; }
+  echo "[2/5] uv via python -m: $("$PY" -m uv --version 2>&1)"
+fi
 
 # --- torch (Aliyun mirror, CUDA build picked from the driver) ---------------
 CUDA_VER="$(nvidia-smi 2>/dev/null | grep -oP 'CUDA Version: \K[0-9]+\.[0-9]+' || echo 11.8)"
@@ -34,14 +40,14 @@ else
   CUDA_TAG="cu118"
 fi
 echo "[3/5] driver CUDA $CUDA_VER -> torch $CUDA_TAG from mirrors.aliyun.com"
-uv pip install --python "$PY" \
+UV pip install --python "$PY" \
   "torch==2.5.1+${CUDA_TAG}" "torchvision==0.20.1+${CUDA_TAG}" \
   --find-links "https://mirrors.aliyun.com/pytorch-wheels/${CUDA_TAG}/" \
   --index-url "https://mirrors.aliyun.com/pypi/simple/"
 
 # --- training deps ----------------------------------------------------------
 echo "[4/5] training dependencies ..."
-uv pip install --python "$PY" \
+UV pip install --python "$PY" \
   "bitsandbytes>=0.45.0" "accelerate>=0.34.0" "peft>=0.12.0" \
   "transformers>=4.45.0" sentencepiece protobuf safetensors \
   modelscope ftfy pandas einops "imageio[ffmpeg]" "numpy<2" \
@@ -56,7 +62,7 @@ if [ ! -d DiffSynth-Studio ]; then
 fi
 cd DiffSynth-Studio
 git checkout "$BRANCH" 2>/dev/null || true
-uv pip install --python "$PY" -e . --no-deps
+UV pip install --python "$PY" -e . --no-deps
 
 "$PY" - <<'EOF'
 import torch
