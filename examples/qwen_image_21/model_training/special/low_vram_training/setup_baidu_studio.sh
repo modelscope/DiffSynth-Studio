@@ -61,18 +61,29 @@ export DIFFSYNTH_DISABLE_FLEX_ATTN=1
 ENVEOF
 mkdir -p "$WORK/cache" "$WORK/cache/torch"
 . "$WORK/diffsynth_env.sh"
-if [ ! -x "$VENV/bin/python" ]; then
+# A venv built from a conda interpreter breaks when the notebook image is
+# reset, so recreate it whenever the interpreter no longer runs.
+venv_ok() { [ -x "$1/bin/python" ] && "$1/bin/python" -c 'import sys' >/dev/null 2>&1; }
+case "$VENV" in /*) ;; *)
+  echo "ERROR: VENV must be an absolute path (got '$VENV')" >&2; exit 1 ;;
+esac
+if [ -e "$VENV" ] && ! venv_ok "$VENV"; then
+  echo "[3/6] broken venv at $VENV -> recreating"
+  rm -rf "$VENV"
+fi
+if ! venv_ok "$VENV"; then
   # uv does not need pip inside the venv, so --without-pip is a safe fallback.
   UV venv "$VENV" --python "$PY" \
     || "$PY" -m venv "$VENV" \
     || "$PY" -m venv --without-pip "$VENV"
 fi
 VPY="$VENV/bin/python"
-if [ ! -x "$VPY" ]; then
-  echo "ERROR: could not create a writable venv at $VENV" >&2
+if ! venv_ok "$VENV"; then
+  echo "ERROR: could not create a usable venv at $VENV" >&2
   echo "       set VENV=/some/writable/path and re-run." >&2
   exit 1
 fi
+echo "[3/6] venv ready: $("$VPY" -V) at $VPY"
 
 # --- torch (Aliyun mirror, CUDA build picked from the driver) ---------------
 CUDA_VER="$(nvidia-smi 2>/dev/null | grep -oP 'CUDA Version: \K[0-9]+\.[0-9]+' || echo 11.8)"
@@ -88,21 +99,50 @@ UV pip install --python "$VPY" \
   --index-url "https://mirrors.aliyun.com/pypi/simple/"
 
 # --- training deps ----------------------------------------------------------
+# Only the Aliyun mirror is used by default: managed CN notebooks frequently
+# cannot reach pypi.org, and uv aborts the whole resolve on an unreachable
+# index instead of skipping it. Set PIP_EXTRA_INDEX=https://pypi.org/simple to
+# opt back in when the machine does have direct access.
+EXTRA_INDEX=()
+if [ -n "${PIP_EXTRA_INDEX:-}" ]; then EXTRA_INDEX=(--extra-index-url "$PIP_EXTRA_INDEX"); fi
 echo "[5/6] training dependencies ..."
 UV pip install --python "$VPY" \
   "bitsandbytes>=0.45.0" "accelerate>=0.34.0" "peft>=0.12.0" \
   "transformers>=4.45.0" sentencepiece protobuf safetensors \
   modelscope ftfy pandas einops "imageio[ffmpeg]" "numpy<2" \
   --index-url "https://mirrors.aliyun.com/pypi/simple/" \
-  --extra-index-url "https://pypi.org/simple"
+  ${EXTRA_INDEX[@]+"${EXTRA_INDEX[@]}"}
 
 # --- repo -------------------------------------------------------------------
+# Direct GitHub access is flaky from managed notebooks in CN, so fall back to
+# read-only mirrors and point `origin` back at GitHub afterwards.
 echo "[6/6] cloning ${REPO_URL} (${BRANCH}) ..."
 cd "$WORK"
+clone_repo() {
+  local target_url="$1"
+  rm -rf ./DiffSynth-Studio.partial
+  if git clone -b "$BRANCH" "$target_url" ./DiffSynth-Studio.partial 2>/dev/null \
+     || git clone "$target_url" ./DiffSynth-Studio.partial 2>/dev/null; then
+    mv ./DiffSynth-Studio.partial ./DiffSynth-Studio
+    return 0
+  fi
+  rm -rf ./DiffSynth-Studio.partial
+  return 1
+}
 if [ ! -d DiffSynth-Studio ]; then
-  git clone -b "$BRANCH" "$REPO_URL" || git clone "$REPO_URL"
+  cloned=0
+  for url in "$REPO_URL" "https://ghfast.top/$REPO_URL" "https://gh-proxy.com/$REPO_URL"; do
+    echo "  trying $url"
+    if clone_repo "$url"; then cloned=1; break; fi
+  done
+  if [ "$cloned" != "1" ]; then
+    echo "ERROR: could not clone $REPO_URL" >&2
+    echo "       upload the repo manually to $WORK/DiffSynth-Studio and re-run." >&2
+    exit 1
+  fi
 fi
 cd DiffSynth-Studio
+git remote set-url origin "$REPO_URL" 2>/dev/null || true
 git checkout "$BRANCH" 2>/dev/null || true
 git pull --ff-only 2>/dev/null || true
 UV pip install --python "$VPY" -e . --no-deps \
@@ -114,6 +154,21 @@ print(f"torch {torch.__version__} | cuda {torch.version.cuda} | {torch.cuda.get_
 print(f"VRAM {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
 import bitsandbytes, peft, accelerate, transformers
 print(f"bitsandbytes {bitsandbytes.__version__} | peft {peft.__version__} | accelerate {accelerate.__version__} | transformers {transformers.__version__}")
+import diffsynth
+print(f"diffsynth {diffsynth.__version__ if hasattr(diffsynth, '__version__') else 'ok'} from {diffsynth.__file__}")
+
+# NF4 is what the whole low-VRAM recipe depends on; V100 (sm_70) support is the
+# usual failure point, so probe one real quantized forward pass here.
+try:
+    import bitsandbytes.nn as bnb
+    lin = bnb.LinearNF4(64, 32, bias=False).to("cuda")
+    out = lin(torch.randn(2, 64, device="cuda", dtype=torch.float16))
+    print(f"NF4 forward ok: {tuple(out.shape)} {out.dtype}")
+    opt = bitsandbytes.optim.AdamW8bit([torch.zeros(1, requires_grad=True, device="cuda")], lr=1e-4)
+    print(f"AdamW8bit ok: {type(opt).__name__}")
+except Exception as e:
+    print(f"WARNING: INT4/8-bit probe failed ({type(e).__name__}: {e})")
+    print("         training may still run, but check 'bitsandbytes' GPU support.")
 EOF
 echo "=== done. The notebook kernel is NOT modified; training runs from the venv."
 echo "    cd $WORK/DiffSynth-Studio && bash examples/qwen_image_21/model_training/special/low_vram_training/Qwen-Image-2.1-16GB.sh"

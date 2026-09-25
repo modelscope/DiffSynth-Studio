@@ -36,6 +36,16 @@ fi
 USER_BASE="$(python3 -m site --user-base 2>/dev/null || echo "${HOME}/.local")"
 export PATH="${HOME}/.local/bin:${USER_BASE}/bin:${PATH}"
 
+# Fail fast with a useful message instead of an import traceback deep inside accelerate.
+if ! python -c 'import torch, accelerate' >/dev/null 2>&1; then
+  echo "[env] ERROR: torch/accelerate not importable with '$(command -v python || echo python)'." >&2
+  echo "[env]       run the setup script first:" >&2
+  echo "[env]       bash examples/qwen_image_21/model_training/special/low_vram_training/setup_baidu_studio.sh" >&2
+  echo "[env]       (Colab: setup_colab_t4.sh)" >&2
+  exit 1
+fi
+echo "[env] python $(python -V 2>&1) @ $(command -v python)"
+
 DATA_DIR="${DATA_DIR:-./data/diffsynth_example_dataset}"
 CACHE_DIR="${CACHE_DIR:-./cache/qwen_image_21_16gb}"
 OUT_DIR="${OUT_DIR:-./models/train/Qwen-Image-2.1_lora_16gb}"
