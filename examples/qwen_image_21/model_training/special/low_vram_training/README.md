@@ -98,3 +98,21 @@ The dense route activates automatically when the prefix contains no image tokens
 Measured CPU-side per-step overhead removed: ~1.7 ms at 512x512, ~3.1 ms at
 1024x1024; on the GPU side the win is the collapsed kernel-launch chain (N+1 SDPA
 calls -> 1), which matters most on V100/T4 at batch size 1.
+### Attention kernel choice on V100 / T4
+
+flash-attn 2 does **not** support these cards: official releases only ship sm_80/90
+kernels (sm_70/75 were removed after v2.4.x, and v2.5+ dropped sm_75 entirely), and
+current main targets sm_80+. Do not waste time compiling it from source on V100/T4.
+
+Instead, install xformers to get a memory-efficient fused kernel that does support
+sm_70/75:
+
+```
+uv pip install --python  xformers --index-url https://mirrors.aliyun.com/pytorch-wheels/cu121/
+```
+
+Caveat: the Qwen-Image-2.1 DiT passes an explicit attention mask (block-causal), and
+`attention_forward` only uses the xformers/FA routes when no mask is given, so with
+the mask the fused dense route still ends at SDPA. xformers mainly helps if you later
+switch to mask-free attention or other pipelines. The single-call dense mask route
+added above remains the effective optimization for this model.
