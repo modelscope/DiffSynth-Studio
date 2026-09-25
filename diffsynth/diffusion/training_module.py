@@ -149,7 +149,34 @@ class DiffusionTrainingModule(torch.nn.Module):
         else:
             return data
     
-    def parse_vram_config(self, fp8=False, offload=False, device="cpu"):
+    def parse_vram_config(self, fp8=False, offload=False, device="cpu", fp16=False):
+        # `offload` must be checked before `fp16`: a disk-offloaded model keeps no
+        # resident copy at all, and `fp16` only picks the dtype it is streamed in as.
+        # Testing `fp16` first silently dropped every `--offload_models` entry and put
+        # the full weights on the GPU, which is what split training exists to avoid.
+        if fp16 and offload:
+            return {
+                "offload_dtype": "disk",
+                "offload_device": "disk",
+                "onload_dtype": "disk",
+                "onload_device": "disk",
+                "preparing_dtype": torch.float16,
+                "preparing_device": device,
+                "computation_dtype": torch.float16,
+                "computation_device": device,
+                "clear_parameters": True,
+            }
+        if fp16:
+            return {
+                "offload_dtype": torch.float16,
+                "offload_device": device,
+                "onload_dtype": torch.float16,
+                "onload_device": device,
+                "preparing_dtype": torch.float16,
+                "preparing_device": device,
+                "computation_dtype": torch.float16,
+                "computation_device": device,
+            }
         if fp8:
             return {
                 "offload_dtype": torch.float8_e4m3fn,
@@ -223,7 +250,8 @@ class DiffusionTrainingModule(torch.nn.Module):
                 vram_config = self.parse_vram_config(
                     fp8=path in fp8_models,
                     offload=path in offload_models,
-                    device=device
+                    device=device,
+                    fp16=getattr(self, "force_fp16", False),
                 )
                 model_configs.append(ModelConfig(path=path, quantize=self.get_quant_config(quant_map, path), **vram_config))
         if model_id_with_origin_paths is not None:
@@ -232,7 +260,8 @@ class DiffusionTrainingModule(torch.nn.Module):
                 vram_config = self.parse_vram_config(
                     fp8=model_id_with_origin_path in fp8_models,
                     offload=model_id_with_origin_path in offload_models,
-                    device=device
+                    device=device,
+                    fp16=getattr(self, "force_fp16", False),
                 )
                 config = self.parse_path_or_model_id(model_id_with_origin_path)
                 model_configs.append(ModelConfig(model_id=config.model_id, origin_file_pattern=config.origin_file_pattern, quantize=self.get_quant_config(quant_map, model_id_with_origin_path), **vram_config))

@@ -322,6 +322,7 @@ def model_fn_qwen_image_21(
     kv_cache=None,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
+    gradient_checkpointing_blocks=-1,
     **kwargs,
 ):
     latent_height, latent_width = latents.shape[2], latents.shape[3]
@@ -343,6 +344,7 @@ def model_fn_qwen_image_21(
         kv_cache=kv_cache,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+        gradient_checkpointing_blocks=gradient_checkpointing_blocks,
     )
     return unpatchify(model_output[:, -target_seq_len:], latent_height, latent_width)
 

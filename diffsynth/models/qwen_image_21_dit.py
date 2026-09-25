@@ -1,4 +1,5 @@
 import math
+import os
 from typing import Any
 
 import torch
@@ -208,10 +209,10 @@ def _qwenimage21_prefix_segments(image_ids: torch.Tensor, prefix_len: int) -> li
     return segments
 
 
-def _attention(query, key, value, attn_mask=None, use_flex=False):
+def _attention(query, key, value, attn_mask=None, use_flex=False, is_causal=False):
     return attention_forward(
         query, key, value, q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
-        attn_mask=attn_mask, use_flex=use_flex,
+        attn_mask=attn_mask, use_flex=use_flex, is_causal=is_causal,
     )
 
 
@@ -226,6 +227,7 @@ class QwenImage21AttnProcessor:
         cache_write_slice: slice | None = None,
         segments: list[tuple[int, int, bool]] | None = None,
         key_valid: torch.Tensor | None = None,
+        t2i_prefix_len: int | None = None,
     ) -> torch.Tensor:
         query = attn.to_q(hidden_states)
         key = attn.to_k(hidden_states)
@@ -265,6 +267,18 @@ class QwenImage21AttnProcessor:
                 key = F.pad(key.transpose(1, 3), (0, pad_kv)).transpose(1, 3)
                 value = F.pad(value.transpose(1, 3), (0, pad_kv)).transpose(1, 3)
             hidden_states = _attention(query, key, value, attn_mask=attention_mask, use_flex=True)[:, :seq_len_q]
+        elif t2i_prefix_len is not None:
+            # T2I two-call route: the block-causal mask is exactly "causal inside the
+            # text prefix" + "target attends to everything", so it decomposes into
+            # one causal SDPA call and one unmasked SDPA call. No S x S mask tensor is
+            # ever materialized, and kernels with a native causal fast path can be used.
+            p = t2i_prefix_len
+            out_prefix = _attention(query[:, :p], key[:, :p], value[:, :p], is_causal=True)
+            out_target = _attention(query[:, p:], key, value)
+            hidden_states = torch.cat([out_prefix, out_target], dim=1)
+        elif segments is None and attention_mask is not None:
+            # Dense single-call route: one SDPA call with the cached block-causal mask.
+            hidden_states = _attention(query, key, value, attn_mask=attention_mask)
         else:
             # Splited attention route on the first step or without kv cache
             valid = None if key_valid is None else key_valid[:, None, None, :]
@@ -346,6 +360,7 @@ class QwenImage21TransformerBlock(nn.Module):
         cache_write_slice: slice | None = None,
         segments: list[tuple[int, int, bool]] | None = None,
         key_valid: torch.Tensor | None = None,
+        t2i_prefix_len: int | None = None,
     ) -> torch.Tensor:
         mod1, mod2 = modulation.chunk(2, dim=-1)
 
@@ -358,6 +373,7 @@ class QwenImage21TransformerBlock(nn.Module):
             cache_write_slice=cache_write_slice,
             segments=segments,
             key_valid=key_valid,
+            t2i_prefix_len=t2i_prefix_len,
         )
         hidden_states = hidden_states + img_gate1.tanh() * attn_output
 
@@ -442,6 +458,11 @@ class QwenImage21DiT(nn.Module):
         self.out_channels = out_channels or in_channels
         self.inner_dim = num_attention_heads * attention_head_dim
         self.causal_condition = causal_condition
+        # T2I fast path: cache per-shape RoPE frequencies and the dense block-causal
+        # attention mask, so neither the Python-side index loop nor the per-segment
+        # SDPA loop runs on every training step.
+        self.t2i_fast_attention = os.environ.get("DIFFSYNTH_QWEN21_T2I_FAST_ATTN", "1") == "1"
+        self._shape_cache = {}
 
         self.pos_embed = QwenImage21Rope(theta=10000, axes_dim=list(axes_dims_rope))
         self.time_text_embed = QwenImage21TimestepProjEmbeddings(embedding_dim=self.inner_dim)
@@ -497,6 +518,7 @@ class QwenImage21DiT(nn.Module):
         kv_cache: list[dict[str, torch.Tensor]] | None = None,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
+        gradient_checkpointing_blocks: int = -1,
     ) -> torch.Tensor:
         batch_size = hidden_states.shape[0]
         hidden_states = self.img_in(hidden_states)
@@ -516,8 +538,35 @@ class QwenImage21DiT(nn.Module):
         joint_hidden_states = joint_hidden_states.repeat_interleave(repeats, dim=1)
         joint_hidden_states[:, image_pad_mask] = hidden_states
 
-        rotary_emb = self.pos_embed(img_shapes[0], image_pad_mask, device=hidden_states.device)
-        image_ids, target_token_mask = self.build_token_metadata(image_pad_mask, img_shapes[0])
+        # Per-shape cache: RoPE frequencies, token metadata and (for pure T2I) the
+        # dense block-causal attention mask are constant across training steps, so
+        # they are built once per (img_shapes, seq_len, device) instead of per step.
+        seq_len = joint_hidden_states.shape[1]
+        prefix_len = seq_len - target_tokens
+        cache_key = (
+            tuple(tuple(int(v) for v in shape) for shape in img_shapes[0]),
+            seq_len,
+            str(hidden_states.device),
+        )
+        cached = self._shape_cache.get(cache_key)
+        if cached is None:
+            rotary_emb = self.pos_embed(img_shapes[0], image_pad_mask, device=hidden_states.device)
+            image_ids, target_token_mask = self.build_token_metadata(image_pad_mask, img_shapes[0])
+            base_mask = None
+            if self.t2i_fast_attention and prefix_len > 0 and bool((~image_pad_mask[:prefix_len]).all()):
+                # Text-only prefix (pure T2I): per-segment causal + full-to-previous is
+                # exactly causal over the whole prefix, and target tokens attend to all
+                # keys, so one dense mask replaces the per-segment SDPA loop.
+                base_mask = torch.zeros(seq_len, seq_len, dtype=torch.bool, device=hidden_states.device)
+                idx = torch.arange(prefix_len, device=hidden_states.device)
+                base_mask[:prefix_len, :prefix_len] = idx[None, :] <= idx[:, None]
+                base_mask[prefix_len:, :] = True
+                base_mask = base_mask[None, None]
+            if len(self._shape_cache) > 64:
+                self._shape_cache.clear()
+            cached = (rotary_emb, base_mask, image_ids, target_token_mask)
+            self._shape_cache[cache_key] = cached
+        rotary_emb, base_mask, image_ids, target_token_mask = cached
 
         timestep = timestep.to(hidden_states.dtype)
         if self.causal_condition:
@@ -548,10 +597,10 @@ class QwenImage21DiT(nn.Module):
             vlm_text_positions = ~img_mask[0][: encoder_hidden_states_mask.shape[1]]
             joint_key_valid[:, text_positions] = encoder_hidden_states_mask.bool()[:, vlm_text_positions]
 
-        prefix_len = int((~target_token_mask).sum())
         is_decode = kv_cache is not None and len(kv_cache[0]) > 0
         cache_write_slice = None if is_decode or kv_cache is None else slice(0, prefix_len)
         segments = None
+        t2i_prefix_len = None
         if is_decode:
             joint_hidden_states = joint_hidden_states[:, prefix_len:]
             rotary_emb = rotary_emb[prefix_len:]
@@ -562,14 +611,28 @@ class QwenImage21DiT(nn.Module):
                 image_ids, joint_key_valid, batch_size, hidden_states.device
             )
         else:
+            if base_mask is not None:
+                attention_mask = base_mask
+                if joint_key_valid is not None:
+                    attention_mask = base_mask & joint_key_valid[:, None, None, :]
+                segments = None
+            else:
+                attention_mask = None
+                segments = _qwenimage21_prefix_segments(image_ids, prefix_len)
+
+        if base_mask is not None and (joint_key_valid is None or bool(joint_key_valid.all())):
+            # Pure T2I with a fully valid prompt: use the mask-free two-call route.
+            t2i_prefix_len = prefix_len
             attention_mask = None
-            segments = _qwenimage21_prefix_segments(image_ids, prefix_len)
 
         for index_block, block in enumerate(self.transformer_blocks):
             block_kv_cache = kv_cache[index_block] if kv_cache is not None else None
+            checkpoint_this_block = use_gradient_checkpointing and (
+                gradient_checkpointing_blocks < 0 or index_block < gradient_checkpointing_blocks
+            )
             joint_hidden_states = gradient_checkpoint_forward(
                 block,
-                use_gradient_checkpointing,
+                checkpoint_this_block,
                 use_gradient_checkpointing_offload,
                 hidden_states=joint_hidden_states,
                 modulation=modulation,
@@ -580,6 +643,7 @@ class QwenImage21DiT(nn.Module):
                 cache_write_slice=cache_write_slice,
                 segments=segments,
                 key_valid=joint_key_valid,
+                t2i_prefix_len=t2i_prefix_len,
             )
 
         joint_hidden_states = self.norm_out(joint_hidden_states, temb, modulation_mask)
