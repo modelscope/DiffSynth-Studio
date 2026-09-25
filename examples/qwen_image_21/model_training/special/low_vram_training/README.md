@@ -40,11 +40,25 @@ Environment knobs: `DATA_DIR`, `CACHE_DIR`, `OUT_DIR`, `MAX_PIXELS`
 * Stage 1 quantizes the text encoder to NF4 as well (it only runs forward
   passes there), which keeps the 8 GB Qwen3-VL encoder inside 16 GB together
   with the VAE. Stage 2 does not load the text encoder at all.
+* **Baidu AI Studio (read-only conda env):** the notebook image mounts its conda
+  `site-packages` read-only, so `uv`/`pip` cannot patch it (`Permission denied
+  (os error 13)` while removing `tokenizers-*.dist-info/INSTALLER`). `setup_baidu_studio.sh`
+  therefore builds a dedicated venv at `/home/aistudio/work/venv-diffsynth` and
+  installs torch + all training deps there. The notebook kernel itself is left
+  untouched (Paddle keeps working). `Qwen-Image-2.1-16GB.sh` activates that venv
+  automatically when it exists, so you do not need to restart the kernel; for
+  interactive use run `source /home/aistudio/work/venv-diffsynth/bin/activate`.
+  A half-finished install left behind in the system env is harmless. The setup
+  also writes `/home/aistudio/work/diffsynth_env.sh`, which pins the venv, the
+  uv cache and `HF_HOME` / `MODELSCOPE_CACHE` under `/home/aistudio/work` so
+  downloaded weights survive notebook restarts; the training script sources it
+  automatically.
 * Disk budget: ~31 GB of model weights + the stage-1 cache (a few hundred MB
   for the example dataset). Baidu AI Studio: keep everything under
   `/home/aistudio/work` so it survives restarts.
 * Expected peak VRAM (512x512, rank 32): ~10-12 GB. At 1024x1024 the T4 may
   still OOM; lower `MAX_PIXELS` or `LORA_RANK` first.
+
 ## Dataset format
 
 DiffSynth-Studio does not read one-.txt-per-image folders directly. A dataset is a

@@ -21,6 +21,21 @@
 # ============================================================================
 set -euo pipefail
 
+# On managed images (Baidu AI Studio) the system site-packages is read-only, so
+# setup_baidu_studio.sh builds a dedicated uv venv plus a small env file with
+# persistent cache locations. Pick both up when they exist.
+VENV="${VENV:-/home/aistudio/work/venv-diffsynth}"
+BAIDU_ENV="${BAIDU_ENV:-/home/aistudio/work/diffsynth_env.sh}"
+if [ -f "${BAIDU_ENV}" ]; then
+  . "${BAIDU_ENV}"
+fi
+if [ -f "${VENV}/bin/activate" ] && [ -z "${VIRTUAL_ENV:-}" ]; then
+  . "${VENV}/bin/activate"
+  echo "[env] using venv ${VENV} ($(python -V 2>&1))"
+fi
+USER_BASE="$(python3 -m site --user-base 2>/dev/null || echo "${HOME}/.local")"
+export PATH="${HOME}/.local/bin:${USER_BASE}/bin:${PATH}"
+
 DATA_DIR="${DATA_DIR:-./data/diffsynth_example_dataset}"
 CACHE_DIR="${CACHE_DIR:-./cache/qwen_image_21_16gb}"
 OUT_DIR="${OUT_DIR:-./models/train/Qwen-Image-2.1_lora_16gb}"
