@@ -1,4 +1,4 @@
-import torch, glob, os, sys
+import torch, glob, os, re, sys
 from typing import Optional, Union, Dict
 from dataclasses import dataclass
 from modelscope import snapshot_download
@@ -38,6 +38,25 @@ else:
 │     (enabled via `export DIFFSYNTH_SKIP_DOWNLOAD=True`)              │
 └──────────────────────────────────────────────────────────────────────┘
 """.strip()
+
+
+def check_sharded_files_complete(paths):
+    # Detect incomplete shard sets such as `model-00001-of-00009.safetensors`
+    # left behind by an interrupted download.
+    shards = {}
+    for path in paths:
+        match = re.fullmatch(r"(.+)-(\d+)-of-(\d+)(\..+)", os.path.basename(path))
+        if match is not None:
+            prefix, index, total, suffix = match.groups()
+            key = (os.path.dirname(path), prefix, total, suffix)
+            shards.setdefault(key, set()).add(int(index))
+    missing_files = []
+    for (folder, prefix, total, suffix), indices in shards.items():
+        for index in range(1, int(total) + 1):
+            if index not in indices:
+                missing_files.append(os.path.join(folder, f"{prefix}-{index:0{len(total)}d}-of-{total}{suffix}"))
+    if len(missing_files) > 0:
+        raise ValueError(f"Incomplete sharded model files. Missing: {missing_files}. The download may have been interrupted; please re-run to download the missing files.")
 
 
 @dataclass
@@ -161,6 +180,7 @@ class ModelConfig:
                 self.path = os.path.join(self.local_model_path, self.model_id)
             else:
                 self.path = glob.glob(os.path.join(self.local_model_path, self.model_id, self.origin_file_pattern))
+                check_sharded_files_complete(self.path)
         if isinstance(self.path, list) and len(self.path) == 1:
             self.path = self.path[0]
 
