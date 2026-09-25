@@ -45,3 +45,37 @@ Environment knobs: `DATA_DIR`, `CACHE_DIR`, `OUT_DIR`, `MAX_PIXELS`
   `/home/aistudio/work` so it survives restarts.
 * Expected peak VRAM (512x512, rank 32): ~10-12 GB. At 1024x1024 the T4 may
   still OOM; lower `MAX_PIXELS` or `LORA_RANK` first.
+## Dataset format
+
+DiffSynth-Studio does not read one-.txt-per-image folders directly. A dataset is a
+folder of images plus a metadata file (csv / json / jsonl) with an `image` column
+and a `prompt` column:
+
+```
+my_data/
++-- metadata.csv
++-- 0001.jpg
++-- 0002.png
+```
+
+```
+image,prompt
+0001.jpg,"a cute dog, sitting"
+0002.png,a cat on a wall
+```
+
+If your data is in the common "same-name .txt next to each image" layout, convert it
+first (also handles missing captions and sub-folders):
+
+```
+python examples/qwen_image_21/model_training/special/low_vram_training/prepare_dataset_from_txt.py --image_dir my_data
+```
+
+Then point the training script at it:
+
+```
+DATA_DIR=my_data DS_SUBDIR=. bash examples/qwen_image_21/model_training/special/low_vram_training/Qwen-Image-2.1-16GB.sh
+```
+
+(or edit `DS=` in the script: `DS="/qwen_image_21/Qwen-Image-2.1"` is only
+the example-dataset default.)
