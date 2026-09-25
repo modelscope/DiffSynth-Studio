@@ -79,3 +79,22 @@ DATA_DIR=my_data DS_SUBDIR=. bash examples/qwen_image_21/model_training/special/
 
 (or edit `DS=` in the script: `DS="/qwen_image_21/Qwen-Image-2.1"` is only
 the example-dataset default.)
+## T2I speed optimizations in this branch
+
+Training is text-to-image only, so two per-step costs are constant across steps and
+are now computed once per (resolution, prefix length) and cached on the DiT:
+
+1. **RoPE frequencies** (QwenImage21Rope.forward) rebuild index lists with Python
+   loops every step.
+2. **Attention routing**: without flex-attention (V100/T4) the processor splits the
+   text prefix into per-image segments and issues one SDPA call per segment plus one
+   for the target tokens. For a pure text prefix the segment masks are exactly
+   "causal inside the prefix, full attention from target to everything", i.e. one
+   dense block-causal mask, so a **single SDPA call** is mathematically identical
+   (verified to 1.5e-8 against both the splited route and the flex BlockMask route).
+
+The dense route activates automatically when the prefix contains no image tokens
+(T2I). Set `DIFFSYNTH_QWEN21_T2I_FAST_ATTN=0` to fall back to the splited route.
+Measured CPU-side per-step overhead removed: ~1.7 ms at 512x512, ~3.1 ms at
+1024x1024; on the GPU side the win is the collapsed kernel-launch chain (N+1 SDPA
+calls -> 1), which matters most on V100/T4 at batch size 1.
