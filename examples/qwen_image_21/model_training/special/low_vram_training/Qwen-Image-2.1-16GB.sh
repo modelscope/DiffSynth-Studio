@@ -28,6 +28,7 @@ MAX_PIXELS="${MAX_PIXELS:-262144}"
 LORA_RANK="${LORA_RANK:-32}"
 EPOCHS="${EPOCHS:-5}"
 GRAD_ACCUM="${GRAD_ACCUM:-4}"
+GC_BLOCKS="${GC_BLOCKS:--1}"   # selective gradient checkpointing: only first N of 32 blocks; -1 = all
 SKIP_STAGE1="${SKIP_STAGE1:-0}"
 
 # V100 / T4: no BF16 tensor cores -> force FP16; Triton flex-attn is unstable on sm_70.
@@ -89,6 +90,7 @@ accelerate launch "${TRAIN_PY}" \
   --lora_target_modules "" \
   --lora_rank "${LORA_RANK}" \
   --use_gradient_checkpointing \
+  --gradient_checkpointing_blocks "${GC_BLOCKS}" \
   --gradient_accumulation_steps "${GRAD_ACCUM}" \
   --find_unused_parameters \
   --enable_csv_log \

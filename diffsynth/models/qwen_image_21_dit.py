@@ -506,6 +506,7 @@ class QwenImage21DiT(nn.Module):
         kv_cache: list[dict[str, torch.Tensor]] | None = None,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
+        gradient_checkpointing_blocks: int = -1,
     ) -> torch.Tensor:
         batch_size = hidden_states.shape[0]
         hidden_states = self.img_in(hidden_states)
@@ -525,18 +526,25 @@ class QwenImage21DiT(nn.Module):
         joint_hidden_states = joint_hidden_states.repeat_interleave(repeats, dim=1)
         joint_hidden_states[:, image_pad_mask] = hidden_states
 
-        image_ids, target_token_mask = self.build_token_metadata(image_pad_mask, img_shapes[0])
-        prefix_len = int((~target_token_mask).sum())
-        cache_key = (tuple(tuple(int(v) for v in shape) for shape in img_shapes[0]), prefix_len, str(hidden_states.device))
+        # Per-shape cache: RoPE frequencies, token metadata and (for pure T2I) the
+        # dense block-causal attention mask are constant across training steps, so
+        # they are built once per (img_shapes, seq_len, device) instead of per step.
+        seq_len = joint_hidden_states.shape[1]
+        prefix_len = seq_len - target_tokens
+        cache_key = (
+            tuple(tuple(int(v) for v in shape) for shape in img_shapes[0]),
+            seq_len,
+            str(hidden_states.device),
+        )
         cached = self._shape_cache.get(cache_key)
         if cached is None:
             rotary_emb = self.pos_embed(img_shapes[0], image_pad_mask, device=hidden_states.device)
+            image_ids, target_token_mask = self.build_token_metadata(image_pad_mask, img_shapes[0])
             base_mask = None
             if self.t2i_fast_attention and prefix_len > 0 and bool((~image_pad_mask[:prefix_len]).all()):
                 # Text-only prefix (pure T2I): per-segment causal + full-to-previous is
                 # exactly causal over the whole prefix, and target tokens attend to all
                 # keys, so one dense mask replaces the per-segment SDPA loop.
-                seq_len = image_pad_mask.shape[0]
                 base_mask = torch.zeros(seq_len, seq_len, dtype=torch.bool, device=hidden_states.device)
                 idx = torch.arange(prefix_len, device=hidden_states.device)
                 base_mask[:prefix_len, :prefix_len] = idx[None, :] <= idx[:, None]
@@ -544,9 +552,9 @@ class QwenImage21DiT(nn.Module):
                 base_mask = base_mask[None, None]
             if len(self._shape_cache) > 64:
                 self._shape_cache.clear()
-            cached = (rotary_emb, base_mask)
+            cached = (rotary_emb, base_mask, image_ids, target_token_mask)
             self._shape_cache[cache_key] = cached
-        rotary_emb, base_mask = cached
+        rotary_emb, base_mask, image_ids, target_token_mask = cached
 
         timestep = timestep.to(hidden_states.dtype)
         if self.causal_condition:
@@ -601,9 +609,12 @@ class QwenImage21DiT(nn.Module):
 
         for index_block, block in enumerate(self.transformer_blocks):
             block_kv_cache = kv_cache[index_block] if kv_cache is not None else None
+            checkpoint_this_block = use_gradient_checkpointing and (
+                gradient_checkpointing_blocks < 0 or index_block < gradient_checkpointing_blocks
+            )
             joint_hidden_states = gradient_checkpoint_forward(
                 block,
-                use_gradient_checkpointing,
+                checkpoint_this_block,
                 use_gradient_checkpointing_offload,
                 hidden_states=joint_hidden_states,
                 modulation=modulation,

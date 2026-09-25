@@ -116,3 +116,18 @@ Caveat: the Qwen-Image-2.1 DiT passes an explicit attention mask (block-causal),
 the mask the fused dense route still ends at SDPA. xformers mainly helps if you later
 switch to mask-free attention or other pipelines. The single-call dense mask route
 added above remains the effective optimization for this model.
+### More speed knobs (T2I)
+
+* **Selective gradient checkpointing**: `--gradient_checkpointing_blocks N`
+  (env `GC_BLOCKS` in the shell script) checkpoints only the first N of the 32
+  transformer blocks. The first blocks hold the largest activations, so N=16 keeps
+  most of the VRAM saving while the last 16 blocks run without the recompute
+  overhead (typically ~10-15%% faster backward). Verified numerically identical to
+  full checkpointing (grad diff 0.0). Start from N=16 and lower it until VRAM fits.
+* **Fixed resolution**: pass `--height/--width` (or keep one `MAX_PIXELS`) so the
+  per-shape cache never misses.
+* **DataLoader workers**: `--dataset_num_workers 4` keeps the GPU fed when reading
+  the stage-1 cache from disk.
+* **torch.compile**: `pipe.compile_pipeline()` exists upstream (regional compile of
+  `QwenImage21TransformerBlock`). On V100/T4 it can fuse the modulation/norm chains,
+  but expect minutes of compile time and test loss curves before trusting it.
