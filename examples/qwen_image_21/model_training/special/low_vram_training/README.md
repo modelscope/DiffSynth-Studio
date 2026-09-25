@@ -131,3 +131,23 @@ added above remains the effective optimization for this model.
 * **torch.compile**: `pipe.compile_pipeline()` exists upstream (regional compile of
   `QwenImage21TransformerBlock`). On V100/T4 it can fuse the modulation/norm chains,
   but expect minutes of compile time and test loss curves before trusting it.
+### 1024x1024 on 16 GB
+
+Yes, with the right knobs. At 1024x1024 the joint sequence is ~4400 tokens, so the
+dense S x S attention mask would cost ~73 MB per layer; the T2I fast path therefore
+decomposes the block-causal mask into **two mask-free SDPA calls** (causal on the
+text prefix, unmasked from target tokens to everything), verified identical to the
+splited route (loss and gradients match to 0.0). No mask tensor is materialized at
+all.
+
+Recommended stage-2 settings for 1024x1024:
+
+```
+MAX_PIXELS=1048576 GC_BLOCKS=-1 GRAD_ACCUM=8 \
+  bash examples/qwen_image_21/model_training/special/low_vram_training/Qwen-Image-2.1-16GB.sh
+```
+
+Approximate peak VRAM (batch 1, full gradient checkpointing): INT4 DiT 3.6 GB +
+optimizer/LoRA ~0.5 GB + activations ~7-9 GB = ~12-13 GB. If it OOMs on T4, add
+`--use_gradient_checkpointing_offload` (stores activations on CPU; slower but
+bounded) or drop to `GC_BLOCKS=-1` + `MAX_PIXELS=786432` (896x896).
