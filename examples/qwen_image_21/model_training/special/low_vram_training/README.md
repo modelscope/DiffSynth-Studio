@@ -28,9 +28,48 @@ bash examples/qwen_image_21/model_training/special/low_vram_training/setup_colab
 bash examples/qwen_image_21/model_training/special/low_vram_training/Qwen-Image-2.1-16GB.sh
 ```
 
-Environment knobs: `DATA_DIR`, `CACHE_DIR`, `OUT_DIR`, `MAX_PIXELS`
+Environment knobs: `DATA_DIR`, `DS_SUBDIR`, `CACHE_DIR`, `OUT_DIR`, `MAX_PIXELS`
 (default 262144 = 512x512; use 1048576 for 1024x1024 on V100), `LORA_RANK`
-(default 32), `EPOCHS`, `GRAD_ACCUM`, `SKIP_STAGE1=1` to reuse a cache.
+(default 32), `EPOCHS`, `GRAD_ACCUM`, `GC_BLOCKS`, `NUM_WORKERS`, `SKIP_STAGE1=1`
+to reuse a cache, `FORCE_STAGE1=1` to rebuild it, `DRY_RUN=1` to print the two
+`accelerate launch` commands instead of running them.
+
+## Model weights: what downloads what
+
+**The setup scripts download no weights** - they only build the venv, install
+torch + deps and fetch this repo. The weights come from **modelscope.cn**
+(reachable from CN managed notebooks, no GitHub involved) the first time a stage
+needs them, and are cached in `${DIFFSYNTH_MODEL_BASE_PATH:-./models}/Qwen/Qwen-Image-2.1`:
+
+| component | size | fetched by | used by |
+|---|---|---|---|
+| `text_encoder/` (Qwen3-VL, 4 shards) | 16.3 GB | stage 1 | stage 1 only |
+| `vae/` | 1.3 GB | stage 1 | stage 1 only |
+| `processor/` (tokenizer) | ~15 MB | stage 1 | stage 1 only |
+| `transformer/` (DiT, 2 shards) | 13.3 GB | stage 2 | stage 2 only |
+
+Each stage passes only the models it runs in `--model_id_with_origin_paths`, so
+stage 1 never pulls the DiT and stage 2 never pulls the text encoder. Downloads
+are resumable and skip files that already exist, so a killed run just continues.
+
+Pull them up front, with a progress bar and a disk check, instead of letting the
+first training run stall on a silent download:
+
+```bash
+PRELOAD_MODELS=1 bash examples/qwen_image_21/model_training/special/low_vram_training/setup_baidu_studio.sh
+# or per stage
+PRELOAD_MODELS=1 PRELOAD_STAGE=stage1 bash .../setup_baidu_studio.sh   # 17.6 GB
+PRELOAD_MODELS=1 PRELOAD_STAGE=stage2 bash .../setup_baidu_studio.sh   # 13.3 GB
+```
+
+Once stage 1 has written its cache, the text encoder is never read again:
+
+```bash
+rm -rf /home/aistudio/work/models/Qwen/Qwen-Image-2.1/text_encoder    # 16 GB back
+```
+
+(`FREE_TEXT_ENCODER=1` does this automatically after stage 1; `KEEP_TEXT_ENCODER=1`
+silences the reminder.)
 
 ## Notes
 
@@ -38,8 +77,30 @@ Environment knobs: `DATA_DIR`, `CACHE_DIR`, `OUT_DIR`, `MAX_PIXELS`
   route is `torch.compile`d with Triton, which is unreliable on sm_70 (V100).
   With the flag the DiT falls back to the materialized-mask SDPA route.
 * Stage 1 quantizes the text encoder to NF4 as well (it only runs forward
-  passes there), which keeps the 8 GB Qwen3-VL encoder inside 16 GB together
+  passes there), which keeps the 16 GB Qwen3-VL encoder inside 16 GB together
   with the VAE. Stage 2 does not load the text encoder at all.
+* **Host RAM matters as much as VRAM here.** Online NF4 materializes the FP16
+  checkpoint in host memory before packing it (16.3 GB for the text encoder,
+  13.3 GB for the DiT). Two escape hatches when the runtime has little RAM
+  (a free Colab shows ~13 GB):
+  * `TE_DISK_OFFLOAD=1` - stage 1 streams the FP16 text encoder straight from the
+    safetensors file instead of quantizing it (`--offload_models`), so it costs
+    almost nothing in RAM or VRAM and only pays extra disk reads.
+  * `DIFFSYNTH_QUANT_STREAM=1` - keep NF4 but pack it **one transformer block at a
+    time, straight from disk**, instead of holding the whole fp checkpoint in RAM.
+    The host peak drops from ~16 GB to ~1.5 GB and the resulting weights are
+    bit-identical to the default path (verified on a small model: same packed
+    tensors, same forward output). Requires a model that declares
+    `_no_split_modules` (the DiT and the Qwen3-VL text encoder both do).
+  `Qwen-Image-2.1-16GB.sh` turns both on automatically when host RAM < 24 GB.
+* **`NO_NF4=1`** is the fallback when bitsandbytes itself cannot run on the GPU:
+  stage 1 streams the text encoder from disk and stage 2 trains with
+  `--enable_model_cpu_offload` (FP16 weights on the CPU, one layer at a time).
+  It is markedly slower, but it needs no INT4 support at all.
+* **`transformers>=4.57.0` is required**: the text encoder is `Qwen3VLForConditionalGeneration`,
+  which does not exist in older releases. Both setup scripts pin it and verify the
+  import after installing, so a stale `transformers` fails in seconds instead of
+  after a 17 GB download.
 * **Baidu AI Studio (read-only conda env):** the notebook image mounts its conda
   `site-packages` read-only, so `uv`/`pip` cannot patch it (`Permission denied
   (os error 13)` while removing `tokenizers-*.dist-info/INSTALLER`). `setup_baidu_studio.sh`
@@ -53,9 +114,12 @@ Environment knobs: `DATA_DIR`, `CACHE_DIR`, `OUT_DIR`, `MAX_PIXELS`
   uv cache and `HF_HOME` / `MODELSCOPE_CACHE` under `/home/aistudio/work` so
   downloaded weights survive notebook restarts; the training script sources it
   automatically.
-* Disk budget: ~31 GB of model weights + the stage-1 cache (a few hundred MB
-  for the example dataset). Baidu AI Studio: keep everything under
-  `/home/aistudio/work` so it survives restarts.
+* Disk budget: ~31 GB of model weights (17.6 GB for stage 1 + 13.3 GB for stage 2)
+  + the stage-1 cache (a few hundred MB for the example dataset, but it grows with
+  resolution and dataset size - each cached item holds the prompt embeds *and* the
+  VAE latents). Baidu AI Studio: keep everything under `/home/aistudio/work` so it
+  survives restarts; `setup_baidu_studio.sh` prints free space up front and warns
+  below 60 GB.
 * Expected peak VRAM (512x512, rank 32): ~10-12 GB. At 1024x1024 the T4 may
   still OOM; lower `MAX_PIXELS` or `LORA_RANK` first.
 
@@ -85,14 +149,20 @@ first (also handles missing captions and sub-folders):
 python examples/qwen_image_21/model_training/special/low_vram_training/prepare_dataset_from_txt.py --image_dir my_data
 ```
 
-Then point the training script at it:
+Then point the training script at it - `DS_SUBDIR` is the path under `DATA_DIR`
+that holds `metadata.csv`:
 
 ```
 DATA_DIR=my_data DS_SUBDIR=. bash examples/qwen_image_21/model_training/special/low_vram_training/Qwen-Image-2.1-16GB.sh
 ```
 
-(or edit `DS=` in the script: `DS="/qwen_image_21/Qwen-Image-2.1"` is only
-the example-dataset default.)
+The default `DS_SUBDIR=qwen_image_21/Qwen-Image-2.1` matches the bundled example
+dataset; use `DS_SUBDIR=.` for a folder you prepared yourself.
+
+VAE outputs are cached by stage 1 too, so stage 2 reads neither the images nor the
+VAE: each `*.pth` in `CACHE_DIR` holds the prompt embeds, the latents and the
+scheduler inputs for one sample. Changing `MAX_PIXELS` or the dataset invalidates
+the cache - rebuild it with `FORCE_STAGE1=1`.
 ## T2I speed optimizations in this branch
 
 Training is text-to-image only, so two per-step costs are constant across steps and

@@ -1,13 +1,22 @@
 #!/usr/bin/env bash
 # ============================================================================
 # Baidu AI Studio (Feijiang) one-shot environment setup.
-# Target: V100 16 GB notebook, PaddlePaddle 3.x image (Python 3.10+).
+# Target: V100 16 GB notebook, PaddlePaddle image (Python 3.10+).
 #
 # The image's conda site-packages is read-only for the notebook user, so
 # everything is installed into a dedicated uv venv under /home/aistudio/work.
 # Paddle is left untouched and the notebook kernel is not modified.
 #
 #   bash setup_baidu_studio.sh [REPO_URL]
+#
+# Optional env knobs:
+#   BRANCH=v100-t4-16gb        branch to check out
+#   WORK=/home/aistudio/work   persistent workspace (survives notebook restart)
+#   VENV=$WORK/venv-diffsynth
+#   MODEL_BASE=$WORK/models    where the ~31 GB of weights are cached
+#   PRELOAD_MODELS=1           download the weights during setup (modelscope.cn)
+#   PRELOAD_STAGE=stage1|stage2|all   which weights PRELOAD_MODELS fetches
+#   PIP_EXTRA_INDEX=...        opt back into a second pypi index (eg pypi.org)
 # ============================================================================
 set -euo pipefail
 
@@ -16,8 +25,18 @@ BRANCH="${BRANCH:-v100-t4-16gb}"
 WORK="${WORK:-/home/aistudio/work}"
 VENV="${VENV:-${WORK}/venv-diffsynth}"
 PY="$(command -v python3 || command -v python)"
+TOTAL_STEPS=7
 
-echo "[1/6] python: $($PY --version) at $PY"
+step() { printf '\n[%s/%s] %s\n' "$1" "$TOTAL_STEPS" "$2"; }
+
+step 1 "workspace + python"
+mkdir -p "$WORK"
+echo "    python: $($PY --version 2>&1) at $PY"
+df -h "$WORK" 2>/dev/null | tail -1 | awk '{print "    disk:   "$4" free on "$6}' || true
+FREE_GB="$( { df -BG --output=avail "$WORK" 2>/dev/null || df -BG "$WORK" 2>/dev/null; } | tail -1 | tr -dc '0-9' || true)"
+if [ -n "${FREE_GB:-}" ] && [ "${FREE_GB:-0}" -lt 60 ]; then
+  echo "    WARNING: only ${FREE_GB} GB free. Budget ~31 GB weights + ~8 GB venv + caches."
+fi
 
 # Keep the uv cache on the same writable volume as the venv, otherwise uv can
 # fail with cross-device hardlink errors on managed images.
@@ -30,21 +49,30 @@ export UV_INDEX_URL="${UV_INDEX_URL:-$UV_DEFAULT_INDEX}"
 USER_BASE="$("$PY" -m site --user-base 2>/dev/null || echo "$HOME/.local")"
 export PATH="$HOME/.local/bin:${USER_BASE}/bin:$PATH"
 if ! command -v uv >/dev/null 2>&1 && ! "$PY" -m uv --version >/dev/null 2>&1; then
-  echo "[2/6] installing uv ..."
+  step 2 "installing uv ..."
   "$PY" -m pip install uv -i https://mirrors.aliyun.com/pypi/simple/ \
     || "$PY" -m pip install --user uv -i https://mirrors.aliyun.com/pypi/simple/
+else
+  step 2 "uv"
 fi
 if command -v uv >/dev/null 2>&1; then
   UV() { uv "$@"; }
-  echo "[2/6] uv: $(uv --version)"
+  echo "    uv: $(uv --version)"
 else
   UV() { "$PY" -m uv "$@"; }
-  echo "[2/6] uv via python -m: $("$PY" -m uv --version 2>&1)"
+  echo "    uv via python -m: $("$PY" -m uv --version 2>&1)"
 fi
 
 # --- dedicated venv (system site-packages is read-only on managed images) ---
-echo "[3/6] venv at $VENV"
-mkdir -p "$WORK" "$UV_CACHE_DIR" "$WORK/hf_home" "$WORK/modelscope_cache"
+step 3 "venv at $VENV"
+mkdir -p "$UV_CACHE_DIR" "$WORK/hf_home" "$WORK/modelscope_cache"
+
+# Reuse weights that a previous run already put inside the repo checkout.
+MODEL_BASE="${MODEL_BASE:-${WORK}/models}"
+if [ -d "${WORK}/DiffSynth-Studio/models/Qwen/Qwen-Image-2.1" ]; then
+  MODEL_BASE="${WORK}/DiffSynth-Studio/models"
+fi
+mkdir -p "$MODEL_BASE"
 
 # Persisted environment, sourced automatically by Qwen-Image-2.1-16GB.sh so a
 # fresh notebook session (or a restart) reuses the same venv, caches and models.
@@ -57,10 +85,12 @@ export HUGGINGFACE_HUB_CACHE="${WORK}/hf_home/hub"
 export MODELSCOPE_CACHE="${WORK}/modelscope_cache"
 export XDG_CACHE_HOME="${WORK}/cache"
 export TORCH_HOME="${WORK}/cache/torch"
+export DIFFSYNTH_MODEL_BASE_PATH="\${DIFFSYNTH_MODEL_BASE_PATH:-${MODEL_BASE}}"
 export DIFFSYNTH_DISABLE_FLEX_ATTN=1
 ENVEOF
 mkdir -p "$WORK/cache" "$WORK/cache/torch"
 . "$WORK/diffsynth_env.sh"
+echo "    weights will be cached in ${DIFFSYNTH_MODEL_BASE_PATH}"
 # A venv built from a conda interpreter breaks when the notebook image is
 # reset, so recreate it whenever the interpreter no longer runs.
 venv_ok() { [ -x "$1/bin/python" ] && "$1/bin/python" -c 'import sys' >/dev/null 2>&1; }
@@ -68,7 +98,7 @@ case "$VENV" in /*) ;; *)
   echo "ERROR: VENV must be an absolute path (got '$VENV')" >&2; exit 1 ;;
 esac
 if [ -e "$VENV" ] && ! venv_ok "$VENV"; then
-  echo "[3/6] broken venv at $VENV -> recreating"
+  echo "    broken venv at $VENV -> recreating"
   rm -rf "$VENV"
 fi
 if ! venv_ok "$VENV"; then
@@ -83,7 +113,7 @@ if ! venv_ok "$VENV"; then
   echo "       set VENV=/some/writable/path and re-run." >&2
   exit 1
 fi
-echo "[3/6] venv ready: $("$VPY" -V) at $VPY"
+echo "    venv ready: $("$VPY" -V) at $VPY"
 
 # --- torch (Aliyun mirror, CUDA build picked from the driver) ---------------
 CUDA_VER="$(nvidia-smi 2>/dev/null | grep -oP 'CUDA Version: \K[0-9]+\.[0-9]+' || echo 11.8)"
@@ -92,7 +122,7 @@ if "$VPY" -c "import sys; sys.exit(0 if float('$CUDA_VER') >= 12.1 else 1)"; the
 else
   CUDA_TAG="cu118"
 fi
-echo "[4/6] driver CUDA $CUDA_VER -> torch $CUDA_TAG from mirrors.aliyun.com"
+step 4 "driver CUDA $CUDA_VER -> torch $CUDA_TAG from mirrors.aliyun.com"
 UV pip install --python "$VPY" \
   "torch==2.5.1+${CUDA_TAG}" "torchvision==0.20.1+${CUDA_TAG}" \
   --find-links "https://mirrors.aliyun.com/pytorch-wheels/${CUDA_TAG}/" \
@@ -105,46 +135,94 @@ UV pip install --python "$VPY" \
 # opt back in when the machine does have direct access.
 EXTRA_INDEX=()
 if [ -n "${PIP_EXTRA_INDEX:-}" ]; then EXTRA_INDEX=(--extra-index-url "$PIP_EXTRA_INDEX"); fi
-echo "[5/6] training dependencies ..."
+step 5 "training dependencies"
 UV pip install --python "$VPY" \
   "bitsandbytes>=0.45.0" "accelerate>=0.34.0" "peft>=0.12.0" \
-  "transformers>=4.45.0" sentencepiece protobuf safetensors \
+  "transformers>=4.57.0" sentencepiece protobuf safetensors \
   modelscope ftfy pandas einops "imageio[ffmpeg]" "numpy<2" \
   --index-url "https://mirrors.aliyun.com/pypi/simple/" \
   ${EXTRA_INDEX[@]+"${EXTRA_INDEX[@]}"}
 
 # --- repo -------------------------------------------------------------------
-# Direct GitHub access is flaky from managed notebooks in CN, so fall back to
-# read-only mirrors and point `origin` back at GitHub afterwards.
-echo "[6/6] cloning ${REPO_URL} (${BRANCH}) ..."
+# Direct GitHub access is blocked/flaky from managed notebooks in CN, so try a
+# shallow clone of the branch through read-only mirrors and, failing that, pull
+# the branch tarball (no git protocol needed). Progress is printed on purpose:
+# the repo is ~19 MB and a silent clone looks like a hang.
+step 6 "fetching ${REPO_URL} (${BRANCH})"
 cd "$WORK"
-clone_repo() {
-  local target_url="$1"
+TAR_NAME="${BRANCH}.tar.gz"
+ATTEMPTED=()
+# Abort a stalled GitHub connection quickly instead of hanging for minutes;
+# managed CN notebooks usually just blackhole github.com:443.
+export GIT_HTTP_LOW_SPEED_LIMIT="${GIT_HTTP_LOW_SPEED_LIMIT:-2000}"
+export GIT_HTTP_LOW_SPEED_TIME="${GIT_HTTP_LOW_SPEED_TIME:-20}"
+export GIT_TERMINAL_PROMPT=0
+
+git_clone_try() {
+  local url="$1"
+  ATTEMPTED+=("git  $url")
   rm -rf ./DiffSynth-Studio.partial
-  if git clone -b "$BRANCH" "$target_url" ./DiffSynth-Studio.partial 2>/dev/null \
-     || git clone "$target_url" ./DiffSynth-Studio.partial 2>/dev/null; then
+  echo "    git clone --depth 1 -b ${BRANCH} ${url}"
+  if git clone --depth 1 --progress -b "$BRANCH" "$url" ./DiffSynth-Studio.partial \
+     || git clone --progress "$url" ./DiffSynth-Studio.partial; then
     mv ./DiffSynth-Studio.partial ./DiffSynth-Studio
     return 0
   fi
   rm -rf ./DiffSynth-Studio.partial
   return 1
 }
+
+tarball_try() {
+  local url="$1"
+  ATTEMPTED+=("tar  $url")
+  rm -rf ./DiffSynth-Studio.partial ./ds-repo.tar.gz
+  echo "    tarball ${url}"
+  if { command -v curl >/dev/null 2>&1 && curl -fL --connect-timeout 20 --max-time 900 --retry 1 -o ./ds-repo.tar.gz "$url"; } \
+     || { command -v wget >/dev/null 2>&1 && wget -T 20 -O ./ds-repo.tar.gz "$url"; }; then
+    mkdir -p ./DiffSynth-Studio.partial
+    if tar -xzf ./ds-repo.tar.gz -C ./DiffSynth-Studio.partial --strip-components 1; then
+      rm -f ./ds-repo.tar.gz
+      mv ./DiffSynth-Studio.partial ./DiffSynth-Studio
+      return 0
+    fi
+  fi
+  rm -f ./ds-repo.tar.gz
+  rm -rf ./DiffSynth-Studio.partial
+  return 1
+}
+
 if [ ! -d DiffSynth-Studio ]; then
   cloned=0
-  for url in "$REPO_URL" "https://ghfast.top/$REPO_URL" "https://gh-proxy.com/$REPO_URL"; do
-    echo "  trying $url"
-    if clone_repo "$url"; then cloned=1; break; fi
+  for url in "$REPO_URL" "https://ghfast.top/$REPO_URL" "https://ghproxy.net/$REPO_URL"; do
+    if git_clone_try "$url"; then cloned=1; break; fi
   done
   if [ "$cloned" != "1" ]; then
-    echo "ERROR: could not clone $REPO_URL" >&2
-    echo "       upload the repo manually to $WORK/DiffSynth-Studio and re-run." >&2
+    # Tarball of the branch: works even when the git smart-HTTP endpoint is blocked.
+    repo_path="${REPO_URL#*github.com/}"; repo_path="${repo_path%.git}"
+    for m in "https://ghfast.top" "https://ghproxy.net" "https://gh-proxy.com"; do
+      if tarball_try "${m}/https://github.com/${repo_path}/archive/refs/heads/${TAR_NAME}"; then cloned=1; break; fi
+    done
+  fi
+  if [ "$cloned" != "1" ]; then
+    echo "ERROR: could not fetch the repository. Tried:" >&2
+    printf '       %s\n' ${ATTEMPTED[@]+"${ATTEMPTED[@]}"} >&2
+    echo "       Manual fallback: download" >&2
+    echo "         https://ghfast.top/https://github.com/${repo_path}/archive/refs/heads/${BRANCH}.tar.gz" >&2
+    echo "       on any machine, upload it to ${WORK} and run:" >&2
+    echo "         cd ${WORK} && tar -xzf ${TAR_NAME} && mv ${repo_path}-$(echo "$BRANCH" | tr '/' '-') DiffSynth-Studio" >&2
     exit 1
   fi
 fi
+
 cd DiffSynth-Studio
-git remote set-url origin "$REPO_URL" 2>/dev/null || true
-git checkout "$BRANCH" 2>/dev/null || true
-git pull --ff-only 2>/dev/null || true
+if [ -d .git ]; then
+  git remote set-url origin "$REPO_URL" 2>/dev/null || true
+  git checkout "$BRANCH" 2>/dev/null || true
+  git pull --ff-only 2>/dev/null || true
+  echo "    HEAD: $(git rev-parse --short HEAD) $(git log -1 --pretty=%s)"
+else
+  echo "    source tree (no .git, fetched as tarball)"
+fi
 UV pip install --python "$VPY" -e . --no-deps \
   --index-url "https://mirrors.aliyun.com/pypi/simple/"
 
@@ -170,6 +248,98 @@ except Exception as e:
     print(f"WARNING: INT4/8-bit probe failed ({type(e).__name__}: {e})")
     print("         training may still run, but check 'bitsandbytes' GPU support.")
 EOF
+
+# --- Qwen-Image-2.1 import probe -------------------------------------------
+# The text encoder is Qwen3-VL, which only exists in transformers >= 4.57.0.
+# A too-old transformers is the single most common failure on this model, so
+# check it here instead of after the 17 GB download.
+echo "    checking the Qwen3-VL text-encoder imports ..."
+export VENV
+"$VPY" - <<'EOF'
+import importlib.util, os, sys
+import transformers
+vpy = os.path.join(os.environ.get("VENV", "."), "bin", "python")
+
+if importlib.util.find_spec("transformers.models.qwen3_vl.modeling_qwen3_vl") is None:
+    print(f"ERROR: transformers {transformers.__version__} has no `qwen3_vl` module.")
+    print("       Qwen-Image-2.1 uses a Qwen3-VL text encoder, which needs transformers>=4.57.0:")
+    print(f'         uv pip install --python "{vpy}" "transformers>=4.57.0" \\')
+    print("           --index-url https://mirrors.aliyun.com/pypi/simple/")
+    sys.exit(1)
+
+try:
+    from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
+    from diffsynth.models.qwen_image_21_text_encoder import QwenImage21TextEncoder
+    from diffsynth.pipelines.qwen_image_21 import QwenImage21Pipeline
+except Exception as error:
+    print(f"ERROR: cannot import the Qwen-Image-2.1 pipeline: {type(error).__name__}: {error}")
+    if isinstance(error, ModuleNotFoundError) and "diffsynth" in str(error):
+        print("       diffsynth is not on sys.path; re-run this script (it installs `-e .`).")
+    else:
+        print("       transformers/accelerate mismatch is the usual cause; the pins above must hold.")
+    sys.exit(1)
+print(f"    Qwen3-VL + QwenImage21Pipeline imports ok (transformers {transformers.__version__})")
+EOF
+
+# --- model weights ----------------------------------------------------------
+# Setup never touched the weights: they are ~31 GB and are normally fetched by
+# the first training run. PRELOAD_MODELS=1 pulls them here instead, so the
+# download happens with a progress bar and a clear disk check.
+step 7 "model weights (Qwen/Qwen-Image-2.1, ~31 GB) -> ${DIFFSYNTH_MODEL_BASE_PATH}"
+if [ "${PRELOAD_MODELS:-0}" = "1" ]; then
+  PRELOAD_STAGE="${PRELOAD_STAGE:-all}"
+  echo "    downloading PRELOAD_STAGE=${PRELOAD_STAGE} from modelscope.cn ..."
+  "$VPY" - <<'PY'
+import os
+from modelscope import snapshot_download
+
+base = os.environ["DIFFSYNTH_MODEL_BASE_PATH"]
+model_id = "Qwen/Qwen-Image-2.1"
+stage = os.environ.get("PRELOAD_STAGE", "all").lower()
+# modelscope matches these against repo-relative paths; nested dirs are listed
+# explicitly because "*.json" does not cross directory separators.
+sets = {
+    # stage 1 only runs the text encoder + VAE (results are cached to disk)
+    "stage1": ["text_encoder/*", "vae/*", "processor/*", "scheduler/*", "*.json"],
+    # stage 2 only runs the DiT
+    "stage2": ["transformer/*", "*.json"],
+    "all": ["transformer/*", "text_encoder/*", "vae/*", "processor/*",
+            "scheduler/*", "*.json"],
+}
+SIZES = {"transformer": 13.3, "text_encoder": 16.3, "vae": 1.3, "processor": 0.015}
+if stage not in sets:
+    raise SystemExit(f"PRELOAD_STAGE must be one of {sorted(sets)}, got {stage!r}")
+target = os.path.join(base, model_id)
+pats = sets[stage]
+tops = sorted({p.split("/")[0] for p in pats if "/" in p})
+est = sum(SIZES.get(t, 0.0) for t in tops)
+print(f"    patterns: {pats}")
+print(f"    approx download: {est:.1f} GB -> {target} (resumable, re-runnable)")
+path = snapshot_download(model_id, local_dir=target, allow_file_pattern=pats)
+print(f"    cached in {path}")
+for root, _dirs, files in os.walk(path):
+    for f in sorted(files):
+        if f.endswith(".safetensors"):
+            p = os.path.join(root, f)
+            print(f"      {os.path.relpath(p, path):60s} {os.path.getsize(p)/1024**3:6.2f} GB")
+PY
+  echo "    weights ready; training will not re-download them."
+else
+  cat <<'NOTE'
+    NOT downloaded by this script. They come from modelscope.cn (no GitHub
+    needed) automatically on the first training run, and are cached in the
+    directory printed above. Totals:
+      transformer/  ~13.3 GB  (2 shards, DiT ~7.1B)   <- stage 2
+      text_encoder/ ~16.3 GB  (4 shards, Qwen3-VL)    <- stage 1 only
+      vae/          ~1.3 GB                           <- stage 1 only
+    Fetch them now with a progress bar (recommended, keeps the two training
+    stages from stalling on a silent download):
+      PRELOAD_MODELS=1 bash setup_baidu_studio.sh
+    or per stage:
+      PRELOAD_MODELS=1 PRELOAD_STAGE=stage1 bash setup_baidu_studio.sh
+NOTE
+fi
+
 echo "=== done. The notebook kernel is NOT modified; training runs from the venv."
 echo "    cd $WORK/DiffSynth-Studio && bash examples/qwen_image_21/model_training/special/low_vram_training/Qwen-Image-2.1-16GB.sh"
 echo "    (interactive use: source $VENV/bin/activate)"
