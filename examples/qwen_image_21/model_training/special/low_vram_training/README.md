@@ -108,7 +108,7 @@ Instead, install xformers to get a memory-efficient fused kernel that does suppo
 sm_70/75:
 
 ```
-uv pip install --python  xformers --index-url https://mirrors.aliyun.com/pytorch-wheels/cu121/
+uv pip install --python "$(command -v python)" xformers --index-url https://mirrors.aliyun.com/pytorch-wheels/cu121/
 ```
 
 Caveat: the Qwen-Image-2.1 DiT passes an explicit attention mask (block-causal), and
