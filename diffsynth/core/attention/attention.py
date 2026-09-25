@@ -49,6 +49,12 @@ try:
 except Exception:
     FLEX_ATTN_AVAILABLE = False
 
+# Flex attention is compiled with Triton, which is unreliable on old architectures
+# (e.g. V100 / sm_70). Set DIFFSYNTH_DISABLE_FLEX_ATTN=1 to force the materialized
+# mask + SDPA route instead of the BlockMask route.
+if os.environ.get("DIFFSYNTH_DISABLE_FLEX_ATTN", "0") == "1":
+    FLEX_ATTN_AVAILABLE = False
+
 try:
     if "enable_gqa" in inspect.signature(torch.nn.functional.scaled_dot_product_attention).parameters:
         TORCH_SUPPORT_GQA = True

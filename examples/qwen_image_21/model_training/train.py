@@ -22,12 +22,17 @@ class QwenImage21TrainingModule(DiffusionTrainingModule):
         resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         device="cpu",
         task="sft",
+        force_fp16=False,
     ):
         super().__init__()
+        # V100 / T4 have no native BF16 tensor cores: keep every weight and every
+        # computation in FP16 instead of the BF16 default used on Ampere+ GPUs.
+        self.force_fp16 = force_fp16
+        torch_dtype = torch.float16 if force_fp16 else torch.bfloat16
         # Load models
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, quant_options=quant_options, device=device)
         processor_config = ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="processor/") if processor_path is None else ModelConfig(processor_path)
-        self.pipe = QwenImage21Pipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, processor_config=processor_config)
+        self.pipe = QwenImage21Pipeline.from_pretrained(torch_dtype=torch_dtype, device=device, model_configs=model_configs, processor_config=processor_config)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
         self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
 
@@ -86,6 +91,7 @@ def qwen_image_21_parser():
     parser = add_image_size_config(parser)
     parser.add_argument("--processor_path", type=str, default=None, help="Path to the processor. If provided, the processor will be used instead of the remote one.")
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
+    parser.add_argument("--force_fp16", default=False, action="store_true", help="Use FP16 instead of BF16 everywhere. Required on GPUs without BF16 support (V100, T4).")
     return parser
 
 
@@ -133,6 +139,7 @@ if __name__ == "__main__":
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         task=args.task,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
+        force_fp16=args.force_fp16,
     )
     model_logger = ModelLogger(
         args.output_path,
