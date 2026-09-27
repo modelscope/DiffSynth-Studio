@@ -41,6 +41,12 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年9月28日** 我们开源了 EntroPack——面向 PyTorch 的通用张量压缩库，支持逐位精确恢复的无损压缩和按目标码率控制体积的有损压缩，并提供 GPU 编解码能力。它已作为量化后端接入 DiffSynth-Studio，可在推理与 LoRA 训练中按任意目标码率压缩模型权重。更多信息请参考：
+
+  项目主页：https://github.com/modelscope/entropack
+  技术报告：待发布
+  示例代码：./examples/z_image/model_inference/Z-Image-Turbo-EntroPack-3bpp.py
+
 - **2026年9月20日** Qwen-Image-2.1 开源，模型支持文生图、图像编辑、带透明通道的 RGBA 输出，DiffSynth-Studio 已为其提供全面支持。详情请参考[文档](/docs/zh/Model_Details/Qwen-Image-2.1.md)和[示例代码](/examples/qwen_image_21/)。
 
 - **2026年9月14日** 我们训练并开源了 DiffSynth-Music，基于 ACE-Step 的音乐可控生成模型，支持 Beats、Vocals、Accompany、Prosody、Reference 五种控制方式。更多信息请参考：

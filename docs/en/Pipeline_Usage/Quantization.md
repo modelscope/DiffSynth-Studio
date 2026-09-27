@@ -19,6 +19,7 @@ Different quantization backends require the corresponding third-party libraries:
 | bitsandbytes | `pip install bitsandbytes` | [bitsandbytes](https://github.com/bitsandbytes-foundation/bitsandbytes) |
 | torchao | `pip install torchao>=0.16` | [torchao](https://github.com/pytorch/ao) |
 | comfy-kitchen | `pip install comfy-kitchen` | [comfy-kitchen](https://github.com/Comfy-Org/comfy-kitchen) |
+| entropack | `pip install "entropack[cuda13]"` | [entropack](https://github.com/modelscope/entropack) |
 
 Install all at once: `pip install "diffsynth[quant]"`
 
@@ -69,6 +70,13 @@ The following are all built-in quantization methods. `method` is the name passed
 | `torchao_nvfp4_w4a4` | torchao | NVFP4 / NVFP4 | ✅ | ❌ |
 | `comfy_kitchen_int8_w8a8` | comfy_kitchen | INT8 / INT8 dynamic | ✅ | ✅ |
 | `comfy_kitchen_fp8_w8a8` | comfy_kitchen | FP8 E4M3 / FP8 | ✅ | ✅ |
+| `entropack_lossless_df11` | entropack | lossless DFloat11 (BF16) / none | ✅ | ✅ |
+| `entropack_lossless_tile_ans` | entropack | lossless tile-ANS (BF16 / FP16 / FP8 / INT8, etc.) / none | ✅ | ✅ |
+| `entropack_lossy_quant` | entropack | lossy E8-lattice quantization / none | ✅ | ✅ |
+| `entropack_lossy_quant_fp8` | entropack | FP8 E4M3 codes + lattice coding / FP8 | ✅ | ✅ |
+| `entropack_lossy_quant_fp8_raw` | entropack | FP8 E4M3 codes / FP8 | ✅ | ✅ |
+| `entropack_lossy_quant_int8` | entropack | INT8 codes + lattice coding / INT8 | ✅ | ✅ |
+| `entropack_lossy_quant_int8_raw` | entropack | INT8 codes / INT8 | ✅ | ✅ |
 
 Some notes:
 
@@ -76,6 +84,20 @@ Some notes:
 - **LoRA training**: only methods marked ✅ in the "LoRA Training" column can be used for quantization + LoRA training.
 - `comfy_kitchen_*` methods read and write ComfyUI's quantized weight format, interoperable with the ComfyUI ecosystem. comfy-kitchen requires CUDA 13.0 or later.
 - Formats such as MXFP8 / MXFP4 / NVFP4 have compute hardware requirements; see the [torchao](https://github.com/pytorch/ao) documentation for compatibility details.
+- entropack needs Python 3.10+ and a CUDA build of PyTorch 2.10+; replace `cuda13` with `cuda12` in the install command to match the environment. `entropack_lossy_quant_fp8*` needs SM8.9 or newer, `entropack_lossy_quant_int8*` needs SM8.0 or newer.
+- For lossless compression use `entropack_lossless_df11` (BF16) or `entropack_lossless_tile_ans` (BF16 / FP16 / FP8 / INT8, etc.); to control storage size use `entropack_lossy_quant`, whose `target_bpp` takes any continuous value from 1 to 11 (default 4.0; on Z-Image-Turbo's 276 linear layers 3 bpp reaches ~14% and 4 bpp ~7% weight rel-L2). `entropack_lossy_quant_fp8*` / `entropack_lossy_quant_int8*` are W8A8 methods: the `*_raw` variants store the codes directly, the other two entropy-code them, and their `target_bpp` must stay below 8.
+- Select the layers to quantize explicitly with `target_modules` / `exclude_modules`; the actual bpp is recorded in the checkpoint options. See [entropack](https://github.com/modelscope/entropack) for parameters and more usage.
+
+For example:
+
+```python
+e8 = QuantizeConfig(
+    method="entropack_lossy_quant",
+    backend_config_kwargs={"target_bpp": 4.0},   # any continuous value from 1 to 11
+)
+```
+
+The lossy and lossless methods both support `dynamic`, `dequant_once`, saved/pre-quantized checkpoints, CPU/disk offload, and input-gradient/LoRA flows. Lossy checkpoints use the self-describing CompressedTensor v2 header; headerless legacy buffers remain lossless-only. No model hash is registered until a corresponding artifact is intentionally released.
 
 You can query all available methods and their parameters in code:
 
