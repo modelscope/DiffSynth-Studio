@@ -83,6 +83,7 @@ The input parameters for `QwenImage21Pipeline` inference include:
 * `rand_device`: Device used to generate the Gaussian noise, defaults to `"cpu"`.
 * `num_inference_steps`: Number of inference steps, defaults to 40.
 * `use_kv_cache`: Whether to enable the per-layer KV cache under the block-causal condition, defaults to `True`.
+* `use_flex_attention`: Attention implementation for the prefill stage, defaults to `True` (flex_attention). Set to `False` to use the per-segment SDPA path instead, which builds no block mask, uses less memory on long sequences, and produces equivalent outputs. The decode stage is unaffected.
 * `tiled`: Whether to enable tiled VAE inference, defaults to `False`.
 * `tile_size`: Tile size for VAE encoding/decoding, defaults to 256, effective only when `tiled=True`.
 * `tile_stride`: Tile stride for VAE encoding/decoding, defaults to 192, effective only when `tiled=True`.
