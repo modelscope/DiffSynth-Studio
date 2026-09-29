@@ -41,6 +41,13 @@ See also:
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
+- **September 29, 2026** We are excited to open-source EntroPack, a general-purpose tensor compression library for PyTorch that provides lossless compression with exact recovery and rate-controlled lossy compression, with GPU encoding and decoding. It is integrated into DiffSynth-Studio as a quantization backend, compressing model weights at arbitrary target bitrates in both inference and LoRA training. For more information, please refer to:
+
+  * Project Page: https://github.com/modelscope/entropack
+  * Technical Report: https://arxiv.org/abs/2609.34185
+  * Pre-quantized Models: https://www.modelscope.cn/models/DiffSynth-Studio/EntroPackPreQuants
+  * Example Code: [Z-Image-Turbo](/examples/z_image/model_inference_low_vram/Z-Image-Turbo-EntroPack.py), [Qwen-Image-2.1](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-EntroPack.py), [MiniMax-H3](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-EntroPack.py), [LoRA Training Example](/examples/z_image/model_training/special/quant_training/Z-Image-Turbo-entropack_lossy_quant.sh)
+
 - **September 20, 2026** Qwen-Image-2.1 was open-sourced. The model supports text-to-image generation, image editing, and RGBA output with a transparency channel. DiffSynth-Studio now provides full support for it. For details, please refer to the [documentation](/docs/zh/Model_Details/Qwen-Image-2.1.md) and [example code](/examples/qwen_image_21/).
 
 - **September 14, 2026** We trained and open-sourced DiffSynth-Music, a controllable music generation model based on ACE-Step, which supports five control modes: Beats, Vocals, Accompany, Prosody, and Reference. For more information, please refer to:
