@@ -63,7 +63,12 @@ class AestheticModel(torch.nn.Module):
             layer_norm_eps=1e-5,
             projection_dim=768,
         )
-        return CLIPVisionModel(config), torch.nn.Linear(config.hidden_size, config.projection_dim, bias=False)
+        vision_model = CLIPVisionModel(config)
+        # In transformers<5, `CLIPVisionModel` wraps `CLIPVisionTransformer` in an extra `vision_model` attribute,
+        # which adds a `vision_model.` prefix to the state dict keys. Unwrap it to match the checkpoint.
+        if isinstance(getattr(vision_model, "vision_model", None), torch.nn.Module):
+            vision_model = vision_model.vision_model
+        return vision_model, torch.nn.Linear(config.hidden_size, config.projection_dim, bias=False)
 
     @property
     def device(self):
