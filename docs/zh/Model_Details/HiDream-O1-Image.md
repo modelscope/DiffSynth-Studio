@@ -83,7 +83,7 @@ image.save("image.jpg")
 * `shift`: 时间步偏移量，影响 sigma 计算，默认为 3.0。
 * `noise_scale`: 噪声缩放系数，默认为 8.0，Dev 模型建议设为 7.5。
 * `edit_image`: 参考图像列表，用于图像编辑功能。默认为 None（文生图模式）。
-* `keep_original_aspect`: 是否保持参考图像原始宽高比，默认为 True。
+* `keep_original_aspect`: 是否保持参考图像原始宽高比，默认为 True。开启且只有一张参考图时，输出图像沿用参考图的宽高比，并以 `height * width` 作为像素总量。
 
 > **显存提示**: HiDream-O1-Image 模型参数量较大（~8B），生成 2048x2048 图像时建议开启显存管理（vram_config），或使用低显存推理脚本。
 

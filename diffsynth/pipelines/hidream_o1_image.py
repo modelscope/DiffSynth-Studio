@@ -183,7 +183,8 @@ class HiDreamO1ImageUnit_RefImageEmbedder(PipelineUnit):
         if isinstance(edit_image, Image.Image):
             edit_image = [edit_image]
         if keep_original_aspect and len(edit_image) == 1:
-            edit_image = [resize_pilimage(pil, 2048) for pil in edit_image]
+            # Keep the pixel budget given by height and width, and follow the aspect ratio of the reference image.
+            edit_image = [resize_pilimage(pil, int(math.sqrt(height * width))) for pil in edit_image]
             width, height = edit_image[0].size
 
         if layout_bboxes is not None:

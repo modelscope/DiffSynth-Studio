@@ -83,7 +83,7 @@ The input parameters for `HiDreamO1ImagePipeline` inference include:
 * `shift`: Timestep shift parameter affecting sigma computation, defaults to 3.0.
 * `noise_scale`: Noise scaling factor, defaults to 8.0. For the Dev model, it is recommended to set to 7.5.
 * `edit_image`: List of reference images for image editing. Defaults to None (text-to-image mode).
-* `keep_original_aspect`: Whether to preserve the original aspect ratio of reference images, defaults to True.
+* `keep_original_aspect`: Whether to preserve the original aspect ratio of reference images, defaults to True. When enabled with a single reference image, the output keeps the aspect ratio of the reference image and uses `height * width` as the pixel budget.
 
 > **VRAM Note**: HiDream-O1-Image has a large parameter count (~8B). When generating 2048x2048 images, it is recommended to enable VRAM management (vram_config) or use the low VRAM inference scripts.
 
