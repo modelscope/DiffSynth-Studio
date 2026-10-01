@@ -90,7 +90,11 @@ def check_rocm_allocator():
             )
 
 
-def route_rocm_blas(log=print):
+def _log(message):
+    print(message, flush=True)
+
+
+def route_rocm_blas(log=_log):
     # On gfx1201 (torch 2.13.0+rocm10.0) every bf16 GEMM, including rocBLAS
     # (which forwards to hipBLASLt by default) and the fused-bias addmm path,
     # dispatches hipBLASLt "UserArgs" kernels; under offloaded LoRA training
@@ -106,7 +110,7 @@ def route_rocm_blas(log=print):
 
 
 class VRAMGuard:
-    def __init__(self, abort_gib, device=0, cap_margin_gib=0.5, log=print):
+    def __init__(self, abort_gib, device=0, cap_margin_gib=1.0, log=_log):
         check_rocm_allocator()
         route_rocm_blas(log)
         self.abort_gib = abort_gib
@@ -117,8 +121,11 @@ class VRAMGuard:
         self.baseline_gib = sysfs_vram_used_gib(self.sysfs)
         self.faults_before = len(amdgpu_fault_lines())
         # Process cap: everything this process may allocate while others
-        # (desktop) keep their baseline, with a margin for non-allocator use
-        # (HIP runtime, kernels, hipBLASLt handles).
+        # (desktop) keep their baseline, with a margin for memory the caching
+        # allocator does not count (HIP runtime, code objects, BLAS
+        # workspaces). Measured ~0.6 GiB on the R9700: with a 0.5 GiB margin
+        # an IC-LoRA eval at vram_limit 26 reached 29.59 GiB sysfs and was
+        # killed by the 29.5 gate while torch stayed under its cap.
         self.cap_gib = abort_gib - self.baseline_gib - cap_margin_gib
         if self.cap_gib <= 1:
             raise RuntimeError(f"Abort line {abort_gib} GiB leaves no room above baseline {self.baseline_gib:.2f} GiB.")
