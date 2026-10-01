@@ -159,7 +159,7 @@ class JoyAIImageUnit_PromptEmbedder(PipelineUnit):
             input_params_nega={"prompt": "negative_prompt", "positive": "positive"},
             input_params=("edit_image", "max_sequence_length"),
             output_params=("prompt_embeds", "prompt_embeds_mask"),
-            onload_model_names=("joyai_image_text_encoder",),
+            onload_model_names=("text_encoder",),
         )
 
     def process(self, pipe: "JoyAIImagePipeline", prompt, positive, edit_image, max_sequence_length):
@@ -204,8 +204,8 @@ class JoyAIImageUnit_EditImageEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             input_params=("edit_image", "tiled", "tile_size", "tile_stride", "height", "width"),
-            output_params=("ref_latents", "num_items", "is_multi_item"),
-            onload_model_names=("wan_video_vae",),
+            output_params=("ref_latents", "edit_image"),
+            onload_model_names=("vae",),
         )
 
     def process(self, pipe: "JoyAIImagePipeline", edit_image, tiled, tile_size, tile_stride, height, width):
