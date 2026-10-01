@@ -1,4 +1,5 @@
 import math
+import warnings
 from typing import Any
 
 import torch
@@ -13,6 +14,10 @@ _FLEX_BLOCK_SIZE = 128
 BlockMask, create_block_mask = None, None
 if FLEX_ATTN_AVAILABLE:
     from torch.nn.attention.flex_attention import BlockMask, create_block_mask
+
+# In torch 2.8, the compiled flex_attention returns wrong gradients after it is recompiled for a new sequence length,
+# which breaks training on samples of different sizes. The forward pass is not affected.
+_FLEX_ATTN_BACKWARD_BROKEN = torch.__version__.startswith("2.8.")
 
 
 def apply_rotary_emb_qwen(
@@ -553,6 +558,13 @@ class QwenImage21DiT(nn.Module):
         is_decode = kv_cache is not None and len(kv_cache[0]) > 0
         cache_write_slice = None if is_decode or kv_cache is None else slice(0, prefix_len)
         segments = None
+        if use_flex_attention and _FLEX_ATTN_BACKWARD_BROKEN and torch.is_grad_enabled():
+            warnings.warn(
+                f"Flex attention computes wrong gradients for varying sequence lengths in torch {torch.__version__}. "
+                "Falling back to the segmented attention path for training. Upgrade torch to 2.9 or later to use flex attention."
+            )
+            use_flex_attention = False
+
         if is_decode:
             joint_hidden_states = joint_hidden_states[:, prefix_len:]
             rotary_emb = rotary_emb[prefix_len:]
