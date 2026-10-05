@@ -61,7 +61,7 @@ class UnifiedDataset(torch.utils.data.Dataset):
         ])
         
     def search_for_cached_data_files(self, path):
-        for file_name in os.listdir(path):
+        for file_name in sorted(os.listdir(path)):
             subpath = os.path.join(path, file_name)
             if os.path.isdir(subpath):
                 self.search_for_cached_data_files(subpath)
