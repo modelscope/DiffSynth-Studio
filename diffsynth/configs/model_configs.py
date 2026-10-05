@@ -36,6 +36,7 @@ qwen_image_series = [
         "model_hash": "469c78b61e3e31bc9eec0d0af3d3f2f8",
         "model_name": "siglip2_image_encoder",
         "model_class": "diffsynth.models.siglip2_image_encoder.Siglip2ImageEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.siglip2_image_encoder.Siglip2ImageEncoderStateDictConverter",
     },
     {
         # Example: ModelConfig(model_id="DiffSynth-Studio/General-Image-Encoders", origin_file_pattern="DINOv3-7B/model.safetensors")
