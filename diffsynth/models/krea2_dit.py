@@ -85,10 +85,6 @@ class SingleMMDiTConfig:
     txtheads: int = 20
     txtkvheads: int = 20
 
-    def get(self, *args, **kwargs):
-        # For compatibility with low-version peft
-        return None
-
 
 class SimpleModulation(torch.nn.Module):
     def __init__(self, dim: int):

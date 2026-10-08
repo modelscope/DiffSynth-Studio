@@ -66,8 +66,8 @@ class LoRATrainerBlock(torch.nn.Module):
         for lora_pattern, layer in zip(self.lora_patterns, self.layers):
             name = lora_pattern[0]
             lora_a, lora_b = layer(x, residual=residual)
-            lora[f"transformer_blocks.{self.block_id}.{name}.lora_A.default.weight"] = lora_a
-            lora[f"transformer_blocks.{self.block_id}.{name}.lora_B.default.weight"] = lora_b
+            lora[f"transformer_blocks.{self.block_id}.{name}.lora_A.weight"] = lora_a
+            lora[f"transformer_blocks.{self.block_id}.{name}.lora_B.weight"] = lora_b
         return lora
     
 

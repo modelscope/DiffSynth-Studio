@@ -108,10 +108,10 @@ class Krea2LoRAConverter:
         rename_dict = Krea2LoRAConverter().rename_dict
         state_dict_ = {}
         for name in state_dict:
-            weight_name = name.replace(".lora_A.default.", ".").replace(".lora_B.default.", ".")
-            if name.endswith(".lora_A.default.weight"):
+            weight_name = name.replace(".lora_A.", ".").replace(".lora_B.", ".")
+            if name.endswith(".lora_A.weight"):
                 name_ = "transformer." + rename_dict[weight_name].replace(".weight", ".lora_A.weight")
-            elif name.endswith(".lora_B.default.weight"):
+            elif name.endswith(".lora_B.weight"):
                 name_ = "transformer." + rename_dict[weight_name].replace(".weight", ".lora_B.weight")
             state_dict_[name_] = state_dict[name]
         return state_dict_
@@ -124,8 +124,8 @@ class Krea2LoRAConverter:
         for name in state_dict:
             weight_name = name.replace(".lora_A.", ".").replace(".lora_B.", ".").replace("transformer.", "")
             if name.endswith(".lora_A.weight"):
-                name_ = rename_dict[weight_name].replace(".weight", ".lora_A.default.weight")
+                name_ = rename_dict[weight_name].replace(".weight", ".lora_A.weight")
             elif name.endswith(".lora_B.weight"):
-                name_ = rename_dict[weight_name].replace(".weight", ".lora_B.default.weight")
+                name_ = rename_dict[weight_name].replace(".weight", ".lora_B.weight")
             state_dict_[name_] = state_dict[name]
         return state_dict_
