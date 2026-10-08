@@ -1735,6 +1735,12 @@ qwen_image_21_series = [
         "model_class": "diffsynth.models.qwen_image_21_text_encoder.QwenImage21TextEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.qwen_image_21_text_encoder.QwenImage21TextEncoderStateDictConverter",
     },
+    {
+        # Example: ModelConfig(model_id="PAI/Qwen-Image-2.1-Fun-Controlnet-Union", origin_file_pattern="Qwen-Image-2.1-Fun-Controlnet-Union.safetensors")
+        "model_hash": "21fca5e7dc68c836804b46f735677546",
+        "model_name": "qwen_image_21_controlnet",
+        "model_class": "diffsynth.models.qwen_image_21_controlnet.QwenImage21ControlNet",
+    },
 ]
 
 MODEL_CONFIGS = (

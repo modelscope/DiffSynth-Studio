@@ -551,6 +551,10 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "diffsynth.models.qwen_image_21_dit.QwenImage21RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.qwen_image_21_dit.QwenImage21ZeroCenterRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.qwen_image_21_controlnet.QwenImage21ControlNet": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "diffsynth.models.qwen_image_21_dit.QwenImage21RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
     "diffsynth.models.qwen_image_21_vae.QwenImage21VAE": {
         "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.qwen_image_21_vae.QwenImage21RMS_norm": "diffsynth.core.vram.layers.AutoWrappedModule",

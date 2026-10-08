@@ -8,10 +8,11 @@ from tqdm import tqdm
 from ..core import ModelConfig
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
-from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
+from ..diffusion.base_pipeline import BasePipeline, PipelineUnit, ControlNetInput
 from ..models.qwen_image_21_dit import QwenImage21DiT
 from ..models.qwen_image_21_text_encoder import QwenImage21TextEncoder
 from ..models.qwen_image_21_vae import QwenImage21VAE
+from ..models.qwen_image_21_controlnet import QwenImage21ControlNet
 
 
 class QwenImage21Pipeline(BasePipeline):
@@ -23,14 +24,16 @@ class QwenImage21Pipeline(BasePipeline):
         self.text_encoder: QwenImage21TextEncoder = None
         self.dit: QwenImage21DiT = None
         self.vae: QwenImage21VAE = None
+        self.controlnet: QwenImage21ControlNet = None
         self.processor = None
-        self.in_iteration_models = ("dit",)
+        self.in_iteration_models = ("dit", "controlnet")
         self.units = [
             QwenImage21Unit_ShapeChecker(),
             QwenImage21Unit_EditImageEmbedder(),
             QwenImage21Unit_PromptEmbedder(),
             QwenImage21Unit_NoiseInitializer(),
             QwenImage21Unit_InputImageEmbedder(),
+            QwenImage21Unit_ControlNetEmbedder(),
             QwenImage21Unit_KVCacheInitializer(),
         ]
         self.model_fn = model_fn_qwen_image_21
@@ -49,6 +52,7 @@ class QwenImage21Pipeline(BasePipeline):
         pipe.text_encoder = model_pool.fetch_model("qwen_image_21_text_encoder")
         pipe.dit = model_pool.fetch_model("qwen_image_21_dit")
         pipe.vae = model_pool.fetch_model("qwen_image_21_vae")
+        pipe.controlnet = model_pool.fetch_model("qwen_image_21_controlnet")
         if processor_config is not None:
             processor_config.download_if_necessary()
             from transformers import AutoProcessor
@@ -65,6 +69,8 @@ class QwenImage21Pipeline(BasePipeline):
         cfg_scale: float = 1.0,
         # Editing
         edit_image: Union[Image.Image, list[Image.Image]] = None,
+        # ControlNet
+        controlnet_inputs: list[ControlNetInput] = None,
         # Shape
         height: int = 1024,
         width: int = 1024,
@@ -89,6 +95,7 @@ class QwenImage21Pipeline(BasePipeline):
         inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
             "cfg_scale": cfg_scale, "edit_image": edit_image,
+            "controlnet_inputs": controlnet_inputs,
             "height": height, "width": width,
             "seed": seed, "rand_device": rand_device,
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
@@ -295,16 +302,64 @@ class QwenImage21Unit_EditImageEmbedder(PipelineUnit):
         return {"edit_image": edit_image, "edit_latents": edit_latents}
 
 
+class QwenImage21Unit_ControlNetEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            input_params=("controlnet_inputs", "height", "width", "tiled", "tile_size", "tile_stride"),
+            output_params=("control_context", "control_scale"),
+            onload_model_names=("vae",),
+        )
+
+    def process(self, pipe, controlnet_inputs: list[ControlNetInput], height, width, tiled, tile_size, tile_stride):
+        if controlnet_inputs is None:
+            return {}
+        if len(controlnet_inputs) != 1:
+            print("Qwen-Image-2.1 ControlNet doesn't support multi-ControlNet. Only the first one will be used.")
+        controlnet_input = controlnet_inputs[0]
+        pipe.load_models_to_device(self.onload_model_names)
+        latent_height = 2 * (height // (pipe.vae_scale_factor * 2))
+        latent_width = 2 * (width // (pipe.vae_scale_factor * 2))
+
+        def zeros(channels):
+            return torch.zeros((1, channels, latent_height, latent_width), dtype=pipe.torch_dtype, device=pipe.device)
+
+        control_image = controlnet_input.image
+        if control_image is not None:
+            control_image = pipe.preprocess_image(control_image.convert("RGBA").resize((width, height)))
+            control_latents = pipe.vae.encode(control_image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+        else:
+            control_latents = zeros(64)
+
+        inpaint_mask = controlnet_input.inpaint_mask
+        if inpaint_mask is not None:
+            if controlnet_input.inpaint_image is None:
+                raise ValueError("`inpaint_mask` requires `inpaint_image` in the same ControlNetInput.")
+            inpaint_mask = pipe.preprocess_image(inpaint_mask.convert("RGB").resize((width, height), resample=Image.Resampling.LANCZOS), min_value=0, max_value=1)
+            inpaint_mask = (inpaint_mask >= 0.5).to(dtype=pipe.torch_dtype, device=pipe.device)[:, :1]
+            inpaint_image = pipe.preprocess_image(controlnet_input.inpaint_image.convert("RGB").resize((width, height)))
+            inpaint_image = inpaint_image * (inpaint_mask < 0.5)
+            inpaint_image = torch.cat([inpaint_image, torch.ones_like(inpaint_image[:, :1])], dim=1)
+            inpaint_latents = pipe.vae.encode(inpaint_image, tiled=tiled, tile_size=tile_size, tile_stride=tile_stride)
+            mask_latents = torch.nn.functional.interpolate(1 - inpaint_mask, size=(latent_height, latent_width), mode="nearest")
+        else:
+            inpaint_latents = zeros(64)
+            mask_latents = zeros(1)
+
+        control_context = torch.cat([control_latents, mask_latents, inpaint_latents], dim=1)
+        control_context = patchify(control_context)
+        return {"control_context": control_context.to(device=pipe.device, dtype=pipe.torch_dtype), "control_scale": controlnet_input.scale}
+
+
 class QwenImage21Unit_KVCacheInitializer(PipelineUnit):
     def __init__(self):
         super().__init__(
             take_over=True,
-            input_params=("use_kv_cache", "cfg_scale"),
+            input_params=("use_kv_cache", "cfg_scale", "controlnet_inputs"),
             output_params=("kv_cache",),
         )
 
     def process(self, pipe, inputs_shared, inputs_posi, inputs_nega):
-        if getattr(pipe.scheduler, "training", False) or not inputs_shared["use_kv_cache"]:
+        if getattr(pipe.scheduler, "training", False) or not inputs_shared["use_kv_cache"] or inputs_shared["controlnet_inputs"] is not None:
             inputs_posi["kv_cache"] = None
             inputs_nega["kv_cache"] = None
             return inputs_shared, inputs_posi, inputs_nega
@@ -323,6 +378,9 @@ def model_fn_qwen_image_21(
     edit_image_pad_mask,
     edit_latents=None,
     kv_cache=None,
+    controlnet: QwenImage21ControlNet = None,
+    control_context=None,
+    control_scale=1.0,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     use_flex_attention=True,
@@ -345,6 +403,9 @@ def model_fn_qwen_image_21(
         img_shapes=img_shapes,
         img_mask=image_pad_mask,
         kv_cache=kv_cache,
+        controlnet=controlnet,
+        control_context=control_context,
+        control_scale=control_scale,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
         use_flex_attention=use_flex_attention,
