@@ -212,3 +212,10 @@ graph TD;
     E -->|是| F[使用动态显存管理]
     E -->|否| G[使用 Disk Offload]
 ```
+
+
+## ZeRO-3 加载时将 checkpoint 暂存到 CPU
+
+标准 DeepSpeed ZeRO-3 加载可设置 `ModelConfig(..., zero3_load_state_dict_on_cpu=True)`，先将 checkpoint 张量读到 CPU，再由 ZeRO-3 加载分片参数，避免加载阶段在 GPU 上分配完整 checkpoint。默认关闭；非 ZeRO-3 场景不生效，不改变模型初始化设备或计算设备。
+
+MiniMax-H3 训练脚本提供对应参数 `--zero3_load_state_dict_on_cpu`。DiskMap 和普通 checkpoint 加载均支持；调用方传入的 `state_dict` 保持原样。此选项需要足够的主机内存容纳 checkpoint，不是流式加载，也不降低训练稳态显存。在 ZeRO-3 下与量化或 VRAM management 同时使用会报错，这些路径继续使用原有加载策略。

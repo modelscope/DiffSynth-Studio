@@ -8,7 +8,10 @@ from transformers.integrations import is_deepspeed_zero3_enabled
 from transformers.utils import ContextManagers
 
 
-def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, device="cpu", state_dict_converter=None, use_disk_map=False, module_map=None, vram_config=None, vram_limit=None, state_dict=None, quantize=None):
+def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, device="cpu", state_dict_converter=None, use_disk_map=False, module_map=None, vram_config=None, vram_limit=None, state_dict=None, quantize=None, zero3_load_state_dict_on_cpu=False):
+    zero3_enabled = is_deepspeed_zero3_enabled()
+    if zero3_enabled and zero3_load_state_dict_on_cpu and (module_map is not None or quantize is not None):
+        raise ValueError("zero3_load_state_dict_on_cpu requires standard, non-quantized ZeRO-3 loading without VRAM management.")
     config = {} if config is None else config
     with ContextManagers(get_init_context(torch_dtype=torch_dtype, device=device)):
         model = model_class(**config)
@@ -97,9 +100,12 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
         if state_dict is not None:
             pass
         elif use_disk_map:
-            state_dict = DiskMap(path, device, torch_dtype=torch_dtype)
+            # Keep the full checkpoint off the accelerator before ZeRO-3 partitions it.
+            checkpoint_device = "cpu" if zero3_enabled and zero3_load_state_dict_on_cpu else device
+            state_dict = DiskMap(path, checkpoint_device, torch_dtype=torch_dtype)
         else:
-            state_dict = load_state_dict(path, torch_dtype, device)
+            checkpoint_device = "cpu" if zero3_enabled and zero3_load_state_dict_on_cpu else device
+            state_dict = load_state_dict(path, torch_dtype, checkpoint_device)
         # Why do we use `state_dict_converter`?
         # Some models are saved in complex formats,
         # and we need to convert the state dict into the appropriate format.
@@ -110,7 +116,7 @@ def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, devic
         # Why does DeepSpeed ZeRO Stage 3 need to be handled separately?
         # Because at this stage, model parameters are partitioned across multiple GPUs.
         # Loading them directly could lead to excessive GPU memory consumption.
-        if is_deepspeed_zero3_enabled():
+        if zero3_enabled:
             from transformers.integrations.deepspeed import _load_state_dict_into_zero3_model
             _load_state_dict_into_zero3_model(model, state_dict)
         else:
