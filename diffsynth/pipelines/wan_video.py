@@ -1493,6 +1493,11 @@ def model_fn_wan_video(
     **kwargs,
 ):
     if sliding_window_size is not None and sliding_window_stride is not None:
+        if audio_embeds is not None:
+            raise ValueError(
+                "`sliding_window_size` and `sliding_window_stride` are not supported by Wan S2V models. "
+                "To generate long videos, generate multiple clips as in `examples/wanvideo/model_inference/Wan2.2-S2V-14B_multi_clips.py`."
+            )
         model_kwargs = dict(
             dit=dit,
             motion_controller=motion_controller,
