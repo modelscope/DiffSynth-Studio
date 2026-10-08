@@ -15,9 +15,10 @@ BlockMask, create_block_mask = None, None
 if FLEX_ATTN_AVAILABLE:
     from torch.nn.attention.flex_attention import BlockMask, create_block_mask
 
-# In torch 2.8, the compiled flex_attention returns wrong gradients after it is recompiled for a new sequence length,
-# which breaks training on samples of different sizes. The forward pass is not affected.
-_FLEX_ATTN_BACKWARD_BROKEN = torch.__version__.startswith("2.8.")
+# Before torch 2.9, the compiled flex_attention returns wrong gradients after it is recompiled for a new sequence
+# length; the forward pass is not affected. On torch 2.8 this makes training on samples of different sizes diverge,
+# and on torch 2.7 the gradients are also measurably off.
+_FLEX_ATTN_BACKWARD_BROKEN = torch.__version__ < "2.9"
 
 
 def apply_rotary_emb_qwen(
