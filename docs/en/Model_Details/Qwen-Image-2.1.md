@@ -66,6 +66,7 @@ image_3.save("image3.png")
 |Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
 |-|-|-|-|-|-|-|
 |[Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/full/Qwen-Image-2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1.py)|
+|[PAI/Qwen-Image-2.1-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/Qwen-Image-2.1-Fun-Controlnet-Union)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference/Qwen-Image-2.1-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/full/Qwen-Image-2.1-Fun-Controlnet-Union.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1-Fun-Controlnet-Union.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1-Fun-Controlnet-Union.py)|
 
 ## Model Inference
 
@@ -77,6 +78,7 @@ The input parameters for `QwenImage21Pipeline` inference include:
 * `negative_prompt`: Negative prompt, defaults to `" "`. It conditions the negative branch when `cfg_scale` is greater than 1.
 * `cfg_scale`: CFG strength, defaults to 1.0. Whether CFG is enabled is decided solely by whether this value is greater than 1.
 * `edit_image`: Image(s) to edit, only a `PIL.Image` or a list of `PIL.Image` is accepted. Text-to-image runs when it is left empty, image editing runs when it is provided.
+* `controlnet_inputs`: Inputs for ControlNet models.
 * `height`: Image height, defaults to 1024 and is aligned to a multiple of 32; in editing mode `edit_image` is resized to the `height * width` area following its own aspect ratio.
 * `width`: Image width, defaults to 1024, same rule as `height`.
 * `seed`: Random seed. Defaults to `None`, i.e. fully random.

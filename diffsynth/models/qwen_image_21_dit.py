@@ -495,6 +495,9 @@ class QwenImage21DiT(nn.Module):
         img_mask: torch.Tensor,
         encoder_hidden_states_mask: torch.Tensor | None = None,
         kv_cache: list[dict[str, torch.Tensor]] | None = None,
+        controlnet: nn.Module = None,
+        control_context: torch.Tensor | None = None,
+        control_scale: float = 1.0,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
         use_flex_attention: bool = True,
@@ -566,6 +569,25 @@ class QwenImage21DiT(nn.Module):
             attention_mask = None
             segments = _qwenimage21_prefix_segments(image_ids, prefix_len)
 
+        control_hints = None
+        if controlnet is not None and control_context is not None:
+            if kv_cache is not None:
+                raise ValueError("The ControlNet branch recomputes its conditioning at every step, which is incompatible with the prefix KV cache.")
+            control_hints = controlnet(
+                joint_hidden_states,
+                control_context,
+                image_positions=target_token_mask,
+                modulation=modulation,
+                rotary_emb=rotary_emb,
+                attention_mask=attention_mask,
+                target_token_mask=modulation_mask,
+                segments=segments,
+                key_valid=joint_key_valid,
+                control_scale=control_scale,
+                use_gradient_checkpointing=use_gradient_checkpointing,
+                use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+            )
+
         for index_block, block in enumerate(self.transformer_blocks):
             block_kv_cache = kv_cache[index_block] if kv_cache is not None else None
             joint_hidden_states = gradient_checkpoint_forward(
@@ -582,6 +604,8 @@ class QwenImage21DiT(nn.Module):
                 segments=segments,
                 key_valid=joint_key_valid,
             )
+            if control_hints is not None and index_block in control_hints:
+                joint_hidden_states = joint_hidden_states + control_hints[index_block].to(joint_hidden_states.device, joint_hidden_states.dtype)
 
         joint_hidden_states = self.norm_out(joint_hidden_states, temb, modulation_mask)
         return self.proj_out(joint_hidden_states)

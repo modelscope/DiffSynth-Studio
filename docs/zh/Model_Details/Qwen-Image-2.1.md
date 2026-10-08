@@ -66,6 +66,7 @@ image_3.save("image3.png")
 |模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
 |[Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/full/Qwen-Image-2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1.py)|
+|[PAI/Qwen-Image-2.1-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/Qwen-Image-2.1-Fun-Controlnet-Union)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference/Qwen-Image-2.1-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/full/Qwen-Image-2.1-Fun-Controlnet-Union.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1-Fun-Controlnet-Union.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1-Fun-Controlnet-Union.py)|
 
 ## 模型推理
 
@@ -77,6 +78,7 @@ image_3.save("image3.png")
 * `negative_prompt`: 负向提示词，默认 `" "`，在 `cfg_scale` 大于 1 时作为负向分支条件。
 * `cfg_scale`: CFG 强度，默认值为 1.0，是否启用 CFG 仅由该值是否大于 1 决定。
 * `edit_image`: 待编辑图像，仅支持 PIL 图像（`PIL.Image`）或 PIL 图像列表。留空时执行文生图，提供时执行图像编辑。
+* `controlnet_inputs`: ControlNet 模型的输入。
 * `height`: 图像高度，默认 1024，会对齐到 32 的倍数；编辑模式下 `edit_image` 按自身宽高比缩放到 `height * width` 的面积内。
 * `width`: 图像宽度，默认 1024，规则同 `height`。
 * `seed`: 随机种子。默认为 `None`，即完全随机。
