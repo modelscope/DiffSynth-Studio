@@ -235,7 +235,7 @@ class DiffusionTrainingModule(torch.nn.Module):
                     device=device
                 )
                 config = self.parse_path_or_model_id(model_id_with_origin_path)
-                model_configs.append(ModelConfig(model_id=config.model_id, origin_file_pattern=config.origin_file_pattern, quantize=self.get_quant_config(quant_map, model_id_with_origin_path), **vram_config))
+                model_configs.append(ModelConfig(path=config.path, model_id=config.model_id, origin_file_pattern=config.origin_file_pattern, quantize=self.get_quant_config(quant_map, model_id_with_origin_path), **vram_config))
         return model_configs
     
 
