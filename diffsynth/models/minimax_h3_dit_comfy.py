@@ -18,9 +18,7 @@ def _comfy_attention_forward(self, x, *, rope_freqs, cu_seqlens, max_seqlen=None
     total = x.shape[0]
     qkv = self.qkv_proj(x)
     qkv = qkv.view(total, 3, self.num_heads, self.head_dim)
-    q = qkv[:, 0, :, :]
-    k = qkv[:, 1, :, :]
-    v = qkv[:, 2, :, :]
+    q, k, v = qkv.unbind(dim=1)
     q = self.q_norm(q)
     k = self.k_norm(k)
     if rope_freqs is not None:
