@@ -82,7 +82,7 @@ class QwenImage21Pipeline(BasePipeline):
         # KV cache
         use_kv_cache: bool = True,
         # Attention Implementation
-        use_flex_attention: bool = True,
+        use_flex_attention: bool = False,
         # VAE tiling
         tiled: bool = False,
         tile_size: int = 256,
