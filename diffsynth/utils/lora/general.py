@@ -1,6 +1,22 @@
 import torch, warnings
 
 
+def scale_lora_by_metadata_alpha(state_dict, metadata):
+    # Some LoRA files store a global `alpha` in the safetensors metadata instead of per-layer `.alpha` tensors.
+    # Apply the scale `alpha / rank` to the down weights, before any format conversion changes the rank.
+    alpha = metadata.get("alpha")
+    if alpha is None or any(key.endswith(".alpha") for key in state_dict):
+        return state_dict
+    try:
+        alpha = float(alpha)
+    except ValueError:
+        return state_dict
+    return {
+        key: value * (alpha / value.shape[0]) if (".lora_A." in key or ".lora_down." in key) else value
+        for key, value in state_dict.items()
+    }
+
+
 class GeneralLoRALoader:
     def __init__(self, device="cpu", torch_dtype=torch.float32):
         self.device = device

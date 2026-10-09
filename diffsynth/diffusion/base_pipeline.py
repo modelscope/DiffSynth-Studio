@@ -5,7 +5,8 @@ from einops import repeat, reduce
 from typing import Union
 from ..core import AutoTorchModule, AutoWrappedLinear, LoRAHotLoadMixin, load_state_dict, ModelConfig, parse_device_type, enable_vram_management
 from ..core.device.npu_compatible_device import get_device_type
-from ..utils.lora import GeneralLoRALoader
+from ..core.loader.file import load_metadata_from_safetensors
+from ..utils.lora import GeneralLoRALoader, scale_lora_by_metadata_alpha
 from ..models.model_loader import ModelPool
 from ..utils.controlnet import ControlNetInput
 from ..core.device import get_device_name, IS_NPU_AVAILABLE
@@ -259,10 +260,19 @@ class BasePipeline(torch.nn.Module):
         module = self.check_quant_hot_load(module)
         if state_dict is None:
             if isinstance(lora_config, str):
-                lora = load_state_dict(lora_config, torch_dtype=self.torch_dtype, device=self.device)
+                lora_path = lora_config
             else:
                 lora_config.download_if_necessary()
-                lora = load_state_dict(lora_config.path, torch_dtype=self.torch_dtype, device=self.device)
+                lora_path = lora_config.path
+            # A LoRA may be split into several files. Load them one by one, so that each file is scaled by the `alpha` in its own metadata.
+            lora_paths = lora_path if isinstance(lora_path, list) else [lora_path]
+            shards = [load_state_dict(path, torch_dtype=self.torch_dtype, device=self.device) for path in lora_paths]
+            has_layer_alpha = any(key.endswith(".alpha") for shard in shards for key in shard)
+            lora = {}
+            for path, shard in zip(lora_paths, shards):
+                if not has_layer_alpha and path.endswith(".safetensors"):
+                    shard = scale_lora_by_metadata_alpha(shard, load_metadata_from_safetensors(path))
+                lora.update(shard)
         else:
             lora = state_dict
         lora_loader = self.lora_loader(torch_dtype=self.torch_dtype, device=self.device)
