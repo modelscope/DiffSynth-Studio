@@ -57,24 +57,13 @@ class Siglip2ImageEncoder(SiglipVisionModel):
     def forward(self, image, torch_dtype=torch.bfloat16, device=get_device_type()):
         pixel_values = self.processor(images=[image], return_tensors="pt")["pixel_values"]
         pixel_values = pixel_values.to(device=device, dtype=torch_dtype)
-        output_attentions = False
-        output_hidden_states = False
-        interpolate_pos_encoding = False
-
-        hidden_states = self.embeddings(pixel_values, interpolate_pos_encoding=interpolate_pos_encoding)
-
-        encoder_outputs = self.encoder(
-            inputs_embeds=hidden_states,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-        )
-
-        last_hidden_state = encoder_outputs.last_hidden_state
-        last_hidden_state = self.post_layernorm(last_hidden_state)
-
-        pooler_output = self.head(last_hidden_state) if self.use_head else None
-
-        return pooler_output
+        return super().forward(
+            pixel_values=pixel_values,
+            output_attentions=False,
+            output_hidden_states=False,
+            interpolate_pos_encoding=False,
+            return_dict=True,
+        ).pooler_output
 
 
 class Siglip2ImageEncoder428M(Siglip2VisionModel):
