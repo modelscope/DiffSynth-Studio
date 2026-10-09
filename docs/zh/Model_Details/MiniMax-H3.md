@@ -94,13 +94,13 @@ write_video_audio(
 
 加载时把 `FL2VA` 基础权重与 `linear_branch` checkpoint 一起传入，`MiniMaxH3Pipeline.from_pretrained` 会自动包裹 DiT。**两个 checkpoint 都自带一个必须折叠的 LoRA**：Stage B 联合训练了 QKV/O 投影上的 LoRA 与线性分支，因此只加载 `linear_branch` 得到的并不是发布的 stage-b 模型。50 步折叠 `stage-b-step-2000/adapters/default`；8 步折叠 `stage-dmd-step-250` 的 `default` 与 `turbo` 两个 adapter，并以 `num_inference_steps=8` 运行。基座权重直接取自官方 `MiniMax/MiniMax-H3` 的 `FL2VA` 分区，不需要下载 `h3-base`。
 
-三个运行时开关。`use_fused_kernels` 与 `fp8` 默认关闭，`vdn_softmax_impl` 默认 `"auto"`（与上游一致）：
+窗口 softmax 与融合 kernel 都是**固定实现、不暴露开关**；`fp8` 是唯一的运行时开关，默认关闭：
 
-* `vdn_softmax_impl`：窗口 softmax 后端。`"auto"`（默认）、`"ref"`（eager SDPA，正确性参考）、`"flex"`（FlexAttention + BlockMask，上游训练用的路径）、`"fa4"`（FlexAttention 走 FlashAttention-4 后端）、`"decomposed"`（把窗口拆成若干 dense 矩形、直连 varlen kernel，**不需要 BlockMask**，是上游的推理主力）。`auto` 的解析与上游相同：**任何 CUDA 设备上都是 `decomposed`**，无 CUDA 时 `flex`——窗口腿只需要「某个」varlen kernel，不一定是 FA4 的：sm90 / sm100 / sm110 上用 FA4 的 CuTe kernel，其余卡或没装 `flash-attn-4` 时用 torch 自己的 `varlen_attn`（FA2 血统，需 torch ≥ 2.13）。`flex` / `fa4` 要建 O(S²) 的 BlockMask 中间量，345 帧 768p 的序列约 10.3 万 token，会直接 OOM——这是明确失败而不是静默降级；124 帧 768p 约 3.7 万 token，`flex` 可以直接跑。
-* `use_fused_kernels`：融合 block pointwise、FF SwiGLU、QK-norm+RoPE、softmax gate、linear epilogue 与 Triton 时间卷积。结果**非逐位**（inductor 把中间量留在 fp32、只在写回时舍入，方向上比 eager 更接近 fp32）；按形状特化编译，切换分辨率或帧数会重新编译一次。
+* **窗口 softmax 只有 `decomposed` 一种**：把窗口拆成若干 dense 矩形，窗口腿交给 varlen kernel、dense 腿交给 cuDNN SDPA，**不需要 BlockMask**。varlen kernel 按进程自动解析——sm90 / sm100 / sm110 上用 FlashAttention-4 的 CuTe kernel，其余卡或没装 `flash-attn-4` 时用 torch 自己的 `varlen_attn`（FA2 血统，需 torch ≥ 2.13）。这是唯一能在长片上跑的实现：走 BlockMask 的路径要建 O(S²) 中间量，345 帧 768p 的序列约 10.3 万 token，需要约 80 GiB，直接 OOM。
+* **融合 kernel 默认开启**：融合 block pointwise、FF SwiGLU、QK-norm+RoPE、softmax gate、linear epilogue 与 Triton 时间卷积。结果**非逐位**（inductor 把中间量留在 fp32、只在写回时舍入，方向上比 eager 更接近 fp32；同 seed 单步 velocity 的 cosine 0.99994）；按形状特化编译，切换分辨率或帧数会重新编译一次。
 * `fp8`：W8A8 float8_e4m3 量化，走 `torch._scaled_mm`（sm90 用 rowwise 激活 + per-channel 权重，sm100+ 两侧 per-tensor）。**单向不可逆**，必须在 LoRA 折叠之后调用，且要求 DiT 常驻显存（量化会把 `AutoWrappedLinear` 换成普通 Linear，VRAM 管理器无法再路由它）。它会改变采样结果——不是变差，而是同一 prompt 的另一个样本，因此任何依赖复现旧渲染的流程都会失效。
 
-**适用边界**：窗口固定 15 个 latent 帧，收益随片长增长。H20 单卡 bf16 实测稳态 s/it：768×1344 × 345 帧 base 140.15 → VDN 63.72（**2.20×**），再叠加 fused + fp8 → 43.81（**3.20×**）；768×1344 × 124 帧 25.91 → 21.57（1.19×）；**480×832 × 124 帧 6.92 → 8.32（0.83×，比 dense 更慢）**——小分辨率下注意力本身很便宜，线性分支的固定开销（逐帧统计、双向扫描、gather、readout）反而超过节省。上游的发布配置是 345 帧（14.4 秒），示例脚本也用这个值。
+**适用边界**：窗口固定 15 个 latent 帧，收益随片长增长。H20 单卡 bf16 实测稳态 s/it：768×1344 × 345 帧 base 140.15 → VDN 61.04（**2.30×**），再叠 fp8 → 43.81（**3.20×**）；768×1344 × 124 帧 25.91 → 20.57（1.26×）；**480×832 × 124 帧仍是负收益**——最快的配置也要 7.30，比 dense 的 6.92 慢 5%：小分辨率下注意力本身很便宜，线性分支的固定开销（逐帧统计、双向扫描、gather、readout）反而超过节省。上游的发布配置是 345 帧（14.4 秒），示例脚本也用这个值。
 
 ```python
 import torch
@@ -219,7 +219,7 @@ write_video_audio(
     )
     ```
 * `progress_bar_cmd`: 进度条，默认为 `tqdm`。可通过设置为 `lambda x: x` 来屏蔽进度条。
-* `vdn_softmax_impl` / `use_fused_kernels` / `fp8`: 仅在加载了 VDN 线性分支（DiT 为 `MiniMaxH3DiTVDN`）时生效，默认分别为 `"auto"` / `False` / `False`，含义与取舍见前文“VDN-Minimax-H3”一节。
+* `fp8`: 仅在加载了 VDN 线性分支（DiT 为 `MiniMaxH3DiTVDN`）时生效，默认 `False`，含义与取舍见前文“VDN-Minimax-H3”一节。窗口 softmax 与融合 kernel 是固定实现，没有开关。
 
 Pipeline 返回 `(video, audio)` 二元组，视频为 PIL 图像列表，音频为波形张量，可通过 `diffsynth.utils.data.audio_video.write_video_audio` 混流写出 MP4：
 

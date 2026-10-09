@@ -39,11 +39,6 @@ prompt = "A girl is very happy, she is speaking in english: “I enjoy working w
 video, audio = pipe(
     prompt=prompt,
     height=768, width=1344, num_frames=345, num_inference_steps=50, seed=0,
-    # "auto" is upstream's default: decomposed on any CUDA device (the only backend that
-    # scales past ~64k tokens without a BlockMask), flex without CUDA. Pin
-    # "decomposed"/"flex"/"fa4" to force one, or "ref" for the bitwise eager oracle.
-    vdn_softmax_impl="auto",
-    use_fused_kernels=True,
     fp8=True,
 )
 write_video_audio(

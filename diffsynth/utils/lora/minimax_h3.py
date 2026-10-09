@@ -9,12 +9,22 @@ class MiniMaxH3LoRALoader(GeneralLoRALoader):
     @staticmethod
     def is_lightx2v_format(state_dict):
         for key in state_dict:
-            if key.startswith("transformer_blocks.") and (".attn.to_q.lora_A." in key or ".attn.orig.to_q.lora_A." in key):
+            if key.startswith("transformer_blocks.") and ".attn.to_q.lora_A.default.weight" in key:
+                return True
+        return False
+
+    @staticmethod
+    def is_vdn_adapter(state_dict):
+        """A VDN artifact adapter (stage-b's `default`, stage-dmd's `turbo`): the same HF
+        spelling as lightx2v's, except that the wrapped backbone projections are named
+        `.attn.orig.*` and the adapter is named after itself."""
+        for key in state_dict:
+            if key.startswith("transformer_blocks.") and ".attn.orig.to_q.lora_A." in key:
                 return True
         return False
 
     def convert_state_dict(self, state_dict, suffix=".weight"):
-        if self.is_lightx2v_format(state_dict):
+        if self.is_lightx2v_format(state_dict) or self.is_vdn_adapter(state_dict):
             state_dict = MiniMaxH3LoRAConverter.align_to_diffsynth_format(state_dict)
         return super().convert_state_dict(state_dict, suffix=suffix)
 
@@ -47,31 +57,26 @@ class MiniMaxH3LoRAConverter:
     def align_to_diffsynth_format(cls, state_dict, adapter_name=None):
         if adapter_name is None:
             adapter_name = cls._detect_adapter_name(state_dict)
-        # VDN adapters spell the wrapped backbone projections as `.attn.orig.*`; the
-        # token refiner is never wrapped so its keys carry no `.orig.`.
-        vdn = any(".attn.orig." in key for key in state_dict)
 
         def base_prefix(prefix):
+            # VDN adapters spell the projections as `.attn.orig.*` -- that is what they
+            # saw inside the target library's attention wrapper. The backbone here keeps
+            # its own attention, so the destination drops the infix.
             return prefix.replace(".attn.orig.", ".attn.")
 
         a_suffix = f".lora_A.{adapter_name}.weight"
-        orig_prefixes = {key.removesuffix(a_suffix) for key in state_dict if key.endswith(a_suffix)}
-        base_to_orig = {base_prefix(p): p for p in orig_prefixes}
-
-        def vdn_target(target):
-            if vdn and target.startswith("blocks.") and ".attn." in target:
-                return target.replace(".attn.", ".attn.orig.", 1)
-            return target
+        found = {key.removesuffix(a_suffix) for key in state_dict if key.endswith(a_suffix)}
+        base_to_found = {base_prefix(p): p for p in found}
 
         attention_prefixes = sorted(
             bp.removesuffix(".to_q")
-            for bp in base_to_orig
+            for bp in base_to_found
             if bp.endswith(".attn.to_q")
         )
         consumed = set()
         converted = {}
         for prefix in attention_prefixes:
-            src_root = base_to_orig[prefix + ".to_q"].removesuffix(".to_q")
+            src_root = base_to_found[prefix + ".to_q"].removesuffix(".to_q")
             pairs = [cls._pair(state_dict, f"{src_root}.to_{name}", adapter_name) for name in "qkv"]
             ranks = {a.shape[0] for a, _ in pairs}
             rank = ranks.pop()
@@ -94,16 +99,16 @@ class MiniMaxH3LoRAConverter:
                 ).reshape(-1)
                 b_fused[rows, modality * rank : (modality + 1) * rank] = b
 
-            target = vdn_target(cls._source_prefix(prefix) + ".qkv_proj")
+            target = cls._source_prefix(prefix) + ".qkv_proj"
             converted[target + ".lora_A.default.weight"] = a_fused
             converted[target + ".lora_B.default.weight"] = b_fused
             consumed.update(f"{src_root}.to_{name}" for name in "qkv")
 
-        for src in sorted(orig_prefixes - consumed):
+        for src in sorted(found - consumed):
             a, b = cls._pair(state_dict, src, adapter_name)
             target = cls._source_prefix(base_prefix(src))
             if target.endswith(".attn.to_out.0"):
-                target = vdn_target(target.removesuffix(".to_out.0") + ".out_proj")
+                target = target.removesuffix(".to_out.0") + ".out_proj"
             elif target.endswith(".ff.net.0.proj"):
                 target = target.removesuffix(".ff.net.0.proj") + ".mlp.fc1"
                 up, gate = b.chunk(2, dim=0)
@@ -115,7 +120,7 @@ class MiniMaxH3LoRAConverter:
             elif target.endswith(".adaln_proj.linear"):
                 pass
             else:
-                raise ValueError(f"Unsupported LoRA target: {prefix}")
+                raise ValueError(f"Unsupported LoRA target: {src}")
             converted[target + ".lora_A.default.weight"] = a
             converted[target + ".lora_B.default.weight"] = b
         return converted

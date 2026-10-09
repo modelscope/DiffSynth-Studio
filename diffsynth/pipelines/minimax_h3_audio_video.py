@@ -17,7 +17,7 @@ from ..models.minimax_h3_text_encoder import (
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
 from ..models.minimax_h3_controlnet import MiniMaxH3ControlNet
-from ..models.minimax_h3_dit_vdn import MINIMAX_H3_VDN_SOFTMAX_IMPLS, MiniMaxH3DiTVDN, MiniMaxH3VDNLayout, enable_minimax_h3_vdn
+from ..models.minimax_h3_dit_vdn import MiniMaxH3DiTVDN, MiniMaxH3VDNLayout, enable_minimax_h3_vdn, enable_minimax_h3_vdn_fused
 from ..utils.data.audio import convert_to_stereo, resample_waveform
 from ..utils.lora.minimax_h3 import MiniMaxH3LoRALoader
 
@@ -33,7 +33,6 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.video_vae: MiniMaxH3VideoVAE = None
         self.audio_vae: MiniMaxH3AudioVAE = None
         self.controlnet: MiniMaxH3ControlNet = None
-        self.vdn_branch = None
         self.tokenizer = None
         self.processor = None
         self.imgvid_cond_noise_aug = 0.999
@@ -85,10 +84,10 @@ class MiniMaxH3Pipeline(BasePipeline):
         pipe.video_vae = model_pool.fetch_model("minimax_h3_video_vae")
         pipe.audio_vae = model_pool.fetch_model("minimax_h3_audio_vae")
         pipe.controlnet = model_pool.fetch_model("minimax_h3_controlnet")
-        pipe.vdn_branch = model_pool.fetch_model("minimax_h3_vdn_linear_branch")
-        if pipe.vdn_branch is not None:
-            enable_minimax_h3_vdn(pipe.dit, pipe.vdn_branch, device=device)
-            pipe.vdn_branch.to("cpu")
+        vdn_branch = model_pool.fetch_model("minimax_h3_vdn_linear_branch")
+        if vdn_branch is not None:
+            # The branch is mounted onto the DiT in place; the loading container is spent.
+            enable_minimax_h3_vdn(pipe.dit, vdn_branch)
         if processor_config is not None:
             processor_config.download_if_necessary()
             pipe.processor = AutoProcessor.from_pretrained(processor_config.path)
@@ -136,8 +135,6 @@ class MiniMaxH3Pipeline(BasePipeline):
         # Template inputs
         text_embedding: torch.Tensor = None,
         # VDN hybrid attention
-        vdn_softmax_impl: str = None,
-        use_fused_kernels: bool = False,
         fp8: bool = False,
     ):
         """Generate a joint video + audio sample.
@@ -159,20 +156,13 @@ class MiniMaxH3Pipeline(BasePipeline):
 
         Input contract: `video` frame lists must ALREADY. be 24fps the pipeline never resamples frame rate.
 
-        `vdn_softmax_impl` and `use_fused_kernels` apply to a VDN DiT only; `vdn_softmax_impl`
-        picks the window-softmax backend, where "auto" resolves to "decomposed" on any CUDA
-        device and "flex" otherwise. `fp8` quantizes whichever DiT is loaded. All three
-        trade bitwise reproducibility for speed and are off by default.
+        A VDN DiT renders on its fused inference kernels, which are installed here. `fp8`
+        quantizes whichever DiT is loaded, and trades bitwise reproducibility for speed; it
+        is off by default.
         """
         self.scheduler.set_timesteps(num_inference_steps, shift=flow_shift)
         self.scheduler_audio.set_timesteps(num_inference_steps, shift=audio_flow_shift)
-        if vdn_softmax_impl is not None and isinstance(self.dit, MiniMaxH3DiTVDN):
-            if vdn_softmax_impl not in MINIMAX_H3_VDN_SOFTMAX_IMPLS:
-                raise ValueError(f"vdn_softmax_impl={vdn_softmax_impl!r}; expected one of {MINIMAX_H3_VDN_SOFTMAX_IMPLS}")
-            for block in self.dit.blocks:
-                block.attn.softmax_impl = vdn_softmax_impl
-        if use_fused_kernels and isinstance(self.dit, MiniMaxH3DiTVDN):
-            from ..models.minimax_h3_dit_vdn import enable_minimax_h3_vdn_fused
+        if isinstance(self.dit, MiniMaxH3DiTVDN):
             enable_minimax_h3_vdn_fused(self.dit)
         if fp8 and not getattr(self, "_fp8_converted", False):
             from ..core.quant.config import QuantizeConfig

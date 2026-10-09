@@ -1,43 +1,21 @@
 from __future__ import annotations
 
 import math
+import types
 from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..core.attention import attention_forward
-from .minimax_h3_dit import MiniMaxH3DiT, _apply_rope, _sdpa_varlen_attention
+from ..core.attention.attention import FLASH_ATTN_4_AVAILABLE
+from .minimax_h3_dit import MiniMaxH3Attention, MiniMaxH3DiT, _apply_rope, _sdpa_varlen_attention
 
 MINIMAX_H3_VDN_TEXT_STATE_SCALE = 0.5
 MINIMAX_H3_VDN_ANCHOR_FRAME_MODES = ("none", "columns", "rows", "both")
 MINIMAX_H3_VDN_SHORT_CONV_TARGETS = ("q", "k", "v")
 MINIMAX_H3_VDN_BRIDGE_MODES = ("alpha", "none")
 MINIMAX_H3_VDN_DELTA_RULES = ("vdn_solve",)
-MINIMAX_H3_VDN_SOFTMAX_IMPLS = ("auto", "ref", "flex", "fa4", "decomposed")
-# The cards FA4 ships kernels for: sm90 (Hopper), sm100 and sm110 (data-center
-# Blackwell). Ampere, Ada and consumer Blackwell are not among them, whatever their
-# capability number, so the fa4 gate tests membership here, never `>=`.
-MINIMAX_H3_VDN_FA4_MAJORS = (9, 10, 11)
-
-_MINIMAX_H3_VDN_FLASH_GC_DONE = [False]
-
-
-def mini_max_h3_vdn_has_fa4_kernels(device):
-    if not torch.cuda.is_available():
-        return False
-    resolved = torch.device(device)
-    return resolved.type == "cuda" and torch.cuda.get_device_capability(resolved)[0] in MINIMAX_H3_VDN_FA4_MAJORS
-
-
-def _mini_max_h3_vdn_collect_after_first_flash():
-    # The first FLASH/flex kernel leaves the block-mask build's garbage behind; one
-    # process-wide gc right after it reclaims it before the linear branch peaks.
-    if not _MINIMAX_H3_VDN_FLASH_GC_DONE[0]:
-        _MINIMAX_H3_VDN_FLASH_GC_DONE[0] = True
-        import gc
-        gc.collect()
 
 
 @dataclass(frozen=True)
@@ -258,10 +236,12 @@ class MiniMaxH3VDNSepConv(nn.Module):
         grid_h, grid_w = frame_size
         channels = heads * head_dim
         volume = tokens.reshape(num_frames, grid_h, grid_w, channels).permute(0, 3, 1, 2)
-        w_sp = getattr(self, f"{proj}_sp").weight
+        # .to() for the same reason as _fused_block_forward: the weights are read directly
+        # instead of through the module that would have onloaded them.
+        w_sp = getattr(self, f"{proj}_sp").weight.to(device=volume.device, dtype=volume.dtype)
         volume = F.conv2d(volume, w_sp, padding=self.KERNEL // 2, groups=channels)
         x = volume.permute(0, 2, 3, 1).reshape(num_frames, grid_h * grid_w, channels)
-        w_tm = getattr(self, f"{proj}_tm").weight.squeeze(1).to(x.dtype)
+        w_tm = getattr(self, f"{proj}_tm").weight.to(device=x.device, dtype=x.dtype).squeeze(1)
         return x, w_tm
 
     def apply(self, proj, tokens, num_frames, frame_size):
@@ -435,12 +415,11 @@ def mini_max_h3_vdn_window_softmax_reference(query, key, value, layout, bounds, 
 # a few dense rectangles, so splitting the query rows into groups whose kept KV set is
 # identical turns each group into a plain dense attention.
 #
-# This is what the target library's `auto` resolves to on every CUDA device: the window
-# leg needs only SOME varlen kernel, not FA4's -- `mini_max_h3_vdn_varlen_kernel` picks
-# FA4's CuTe kernel where it has one and torch's own `varlen_attn` elsewhere. It is also
-# the only backend that scales past the BlockMask: create_block_mask needs an O(S^2)
-# intermediate, which at 345 frames (S ~ 105k) is ~80 GiB. Inference only -- training
-# keeps the flex path.
+# This is the window softmax the pipeline always runs. The window leg needs only SOME
+# varlen kernel, not FA4's -- `mini_max_h3_vdn_varlen_kernel` picks FA4's CuTe kernel where
+# it has one and torch's own `varlen_attn` elsewhere. It is also the only implementation
+# that scales past a BlockMask: create_block_mask needs an O(S^2) intermediate, which at
+# 345 frames (S ~ 105k) is ~80 GiB. Inference only -- training keeps the flex path.
 # ---------------------------------------------------------------------------------------
 _MINIMAX_H3_VDN_PLAN_CACHE = {}
 _MINIMAX_H3_VDN_MAX_CACHED_PLANS = 4
@@ -469,25 +448,14 @@ def _mini_max_h3_vdn_torch_varlen():
     return torch_varlen
 
 
-def _mini_max_h3_vdn_fa4_installed():
-    import importlib.util
-    return (importlib.util.find_spec("flash_attn") is not None
-            and importlib.util.find_spec("flash_attn.cute") is not None)
-
-
-def mini_max_h3_vdn_varlen_kernel(device):
+def mini_max_h3_vdn_varlen_kernel():
     """The varlen kernel the window leg runs on, resolved once per process: FA4's CuTe
-    kernel where both the card (sm90/sm100/sm110) and the install qualify, torch's own
-    `varlen_attn` (the FA2 lineage, sm80 and up) otherwise. An ImportError here is the
-    install to fix: flash-attn-4 or torch >= 2.13.
-
-    The target library gates on the card alone, so on an FA4 card without flash-attn-4 it
-    raises; here the check also covers the install, which is what its own commit message
-    describes ("on sm8x or without flash-attn-4, torch's own varlen_attn")."""
+    kernel when flash-attn-4 is installed, torch's own `varlen_attn` (the FA2 lineage,
+    sm80 and up) otherwise. An ImportError here is the install to fix: flash-attn-4 or
+    torch >= 2.13."""
     if "varlen" not in _MINIMAX_H3_VDN_VARLEN_CACHE:
         _MINIMAX_H3_VDN_VARLEN_CACHE["varlen"] = (
-            _mini_max_h3_vdn_fa4_varlen()
-            if mini_max_h3_vdn_has_fa4_kernels(device) and _mini_max_h3_vdn_fa4_installed()
+            _mini_max_h3_vdn_fa4_varlen() if FLASH_ATTN_4_AVAILABLE
             else _mini_max_h3_vdn_torch_varlen())
     return _MINIMAX_H3_VDN_VARLEN_CACHE["varlen"]
 
@@ -557,10 +525,6 @@ class _MiniMaxH3VDNPlan:
         else:
             self.win_q = torch.empty(0, dtype=torch.long, device=device)
 
-        order = torch.cat([self.dense_q, self.win_q])
-        if len(order) != S:
-            raise ValueError(f"decomposition covers {len(order)} of {S} rows")
-
 
 def _mini_max_h3_vdn_plan(layout, bounds, anchor_frames, device):
     key = (layout.seq_len, layout.video_start, layout.num_frames,
@@ -582,7 +546,7 @@ def mini_max_h3_vdn_window_softmax_decomposed(query, key, value, layout, bounds,
     shape."""
     from torch.nn.attention import SDPBackend, sdpa_kernel
 
-    varlen = mini_max_h3_vdn_varlen_kernel(query.device)
+    varlen = mini_max_h3_vdn_varlen_kernel()
     plan = _mini_max_h3_vdn_plan(layout, bounds, anchor_frames, query.device)
     if not key.is_contiguous():
         key = key.contiguous()
@@ -604,11 +568,9 @@ def mini_max_h3_vdn_window_softmax_decomposed(query, key, value, layout, bounds,
     return out
 
 
-_MINIMAX_H3_VDN_BLOCK_MASK_CACHE = {}
-
 # ---------------------------------------------------------------------------------------
-# Fused inference kernels for the VDN attention path. Same pattern as the block/FF fusions
-# in minimax_h3_dit.py: torch.compile(dynamic=False) + module-level cache. NOT bitwise.
+# Fused inference kernels for the VDN attention path: torch.compile(dynamic=False) + a
+# module-level cache, the same pattern as the block/FF fusions below.
 # ---------------------------------------------------------------------------------------
 _VDN_FUSED_CACHE: dict = {}
 
@@ -656,40 +618,80 @@ def _linear_epilogue_fused(readout, weight, eps, gate):
     return _compiled_vdn("linear_epilogue", _linear_epilogue_body)(readout, weight, eps, gate)
 
 
-def mini_max_h3_vdn_build_window_block_mask(layout, bounds, device, anchor_frames="none"):
-    from torch.nn.attention.flex_attention import create_block_mask
+# ---------------------------------------------------------------------------------------
+# Fused block and FF forwards, installed as instance methods on the DiT's blocks. Mirror of
+# the target library's src/models/ops/fused_block.py: the same expressions handed to
+# inductor as one piece so intermediates stay in registers.
+# ---------------------------------------------------------------------------------------
+_FUSED_CACHE: dict = {}
 
-    key = (layout.seq_len, layout.video_start, layout.num_frames, layout.tokens_per_frame,
-           tuple(bounds), anchor_frames, str(device))
-    cached = _MINIMAX_H3_VDN_BLOCK_MASK_CACHE.get(key)
-    if cached is not None:
-        return cached
-    vs, ve = layout.video_start, layout.video_end
-    num_frames = layout.num_frames
-    tokens_per_frame = layout.tokens_per_frame
-    lo_t = torch.tensor([max(lo, 0) for lo, _ in bounds], device=device)
-    hi_t = torch.tensor([min(hi, num_frames - 1) for _, hi in bounds], device=device)
-    anchor_rows = anchor_frames in ("rows", "both")
-    anchor_cols = anchor_frames in ("columns", "both")
 
-    def mask_mod(b, h, q_idx, kv_idx):
-        q_video = (q_idx >= vs) & (q_idx < ve)
-        k_video = (kv_idx >= vs) & (kv_idx < ve)
-        dense = ~(q_video & k_video)
-        # mask_mod is also evaluated on global rows, where the query-side division runs out
-        # of range; those rows are dense anyway, so the clamp only keeps the gather legal.
-        qf = torch.clamp(torch.div(q_idx - vs, tokens_per_frame, rounding_mode="floor"), 0, num_frames - 1)
-        kf = torch.div(kv_idx - vs, tokens_per_frame, rounding_mode="floor")
-        in_window = (kf >= lo_t[qf]) & (kf <= hi_t[qf])
-        anchor_row = anchor_rows & ((qf == 0) | (qf == num_frames - 1))
-        anchor_col = anchor_cols & ((kf == 0) | (kf == num_frames - 1)) & ~in_window
-        return dense | anchor_row | in_window | anchor_col
+def _compiled_fused(name: str, body):
+    if name not in _FUSED_CACHE:
+        _FUSED_CACHE[name] = torch.compile(body, dynamic=False)
+    return _FUSED_CACHE[name]
 
-    mask = create_block_mask(mask_mod, B=None, H=None, Q_LEN=layout.seq_len, KV_LEN=layout.seq_len, device=device)
-    if len(_MINIMAX_H3_VDN_BLOCK_MASK_CACHE) >= 64:
-        _MINIMAX_H3_VDN_BLOCK_MASK_CACHE.clear()
-    _MINIMAX_H3_VDN_BLOCK_MASK_CACHE[key] = mask
-    return mask
+
+def _fused_pre_body(x, weight, eps, scale, shift, indices):
+    normed = nn.functional.rms_norm(x, (x.shape[-1],), weight, eps)
+    return (normed * (1.0 + scale.index_select(0, indices)) + shift.index_select(0, indices)).to(x.dtype)
+
+
+def _fused_post_body(residual, gate, indices, branch_out):
+    return (residual + gate.index_select(0, indices) * branch_out).to(residual.dtype)
+
+
+def _fused_swiglu_body(h):
+    gate, up = h.chunk(2, dim=-1)
+    return nn.functional.silu(gate) * up
+
+
+def _fused_block_forward(self, x, *, t_emb, combined_indices, rope_freqs, cu_seqlens, max_seqlen):
+    shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaln_proj(t_emb)
+    pre = _compiled_fused("pre", _fused_pre_body)
+    post = _compiled_fused("post", _fused_post_body)
+    # Under VRAM management the norm weights sit on the offload device and the eager path
+    # onloads them inside AutoWrappedModule.forward. The fused body reads .weight directly
+    # and so bypasses that, which shows up as a cuda/cpu mismatch inside the compiled graph.
+    # These are [5376] tensors; the copy is noise next to the block's own work.
+    w1 = self.norm1.weight.to(device=x.device, dtype=x.dtype)
+    normed = pre(x, w1, self.norm1.eps, scale_msa, shift_msa, combined_indices)
+    x = post(x, gate_msa, combined_indices, self.attn(normed, rope_freqs=rope_freqs, cu_seqlens=cu_seqlens, max_seqlen=max_seqlen))
+    w2 = self.norm2.weight.to(device=x.device, dtype=x.dtype)
+    normed = pre(x, w2, self.norm2.eps, scale_mlp, shift_mlp, combined_indices)
+    return post(x, gate_mlp, combined_indices, self.mlp(normed))
+
+
+def _fused_ff_forward(self, x):
+    h = self.fc1(x)
+    if hasattr(self.fc2, "forward_quantized"):
+        from ..core.quant.backends.minimax_h3_vdn_fp8 import swiglu_quantize_activation
+        return self.fc2.forward_quantized(*swiglu_quantize_activation(h), out_dtype=h.dtype)
+    h = _compiled_fused("swiglu", _fused_swiglu_body)(h)
+    return self.fc2(h)
+
+
+def enable_minimax_h3_fused_kernels(dit):
+    """Install fused block/FF forwards on every DiT block. Idempotent."""
+    for block in dit.blocks:
+        if "forward" not in block.__dict__:
+            block.forward = types.MethodType(_fused_block_forward, block)
+        mlp = block.mlp
+        if "forward" not in mlp.__dict__:
+            mlp.forward = types.MethodType(_fused_ff_forward, mlp)
+    for block in getattr(dit, "token_refiner", None).blocks if hasattr(dit, "token_refiner") else []:
+        mlp = block.mlp
+        if "forward" not in mlp.__dict__:
+            mlp.forward = types.MethodType(_fused_ff_forward, mlp)
+
+
+def disable_minimax_h3_fused_kernels(dit):
+    """Remove fused forwards, reverting to the class's own eager methods."""
+    for block in dit.blocks:
+        block.__dict__.pop("forward", None)
+        block.mlp.__dict__.pop("forward", None)
+    for block in getattr(dit, "token_refiner", None).blocks if hasattr(dit, "token_refiner") else []:
+        block.mlp.__dict__.pop("forward", None)
 
 
 class MiniMaxH3VDNLinearBranch(nn.Module):
@@ -787,92 +789,36 @@ class MiniMaxH3VDNLinearBranch(nn.Module):
         return (readout * gate).reshape(num_tokens, heads * head_dim)
 
 
-class MiniMaxH3VDNAttention(nn.Module):
-    def __init__(self, orig_attn, hidden_size, delta_rule="vdn_solve", radius=1, chunk=5,
-                 enable_softmax_gate=True, linear_head_dim=128, softmax_impl="auto",
-                 anchor_frames="both", enable_text_state=True, bridge="alpha", a_fp32=True,
-                 short_conv=("k", "v")):
-        super().__init__()
-        if anchor_frames not in MINIMAX_H3_VDN_ANCHOR_FRAME_MODES:
-            raise ValueError(f"anchor_frames={anchor_frames!r}; expected one of {MINIMAX_H3_VDN_ANCHOR_FRAME_MODES}")
-        if softmax_impl not in MINIMAX_H3_VDN_SOFTMAX_IMPLS:
-            raise ValueError(f"softmax_impl={softmax_impl!r}; expected one of {MINIMAX_H3_VDN_SOFTMAX_IMPLS}")
-        self.orig = orig_attn
-        self.num_heads = orig_attn.num_heads
-        self.head_dim = orig_attn.head_dim
-        self.radius = radius
-        self.chunk = chunk
-        self.softmax_impl = softmax_impl
-        self.anchor_frames = anchor_frames
-        self.enable_text_state = enable_text_state
-        self.layout = None
-        d_linear = linear_head_dim or self.head_dim
-        self.linear_attention = MiniMaxH3VDNLinearBranch(hidden_size, self.num_heads, d_linear, delta_rule=delta_rule,
-                                                         bridge=bridge, a_fp32=a_fp32, short_conv=short_conv)
-        self.to_out_linear = nn.Linear(self.num_heads * d_linear, hidden_size, bias=False)
-        self.enable_softmax_gate = enable_softmax_gate
-        if enable_softmax_gate:
-            self.softmax_gate = MiniMaxH3VDNOutputGate(hidden_size, self.num_heads, init_value=0.99)
-        self.inference_mode = False
+class MiniMaxH3VDNAttention(MiniMaxH3Attention):
+    """A MiniMaxH3Attention that runs the VDN window softmax and adds the linear branch's
+    readout on the video rows. Nothing wraps anything: `attach_minimax_h3_vdn` mounts the
+    branch's modules onto the loaded attention in place and swaps this class in, so the
+    backbone's parameters keep their names and the branch is loaded exactly once."""
 
     def _qkv(self, x, rope_freqs):
-        orig = self.orig
         total = x.shape[0]
-        qkv = orig.qkv_proj(x).view(total, self.num_heads, 3, self.head_dim)
+        qkv = self.qkv_proj(x).view(total, self.num_heads, 3, self.head_dim)
         query_raw, key_raw, value = qkv[:, :, 0, :], qkv[:, :, 1, :], qkv[:, :, 2, :]
         if self.inference_mode and rope_freqs is not None:
             # .to() for the same reason as _fused_block_forward: under VRAM management the
             # norm weights sit on the offload device and the compiled body reads them raw.
-            qw = orig.q_norm.weight.to(device=query_raw.device, dtype=query_raw.dtype)
-            kw = orig.k_norm.weight.to(device=key_raw.device, dtype=key_raw.dtype)
-            query = _qk_prep_fused(query_raw, qw, orig.q_norm.eps, rope_freqs)
-            key = _qk_prep_fused(key_raw, kw, orig.k_norm.eps, rope_freqs)
+            qw = self.q_norm.weight.to(device=query_raw.device, dtype=query_raw.dtype)
+            kw = self.k_norm.weight.to(device=key_raw.device, dtype=key_raw.dtype)
+            query = _qk_prep_fused(query_raw, qw, self.q_norm.eps, rope_freqs)
+            key = _qk_prep_fused(key_raw, kw, self.k_norm.eps, rope_freqs)
         else:
-            query = orig.q_norm(query_raw)
-            key = orig.k_norm(key_raw)
+            query = self.q_norm(query_raw)
+            key = self.k_norm(key_raw)
             if rope_freqs is not None:
                 query = _apply_rope(query, rope_freqs)
                 key = _apply_rope(key, rope_freqs)
         return query, key, value, (query_raw, key_raw, value)
 
-    def _resolved_impl(self, device):
-        """The backend that will actually run: `auto` follows the target library's
-        resolution -- decomposed on any CUDA device that has a varlen kernel, flex on a
-        machine without CUDA."""
-        if self.softmax_impl != "auto":
-            return self.softmax_impl
-        return "decomposed" if torch.cuda.is_available() else "flex"
-
-    def _window_softmax(self, query, key, value, layout, bounds, scale):
-        impl = self._resolved_impl(value.device)
-        if impl == "ref":
-            return mini_max_h3_vdn_window_softmax_reference(query, key, value, layout, bounds, scale,
-                                                            anchor_frames=self.anchor_frames)
-        if impl == "decomposed":
-            return mini_max_h3_vdn_window_softmax_decomposed(query, key, value, layout, bounds, scale,
-                                                             anchor_frames=self.anchor_frames)
-        block_mask = mini_max_h3_vdn_build_window_block_mask(layout, bounds, value.device, anchor_frames=self.anchor_frames)
-        q = query.permute(1, 0, 2).unsqueeze(0)
-        k = key.permute(1, 0, 2).unsqueeze(0)
-        v = value.permute(1, 0, 2).unsqueeze(0)
-        if impl == "fa4":
-            import importlib.util
-            if importlib.util.find_spec("flash_attn.cute") is None:
-                raise ImportError("softmax_impl='fa4' requires flash-attn-4 (flash_attn.cute); it is not installed")
-            if not mini_max_h3_vdn_has_fa4_kernels(value.device):
-                raise ImportError("softmax_impl='fa4' needs a card FA4 ships kernels for (sm90/sm100/sm110)")
-            from torch.nn.attention.flex_attention import flex_attention
-            out = torch.compile(flex_attention, dynamic=False)(q, k, v, block_mask=block_mask, scale=scale,
-                                                               kernel_options={"BACKEND": "FLASH"})
-        else:
-            out = attention_forward(q, k, v, attn_mask=block_mask, scale=scale, use_flex=True)
-        _mini_max_h3_vdn_collect_after_first_flash()
-        return out.squeeze(0).permute(1, 0, 2)
-
     def forward(self, x, *, rope_freqs, cu_seqlens, max_seqlen=None):
         layout = self.layout
         if layout is None:
-            return self.orig(x, rope_freqs=rope_freqs, cu_seqlens=cu_seqlens, max_seqlen=max_seqlen)
+            return MiniMaxH3Attention.forward(self, x, rope_freqs=rope_freqs, cu_seqlens=cu_seqlens,
+                                              max_seqlen=max_seqlen)
         content = layout.seq_len
         xc = x[:content]
         rope_c = rope_freqs[:content] if rope_freqs is not None else None
@@ -880,19 +826,14 @@ class MiniMaxH3VDNAttention(nn.Module):
         full_cover = all(lo <= 0 and hi >= layout.num_frames - 1 for lo, hi in bounds)
         scale = self.head_dim ** -0.5
 
-        if not full_cover and self._resolved_impl(x.device) in ("flex", "fa4"):
-            # Built (once; cached) BEFORE the projections exist: create_block_mask
-            # materialises ~10 GiB at 89k rows, and here the layer's live set is x alone
-            # rather than x plus the raw and roped q/k/v.
-            mini_max_h3_vdn_build_window_block_mask(layout, bounds, x.device, anchor_frames=self.anchor_frames)
-
         query, key, value, qkv_raw = self._qkv(xc, rope_c)
         if full_cover:
             softmax_out = _sdpa_varlen_attention(query, key, value, cu_seqlens=torch.tensor([0, content], dtype=torch.int32, device=x.device),
-                                                 softmax_scale=self.orig.softmax_scale)
+                                                 softmax_scale=self.softmax_scale)
             linear_active = False
         else:
-            softmax_out = self._window_softmax(query, key, value, layout, bounds, scale)
+            softmax_out = mini_max_h3_vdn_window_softmax_decomposed(
+                query, key, value, layout, bounds, scale, anchor_frames=self.anchor_frames)
             linear_active = True
         del query, key, value
 
@@ -901,7 +842,7 @@ class MiniMaxH3VDNAttention(nn.Module):
             flat = _softmax_gate_fused(softmax_out, gate) if self.inference_mode else (softmax_out * gate).reshape(content, -1)
         else:
             flat = softmax_out.reshape(content, -1)
-        out = self.orig.out_proj(flat.type_as(xc))
+        out = self.out_proj(flat.type_as(xc))
         del softmax_out
 
         if linear_active:
@@ -958,71 +899,78 @@ class MiniMaxH3VDNBranch(nn.Module):
 
 
 class MiniMaxH3DiTVDN(MiniMaxH3DiT):
-    _repeated_blocks = ["MiniMaxH3DiTBlock"]
+    """A MiniMaxH3DiT whose attentions carry the VDN window softmax and the linear branch.
+    `enable_minimax_h3_vdn` swaps this class in; the class exists for the layout plumbing,
+    the modules themselves are attached to the backbone's own attentions in place."""
 
-    def __init__(self, vdn_radius=1, vdn_chunk=5, vdn_anchor_frames="both", vdn_delta_rule="vdn_solve",
-                 vdn_bridge="alpha", vdn_a_fp32=True, vdn_linear_head_dim=128, vdn_short_conv=("k", "v"),
-                 vdn_enable_text_state=True, vdn_enable_softmax_gate=True, vdn_softmax_impl="auto", **kwargs):
-        super().__init__(**kwargs)
-        for block in self.blocks:
-            block.attn = MiniMaxH3VDNAttention(
-                block.attn, hidden_size=self.hidden_size, delta_rule=vdn_delta_rule, radius=vdn_radius,
-                chunk=vdn_chunk, enable_softmax_gate=vdn_enable_softmax_gate, linear_head_dim=vdn_linear_head_dim,
-                softmax_impl=vdn_softmax_impl, anchor_frames=vdn_anchor_frames, enable_text_state=vdn_enable_text_state,
-                bridge=vdn_bridge, a_fp32=vdn_a_fp32, short_conv=vdn_short_conv)
-
-    def forward(self, *args, vdn_layout=None, control_hints=None, **kwargs):
-        if control_hints is not None:
-            raise ValueError("MiniMaxH3DiTVDN does not support ControlNet; control_hints must be None")
+    def forward(self, *args, vdn_layout=None, **kwargs):
         if vdn_layout is not None:
             for block in self.blocks:
                 block.attn.layout = vdn_layout
-        return super().forward(*args, control_hints=control_hints, **kwargs)
+        return super().forward(*args, **kwargs)
 
 
-def load_minimax_h3_vdn_branch(dit, branch):
-    if len(branch.blocks) != len(dit.blocks):
-        raise ValueError(f"vdn branch has {len(branch.blocks)} layers, dit has {len(dit.blocks)}")
+def _mount(target, source, name):
+    """Re-parent `source.<name>` onto `target`, moving it out of the source.
 
-    def unwrapped_state_dict(module):
-        # VRAM-managed branches wrap Conv/RMSNorm in AutoWrappedModule, which nests the
-        # original module under `.module` and therefore prefixes its state_dict keys.
-        return {k.replace(".module.", "."): v for k, v in module.state_dict().items()}
-
-    for dit_block, branch_block in zip(dit.blocks, branch.blocks):
-        src = branch_block.attn
-        dst = dit_block.attn
-        if not isinstance(dst, MiniMaxH3VDNAttention):
-            raise ValueError("dit block attention is not a MiniMaxH3VDNAttention; call enable_minimax_h3_vdn first")
-        dst.to_out_linear.load_state_dict(unwrapped_state_dict(src.to_out_linear), assign=True)
-        if dst.enable_softmax_gate:
-            dst.softmax_gate.load_state_dict(unwrapped_state_dict(src.softmax_gate), assign=True)
-        dst.linear_attention.load_state_dict(unwrapped_state_dict(src.linear_attention), assign=True)
+    Assignment alone would be enough to register it on the target, but nn.Module does not
+    detach from the old parent: both trees would keep listing the same parameters, and a
+    later `.to()` on the loading container would move the model's weights out from under
+    it. The container is a loading vehicle and is spent once its contents are mounted."""
+    setattr(target, name, getattr(source, name))
+    source._modules.pop(name)
 
 
-def enable_minimax_h3_vdn(dit, vdn_branch=None, device=None, **vdn_kwargs):
-    for block in dit.blocks:
-        block.attn = MiniMaxH3VDNAttention(block.attn, hidden_size=dit.hidden_size, **vdn_kwargs)
+def attach_minimax_h3_vdn(attn, branch_attn=None, *, radius=1, chunk=5, anchor_frames="both",
+                          enable_text_state=True, enable_softmax_gate=True, delta_rule="vdn_solve",
+                          bridge="alpha", a_fp32=True, short_conv=("k", "v"), linear_head_dim=128):
+    """Mount VDN onto one base attention IN PLACE: the window softmax and the branch's
+    readouts become part of the attention it already is, so the backbone keeps every
+    parameter name it was loaded with. `branch_attn` is the matching block of the loaded
+    linear_branch; None builds a fresh branch instead, which is what tests want."""
+    if anchor_frames not in MINIMAX_H3_VDN_ANCHOR_FRAME_MODES:
+        raise ValueError(f"anchor_frames={anchor_frames!r}; expected one of {MINIMAX_H3_VDN_ANCHOR_FRAME_MODES}")
+    attn.radius = radius
+    attn.chunk = chunk
+    attn.anchor_frames = anchor_frames
+    attn.enable_text_state = enable_text_state
+    attn.enable_softmax_gate = enable_softmax_gate
+    attn.layout = None
+    attn.inference_mode = False
+    if branch_attn is None:
+        hidden_size = attn.out_proj.out_features
+        d_linear = linear_head_dim or attn.head_dim
+        attn.to_out_linear = nn.Linear(attn.num_heads * d_linear, hidden_size, bias=False)
+        attn.linear_attention = MiniMaxH3VDNLinearBranch(hidden_size, attn.num_heads, d_linear,
+                                                         delta_rule=delta_rule, bridge=bridge, a_fp32=a_fp32,
+                                                         short_conv=short_conv)
+        if enable_softmax_gate:
+            attn.softmax_gate = MiniMaxH3VDNOutputGate(hidden_size, attn.num_heads, init_value=0.99)
+    else:
+        _mount(attn, branch_attn, "to_out_linear")
+        _mount(attn, branch_attn, "linear_attention")
+        if enable_softmax_gate:
+            _mount(attn, branch_attn, "softmax_gate")
+    attn.__class__ = MiniMaxH3VDNAttention
+    return attn
+
+
+def enable_minimax_h3_vdn(dit, vdn_branch=None, **vdn_kwargs):
+    """Turn `dit` into the VDN model in place. `vdn_branch` is the module the model pool
+    loaded from the linear_branch checkpoint; its blocks are mounted onto the backbone's
+    attentions, so the checkpoint is read once and nothing is copied or re-assigned."""
+    for index, block in enumerate(dit.blocks):
+        branch_attn = None if vdn_branch is None else vdn_branch.blocks[index].attn
+        attach_minimax_h3_vdn(block.attn, branch_attn, **vdn_kwargs)
     dit.__class__ = MiniMaxH3DiTVDN
-    if vdn_branch is not None:
-        load_minimax_h3_vdn_branch(dit, vdn_branch)
-    if device is not None:
-        # VRAM-managed base DiTs only move AutoWrapped modules, so the modules created
-        # here (after load) must be pinned to the computation device explicitly.
-        for block in dit.blocks:
-            block.attn.to_out_linear.to(device)
-            if block.attn.enable_softmax_gate:
-                block.attn.softmax_gate.to(device)
-            block.attn.linear_attention.to(device)
     return dit
 
 
 def enable_minimax_h3_vdn_fused(dit):
     """Turn on every fused inference kernel: block pointwise, FF SwiGLU, QK-norm+RoPE,
-    softmax gate. Idempotent. NOT bitwise vs eager — one rounding at the store instead
-    of one per op, in the accurate direction. Default off so the eager path stays the
-    correctness reference."""
-    from .minimax_h3_dit import enable_minimax_h3_fused_kernels
+    softmax gate. Idempotent. NOT bitwise vs eager -- one rounding at the store instead of
+    one per op, in the accurate direction. MiniMaxH3Pipeline calls this on every render;
+    `disable_minimax_h3_vdn_fused` is what tests use to get the eager path back."""
     enable_minimax_h3_fused_kernels(dit)
     for block in dit.blocks:
         attn = block.attn
@@ -1033,7 +981,6 @@ def enable_minimax_h3_vdn_fused(dit):
 
 def disable_minimax_h3_vdn_fused(dit):
     """Revert to the eager path."""
-    from .minimax_h3_dit import disable_minimax_h3_fused_kernels
     disable_minimax_h3_fused_kernels(dit)
     for block in dit.blocks:
         attn = block.attn
