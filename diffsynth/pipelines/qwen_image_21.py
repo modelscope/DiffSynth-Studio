@@ -153,17 +153,20 @@ class QwenImage21Unit_PromptEmbedder(PipelineUnit):
         "<|im_start|>assistant\n"
     )
 
+    max_text_positions = 8192
+
     def __init__(self):
         super().__init__(
             seperate_cfg=True,
             input_params_posi={"prompt": "prompt"},
             input_params_nega={"prompt": "negative_prompt"},
-            input_params=("edit_image",),
+            input_params=("edit_image", "edit_latents"),
             output_params=("prompt_embeds", "prompt_embeds_mask", "edit_image_pad_mask"),
             onload_model_names=("text_encoder",),
         )
         self._drop_idx = None
         self._img_token_id = None
+        self._tail_len = None
 
     @staticmethod
     def _extract_masked_hidden(hidden_states, mask):
@@ -181,7 +184,28 @@ class QwenImage21Unit_PromptEmbedder(PipelineUnit):
         canvas.paste(image, mask=image.getchannel("A"))
         return canvas
 
-    def process(self, pipe, prompt, edit_image):
+    def _drop_overflow_text_tokens(self, model_inputs, edit_latents):
+        image_shift = sum(max(latent.shape[2], latent.shape[3]) for latent in edit_latents or [])
+        budget = self.max_text_positions - 1 - image_shift + self._drop_idx
+        text_mask = model_inputs.attention_mask.bool() & (model_inputs.input_ids != self._img_token_id)
+        text_counts = text_mask.sum(dim=1)
+        for row in range(text_counts.shape[0]):
+            overflow = int(text_counts[row]) - budget
+            if overflow <= 0:
+                continue
+            # Keep the trailing template tokens and cut the prompt text in front of them.
+            text_positions = text_mask[row].nonzero(as_tuple=True)[0]
+            cut = text_positions.numel() - self._tail_len
+            positions = text_positions[cut - overflow : cut]
+            model_inputs.attention_mask[row, positions] = 0
+            print(
+                f"Warning!!! Qwen-Image-2.1 supports at most {self.max_text_positions} text positions, "
+                f"but this case needs {self.max_text_positions + overflow}, "
+                f"so the last {overflow} prompt tokens are dropped."
+            )
+        return model_inputs
+
+    def process(self, pipe, prompt, edit_image, edit_latents=None):
         if pipe.text_encoder is None or pipe.processor is None:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
@@ -190,6 +214,7 @@ class QwenImage21Unit_PromptEmbedder(PipelineUnit):
             sys_tokens = pipe.processor.apply_chat_template(sys_message, tokenize=True, return_dict=False)
             self._drop_idx = len(sys_tokens) if not sys_tokens or isinstance(sys_tokens[0], int) else len(sys_tokens[0])
             self._img_token_id = pipe.processor.tokenizer.encode("<|image_pad|>")[0]
+            self._tail_len = len(pipe.processor.tokenizer.encode(self.prompt_template_t2i.split("{}")[-1]))
         # Qwen has no bos token, so an empty string leaves the encoder with nothing to read.
         prompt = [" " if not prompt else prompt]
         if edit_image is None:
@@ -205,6 +230,7 @@ class QwenImage21Unit_PromptEmbedder(PipelineUnit):
         if edit_image is not None:
             processor_kwargs["images"] = [self.composite_over_white(image) for image in edit_image]
         model_inputs = pipe.processor(**processor_kwargs).to(pipe.device)
+        model_inputs = self._drop_overflow_text_tokens(model_inputs, edit_latents)
         forward_kwargs = {"input_ids": model_inputs.input_ids, "attention_mask": model_inputs.attention_mask}
         if edit_image is not None:
             forward_kwargs.update(pixel_values=model_inputs.pixel_values, image_grid_thw=model_inputs.image_grid_thw)
