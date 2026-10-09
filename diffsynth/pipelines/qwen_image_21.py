@@ -82,7 +82,7 @@ class QwenImage21Pipeline(BasePipeline):
         # KV cache
         use_kv_cache: bool = True,
         # Attention Implementation
-        use_flex_attention: bool = True,
+        use_flex_attention: bool = False,
         # VAE tiling
         tiled: bool = False,
         tile_size: int = 256,
@@ -409,7 +409,7 @@ def model_fn_qwen_image_21(
     control_scale=1.0,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
-    use_flex_attention=True,
+    use_flex_attention=False,
     **kwargs,
 ):
     latent_height, latent_width = latents.shape[2], latents.shape[3]
