@@ -359,6 +359,8 @@ class LoadMultiTrackAudio(DataProcessingOperator):
             sample_rate = self.target_sample_rate
         if self.max_audio_duration is not None and waveform.shape[1] > sample_rate * self.max_audio_duration:
             waveform = waveform[:, :int(sample_rate * self.max_audio_duration)]
+        if self.division_factor is not None:
+            waveform = waveform[:, :waveform.shape[1] // self.division_factor * self.division_factor]
         return waveform
 
     def load_latents(self, path):

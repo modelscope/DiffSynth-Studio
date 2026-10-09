@@ -33,6 +33,7 @@
    Model_Details/Z-Image
    Model_Details/Anima
    Model_Details/LTX-2
+   Model_Details/LTX-2.5
    Model_Details/ERNIE-Image
    Model_Details/JoyAI-Image
    Model_Details/ACE-Step
@@ -47,7 +48,9 @@
    Model_Details/MiniMax-H3
    Model_Details/DiffSynth-Music
    Model_Details/MiniMax-Music3
+   Model_Details/YuE2
    Model_Details/SenseNova-U1
+   Model_Details/Qwen-Image-2.1
 
 .. toctree::
    :maxdepth: 2

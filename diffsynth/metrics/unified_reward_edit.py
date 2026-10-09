@@ -43,7 +43,7 @@ class UnifiedRewardEditMetric(Metric):
         )
         model = model_pool.fetch_model("image_metrics_unified_reward_edit")
         if model is None:
-            model = model_pool.fetch_model("joyai_image_text_encoder")
+            model = model_pool.fetch_model("qwen_image_21_text_encoder")
         if model is None:
             raise ValueError("Cannot find model: image_metrics_unified_reward_edit")
         if hasattr(model, "model"):

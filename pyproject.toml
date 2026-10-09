@@ -46,6 +46,7 @@ audio = [
 quant = [
     "bitsandbytes",
     "comfy-kitchen",
+    "entropack[cuda13]",
     "torchao>=0.16"
 ]
 training = [
@@ -80,6 +81,9 @@ nexusgen = [
     "qwen_vl_utils",
     "transformers==4.49.0"
 ]
+yue2 = [
+    "tiktoken"
+]
 all = [
     "av",
     "torchaudio",
@@ -87,6 +91,7 @@ all = [
     "librosa",
     "bitsandbytes",
     "comfy-kitchen",
+    "entropack[cuda13]",
     "torchao>=0.16",
     "deepspeed",
     "tensorboard",
