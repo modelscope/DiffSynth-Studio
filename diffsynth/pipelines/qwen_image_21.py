@@ -79,6 +79,8 @@ class QwenImage21Pipeline(BasePipeline):
         rand_device: str = "cpu",
         # Steps
         num_inference_steps: int = 40,
+        # Sigmas
+        sigmas: list[float] = None,
         # KV cache
         use_kv_cache: bool = True,
         # Attention Implementation
@@ -106,7 +108,7 @@ class QwenImage21Pipeline(BasePipeline):
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
 
         # Scheduler
-        self.scheduler.set_timesteps(num_inference_steps, dynamic_shift_len=inputs_shared["latents"].shape[2] * inputs_shared["latents"].shape[3])
+        self.scheduler.set_timesteps(num_inference_steps, dynamic_shift_len=inputs_shared["latents"].shape[2] * inputs_shared["latents"].shape[3], sigmas=sigmas)
 
         # Denoise
         self.load_models_to_device(self.in_iteration_models)
