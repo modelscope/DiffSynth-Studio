@@ -80,10 +80,69 @@ write_video_audio(
 |[lightx2v/Minimax-h3-Turbo: FL2VA 4steps](https://www.modelscope.cn/models/lightx2v/Minimax-h3-Turbo)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA-Turbo.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA-Turbo.py)|-|-|-|-|
 |[DiffSynth-Studio/MiniMax-H3-Text-Embeddings](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Text-Embeddings)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Text-Embeddings.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Text-Embeddings.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Text-Embeddings.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Text-Embeddings.py)|-|-|
 |[PAI/MiniMax-H3-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/MiniMax-H3-Fun-Controlnet-Union)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/full/MiniMax-H3-Fun-Controlnet-Union.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/lora/MiniMax-H3-Fun-Controlnet-Union.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Fun-Controlnet-Union.py)|
+|[OpenVDN/vdn-minimax-h3: VDN-H3 50 steps](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-VDN-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-VDN-FL2VA.py)|-|-|-|-|
+|[OpenVDN/vdn-minimax-h3: VDN-H3 8 steps](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-VDN-Turbo-FL2VA.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-VDN-Turbo-FL2VA.py)|-|-|-|-|
+|[OpenVDN/vdn-minimax-h3: VDN-H3 FP8](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-VDN-FP8-FL2VA.py)|-|-|-|-|-|
 
 The model weights are split into two partitions: the `FL2VA` partition serves text-to-video-audio and keyframe-guided generation, while the `Ref2VA` partition serves reference-driven generation. The two partitions have different DiT and text encoder weights, so choose the `origin_file_pattern` of the matching partition for your task.
 
 In addition, [PAI/MiniMax-H3-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/MiniMax-H3-Fun-Controlnet-Union) provides ControlNet-based conditional control, which is used together with the base weights of the `FL2VA` partition. By passing a control video (canny / depth / hed / mlsd / pose modes) through `control_video`, you can generate video and audio that follow the structural conditions.
+
+## VDN-Minimax-H3 (hybrid-attention acceleration)
+
+[OpenVDN/vdn-minimax-h3](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3) (VDN-H3) is a plug-and-play hybrid-attention accelerator for MiniMax H3. Every DiT block's attention is wrapped by two branches whose coverage is an exact partition of the sequence: a windowed softmax branch over the neighbouring VAE chunks, and a frame-wise DeltaNet linear-attention branch over everything the window cannot see. LoRA adapters are folded into the backbone at load time. The backbone, VAEs, text encoder and scheduler are identical to MiniMax H3, and the audio stream stays on the dense softmax path, so audio quality is inherited rather than approximated.
+
+Load the base `FL2VA` weights together with the `linear_branch` checkpoint; `MiniMaxH3Pipeline.from_pretrained` wraps the DiT automatically. **Both checkpoints ship a LoRA that must be folded**: Stage B trained the QKV/O LoRA jointly with the linear branch, so loading `linear_branch` alone does not give you the released stage-b model. The 50-step path folds `stage-b-step-2000/adapters/default`; the 8-step path folds both the `default` and `turbo` adapters of `stage-dmd-step-250` and runs with `num_inference_steps=8`. The backbone comes straight from the official `MiniMax/MiniMax-H3` `FL2VA` partition — there is no need to download `h3-base`.
+
+Three runtime switches. `use_fused_kernels` and `fp8` are off by default; `vdn_softmax_impl` defaults to `"auto"`, matching upstream:
+
+* `vdn_softmax_impl`: the window-softmax backend. `"auto"` (default), `"ref"` (eager SDPA, the correctness reference), `"flex"` (FlexAttention + BlockMask, the path upstream trains with), `"fa4"` (FlexAttention on the FlashAttention-4 backend), `"decomposed"` (splits the window into dense rectangles and calls a varlen kernel directly, so it needs **no BlockMask**; upstream's inference workhorse). `auto` resolves exactly as upstream does: **`decomposed` on any CUDA device**, `flex` without CUDA — the window leg needs *some* varlen kernel, not necessarily FA4's: FA4's CuTe kernel on sm90 / sm100 / sm110, torch's own `varlen_attn` (the FA2 lineage, torch ≥ 2.13) on other cards or without `flash-attn-4`. `flex` / `fa4` need an O(S²) BlockMask intermediate, and 345 frames at 768p is about 103k tokens, so they OOM outright; that is a hard failure rather than a silent downgrade. 124 frames at 768p is about 37k tokens, where `flex` runs directly.
+* `use_fused_kernels`: fuses the block pointwise ops, the FF SwiGLU, QK-norm+RoPE, the softmax gate, the linear epilogue and the Triton temporal conv. **Not bitwise** (inductor keeps the intermediates in fp32 and rounds once at the store, which is closer to fp32 than eager); compiled per shape, so changing resolution or frame count recompiles once.
+* `fp8`: W8A8 float8_e4m3 quantization through `torch._scaled_mm` (rowwise activations + per-channel weights on sm90, per-tensor on both sides on sm100+). **One-way and irreversible**, must be called after the LoRA fold, and requires the DiT to stay resident (the swap replaces `AutoWrappedLinear` with a plain Linear that VRAM management can no longer route). It changes the sample — not for the worse, but into a different sample of the same prompt, so anything that depends on reproducing a previous render stops working.
+
+**Applicability**: the window is a fixed 15 latent frames, so the gain grows with clip length. Measured steady-state s/it on one H20 in bf16: 768×1344 × 345 frames base 140.15 → VDN 63.72 (**2.20×**), and → 43.81 (**3.20×**) with fused kernels + fp8 on top; 768×1344 × 124 frames 25.91 → 21.57 (1.19×); **480×832 × 124 frames 6.92 → 8.32 (0.83×, slower than dense)** — at small resolutions attention is cheap to begin with, and the linear branch's fixed cost (per-frame statistics, the two scans, the gather, the readout) outweighs the saving. Upstream's release configuration is 345 frames (14.4 s), which is what the examples use.
+
+```python
+import torch
+from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
+from diffsynth.utils.data.audio_video import write_video_audio
+
+vram_config = {
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+pipe = MiniMaxH3Pipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/text_encoder/model*.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/transformer/model*.safetensors", **vram_config),
+        ModelConfig(model_id="OpenVDN/vdn-minimax-h3", origin_file_pattern="stage-b-step-2000/linear_branch/model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/video_vae/source/model.safetensors", **vram_config),
+        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
+    ],
+    processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
+)
+pipe.load_lora(pipe.dit, ModelConfig(model_id="OpenVDN/vdn-minimax-h3", origin_file_pattern="stage-b-step-2000/adapters/default/adapter_model.safetensors"))
+
+# Text -> Video + Audio
+prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
+video, audio = pipe(
+    prompt=prompt,
+    height=768, width=1344, num_frames=345, num_inference_steps=50, seed=0,
+)
+write_video_audio(
+    video=video, audio=audio,
+    output_path="vdn-t2va.mp4", fps=24, audio_sample_rate=32000,
+)
+```
 
 ## Model Inference
 
@@ -160,6 +219,7 @@ The input parameters for `MiniMaxH3Pipeline` inference include:
     )
     ```
 * `progress_bar_cmd`: Progress bar, defaults to `tqdm`. Set it to `lambda x: x` to disable the progress bar.
+* `vdn_softmax_impl` / `use_fused_kernels` / `fp8`: only take effect when the VDN linear branch is loaded (the DiT is a `MiniMaxH3DiTVDN`); they default to `"auto"` / `False` / `False`. See the "VDN-Minimax-H3" section above for what each one trades away.
 
 The pipeline returns a `(video, audio)` tuple, where the video is a list of PIL images and the audio is a waveform tensor. Use `diffsynth.utils.data.audio_video.write_video_audio` to mux them into an MP4:
 

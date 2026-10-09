@@ -1563,6 +1563,13 @@ minimax_h3_series = [
         "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["video_patch_proj", "audio_patch_proj", "condition_proj", "time_embedder.proj_in", "time_embedder.proj_out", "final_layer.adaln_proj.linear", "final_layer.video_out", "final_layer.audio_out", "token_refiner.blocks.0.attn.qkv_proj", "token_refiner.blocks.0.attn.out_proj", "token_refiner.blocks.0.mlp.fc1", "token_refiner.blocks.0.mlp.fc2", "token_refiner.blocks.1.attn.qkv_proj", "token_refiner.blocks.1.attn.out_proj", "token_refiner.blocks.1.mlp.fc1", "token_refiner.blocks.1.mlp.fc2"]},
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit.MiniMaxH3DiTSingularityStateDictConverter",
     },
+    {
+        # Example: ModelConfig(model_id="OpenVDN/vdn-minimax-h3", origin_file_pattern="stage-dmd-step-250/linear_branch/model.safetensors")
+        "model_hash": "6b8d2b6ae09fc45cbe3e5a9a57e4512a",
+        "model_name": "minimax_h3_vdn_linear_branch",
+        "model_class": "diffsynth.models.minimax_h3_dit_vdn.MiniMaxH3VDNBranch",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit_vdn.MiniMaxH3VDNBranchStateDictConverter",
+    },
 ]
 
 minimax_music3_series = [

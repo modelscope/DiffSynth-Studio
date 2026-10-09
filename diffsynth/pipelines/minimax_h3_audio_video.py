@@ -17,6 +17,7 @@ from ..models.minimax_h3_text_encoder import (
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
 from ..models.minimax_h3_controlnet import MiniMaxH3ControlNet
+from ..models.minimax_h3_dit_vdn import MINIMAX_H3_VDN_SOFTMAX_IMPLS, MiniMaxH3DiTVDN, MiniMaxH3VDNLayout, enable_minimax_h3_vdn
 from ..utils.data.audio import convert_to_stereo, resample_waveform
 from ..utils.lora.minimax_h3 import MiniMaxH3LoRALoader
 
@@ -32,6 +33,7 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.video_vae: MiniMaxH3VideoVAE = None
         self.audio_vae: MiniMaxH3AudioVAE = None
         self.controlnet: MiniMaxH3ControlNet = None
+        self.vdn_branch = None
         self.tokenizer = None
         self.processor = None
         self.imgvid_cond_noise_aug = 0.999
@@ -83,6 +85,10 @@ class MiniMaxH3Pipeline(BasePipeline):
         pipe.video_vae = model_pool.fetch_model("minimax_h3_video_vae")
         pipe.audio_vae = model_pool.fetch_model("minimax_h3_audio_vae")
         pipe.controlnet = model_pool.fetch_model("minimax_h3_controlnet")
+        pipe.vdn_branch = model_pool.fetch_model("minimax_h3_vdn_linear_branch")
+        if pipe.vdn_branch is not None:
+            enable_minimax_h3_vdn(pipe.dit, pipe.vdn_branch, device=device)
+            pipe.vdn_branch.to("cpu")
         if processor_config is not None:
             processor_config.download_if_necessary()
             pipe.processor = AutoProcessor.from_pretrained(processor_config.path)
@@ -129,6 +135,10 @@ class MiniMaxH3Pipeline(BasePipeline):
         progress_bar_cmd=tqdm,
         # Template inputs
         text_embedding: torch.Tensor = None,
+        # VDN hybrid attention
+        vdn_softmax_impl: str = None,
+        use_fused_kernels: bool = False,
+        fp8: bool = False,
     ):
         """Generate a joint video + audio sample.
 
@@ -148,9 +158,26 @@ class MiniMaxH3Pipeline(BasePipeline):
                                     "audio": Tensor[C, L], "sample_rate": int}
 
         Input contract: `video` frame lists must ALREADY. be 24fps the pipeline never resamples frame rate.
+
+        `vdn_softmax_impl` and `use_fused_kernels` apply to a VDN DiT only; `vdn_softmax_impl`
+        picks the window-softmax backend, where "auto" resolves to "decomposed" on any CUDA
+        device and "flex" otherwise. `fp8` quantizes whichever DiT is loaded. All three
+        trade bitwise reproducibility for speed and are off by default.
         """
         self.scheduler.set_timesteps(num_inference_steps, shift=flow_shift)
         self.scheduler_audio.set_timesteps(num_inference_steps, shift=audio_flow_shift)
+        if vdn_softmax_impl is not None and isinstance(self.dit, MiniMaxH3DiTVDN):
+            if vdn_softmax_impl not in MINIMAX_H3_VDN_SOFTMAX_IMPLS:
+                raise ValueError(f"vdn_softmax_impl={vdn_softmax_impl!r}; expected one of {MINIMAX_H3_VDN_SOFTMAX_IMPLS}")
+            for block in self.dit.blocks:
+                block.attn.softmax_impl = vdn_softmax_impl
+        if use_fused_kernels and isinstance(self.dit, MiniMaxH3DiTVDN):
+            from ..models.minimax_h3_dit_vdn import enable_minimax_h3_vdn_fused
+            enable_minimax_h3_vdn_fused(self.dit)
+        if fp8 and not getattr(self, "_fp8_converted", False):
+            from ..core.quant.config import QuantizeConfig
+            QuantizeConfig(method="minimax_h3_vdn_fp8").quantize_model(self.dit, compute_device=self.device)
+            self._fp8_converted = True
 
         inputs_posi = {"prompt": prompt}
         inputs_nega = {"negative_prompt": negative_prompt}
@@ -695,6 +722,10 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
             "img_pos": img_pos, "audio_pos": audio_pos, "text_pos": torch.arange(0, text_len),
             "img_position_ids": g[None], "token_tags": token_tags,
             "cu_seqlens": torch.tensor([0, used, seq_len], dtype=torch.int32), "seq_len": seq_len,
+            "vdn_layout": MiniMaxH3VDNLayout(
+                seq_len=used, video_start=video_sl.start, num_frames=latent_t, tokens_per_frame=frame_rows,
+                frame_height=latent_h // 2, frame_width=latent_w // 2, text_start=0, text_len=text_len,
+            ),
         }
 
     def _build_packed_ref2va(self, text_len, latent_t, latent_h, latent_w, audio_t, ref_blocks, audio_channel=2):
@@ -1011,6 +1042,10 @@ def model_fn_minimax_h3(
 
     refiner_cu = torch.tensor([0, text_len, text_len], dtype=torch.int32, device=device)
 
+    vdn_layout = packed.get("vdn_layout")
+    if isinstance(dit, MiniMaxH3DiTVDN) and vdn_layout is None:
+        raise ValueError("MiniMaxH3DiTVDN requires a vdn_layout in `packed`; the ref2va layout is not supported by VDN")
+
     # ControlNet
     if control_rows is not None:
         control_residual = model_fn_minimax_h3_controlnet(
@@ -1039,7 +1074,7 @@ def model_fn_minimax_h3(
     else:
         control_hints = None
 
-    v_video_rows, v_audio_rows = dit(
+    dit_kwargs = dict(
         x=x,
         audio_x=audio_x,
         img_position_ids=packed["img_position_ids"],
@@ -1059,6 +1094,9 @@ def model_fn_minimax_h3(
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
         control_hints=control_hints,
     )
+    if vdn_layout is not None and isinstance(dit, MiniMaxH3DiTVDN):
+        dit_kwargs["vdn_layout"] = vdn_layout
+    v_video_rows, v_audio_rows = dit(**dit_kwargs)
 
     v_video_rows = v_video_rows[cond_rows_count:]
     v_audio_rows = v_audio_rows[ref_audio_rows_count:]
