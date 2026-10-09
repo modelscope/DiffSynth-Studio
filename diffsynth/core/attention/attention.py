@@ -78,6 +78,10 @@ def initialize_attention_priority():
 
 
 ATTENTION_IMPLEMENTATION = initialize_attention_priority()
+if os.environ.get('DIFFSYNTH_ATTENTION_IMPLEMENTATION') is not None:
+    print(f"Attention implementation: {ATTENTION_IMPLEMENTATION} (set by DIFFSYNTH_ATTENTION_IMPLEMENTATION).")
+else:
+    print(f"Attention implementation: {ATTENTION_IMPLEMENTATION} (auto-detected). Set DIFFSYNTH_ATTENTION_IMPLEMENTATION to override it, e.g. `torch` may be faster than `flash_attention_2` on Blackwell GPUs.")
 
 
 def rearrange_qkv(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", required_in_pattern="b n s d", dims=None):

@@ -28,7 +28,7 @@ DIFFSYNTH_MODEL_BASE_PATH="./path_to_my_models" python xxx.py
 
 ## `DIFFSYNTH_ATTENTION_IMPLEMENTATION`
 
-注意力机制实现的方式，可以设置为 `flash_attention_3`、`flash_attention_2`、`sage_attention`、`xformers`、`torch`。详见 [`./core/attention.md`](../API_Reference/core/attention.md).
+注意力机制实现的方式，可以设置为 `customized_fa_kernel`、`flash_attention_4`、`flash_attention_3`、`flash_attention_2`、`sage_attention`、`xformers`、`torch`。未设置时按此顺序自动选择第一个可用的实现，并在导入 `diffsynth` 时打印所选实现。自动选择的实现并不总是在所有 GPU 上最快，例如在 B200 等 Blackwell GPU 上 `flash_attention_2` 可能明显慢于 `torch`（PyTorch SDPA），如有需要请自行测速并覆盖。详见 [`./core/attention.md`](../API_Reference/core/attention.md).
 
 ## `DIFFSYNTH_DISK_MAP_BUFFER_SIZE`
 

@@ -28,7 +28,7 @@ Model download root directory. Can be set to any local path. If `local_model_pat
 
 ## `DIFFSYNTH_ATTENTION_IMPLEMENTATION`
 
-Attention mechanism implementation method. Can be set to `flash_attention_3`, `flash_attention_2`, `sage_attention`, `xformers`, or `torch`. See [`./core/attention.md`](../API_Reference/core/attention.md) for details.
+Attention mechanism implementation method. Can be set to `customized_fa_kernel`, `flash_attention_4`, `flash_attention_3`, `flash_attention_2`, `sage_attention`, `xformers`, or `torch`. If unset, the first available one in this order is used, and the selected implementation is printed when `diffsynth` is imported. The automatically selected implementation is not always the fastest on every GPU; for example, `flash_attention_2` can be much slower than `torch` (PyTorch SDPA) on Blackwell GPUs such as B200, so benchmark and override it if needed. See [`./core/attention.md`](../API_Reference/core/attention.md) for details.
 
 ## `DIFFSYNTH_DISK_MAP_BUFFER_SIZE`
 
