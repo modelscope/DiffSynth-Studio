@@ -409,7 +409,7 @@ def model_fn_qwen_image_21(
     control_scale=1.0,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
-    use_flex_attention=True,
+    use_flex_attention=False,
     **kwargs,
 ):
     latent_height, latent_width = latents.shape[2], latents.shape[3]

@@ -500,7 +500,7 @@ class QwenImage21DiT(nn.Module):
         control_scale: float = 1.0,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
-        use_flex_attention: bool = True,
+        use_flex_attention: bool = False,
     ) -> torch.Tensor:
         batch_size = hidden_states.shape[0]
         hidden_states = self.img_in(hidden_states)
