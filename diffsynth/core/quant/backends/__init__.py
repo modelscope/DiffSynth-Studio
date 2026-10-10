@@ -4,7 +4,6 @@ _LAZY_BACKENDS = {
     "bitsandbytes": ".bitsandbytes",
     "torchao": ".torchao",
     "comfy_kitchen": ".comfy_kitchen",
-    "minimax_h3_vdn_fp8": ".minimax_h3_vdn_fp8",
     "entropack": ".entropack",
 }
 _loaded = set()

@@ -17,7 +17,7 @@ from ..models.minimax_h3_text_encoder import (
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
 from ..models.minimax_h3_controlnet import MiniMaxH3ControlNet
-from ..models.minimax_h3_dit_vdn import MiniMaxH3DiTVDN, MiniMaxH3VDNLayout, enable_minimax_h3_vdn, enable_minimax_h3_vdn_fused
+from ..models.minimax_h3_dit_vdn import MiniMaxH3VDNLayout, enable_minimax_h3_vdn
 from ..utils.data.audio import convert_to_stereo, resample_waveform
 from ..utils.lora.minimax_h3 import MiniMaxH3LoRALoader
 
@@ -86,7 +86,6 @@ class MiniMaxH3Pipeline(BasePipeline):
         pipe.controlnet = model_pool.fetch_model("minimax_h3_controlnet")
         vdn_branch = model_pool.fetch_model("minimax_h3_vdn_linear_branch")
         if vdn_branch is not None:
-            # The branch is mounted onto the DiT in place; the loading container is spent.
             enable_minimax_h3_vdn(pipe.dit, vdn_branch)
         if processor_config is not None:
             processor_config.download_if_necessary()
@@ -134,8 +133,6 @@ class MiniMaxH3Pipeline(BasePipeline):
         progress_bar_cmd=tqdm,
         # Template inputs
         text_embedding: torch.Tensor = None,
-        # VDN hybrid attention
-        fp8: bool = False,
     ):
         """Generate a joint video + audio sample.
 
@@ -155,19 +152,9 @@ class MiniMaxH3Pipeline(BasePipeline):
                                     "audio": Tensor[C, L], "sample_rate": int}
 
         Input contract: `video` frame lists must ALREADY. be 24fps the pipeline never resamples frame rate.
-
-        A VDN DiT renders on its fused inference kernels, which are installed here. `fp8`
-        quantizes whichever DiT is loaded, and trades bitwise reproducibility for speed; it
-        is off by default.
         """
         self.scheduler.set_timesteps(num_inference_steps, shift=flow_shift)
         self.scheduler_audio.set_timesteps(num_inference_steps, shift=audio_flow_shift)
-        if isinstance(self.dit, MiniMaxH3DiTVDN):
-            enable_minimax_h3_vdn_fused(self.dit)
-        if fp8 and not getattr(self, "_fp8_converted", False):
-            from ..core.quant.config import QuantizeConfig
-            QuantizeConfig(method="minimax_h3_vdn_fp8").quantize_model(self.dit, compute_device=self.device)
-            self._fp8_converted = True
 
         inputs_posi = {"prompt": prompt}
         inputs_nega = {"negative_prompt": negative_prompt}
@@ -661,7 +648,7 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
         return torch.cat([torch.full((audio_t,), float(w_grid[0]), dtype=torch.float64),
                           torch.full((audio_rows - audio_t,), float(w_grid[-1]), dtype=torch.float64)])
 
-    def _build_packed_fl2va(self, text_len, latent_t, latent_h, latent_w, audio_t, keyframe_indices, audio_channel=2):
+    def _build_packed_fl2va(self, pipe, text_len, latent_t, latent_h, latent_w, audio_t, keyframe_indices, audio_channel=2):
         """fl2va layout: [text | cond | audio | video | pad]."""
         frame_rows = (latent_h // 2) * (latent_w // 2)
         video_rows = latent_t * frame_rows
@@ -708,14 +695,17 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
         token_tags[audio_sl] = 2
         token_tags[img_pos] = 0  # both cond and video rows are tagged as video (0)
 
+        if getattr(pipe.dit, "vdn_enabled", False):
+            layout = MiniMaxH3VDNLayout(
+                seq_len=used, video_start=video_sl.start, num_frames=latent_t, tokens_per_frame=frame_rows,
+                frame_height=latent_h // 2, frame_width=latent_w // 2, text_start=0, text_len=text_len,
+            )
+            for block in pipe.dit.blocks:
+                block.attn.layout = layout
         return {
             "img_pos": img_pos, "audio_pos": audio_pos, "text_pos": torch.arange(0, text_len),
             "img_position_ids": g[None], "token_tags": token_tags,
             "cu_seqlens": torch.tensor([0, used, seq_len], dtype=torch.int32), "seq_len": seq_len,
-            "vdn_layout": MiniMaxH3VDNLayout(
-                seq_len=used, video_start=video_sl.start, num_frames=latent_t, tokens_per_frame=frame_rows,
-                frame_height=latent_h // 2, frame_width=latent_w // 2, text_start=0, text_len=text_len,
-            ),
         }
 
     def _build_packed_ref2va(self, text_len, latent_t, latent_h, latent_w, audio_t, ref_blocks, audio_channel=2):
@@ -852,7 +842,7 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
         if ref_blocks is not None:
             packed = self._build_packed_ref2va(text_len, video_latent_t, latent_h, latent_w, audio_latent_t, ref_blocks)
         else:
-            packed = self._build_packed_fl2va(text_len, video_latent_t, latent_h, latent_w, audio_latent_t, keyframe_indices if keyframe_cond_anchor is not None else [])
+            packed = self._build_packed_fl2va(pipe, text_len, video_latent_t, latent_h, latent_w, audio_latent_t, keyframe_indices if keyframe_cond_anchor is not None else [])
 
         packed["token_tags"][packed["text_pos"]] = text_token_tags.cpu()
         if pipe.device == "mps":
@@ -1032,10 +1022,6 @@ def model_fn_minimax_h3(
 
     refiner_cu = torch.tensor([0, text_len, text_len], dtype=torch.int32, device=device)
 
-    vdn_layout = packed.get("vdn_layout")
-    if isinstance(dit, MiniMaxH3DiTVDN) and vdn_layout is None:
-        raise ValueError("MiniMaxH3DiTVDN requires a vdn_layout in `packed`; the ref2va layout is not supported by VDN")
-
     # ControlNet
     if control_rows is not None:
         control_residual = model_fn_minimax_h3_controlnet(
@@ -1064,7 +1050,7 @@ def model_fn_minimax_h3(
     else:
         control_hints = None
 
-    dit_kwargs = dict(
+    v_video_rows, v_audio_rows = dit(
         x=x,
         audio_x=audio_x,
         img_position_ids=packed["img_position_ids"],
@@ -1084,9 +1070,6 @@ def model_fn_minimax_h3(
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
         control_hints=control_hints,
     )
-    if vdn_layout is not None and isinstance(dit, MiniMaxH3DiTVDN):
-        dit_kwargs["vdn_layout"] = vdn_layout
-    v_video_rows, v_audio_rows = dit(**dit_kwargs)
 
     v_video_rows = v_video_rows[cond_rows_count:]
     v_audio_rows = v_audio_rows[ref_audio_rows_count:]

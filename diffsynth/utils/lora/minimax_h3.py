@@ -15,17 +15,16 @@ class MiniMaxH3LoRALoader(GeneralLoRALoader):
 
     @staticmethod
     def is_vdn_adapter(state_dict):
-        """A VDN artifact adapter (stage-b's `default`, stage-dmd's `turbo`): the same HF
-        spelling as lightx2v's, except that the wrapped backbone projections are named
-        `.attn.orig.*` and the adapter is named after itself."""
         for key in state_dict:
             if key.startswith("transformer_blocks.") and ".attn.orig.to_q.lora_A." in key:
                 return True
         return False
 
     def convert_state_dict(self, state_dict, suffix=".weight"):
-        if self.is_lightx2v_format(state_dict) or self.is_vdn_adapter(state_dict):
+        if self.is_lightx2v_format(state_dict):
             state_dict = MiniMaxH3LoRAConverter.align_to_diffsynth_format(state_dict)
+        elif self.is_vdn_adapter(state_dict):
+            state_dict = MiniMaxH3LoRAConverter.align_vdn_to_diffsynth_format(state_dict)
         return super().convert_state_dict(state_dict, suffix=suffix)
 
 
@@ -40,28 +39,92 @@ class MiniMaxH3LoRAConverter:
         return target_prefix
 
     @staticmethod
-    def _detect_adapter_name(state_dict):
+    def _pair(state_dict, prefix):
+        return (
+            state_dict[f"{prefix}.lora_A.default.weight"],
+            state_dict[f"{prefix}.lora_B.default.weight"],
+        )
+
+    @classmethod
+    def align_to_diffsynth_format(cls, state_dict):
+        converted = {}
+        prefixes = {
+            key.removesuffix(".lora_A.default.weight")
+            for key in state_dict
+            if key.endswith(".lora_A.default.weight")
+        }
+
+        attention_prefixes = sorted(
+            prefix.removesuffix(".to_q")
+            for prefix in prefixes
+            if prefix.endswith(".attn.to_q")
+        )
+        consumed = set()
+        for prefix in attention_prefixes:
+            pairs = [cls._pair(state_dict, f"{prefix}.to_{name}") for name in "qkv"]
+            ranks = {a.shape[0] for a, _ in pairs}
+            rank = ranks.pop()
+            out_features_set = {b.shape[0] for _, b in pairs}
+            out_features = out_features_set.pop()
+
+            a_fused = torch.cat([a for a, _ in pairs], dim=0)
+            b_fused = torch.zeros(
+                out_features * 3,
+                rank * 3,
+                dtype=pairs[0][1].dtype,
+                device=pairs[0][1].device,
+            )
+            heads = out_features // 128
+            for modality, (_, b) in enumerate(pairs):
+                rows = (
+                    torch.arange(out_features, device=b.device).reshape(heads, 128)
+                    + modality * 128
+                    + torch.arange(heads, device=b.device)[:, None] * 256
+                ).reshape(-1)
+                b_fused[rows, modality * rank : (modality + 1) * rank] = b
+
+            target = cls._source_prefix(prefix) + ".qkv_proj"
+            converted[target + ".lora_A.default.weight"] = a_fused
+            converted[target + ".lora_B.default.weight"] = b_fused
+            consumed.update(f"{prefix}.to_{name}" for name in "qkv")
+
+        for prefix in sorted(prefixes - consumed):
+            a, b = cls._pair(state_dict, prefix)
+            target = cls._source_prefix(prefix)
+            if target.endswith(".attn.to_out.0"):
+                target = target.removesuffix(".to_out.0") + ".out_proj"
+            elif target.endswith(".ff.net.0.proj"):
+                target = target.removesuffix(".ff.net.0.proj") + ".mlp.fc1"
+                up, gate = b.chunk(2, dim=0)
+                b = torch.cat([gate, up], dim=0)
+            elif target.endswith(".ff.net.2"):
+                target = target.removesuffix(".ff.net.2") + ".mlp.fc2"
+            else:
+                raise ValueError(f"Unsupported LoRA target: {prefix}")
+            converted[target + ".lora_A.default.weight"] = a
+            converted[target + ".lora_B.default.weight"] = b
+        return converted
+
+    @staticmethod
+    def _detect_vdn_adapter_name(state_dict):
         for key in state_dict:
             if ".lora_A." in key:
                 return key.split(".lora_A.")[1].split(".")[0]
         return "default"
 
     @classmethod
-    def _pair(cls, state_dict, prefix, adapter_name):
+    def _vdn_pair(cls, state_dict, prefix, adapter_name):
         return (
             state_dict[f"{prefix}.lora_A.{adapter_name}.weight"],
             state_dict[f"{prefix}.lora_B.{adapter_name}.weight"],
         )
 
     @classmethod
-    def align_to_diffsynth_format(cls, state_dict, adapter_name=None):
+    def align_vdn_to_diffsynth_format(cls, state_dict, adapter_name=None):
         if adapter_name is None:
-            adapter_name = cls._detect_adapter_name(state_dict)
+            adapter_name = cls._detect_vdn_adapter_name(state_dict)
 
         def base_prefix(prefix):
-            # VDN adapters spell the projections as `.attn.orig.*` -- that is what they
-            # saw inside the target library's attention wrapper. The backbone here keeps
-            # its own attention, so the destination drops the infix.
             return prefix.replace(".attn.orig.", ".attn.")
 
         a_suffix = f".lora_A.{adapter_name}.weight"
@@ -77,7 +140,7 @@ class MiniMaxH3LoRAConverter:
         converted = {}
         for prefix in attention_prefixes:
             src_root = base_to_found[prefix + ".to_q"].removesuffix(".to_q")
-            pairs = [cls._pair(state_dict, f"{src_root}.to_{name}", adapter_name) for name in "qkv"]
+            pairs = [cls._vdn_pair(state_dict, f"{src_root}.to_{name}", adapter_name) for name in "qkv"]
             ranks = {a.shape[0] for a, _ in pairs}
             rank = ranks.pop()
             out_features_set = {b.shape[0] for _, b in pairs}
@@ -105,7 +168,7 @@ class MiniMaxH3LoRAConverter:
             consumed.update(f"{src_root}.to_{name}" for name in "qkv")
 
         for src in sorted(found - consumed):
-            a, b = cls._pair(state_dict, src, adapter_name)
+            a, b = cls._vdn_pair(state_dict, src, adapter_name)
             target = cls._source_prefix(base_prefix(src))
             if target.endswith(".attn.to_out.0"):
                 target = target.removesuffix(".to_out.0") + ".out_proj"
