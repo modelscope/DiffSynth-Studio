@@ -1,3 +1,6 @@
+import os
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 import torch
 from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
 from diffsynth.utils.data.audio_video import write_video_audio
@@ -31,11 +34,14 @@ pipe.load_lora(pipe.dit, ModelConfig(model_id="OpenVDN/vdn-minimax-h3", origin_f
 pipe.load_lora(pipe.dit, ModelConfig(model_id="OpenVDN/vdn-minimax-h3", origin_file_pattern="stage-dmd-step-250/adapters/turbo/adapter_model.safetensors"))
 
 # Text -> Video + Audio
-prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
+prompt = """integrated_multimodal_description: [Shot 1] Live-action, cinematic, a bright medium shot frames a cheerful young woman with shoulder-length dark hair sitting at a tidy wooden desk in a sunlit study, a laptop open in front of her and a steaming mug of tea beside it. She scrolls and types with an easy rhythm, then pauses as her expression brightens into a delighted smile. The camera pushes in with small amplitude at slow speed while the young woman with a warm, clear voice (S1) looks up toward the camera and says with a happy laugh: <d>[English] I enjoy working with Diffsynth-Studio, it's a perfect framework.</d> [Shot 2] At 00:09.000, the camera cuts to a close-up of her hand setting the mug down beside the softly glowing laptop screen while her laughter carries over from the previous shot, and she leans back in her chair with a satisfied smile as the afternoon light drifts slowly across the desk.
+
+overall_soundscape: Quiet room ambience with soft keyboard clatter and a faint laptop fan hum. The mug taps lightly against the desk, followed by her cheerful laughter and the soft creak of the chair.
+
+non_diegetic_music: A gentle acoustic-guitar melody at a moderate tempo with light shaker percussion, resolving into a warm sustained chord as the video ends."""
 video, audio = pipe(
     prompt=prompt,
     height=768, width=1344, num_frames=345, num_inference_steps=8, seed=0,
-    # upstream 8nfe.yaml / turbo_num_steps: 8 model evaluations at 345 frames (14.4 s)
 )
 write_video_audio(
     video=video, audio=audio,
@@ -46,11 +52,16 @@ write_video_audio(
 dataset_snapshot_download(dataset_id="DiffSynth-Studio/diffsynth_example_dataset", local_dir="data/diffsynth_example_dataset", allow_file_pattern="minimax_h3/MiniMax-H3-FL2VA/*")
 first_frame = Image.open("data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA/first.png")
 last_frame = Image.open("data/diffsynth_example_dataset/minimax_h3/MiniMax-H3-FL2VA/last.png")
-prompt = "室内家庭争吵短剧场景，竖屏短剧质感，真实真人表演，中式家庭/小饭馆室内环境，暖色灯光，背景有红色装饰和书法字幅，浅景深，情绪强烈，剪辑节奏紧凑。表演要求：真实短剧表演风格，不要夸张舞台腔。男人的语气是愤怒、委屈、急切的反驳，他说“你到底想干什么？”；中老年女性的语气是尖锐、强势、咄咄逼人的质问，她说“你必须赔钱！”。两人之间有强烈对峙感，节奏逐步升级。画面风格：竖屏9:16，手机短剧质感，真人实拍感，浅景深，室内暖光，中近景为主，频繁正反打剪辑，背景保持生活化，不要科幻、不要古装、不要动画感。画面中不要出现任何字幕、文字、平台水印或贴片。 "
+prompt = """How the reference pictures align with the target video — Picture 1 (from Shot 1) aligns with the 0.00-second mark of the target video; Picture 2 (from Shot 2) aligns with the 14.38-second mark of the target video.
+
+integrated_multimodal_description: [Shot 1] Live-action, vertical mobile short-drama look, a medium close-up begins in the framing established by Picture 1: a young man in a dark jacket stands face to face with a middle-aged woman inside a warmly lit Chinese home restaurant, red decorations and a framed calligraphy scroll on the wall behind him, shallow depth of field. The camera holds a static shot as he tightens his jaw, his eyes reddening with a mix of anger and grievance, and the young man with an angry, aggrieved voice (S1) protests: <d>[Chinese] 你到底想干什么？</d> [Shot 2] At 00:07.500, the shot cuts to the reverse angle, a medium close-up of the middle-aged woman in a purple turtleneck and plaid coat with a younger woman standing out of focus behind her, while the man's final words carry over from the previous shot. She widens her eyes, leans forward, and points at him as the middle-aged woman with a sharp, forceful voice (S2) demands: <d>[Chinese] 你必须赔钱！</d> Her arm stays raised as the two hold their tense standoff, settling into the staging, pose, and composition established by Picture 2 at the end of the video.
+
+overall_soundscape: Indoor restaurant ambience with a low refrigerator hum, dishware clinking in a back kitchen, and tense footsteps on tile. Sharp breaths and the rustle of clothing punctuate the confrontation.
+
+non_diegetic_music: A sparse low-string drone at a slow tempo with occasional muffled percussion hits, rising in volume through the confrontation before cutting off sharply at the end."""
 video, audio = pipe(
     prompt=prompt,
-    height=832, width=480, num_frames=345, num_inference_steps=8, seed=0,
-    # upstream 8nfe.yaml / turbo_num_steps: 8 model evaluations at 345 frames (14.4 s)
+    height=1344, width=768, num_frames=345, num_inference_steps=8, seed=0,
     keyframes=[first_frame, last_frame], keyframe_indices=[0, -1],
 )
 write_video_audio(

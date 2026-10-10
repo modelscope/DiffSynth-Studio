@@ -2,6 +2,7 @@
 
 Ported from VDN-H3: https://github.com/OpenVDN/vdn-minimax-h3/blob/main/src/models/ops/fp8_linear.py
 """
+
 import torch
 import torch.nn as nn
 import triton
@@ -20,8 +21,7 @@ _PER_TENSOR = None
 def per_tensor_gemm():
     global _PER_TENSOR
     if _PER_TENSOR is None:
-        _PER_TENSOR = (torch.cuda.is_available()
-                       and torch.cuda.get_device_capability(0)[0] >= 10)
+        _PER_TENSOR = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 10
     return _PER_TENSOR
 
 
@@ -85,9 +85,7 @@ def quantize_tensor(x):
     _absmax_kernel[(triton.cdiv(n, 8192),)](x.view(-1), amax, n, BLOCK=8192, num_warps=8)
     scale = (amax / _FP8_MAX).clamp_min(1e-12).reshape(1, 1)
     y = torch.empty_like(x, dtype=FP8_DTYPE)
-    _cast_scaled_kernel[(triton.cdiv(n, 8192),)](
-        x.view(-1), y.view(-1), scale, n,
-        FP8_MAX=_FP8_MAX, BLOCK=8192, num_warps=8)
+    _cast_scaled_kernel[(triton.cdiv(n, 8192),)](x.view(-1), y.view(-1), scale, n, FP8_MAX=_FP8_MAX, BLOCK=8192, num_warps=8)
     return y, scale
 
 
@@ -99,8 +97,7 @@ class MiniMaxH3VdnFp8Linear(nn.Linear):
     dtype_guarded_tensor_names: tuple = ("weight_fp8", "weight_scale")
 
     def _apply(self, fn, recurse=True):
-        protected = {id(tensor) for name in self.dtype_guarded_tensor_names
-                     if (tensor := getattr(self, name, None)) is not None}
+        protected = {id(tensor) for name in self.dtype_guarded_tensor_names if (tensor := getattr(self, name, None)) is not None}
 
         def guard(tensor):
             converted = fn(tensor)
@@ -111,9 +108,9 @@ class MiniMaxH3VdnFp8Linear(nn.Linear):
         return super()._apply(guard, recurse)
 
     def __init__(self, linear: nn.Linear):
-        super().__init__(linear.in_features, linear.out_features,
-                         bias=linear.bias is not None,
-                         device=linear.weight.device, dtype=linear.weight.dtype)
+        super().__init__(
+            linear.in_features, linear.out_features, bias=linear.bias is not None, device=linear.weight.device, dtype=linear.weight.dtype
+        )
         weight = linear.weight.data
         if per_tensor_gemm():
             scale = (weight.abs().amax().float() / _FP8_MAX).clamp_min(1e-12)
@@ -134,9 +131,12 @@ class MiniMaxH3VdnFp8Linear(nn.Linear):
 
     def forward_quantized(self, x_fp8, x_scale, out_dtype=torch.bfloat16):
         out = torch._scaled_mm(
-            x_fp8, self.weight_fp8.t(),
-            scale_a=x_scale, scale_b=self.weight_scale,
-            out_dtype=out_dtype, use_fast_accum=True,
+            x_fp8,
+            self.weight_fp8.t(),
+            scale_a=x_scale,
+            scale_b=self.weight_scale,
+            out_dtype=out_dtype,
+            use_fast_accum=True,
         )
         if self.bias is not None:
             out = out + self.bias

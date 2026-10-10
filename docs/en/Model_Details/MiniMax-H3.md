@@ -89,62 +89,6 @@ The model weights are split into two partitions: the `FL2VA` partition serves te
 
 In addition, [PAI/MiniMax-H3-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/MiniMax-H3-Fun-Controlnet-Union) provides ControlNet-based conditional control, which is used together with the base weights of the `FL2VA` partition. By passing a control video (canny / depth / hed / mlsd / pose modes) through `control_video`, you can generate video and audio that follow the structural conditions.
 
-## VDN-Minimax-H3 (hybrid-attention acceleration)
-
-[OpenVDN/vdn-minimax-h3](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3) (VDN-H3) is a plug-and-play hybrid-attention accelerator for MiniMax H3. Every DiT block's attention is wrapped by two branches whose coverage is an exact partition of the sequence: a windowed softmax branch over the neighbouring VAE chunks, and a frame-wise DeltaNet linear-attention branch over everything the window cannot see. `load_lora` attaches the LoRA adapters at load time (hot-loaded outside the Linears by default, never written into the weights). The backbone, VAEs, text encoder and scheduler are identical to MiniMax H3, and the audio stream stays on the dense softmax path, so audio quality is inherited rather than approximated.
-
-Load the base `FL2VA` weights together with the `linear_branch` checkpoint; `MiniMaxH3Pipeline.from_pretrained` wraps the DiT automatically. **Both checkpoints ship a required LoRA**: Stage B trained the QKV/O LoRA jointly with the linear branch, so loading `linear_branch` alone does not give you the released stage-b model. The 50-step path loads `stage-b-step-2000/adapters/default`; the 8-step path loads both the `default` and `turbo` adapters of `stage-dmd-step-250` and runs with `num_inference_steps=8`. The backbone comes straight from the official `MiniMax/MiniMax-H3` `FL2VA` partition — there is no need to download `h3-base`.
-
-The window softmax and the fused kernels are **fixed implementations with no switch**; `fp8` is the only precision switch, configured at load time:
-
-* **The window softmax is `decomposed`, always**: it splits the window into dense rectangles, handing the window leg to a varlen kernel and the dense leg to cuDNN SDPA, so it needs **no BlockMask**. The varlen kernel resolves once per process — FA4's CuTe kernel on sm90 / sm100 / sm110, torch's own `varlen_attn` (the FA2 lineage, torch ≥ 2.13) on other cards or without `flash-attn-4`. It is the only implementation that scales to long clips: a BlockMask path materialises an O(S²) intermediate, and 345 frames at 768p is about 103k tokens, so it wants ~80 GiB and OOMs outright.
-* **The fused kernels are always on**: block pointwise ops, the FF SwiGLU, QK-norm+RoPE, the softmax gate, the linear epilogue and the Triton temporal conv. **Not bitwise** (inductor keeps the intermediates in fp32 and rounds once at the store, which is closer to fp32 than eager; the same-seed single-step velocity cosine is 0.99994); compiled per shape, so changing resolution or frame count recompiles once.
-* `fp8`: W8A8 float8_e4m3 quantization through `torch._scaled_mm` (rowwise activations + per-channel weights on sm90, per-tensor on both sides on sm100+). **Configured at load time**: give the DiT's and the linear branch's `ModelConfig` a `quantize=QuantizeConfig(method="minimax_h3_vdn_fp8")` each (the branch owns one wide Linear of its own); quantization runs layer by layer during the load and the quantized layers stay VRAM-managed. A quantized weight cannot absorb a merge, so the LoRA is hot-loaded outside the quantized GEMM — the framework's uniform handling for quantized models. **One-way and irreversible**. The quantized layers stay VRAM-managed, so the whole pipeline runs on the regular offload configuration like every other example. It changes the sample — not for the worse, but into a different sample of the same prompt; even repeated renders of one configuration are not byte-identical (h264 encoding itself is not deterministic), so do not rely on md5 comparisons.
-
-**Applicability**: the window is a fixed 15 latent frames, so the gain grows with clip length. Measured steady-state s/it on one H20 in bf16: 768×1344 × 345 frames base 140.15 → VDN 61.04 (**2.30×**), and → 43.81 (**3.20×**) with fp8 on top; 768×1344 × 124 frames 25.91 → 20.57 (1.26×); **480×832 × 124 frames stays a net loss** — even the fastest configuration needs 7.30 against dense's 6.92, 5% slower: at small resolutions attention is cheap to begin with, and the linear branch's fixed cost (per-frame statistics, the two scans, the gather, the readout) outweighs the saving. Upstream's release configuration is 345 frames (14.4 s), which is what the examples use.
-
-```python
-import torch
-from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
-from diffsynth.utils.data.audio_video import write_video_audio
-
-vram_config = {
-    "offload_dtype": torch.bfloat16,
-    "offload_device": "cpu",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-pipe = MiniMaxH3Pipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/text_encoder/model*.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/transformer/model*.safetensors", **vram_config),
-        ModelConfig(model_id="OpenVDN/vdn-minimax-h3", origin_file_pattern="stage-b-step-2000/linear_branch/model.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/video_vae/source/model.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
-    ],
-    processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
-)
-pipe.load_lora(pipe.dit, ModelConfig(model_id="OpenVDN/vdn-minimax-h3", origin_file_pattern="stage-b-step-2000/adapters/default/adapter_model.safetensors"))
-
-# Text -> Video + Audio
-prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
-video, audio = pipe(
-    prompt=prompt,
-    height=768, width=1344, num_frames=345, num_inference_steps=50, seed=0,
-)
-write_video_audio(
-    video=video, audio=audio,
-    output_path="vdn-t2va.mp4", fps=24, audio_sample_rate=32000,
-)
-```
-
 ## Model Inference
 
 The model is loaded via `MiniMaxH3Pipeline.from_pretrained`, see [Loading Models](../Pipeline_Usage/Model_Inference.md#loading-models) for details. Besides `model_configs`, the loading parameters include:
@@ -220,7 +164,7 @@ The input parameters for `MiniMaxH3Pipeline` inference include:
     )
     ```
 * `progress_bar_cmd`: Progress bar, defaults to `tqdm`. Set it to `lambda x: x` to disable the progress bar.
-* `fp8` is no longer a `pipe()` argument: quantization is configured through `ModelConfig(quantize=…)`; see the "VDN-Minimax-H3" section above for what it trades away. The window softmax and the fused kernels are fixed implementations with no switch.
+* `fp8` is no longer a `pipe()` argument: quantization is configured through `ModelConfig(quantize=…)`.
 
 The pipeline returns a `(video, audio)` tuple, where the video is a list of PIL images and the audio is a waveform tensor. Use `diffsynth.utils.data.audio_video.write_video_audio` to mux them into an MP4:
 

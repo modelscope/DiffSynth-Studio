@@ -89,62 +89,6 @@ write_video_audio(
 
 此外，[PAI/MiniMax-H3-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/MiniMax-H3-Fun-Controlnet-Union) 提供 ControlNet 条件控制能力，需配合 `FL2VA` 分区的基础权重使用。通过 `control_video` 传入控制视频（canny / depth / hed / mlsd / pose 等控制模式），即可生成与结构条件一致的视频与音频。
 
-## VDN-Minimax-H3（混合注意力加速）
-
-[OpenVDN/vdn-minimax-h3](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3)（VDN-H3）是 MiniMax H3 的即插即用混合注意力加速器。每个 DiT block 的注意力被两个分支包裹，二者的覆盖范围构成序列的精确划分：窗口 softmax 分支覆盖相邻的 VAE chunk，frame-wise DeltaNet 线性注意力分支覆盖窗口看不到的一切。LoRA adapter 在加载时由 `load_lora` 接入 backbone（默认以 hot-load 形式挂在 Linear 外侧，不写入权重）。backbone、VAE、文本编码器与调度器与 MiniMax H3 完全相同，且音频流仍走 dense softmax 路径，因此音频质量是继承而来而非近似。
-
-加载时把 `FL2VA` 基础权重与 `linear_branch` checkpoint 一起传入，`MiniMaxH3Pipeline.from_pretrained` 会自动包裹 DiT。**两个 checkpoint 都自带一个必需的 LoRA**：Stage B 联合训练了 QKV/O 投影上的 LoRA 与线性分支，因此只加载 `linear_branch` 得到的并不是发布的 stage-b 模型。50 步加载 `stage-b-step-2000/adapters/default`；8 步加载 `stage-dmd-step-250` 的 `default` 与 `turbo` 两个 adapter，并以 `num_inference_steps=8` 运行。基座权重直接取自官方 `MiniMax/MiniMax-H3` 的 `FL2VA` 分区，不需要下载 `h3-base`。
-
-窗口 softmax 与融合 kernel 都是**固定实现、不暴露开关**；`fp8` 是唯一的精度开关，在加载时配置：
-
-* **窗口 softmax 只有 `decomposed` 一种**：把窗口拆成若干 dense 矩形，窗口腿交给 varlen kernel、dense 腿交给 cuDNN SDPA，**不需要 BlockMask**。varlen kernel 按进程自动解析——sm90 / sm100 / sm110 上用 FlashAttention-4 的 CuTe kernel，其余卡或没装 `flash-attn-4` 时用 torch 自己的 `varlen_attn`（FA2 血统，需 torch ≥ 2.13）。这是唯一能在长片上跑的实现：走 BlockMask 的路径要建 O(S²) 中间量，345 帧 768p 的序列约 10.3 万 token，需要约 80 GiB，直接 OOM。
-* **融合 kernel 固定开启**：融合 block pointwise、FF SwiGLU、QK-norm+RoPE、softmax gate、linear epilogue 与 Triton 时间卷积。结果**非逐位**（inductor 把中间量留在 fp32、只在写回时舍入，方向上比 eager 更接近 fp32；同 seed 单步 velocity 的 cosine 0.99994）；按形状特化编译，切换分辨率或帧数会重新编译一次。
-* `fp8`：W8A8 float8_e4m3 量化，走 `torch._scaled_mm`（sm90 用 rowwise 激活 + per-channel 权重，sm100+ 两侧 per-tensor）。**在加载时配置**：给 DiT 与 linear branch 的 `ModelConfig` 各挂一个 `quantize=QuantizeConfig(method="minimax_h3_vdn_fp8")`（分支自带一个宽 Linear），量化在加载过程中逐层完成；量化层仍受 VRAM 管理，整个 pipeline 可以像其他示例一样跑统一的 offload 配置。量化权重无法吸收 merge，因此 LoRA 由 hot-load 挂在量化 GEMM 之外——这是框架对量化模型的统一处理。**单向不可逆**。它会改变采样结果——不是变差，而是同一 prompt 的另一个样本；实测同配置重复渲染也不逐位一致（h264 编码本身非确定），不要依赖 md5 复现。
-
-**适用边界**：窗口固定 15 个 latent 帧，收益随片长增长。H20 单卡 bf16 实测稳态 s/it：768×1344 × 345 帧 base 140.15 → VDN 61.04（**2.30×**），再叠 fp8 → 43.81（**3.20×**）；768×1344 × 124 帧 25.91 → 20.57（1.26×）；**480×832 × 124 帧仍是负收益**——最快的配置也要 7.30，比 dense 的 6.92 慢 5%：小分辨率下注意力本身很便宜，线性分支的固定开销（逐帧统计、双向扫描、gather、readout）反而超过节省。上游的发布配置是 345 帧（14.4 秒），示例脚本也用这个值。
-
-```python
-import torch
-from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
-from diffsynth.utils.data.audio_video import write_video_audio
-
-vram_config = {
-    "offload_dtype": torch.bfloat16,
-    "offload_device": "cpu",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cpu",
-    "preparing_dtype": torch.bfloat16,
-    "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16,
-    "computation_device": "cuda",
-}
-pipe = MiniMaxH3Pipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    model_configs=[
-        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/text_encoder/model*.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/transformer/model*.safetensors", **vram_config),
-        ModelConfig(model_id="OpenVDN/vdn-minimax-h3", origin_file_pattern="stage-b-step-2000/linear_branch/model.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/video_vae/source/model.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
-    ],
-    processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
-)
-pipe.load_lora(pipe.dit, ModelConfig(model_id="OpenVDN/vdn-minimax-h3", origin_file_pattern="stage-b-step-2000/adapters/default/adapter_model.safetensors"))
-
-# Text -> Video + Audio
-prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
-video, audio = pipe(
-    prompt=prompt,
-    height=768, width=1344, num_frames=345, num_inference_steps=50, seed=0,
-)
-write_video_audio(
-    video=video, audio=audio,
-    output_path="vdn-t2va.mp4", fps=24, audio_sample_rate=32000,
-)
-```
-
 ## 模型推理
 
 模型通过 `MiniMaxH3Pipeline.from_pretrained` 加载，详见[加载模型](../Pipeline_Usage/Model_Inference.md#加载模型)。加载时除 `model_configs` 外还包括：
@@ -220,7 +164,7 @@ write_video_audio(
     )
     ```
 * `progress_bar_cmd`: 进度条，默认为 `tqdm`。可通过设置为 `lambda x: x` 来屏蔽进度条。
-* `fp8` 已不是 `pipe()` 参数：量化在 `ModelConfig(quantize=…)` 中配置，含义与取舍见前文“VDN-Minimax-H3”一节。窗口 softmax 与融合 kernel 是固定实现，没有开关。
+* `fp8` 已不是 `pipe()` 参数：量化在 `ModelConfig(quantize=…)` 中配置。
 
 Pipeline 返回 `(video, audio)` 二元组，视频为 PIL 图像列表，音频为波形张量，可通过 `diffsynth.utils.data.audio_video.write_video_audio` 混流写出 MP4：
 

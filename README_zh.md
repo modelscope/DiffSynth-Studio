@@ -41,6 +41,8 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年10月10日** 我们已支持 [VDN-Minimax-H3](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3)，为 MiniMax-H3 提供混合注意力加速，支持 bf16 与 FP8 推理。详情请参考[示例代码](/examples/minimax_h3/)。
+
 - **2026年9月29日** 我们开源了 EntroPack——面向 PyTorch 的通用张量压缩库，支持逐位精确恢复的无损压缩和按目标码率控制体积的有损压缩，并提供 GPU 编解码能力。它已作为量化后端接入 DiffSynth-Studio，可在推理与 LoRA 训练中按任意目标码率压缩模型权重。更多信息请参考：
 
   * 项目主页：https://github.com/modelscope/entropack
