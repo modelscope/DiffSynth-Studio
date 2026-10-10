@@ -41,6 +41,8 @@ See also:
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
+- **October 10, 2026** We have added support for [VDN-Minimax-H3](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3), a hybrid attention accelerator for MiniMax-H3, supporting bf16 and FP8 inference. For details, please refer to the [example code](/examples/minimax_h3/).
+
 - **September 29, 2026** We are excited to open-source EntroPack, a general-purpose tensor compression library for PyTorch that provides lossless compression with exact recovery and rate-controlled lossy compression, with GPU encoding and decoding. It is integrated into DiffSynth-Studio as a quantization backend, compressing model weights at arbitrary target bitrates in both inference and LoRA training. For more information, please refer to:
 
   * Project Page: https://github.com/modelscope/entropack
