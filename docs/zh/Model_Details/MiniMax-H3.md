@@ -164,7 +164,6 @@ write_video_audio(
     )
     ```
 * `progress_bar_cmd`: 进度条，默认为 `tqdm`。可通过设置为 `lambda x: x` 来屏蔽进度条。
-* `fp8` 已不是 `pipe()` 参数：量化在 `ModelConfig(quantize=…)` 中配置。
 
 Pipeline 返回 `(video, audio)` 二元组，视频为 PIL 图像列表，音频为波形张量，可通过 `diffsynth.utils.data.audio_video.write_video_audio` 混流写出 MP4：
 

@@ -164,7 +164,6 @@ The input parameters for `MiniMaxH3Pipeline` inference include:
     )
     ```
 * `progress_bar_cmd`: Progress bar, defaults to `tqdm`. Set it to `lambda x: x` to disable the progress bar.
-* `fp8` is no longer a `pipe()` argument: quantization is configured through `ModelConfig(quantize=…)`.
 
 The pipeline returns a `(video, audio)` tuple, where the video is a list of PIL images and the audio is a waveform tensor. Use `diffsynth.utils.data.audio_video.write_video_audio` to mux them into an MP4:
 
