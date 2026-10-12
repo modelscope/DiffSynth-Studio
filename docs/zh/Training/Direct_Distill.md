@@ -1,27 +1,10 @@
-# 端到端的蒸馏加速训练
+# 端到端直接蒸馏加速（已停止维护）
 
-## 蒸馏加速训练
+（现阶段，我们强烈建议开发者使用 OPD 进行蒸馏加速训练，本文档中的内容仅用于科研用途。）
 
-Diffusion 模型的推理过程通常需要多步迭代，在提升生成效果的同时也让生成过程变得缓慢。通过蒸馏加速训练，可以减少生成清晰内容所需的步数。蒸馏加速训练技术的本质训练目标是让少量步数的生成效果与大量步数的生成效果对齐。
+## 算法原理
 
-蒸馏加速训练的方法是多样的，例如
-
-* 对抗式训练 ADD（Adversarial Diffusion Distillation）
-    * 论文：https://arxiv.org/abs/2311.17042
-    * 模型：[stabilityai/sdxl-turbo](https://modelscope.cn/models/stabilityai/sdxl-turbo)
-* 渐进式训练 Hyper-SD
-    * 论文：https://arxiv.org/abs/2404.13686
-    * 模型：[ByteDance/Hyper-SD](https://www.modelscope.cn/models/ByteDance/Hyper-SD)
-
-## 直接蒸馏
-
-在训练框架层面，支持这类蒸馏加速训练方案是极其困难的。在训练框架的设计中，我们需要保证训练方案满足以下条件：
-
-* 通用性：训练方案适用于大多数框架内支持的 Diffusion 模型，而非只能对某个特定模型生效，这是代码框架建设的基本要求。
-* 稳定性：训练方案需保证训练效果稳定，不需要人工进行精细的参数调整，ADD 中的对抗式训练则无法保证稳定性。
-* 简洁性：训练方案不会引入额外的复杂模块，根据奥卡姆剃刀（[Occam's Razor](https://en.wikipedia.org/wiki/Occam%27s_razor)）原理，复杂解决方案可能引入潜在风险，Hyper-SD 中的 Human Feedback Learning 让训练过程变得过于复杂。
-
-因此，在 `DiffSynth-Studio` 的训练框架中，我们设计了一个端到端的蒸馏加速训练方案，我们称为直接蒸馏（Direct Distill），其训练过程的伪代码如下：
+在 `DiffSynth-Studio` 的训练框架中，我们设计了一个端到端的蒸馏加速训练方案，我们称为直接蒸馏（Direct Distill），其训练过程的伪代码如下：
 
 ```
 seed = xxx
@@ -87,11 +70,3 @@ bash examples/qwen_image/model_training/lora/Qwen-Image-Distill-LoRA.sh
 ```
 
 请注意，在[训练脚本参数](../Pipeline_Usage/Model_Training.md#脚本参数)中，数据集的图像分辨率设置要避免触发缩放处理。当设定 `--height` 和 `--width` 以启用固定分辨率时，所有训练数据必须是以完全一致的宽高生成的；当设定 `--max_pixels` 以启用动态分辨率时，`--max_pixels` 的数值必须大于或等于任一训练图像的像素面积。
-
-## 训练框架设计思路
-
-直接蒸馏与[标准监督训练](../Training/Supervised_Fine_Tuning.md)相比，仅训练的损失函数不同，直接蒸馏的损失函数是 `diffsynth.diffusion.loss` 中的 `DirectDistillLoss`。
-
-## 未来工作
-
-直接蒸馏是通用性很强的加速方案，但未必是效果最好的方案，所以我们暂未把这一技术以论文的形式发布。我们希望把这个问题交给学术界和开源社区共同解决，期待开发者能够给出更完善的通用训练方案。
