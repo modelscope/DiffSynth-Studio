@@ -41,6 +41,8 @@ See also:
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
+- **October 12, 2026** We now support distillation accelerated training based on OPD (On-Policy Distillation), which enables distillation acceleration of models at an extremely low cost. For details, please refer to [Distillation Accelerated Training](/docs/en/Training/Distillation.md).
+
 - **September 29, 2026** We are excited to open-source EntroPack, a general-purpose tensor compression library for PyTorch that provides lossless compression with exact recovery and rate-controlled lossy compression, with GPU encoding and decoding. It is integrated into DiffSynth-Studio as a quantization backend, compressing model weights at arbitrary target bitrates in both inference and LoRA training. For more information, please refer to:
 
   * Project Page: https://github.com/modelscope/entropack
