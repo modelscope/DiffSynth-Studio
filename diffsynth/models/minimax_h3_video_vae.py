@@ -436,10 +436,11 @@ class MiniMaxH3VideoVAE(nn.Module):
             result_rows.append(torch.cat(result_row, dim=-1))
         return torch.cat(result_rows, dim=-2)
 
-    def encode_temporal(self, x):
+    def encode_temporal(self, x, tiled=True):
         if x.shape[2] % self.clip_length != 0:
             x = torch.cat([x, x[:, :, -1:].repeat(1, 1, (-x.shape[2]) % self.clip_length, 1, 1)], dim=2)
-        z = torch.cat([self.tiled_encode(x[:, :, i * self.clip_length:(i + 1) * self.clip_length]) for i in range(x.shape[2] // self.clip_length)], dim=2)
+        encode_fn = self.tiled_encode if tiled else self.encode
+        z = torch.cat([encode_fn(x[:, :, i * self.clip_length:(i + 1) * self.clip_length]) for i in range(x.shape[2] // self.clip_length)], dim=2)
         return z[:, :, :-self.token_drop] if self.token_drop > 0 else z
 
     def _decode_temporal_pad_frames(self, z, pad_tokens):
@@ -466,7 +467,7 @@ class MiniMaxH3VideoVAE(nn.Module):
         pad_frames = self._decode_temporal_pad_frames(z, pad_tokens)
         return int(total_frames), int(pad_frames), int(total_frames - pad_frames)
 
-    def _decode_temporal_streaming(self, z, num_chunks, pad_tokens):
+    def _decode_temporal_streaming(self, z, num_chunks, pad_tokens, tiled=True):
         total_frames, pad_frames, output_frames = self._decode_temporal_output_frame_plan(z, num_chunks, pad_tokens)
         chunk_dec = self.tokens_chunk_size * self.vae_ratio_t
         split_count = int(self.token_drop > 0) + 1
@@ -486,9 +487,10 @@ class MiniMaxH3VideoVAE(nn.Module):
                 write_pos += copy
             dropped_frames += pf - copy
 
+        decode_fn = self.tiled_decode if tiled else self.decode
         for i in range(num_chunks):
             t_start = i * self.tokens_chunk_size
-            clip_dec = self.tiled_decode(z[:, :, t_start:t_start + self.tokens_chunk_size + self.token_overlap])
+            clip_dec = decode_fn(z[:, :, t_start:t_start + self.tokens_chunk_size + self.token_overlap])
             if clip_dec.device != z.device: clip_dec = clip_dec.to(z.device)
             for j in range(split_count):
                 f_start = j * chunk_dec
@@ -509,14 +511,14 @@ class MiniMaxH3VideoVAE(nn.Module):
             raise RuntimeError(f"decode_temporal frame plan mismatch: logical={logical_frames} total={total_frames} dropped={dropped_frames} pad={pad_frames} pos={write_pos} out={output_frames}")
         return dec
 
-    def decode_temporal(self, z):
+    def decode_temporal(self, z, tiled=True):
         pseudo_total = z.shape[2] + self.token_drop
         pad_tokens = (self.tokens_chunk_size - pseudo_total % self.tokens_chunk_size) % self.tokens_chunk_size
         pseudo_total += pad_tokens
         num_chunks = pseudo_total // self.tokens_chunk_size - int(self.token_drop > 0)
         if pad_tokens > 0:
             z = torch.cat([z, z[:, :, -1:].repeat(1, 1, pad_tokens, 1, 1)], dim=2)
-        return self._decode_temporal_streaming(z, num_chunks, pad_tokens)
+        return self._decode_temporal_streaming(z, num_chunks, pad_tokens, tiled=tiled)
 
     @torch.no_grad()
     def encode_video(self, video, dtype=None, process_image=False, tiled=True, tile_size=256, tile_overlap=64):
@@ -526,9 +528,9 @@ class MiniMaxH3VideoVAE(nn.Module):
         if x.ndim == 4:
             x = x.unsqueeze(2)
         if process_image:
-            moments = self.tiled_encode(x)
+            moments = self.tiled_encode(x) if tiled else self.encode(x)
         else:
-            moments = self.encode_temporal(x)
+            moments = self.encode_temporal(x, tiled=tiled)
         z = torch.chunk(moments, 2, dim=1)[0]
         if process_image:
             z = z[:, :, :1]
@@ -544,10 +546,10 @@ class MiniMaxH3VideoVAE(nn.Module):
         z = (latents.to(device, torch.float32) * std + mean).to(dtype or out_dtype)
         self.tile_size, self.tile_overlap_min = tile_size, tile_overlap
         if process_image:
-            recon = self.tiled_decode(z)
+            recon = self.tiled_decode(z) if tiled else self.decode(z)
             recon = recon.squeeze(2)
         else:
-            recon = self.decode_temporal(z)
+            recon = self.decode_temporal(z, tiled=tiled)
         return self.processor.revert_tensor(recon.float()).to(out_dtype)
 
 
