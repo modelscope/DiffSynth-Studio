@@ -75,6 +75,7 @@ def add_offload_training_config(parser: argparse.ArgumentParser):
     parser.add_argument("--enable_model_cpu_offload", default=False, action="store_true", help="Enable layer offload training. Weights are kept on CPU and loaded to GPU one layer at a time.")
     parser.add_argument("--enable_optimizer_cpu_offload", default=False, action="store_true", help="When --enable_model_cpu_offload is enabled, run optimizer on CPU. All params are offloaded to CPU. Default is False (trainable params stay on GPU, optimizer on GPU).")
     parser.add_argument("--cpu_offload_split_threshold", type=int, default=None, help="Experimental! When --enable_model_cpu_offload is enabled, modules with total params above this threshold (in MB) are recursively split into children. None means offload every leaf module directly. Default: None.")
+    parser.add_argument("--enable_fsdp", default=False, action="store_true", help="Enable FSDP2 (fully_shard) training for multi-card full fine-tuning. Model blocks are sharded across ranks; optimizer states are offloaded to CPU. Mutually exclusive with --enable_model_cpu_offload.")
     return parser
 
 def add_logger_config(parser: argparse.ArgumentParser):
