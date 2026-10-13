@@ -691,12 +691,13 @@ class WanVideoUnit_VACE(PipelineUnit):
             if vace_video is None:
                 vace_video = torch.zeros((1, 3, num_frames, height, width), dtype=pipe.torch_dtype, device=pipe.device)
             else:
-                vace_video = pipe.preprocess_video(vace_video)
+                # Frames beyond `num_frames` would produce more VACE tokens than the video latents.
+                vace_video = pipe.preprocess_video([vace_video[i] for i in range(min(len(vace_video), num_frames))])
             
             if vace_video_mask is None:
                 vace_video_mask = torch.ones_like(vace_video)
             else:
-                vace_video_mask = pipe.preprocess_video(vace_video_mask, min_value=0, max_value=1)
+                vace_video_mask = pipe.preprocess_video([vace_video_mask[i] for i in range(min(len(vace_video_mask), num_frames))], min_value=0, max_value=1)
             
             inactive = vace_video * (1 - vace_video_mask) + 0 * vace_video_mask
             reactive = vace_video * vace_video_mask + 0 * (1 - vace_video_mask)
