@@ -459,7 +459,6 @@ class WanModel(torch.nn.Module):
                         activation=activation,
                         batch_first=True,
                         rotary=rotary,
-                        device='cuda',
                     )
                 )
         if wantodance_enable_unimodel:
