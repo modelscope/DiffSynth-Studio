@@ -328,21 +328,37 @@ class BasePipeline(torch.nn.Module):
         return vram_management_enabled
     
     
+    def load_temporary_lora(self, state_dict):
+        # Always hot-load: a fused LoRA cannot be removed again and would be added to the
+        # base weights once more at every denoising step.
+        model = self.enable_lora_hot_loading(self.dit)
+        lora_lengths = {module: len(module.lora_A_weights) for module in model.modules() if isinstance(module, LoRAHotLoadMixin)}
+        self.load_lora(model, state_dict=state_dict, hotload=True, verbose=0)
+        return lora_lengths
+
+
+    def clear_temporary_lora(self, lora_lengths):
+        # Remove only the LoRA added by `load_temporary_lora`; keep the LoRAs loaded by the user.
+        for module, length in lora_lengths.items():
+            del module.lora_A_weights[length:]
+            del module.lora_B_weights[length:]
+
+
     def cfg_guided_model_fn(self, model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, **inputs_others):
         # Positive side forward
         if inputs_shared.get("positive_only_lora", None) is not None:
-            self.load_lora(self.dit, state_dict=inputs_shared["positive_only_lora"], verbose=0)
+            lora_lengths = self.load_temporary_lora(inputs_shared["positive_only_lora"])
         noise_pred_posi = model_fn(**inputs_posi, **inputs_shared, **inputs_others)
         if inputs_shared.get("positive_only_lora", None) is not None:
-            self.clear_lora(verbose=0)
+            self.clear_temporary_lora(lora_lengths)
             
         if cfg_scale != 1.0:
             # Negative side forward
             if inputs_shared.get("negative_only_lora", None) is not None:
-                self.load_lora(self.dit, state_dict=inputs_shared["negative_only_lora"], verbose=0)
+                lora_lengths = self.load_temporary_lora(inputs_shared["negative_only_lora"])
             noise_pred_nega = model_fn(**inputs_nega, **inputs_shared, **inputs_others)
             if inputs_shared.get("negative_only_lora", None) is not None:
-                self.clear_lora(verbose=0)
+                self.clear_temporary_lora(lora_lengths)
             
             if isinstance(noise_pred_posi, tuple):
                 # Separately handling different output types of latents, eg. video and audio latents.
