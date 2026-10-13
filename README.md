@@ -372,6 +372,21 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 <details>
 
+<summary>EntroPack: A General-Purpose Tensor Compression Library for PyTorch</summary>
+
+> Compress model weights at arbitrary target bitrates with GPU encoding and decoding, and run the compressed weights directly in inference and LoRA training.
+
+* Project Page: [GitHub](https://github.com/modelscope/entropack)
+* Technical Report: https://arxiv.org/abs/2609.34185
+* Pre-quantized Models: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/EntroPackPreQuants)
+* Documentation: [English Version](/docs/en/Pipeline_Usage/Quantization.md) | [Chinese Version](/docs/zh/Pipeline_Usage/Quantization.md)
+* Example Code: [Z-Image-Turbo](/examples/z_image/model_inference_low_vram/Z-Image-Turbo-EntroPack.py), [Qwen-Image-2.1](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-EntroPack.py), [MiniMax-H3](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-EntroPack.py), [LoRA Training Example](/examples/z_image/model_training/special/quant_training/Z-Image-Turbo-entropack_lossy_quant.sh)
+
+</details>
+
+
+<details>
+
 <summary>TreeAdapter: A Model System Built from Structured LoRAs</summary>
 
 > A model system composed of 10,000+ LoRAs challenges the precise generation of tens of thousands of rare species.
@@ -637,6 +652,10 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 | MiniMax-H3 | [lightx2v/Minimax-h3-Turbo: FL2VA 4steps](https://www.modelscope.cn/models/lightx2v/Minimax-h3-Turbo) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA-Turbo.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA-Turbo.py) | - | - | - | - |
 | MiniMax-H3 | [DiffSynth-Studio/MiniMax-H3-Text-Embeddings](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Text-Embeddings) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Text-Embeddings.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Text-Embeddings.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-Text-Embeddings.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Text-Embeddings.py) | - | - |
 | MiniMax-H3 | [PAI/MiniMax-H3-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/MiniMax-H3-Fun-Controlnet-Union) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Fun-Controlnet-Union.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Fun-Controlnet-Union.py) | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-Fun-Controlnet-Union.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Fun-Controlnet-Union.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Fun-Controlnet-Union.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Fun-Controlnet-Union.py) |
+| MiniMax-H3 | [OpenVDN/vdn-minimax-h3: VDN-H3 50 steps](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-VDN-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-VDN-FL2VA.py) | - | - | - | - |
+| MiniMax-H3 | [OpenVDN/vdn-minimax-h3: VDN-H3 8 steps](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-VDN-Turbo-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-VDN-Turbo-FL2VA.py) | - | - | - | - |
+| MiniMax-H3 | [OpenVDN/vdn-minimax-h3: VDN-H3 FP8](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-VDN-FP8-FL2VA.py) | - | - | - | - | - |
+| MiniMax-H3 | [OpenVDN/vdn-minimax-h3: VDN-H3 8 steps FP8](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-VDN-Turbo-FP8-FL2VA.py) | - | - | - | - | - |
 | LingBot-Video | [Robbyant/lingbot-video-dense-1.3b: T2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) | [code](/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2v.py) | [code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2v.py) | [code](/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_t2v.sh) | [code](/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_t2v.py) | [code](/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_t2v.sh) | [code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_t2v.py) |
 | LingBot-Video | [Robbyant/lingbot-video-dense-1.3b: TI2V](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) | [code](/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_ti2v.py) | [code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_ti2v.py) | [code](/examples/lingbot_video/model_training/full/lingbot-video-dense-1.3b_ti2v.sh) | [code](/examples/lingbot_video/model_training/validate_full/lingbot-video-dense-1.3b_ti2v.py) | [code](/examples/lingbot_video/model_training/lora/lingbot-video-dense-1.3b_ti2v.sh) | [code](/examples/lingbot_video/model_training/validate_lora/lingbot-video-dense-1.3b_ti2v.py) |
 | LingBot-Video | [Robbyant/lingbot-video-dense-1.3b: T2I](https://modelscope.cn/models/Robbyant/lingbot-video-dense-1.3b) | [code](/examples/lingbot_video/model_inference/lingbot-video-dense-1.3b_t2i.py) | [code](/examples/lingbot_video/model_inference_low_vram/lingbot-video-dense-1.3b_t2i.py) | - | - | - | - |
