@@ -10,7 +10,6 @@ import torch.nn.functional as F
 
 from ..core.attention.attention import FLASH_ATTN_4_AVAILABLE
 from .minimax_h3_dit import MiniMaxH3Attention, _sdpa_varlen_attention
-from . import minimax_h3_dit_vdn_fp8
 
 MINIMAX_H3_VDN_TEXT_STATE_SCALE = 0.5
 MINIMAX_H3_VDN_ANCHOR_FRAME_MODES = ("none", "columns", "rows", "both")
@@ -813,3 +812,11 @@ def enable_minimax_h3_vdn(dit, vdn_branch, **vdn_kwargs):
         attach_minimax_h3_vdn(block.attn, vdn_branch.blocks[index].attn, **vdn_kwargs)
     dit.vdn_enabled = True
     return dit
+
+
+def initialize_vdn():
+    try:
+        import triton  # noqa: F401
+    except ImportError as e:
+        raise ImportError("VDN inference requires `triton`; install it (e.g. `pip install triton`) and retry.") from e
+    from . import minimax_h3_dit_vdn_fp8  # noqa: F401

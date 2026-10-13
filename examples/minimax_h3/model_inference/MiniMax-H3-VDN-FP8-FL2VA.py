@@ -3,12 +3,13 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import torch
 from diffsynth.core.quant import QuantizeConfig
-from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
+from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig, initialize_vdn
 from diffsynth.utils.data.audio_video import write_video_audio
 from modelscope import dataset_snapshot_download
 from PIL import Image
 
 # FP8 quantization requires a GPU with native FP8 support (sm90+).
+initialize_vdn()
 fp8 = QuantizeConfig(method="minimax_h3_vdn_fp8")
 vram_config = {
     "offload_dtype": torch.bfloat16,

@@ -17,7 +17,7 @@ from ..models.minimax_h3_text_encoder import (
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
 from ..models.minimax_h3_controlnet import MiniMaxH3ControlNet
-from ..models.minimax_h3_dit_vdn import MiniMaxH3VDNLayout, enable_minimax_h3_vdn
+from ..models.minimax_h3_dit_vdn import MiniMaxH3VDNLayout, enable_minimax_h3_vdn, initialize_vdn
 from ..utils.data.audio import convert_to_stereo, resample_waveform
 from ..utils.lora.minimax_h3 import MiniMaxH3LoRALoader
 
