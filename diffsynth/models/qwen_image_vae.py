@@ -706,7 +706,57 @@ class QwenImageVAE(torch.nn.Module):
         self.mean = torch.tensor(mean).view(1, 16, 1, 1, 1)
         self.std = 1 / torch.tensor(std).view(1, 16, 1, 1, 1)
 
-    def encode(self, x, **kwargs):
+    def build_1d_mask(self, length, left_bound, right_bound, border_width):
+        x = torch.ones((length,))
+        if border_width == 0:
+            # Tiles don't overlap, so there is nothing to blend.
+            return x
+        if not left_bound:
+            x[:border_width] = (torch.arange(border_width) + 1) / border_width
+        if not right_bound:
+            x[-border_width:] = torch.flip((torch.arange(border_width) + 1) / border_width, dims=(0,))
+        return x
+
+    def build_mask(self, data, is_bound, border_width):
+        _, _, H, W = data.shape
+        h = self.build_1d_mask(H, is_bound[0], is_bound[1], border_width[0])
+        w = self.build_1d_mask(W, is_bound[2], is_bound[3], border_width[1])
+        mask = torch.minimum(h[:, None].expand(H, W), w[None, :].expand(H, W))
+        return mask[None, None]
+
+    def tiled_forward(self, forward_fn, x, tile_size, tile_stride, input_scale, output_scale):
+        # `tile_size` and `tile_stride` are measured in latent pixels, the same as `WanVideoVAE`.
+        # Latent pixel `i` covers input pixels `[i * input_scale, (i + 1) * input_scale)`
+        # and output pixels `[i * output_scale, (i + 1) * output_scale)`.
+        size_h, size_w = tile_size if isinstance(tile_size, (tuple, list)) else (tile_size, tile_size)
+        stride_h, stride_w = tile_stride if isinstance(tile_stride, (tuple, list)) else (tile_stride, tile_stride)
+        if not (0 < stride_h <= size_h and 0 < stride_w <= size_w):
+            raise ValueError(f"`tile_stride` must be positive and not larger than `tile_size`, got tile_size={tile_size} and tile_stride={tile_stride}.")
+        B, _, H, W = x.shape
+        H, W = H // input_scale, W // input_scale
+
+        tasks = []
+        for h in range(0, H, stride_h):
+            if (h - stride_h >= 0 and h - stride_h + size_h >= H): continue
+            for w in range(0, W, stride_w):
+                if (w - stride_w >= 0 and w - stride_w + size_w >= W): continue
+                tasks.append((h, min(h + size_h, H), w, min(w + size_w, W)))
+
+        values = None
+        weight = torch.zeros((1, 1, H * output_scale, W * output_scale), dtype=x.dtype, device=x.device)
+        border_width = ((size_h - stride_h) * output_scale, (size_w - stride_w) * output_scale)
+        for h, h_, w, w_ in tasks:
+            y = forward_fn(x[:, :, h * input_scale: h_ * input_scale, w * input_scale: w_ * input_scale])
+            if values is None:
+                values = torch.zeros((B, y.shape[1], H * output_scale, W * output_scale), dtype=y.dtype, device=y.device)
+            mask = self.build_mask(y, is_bound=(h == 0, h_ >= H, w == 0, w_ >= W), border_width=border_width).to(dtype=x.dtype, device=x.device)
+            values[:, :, h * output_scale: h_ * output_scale, w * output_scale: w_ * output_scale] += y * mask
+            weight[:, :, h * output_scale: h_ * output_scale, w * output_scale: w_ * output_scale] += mask
+        return values / weight
+
+    def encode(self, x, tiled=False, tile_size=128, tile_stride=64, **kwargs):
+        if tiled:
+            return self.tiled_forward(self.encode, x, tile_size, tile_stride, input_scale=8, output_scale=1)
         x = x.unsqueeze(2)
         x = self.encoder(x)
         x = self.quant_conv(x)
@@ -716,7 +766,9 @@ class QwenImageVAE(torch.nn.Module):
         x = x.squeeze(2)
         return x
     
-    def decode(self, x, **kwargs):
+    def decode(self, x, tiled=False, tile_size=128, tile_stride=64, **kwargs):
+        if tiled:
+            return self.tiled_forward(self.decode, x, tile_size, tile_stride, input_scale=1, output_scale=8)
         x = x.unsqueeze(2)
         mean, std = self.mean.to(dtype=x.dtype, device=x.device), self.std.to(dtype=x.dtype, device=x.device)
         x = x / std + mean

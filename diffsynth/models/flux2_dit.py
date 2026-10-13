@@ -452,6 +452,7 @@ class Flux2Attention(torch.nn.Module):
         if kv_cache is not None:
             key = torch.concat([key, kv_cache[0]], dim=1)
             value = torch.concat([value, kv_cache[1]], dim=1)
+        query, key = query.to(value.dtype), key.to(value.dtype)
         hidden_states = attention_forward(
             query,
             key,
@@ -551,6 +552,7 @@ class Flux2ParallelSelfAttention(torch.nn.Module):
         if kv_cache is not None:
             key = torch.concat([key, kv_cache[0]], dim=1)
             value = torch.concat([value, kv_cache[1]], dim=1)
+        query, key = query.to(value.dtype), key.to(value.dtype)
         hidden_states = attention_forward(
             query,
             key,
