@@ -75,7 +75,7 @@ infiniteyou = [
     "facexlib"
 ]
 ses = [
-    "pywt"
+    "PyWavelets"
 ]
 nexusgen = [
     "qwen_vl_utils",
@@ -101,3 +101,21 @@ all = [
 
 [tool.setuptools]
 include-package-data = true
+
+# uv resolves all extras together, so the CPU-only torch pinned by the `npu` extra needs the PyTorch CPU index.
+# pip users pass `--extra-index-url https://download.pytorch.org/whl/cpu` instead (see docs/*/Pipeline_Usage/Setup.md).
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", extra = "npu" }]
+torchvision = [{ index = "pytorch-cpu", extra = "npu" }]
+
+[tool.uv]
+# The NPU extras pin torch 2.7.1, while `quant` (and `all`) need torch>=2.10 through entropack.
+conflicts = [
+    [{ extra = "npu" }, { extra = "npu_aarch64" }, { extra = "quant" }],
+    [{ extra = "npu" }, { extra = "npu_aarch64" }, { extra = "all" }],
+]
