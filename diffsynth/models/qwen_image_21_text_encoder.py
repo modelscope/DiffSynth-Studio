@@ -93,13 +93,18 @@ class QwenImage21TextEncoder(torch.nn.Module):
         pre_norm_output = [None]
         def hook_fn(module, args, output):
             pre_norm_output[0] = args[0]
-        self.model.model.language_model.norm.register_forward_hook(hook_fn)
-        self.model(
-            input_ids=input_ids,
-            pixel_values=pixel_values,
-            image_grid_thw=image_grid_thw,
-            attention_mask=attention_mask,
-            output_hidden_states=True,
-            **kwargs,
-        )
+        # One hook per call, removed again: left registered, every call would add another
+        # and each later forward would run all of them.
+        handle = self.model.model.language_model.norm.register_forward_hook(hook_fn)
+        try:
+            self.model(
+                input_ids=input_ids,
+                pixel_values=pixel_values,
+                image_grid_thw=image_grid_thw,
+                attention_mask=attention_mask,
+                output_hidden_states=True,
+                **kwargs,
+            )
+        finally:
+            handle.remove()
         return pre_norm_output[0]
