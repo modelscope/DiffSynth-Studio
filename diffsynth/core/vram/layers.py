@@ -259,8 +259,10 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
         return module
     
     def offload_to_disk(self, model: torch.nn.Module):
+        # `Tensor.to` returns a new tensor, so the parameter itself has to be replaced.
         for name in self.required_params:
-            getattr(self, name).to("meta")
+            param = self.module._parameters[name]
+            self.module._parameters[name] = torch.nn.Parameter(param.to("meta"), requires_grad=param.requires_grad)
     
     def cast_to(self, module, dtype, device):
         # Parameter casting is implemented in the model architecture.
