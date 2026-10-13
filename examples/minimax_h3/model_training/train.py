@@ -141,6 +141,10 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)
         for unit in self.pipe.units:
             inputs = self.pipe.unit_runner(unit, self.pipe, *inputs)
+        # `sft:train` reloads this cache and never re-encodes audio. Refuse to write a sample
+        # whose audio latents were skipped so the later `model_fn` call cannot miss `audio_latents`.
+        if self.task.endswith(":data_process"):
+            require_minimax_h3_audio_input_latents(inputs[0])
         loss = self.task_to_loss[self.task](self.pipe, *inputs)
         return loss
 

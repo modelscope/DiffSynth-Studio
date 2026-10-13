@@ -63,6 +63,20 @@ def FlowMatchSFTAudioVideoLoss(pipe: BasePipeline, **inputs):
     return loss
 
 
+def require_minimax_h3_audio_input_latents(inputs):
+    audio_input_latents = inputs.get("audio_input_latents")
+    if isinstance(audio_input_latents, torch.Tensor):
+        return audio_input_latents
+    raise ValueError(
+        "model_fn_minimax_h3 requires audio_latents, but audio_input_latents is missing or None. "
+        "Encoding was skipped because input_audio was None (no audio track, or torchaudio failed "
+        "and mp4 decoding needs torchcodec / the diffsynth[audio] extra). "
+        "sft:train does not load the audio VAE and does not apply --silent_on_missing_audio. "
+        "Rerun sft:data_process with a working decoder, or pass --silent_on_missing_audio on that "
+        "data-process command, and then train from the new cache."
+    )
+
+
 def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, training_cfg_scale: float = 1.0, audio_loss_weight: float = 1.0, inputs_nega: dict | None = None, **inputs):
     max_timestep_boundary = int(inputs.get("max_timestep_boundary", 1) * len(pipe.scheduler.timesteps))
     min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
@@ -75,10 +89,10 @@ def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, training_cfg_scale: 
     inputs["video_latents"] = pipe.scheduler.add_noise(inputs["input_latents"], noise, timestep_video)
     training_target = pipe.scheduler.training_target(inputs["input_latents"], noise, timestep_video)
 
-    if "audio_input_latents" in inputs:
-        audio_noise = torch.randn_like(inputs["audio_input_latents"])
-        inputs["audio_latents"] = pipe.scheduler_audio.add_noise(inputs["audio_input_latents"], audio_noise, timestep_audio)
-        training_target_audio = pipe.scheduler_audio.training_target(inputs["audio_input_latents"], audio_noise, timestep_audio)
+    audio_input_latents = require_minimax_h3_audio_input_latents(inputs)
+    audio_noise = torch.randn_like(audio_input_latents)
+    inputs["audio_latents"] = pipe.scheduler_audio.add_noise(audio_input_latents, audio_noise, timestep_audio)
+    training_target_audio = pipe.scheduler_audio.training_target(audio_input_latents, audio_noise, timestep_audio)
 
     models = {name: getattr(pipe, name) for name in pipe.in_iteration_models}
     if training_cfg_scale > 1.0:
@@ -111,10 +125,9 @@ def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, training_cfg_scale: 
 
     loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
     loss = loss * pipe.scheduler.training_weight(timestep_video)
-    if "audio_input_latents" in inputs:
-        loss_audio = torch.nn.functional.mse_loss(noise_pred_audio.float(), training_target_audio.float())
-        loss_audio = loss_audio * pipe.scheduler_audio.training_weight(timestep_audio) * audio_loss_weight
-        loss = loss + loss_audio
+    loss_audio = torch.nn.functional.mse_loss(noise_pred_audio.float(), training_target_audio.float())
+    loss_audio = loss_audio * pipe.scheduler_audio.training_weight(timestep_audio) * audio_loss_weight
+    loss = loss + loss_audio
     return loss
 
 
