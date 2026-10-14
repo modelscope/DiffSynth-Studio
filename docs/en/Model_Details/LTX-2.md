@@ -94,7 +94,7 @@ write_video_audio_ltx2(video=video, audio=audio, output_path='video.mp4', fps=24
 |[Lightricks/LTX-2.5: T2A](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`audio_only=True`|[code](/examples/ltx2/model_inference/LTX-2.5-T2A.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2A.py)|-|-|-|-|
 |[Lightricks/LTX-2.5: DistilledPipeline-T2AV](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|`auto_duration`|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-DistilledPipeline.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-DistilledPipeline.py)|-|-|-|-|
 |[Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler](https://www.modelscope.cn/models/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler)|`in_context_videos`,`in_context_downsample_factor`|[code](/examples/ltx2/model_inference/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-IC-LoRA-Pixel-Spatial-Upscaler.py)|-|-|-|-|
-|[Lightricks/LTX-2.5: INT8-ConvRot](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|INT8 DiT + INT8 Gemma4|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-INT8-ConvRot.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-INT8-ConvRot.py)|-|-|-|-|
+|[Lightricks/LTX-2.5: INT8-ConvRot](https://www.modelscope.cn/models/Lightricks/LTX-2.5)|-|[code](/examples/ltx2/model_inference/LTX-2.5-T2AV-INT8-ConvRot.py)|[code](/examples/ltx2/model_inference_low_vram/LTX-2.5-T2AV-INT8-ConvRot.py)|-|-|[code](/examples/ltx2/model_training/lora/LTX-2.5-Int8-ConvRot-splited.sh)|[code](/examples/ltx2/model_training/validate_lora/LTX-2.5-Int8-ConvRot.py)|
 
 ## Model Inference
 
@@ -177,6 +177,8 @@ LTX-2 series models are uniformly trained through [`examples/ltx2/model_training
 * LTX-2 Series Specific Parameters
     * `--tokenizer_path`: Path of the tokenizer, applicable to text-to-video models, leave blank to automatically download from remote.
     * `--frame_rate`: frame rate of the training videos.
+
+When training first/last-frame conditioned generation (FL2AV), add `input_image` and `end_image` to `--extra_inputs`. The training script then takes the first and last frame of each training video as the keyframe conditions; commented examples are provided at the end of the I2AV training and validation scripts. LoRA training also supports the ComfyUI INT8 ConvRot quantized checkpoints as the base model: the quantized weights stay frozen and gradients flow through the LoRA branches. See the INT8-ConvRot training script in the table.
 
 We have built a sample video dataset for your testing. You can download this dataset with the following command:
 

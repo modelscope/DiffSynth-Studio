@@ -57,13 +57,20 @@ class LTX2TrainingModule(DiffusionTrainingModule):
         }
         
     def parse_extra_inputs(self, data, extra_inputs, inputs_shared):
+        input_images, input_images_indexes = [], []
         for extra_input in extra_inputs:
             if extra_input == "input_image":
-                inputs_shared["input_images"] = [data["video"][0]]
-                inputs_shared["input_images_indexes"] = [0]
-                inputs_shared["input_images_strength"] = 1.0
+                input_images.append(data["video"][0])
+                input_images_indexes.append(0)
+            elif extra_input == "end_image":
+                input_images.append(data["video"][-1])
+                input_images_indexes.append(len(data["video"]) - 1)
             else:
                 inputs_shared[extra_input] = data[extra_input]
+        if len(input_images) > 0:
+            inputs_shared["input_images"] = input_images
+            inputs_shared["input_images_indexes"] = input_images_indexes
+            inputs_shared["input_images_strength"] = 1.0
         return inputs_shared
     
     def get_pipeline_inputs(self, data):
