@@ -205,9 +205,6 @@ class SDXLUnit_PromptEmbedder(PipelineUnit):
           - prompt_embeds: concat(encoder1_output, encoder2_output) -> (B, 77, 2048)
           - pooled_prompt_embeds: encoder2 pooled output -> (B, 1280)
         """
-        if clip_skip < 1:
-            raise ValueError("clip_skip must be at least 1.")
-
         # Text Encoder 1 (CLIP-L, 768-dim)
         text_input_ids_1 = pipe.tokenizer(
             prompt,
