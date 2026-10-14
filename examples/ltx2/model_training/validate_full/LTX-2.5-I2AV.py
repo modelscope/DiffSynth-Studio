@@ -49,3 +49,29 @@ write_video_audio_ltx2(
     fps=24,
     audio_sample_rate=pipe.audio_vocoder.output_sampling_rate,
 )
+
+# Specify `input_image` and `end_image` to enable first/last-frame training. Load the
+# first/last-frame checkpoint above (./models/train/LTX2.5-FL2AV-full/epoch-1.safetensors, see the
+# commented commands in full/LTX-2.5-I2AV-splited.sh) and replace the generation call
+# above with:
+# frames = VideoData("data/diffsynth_example_dataset/ltx2/LTX-2.5-I2AV-splited/video.mp4", height=height, width=width)
+# video, audio = pipe(
+#     prompt=prompt,
+#     negative_prompt=negative_prompt,
+#     seed=42,
+#     height=height,
+#     width=width,
+#     num_frames=num_frames,
+#     tiled=True,
+#     tile_size_in_frames=80,
+#     input_images=[frames[0], frames[len(frames) - 1]],
+#     input_images_indexes=[0, num_frames - 1],
+#     input_images_strength=1.0,
+# )
+# write_video_audio_ltx2(
+#     video=video,
+#     audio=audio,
+#     output_path="ltx2.5_fl2av_full.mp4",
+#     fps=24,
+#     audio_sample_rate=pipe.audio_vocoder.output_sampling_rate,
+# )
