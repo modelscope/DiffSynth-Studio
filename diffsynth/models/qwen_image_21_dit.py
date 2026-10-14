@@ -216,6 +216,31 @@ def _attention(query, key, value, attn_mask=None, use_flex=False):
 
 
 class QwenImage21AttnProcessor:
+    @staticmethod
+    def _prepare_template_kv(attn, key, value, template_kv):
+        template_key, template_value = template_kv
+        if template_key.ndim != 4 or template_key.shape != template_value.shape:
+            raise ValueError("Template K/V must have the same rank-4 shape.")
+        if template_key.shape[2:] == (attn.heads, key.shape[-1]):
+            pass
+        elif template_key.shape[1] == attn.heads and template_key.shape[3] == key.shape[-1]:
+            template_key = template_key.transpose(1, 2)
+            template_value = template_value.transpose(1, 2)
+        else:
+            raise ValueError(
+                "Template K/V must be [B, S, H, D] or [B, H, S, D], got "
+                f"{tuple(template_key.shape)}."
+            )
+        if template_key.shape[0] == 1 and key.shape[0] > 1:
+            template_key = template_key.expand(key.shape[0], -1, -1, -1)
+            template_value = template_value.expand(value.shape[0], -1, -1, -1)
+        elif template_key.shape[0] != key.shape[0]:
+            raise ValueError("Template batch size does not match the attention batch size.")
+        return (
+            template_key.to(device=key.device, dtype=key.dtype),
+            template_value.to(device=value.device, dtype=value.dtype),
+        )
+
     def __call__(
         self,
         attn: "QwenImage21Attention",
@@ -226,6 +251,7 @@ class QwenImage21AttnProcessor:
         cache_write_slice: slice | None = None,
         segments: list[tuple[int, int, bool]] | None = None,
         key_valid: torch.Tensor | None = None,
+        template_kv: tuple[torch.Tensor, torch.Tensor] | None = None,
     ) -> torch.Tensor:
         query = attn.to_q(hidden_states)
         key = attn.to_k(hidden_states)
@@ -251,11 +277,21 @@ class QwenImage21AttnProcessor:
                 kv_cache["key"] = key[:, cache_write_slice].clone()
                 kv_cache["value"] = value[:, cache_write_slice].clone()
 
+        template_key, template_value = None, None
+        if template_kv is not None:
+            template_key, template_value = self._prepare_template_kv(attn, key, value, template_kv)
+
         seq_len_q, seq_len_kv = query.shape[1], key.shape[1]
         if decode:
             # Fast decode path with kv cache
+            if template_key is not None:
+                template_len = template_key.shape[1]
+                key = torch.cat([key, template_key], dim=1)
+                value = torch.cat([value, template_value], dim=1)
+                if attention_mask is not None:
+                    attention_mask = F.pad(attention_mask, (0, template_len), value=True)
             hidden_states = _attention(query, key, value, attn_mask=attention_mask)
-        elif FLEX_ATTN_AVAILABLE and isinstance(attention_mask, BlockMask):
+        elif template_key is None and FLEX_ATTN_AVAILABLE and isinstance(attention_mask, BlockMask):
             # Flex attention route on the first step or without kv cache
             pad_q = int(math.ceil(seq_len_q / _FLEX_BLOCK_SIZE) * _FLEX_BLOCK_SIZE) - seq_len_q
             pad_kv = int(math.ceil(seq_len_kv / _FLEX_BLOCK_SIZE) * _FLEX_BLOCK_SIZE) - seq_len_kv
@@ -267,23 +303,41 @@ class QwenImage21AttnProcessor:
             hidden_states = _attention(query, key, value, attn_mask=attention_mask, use_flex=True)[:, :seq_len_q]
         else:
             # Splited attention route on the first step or without kv cache
+            if segments is None:
+                raise RuntimeError("Segment metadata is required for split attention.")
             valid = None if key_valid is None else key_valid[:, None, None, :]
             prefix_len = segments[-1][1] if segments else 0
             outputs = []
             for start, end, is_text in segments:
                 seg_mask = valid if valid is None else valid[..., :end]
+                segment_key = key[:, :end]
+                segment_value = value[:, :end]
+                if template_key is not None:
+                    template_len = template_key.shape[1]
+                    segment_key = torch.cat([segment_key, template_key], dim=1)
+                    segment_value = torch.cat([segment_value, template_value], dim=1)
+                    if seg_mask is not None:
+                        seg_mask = F.pad(seg_mask, (0, template_len), value=True)
                 if is_text:
                     seg_len = end - start
-                    causal = torch.cat(
-                        [
-                            torch.ones(seg_len, start, dtype=torch.bool, device=query.device),
-                            torch.tril(torch.ones(seg_len, seg_len, dtype=torch.bool, device=query.device)),
-                        ],
-                        dim=1,
-                    )[None, None]
+                    causal_parts = [
+                        torch.ones(seg_len, start, dtype=torch.bool, device=query.device),
+                        torch.tril(torch.ones(seg_len, seg_len, dtype=torch.bool, device=query.device)),
+                    ]
+                    if template_key is not None:
+                        causal_parts.append(
+                            torch.ones(seg_len, template_len, dtype=torch.bool, device=query.device)
+                        )
+                    causal = torch.cat(causal_parts, dim=1)[None, None]
                     seg_mask = causal if seg_mask is None else seg_mask & causal
-                outputs.append(_attention(query[:, start:end], key[:, :end], value[:, :end], attn_mask=seg_mask))
-            outputs.append(_attention(query[:, prefix_len:], key, value, attn_mask=valid))
+                outputs.append(_attention(query[:, start:end], segment_key, segment_value, attn_mask=seg_mask))
+            target_key, target_value, target_mask = key, value, valid
+            if template_key is not None:
+                target_key = torch.cat([target_key, template_key], dim=1)
+                target_value = torch.cat([target_value, template_value], dim=1)
+                if target_mask is not None:
+                    target_mask = F.pad(target_mask, (0, template_len), value=True)
+            outputs.append(_attention(query[:, prefix_len:], target_key, target_value, attn_mask=target_mask))
             hidden_states = torch.cat(outputs, dim=1)
         hidden_states = hidden_states.flatten(2, 3).type_as(query)
         hidden_states = attn.to_out[0](hidden_states)
@@ -346,6 +400,7 @@ class QwenImage21TransformerBlock(nn.Module):
         cache_write_slice: slice | None = None,
         segments: list[tuple[int, int, bool]] | None = None,
         key_valid: torch.Tensor | None = None,
+        template_kv: tuple[torch.Tensor, torch.Tensor] | None = None,
     ) -> torch.Tensor:
         mod1, mod2 = modulation.chunk(2, dim=-1)
 
@@ -358,6 +413,7 @@ class QwenImage21TransformerBlock(nn.Module):
             cache_write_slice=cache_write_slice,
             segments=segments,
             key_valid=key_valid,
+            template_kv=template_kv,
         )
         hidden_states = hidden_states + img_gate1.tanh() * attn_output
 
@@ -495,6 +551,7 @@ class QwenImage21DiT(nn.Module):
         img_mask: torch.Tensor,
         encoder_hidden_states_mask: torch.Tensor | None = None,
         kv_cache: list[dict[str, torch.Tensor]] | None = None,
+        template_kv_cache: dict[str, tuple[torch.Tensor, torch.Tensor]] | None = None,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
     ) -> torch.Tensor:
@@ -557,7 +614,7 @@ class QwenImage21DiT(nn.Module):
             rotary_emb = rotary_emb[prefix_len:]
             modulation_mask = modulation_mask[prefix_len:]
             attention_mask = None if joint_key_valid is None else joint_key_valid[:, None, None, :]
-        elif FLEX_ATTN_AVAILABLE:
+        elif FLEX_ATTN_AVAILABLE and not template_kv_cache:
             attention_mask = build_qwenimage21_block_causal_mask(
                 image_ids, joint_key_valid, batch_size, hidden_states.device
             )
@@ -567,6 +624,9 @@ class QwenImage21DiT(nn.Module):
 
         for index_block, block in enumerate(self.transformer_blocks):
             block_kv_cache = kv_cache[index_block] if kv_cache is not None else None
+            block_template_kv = (
+                None if template_kv_cache is None else template_kv_cache.get(f"block_{index_block}")
+            )
             joint_hidden_states = gradient_checkpoint_forward(
                 block,
                 use_gradient_checkpointing,
@@ -580,6 +640,7 @@ class QwenImage21DiT(nn.Module):
                 cache_write_slice=cache_write_slice,
                 segments=segments,
                 key_valid=joint_key_valid,
+                template_kv=block_template_kv,
             )
 
         joint_hidden_states = self.norm_out(joint_hidden_states, temb, modulation_mask)

@@ -75,6 +75,9 @@ class QwenImage21Pipeline(BasePipeline):
         num_inference_steps: int = 40,
         # KV cache
         use_kv_cache: bool = True,
+        # Template
+        template_kv_cache: dict = None,
+        negative_template_kv_cache: dict = None,
         # VAE tiling
         tiled: bool = False,
         tile_size: int = 256,
@@ -83,8 +86,8 @@ class QwenImage21Pipeline(BasePipeline):
         progress_bar_cmd=tqdm,
     ):
         # Parameters
-        inputs_posi = {"prompt": prompt}
-        inputs_nega = {"negative_prompt": negative_prompt}
+        inputs_posi = {"prompt": prompt, "template_kv_cache": template_kv_cache}
+        inputs_nega = {"negative_prompt": negative_prompt, "template_kv_cache": negative_template_kv_cache}
         inputs_shared = {
             "cfg_scale": cfg_scale, "edit_image": edit_image,
             "height": height, "width": width,
@@ -320,6 +323,7 @@ def model_fn_qwen_image_21(
     edit_image_pad_mask,
     edit_latents=None,
     kv_cache=None,
+    template_kv_cache=None,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     **kwargs,
@@ -341,6 +345,7 @@ def model_fn_qwen_image_21(
         img_shapes=img_shapes,
         img_mask=image_pad_mask,
         kv_cache=kv_cache,
+        template_kv_cache=template_kv_cache,
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
