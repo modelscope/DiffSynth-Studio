@@ -197,10 +197,17 @@ class SDXLUnit_PromptEmbedder(PipelineUnit):
     ) -> tuple:
         """Encode prompt using both text encoders (same prompt for both).
 
+        clip_skip selects the hidden state counting backwards from the final
+        layer for both encoders: 1 selects the final layer, while the default
+        of 2 selects the penultimate layer used by SDXL.
+
         Returns (prompt_embeds, pooled_prompt_embeds):
           - prompt_embeds: concat(encoder1_output, encoder2_output) -> (B, 77, 2048)
           - pooled_prompt_embeds: encoder2 pooled output -> (B, 1280)
         """
+        if clip_skip < 1:
+            raise ValueError("clip_skip must be at least 1.")
+
         # Text Encoder 1 (CLIP-L, 768-dim)
         text_input_ids_1 = pipe.tokenizer(
             prompt,
@@ -211,9 +218,9 @@ class SDXLUnit_PromptEmbedder(PipelineUnit):
         ).input_ids.to(device)
         prompt_embeds_1 = pipe.text_encoder(text_input_ids_1)
         if isinstance(prompt_embeds_1, tuple):
-            prompt_embeds_1 = prompt_embeds_1[1][-(clip_skip + 1)]
+            prompt_embeds_1 = prompt_embeds_1[1][-clip_skip]
 
-        # Text Encoder 2 (CLIP-bigG, 1280-dim) — uses penultimate hidden states + pooled
+        # Text Encoder 2 (CLIP-bigG, 1280-dim) — uses hidden states + pooled
         text_input_ids_2 = pipe.tokenizer_2(
             prompt,
             padding="max_length",
@@ -223,8 +230,7 @@ class SDXLUnit_PromptEmbedder(PipelineUnit):
         ).input_ids.to(device)
         # SDXLTextEncoder2 forward returns (text_embeds/pooled, hidden_states_tuple)
         pooled_prompt_embeds, hidden_states = pipe.text_encoder_2(text_input_ids_2, output_hidden_states=True)
-        # Use penultimate hidden state (same as diffusers: hidden_states[-2])
-        prompt_embeds_2 = hidden_states[-2]
+        prompt_embeds_2 = hidden_states[-clip_skip]
 
         # Concatenate both encoder outputs along feature dimension
         prompt_embeds = torch.cat([prompt_embeds_1, prompt_embeds_2], dim=-1)
