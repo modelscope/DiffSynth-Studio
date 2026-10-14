@@ -178,8 +178,6 @@ LTX-2 series models are uniformly trained through [`examples/ltx2/model_training
     * `--tokenizer_path`: Path of the tokenizer, applicable to text-to-video models, leave blank to automatically download from remote.
     * `--frame_rate`: frame rate of the training videos.
 
-When training first/last-frame conditioned generation (FL2AV), add `input_image` and `end_image` to `--extra_inputs`. The training script then takes the first and last frame of each training video as the keyframe conditions; commented examples are provided at the end of the I2AV training and validation scripts. LoRA training also supports the ComfyUI INT8 ConvRot quantized checkpoints as the base model: the quantized weights stay frozen and gradients flow through the LoRA branches. See the INT8-ConvRot training script in the table.
-
 We have built a sample video dataset for your testing. You can download this dataset with the following command:
 
 ```shell

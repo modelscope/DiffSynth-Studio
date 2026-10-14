@@ -177,8 +177,6 @@ LTX-2 系列模型统一通过 [`examples/ltx2/model_training/train.py`](https:/
     * `--tokenizer_path`: 分词器路径，适用于文生视频模型，留空则从远程自动下载。
     * `--frame_rate`: 训练视频的帧率。
 
-训练首尾帧条件生成（FL2AV）时，在 `--extra_inputs` 中加入 `input_image` 和 `end_image`，训练脚本会自动使用训练视频的首帧和尾帧作为首尾帧条件，I2AV 训练与验证脚本的末尾提供了对应的注释版示例。LoRA 训练同样支持 ComfyUI INT8 ConvRot 量化权重作为基础模型，量化权重保持冻结，梯度经由 LoRA 分支回传，示例见表格中的 INT8-ConvRot 训练脚本。
-
 我们构建了一个样例视频数据集，以方便您进行测试，通过以下命令可以下载这个数据集：
 
 ```shell
