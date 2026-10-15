@@ -66,6 +66,8 @@ image_3.save("image3.png")
 |模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
 |-|-|-|-|-|-|-|
 |[Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/full/Qwen-Image-2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1.py)|
+|[Qwen/Qwen-Image-2.1-Turbo](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1-Turbo)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference/Qwen-Image-2.1-Turbo.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-Turbo.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/full/Qwen-Image-2.1-Turbo.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1-Turbo.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1-Turbo.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1-Turbo.py)|
+|[PAI/Qwen-Image-2.1-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/Qwen-Image-2.1-Fun-Controlnet-Union)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference/Qwen-Image-2.1-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/full/Qwen-Image-2.1-Fun-Controlnet-Union.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1-Fun-Controlnet-Union.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1-Fun-Controlnet-Union.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1-Fun-Controlnet-Union.py)|
 
 ## 模型推理
 
@@ -77,12 +79,15 @@ image_3.save("image3.png")
 * `negative_prompt`: 负向提示词，默认 `" "`，在 `cfg_scale` 大于 1 时作为负向分支条件。
 * `cfg_scale`: CFG 强度，默认值为 1.0，是否启用 CFG 仅由该值是否大于 1 决定。
 * `edit_image`: 待编辑图像，仅支持 PIL 图像（`PIL.Image`）或 PIL 图像列表。留空时执行文生图，提供时执行图像编辑。
+* `controlnet_inputs`: ControlNet 模型的输入。
 * `height`: 图像高度，默认 1024，会对齐到 32 的倍数；编辑模式下 `edit_image` 按自身宽高比缩放到 `height * width` 的面积内。
 * `width`: 图像宽度，默认 1024，规则同 `height`。
 * `seed`: 随机种子。默认为 `None`，即完全随机。
 * `rand_device`: 生成随机高斯噪声矩阵的计算设备，默认为 `"cpu"`。
 * `num_inference_steps`: 推理次数，默认值为 40。
+* `sigmas`: 自定义推理 sigma 序列，默认 `None`，此时由 `num_inference_steps` 生成。Qwen-Image-2.1-Turbo 等蒸馏加速模型需要使用自带的 sigma 序列，例如 `[1.0, 0.978453, 0.95418, 0.926626, 0.89508, 0.845148, 0.704534, 0.414568]`。
 * `use_kv_cache`: 是否在 block-causal 条件下启用逐层 KV cache，默认值为 `True`。
+* `use_flex_attention`: prefill 阶段的注意力实现，默认值为 `False`，使用分段 SDPA（无需构建 BlockMask，长序列下显存更低）；设为 `True` 时改用 flex_attention。decode 阶段不受该参数影响。
 * `tiled`: 是否启用 VAE 分块推理，默认为 `False`。
 * `tile_size`: VAE 编解码阶段的分块大小，默认为 256，仅在 `tiled=True` 时生效。
 * `tile_stride`: VAE 编解码阶段的分块步长，默认为 192，仅在 `tiled=True` 时生效。
@@ -157,3 +162,7 @@ modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --local
 ```
 
 我们为每个模型编写了推荐的训练脚本，请参考前文“模型总览”中的表格。关于如何编写模型训练脚本，请参考[模型训练](../Pipeline_Usage/Model_Training.md)；更多高阶训练算法，请参考[训练框架详解](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/zh/Training/)。
+
+训练提示：
+
+* [Qwen/Qwen-Image-2.1-Turbo](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1-Turbo) 是蒸馏加速模型，依赖推理时使用的特定 sigma 序列。直接进行 SFT 训练会逐渐削弱其少步加速能力，即使用加速配置（`sigmas=[1.0, 0.978453, 0.95418, 0.926626, 0.89508, 0.845148, 0.704534, 0.414568]`）推理的效果变差，而使用标准配置（`num_inference_steps=40`）推理的效果变好。建议在训练过程中和训练后使用[验证脚本](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1-Turbo.py)检查少步推理结果。若加速能力下降严重，蒸馏模型通常需要通过蒸馏而非标准 SFT 重新获得，可参考[直接蒸馏](https://github.com/modelscope/DiffSynth-Studio/tree/main/docs/zh/Training/Direct_Distill.md)中提供的蒸馏算法。

@@ -61,6 +61,7 @@ class QwenImage21TrainingModule(DiffusionTrainingModule):
             "rand_device": self.pipe.device,
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
+            "use_flex_attention": False,
             "tiled": False,
             "tile_size": 256,
             "tile_stride": 192,

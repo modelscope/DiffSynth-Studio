@@ -19,6 +19,7 @@
 | bitsandbytes | `pip install bitsandbytes` | [bitsandbytes](https://github.com/bitsandbytes-foundation/bitsandbytes) |
 | torchao | `pip install torchao>=0.16` | [torchao](https://github.com/pytorch/ao) |
 | comfy-kitchen | `pip install comfy-kitchen` | [comfy-kitchen](https://github.com/Comfy-Org/comfy-kitchen) |
+| entropack | `pip install "entropack[cuda13]"` | [entropack](https://github.com/modelscope/entropack) |
 
 一次性安装全部：`pip install "diffsynth[quant]"`
 
@@ -69,6 +70,13 @@ image.save("image_z_image_nf4.jpg")
 | `torchao_nvfp4_w4a4` | torchao | NVFP4 / NVFP4 | ✅ | ❌ |
 | `comfy_kitchen_int8_w8a8` | comfy_kitchen | INT8 / INT8 动态 | ✅ | ✅ |
 | `comfy_kitchen_fp8_w8a8` | comfy_kitchen | FP8 E4M3 / FP8 | ✅ | ✅ |
+| `entropack_lossless_df11` | entropack | 无损 DFloat11（BF16） / 不量化 | ✅ | ✅ |
+| `entropack_lossless_tile_ans` | entropack | 无损 tile-ANS（BF16 / FP16 / FP8 / INT8 等） / 不量化 | ✅ | ✅ |
+| `entropack_lossy_quant` | entropack | 有损 E8 格量化 / 不量化 | ✅ | ✅ |
+| `entropack_lossy_quant_fp8` | entropack | FP8 E4M3 量化码 + 格编码 / FP8 | ✅ | ✅ |
+| `entropack_lossy_quant_fp8_raw` | entropack | FP8 E4M3 量化码 / FP8 | ✅ | ✅ |
+| `entropack_lossy_quant_int8` | entropack | INT8 量化码 + 格编码 / INT8 | ✅ | ✅ |
+| `entropack_lossy_quant_int8_raw` | entropack | INT8 量化码 / INT8 | ✅ | ✅ |
 
 几点说明：
 
@@ -76,6 +84,20 @@ image.save("image_z_image_nf4.jpg")
 - **LoRA 训练**：只有表中"支持 LoRA 训练"为 ✅ 的方法可用于量化 + LoRA 训练。
 - `comfy_kitchen_*` 方法读写的是 ComfyUI 的量化权重格式，可与 ComfyUI 生态互通。comfy-kitchen 需要 CUDA 13.0 及以上。
 - MXFP8 / MXFP4 / NVFP4 等格式对计算硬件有要求，具体兼容性请查阅 [torchao](https://github.com/pytorch/ao) 文档。
+- entropack 需要 Python 3.10 及以上和 CUDA 版 PyTorch 2.10 及以上；安装命令中的 `cuda13` 按环境换成 `cuda12`。`entropack_lossy_quant_fp8*` 需要 SM8.9 及以上，`entropack_lossy_quant_int8*` 需要 SM8.0 及以上。
+- 要无损选 `entropack_lossless_df11`（BF16）或 `entropack_lossless_tile_ans`（BF16 / FP16 / FP8 / INT8 等）；要控制体积选 `entropack_lossy_quant`，`target_bpp` 在 0.001–11 之间连续取值（默认 4.0；Z-Image-Turbo 的 276 个线性层上 3 bpp 约 14%、4 bpp 约 7% 权重 rel-L2）。`entropack_lossy_quant_fp8*` / `entropack_lossy_quant_int8*` 是 W8A8 方法，`*_raw` 直接存储量化码，另两个再对量化码做熵编码，其 `target_bpp` 上限为 8（超出会被截到 8）。
+- 请用 `target_modules` / `exclude_modules` 明确要量化的层；实际 bpp 记录在 checkpoint options 中。参数与更多用法见 [entropack](https://github.com/modelscope/entropack)。
+
+示例：
+
+```python
+e8 = QuantizeConfig(
+    method="entropack_lossy_quant",
+    backend_config_kwargs={"target_bpp": 4.0},   # 1–11 之间连续取值
+)
+```
+
+有损与无损方法都支持 `dynamic`、`dequant_once`、保存/加载预量化 checkpoint、CPU/disk offload 以及输入梯度/LoRA 流程。有损 checkpoint 使用可自描述的 CompressedTensor v2 header；无 header 的旧格式 buffer 仍只允许无损方法加载。在对应权重文件被明确发布前，不注册模型 hash。
 
 你可以在代码中查询所有可用方法及其参数：
 

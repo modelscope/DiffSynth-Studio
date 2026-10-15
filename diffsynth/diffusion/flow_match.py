@@ -60,26 +60,29 @@ class FlowMatchScheduler():
         return mu
     
     @staticmethod
-    def set_timesteps_qwen_image(num_inference_steps=100, denoising_strength=1.0, exponential_shift_mu=None, dynamic_shift_len=None):
+    def set_timesteps_qwen_image(num_inference_steps=100, denoising_strength=1.0, exponential_shift_mu=None, dynamic_shift_len=None, sigmas=None):
         sigma_min = 0.0
         sigma_max = 1.0
         num_train_timesteps = 1000
         shift_terminal = 0.02
         # Sigmas
-        sigma_start = sigma_min + (sigma_max - sigma_min) * denoising_strength
-        sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps + 1)[:-1]
-        # Mu
-        if exponential_shift_mu is not None:
-            mu = exponential_shift_mu
-        elif dynamic_shift_len is not None:
-            mu = FlowMatchScheduler._calculate_shift_qwen_image(dynamic_shift_len)
+        if sigmas is None:
+            sigma_start = sigma_min + (sigma_max - sigma_min) * denoising_strength
+            sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps + 1)[:-1]
+            # Mu
+            if exponential_shift_mu is not None:
+                mu = exponential_shift_mu
+            elif dynamic_shift_len is not None:
+                mu = FlowMatchScheduler._calculate_shift_qwen_image(dynamic_shift_len)
+            else:
+                mu = 0.8
+            sigmas = math.exp(mu) / (math.exp(mu) + (1 / sigmas - 1))
+            # Shift terminal
+            one_minus_z = 1 - sigmas
+            scale_factor = one_minus_z[-1] / (1 - shift_terminal)
+            sigmas = 1 - (one_minus_z / scale_factor)
         else:
-            mu = 0.8
-        sigmas = math.exp(mu) / (math.exp(mu) + (1 / sigmas - 1))
-        # Shift terminal
-        one_minus_z = 1 - sigmas
-        scale_factor = one_minus_z[-1] / (1 - shift_terminal)
-        sigmas = 1 - (one_minus_z / scale_factor)
+            sigmas = torch.tensor(sigmas)
         # Timesteps
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps

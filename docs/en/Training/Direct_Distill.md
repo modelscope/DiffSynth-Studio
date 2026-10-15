@@ -1,27 +1,10 @@
-# End-to-End Distillation Accelerated Training
+# End-to-End Direct Distillation Acceleration (Deprecated)
 
-## Distillation Accelerated Training
+(At this stage, we strongly recommend that developers use OPD for distillation accelerated training. The content in this document is for research purposes only.)
 
-The inference process of Diffusion models typically requires multi-step iterations, which improves generation quality but also makes the generation process slow. Through distillation accelerated training, the number of steps required to generate clear content can be reduced. The essence of distillation accelerated training technology is to align the generation effects of a small number of steps with those of a large number of steps.
+## Algorithm Principle
 
-There are diverse methods for distillation accelerated training, such as:
-
-* Adversarial training ADD (Adversarial Diffusion Distillation)
-    * Paper: https://arxiv.org/abs/2311.17042
-    * Model: [stabilityai/sdxl-turbo](https://modelscope.cn/models/stabilityai/sdxl-turbo)
-* Progressive training Hyper-SD
-    * Paper: https://arxiv.org/abs/2404.13686
-    * Model: [ByteDance/Hyper-SD](https://www.modelscope.cn/models/ByteDance/Hyper-SD)
-
-## Direct Distillation
-
-At the framework level, supporting these distillation accelerated training schemes is extremely difficult. In the design of the training framework, we need to ensure that the training scheme meets the following conditions:
-
-* Generality: The training scheme applies to most Diffusion models supported within the framework, rather than only working for a specific model, which is a basic requirement for code framework construction.
-* Stability: The training scheme must ensure stable training effects without requiring manual fine-tuning of parameters. Adversarial training in ADD cannot guarantee stability.
-* Simplicity: The training scheme does not introduce additional complex modules. According to Occam's Razor principle, complex solutions may introduce potential risks. The Human Feedback Learning in Hyper-SD makes the training process overly complex.
-
-Therefore, in the training framework of `DiffSynth-Studio`, we designed an end-to-end distillation accelerated training scheme, which we call Direct Distillation. The pseudocode for the training process is as follows:
+In the training framework of `DiffSynth-Studio`, we designed an end-to-end distillation accelerated training scheme, which we call Direct Distillation. The pseudocode for the training process is as follows:
 
 ```
 seed = xxx
@@ -87,11 +70,3 @@ bash examples/qwen_image/model_training/lora/Qwen-Image-Distill-LoRA.sh
 ```
 
 Please note that in the [training script parameters](../Pipeline_Usage/Model_Training.md#script-parameters), the image resolution setting for the dataset should avoid triggering scaling processing. When setting `--height` and `--width` to enable fixed resolution, all training data must be generated with exactly the same width and height. When setting `--max_pixels` to enable dynamic resolution, the value of `--max_pixels` must be greater than or equal to the pixel area of any training image.
-
-## Framework Design Concept
-
-Compared to [Standard Supervised Training](../Training/Supervised_Fine_Tuning.md), Direct Distillation only differs in the training loss function. The loss function for Direct Distillation is `DirectDistillLoss` in `diffsynth.diffusion.loss`.
-
-## Future Work
-
-Direct Distillation is a highly general acceleration scheme, but it may not be the best-performing scheme. Therefore, we have not yet published this technology in paper form. We hope to leave this problem to the academic and open-source communities to solve together, and we look forward to developers providing more complete general training schemes.

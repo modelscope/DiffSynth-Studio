@@ -552,8 +552,12 @@ class QwenImage21DiT(nn.Module):
         encoder_hidden_states_mask: torch.Tensor | None = None,
         kv_cache: list[dict[str, torch.Tensor]] | None = None,
         template_kv_cache: dict[str, tuple[torch.Tensor, torch.Tensor]] | None = None,
+        controlnet: nn.Module = None,
+        control_context: torch.Tensor | None = None,
+        control_scale: float = 1.0,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
+        use_flex_attention: bool = False,
     ) -> torch.Tensor:
         batch_size = hidden_states.shape[0]
         hidden_states = self.img_in(hidden_states)
@@ -614,13 +618,32 @@ class QwenImage21DiT(nn.Module):
             rotary_emb = rotary_emb[prefix_len:]
             modulation_mask = modulation_mask[prefix_len:]
             attention_mask = None if joint_key_valid is None else joint_key_valid[:, None, None, :]
-        elif FLEX_ATTN_AVAILABLE and not template_kv_cache:
+        elif use_flex_attention and FLEX_ATTN_AVAILABLE and not template_kv_cache:
             attention_mask = build_qwenimage21_block_causal_mask(
                 image_ids, joint_key_valid, batch_size, hidden_states.device
             )
         else:
             attention_mask = None
             segments = _qwenimage21_prefix_segments(image_ids, prefix_len)
+
+        control_hints = None
+        if controlnet is not None and control_context is not None:
+            if kv_cache is not None:
+                raise ValueError("The ControlNet branch recomputes its conditioning at every step, which is incompatible with the prefix KV cache.")
+            control_hints = controlnet(
+                joint_hidden_states,
+                control_context,
+                image_positions=target_token_mask,
+                modulation=modulation,
+                rotary_emb=rotary_emb,
+                attention_mask=attention_mask,
+                target_token_mask=modulation_mask,
+                segments=segments,
+                key_valid=joint_key_valid,
+                control_scale=control_scale,
+                use_gradient_checkpointing=use_gradient_checkpointing,
+                use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+            )
 
         for index_block, block in enumerate(self.transformer_blocks):
             block_kv_cache = kv_cache[index_block] if kv_cache is not None else None
@@ -642,6 +665,8 @@ class QwenImage21DiT(nn.Module):
                 key_valid=joint_key_valid,
                 template_kv=block_template_kv,
             )
+            if control_hints is not None and index_block in control_hints:
+                joint_hidden_states = joint_hidden_states + control_hints[index_block].to(joint_hidden_states.device, joint_hidden_states.dtype)
 
         joint_hidden_states = self.norm_out(joint_hidden_states, temb, modulation_mask)
         return self.proj_out(joint_hidden_states)

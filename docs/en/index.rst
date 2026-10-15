@@ -59,6 +59,7 @@ Welcome to DiffSynth-Studio's Documentation
    Training/Understanding_Diffusion_models
    Training/Supervised_Fine_Tuning
    Training/FP8_Precision
+   Training/Distillation
    Training/Direct_Distill
    Training/Split_Training
    Training/Differential_LoRA

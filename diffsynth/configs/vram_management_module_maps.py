@@ -22,6 +22,13 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.minimax_h3_dit_vdn.MiniMaxH3VDNBranch": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_h3_dit_vdn.MiniMaxH3VDNTemporalConv": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_h3_dit_vdn.MiniMaxH3VDNRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_h3_dit_vdn.MiniMaxH3VDNAlpha": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
     "diffsynth.models.minimax_h3_text_encoder.MiniMaxH3TextEncoder": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
@@ -30,7 +37,6 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionModel": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionPatchEmbed": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
@@ -552,6 +558,10 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "diffsynth.models.qwen_image_21_dit.QwenImage21RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.qwen_image_21_dit.QwenImage21ZeroCenterRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.qwen_image_21_controlnet.QwenImage21ControlNet": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "diffsynth.models.qwen_image_21_dit.QwenImage21RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
     "diffsynth.models.qwen_image_21_vae.QwenImage21VAE": {
         "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.qwen_image_21_vae.QwenImage21RMS_norm": "diffsynth.core.vram.layers.AutoWrappedModule",
@@ -561,9 +571,10 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionModel": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionPatchEmbed": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
 }
 
