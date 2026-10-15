@@ -280,7 +280,53 @@ With `exclude_modules` to keep quantization-sensitive layers in full precision:
   --quant_options "MiniMaxAI/MiniMax-H3:FL2VA/transformer/model*.safetensors:bitsandbytes_nf4/time_embedder.proj_in,time_embedder.proj_out,video_patch_proj,audio_patch_proj"
 ```
 
-> `--quant_options` always uses `mode="dynamic"` and does not expose advanced options such as `backend_config_kwargs` or mixed quantization. For those, use Approach 1: save quantized weights with `save_quantized_model` first, then train with the pre-quantized base model.
+The semicolon format above uses `mode="dynamic"`. To configure `backend_config_kwargs`, `target_modules`, other modes, or mixed quantization, use the JSON format instead.
+
+#### JSON format
+
+`--quant_options` can also be a JSON object whose keys are the same model strings and whose values are the corresponding quantization configs. Common fields for a single config are:
+
+| Field | Usage |
+|---|---|
+| `method` | Required, a registered quantization method name. |
+| `backend_config_kwargs` | Optional, a dict of method-specific parameters; use `describe_quant_method(method)` to query accepted parameters. |
+| `target_modules` / `exclude_modules` | Optional, names of target layers / layers kept in full precision, as JSON lists rather than comma-separated strings. |
+| `mode` | Optional, defaults to `"dynamic"`; `"dequant_once"` converts quantized layers back to ordinary floating-point Linears. |
+| `load_prequantized` | Optional, defaults to `false`; use `true` for already-quantized weights. Must be a JSON boolean, not `"false"`, `0`, `1`, or `null`. |
+
+**Pre-quantized models usually do not need another `--quant_options` entry**: their `quant_config` is normally registered in `diffsynth.configs.MODEL_CONFIGS` ahead of time, including `load_prequantized=True`. The loader ignores `--quant_options` entries for registered pre-quantized models and uses their registered `quant_config` without re-quantizing the weights, so training usually requires only the model's path or ID. If other floating-point components still need online quantization, provide `--quant_options` only for those components.
+
+The following training command sets NF4 backend parameters and excludes `to_q` in the DiT, while using the default NF4 config for the text encoder:
+
+```bash
+accelerate launch examples/z_image/model_training/train.py \
+  --dataset_base_path data/diffsynth_example_dataset/z_image/Z-Image-Turbo \
+  --dataset_metadata_path data/diffsynth_example_dataset/z_image/Z-Image-Turbo/metadata.csv \
+  --model_id_with_origin_paths "Tongyi-MAI/Z-Image-Turbo:transformer/*.safetensors,Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors,Tongyi-MAI/Z-Image-Turbo:vae/diffusion_pytorch_model.safetensors" \
+  --quant_options '{"Tongyi-MAI/Z-Image-Turbo:transformer/*.safetensors": {"method": "bitsandbytes_nf4", "backend_config_kwargs": {"blocksize": 64, "compress_statistics": false}, "exclude_modules": ["to_q"]}, "Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors": {"method": "bitsandbytes_nf4"}}' \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,to_out.0,w1,w2,w3" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --output_path "./models/train/Z-Image-Turbo_quant_lora"
+```
+
+**Mixed configs**: the model's config object uses the fields below, where `configs[]` denotes each child in the list:
+
+| Field | Usage |
+|---|---|
+| `configs` | Required, a non-empty list of child config objects. |
+| `configs[].method` | Required, the registered quantization method name for the child. |
+| `configs[].backend_config_kwargs` | Optional, a dict of method-specific parameters for the child. |
+| `configs[].target_modules` / `configs[].exclude_modules` | Optional, JSON lists of layer names; the layer sets matched by the children must not overlap. |
+| `configs[].mode` | Optional, defaults to `"dynamic"`; `"dequant_once"` is also supported. All children must use the same mode. |
+| `load_prequantized` | Optional, defaults to `false`; use `true` for mixed pre-quantized weights. Must be a JSON boolean set on the mixed wrapper; children should omit it or use `false`. |
+
+Single and mixed configs can coexist in the same JSON object. For example, replace `--quant_options` in the command above with:
+
+```bash
+  --quant_options '{"Tongyi-MAI/Z-Image-Turbo:transformer/*.safetensors": {"configs": [{"method": "bitsandbytes_nf4", "backend_config_kwargs": {"blocksize": 64}, "exclude_modules": ["to_q"]}, {"method": "torchao_int8_w8a16", "target_modules": ["to_q"]}]}, "Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors": {"method": "bitsandbytes_nf4"}}'
+```
 
 ### Shared notes
 

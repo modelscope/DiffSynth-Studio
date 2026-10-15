@@ -280,7 +280,53 @@ accelerate launch examples/z_image/model_training/train.py \
   --quant_options "MiniMaxAI/MiniMax-H3:FL2VA/transformer/model*.safetensors:bitsandbytes_nf4/time_embedder.proj_in,time_embedder.proj_out,video_patch_proj,audio_patch_proj"
 ```
 
-> `--quant_options` 使用的是 `mode="dynamic"`，不支持配置 `backend_config_kwargs`、混合量化等更复杂的选项。有这类需求时请改用方式一：先用 `save_quantized_model` 保存量化权重，再用预量化底模训练。
+以上分号格式使用 `mode="dynamic"`。需要配置 `backend_config_kwargs`、`target_modules`、其他模式或混合量化时，可以改用 JSON 格式。
+
+#### JSON 格式
+
+`--quant_options` 也可以是一个 JSON 对象，key 使用同样的模型字符串，value 为该模型的量化配置。单一配置常用字段如下：
+
+| 字段 | 用法 |
+|---|---|
+| `method` | 必填，已注册的量化方法名。 |
+| `backend_config_kwargs` | 可选，方法专属参数字典；用 `describe_quant_method(method)` 查询可用参数。 |
+| `target_modules` / `exclude_modules` | 可选，目标层名 / 保持全精度的层名，使用 JSON 列表而不是逗号分隔字符串。 |
+| `mode` | 可选，默认 `"dynamic"`；`"dequant_once"` 表示量化后转回普通浮点 Linear。 |
+| `load_prequantized` | 可选，默认 `false`；已经量化的权重使用 `true`。必须写 JSON 布尔值，不能写 `"false"`、`0`、`1` 或 `null`。 |
+
+**预量化模型通常无需重复填写 `--quant_options`**：其 `quant_config` 一般已提前注册在 `diffsynth.configs.MODEL_CONFIGS` 中，并带有 `load_prequantized=True`。加载器会忽略针对已注册预量化模型的 `--quant_options`，直接使用注册的 `quant_config`，不会重新量化，因此训练时通常只需指定预量化模型的路径或 ID。如果其他浮点模型组件仍需在线量化，可只为那些组件填写 `--quant_options`。
+
+下面的训练命令为 DiT 设置 NF4 后端参数并排除 `to_q`，text encoder 使用默认 NF4 配置：
+
+```bash
+accelerate launch examples/z_image/model_training/train.py \
+  --dataset_base_path data/diffsynth_example_dataset/z_image/Z-Image-Turbo \
+  --dataset_metadata_path data/diffsynth_example_dataset/z_image/Z-Image-Turbo/metadata.csv \
+  --model_id_with_origin_paths "Tongyi-MAI/Z-Image-Turbo:transformer/*.safetensors,Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors,Tongyi-MAI/Z-Image-Turbo:vae/diffusion_pytorch_model.safetensors" \
+  --quant_options '{"Tongyi-MAI/Z-Image-Turbo:transformer/*.safetensors": {"method": "bitsandbytes_nf4", "backend_config_kwargs": {"blocksize": 64, "compress_statistics": false}, "exclude_modules": ["to_q"]}, "Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors": {"method": "bitsandbytes_nf4"}}' \
+  --lora_base_model "dit" \
+  --lora_target_modules "to_q,to_k,to_v,to_out.0,w1,w2,w3" \
+  --lora_rank 32 \
+  --use_gradient_checkpointing \
+  --output_path "./models/train/Z-Image-Turbo_quant_lora"
+```
+
+**混合配置**：模型的配置对象使用以下字段，其中 `configs[]` 表示列表中的各子项：
+
+| 字段 | 用法 |
+|---|---|
+| `configs` | 必填，非空的子配置对象列表。 |
+| `configs[].method` | 必填，子项使用的已注册量化方法名。 |
+| `configs[].backend_config_kwargs` | 可选，子项的方法专属参数字典。 |
+| `configs[].target_modules` / `configs[].exclude_modules` | 可选，JSON 层名列表；各子项匹配的层集合必须互不重叠。 |
+| `configs[].mode` | 可选，默认 `"dynamic"`，也可设为 `"dequant_once"`；所有子项必须一致。 |
+| `load_prequantized` | 可选，默认 `false`；混合预量化权重使用 `true`，必须是 JSON 布尔值。此项位于混合顶层，子项应省略或写 `false`。 |
+
+单一配置和混合配置可以放在同一个 JSON 对象里。例如，将上面命令的 `--quant_options` 替换为：
+
+```bash
+  --quant_options '{"Tongyi-MAI/Z-Image-Turbo:transformer/*.safetensors": {"configs": [{"method": "bitsandbytes_nf4", "backend_config_kwargs": {"blocksize": 64}, "exclude_modules": ["to_q"]}, {"method": "torchao_int8_w8a16", "target_modules": ["to_q"]}]}, "Tongyi-MAI/Z-Image-Turbo:text_encoder/*.safetensors": {"method": "bitsandbytes_nf4"}}'
+```
 
 ### 通用说明
 
