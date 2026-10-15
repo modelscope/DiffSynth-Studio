@@ -1,5 +1,6 @@
 import torch, json, os, inspect
 from ..core import ModelConfig, load_state_dict, QuantizeConfig
+from ..core.quant import MixedQuantizeConfig
 from ..utils.controlnet import ControlNetInput
 from .base_pipeline import PipelineUnit
 
@@ -180,6 +181,26 @@ class DiffusionTrainingModule(torch.nn.Module):
         quant_map = {}
         if quant_options is None:
             return quant_map
+
+        # JSON format
+        if quant_options.lstrip().startswith("{"):
+            json_options = json.loads(quant_options)
+            for model_string, value in json_options.items():
+                if not isinstance(value, dict):
+                    raise ValueError(f"Failed to parse quant option JSON: the config for `{model_string}` must be an object, got {type(value).__name__}.")
+                child_configs = value.pop("configs", None)
+                for config_dict in [value] + (child_configs if isinstance(child_configs, list) else []):
+                    if isinstance(config_dict, dict) and not isinstance(config_dict.get("load_prequantized", False), bool):
+                        raise ValueError(f"Failed to parse quant option JSON: `load_prequantized` for `{model_string}` must be a boolean, got {type(config_dict['load_prequantized']).__name__}.")
+                configs = [QuantizeConfig(**child) for child in (child_configs if child_configs is not None else [value])]
+                quant_config = configs[0] if child_configs is None else MixedQuantizeConfig(configs=configs, **value)
+                methods = [config.method for config in configs if not config.backend.capabilities().get("is_differentiable", True)]
+                if methods:
+                    raise ValueError(f"Quantization method(s) {methods} are not differentiable, so they cannot be used for training.")
+                quant_map[self.normalize_quant_key(model_string)] = quant_config
+            return quant_map
+
+        # Semicolon-separated format
         for entry in quant_options.split(";"):
             if entry == "":
                 continue

@@ -32,7 +32,7 @@ def add_model_config(parser: argparse.ArgumentParser):
     return parser
 
 def add_quant_config(parser: argparse.ArgumentParser):
-    parser.add_argument("--quant_options", type=str, default=None, help="Dynamically quantize loaded models. Semicolon-separated entries, each `<model_string>:<method>[/<exclude_modules>]`, where `<model_string>` matches an entry in `--model_paths`/`--model_id_with_origin_paths`, `method` is a registered method (e.g. bitsandbytes_nf4), and `exclude_modules` optionally lists layers kept in full precision.")
+    parser.add_argument("--quant_options", type=str, default=None, help="Dynamically quantize loaded models. Semicolon-separated entries, each `<model_string>:<method>[/<exclude_modules>]`, where `<model_string>` matches an entry in `--model_paths`/`--model_id_with_origin_paths`, `method` is a registered method (e.g. bitsandbytes_nf4), and `exclude_modules` optionally lists layers kept in full precision. Alternatively, pass a JSON object mapping the same model strings to configs: `method`, optional `backend_config_kwargs` (method-specific parameters), and `target_modules`/`exclude_modules` (JSON lists of layer names). For example: --quant_options '{\"org/model:transformer/*.safetensors\": {\"method\": \"bitsandbytes_nf4\", \"backend_config_kwargs\": {\"blocksize\": 64}, \"exclude_modules\": [\"to_q\"]}}'. For mixed quantization, use a `configs` list of these configs instead of `method`, with `target_modules`/`exclude_modules` selecting non-overlapping layer sets.")
     return parser
 
 def add_training_config(parser: argparse.ArgumentParser):

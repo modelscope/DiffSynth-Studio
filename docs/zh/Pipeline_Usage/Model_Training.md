@@ -36,7 +36,7 @@ examples/z_image/
     * `--model_id_with_origin_paths`: 带原始路径的模型 ID，例如 `"Qwen/Qwen-Image:transformer/diffusion_pytorch_model*.safetensors"`。用逗号分隔。
     * `--extra_inputs`: 模型 Pipeline 所需的额外输入参数，例如训练图像编辑模型 Qwen-Image-Edit 时需要额外参数 `edit_image`，以 `,` 分隔。
     * `--fp8_models`：以 FP8 格式加载的模型，格式与 `--model_paths` 或 `--model_id_with_origin_paths` 一致，目前仅支持参数不被梯度更新的模型（不需要梯度回传，或梯度仅更新其 LoRA）。
-    * `--quant_options`：对加载的模型进行动态量化。以 `;` 分隔多个条目，每个为 `<模型字符串>:<method>[/<exclude_modules>]`，`<模型字符串>` 需与 `--model_paths`/`--model_id_with_origin_paths` 中的一致，`method` 为已注册的量化方法（如 `bitsandbytes_nf4`），`exclude_modules` 为可选的保持全精度的层。
+    * `--quant_options`：对加载的模型进行动态量化。以 `;` 分隔多个条目，每个为 `<模型字符串>:<method>[/<exclude_modules>]`，`<模型字符串>` 需与 `--model_paths`/`--model_id_with_origin_paths` 中的一致，`method` 为已注册的量化方法（如 `bitsandbytes_nf4`），`exclude_modules` 为可选的保持全精度的层。也可传入 `{模型字符串: 配置}` 形式的 JSON 对象，单一配置使用 `method`、`backend_config_kwargs`、`target_modules`/`exclude_modules` 等字段，混合配置使用 `configs` 列表；同一对象可以包含单一和混合配置。完整示例与字段说明见[量化：JSON 格式](./Quantization.md#json-格式)。
     * `--resume_from_checkpoint`：从 checkpoint 文件中加载模型权重并继续训练。目前仅支持非 LoRA 的单模型加载。
 * 训练基础配置
     * `--learning_rate`: 学习率。
