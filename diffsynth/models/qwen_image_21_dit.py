@@ -277,21 +277,23 @@ class QwenImage21AttnProcessor:
                 kv_cache["key"] = key[:, cache_write_slice].clone()
                 kv_cache["value"] = value[:, cache_write_slice].clone()
 
-        template_key, template_value = None, None
+        template_len = 0
         if template_kv is not None:
             template_key, template_value = self._prepare_template_kv(attn, key, value, template_kv)
+            template_len = template_key.shape[1]
+            # Prepended so each segment's key range stays a contiguous slice.
+            key = torch.cat([template_key, key], dim=1)
+            value = torch.cat([template_value, value], dim=1)
+            if attention_mask is not None:
+                attention_mask = F.pad(attention_mask, (template_len, 0), value=True)
+            if key_valid is not None:
+                key_valid = F.pad(key_valid, (template_len, 0), value=True)
 
         seq_len_q, seq_len_kv = query.shape[1], key.shape[1]
         if decode:
             # Fast decode path with kv cache
-            if template_key is not None:
-                template_len = template_key.shape[1]
-                key = torch.cat([key, template_key], dim=1)
-                value = torch.cat([value, template_value], dim=1)
-                if attention_mask is not None:
-                    attention_mask = F.pad(attention_mask, (0, template_len), value=True)
             hidden_states = _attention(query, key, value, attn_mask=attention_mask)
-        elif template_key is None and FLEX_ATTN_AVAILABLE and isinstance(attention_mask, BlockMask):
+        elif template_len == 0 and FLEX_ATTN_AVAILABLE and isinstance(attention_mask, BlockMask):
             # Flex attention route on the first step or without kv cache
             pad_q = int(math.ceil(seq_len_q / _FLEX_BLOCK_SIZE) * _FLEX_BLOCK_SIZE) - seq_len_q
             pad_kv = int(math.ceil(seq_len_kv / _FLEX_BLOCK_SIZE) * _FLEX_BLOCK_SIZE) - seq_len_kv
@@ -309,35 +311,20 @@ class QwenImage21AttnProcessor:
             prefix_len = segments[-1][1] if segments else 0
             outputs = []
             for start, end, is_text in segments:
-                seg_mask = valid if valid is None else valid[..., :end]
-                segment_key = key[:, :end]
-                segment_value = value[:, :end]
-                if template_key is not None:
-                    template_len = template_key.shape[1]
-                    segment_key = torch.cat([segment_key, template_key], dim=1)
-                    segment_value = torch.cat([segment_value, template_value], dim=1)
-                    if seg_mask is not None:
-                        seg_mask = F.pad(seg_mask, (0, template_len), value=True)
+                kv_end = end + template_len
+                seg_mask = valid if valid is None else valid[..., :kv_end]
                 if is_text:
                     seg_len = end - start
-                    causal_parts = [
-                        torch.ones(seg_len, start, dtype=torch.bool, device=query.device),
-                        torch.tril(torch.ones(seg_len, seg_len, dtype=torch.bool, device=query.device)),
-                    ]
-                    if template_key is not None:
-                        causal_parts.append(
-                            torch.ones(seg_len, template_len, dtype=torch.bool, device=query.device)
-                        )
-                    causal = torch.cat(causal_parts, dim=1)[None, None]
+                    causal = torch.cat(
+                        [
+                            torch.ones(seg_len, start + template_len, dtype=torch.bool, device=query.device),
+                            torch.tril(torch.ones(seg_len, seg_len, dtype=torch.bool, device=query.device)),
+                        ],
+                        dim=1,
+                    )[None, None]
                     seg_mask = causal if seg_mask is None else seg_mask & causal
-                outputs.append(_attention(query[:, start:end], segment_key, segment_value, attn_mask=seg_mask))
-            target_key, target_value, target_mask = key, value, valid
-            if template_key is not None:
-                target_key = torch.cat([target_key, template_key], dim=1)
-                target_value = torch.cat([target_value, template_value], dim=1)
-                if target_mask is not None:
-                    target_mask = F.pad(target_mask, (0, template_len), value=True)
-            outputs.append(_attention(query[:, prefix_len:], target_key, target_value, attn_mask=target_mask))
+                outputs.append(_attention(query[:, start:end], key[:, :kv_end], value[:, :kv_end], attn_mask=seg_mask))
+            outputs.append(_attention(query[:, prefix_len:], key, value, attn_mask=valid))
             hidden_states = torch.cat(outputs, dim=1)
         hidden_states = hidden_states.flatten(2, 3).type_as(query)
         hidden_states = attn.to_out[0](hidden_states)
