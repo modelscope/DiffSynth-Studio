@@ -83,6 +83,9 @@ class QwenImage21Pipeline(BasePipeline):
         sigmas: list[float] = None,
         # KV cache
         use_kv_cache: bool = True,
+        # Template
+        template_kv_cache: dict = None,
+        negative_template_kv_cache: dict = None,
         # Attention Implementation
         use_flex_attention: bool = False,
         # VAE tiling
@@ -93,8 +96,8 @@ class QwenImage21Pipeline(BasePipeline):
         progress_bar_cmd=tqdm,
     ):
         # Parameters
-        inputs_posi = {"prompt": prompt}
-        inputs_nega = {"negative_prompt": negative_prompt}
+        inputs_posi = {"prompt": prompt, "template_kv_cache": template_kv_cache}
+        inputs_nega = {"negative_prompt": negative_prompt, "template_kv_cache": negative_template_kv_cache}
         inputs_shared = {
             "cfg_scale": cfg_scale, "edit_image": edit_image,
             "controlnet_inputs": controlnet_inputs,
@@ -406,6 +409,7 @@ def model_fn_qwen_image_21(
     edit_image_pad_mask,
     edit_latents=None,
     kv_cache=None,
+    template_kv_cache=None,
     controlnet: QwenImage21ControlNet = None,
     control_context=None,
     control_scale=1.0,
@@ -431,6 +435,7 @@ def model_fn_qwen_image_21(
         img_shapes=img_shapes,
         img_mask=image_pad_mask,
         kv_cache=kv_cache,
+        template_kv_cache=template_kv_cache,
         controlnet=controlnet,
         control_context=control_context,
         control_scale=control_scale,
