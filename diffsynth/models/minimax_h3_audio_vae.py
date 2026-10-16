@@ -19,7 +19,9 @@ class WarpedTensor(torch.nn.Module):
             self.weight = torch.nn.Parameter(torch.empty(shape))
 
     def forward(self):
-        return self.weight
+        # Clone so the returned tensor is not invalidated when offload hooks
+        # replace `self.weight.data` with an empty placeholder after forward.
+        return self.weight.clone()
 
 
 class WeightNormedConv1d(torch.nn.Module):
