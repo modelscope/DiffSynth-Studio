@@ -54,7 +54,14 @@ def FlowMatchSFTAudioVideoLoss(pipe: BasePipeline, **inputs):
     models = {name: getattr(pipe, name) for name in pipe.in_iteration_models}
     noise_pred, noise_pred_audio = pipe.model_fn(**models, **inputs, timestep=timestep)
 
-    loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
+    if inputs.get("input_latents_video") is not None:
+        loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float(), reduction="none").mean(dim=1, keepdim=True)
+        # Exclude fully fixed tokens while retaining supervision for soft conditioning.
+        loss_mask = inputs["denoise_mask_video"] != 0
+        loss = (loss * loss_mask).flatten(1).sum(1) / loss_mask.flatten(1).sum(1).clamp_min(1)
+        loss = loss.mean()
+    else:
+        loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
     loss = loss * pipe.scheduler.training_weight(timestep)
     if inputs.get("audio_input_latents") is not None:
         loss_audio = torch.nn.functional.mse_loss(noise_pred_audio.float(), training_target_audio.float())
