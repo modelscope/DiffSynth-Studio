@@ -53,7 +53,9 @@ def register_prequantized(package_pattern):
     sidecar = ModelConfig(model_id=prequant_model_id, origin_file_pattern=package_pattern.replace(".safetensors", ".json"))
     sidecar.download_if_necessary()
     with open(sidecar.path) as handle:
-        MODEL_CONFIGS.append(json.load(handle))
+        entry = json.load(handle)
+    if not any(config.get("model_hash") == entry["model_hash"] for config in MODEL_CONFIGS):
+        MODEL_CONFIGS.append(entry)
     return package
 
 

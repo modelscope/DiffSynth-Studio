@@ -1779,6 +1779,21 @@ flux3_series = [
         "model_class": "diffsynth.models.flux3_dit.Flux3DiTDiffusers",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.flux3_dit.Flux3DiTFromDiffusers",
     },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/flux-3-image-klein-entropack", origin_file_pattern="models/dit_4bit.safetensors")
+        "model_hash": "3899702d86c8f8249bdb1535359c424b",
+        "model_name": "flux3_dit",
+        "model_class": "diffsynth.models.flux3_dit.Flux3DiT",
+        "extra_kwargs": {"flow_map": True},
+        "quant_config": {"method": "entropack_lossy_quant", "load_prequantized": True, "backend_config_kwargs": {"target_bpp": 4.0, "row_rdo_iterations": 2, "row_rdo_candidates": 20}},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/flux-3-image-klein-entropack", origin_file_pattern="models/text_encoder_4bit.safetensors")
+        "model_hash": "05233849ee3764c2665a2165b5d4adff",
+        "model_name": "krea2_text_encoder",
+        "model_class": "diffsynth.models.krea2_text_encoder.Krea2TextEncoder",
+        "quant_config": {"method": "entropack_lossy_quant", "load_prequantized": True, "backend_config_kwargs": {"target_bpp": 4.0, "row_rdo_iterations": 2, "row_rdo_candidates": 20}},
+    },
 ]
 
 MODEL_CONFIGS = (
