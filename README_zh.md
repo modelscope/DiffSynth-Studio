@@ -41,6 +41,8 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年10月16日** FLUX.3 开源，欢迎加入图像生成模型家族！支持文生图、多参考图像编辑、布局控制、低显存推理和 Base 训练能力。详情请参考[文档](/docs/zh/Model_Details/FLUX.3.md)和[示例代码](/examples/flux3/)。我们使用 [EntroPack](https://github.com/modelscope/entropack) 对模型进行了量化，提供了 3bit、4bit、6bit 几个版本的预量化模型：[DiffSynth-Studio/flux-3-image-klein-entropack](https://www.modelscope.cn/models/DiffSynth-Studio/flux-3-image-klein-entropack)。
+
 - **2026年10月12日** 我们已支持基于 OPD（On-Policy Distillation）的蒸馏加速训练，现在能够以极低的成本对模型进行蒸馏加速，详见[蒸馏加速训练](./docs/zh/Training/Distillation.md)。
 
 - **2026年9月29日** 我们开源了 EntroPack——面向 PyTorch 的通用张量压缩库，支持逐位精确恢复的无损压缩和按目标码率控制体积的有损压缩，并提供 GPU 编解码能力。它已作为量化后端接入 DiffSynth-Studio，可在推理与 LoRA 训练中按任意目标码率压缩模型权重。更多信息请参考：
@@ -324,6 +326,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 模型一览：
 
 - 图像生成
+    - FLUX.3：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/FLUX.3.html)、[样例代码](/examples/flux3/)
     - Qwen-Image-2.1：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Qwen-Image-2.1.html)、[样例代码](/examples/qwen_image_21/)
     - SenseNova-U1：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/SenseNova-U1.html)、[样例代码](/examples/sensenova_u1/)
     - Boogu-Image：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Boogu-Image.html)、[样例代码](/examples/boogu_image/)
@@ -582,6 +585,9 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 
 | 基础架构 | 模型 ID | 推理 | 低显存推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
 |-|-|-|-|-|-|-|-|
+| FLUX.3 | [black-forest-labs/flux-3-image-klein](https://www.modelscope.cn/models/black-forest-labs/flux-3-image-klein) | [code](/examples/flux3/model_inference/flux-3-image-klein.py) | [code](/examples/flux3/model_inference_low_vram/flux-3-image-klein.py) | [code](/examples/flux3/model_training/full/flux-3-image-klein.sh) | [code](/examples/flux3/model_training/validate_full/flux-3-image-klein.py) | [code](/examples/flux3/model_training/lora/flux-3-image-klein.sh) | [code](/examples/flux3/model_training/validate_lora/flux-3-image-klein.py) |
+| FLUX.3 | [black-forest-labs/flux-3-image-klein-base](https://www.modelscope.cn/models/black-forest-labs/flux-3-image-klein-base) | [code](/examples/flux3/model_inference/flux-3-image-klein-base.py) | [code](/examples/flux3/model_inference_low_vram/flux-3-image-klein-base.py) | [code](/examples/flux3/model_training/full/flux-3-image-klein-base.sh) | [code](/examples/flux3/model_training/validate_full/flux-3-image-klein-base.py) | [code](/examples/flux3/model_training/lora/flux-3-image-klein-base.sh) | [code](/examples/flux3/model_training/validate_lora/flux-3-image-klein-base.py) |
+| FLUX.3 | [DiffSynth-Studio/flux-3-image-klein-entropack](https://www.modelscope.cn/models/DiffSynth-Studio/flux-3-image-klein-entropack) | [code](/examples/flux3/model_inference/flux-3-image-klein-EntroPack.py) | [code](/examples/flux3/model_inference_low_vram/flux-3-image-klein-EntroPack.py) | - | - | - | - |
 | Qwen-Image-2.1 | [Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1) | [code](/examples/qwen_image_21/model_inference/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_training/full/Qwen-Image-2.1.sh) | [code](/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1.sh) | [code](/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1.py) |
 | Qwen-Image-2.1 | [Qwen/Qwen-Image-2.1-Turbo](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1-Turbo) | [code](/examples/qwen_image_21/model_inference/Qwen-Image-2.1-Turbo.py) | [code](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-Turbo.py) | [code](/examples/qwen_image_21/model_training/full/Qwen-Image-2.1-Turbo.sh) | [code](/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1-Turbo.py) | [code](/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1-Turbo.sh) | [code](/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1-Turbo.py) |
 | Qwen-Image-2.1 | [PAI/Qwen-Image-2.1-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/Qwen-Image-2.1-Fun-Controlnet-Union) | [code](/examples/qwen_image_21/model_inference/Qwen-Image-2.1-Fun-Controlnet-Union.py) | [code](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-Fun-Controlnet-Union.py) | [code](/examples/qwen_image_21/model_training/full/Qwen-Image-2.1-Fun-Controlnet-Union.sh) | [code](/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1-Fun-Controlnet-Union.py) | [code](/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1-Fun-Controlnet-Union.sh) | [code](/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1-Fun-Controlnet-Union.py) |

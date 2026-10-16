@@ -65,6 +65,7 @@ graph LR;
 * [SenseNova-U1](./Model_Details/SenseNova-U1.md)
 * [YuE2](./Model_Details/YuE2.md)
 * [Qwen-Image-2.1](./Model_Details/Qwen-Image-2.1.md)
+* [FLUX.3](./Model_Details/FLUX.3.md)
 
 ## Section 3: 训练框架
 

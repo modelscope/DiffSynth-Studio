@@ -1750,9 +1750,40 @@ qwen_image_21_series = [
     },
 ]
 
+flux3_series = [
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/flux-3-image-klein", origin_file_pattern="model.safetensors")
+        "model_hash": "cb8e9c6df08faa5cf99c11be4d34d26b",
+        "model_name": "flux3_dit",
+        "model_class": "diffsynth.models.flux3_dit.Flux3DiT",
+        "extra_kwargs": {"flow_map": True},
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/flux-3-image-klein", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "d98fcf51c088ad9910399b0d7fdfe692",
+        "model_name": "flux3_dit",
+        "model_class": "diffsynth.models.flux3_dit.Flux3DiTDiffusers",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux3_dit.Flux3DiTFromDiffusers",
+        "extra_kwargs": {"flow_map": True},
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/flux-3-image-klein-base", origin_file_pattern="model.safetensors")
+        "model_hash": "3a12023223002ebc2f30c85d3d1257ea",
+        "model_name": "flux3_dit",
+        "model_class": "diffsynth.models.flux3_dit.Flux3DiT",
+    },
+    {
+        # Example: ModelConfig(model_id="black-forest-labs/flux-3-image-klein-base", origin_file_pattern="transformer/*.safetensors")
+        "model_hash": "fb4609249d89aeb716222378f92005ce",
+        "model_name": "flux3_dit",
+        "model_class": "diffsynth.models.flux3_dit.Flux3DiTDiffusers",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux3_dit.Flux3DiTFromDiffusers",
+    },
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + qwen_video_edit_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
     + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series + minimax_h3_series + minimax_music3_series + sensenova_u1_series
-    + yue2_series + qwen_image_21_series
+    + yue2_series + qwen_image_21_series + flux3_series
 )

@@ -241,6 +241,11 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.flux3_dit.Flux3DiT": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "diffsynth.models.flux3_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.flux3_dit.QKNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
     "diffsynth.models.flux2_text_encoder.Flux2TextEncoder": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
