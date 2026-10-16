@@ -5,12 +5,13 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
             "Qwen-Image": FlowMatchScheduler.set_timesteps_qwen_image,
             "FLUX.2": FlowMatchScheduler.set_timesteps_flux2,
+            "FLUX.3": FlowMatchScheduler.set_timesteps_flux3,
             "Z-Image": FlowMatchScheduler.set_timesteps_z_image,
             "LTX-2": FlowMatchScheduler.set_timesteps_ltx2,
             "Qwen-Image-Lightning": FlowMatchScheduler.set_timesteps_qwen_image_lightning,
@@ -164,6 +165,13 @@ class FlowMatchScheduler():
             mu = FlowMatchScheduler.compute_empirical_mu(dynamic_shift_len, num_inference_steps)
         sigmas = math.exp(mu) / (math.exp(mu) + (1 / sigmas - 1))
         timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_flux3(num_inference_steps=16, denoising_strength=1.0, alpha=6.93, **kwargs):
+        u = torch.linspace(denoising_strength, 0.0, num_inference_steps + 1)[:-1]
+        sigmas = alpha * u / (1.0 + (alpha - 1.0) * u)
+        timesteps = sigmas * 1000
         return sigmas, timesteps
 
     @staticmethod
