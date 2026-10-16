@@ -18,6 +18,7 @@ Available packages (paths inside the prequant model repo):
     text_encoder:
         models/text_encoder_3bit.safetensors  3bit
         models/text_encoder_4bit.safetensors  4bit
+        models/text_encoder_6bit.safetensors  6bit
 
 `dit_package` and `text_encoder_package` are chosen independently: any combination works
 (e.g. `dit_4bit` with `text_encoder_3bit`).
