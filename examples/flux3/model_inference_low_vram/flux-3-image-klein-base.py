@@ -15,6 +15,9 @@ vram_config = {
     "computation_device": "cuda",
 }
 
+# `black-forest-labs/flux-3-image-klein-base` is an access-request-only model. To download it:
+# 1. Request access at https://modelscope.cn/models/black-forest-labs/flux-3-image-klein-base
+# 2. Log in via CLI: `modelscope login --token ms-xxx`. Get your token at https://modelscope.cn/my/settings/token
 pipe = Flux3ImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
