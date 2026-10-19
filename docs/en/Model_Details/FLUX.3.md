@@ -14,6 +14,15 @@ pip install -e .
 
 For more information on installation, please refer to [Setup Dependencies](../Pipeline_Usage/Setup.md).
 
+## Model Access
+
+`black-forest-labs/flux-3-image-klein` and `black-forest-labs/flux-3-image-klein-base` are access-request-only models on ModelScope. Before downloading them:
+
+1. Request access on the model page ([Klein](https://modelscope.cn/models/black-forest-labs/flux-3-image-klein) or [Klein Base](https://modelscope.cn/models/black-forest-labs/flux-3-image-klein-base)).
+2. Log in via the CLI with your ModelScope token: `modelscope login --token ms-xxx`. Get your token at [Settings / Access Token](https://modelscope.cn/my/settings/token).
+
+Access must be granted for the same account used to log in.
+
 ## Quick Start
 
 Running the following code will load the [black-forest-labs/flux-3-image-klein](https://www.modelscope.cn/models/black-forest-labs/flux-3-image-klein) model for inference. VRAM management is enabled, and the framework automatically controls parameter loading based on available VRAM. Minimum 4GB VRAM is required to run.

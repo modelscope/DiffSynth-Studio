@@ -3,16 +3,18 @@ import torch
 
 from diffsynth.pipelines.flux3_image import Flux3ImagePipeline, ModelConfig
 
-
+# `black-forest-labs/flux-3-image-klein-base` is an access-request-only model. To download it:
+# 1. Request access at https://modelscope.cn/models/black-forest-labs/flux-3-image-klein-base
+# 2. Log in via CLI: `modelscope login --token ms-xxx`. Get your token at https://modelscope.cn/my/settings/token
 pipe = Flux3ImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
         ModelConfig(model_id="black-forest-labs/flux-3-image-klein-base", origin_file_pattern="model.safetensors"),
-        ModelConfig(model_id="black-forest-labs/flux-3-image-klein", origin_file_pattern="text_encoder/*.safetensors"),
-        ModelConfig(model_id="black-forest-labs/flux-3-image-klein", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+        ModelConfig(model_id="black-forest-labs/flux-3-image-klein-base", origin_file_pattern="text_encoder/*.safetensors"),
+        ModelConfig(model_id="black-forest-labs/flux-3-image-klein-base", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
-    processor_config=ModelConfig(model_id="black-forest-labs/flux-3-image-klein", origin_file_pattern="text_encoder/"),
+    processor_config=ModelConfig(model_id="black-forest-labs/flux-3-image-klein-base", origin_file_pattern="text_encoder/"),
 )
 
 prompt = "Masterpiece, best quality. Cinematic photograph of a beautiful young woman with long black hair wearing a navy sailor-style school uniform with a green necktie, standing in a sunlit school corridor with large windows, warm afternoon light and soft bokeh in the background."

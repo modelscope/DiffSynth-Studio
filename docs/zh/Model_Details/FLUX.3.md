@@ -14,6 +14,15 @@ pip install -e .
 
 更多关于安装的信息，请参考[安装依赖](../Pipeline_Usage/Setup.md)。
 
+## 模型访问权限
+
+`black-forest-labs/flux-3-image-klein` 和 `black-forest-labs/flux-3-image-klein-base` 是 ModelScope 上的受限模型，需要申请访问后才能下载。下载前请：
+
+1. 在模型页面申请访问（[Klein](https://modelscope.cn/models/black-forest-labs/flux-3-image-klein) 或 [Klein Base](https://modelscope.cn/models/black-forest-labs/flux-3-image-klein-base)）。
+2. 使用 ModelScope token 登录：`modelscope login --token ms-xxx`。token 可在[访问令牌](https://modelscope.cn/my/settings/token)页面获取。
+
+请确保申请访问的账号与登录使用的账号一致。
+
 ## 快速开始
 
 运行以下代码可以快速加载 [black-forest-labs/flux-3-image-klein](https://www.modelscope.cn/models/black-forest-labs/flux-3-image-klein) 模型并进行推理。显存管理已启动，框架会自动根据剩余显存控制模型参数的加载，最低 4G 显存即可运行。

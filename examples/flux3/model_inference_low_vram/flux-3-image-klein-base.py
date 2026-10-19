@@ -15,15 +15,18 @@ vram_config = {
     "computation_device": "cuda",
 }
 
+# `black-forest-labs/flux-3-image-klein-base` is an access-request-only model. To download it:
+# 1. Request access at https://modelscope.cn/models/black-forest-labs/flux-3-image-klein-base
+# 2. Log in via CLI: `modelscope login --token ms-xxx`. Get your token at https://modelscope.cn/my/settings/token
 pipe = Flux3ImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
         ModelConfig(model_id="black-forest-labs/flux-3-image-klein-base", origin_file_pattern="model.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/flux-3-image-klein", origin_file_pattern="text_encoder/*.safetensors", **vram_config),
-        ModelConfig(model_id="black-forest-labs/flux-3-image-klein", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
+        ModelConfig(model_id="black-forest-labs/flux-3-image-klein-base", origin_file_pattern="text_encoder/*.safetensors", **vram_config),
+        ModelConfig(model_id="black-forest-labs/flux-3-image-klein-base", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
-    processor_config=ModelConfig(model_id="black-forest-labs/flux-3-image-klein", origin_file_pattern="text_encoder/"),
+    processor_config=ModelConfig(model_id="black-forest-labs/flux-3-image-klein-base", origin_file_pattern="text_encoder/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / 1024**3 - 0.5,
 )
 
