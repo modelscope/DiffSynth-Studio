@@ -9,6 +9,7 @@ ready-to-use `MODEL_CONFIGS` entry), then runs inference. Defaults to SFT
 Available packages (paths inside the prequant model repo):
 
     dit:
+        models/MOSS-Image-SFT/dit_3.5bit.safetensors        mixed allocation, 3.5bit
         models/MOSS-Image-SFT/dit_4.5bit.safetensors        mixed allocation, 4.5bit
         models/MOSS-Image-SFT/dit_6bit.safetensors          6bit
         models/MOSS-Image-SFT/dit_int8_6bit.safetensors     INT8 GEMM, 6bit
@@ -33,7 +34,7 @@ from diffsynth.pipelines.moss_image import MOSSImagePipeline, ModelConfig
 
 prequant_model_id = "DiffSynth-Studio/MOSS-Image-EntroPack"
 base_model_id = "openmoss/MOSS-Image-SFT"
-dit_package = "models/MOSS-Image-SFT/dit_4.5bit.safetensors"
+dit_package = "models/MOSS-Image-SFT/dit_int8_6bit.safetensors"
 text_encoder_package = "models/text_encoder_4.5bit.safetensors"
 
 

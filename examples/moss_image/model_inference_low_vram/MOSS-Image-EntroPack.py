@@ -10,6 +10,7 @@ or another level.
 Available packages (paths inside the prequant model repo):
 
     dit:
+        models/MOSS-Image-SFT/dit_3.5bit.safetensors        mixed allocation, 3.5bit
         models/MOSS-Image-SFT/dit_4.5bit.safetensors        mixed allocation, 4.5bit
         models/MOSS-Image-SFT/dit_6bit.safetensors          6bit
         models/MOSS-Image-SFT/dit_int8_6bit.safetensors     INT8 GEMM, 6bit

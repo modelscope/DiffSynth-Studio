@@ -41,8 +41,6 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
-- **2026年10月19日** MOSS-Image 系列模型开源，欢迎加入图像生成模型家族！支持文生图、布局控制、中英日文文字渲染、低显存推理和 LoRA 训练能力。详情请参考[文档](/docs/zh/Model_Details/MOSS-Image.md)和[示例代码](/examples/moss_image/)。我们使用 [EntroPack](https://github.com/modelscope/entropack) 对模型进行了量化，提供了多个低位量化版本：[DiffSynth-Studio/MOSS-Image-EntroPack](https://www.modelscope.cn/models/DiffSynth-Studio/MOSS-Image-EntroPack)。
-
 - **2026年10月16日** flux-3-image-klein 开源，欢迎加入图像生成模型家族！支持文生图、多参考图像编辑、布局控制、低显存推理和 Base 训练能力。详情请参考[文档](/docs/zh/Model_Details/FLUX.3.md)和[示例代码](/examples/flux3/)。我们使用 [EntroPack](https://github.com/modelscope/entropack) 对模型进行了量化，提供了 3bit、4bit、6bit 几个版本的预量化模型：[DiffSynth-Studio/flux-3-image-klein-entropack](https://www.modelscope.cn/models/DiffSynth-Studio/flux-3-image-klein-entropack)。
 
 - **2026年10月12日** 我们已支持基于 OPD（On-Policy Distillation）的蒸馏加速训练，现在能够以极低的成本对模型进行蒸馏加速，详见[蒸馏加速训练](./docs/zh/Training/Distillation.md)。
