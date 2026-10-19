@@ -1,7 +1,6 @@
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "moss_image/MOSS-Image-SFT/*" --local_dir ./data/diffsynth_example_dataset
 
-accelerate launch --config_file examples/moss_image/model_training/full/accelerate_config_zero3.yaml \
-  examples/moss_image/model_training/train.py \
+accelerate launch examples/moss_image/model_training/train.py \
   --dataset_base_path data/diffsynth_example_dataset/moss_image/MOSS-Image-SFT \
   --dataset_metadata_path data/diffsynth_example_dataset/moss_image/MOSS-Image-SFT/metadata.csv \
   --max_pixels 1048576 \

@@ -11,7 +11,7 @@ accelerate launch examples/moss_image/model_training/train.py \
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/MOSS-Image-SFT_lora" \
   --lora_base_model "dit" \
-  --lora_target_modules "proj.q,proj.k,proj.v,proj.o" \
+  --lora_target_modules "" \
   --lora_rank 32 \
   --use_gradient_checkpointing \
   --dataset_num_workers 8 \
