@@ -605,6 +605,32 @@ ernie_image_series = [
     },
 ]
 
+moss_image_series = [
+    {
+        # Example: ModelConfig(model_id="openmoss/MOSS-Image-Base", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        # Example: ModelConfig(model_id="openmoss/MOSS-Image-SFT", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        "model_hash": "b2e1de16b1415bb811bcfc428d7991a7",
+        "model_name": "moss_image_dit",
+        "model_class": "diffsynth.models.moss_image_dit.MOSSImageDiT",
+    },
+    {
+        # Example: ModelConfig(model_id="openmoss/MOSS-Image-Base", origin_file_pattern="text_encoder/model*.safetensors")
+        # Example: ModelConfig(model_id="openmoss/MOSS-Image-SFT", origin_file_pattern="text_encoder/model*.safetensors")
+        "model_hash": "a7140be40b65f94f31942d5b5225f781",
+        "model_name": "moss_image_text_encoder",
+        "model_class": "diffsynth.models.moss_image_text_encoder.MOSSImageTextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.moss_image_text_encoder.MOSSImageTextEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="openmoss/MOSS-Image-Base", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        # Example: ModelConfig(model_id="openmoss/MOSS-Image-SFT", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "dc89b5bac72b57182f384e21632db90d",
+        "model_name": "flux2_vae",
+        "model_class": "diffsynth.models.flux2_vae.Flux2VAE",
+        "extra_kwargs": {"decoder_block_out_channels": [96, 192, 384, 384]}
+    },
+]
+
 z_image_series = [
     {
         # Example: ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="transformer/*.safetensors")
@@ -1800,5 +1826,5 @@ MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + qwen_video_edit_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
     + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series + minimax_h3_series + minimax_music3_series + sensenova_u1_series
-    + yue2_series + qwen_image_21_series + flux3_series
+    + yue2_series + qwen_image_21_series + flux3_series + moss_image_series
 )

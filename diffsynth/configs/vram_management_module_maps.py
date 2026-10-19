@@ -367,6 +367,19 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.ministral3.modeling_ministral3.Ministral3RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.moss_image_dit.MOSSImageDiT": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "diffsynth.models.general_modules.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.moss_image_text_encoder.MOSSImageTextEncoder": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_5.modeling_qwen3_5.Qwen3_5RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_5.modeling_qwen3_5.Qwen3_5RMSNormGated": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_5.modeling_qwen3_5.Qwen3_5TextRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_5.modeling_qwen3_5.Qwen3_5GatedDeltaNet": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
     "diffsynth.models.joyai_image_dit.JoyAIImageDiT": {
         "diffsynth.models.joyai_image_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.joyai_image_dit.ModulateWan": "diffsynth.core.vram.layers.AutoWrappedModule",

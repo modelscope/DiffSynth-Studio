@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "MOSS-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -16,6 +16,7 @@ class FlowMatchScheduler():
             "LTX-2": FlowMatchScheduler.set_timesteps_ltx2,
             "Qwen-Image-Lightning": FlowMatchScheduler.set_timesteps_qwen_image_lightning,
             "ERNIE-Image": FlowMatchScheduler.set_timesteps_ernie_image,
+            "MOSS-Image": FlowMatchScheduler.set_timesteps_moss_image,
             "ACE-Step": FlowMatchScheduler.set_timesteps_ace_step,
             "HiDream-O1-Image": FlowMatchScheduler.set_timesteps_hidream_o1_image,
             "Ideogram4": FlowMatchScheduler.set_timesteps_ideogram4,
@@ -183,6 +184,25 @@ class FlowMatchScheduler():
         sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps + 1)[:-1]
         if shift is not None and shift != 1.0:
             sigmas = shift * sigmas / (1 + (shift - 1) * sigmas)
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_moss_image(num_inference_steps=50, denoising_strength=1.0, shift=5.0, training_shift=1.0):
+        num_train_timesteps = 1000
+
+        def grid(count, shift, start=1.0):
+            lower = shift / (num_train_timesteps + shift - 1)
+            values = torch.linspace(start, lower, count)
+            return shift * values / (1 + (shift - 1) * values)
+
+        sigmas = grid(num_inference_steps, shift, denoising_strength)
+        training = grid(num_train_timesteps, training_shift).flip(0)
+        upper = torch.searchsorted(training, sigmas).clamp(max=num_train_timesteps - 1)
+        lower = (upper - 1).clamp(min=0)
+        nearest = torch.where((sigmas - training[lower]).abs() <= (training[upper] - sigmas).abs(), lower, upper)
+
+        sigmas = torch.unique_consecutive(training[nearest])
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
 
