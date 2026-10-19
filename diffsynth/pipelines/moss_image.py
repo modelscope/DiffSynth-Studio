@@ -98,11 +98,13 @@ class MOSSImagePipeline(BasePipeline):
         models = {name: getattr(self, name) for name in self.in_iteration_models}
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.unsqueeze(0).to(dtype=torch.float32, device=self.device)
+            inputs_shared["latents"] = inputs_shared["latents"].to(self.torch_dtype)
             noise_pred = self.cfg_guided_model_fn(
                 self.model_fn, cfg_scale,
                 inputs_shared, inputs_posi, inputs_nega,
                 **models, timestep=timestep, progress_id=progress_id
             )
+            inputs_shared["latents"] = inputs_shared["latents"].float()
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
 
         # Decode
@@ -144,7 +146,7 @@ class MOSSImageUnit_PromptEmbedder(PipelineUnit):
         )
         inputs = pipe.tokenizer(formatted, return_tensors="pt", truncation=True, max_length=max_sequence_length)
         inputs = {name: value.to(pipe.device) for name, value in inputs.items()}
-        prompt_embeds = pipe.text_encoder(**inputs, use_cache=False)
+        prompt_embeds = pipe.text_encoder(**inputs, use_cache=False).to(pipe.torch_dtype)
         prompt_embeds_mask = inputs["attention_mask"].bool()
         return {"prompt_embeds": prompt_embeds, "prompt_embeds_mask": prompt_embeds_mask}
 
