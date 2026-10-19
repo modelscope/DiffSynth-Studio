@@ -1,8 +1,8 @@
-# `black-forest-labs/flux-3-image-klein` is an access-request-only model. To download it:
+modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux3/flux-3-image-klein/*" --local_dir ./data/diffsynth_example_dataset
+
+# The training command below downloads the access-request-only model `black-forest-labs/flux-3-image-klein`.
 # 1. Request access at https://modelscope.cn/models/black-forest-labs/flux-3-image-klein
 # 2. Log in via CLI: `modelscope login --token ms-xxx`. Get your token at https://modelscope.cn/my/settings/token
-
-modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux3/flux-3-image-klein/*" --local_dir ./data/diffsynth_example_dataset
 
 accelerate launch examples/flux3/model_training/train.py \
   --dataset_base_path data/diffsynth_example_dataset/flux3/flux-3-image-klein \

@@ -59,6 +59,10 @@ def register_prequantized(package_pattern):
     return package
 
 
+# This example also loads the VAE and text encoder from `black-forest-labs/flux-3-image-klein`,
+# which is an access-request-only model. To download it:
+# 1. Request access at https://modelscope.cn/models/black-forest-labs/flux-3-image-klein
+# 2. Log in via CLI: `modelscope login --token ms-xxx`. Get your token at https://modelscope.cn/my/settings/token
 pipe = Flux3ImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
