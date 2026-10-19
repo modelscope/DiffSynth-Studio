@@ -378,7 +378,7 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "transformers.models.qwen3_5.modeling_qwen3_5.Qwen3_5RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_5.modeling_qwen3_5.Qwen3_5RMSNormGated": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_5.modeling_qwen3_5.Qwen3_5TextRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
-        "transformers.models.qwen3_5.modeling_qwen3_5.Qwen3_5GatedDeltaNet": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_5.modeling_qwen3_5.Qwen3_5GatedDeltaNet": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
     },
     "diffsynth.models.joyai_image_dit.JoyAIImageDiT": {
         "diffsynth.models.joyai_image_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",

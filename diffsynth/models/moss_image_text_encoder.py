@@ -72,6 +72,12 @@ class MOSSImageTextEncoder(torch.nn.Module):
         use_cache: bool = False,
         **kwargs,
     ):
+        # Qwen3.5 reads `conv1d.weight` directly instead of calling the module, so its
+        # VRAM wrapper never gets a forward call to trigger lazy loading.
+        for layer in self.model.layers:
+            conv1d = getattr(getattr(layer, "linear_attn", None), "conv1d", None)
+            if conv1d is not None and hasattr(conv1d, "preparing"):
+                conv1d.preparing()
         outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,

@@ -66,7 +66,7 @@ class MOSSImageTextProjection(nn.Module):
         self.blocks = nn.ModuleList([MOSSImageTextBlock(dim, ffn_dim, heads) for _ in range(2)])
 
     def forward(self, x: torch.Tensor, rope: torch.Tensor) -> torch.Tensor:
-        x = self.proj(x.to(self.proj.weight.dtype))
+        x = self.proj(x)
         for block in self.blocks:
             x = block(x, rope)
         return x
@@ -87,7 +87,7 @@ class MOSSImageBlock(nn.Module):
     def forward(self, x: torch.Tensor, rope: torch.Tensor, modulation: torch.Tensor) -> torch.Tensor:
         shift_a, scale_a, gate_a, shift_f, scale_f, gate_f = modulation.unbind(1)
         y = self.norm1(x) * (1 + scale_a[:, None]) + shift_a[:, None]
-        dtype = self.proj["q"].weight.dtype
+        dtype = x.dtype
         y = y.to(dtype)
         q = self.q_norm(self.proj["q"](y).unflatten(-1, (self.heads, -1))).flatten(2)
         k = self.k_norm(self.proj["k"](y).unflatten(-1, (self.heads, -1))).flatten(2)
@@ -202,9 +202,9 @@ class MOSSImageDiT(nn.Module):
         phase = times.double()[:, None] * freq
         embedding = torch.cat((phase.cos(), phase.sin()), -1).float()
 
-        time = self.time_embedding(embedding.to(self.time_embedding[0].weight.dtype)).float()
-        mod = self.shared_block_modulation(time.to(self.shared_block_modulation.weight.dtype)).view(batch, 6, -1)
-        head = self.video_head_modulation(time.to(self.video_head_modulation.weight.dtype)).view(batch, 2, -1)
+        time = self.time_embedding(embedding.to(hidden_states.dtype)).float()
+        mod = self.shared_block_modulation(time.to(hidden_states.dtype)).view(batch, 6, -1)
+        head = self.video_head_modulation(time.to(hidden_states.dtype)).view(batch, 2, -1)
 
         outputs = []
         for index in range(batch):
@@ -213,7 +213,7 @@ class MOSSImageDiT(nn.Module):
                 raise ValueError("Each sample needs at least one valid text token.")
 
             video = hidden_states[index:index + 1].flatten(2).transpose(1, 2)
-            video = self.video_embedder(video.to(self.video_embedder.weight.dtype).contiguous())
+            video = self.video_embedder(video.contiguous())
             rope = self.rope(height, width, context.shape[1], hidden_states.device).to(video.dtype)
             text = self.text_embedder(context, rope[:, height * width:])
             x = torch.cat((video, text), 1)
@@ -227,8 +227,8 @@ class MOSSImageDiT(nn.Module):
                         x, rope, mod[index:index + 1],
                     )
 
-            x = self.final_norm_video(x[:, :height * width].to(self.final_norm_video.weight.dtype))
+            x = self.final_norm_video(x[:, :height * width])
             x = x * (1 + head[index:index + 1, 1, None]) + head[index:index + 1, 0, None]
-            x = self.final_linear_video(x.to(self.final_linear_video.weight.dtype))
+            x = self.final_linear_video(x)
             outputs.append(x.transpose(1, 2).reshape(1, -1, height, width))
         return torch.cat(outputs)

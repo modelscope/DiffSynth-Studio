@@ -629,6 +629,27 @@ moss_image_series = [
         "model_class": "diffsynth.models.flux2_vae.Flux2VAE",
         "extra_kwargs": {"decoder_block_out_channels": [96, 192, 384, 384]}
     },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MOSS-Image-EntroPack", origin_file_pattern="models/MOSS-Image-Base/dit_6bit.safetensors")
+        "model_hash": "b895b1ad67dd7a9f225dc4ad7dcec3f2",
+        "model_name": "moss_image_dit",
+        "model_class": "diffsynth.models.moss_image_dit.MOSSImageDiT",
+        "quant_config": {"method": "entropack_lossy_quant", "load_prequantized": True, "backend_config_kwargs": {"target_bpp": 6.0, "row_rdo_iterations": 2, "row_rdo_candidates": 20}},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MOSS-Image-EntroPack", origin_file_pattern="models/MOSS-Image-SFT/dit_6bit.safetensors")
+        "model_hash": "6f2e6e215ce1ad45e42ef84632165fbd",
+        "model_name": "moss_image_dit",
+        "model_class": "diffsynth.models.moss_image_dit.MOSSImageDiT",
+        "quant_config": {"method": "entropack_lossy_quant", "load_prequantized": True, "backend_config_kwargs": {"target_bpp": 6.0, "row_rdo_iterations": 2, "row_rdo_candidates": 20}},
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MOSS-Image-EntroPack", origin_file_pattern="models/text_encoder_6bit.safetensors")
+        "model_hash": "c857c646d678fc7f40fe8465524efeeb",
+        "model_name": "moss_image_text_encoder",
+        "model_class": "diffsynth.models.moss_image_text_encoder.MOSSImageTextEncoder",
+        "quant_config": {"method": "entropack_lossy_quant", "load_prequantized": True, "backend_config_kwargs": {"target_bpp": 6.0, "row_rdo_iterations": 2, "row_rdo_candidates": 20}},
+    },
 ]
 
 z_image_series = [

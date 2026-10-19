@@ -2,23 +2,22 @@ from diffsynth.pipelines.moss_image import MOSSImagePipeline, ModelConfig
 import torch
 
 vram_config = {
-    "offload_dtype": torch.bfloat16,
-    "offload_device": "cpu",
-    "onload_dtype": torch.bfloat16,
-    "onload_device": "cpu",
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": "disk",
+    "onload_device": "disk",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
 }
-vae_vram_config = {**vram_config, "offload_dtype": torch.float32, "onload_dtype": torch.float32, "preparing_dtype": torch.float32, "computation_dtype": torch.float32}
 pipe = MOSSImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
         ModelConfig(model_id="openmoss/MOSS-Image-SFT", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors", **vram_config),
         ModelConfig(model_id="openmoss/MOSS-Image-SFT", origin_file_pattern="text_encoder/model*.safetensors", **vram_config),
-        ModelConfig(model_id="openmoss/MOSS-Image-SFT", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vae_vram_config),
+        ModelConfig(model_id="openmoss/MOSS-Image-SFT", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", computation_dtype=torch.float32),
     ],
     tokenizer_config=ModelConfig(model_id="openmoss/MOSS-Image-SFT", origin_file_pattern="tokenizer/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
