@@ -51,6 +51,11 @@ if ENTROPACK_AVAILABLE:
         linear_cls = ep.CompressedINT8Linear
 
 
+def _graph_break_quantized_linear(module):
+    module.forward = torch._dynamo.disable(module.forward)
+    return module
+
+
 @register_quant_backend("entropack")
 class EntroPackQuantBackend(QuantBackend):
     """Adapter over entropack's `CompressedLinear` family; a method's config is the config its layers get."""
@@ -70,7 +75,7 @@ class EntroPackQuantBackend(QuantBackend):
         return {
             "is_serializable": True,
             "is_differentiable": True,
-            "is_compileable": False,
+            "is_compileable": True,
             "requires_calibration": False,
         }
 
@@ -85,13 +90,15 @@ class EntroPackQuantBackend(QuantBackend):
         if compute_device is not None:
             linear = linear.to(device=compute_device)
         quantized = self.config.linear_cls.from_linear(linear, config=self.config)
-        return quantized if model_device is None else quantized.to(device=model_device)
+        quantized = quantized if model_device is None else quantized.to(device=model_device)
+        return _graph_break_quantized_linear(quantized)
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
-        return self.config.linear_cls(
+        shell = self.config.linear_cls(
             linear.in_features, linear.out_features, bias=linear.bias is not None,
             dtype=compute_dtype, config=self.config,
         )
+        return _graph_break_quantized_linear(shell)
 
     def dequantize_to_linear(self, module, compute_dtype, compute_device=None, model_device=None):
         if compute_device is not None:
