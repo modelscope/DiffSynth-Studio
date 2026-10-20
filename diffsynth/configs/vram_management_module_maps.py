@@ -256,6 +256,7 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.GroupNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.flux2_vae.Flux2VAELatentNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.z_image_text_encoder.ZImageTextEncoder": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",

@@ -564,7 +564,6 @@ flux2_series = [
         "model_hash": "c54288e3ee12ca215898840682337b95",
         "model_name": "flux2_vae",
         "model_class": "diffsynth.models.flux2_vae.Flux2VAE",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux2_vae.Flux2VAEStateDictConverter",
     },
     {
         # Example: ModelConfig(model_id="black-forest-labs/FLUX.2-klein-4B", origin_file_pattern="transformer/*.safetensors")
@@ -628,7 +627,6 @@ moss_image_series = [
         "model_hash": "dc89b5bac72b57182f384e21632db90d",
         "model_name": "flux2_vae",
         "model_class": "diffsynth.models.flux2_vae.Flux2VAE",
-        "state_dict_converter": "diffsynth.utils.state_dict_converters.flux2_vae.Flux2VAEStateDictConverter",
         "extra_kwargs": {"decoder_block_out_channels": [96, 192, 384, 384]}
     },
     {

@@ -233,6 +233,18 @@ class Flux2VAEDecoder(torch.nn.Module):
         return self.conv_out(hidden_states)
 
 
+class Flux2VAELatentNorm(torch.nn.Module):
+
+    def __init__(self, num_features):
+        super().__init__()
+        self.running_mean = torch.nn.Parameter(torch.zeros(num_features), requires_grad=False)
+        self.running_var = torch.nn.Parameter(torch.ones(num_features), requires_grad=False)
+        self.num_batches_tracked = torch.nn.Parameter(torch.zeros((), dtype=torch.long), requires_grad=False)
+
+    def forward(self):
+        return self.running_mean, self.running_var
+
+
 class Flux2VAE(torch.nn.Module):
     """
     The VAE used by FLUX.2 and related models. Image -> latent (`encode`) and latent -> image (`decode`).
@@ -255,7 +267,7 @@ class Flux2VAE(torch.nn.Module):
     ):
         super().__init__()
         self.patch_size = patch_size
-        num_latent_channels = patch_size[0] * patch_size[1] * latent_channels
+        self.num_latent_channels = patch_size[0] * patch_size[1] * latent_channels
         self.encoder = Flux2VAEEncoder(
             in_channels=in_channels,
             latent_channels=latent_channels,
@@ -274,10 +286,7 @@ class Flux2VAE(torch.nn.Module):
         )
         self.quant_conv = torch.nn.Conv2d(2 * latent_channels, 2 * latent_channels, 1) if use_quant_conv else None
         self.post_quant_conv = torch.nn.Conv2d(latent_channels, latent_channels, 1) if use_post_quant_conv else None
-        # Latent normalization statistics (`bn.running_mean` / `bn.running_var` in the checkpoint).
-        # They are registered as parameters, so that they are also loaded when the model is offloaded to disk.
-        self.latent_mean = torch.nn.Parameter(torch.zeros(num_latent_channels), requires_grad=False)
-        self.latent_var = torch.nn.Parameter(torch.ones(num_latent_channels), requires_grad=False)
+        self.bn = Flux2VAELatentNorm(self.num_latent_channels)
 
     @property
     def vae_dtype(self):
@@ -287,8 +296,10 @@ class Flux2VAE(torch.nn.Module):
         return next(self.parameters()).dtype
 
     def latent_stats(self, device, dtype):
-        mean = self.latent_mean.to(device=device, dtype=dtype).view(1, -1, 1, 1)
-        std = torch.sqrt(self.latent_var.to(device=device, dtype=dtype) + 1e-4).view(1, -1, 1, 1)
+        # Call the module instead of reading its parameters, so that VRAM management loads the statistics on demand.
+        mean, var = self.bn()
+        mean = mean.to(device=device, dtype=dtype).view(1, -1, 1, 1)
+        std = torch.sqrt(var.to(device=device, dtype=dtype) + 1e-4).view(1, -1, 1, 1)
         return mean, std
 
     def _encode(self, image):
@@ -310,7 +321,7 @@ class Flux2VAE(torch.nn.Module):
             hidden_states, "B C (H P) (W Q) -> B (C P Q) H W", P=self.patch_size[0], Q=self.patch_size[1]
         )
         # The encoder predicts mean and variance, only the mean is used as the latent.
-        hidden_states = hidden_states[:, :self.latent_mean.shape[0]]
+        hidden_states = hidden_states[:, :self.num_latent_channels]
         mean, std = self.latent_stats(hidden_states.device, hidden_states.dtype)
         return (hidden_states - mean) / std
 
