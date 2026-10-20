@@ -188,7 +188,7 @@ class FlowMatchScheduler():
         return sigmas, timesteps
 
     @staticmethod
-    def set_timesteps_moss_image(num_inference_steps=50, denoising_strength=1.0, shift=5.0, training_shift=1.0):
+    def set_timesteps_moss_image(num_inference_steps=50, denoising_strength=1.0, shift=1.0, training_shift=1.0):
         num_train_timesteps = 1000
 
         def grid(count, shift, start=1.0):
