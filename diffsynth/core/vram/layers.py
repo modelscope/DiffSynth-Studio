@@ -531,6 +531,7 @@ class AutoWrappedQuantizedModule(torch.nn.Linear, AutoTorchModule, LoRAHotLoadMi
                 self.module.to(device=self.onload_device)
             self.state = 1
 
+    @torch._dynamo.disable
     def preparing(self):
         if self.state != 2:
             if self.disk_offload and self.preparing_device != "disk" and self.onload_device == "disk":
@@ -539,6 +540,7 @@ class AutoWrappedQuantizedModule(torch.nn.Linear, AutoTorchModule, LoRAHotLoadMi
                 self.module.to(device=self.preparing_device)
             self.state = 2
 
+    @torch._dynamo.disable
     def computation_module(self):
         device = self.preparing_device if self.state == 2 else self.onload_device
         if device == self.computation_device:

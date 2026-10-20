@@ -51,9 +51,10 @@ if ENTROPACK_AVAILABLE:
         linear_cls = ep.CompressedINT8Linear
 
 
-def _graph_break_quantized_linear(module):
-    module.forward = torch._dynamo.disable(module.forward)
-    return module
+def _patch_compile_graph_breaks():
+    for cls in (ep.CompressedLinear, ep.CompressedFP8Linear, ep.CompressedINT8Linear):
+        if not getattr(cls.forward, "_torchdynamo_disable", False):
+            cls.forward = torch._dynamo.disable(cls.forward)
 
 
 @register_quant_backend("entropack")
@@ -70,6 +71,7 @@ class EntroPackQuantBackend(QuantBackend):
                 '`pip install "entropack[cuda13]"` (use `cuda12` for a CUDA 12 environment) '
                 'or `pip install "diffsynth[quant]"`.'
             ) from _ENTROPACK_IMPORT_ERROR
+        _patch_compile_graph_breaks()
 
     def capabilities(self):
         return {
@@ -90,15 +92,13 @@ class EntroPackQuantBackend(QuantBackend):
         if compute_device is not None:
             linear = linear.to(device=compute_device)
         quantized = self.config.linear_cls.from_linear(linear, config=self.config)
-        quantized = quantized if model_device is None else quantized.to(device=model_device)
-        return _graph_break_quantized_linear(quantized)
+        return quantized if model_device is None else quantized.to(device=model_device)
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
-        shell = self.config.linear_cls(
+        return self.config.linear_cls(
             linear.in_features, linear.out_features, bias=linear.bias is not None,
             dtype=compute_dtype, config=self.config,
         )
-        return _graph_break_quantized_linear(shell)
 
     def dequantize_to_linear(self, module, compute_dtype, compute_device=None, model_device=None):
         if compute_device is not None:
