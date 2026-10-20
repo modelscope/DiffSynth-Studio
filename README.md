@@ -51,7 +51,7 @@ See also:
 
   * Project Page: https://github.com/modelscope/entropack
   * Technical Report: https://arxiv.org/abs/2609.34185
-  * Pre-quantized Models: https://www.modelscope.cn/models/DiffSynth-Studio/EntroPackPreQuants
+  * Pre-quantized Models: https://www.modelscope.cn/collections/DiffSynth-Studio/EntroPack-Quantized-Models
   * Example Code: [Z-Image-Turbo](/examples/z_image/model_inference_low_vram/Z-Image-Turbo-EntroPack.py), [Qwen-Image-2.1](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-EntroPack.py), [MiniMax-H3](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-EntroPack.py), [LoRA Training Example](/examples/z_image/model_training/special/quant_training/Z-Image-Turbo-entropack_lossy_quant.sh)
 
 - **September 20, 2026** Qwen-Image-2.1 was open-sourced. The model supports text-to-image generation, image editing, and RGBA output with a transparency channel. DiffSynth-Studio now provides full support for it. For details, please refer to the [documentation](/docs/zh/Model_Details/Qwen-Image-2.1.md) and [example code](/examples/qwen_image_21/).

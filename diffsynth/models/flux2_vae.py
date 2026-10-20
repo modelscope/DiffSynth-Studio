@@ -2103,6 +2103,10 @@ class Flux2VAE(torch.nn.Module):
     def decode(
         self, z: torch.FloatTensor, return_dict: bool = True, generator=None
     ):
+        from ..core.vram.layers import AutoTorchModule
+        vram_dtype = next((module.computation_dtype for module in self.modules() if isinstance(module, AutoTorchModule)), None)
+        vae_dtype = vram_dtype or self.decoder.conv_in.bias.dtype
+        z = z.to(dtype=vae_dtype)
         latents_bn_mean = self.bn.running_mean.view(1, -1, 1, 1).to(z.device, z.dtype)
         latents_bn_std = torch.sqrt(self.bn.running_var.view(1, -1, 1, 1) + 0.0001).to(
             z.device, z.dtype
