@@ -109,7 +109,8 @@ class MOSSImagePipeline(BasePipeline):
 
         # Decode
         self.load_models_to_device(['vae'])
-        image = self.vae.decode(inputs_shared["latents"].to(dtype=self.vae.diffsynth_computation_dtype))
+        latents = inputs_shared["latents"]
+        image = self.vae.decode(latents)
         image = self.vae_output_to_image(image)
         self.load_models_to_device([])
         return image
