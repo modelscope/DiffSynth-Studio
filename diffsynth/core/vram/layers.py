@@ -128,6 +128,7 @@ class AutoWrappedModule(AutoTorchModule):
         else:
             self.disk_offload = False
             
+    @torch._dynamo.disable
     def load_from_disk(self, torch_dtype, device, copy_module=False):
         if copy_module:
             module = copy.deepcopy(self.module)
@@ -245,6 +246,7 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
         if self.disk_offload:
             self.required_params = [name for name, _ in self.module.named_parameters(recurse=False)]
             
+    @torch._dynamo.disable
     def load_from_disk(self, torch_dtype, device, copy_module=False):
         if copy_module:
             module = copy.deepcopy(self.module)
@@ -374,6 +376,7 @@ class AutoWrappedLinear(torch.nn.Linear, AutoTorchModule, LoRAHotLoadMixin):
         result = result.reshape(new_shape)
         return result
             
+    @torch._dynamo.disable
     def load_from_disk(self, torch_dtype, device, assign=True):
         weight = self.disk_map[self.name + ".weight"].to(dtype=torch_dtype, device=device)
         bias = None if self.bias is None else self.disk_map[self.name + ".bias"].to(dtype=torch_dtype, device=device)
@@ -495,6 +498,7 @@ class AutoWrappedQuantizedModule(torch.nn.Linear, AutoTorchModule, LoRAHotLoadMi
             self._required_keys = [key for key in self.disk_map if key.startswith(self.name + ".")]
         return self._required_keys
 
+    @torch._dynamo.disable
     def _load_from_disk(self, device, target=None):
         module = self.module if target is None else target
         prefix = self.name + "."

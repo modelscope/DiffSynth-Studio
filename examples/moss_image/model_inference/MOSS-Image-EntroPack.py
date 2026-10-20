@@ -4,7 +4,8 @@ MOSS-Image — EntroPack pre-quantized inference example.
 Downloads the pre-quantized packages and their json sidecars from the
 `DiffSynth-Studio/MOSS-Image-EntroPack` model repo (each json is a
 ready-to-use `MODEL_CONFIGS` entry), then runs inference. Defaults to SFT
-4.5bit; switch `dit_package` / `base_model_id` together to use Base or another level.
+INT8 6bit; switch `dit_package` / `text_encoder_package` (and `base_model_id`
+for Base) to use another level.
 
 Available packages (paths inside the prequant model repo):
 
@@ -35,7 +36,7 @@ from diffsynth.pipelines.moss_image import MOSSImagePipeline, ModelConfig
 prequant_model_id = "DiffSynth-Studio/MOSS-Image-EntroPack"
 base_model_id = "openmoss/MOSS-Image-SFT"
 dit_package = "models/MOSS-Image-SFT/dit_int8_6bit.safetensors"
-text_encoder_package = "models/text_encoder_4.5bit.safetensors"
+text_encoder_package = "models/text_encoder_int8_6bit.safetensors"
 
 
 def register_prequantized(package_pattern):
@@ -61,6 +62,9 @@ pipe = MOSSImagePipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id=base_model_id, origin_file_pattern="tokenizer/"),
 )
+
+# Optional: torch.compile acceleration.
+pipe.compile_pipeline()
 
 prompt = '''A wide view of a refrigerator beside a kitchen counter with a fruit bowl. A small sticky note on the refrigerator door is handwritten in Chinese:
 "记得买牛奶和鸡蛋！
