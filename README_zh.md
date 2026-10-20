@@ -51,7 +51,7 @@
 
   * 项目主页：https://github.com/modelscope/entropack
   * 技术报告：https://arxiv.org/abs/2609.34185
-  * 预量化模型：https://www.modelscope.cn/models/DiffSynth-Studio/EntroPackPreQuants
+  * 预量化模型：https://www.modelscope.cn/collections/DiffSynth-Studio/EntroPack-Quantized-Models
   * 示例代码：[Z-Image-Turbo](/examples/z_image/model_inference_low_vram/Z-Image-Turbo-EntroPack.py)、[Qwen-Image-2.1](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-EntroPack.py)、[MiniMax-H3](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-EntroPack.py)、[LoRA 训练示例](/examples/z_image/model_training/special/quant_training/Z-Image-Turbo-entropack_lossy_quant.sh)
 
 - **2026年9月20日** Qwen-Image-2.1 开源，模型支持文生图、图像编辑、带透明通道的 RGBA 输出，DiffSynth-Studio 已为其提供全面支持。详情请参考[文档](/docs/zh/Model_Details/Qwen-Image-2.1.md)和[示例代码](/examples/qwen_image_21/)。
