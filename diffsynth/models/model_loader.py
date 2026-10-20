@@ -53,6 +53,7 @@ class ModelPool:
             state_dict=state_dict,
             quantize=quantize,
         )
+        model.diffsynth_computation_dtype = vram_config["computation_dtype"]
         return model
     
     def default_vram_config(self):
