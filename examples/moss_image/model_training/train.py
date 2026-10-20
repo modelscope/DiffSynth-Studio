@@ -54,7 +54,7 @@ class MOSSImageTrainingModule(DiffusionTrainingModule):
 
     def get_pipeline_inputs(self, data):
         inputs_posi = {"prompt": data["prompt"]}
-        inputs_nega = {"negative_prompt": ""}
+        inputs_nega = {"negative_prompt": "", "skip_layers": (22,)}
         inputs_shared = {
             "input_image": data["image"],
             "height": data["image"].size[1],
@@ -97,10 +97,14 @@ if __name__ == "__main__":
         metadata_path=args.dataset_metadata_path,
         repeat=args.dataset_repeat,
         data_file_keys=args.data_file_keys.split(","),
-        main_data_operator=lambda x: x,
-        special_operator_map={
-            "image": ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16),
-        },
+        main_data_operator=UnifiedDataset.default_image_operator(
+            base_path=args.dataset_base_path,
+            max_pixels=args.max_pixels,
+            height=args.height,
+            width=args.width,
+            height_division_factor=16,
+            width_division_factor=16,
+        )
     )
     model = MOSSImageTrainingModule(
         model_paths=args.model_paths,
