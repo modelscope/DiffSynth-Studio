@@ -53,6 +53,7 @@ Welcome to DiffSynth-Studio's Documentation
    Model_Details/Qwen-Image-2.1
    Model_Details/FLUX.3
    Model_Details/MOSS-Image
+   Model_Details/Fibo
 
 .. toctree::
    :maxdepth: 2
