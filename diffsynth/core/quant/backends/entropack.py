@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 import torch
 
@@ -45,10 +45,14 @@ if ENTROPACK_AVAILABLE:
     @dataclass
     class EntroPackINT8CodedConfig(BackendConfig, ep.LatticeRANSConfig):
         linear_cls = ep.CompressedINT8Linear
+        use_convrot: bool = False
+        convrot_groupsize: int = 256
 
     @dataclass
     class EntroPackINT8RawConfig(BackendConfig, ep.RawConfig):
         linear_cls = ep.CompressedINT8Linear
+        use_convrot: bool = False
+        convrot_groupsize: int = 256
 
 
 def _patch_compile_graph_breaks():
@@ -87,17 +91,43 @@ class EntroPackQuantBackend(QuantBackend):
     def unflatten_state_dict(self, state_dict, metadata):
         return state_dict
 
+    def _compression_config_cls(self):
+        for cls in type(self.config).__mro__:
+            if cls.__module__.startswith("entropack") and issubclass(cls, ep.CompressionConfig):
+                return cls
+        return None
+
+    def _compression_config(self):
+        cls = self._compression_config_cls()
+        if cls is None:
+            return self.config
+        names = {field.name for field in fields(cls) if field.init}
+        return cls(**{name: getattr(self.config, name) for name in names})
+
+    def linear_spec_configs(self):
+        cls = self._compression_config_cls()
+        if cls is None:
+            return {}
+        compression = {field.name for field in fields(cls)}
+        return {
+            field.name: getattr(self.config, field.name)
+            for field in fields(self.config)
+            if field.init and field.name not in compression
+        }
+
     def create_quantized_linear(self, linear, compute_device=None, model_device=None):
         linear.requires_grad_(False)
         if compute_device is not None:
             linear = linear.to(device=compute_device)
-        quantized = self.config.linear_cls.from_linear(linear, config=self.config)
+        quantized = self.config.linear_cls.from_linear(
+            linear, config=self._compression_config(), **self.linear_spec_configs(),
+        )
         return quantized if model_device is None else quantized.to(device=model_device)
 
     def create_quantized_linear_shell(self, linear, compute_dtype):
         return self.config.linear_cls(
             linear.in_features, linear.out_features, bias=linear.bias is not None,
-            dtype=compute_dtype, config=self.config,
+            dtype=compute_dtype, config=self._compression_config(), **self.linear_spec_configs(),
         )
 
     def dequantize_to_linear(self, module, compute_dtype, compute_device=None, model_device=None):
