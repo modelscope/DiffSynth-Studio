@@ -256,15 +256,18 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
         for parent in list(module.modules()):
             if isinstance(parent, AutoTorchModule):
                 continue
-            for name, child in list(parent._modules.items()):
-                if id(child) in shared_ids:
-                    del parent._modules[name]
-                    detached.append((parent, name, child))
+            original = parent._modules
+            filtered = type(original)(
+                (name, child) for name, child in original.items() if id(child) not in shared_ids
+            )
+            if len(filtered) != len(original):
+                parent._modules = filtered
+                detached.append((parent, original))
         return detached
 
     def _restore_shared_children(self, detached):
-        for parent, name, child in detached:
-            parent._modules[name] = child
+        for parent, original in detached:
+            parent._modules = original
 
     @torch._dynamo.disable
     def load_from_disk(self, torch_dtype, device, copy_module=False):
