@@ -257,6 +257,13 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.GroupNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.fibo_dit.FiboDiT": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "diffsynth.models.general_modules.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.fibo_dit.FiboPerceiverResampler": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.fibo_dit.FiboTransformerBlock": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
     "diffsynth.models.z_image_text_encoder.ZImageTextEncoder": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "transformers.models.qwen3.modeling_qwen3.Qwen3RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",

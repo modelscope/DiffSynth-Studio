@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "MOSS-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "MOSS-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2", "Fibo"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -27,6 +27,7 @@ class FlowMatchScheduler():
             "LingBot-Video": FlowMatchScheduler.set_timesteps_lingbot_video,
             "SenseNova-U1": FlowMatchScheduler.set_timesteps_sensenova_u1,
             "YuE2": FlowMatchScheduler.set_timesteps_yue2,
+            "Fibo": FlowMatchScheduler.set_timesteps_fibo,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -166,6 +167,22 @@ class FlowMatchScheduler():
             mu = FlowMatchScheduler.compute_empirical_mu(dynamic_shift_len, num_inference_steps)
         sigmas = math.exp(mu) / (math.exp(mu) + (1 / sigmas - 1))
         timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_fibo(num_inference_steps=30, denoising_strength=1.0, dynamic_shift_len=None):
+        sigma_min = 1 / num_inference_steps
+        sigma_max = 1.0
+        sigma_start = sigma_min + (sigma_max - sigma_min) * denoising_strength
+        sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps)
+        if dynamic_shift_len is None:
+            mu = 0.5
+        else:
+            mu = FlowMatchScheduler._calculate_shift_qwen_image(
+                dynamic_shift_len, base_seq_len=256, max_seq_len=4096, base_shift=0.5, max_shift=1.15
+            )
+        sigmas = math.exp(mu) / (math.exp(mu) + (1 / sigmas - 1))
+        timesteps = sigmas * 1000
         return sigmas, timesteps
 
     @staticmethod

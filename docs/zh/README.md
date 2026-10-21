@@ -58,6 +58,7 @@ graph LR;
 * [图像质量评估指标](./Model_Details/Image-Quality-Metrics.md)
 * [Ideogram 4](./Model_Details/Ideogram-4.md)
 * [Krea-2](./Model_Details/Krea-2.md)
+* [Fibo 2.0](./Model_Details/Fibo.md)
 * [Boogu-Image](./Model_Details/Boogu-Image.md)
 * [LingBot-Video](./Model_Details/LingBot-Video.md)
 * [MiniMax-H3](./Model_Details/MiniMax-H3.md)
