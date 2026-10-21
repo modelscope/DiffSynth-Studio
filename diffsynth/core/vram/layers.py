@@ -246,10 +246,15 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
         if self.disk_offload:
             self.required_params = [name for name, _ in self.module.named_parameters(recurse=False)]
             
+    def _copy_with_shared_children(self, module):
+        # Child wrappers own their DiskMap and devices; share them instead of copying.
+        memo = {id(child): child for child in module.modules() if isinstance(child, AutoTorchModule)}
+        return copy.deepcopy(module, memo)
+
     @torch._dynamo.disable
     def load_from_disk(self, torch_dtype, device, copy_module=False):
         if copy_module:
-            module = copy.deepcopy(self.module)
+            module = self._copy_with_shared_children(self.module)
         else:
             module = self.module
         state_dict = {}
@@ -257,7 +262,15 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
             param = self.disk_map[self.param_name(name)]
             param = param.to(dtype=torch_dtype, device=device)
             state_dict[name] = param
-        module.load_state_dict(state_dict, assign=True, strict=False)
+        if copy_module:
+            children = module._modules
+            module._modules = {}
+            try:
+                module.load_state_dict(state_dict, assign=True, strict=False)
+            finally:
+                module._modules = children
+        else:
+            module.load_state_dict(state_dict, assign=True, strict=False)
         return module
     
     def offload_to_disk(self, model: torch.nn.Module):
@@ -265,8 +278,14 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
             getattr(self, name).to("meta")
     
     def cast_to(self, module, dtype, device):
-        # Parameter casting is implemented in the model architecture.
-        return module
+        result = self._copy_with_shared_children(module)
+        children = result._modules
+        result._modules = {}
+        try:
+            result = result.to(dtype=dtype, device=device)
+        finally:
+            result._modules = children
+        return result
     
     def __getattr__(self, name):
         if name in self.__dict__ or name == "module":
