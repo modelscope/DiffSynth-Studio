@@ -248,13 +248,28 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
             
     def _copy_with_shared_children(self, module):
         # Child wrappers own their DiskMap and devices; share them instead of copying.
-        memo = {id(child): child for child in module.modules() if isinstance(child, AutoTorchModule)}
-        return copy.deepcopy(module, memo)
+        shared = {id(child): child for child in module.modules() if isinstance(child, AutoTorchModule)}
+        return copy.deepcopy(module, shared), set(shared)
+
+    def _detach_shared_children(self, module, shared_ids):
+        detached = []
+        for parent in list(module.modules()):
+            if isinstance(parent, AutoTorchModule):
+                continue
+            for name, child in list(parent._modules.items()):
+                if id(child) in shared_ids:
+                    del parent._modules[name]
+                    detached.append((parent, name, child))
+        return detached
+
+    def _restore_shared_children(self, detached):
+        for parent, name, child in detached:
+            parent._modules[name] = child
 
     @torch._dynamo.disable
     def load_from_disk(self, torch_dtype, device, copy_module=False):
         if copy_module:
-            module = self._copy_with_shared_children(self.module)
+            module, shared_ids = self._copy_with_shared_children(self.module)
         else:
             module = self.module
         state_dict = {}
@@ -263,12 +278,11 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
             param = param.to(dtype=torch_dtype, device=device)
             state_dict[name] = param
         if copy_module:
-            children = module._modules
-            module._modules = {}
+            detached = self._detach_shared_children(module, shared_ids)
             try:
                 module.load_state_dict(state_dict, assign=True, strict=False)
             finally:
-                module._modules = children
+                self._restore_shared_children(detached)
         else:
             module.load_state_dict(state_dict, assign=True, strict=False)
         return module
@@ -278,13 +292,12 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
             getattr(self, name).to("meta")
     
     def cast_to(self, module, dtype, device):
-        result = self._copy_with_shared_children(module)
-        children = result._modules
-        result._modules = {}
+        result, shared_ids = self._copy_with_shared_children(module)
+        detached = self._detach_shared_children(result, shared_ids)
         try:
             result = result.to(dtype=dtype, device=device)
         finally:
-            result._modules = children
+            self._restore_shared_children(detached)
         return result
     
     def __getattr__(self, name):
