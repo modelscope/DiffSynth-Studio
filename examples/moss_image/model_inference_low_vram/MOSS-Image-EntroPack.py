@@ -13,14 +13,17 @@ Available packages (paths inside the prequant model repo):
         models/MOSS-Image-SFT/dit_3.5bit.safetensors        mixed allocation, 3.5bit
         models/MOSS-Image-SFT/dit_4.5bit.safetensors        mixed allocation, 4.5bit
         models/MOSS-Image-SFT/dit_6bit.safetensors          6bit
-        models/MOSS-Image-SFT/dit_int8_6bit.safetensors     INT8 GEMM, 6bit
+        models/MOSS-Image-SFT/dit_int8_6bit.safetensors     hybrid INT8 + 8.5bit sensitive, 6bit
+        models/MOSS-Image-SFT/dit_int8_7bit.safetensors     hybrid INT8 + 8.5bit sensitive, 7bit
         models/MOSS-Image-Base/dit_4.5bit.safetensors       mixed allocation, 4.5bit
         models/MOSS-Image-Base/dit_6bit.safetensors         6bit
-        models/MOSS-Image-Base/dit_int8_6bit.safetensors    INT8 GEMM, 6bit
+        models/MOSS-Image-Base/dit_int8_6bit.safetensors    hybrid INT8 + 8.5bit sensitive, 6bit
+        models/MOSS-Image-Base/dit_int8_7bit.safetensors    hybrid INT8 + 8.5bit sensitive, 7bit
     text_encoder:
         models/text_encoder_4.5bit.safetensors              4.5bit
         models/text_encoder_6bit.safetensors                6bit
-        models/text_encoder_int8_6bit.safetensors           INT8 GEMM, 6bit
+        models/text_encoder_int8_6bit.safetensors           hybrid INT8 + 8.5bit sensitive, 6bit
+        models/text_encoder_int8_7bit.safetensors           hybrid INT8 + 8.5bit sensitive, 7bit
 
 The text encoder packages are shared between Base and SFT.
 `dit_package` and `text_encoder_package` are chosen independently: any combination works
