@@ -1,5 +1,5 @@
 from .operators import *
-import torch, json, pandas
+import torch, json
 
 
 class UnifiedDataset(torch.utils.data.Dataset):
@@ -84,6 +84,7 @@ class UnifiedDataset(torch.utils.data.Dataset):
                     metadata.append(json.loads(line.strip()))
             self.data = metadata
         else:
+            import pandas
             metadata = pandas.read_csv(metadata_path)
             self.data = [metadata.iloc[i].to_dict() for i in range(len(metadata))]
 

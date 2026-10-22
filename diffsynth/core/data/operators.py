@@ -1,6 +1,5 @@
 import math, warnings, time
-import torch, torchvision, imageio, os
-import imageio.v3 as iio
+import torch, os
 import urllib.request
 from io import BytesIO
 from PIL import Image
@@ -102,6 +101,7 @@ class ImageCropAndResize(DataProcessingOperator):
         self.width_division_factor = width_division_factor
 
     def crop_and_resize(self, image, target_height, target_width):
+        import torchvision
         width, height = image.size
         scale = max(target_width / width, target_height / height)
         image = torchvision.transforms.functional.resize(
@@ -143,6 +143,7 @@ class FrameSamplerByRateMixin:
         self.fix_frame_rate = fix_frame_rate
 
     def get_reader(self, data: str):
+        import imageio
         return imageio.get_reader(data)
 
     def get_available_num_frames(self, reader):
@@ -213,6 +214,7 @@ class LoadGIF(DataProcessingOperator):
 
     def get_num_frames(self, path):
         num_frames = self.num_frames
+        import imageio.v3 as iio
         images = iio.imread(path, mode="RGB")
         if len(images) < num_frames:
             num_frames = len(images)
@@ -223,6 +225,7 @@ class LoadGIF(DataProcessingOperator):
     def __call__(self, data: str):
         num_frames = self.get_num_frames(data)
         frames = []
+        import imageio.v3 as iio
         images = iio.imread(data, mode="RGB")
         for img in images:
             frame = Image.fromarray(img)
