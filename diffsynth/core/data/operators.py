@@ -99,17 +99,20 @@ class ImageCropAndResize(DataProcessingOperator):
         self.max_pixels = max_pixels
         self.height_division_factor = height_division_factor
         self.width_division_factor = width_division_factor
+        import torchvision
+        self.resize = torchvision.transforms.functional.resize
+        self.center_crop = torchvision.transforms.functional.center_crop
+        self.interpolation_mode = torchvision.transforms.InterpolationMode.BILINEAR
 
     def crop_and_resize(self, image, target_height, target_width):
-        import torchvision
         width, height = image.size
         scale = max(target_width / width, target_height / height)
-        image = torchvision.transforms.functional.resize(
+        image = self.resize(
             image,
             (round(height*scale), round(width*scale)),
-            interpolation=torchvision.transforms.InterpolationMode.BILINEAR
+            interpolation=self.interpolation_mode
         )
-        image = torchvision.transforms.functional.center_crop(image, (target_height, target_width))
+        image = self.center_crop(image, (target_height, target_width))
         return image
     
     def get_height_width(self, image):
