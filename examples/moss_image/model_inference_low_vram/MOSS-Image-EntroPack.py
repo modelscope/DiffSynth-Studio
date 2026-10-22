@@ -38,8 +38,8 @@ from diffsynth.pipelines.moss_image import MOSSImagePipeline, ModelConfig
 
 prequant_model_id = "DiffSynth-Studio/MOSS-Image-EntroPack"
 base_model_id = "openmoss/MOSS-Image-SFT"
-dit_package = "models/MOSS-Image-SFT/dit_int8_6bit.safetensors"
-text_encoder_package = "models/text_encoder_int8_6bit.safetensors"
+dit_package = "models/MOSS-Image-SFT/dit_int8_7bit.safetensors"
+text_encoder_package = "models/text_encoder_int8_7bit.safetensors"
 
 vram_config = {
     "offload_dtype": "disk",
