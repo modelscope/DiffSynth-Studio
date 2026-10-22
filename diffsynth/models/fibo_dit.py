@@ -40,8 +40,7 @@ class TimestepEmbedder(nn.Module):
 
     def forward(self, t):
         t_freq = self.timestep_embedding(t, self.frequency_embedding_size)
-        dtype = getattr(self.mlp[0], "computation_dtype", None) or self.mlp[0].weight.dtype
-        return self.mlp(t_freq.to(dtype))
+        return self.mlp(t_freq.to(t.dtype))
 
 
 def select_per_token(value_noisy, value_clean, noise_mask, seq_len):
