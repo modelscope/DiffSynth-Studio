@@ -3,14 +3,22 @@ from ..vram.disk_map import DiskMap
 from ..vram.layers import enable_vram_management
 from .file import load_state_dict, load_metadata_from_safetensors
 import torch
-from contextlib import contextmanager
-from transformers.integrations import is_deepspeed_zero3_enabled
-from transformers.utils import ContextManagers
+import sys
+from contextlib import ExitStack
+
+
+def is_deepspeed_zero3_enabled():
+    if "transformers" not in sys.modules:
+        return False
+    from transformers.integrations import is_deepspeed_zero3_enabled as _is_deepspeed_zero3_enabled
+    return _is_deepspeed_zero3_enabled()
 
 
 def load_model(model_class, path, config=None, torch_dtype=torch.bfloat16, device="cpu", state_dict_converter=None, use_disk_map=False, module_map=None, vram_config=None, vram_limit=None, state_dict=None, quantize=None):
     config = {} if config is None else config
-    with ContextManagers(get_init_context(torch_dtype=torch_dtype, device=device)):
+    with ExitStack() as stack:
+        for init_context in get_init_context(torch_dtype=torch_dtype, device=device):
+            stack.enter_context(init_context)
         model = model_class(**config)
     # What is `module_map`?
     # This is a module mapping table for VRAM management.

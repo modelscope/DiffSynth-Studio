@@ -1,6 +1,5 @@
 import math, warnings, time
-import torch, torchvision, imageio, os
-import imageio.v3 as iio
+import torch, os
 import urllib.request
 from io import BytesIO
 from PIL import Image
@@ -100,16 +99,20 @@ class ImageCropAndResize(DataProcessingOperator):
         self.max_pixels = max_pixels
         self.height_division_factor = height_division_factor
         self.width_division_factor = width_division_factor
+        import torchvision
+        self.resize = torchvision.transforms.functional.resize
+        self.center_crop = torchvision.transforms.functional.center_crop
+        self.interpolation_mode = torchvision.transforms.InterpolationMode.BILINEAR
 
     def crop_and_resize(self, image, target_height, target_width):
         width, height = image.size
         scale = max(target_width / width, target_height / height)
-        image = torchvision.transforms.functional.resize(
+        image = self.resize(
             image,
             (round(height*scale), round(width*scale)),
-            interpolation=torchvision.transforms.InterpolationMode.BILINEAR
+            interpolation=self.interpolation_mode
         )
-        image = torchvision.transforms.functional.center_crop(image, (target_height, target_width))
+        image = self.center_crop(image, (target_height, target_width))
         return image
     
     def get_height_width(self, image):
@@ -143,6 +146,7 @@ class FrameSamplerByRateMixin:
         self.fix_frame_rate = fix_frame_rate
 
     def get_reader(self, data: str):
+        import imageio
         return imageio.get_reader(data)
 
     def get_available_num_frames(self, reader):
@@ -213,6 +217,7 @@ class LoadGIF(DataProcessingOperator):
 
     def get_num_frames(self, path):
         num_frames = self.num_frames
+        import imageio.v3 as iio
         images = iio.imread(path, mode="RGB")
         if len(images) < num_frames:
             num_frames = len(images)
@@ -223,6 +228,7 @@ class LoadGIF(DataProcessingOperator):
     def __call__(self, data: str):
         num_frames = self.get_num_frames(data)
         frames = []
+        import imageio.v3 as iio
         images = iio.imread(data, mode="RGB")
         for img in images:
             frame = Image.fromarray(img)

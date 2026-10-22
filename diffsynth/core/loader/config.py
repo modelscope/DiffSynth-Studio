@@ -1,8 +1,6 @@
 import torch, glob, os, sys
 from typing import Optional, Union, Dict
 from dataclasses import dataclass
-from modelscope import snapshot_download
-from huggingface_hub import snapshot_download as hf_snapshot_download
 from typing import Optional
 from ..quant import QuantizeConfig, MixedQuantizeConfig
 
@@ -98,6 +96,7 @@ class ModelConfig:
         downloaded_files = glob.glob(origin_file_pattern, root_dir=os.path.join(self.local_model_path, self.model_id))
         download_source = self.parse_download_source()
         if download_source.lower() == "modelscope":
+            from modelscope import snapshot_download
             snapshot_download(
                 self.model_id,
                 local_dir=os.path.join(self.local_model_path, self.model_id),
@@ -106,6 +105,7 @@ class ModelConfig:
                 local_files_only=False
             )
         elif download_source.lower() == "huggingface":
+            from huggingface_hub import snapshot_download as hf_snapshot_download
             hf_snapshot_download(
                 self.model_id,
                 local_dir=os.path.join(self.local_model_path, self.model_id),

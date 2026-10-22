@@ -1,11 +1,9 @@
 import torch
+import sys
 
 
-try:
-    import deepspeed
-    _HAS_DEEPSPEED = True
-except ModuleNotFoundError:
-    _HAS_DEEPSPEED = False
+def get_deepspeed():
+    return sys.modules.get("deepspeed")
 
 
 def create_custom_forward(module):
@@ -36,7 +34,8 @@ def gradient_checkpoint_forward(
     *args,
     **kwargs,
 ):
-    if use_gradient_checkpointing and _HAS_DEEPSPEED and deepspeed.checkpointing.is_configured():
+    deepspeed = get_deepspeed() if use_gradient_checkpointing else None
+    if use_gradient_checkpointing and deepspeed is not None and deepspeed.checkpointing.is_configured():
         kwarg_keys = tuple(kwargs)
         all_args = args + tuple(kwargs.values())
         if not judge_args_requires_grad(*all_args):
