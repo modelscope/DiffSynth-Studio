@@ -181,7 +181,9 @@ class AutoWrappedModule(AutoTorchModule):
             self.state = 2
 
     def cast_to(self, module, dtype, device):
-        return copy.deepcopy(module).to(dtype=dtype, device=device)
+        copied = copy.deepcopy(module).to(dtype=dtype, device=device)
+        share_trainable_parameters(copied, module)
+        return copied
             
     def computation(self):
         # onload / preparing -> computation (temporary)
@@ -301,6 +303,7 @@ class AutoWrappedNonRecurseModule(AutoWrappedModule):
             result = result.to(dtype=dtype, device=device)
         finally:
             self._restore_shared_children(detached)
+        share_trainable_parameters(result, module)
         return result
     
     def __getattr__(self, name):
@@ -599,6 +602,29 @@ class AutoWrappedQuantizedModule(torch.nn.Linear, AutoTorchModule, LoRAHotLoadMi
             return super().__getattr__(name)
         else:
             return getattr(self.module, name)
+
+
+def share_trainable_parameters(copied: torch.nn.Module, source: torch.nn.Module):
+    """Point the trainable parameters of a computation copy back at ``source``.
+
+    ``cast_to`` rebuilds the module on every forward, so a parameter that
+    requires a gradient has to stay the object the optimizer holds: otherwise the
+    gradients of this step are written into the copy and dropped, and the weights
+    that are saved never move. Frozen weights keep using the converted copy.
+    """
+    originals = dict(source.named_parameters())
+    shared = 0
+    for name, parameter in list(copied.named_parameters()):
+        if not parameter.requires_grad:
+            continue
+        original = originals.get(name)
+        if original is None or original is parameter:
+            continue
+        parent_path, _, leaf = name.rpartition(".")
+        parent = copied.get_submodule(parent_path) if parent_path else copied
+        parent._parameters[leaf] = original
+        shared += 1
+    return shared
 
 
 def _materialize_root_params_from_disk(model: torch.nn.Module, disk_map: DiskMap):
