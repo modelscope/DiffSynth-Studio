@@ -1,9 +1,11 @@
 import os, json, torch, importlib
 from tqdm import tqdm
 from accelerate import Accelerator
+from accelerate import DistributedType
 from .training_module import DiffusionTrainingModule
 from .logger import ModelLogger
 from diffsynth.core import OffloadTrainingManager
+from diffsynth.core.fsdp_training import apply_fsdp_to_model
 
 
 def get_optimizer_class(customized_optimizer=None):
@@ -28,26 +30,6 @@ def save_training_args(args):
         print(f"Training arguments saved to `{save_path}`.")
     except Exception as e:
         print(f"Warning: failed to save training arguments: {e}")
-
-
-def exclude_quantized_params_from_ddp_sync(accelerator: Accelerator, model: DiffusionTrainingModule):
-    """DDP broadcasts every parameter when it is constructed, but a quantized weight backed by a
-    tensor subclass cannot be flattened into a broadcast bucket. Such weights are frozen and every
-    rank loads them from the same checkpoint, so let DDP skip them."""
-    try:
-        from torch.utils._python_dispatch import is_traceable_wrapper_subclass
-        quant_configs = [module.quantize_config for module in model.modules() if getattr(module, "quantize_config", None) is not None]
-        ignored = [
-            f"{name}.weight" for name, module in model.named_modules()
-            if any(quantize.is_quantized_linear(module) for quantize in quant_configs)
-            and not module.weight.requires_grad and is_traceable_wrapper_subclass(module.weight)
-        ]
-        if len(ignored) > 0:
-            model._ddp_params_and_buffers_to_ignore = ignored
-            if accelerator.is_main_process:
-                print(f"{len(ignored)} quantized weights are excluded from DDP state synchronization.")
-    except Exception as e:
-        print(f"Warning: failed to exclude quantized weights from DDP state synchronization: {e}")
 
 
 def launch_training_task(
@@ -77,22 +59,48 @@ def launch_training_task(
         enable_optimizer_cpu_offload = args.enable_optimizer_cpu_offload
         cpu_offload_split_threshold = args.cpu_offload_split_threshold
         customized_optimizer = args.customized_optimizer
+    enable_fsdp = bool(getattr(args, "enable_fsdp", False))
 
     if accelerator.is_main_process:
         save_training_args(args)
 
     optimizer_class = get_optimizer_class(customized_optimizer)
-    optimizer = optimizer_class(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
-    scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
 
-    if enable_model_cpu_offload:
+    if enable_fsdp:
+        if enable_model_cpu_offload:
+            raise ValueError("--enable_fsdp and --enable_model_cpu_offload are mutually exclusive.")
+        # FSDP2 replaces module parameters with DTensor params, so the optimizer must be
+        # created AFTER sharding. Shard every trainable pipeline model (frozen models are
+        # not loaded in the train task).
+        for name, child in model.pipe.named_children():
+            if not isinstance(child, torch.nn.Module):
+                continue
+            if any(p.requires_grad for p in child.parameters()):
+                print(f"FSDP: sharding pipeline model `{name}`.")
+                apply_fsdp_to_model(child, offload_optimizer=True)
+        model.pipe.device = accelerator.device
+        optimizer = optimizer_class(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
+        scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
+        optimizer, dataloader, scheduler = accelerator.prepare(optimizer, dataloader, scheduler)
+    elif enable_model_cpu_offload:
+        optimizer = optimizer_class(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
+        scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
         optimizer, dataloader, scheduler = accelerator.prepare(optimizer, dataloader, scheduler)
         model.pipe.device = accelerator.device
         offload_manager = OffloadTrainingManager(model, accelerator.device, enable_optimizer_cpu_offload, cpu_offload_split_threshold)
+    elif getattr(accelerator, "distributed_type", None) == DistributedType.DEEPSPEED:
+        # DeepSpeed ZeRO-3: the model must stay on CPU until deepspeed.initialize partitions
+        # it across ranks (a full 33B-param copy does not fit on one 64GB NPU). Do NOT call
+        # model.to(device) here - the engine handles placement.
+        optimizer = optimizer_class(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
+        scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
+        model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
+        model.pipe.device = accelerator.device
     else:
+        optimizer = optimizer_class(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
+        scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
         model.to(device=accelerator.device)
-        exclude_quantized_params_from_ddp_sync(accelerator, model)
         model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
 
     initialize_deepspeed_gradient_checkpointing(accelerator)
@@ -114,7 +122,6 @@ def launch_training_task(
             model_logger.on_epoch_end(accelerator, model, epoch_id)
 
     model_logger.on_training_end(accelerator, model, save_steps)
-
 
 def launch_data_process_task(
     accelerator: Accelerator,
@@ -138,7 +145,6 @@ def launch_data_process_task(
         model.pipe.device = accelerator.device
     else:
         model.to(device=accelerator.device)
-        exclude_quantized_params_from_ddp_sync(accelerator, model)
         model, dataloader = accelerator.prepare(model, dataloader)
     
     for data_id, data in enumerate(tqdm(dataloader)):

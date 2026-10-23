@@ -1,5 +1,6 @@
 import os, torch
-from accelerate import Accelerator
+from accelerate import Accelerator, DistributedType
+from diffsynth.core.fsdp_training import is_fsdp_model, fsdp_full_state_dict
 
 
 class TensorBoardLogger:
@@ -119,12 +120,21 @@ class ModelLogger:
     def on_training_end(self, accelerator: Accelerator, model: torch.nn.Module, save_steps=None):
         if save_steps is not None and self.num_steps % save_steps != 0:
             self.save_model(accelerator, model, f"step-{self.num_steps}.safetensors")
+        if accelerator.is_main_process:
+            print(f"Training finished. Checkpoints and logs saved to `{self.output_path}`.")
         for logger in self.loggers:
             logger.close()
 
     def save_model(self, accelerator: Accelerator, model: torch.nn.Module, file_name):
         accelerator.wait_for_everyone()
-        state_dict = accelerator.get_state_dict(model)
+        if getattr(accelerator, "distributed_type", None) == DistributedType.DEEPSPEED and hasattr(model, "_zero3_consolidated_16bit_state_dict"):
+            # DeepSpeed ZeRO-3 params are partitioned: consolidate full 16-bit tensors first.
+            state_dict = model._zero3_consolidated_16bit_state_dict()
+        elif is_fsdp_model(model):
+            # FSDP2 params are DTensors: gather full tensors before saving.
+            state_dict = fsdp_full_state_dict(model)
+        else:
+            state_dict = accelerator.get_state_dict(model)
         if accelerator.is_main_process:
             state_dict = accelerator.unwrap_model(model).export_trainable_state_dict(state_dict, remove_prefix=self.remove_prefix_in_ckpt)
             state_dict = self.state_dict_converter(state_dict)

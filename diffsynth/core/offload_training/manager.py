@@ -20,6 +20,7 @@ import torch.nn as nn
 import warnings
 from .offloader import StaticParamOffloader, TrainableParamOffloader, AlwaysOnGPUParamOffloader, BufferOffloader
 from .memory_buffer import PinnedArenaPool, BaseBufferPool
+from ..device.npu_compatible_device import get_torch_device
 warnings.filterwarnings("ignore", message="Full backward hook is firing when gradients are computed with respect to module outputs")
 
 
@@ -62,6 +63,11 @@ class UnitWiseParamManager:
             if id(buf) in self.param_offloaders:
                 self.param_offloaders[id(buf)].onload()
 
+    def offload_module_grads(self, module: nn.Module):
+        for param in module.parameters(recurse=False):
+            if id(param) in self.param_offloaders:
+                self.param_offloaders[id(param)].offload_grad()
+
     def offload_module(self, module: nn.Module):
         for param in module.parameters(recurse=False):
             if id(param) in self.param_offloaders:
@@ -93,6 +99,7 @@ class UnitWiseHookManager:
 
         def backward_hook(mod, grad_input, grad_output):
             self.param_manager.offload_module(mod)
+            self.param_manager.offload_module_grads(mod)
 
         module.register_forward_pre_hook(forward_pre_hook)
         module.register_forward_hook(forward_hook)
@@ -174,4 +181,4 @@ class OffloadTrainingManager:
     def after_backward(self):
         for unit in self.units:
             unit.after_backward()
-        torch.cuda.synchronize()
+        get_torch_device().synchronize()
