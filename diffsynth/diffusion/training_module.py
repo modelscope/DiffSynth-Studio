@@ -51,7 +51,7 @@ class GeneralUnit_TemplateForward(PipelineUnit):
     def __init__(self, use_gradient_checkpointing=False, use_gradient_checkpointing_offload=False):
         super().__init__(
             input_params=("template_inputs",),
-            output_params=("kv_cache",),
+            output_params=("kv_cache", "text_embedding"),
             onload_model_names=("template_model",)
         )
         self.use_gradient_checkpointing = use_gradient_checkpointing
@@ -426,6 +426,7 @@ class DiffusionTrainingModule(torch.nn.Module):
         force_remove_params_shared=tuple(),
         force_remove_params_posi=tuple(),
         force_remove_params_nega=tuple(),
+        loss_recomputed_params=(),
     ):
         models_require_backward = []
         if trainable_models is not None:
@@ -435,10 +436,15 @@ class DiffusionTrainingModule(torch.nn.Module):
         if task.endswith(":data_process"):
             other_units, pipe.units = pipe.split_pipeline_units(models_require_backward)
             if remove_unnecessary_params:
-                required_params = list(loss_required_params) + [i for i in inspect.signature(self.pipe.model_fn).parameters]
+                loss_recomputed_params = set(loss_recomputed_params)
+                required_params = (set(loss_required_params) | set(inspect.signature(self.pipe.model_fn).parameters)) - loss_recomputed_params
+                produced_params = set()
                 for unit in other_units:
-                    required_params.extend(unit.fetch_input_params())
-                required_params = sorted(list(set(required_params)))
+                    # Loss runs after the units: retain inputs it recreates only
+                    # when a deferred unit needs them before a deferred producer.
+                    required_params.update(name for name in unit.fetch_input_params() if name not in loss_recomputed_params or name not in produced_params)
+                    produced_params.update(unit.fetch_output_params())
+                required_params = sorted(required_params)
                 pipe.units.append(GeneralUnit_RemoveCache(required_params, force_remove_params_shared, force_remove_params_posi, force_remove_params_nega))
         elif task.endswith(":train"):
             pipe.units, _ = pipe.split_pipeline_units(models_require_backward)
