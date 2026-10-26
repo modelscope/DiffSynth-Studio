@@ -1,1 +1,2 @@
-from .attention import attention_forward, FLEX_ATTN_AVAILABLE
+from .attention import attention_forward, list_attention_implementations
+from .flex_attention import FLEX_ATTN_AVAILABLE

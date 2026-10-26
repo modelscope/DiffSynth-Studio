@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..core.attention.attention import FLASH_ATTN_4_AVAILABLE
+from ..core.attention.flash_attention import FLASH_ATTN_4_AVAILABLE
 from .minimax_h3_dit import MiniMaxH3Attention, _sdpa_varlen_attention
 
 MINIMAX_H3_VDN_TEXT_STATE_SCALE = 0.5
