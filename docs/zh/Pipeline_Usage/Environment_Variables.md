@@ -28,7 +28,7 @@ DIFFSYNTH_MODEL_BASE_PATH="./path_to_my_models" python xxx.py
 
 ## `DIFFSYNTH_ATTENTION_IMPLEMENTATION`
 
-注意力机制实现的方式，可以设置为 `flash_attention_3`、`flash_attention_2`、`sage_attention`、`xformers`、`torch`。详见 [`./core/attention.md`](../API_Reference/core/attention.md).
+注意力机制实现的方式，可以设置为 `customized_fa_kernel`、`flash_attention_4`、`flash_attention_3`、`flash_attention_2`、`sage_attention`、`xformers`、`torch`。若未设置这一环境变量，则按上述顺序自动选择可用的实现。若取值未知或对应实现不可用，会抛出 `ValueError` 并列出当前可用的实现。详见 [`./core/attention.md`](../API_Reference/core/attention.md).
 
 ## `DIFFSYNTH_DISK_MAP_BUFFER_SIZE`
 

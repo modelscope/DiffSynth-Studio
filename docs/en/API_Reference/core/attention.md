@@ -69,9 +69,62 @@ print((output_1 - output_2).abs().mean())
 
 Please note that acceleration will introduce errors, but in most cases, the error is negligible.
 
+## Available Implementations
+
+`DiffSynth-Studio` detects installed packages when `diffsynth.core.attention` is imported, and only registers the implementations that are actually usable. When `DIFFSYNTH_ATTENTION_IMPLEMENTATION` is not set, the following order is used and the first available implementation is selected:
+
+1. `customized_fa_kernel`
+2. `flash_attention_4`
+3. `flash_attention_3`
+4. `flash_attention_2`
+5. `sage_attention`
+6. `xformers`
+7. `torch`
+
+The currently registered implementations can be printed with:
+```python
+from diffsynth.core.attention import list_attention_implementations
+
+print(list_attention_implementations())
+```
+
+| Name | Dependency | Causal | Attention mask | Sliding window |
+| --- | --- | --- | --- | --- |
+| `customized_fa_kernel` | `kernels` with `DIFFSYNTH_FLASH_ATTN_KERNEL_REPO_ID` | ✅ | ❌ | ✅ |
+| `flash_attention_4` | `flash_attn.cute` | ✅ | ❌ | ✅ |
+| `flash_attention_3` | `flash_attn_3` | ✅ | ❌ | ✅ |
+| `flash_attention_2` | `flash_attn` | ✅ | ❌ | ✅ |
+| `sage_attention` | `sageattention` | ❌ | ❌ | ❌ |
+| `xformers` | `xformers` | ❌ | ❌ | ❌ |
+| `torch` | `torch.nn.functional.scaled_dot_product_attention` | ✅ | ✅ | ✅ |
+
+If the selected implementation does not support `attn_mask`, `window_size` or `is_causal`, `attention_forward` falls back to the `torch` implementation for that call. The result is still correct, only slower.
+
 ## Developer Guide
 
 When integrating new models into `DiffSynth-Studio`, developers can decide whether to call `attention_forward` in `diffsynth.core.attention`, but we expect models to prioritize calling this module as much as possible, so that new attention mechanism implementations can take effect directly on these models.
+
+### Registering a New Implementation
+
+A new attention implementation can be registered with `register_attention_implementation`:
+```python
+from diffsynth.core.attention import list_attention_implementations
+from diffsynth.core.attention.registry import register_attention_implementation
+
+register_attention_implementation(
+    "my_attention",
+    my_attention_func,
+    supports_causal=True,
+    supports_window=False,
+    supports_mask=False,
+)
+
+print(list_attention_implementations())
+```
+
+`my_attention_func` must accept `q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims`, plus the keyword arguments declared as supported: `scale`, and any of `is_causal`, `attn_mask`, `window_size`. Only the declared keyword arguments are passed in by `attention_forward`. `supports_gqa` is reserved for future use and does not affect routing yet.
+
+Once registered, the implementation can be selected through the environment variable, for example `DIFFSYNTH_ATTENTION_IMPLEMENTATION=my_attention`. Registration must happen before the first `attention_forward` call (for example, at import time of the package that provides the implementation).
 
 ## Best Practices
 

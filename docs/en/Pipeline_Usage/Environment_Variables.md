@@ -28,7 +28,7 @@ Model download root directory. Can be set to any local path. If `local_model_pat
 
 ## `DIFFSYNTH_ATTENTION_IMPLEMENTATION`
 
-Attention mechanism implementation method. Can be set to `flash_attention_3`, `flash_attention_2`, `sage_attention`, `xformers`, or `torch`. See [`./core/attention.md`](../API_Reference/core/attention.md) for details.
+Attention mechanism implementation method. Can be set to `customized_fa_kernel`, `flash_attention_4`, `flash_attention_3`, `flash_attention_2`, `sage_attention`, `xformers`, or `torch`. When this environment variable is not set, the implementation is selected automatically in the order listed above. An unknown or unavailable value raises a `ValueError` listing the currently available implementations. See [`./core/attention.md`](../API_Reference/core/attention.md) for details.
 
 ## `DIFFSYNTH_DISK_MAP_BUFFER_SIZE`
 
