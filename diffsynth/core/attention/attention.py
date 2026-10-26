@@ -29,11 +29,7 @@ def attention_forward(q, k, v, q_pattern="b n s d", k_pattern="b n s d", v_patte
         return flex_attention(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale, score_mod=score_mod)
 
     if compatibility_mode:
-        if window_size is None:
-            return torch_sdpa(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale, is_causal=is_causal)
-        else:
-            assert is_causal == False and attn_mask is None
-            return torch_sdpa_sliding_window(q, k, v, window_size, q_pattern, k_pattern, v_pattern, out_pattern, dims, scale=scale)
+        return torch_sdpa(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale, is_causal=is_causal, window_size=window_size)
 
     backend = get_attention_implementation(ATTENTION_IMPLEMENTATION)
 
