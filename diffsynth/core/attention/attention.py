@@ -4,9 +4,9 @@ from .registry import (
     list_attention_implementations,
     register_attention_implementation,
 )
-from .flash_attention import *
-from .sage_attention import *
-from .xformers_attention import *
+from .flash_attention import CUSTOMIZED_FA_KERNEL_AVAILABLE, FLASH_ATTN_4_AVAILABLE, FLASH_ATTN_3_AVAILABLE, FLASH_ATTN_2_AVAILABLE
+from .sage_attention import SAGE_ATTN_AVAILABLE
+from .xformers_attention import XFORMERS_AVAILABLE
 from .torch_attention import torch_sdpa, torch_sdpa_sliding_window
 from .flex_attention import flex_attention
 
