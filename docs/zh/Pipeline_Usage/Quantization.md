@@ -20,8 +20,11 @@
 | torchao | `pip install torchao>=0.16` | [torchao](https://github.com/pytorch/ao) |
 | comfy-kitchen | `pip install comfy-kitchen` | [comfy-kitchen](https://github.com/Comfy-Org/comfy-kitchen) |
 | entropack | `pip install "entropack[cuda13]"` | [entropack](https://github.com/modelscope/entropack) |
+| deep_gemm | 源码编译：`git clone --recursive https://github.com/deepseek-ai/DeepGEMM && cd DeepGEMM && ./install.sh` | [DeepGEMM](https://github.com/deepseek-ai/DeepGEMM) |
 
-一次性安装全部：`pip install "diffsynth[quant]"`
+一次性安装全部：`pip install "diffsynth[quant]"`（不包含 `deep_gemm`，它没有发布到 PyPI）。
+
+`deep_gemm` 不在 PyPI 上，需要在与 PyTorch 相同的环境中从源码编译，并要求 NVIDIA SM90/SM100 显卡、CUDA 12.9 及以上，以及支持 C++20 `<format>` 的编译器。DeepGEMM 在运行时用 `nvcc` 编译 kernel，`nvcc` 从 `CUDA_HOME`（未设置时取 `PATH` 中的 `nvcc`）查找。
 
 ## 快速开始
 
@@ -70,6 +73,9 @@ image.save("image_z_image_nf4.jpg")
 | `torchao_nvfp4_w4a4` | torchao | NVFP4 / NVFP4 | ✅ | ❌ |
 | `comfy_kitchen_int8_w8a8` | comfy_kitchen | INT8 / INT8 动态 | ✅ | ✅ |
 | `comfy_kitchen_fp8_w8a8` | comfy_kitchen | FP8 E4M3 / FP8 | ✅ | ✅ |
+| `deep_gemm_fp8_w8a8` | deep_gemm | FP8 E4M3（128x128 分块）/ FP8 按 token 动态量化 | ✅ | ✅ |
+| `deep_gemm_fp4_w4a4` | deep_gemm_fp4 | FP4 E2M1（1x32 分块）/ FP4 按 token 动态量化 | ✅ | ✅ |
+| `deep_gemm_fp4_w4a8` | deep_gemm_fp4 | FP4 E2M1（1x32 分块）/ FP8 按 token 动态量化 | ✅ | ✅ |
 | `entropack_lossless_df11` | entropack | 无损 DFloat11（BF16） / 不量化 | ✅ | ✅ |
 | `entropack_lossless_tile_ans` | entropack | 无损 tile-ANS（BF16 / FP16 / FP8 / INT8 等） / 不量化 | ✅ | ✅ |
 | `entropack_lossy_quant` | entropack | 有损 E8 格量化 / 不量化 | ✅ | ✅ |
@@ -87,6 +93,8 @@ image.save("image_z_image_nf4.jpg")
 - entropack 需要 Python 3.10 及以上和 CUDA 版 PyTorch 2.10 及以上；安装命令中的 `cuda13` 按环境换成 `cuda12`。`entropack_lossy_quant_fp8*` 需要 SM8.9 及以上，`entropack_lossy_quant_int8*` 需要 SM8.0 及以上。
 - 要无损选 `entropack_lossless_df11`（BF16）或 `entropack_lossless_tile_ans`（BF16 / FP16 / FP8 / INT8 等）；要控制体积选 `entropack_lossy_quant`，`target_bpp` 在 0.001–11 之间连续取值（默认 4.0；Z-Image-Turbo 的 276 个线性层上 3 bpp 约 14%、4 bpp 约 7% 权重 rel-L2）。`entropack_lossy_quant_fp8*` / `entropack_lossy_quant_int8*` 是 W8A8 方法，`*_raw` 直接存储量化码，另两个再对量化码做熵编码，其 `target_bpp` 上限为 8（超出会被截到 8）。
 - 请用 `target_modules` / `exclude_modules` 明确要量化的层；实际 bpp 记录在 checkpoint options 中。参数与更多用法见 [entropack](https://github.com/modelscope/entropack)。
+- `deep_gemm_fp8_w8a8` 把权重存为 fp8 E4M3（每 128x128 分块一个 scale），每次 forward 用一个融合 kernel 按 token 量化激活，再由 DeepGEMM 的 FP8 kernel 在 SM90/SM100 的 Tensor Core 上完成矩阵乘，因此需要 SM90/SM100 显卡、CUDA 12.9 及以上，以及从源码编译的 DeepGEMM（见[安装依赖](#安装依赖)）。首次 forward 会针对实际形状编译 kernel（数秒，之后缓存在 `~/.dj`）。输入或输出尺寸不是 128 整数倍的层（例如部分模型的 patch embedding 投影）会保持原精度。
+- `deep_gemm_fp4_w4a4` / `deep_gemm_fp4_w4a8` 把权重存为 FP4 E2M1（每 1x32 分块一个 scale），激活分别按 token 量化成 FP4（1x32）或 FP8（1x128）；矩阵乘走 DeepGEMM 的 FP4 MMA，需要 **SM100（Blackwell）** 显卡，在 SM90 上会直接拒绝加载（SM90 上 `deep_gemm_fp8_w8a8` 已是最快的 DeepGEMM 路径）。W4A4 最快，W4A8 则更适合对量化敏感的模型。FP4 权重较粗（相对 bf16 约 11% 权重误差），生产使用前请先验证画质。
 
 示例：
 

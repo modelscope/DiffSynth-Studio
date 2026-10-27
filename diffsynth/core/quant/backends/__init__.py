@@ -5,6 +5,8 @@ _LAZY_BACKENDS = {
     "torchao": ".torchao",
     "comfy_kitchen": ".comfy_kitchen",
     "entropack": ".entropack",
+    "deep_gemm": ".deep_gemm",
+    "deep_gemm_fp4": ".deep_gemm",
 }
 _loaded = set()
 
