@@ -20,8 +20,11 @@ Different quantization backends require the corresponding third-party libraries:
 | torchao | `pip install torchao>=0.16` | [torchao](https://github.com/pytorch/ao) |
 | comfy-kitchen | `pip install comfy-kitchen` | [comfy-kitchen](https://github.com/Comfy-Org/comfy-kitchen) |
 | entropack | `pip install "entropack[cuda13]"` | [entropack](https://github.com/modelscope/entropack) |
+| deep_gemm | build from source: `git clone --recursive https://github.com/deepseek-ai/DeepGEMM && cd DeepGEMM && ./install.sh` | [DeepGEMM](https://github.com/deepseek-ai/DeepGEMM) |
 
-Install all at once: `pip install "diffsynth[quant]"`
+Install all at once: `pip install "diffsynth[quant]"` (this does not include `deep_gemm`, which is not distributed on PyPI).
+
+`deep_gemm` is not on PyPI: it must be built from source in the same environment as PyTorch, and it needs an NVIDIA SM90/SM100 GPU, CUDA 12.9 or newer, and a compiler with C++20 `<format>` support. DeepGEMM compiles its kernels at runtime with `nvcc`, which is looked up through `CUDA_HOME` (or, when that is unset, the `nvcc` on `PATH`).
 
 ## Quick Start
 
@@ -70,6 +73,9 @@ The following are all built-in quantization methods. `method` is the name passed
 | `torchao_nvfp4_w4a4` | torchao | NVFP4 / NVFP4 | ✅ | ❌ |
 | `comfy_kitchen_int8_w8a8` | comfy_kitchen | INT8 / INT8 dynamic | ✅ | ✅ |
 | `comfy_kitchen_fp8_w8a8` | comfy_kitchen | FP8 E4M3 / FP8 | ✅ | ✅ |
+| `deep_gemm_fp8_w8a8` | deep_gemm | FP8 E4M3 (128x128 block) / FP8 per-token dynamic | ✅ | ✅ |
+| `deep_gemm_fp4_w4a4` | deep_gemm_fp4 | FP4 E2M1 (1x32 block) / FP4 per-token dynamic | ✅ | ✅ |
+| `deep_gemm_fp4_w4a8` | deep_gemm_fp4 | FP4 E2M1 (1x32 block) / FP8 per-token dynamic | ✅ | ✅ |
 | `entropack_lossless_df11` | entropack | lossless DFloat11 (BF16) / none | ✅ | ✅ |
 | `entropack_lossless_tile_ans` | entropack | lossless tile-ANS (BF16 / FP16 / FP8 / INT8, etc.) / none | ✅ | ✅ |
 | `entropack_lossy_quant` | entropack | lossy E8-lattice quantization / none | ✅ | ✅ |
@@ -87,6 +93,8 @@ Some notes:
 - entropack needs Python 3.10+ and a CUDA build of PyTorch 2.10+; replace `cuda13` with `cuda12` in the install command to match the environment. `entropack_lossy_quant_fp8*` needs SM8.9 or newer, `entropack_lossy_quant_int8*` needs SM8.0 or newer.
 - For lossless compression use `entropack_lossless_df11` (BF16) or `entropack_lossless_tile_ans` (BF16 / FP16 / FP8 / INT8, etc.); to control storage size use `entropack_lossy_quant`, whose `target_bpp` takes any continuous value from 0.001 to 11 (default 4.0; on Z-Image-Turbo's 276 linear layers 3 bpp reaches ~14% and 4 bpp ~7% weight rel-L2). `entropack_lossy_quant_fp8*` / `entropack_lossy_quant_int8*` are W8A8 methods: the `*_raw` variants store the codes directly, the other two entropy-code them, and their `target_bpp` is capped at 8.
 - Select the layers to quantize explicitly with `target_modules` / `exclude_modules`; the actual bpp is recorded in the checkpoint options. See [entropack](https://github.com/modelscope/entropack) for parameters and more usage.
+- `deep_gemm_fp8_w8a8` keeps the weights as fp8 E4M3 with one scale per 128x128 block and quantizes each activation tile per token in a fused kernel, then runs the matmul with DeepGEMM's FP8 kernels on SM90/SM100 tensor cores. It therefore needs an SM90/SM100 GPU, CUDA 12.9+, and the DeepGEMM package built from source (see [Installation](#installation)). The first forward compiles the kernels for the shapes in use (a few seconds, cached under `~/.dj` afterwards). Layers whose input or output size is not a multiple of 128 (e.g. the patch-embedding projections of some models) stay in their original precision.
+- `deep_gemm_fp4_w4a4` / `deep_gemm_fp4_w4a8` store the weights as FP4 E2M1 (one scale per 1x32 block) and quantize the activations per token as FP4 (1x32) or FP8 (1x128) respectively; the matmul runs on DeepGEMM's FP4 MMA, which needs an **SM100 (Blackwell)** GPU — these methods refuse to load on SM90, where `deep_gemm_fp8_w8a8` is the fastest DeepGEMM path. W4A4 is the fastest and W4A8 the safer compromise for quantization-sensitive models. FP4 weights are coarser (about 11% relative weight error against bf16), so validate image quality before using them for production.
 
 For example:
 
