@@ -1685,6 +1685,14 @@ minimax_h3_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_controlnet.MiniMaxH3ControlNetStateDictConverter"
     },
     {
+        # ControlNet trained by examples/minimax_h3/model_training/full/MiniMax-H3-Fun-Controlnet-Union.sh
+        # Example: ModelConfig(path="./models/train/MiniMax-H3-Fun-Controlnet-Union_full/epoch-1.safetensors")
+        "model_hash": "3983b7a6c8c2389d1a24ab4783fb9744",
+        "model_name": "minimax_h3_controlnet",
+        "model_class": "diffsynth.models.minimax_h3_controlnet.MiniMaxH3ControlNet",
+        "extra_kwargs": {'control_layers': (0, 10, 20, 30, 40), 'control_in_dim': 49, 'control_apply_audio': False, 'hidden_size': 5376, 'num_attention_heads': 56, 'attention_head_dim': 128, 'ffn_hidden_size': 14336, 'time_embed_dim': 2688, 'adaln_out_features': 96768, 'patch_size': (1, 2, 2), 'norm_eps': 1e-05, 'qk_norm_eps': 1e-05},
+    },
+    {
         # Example: ModelConfig(model_id="WarmBloodAban/Minimax-h3_Singularity", origin_file_pattern="Minimax-h3_Singularity_ref2va_Pruned_v1.3_int8.safetensors")
         "model_hash": "c00577940e5a11f0fb5a0a754ac6003d",
         "model_name": "minimax_h3_dit",
