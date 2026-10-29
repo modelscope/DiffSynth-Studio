@@ -99,7 +99,6 @@ class OPDTrainingModule(MOSSImageTrainingModule):
         distill_idx = torch.randperm(len(self.student_sigmas) - self.min_distill_idx) + self.min_distill_idx
         for idx in distill_idx[:self.num_distill_steps].tolist():
             # Select an inference step
-            idx = torch.randint(0, len(self.student_sigmas), (1,)).item()
             aligned_sigmas, aligned_timesteps = self.align_sigmas(self.teacher_sigmas, self.teacher_timesteps, self.student_sigmas, self.student_timesteps, idx)
             latents = trajectory[idx]
 
