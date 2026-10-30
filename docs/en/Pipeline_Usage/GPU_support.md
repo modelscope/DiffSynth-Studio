@@ -12,6 +12,8 @@ All sample code provided by this project supports NVIDIA GPUs by default, requir
 
 AMD provides PyTorch packages based on ROCm, so most models can run without code changes. A small number of models may not be compatible due to their reliance on CUDA-specific instructions.
 
+On Windows, `torch.cuda.mem_get_info` with ROCm only counts the VRAM used by the current process. When `amd-adlx` is installed, `vram_limit` uses the VRAM used by the whole GPU instead, as it does on NVIDIA GPUs. On ROCm, `TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL=1` is set by default so that PyTorch SDPA can use its flash and memory-efficient kernels on GPUs where AOTriton support is still experimental.
+
 ### Apple Silicon
 
 On Apple Silicon devices, since VRAM and memory are unified, replace all `"cuda"` in the code with `"mps"` or `"cpu"`.

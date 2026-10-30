@@ -12,6 +12,8 @@
 
 AMD 提供了基于 ROCm 的 torch 包，所以大多数模型无需修改代码即可运行，少数模型由于依赖特定的 cuda 指令无法运行。
 
+在 Windows 系统上，ROCm 版本的 `torch.cuda.mem_get_info` 只统计当前进程占用的显存。安装 `amd-adlx` 后，`vram_limit` 会改为使用整个 GPU 的显存占用，与 NVIDIA GPU 上的行为一致。在 ROCm 上，框架默认设置 `TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL=1`，使 PyTorch SDPA 在 AOTriton 支持仍为实验性的 GPU 上也能使用 flash 和 memory-efficient 内核。
+
 ### Apple Silicon
 
 在 Apple Silicon 设备上，由于显存和内存是统一的，请将代码中的 `"cuda"` 全部修改为 `"mps"` 或 `"cpu"`。
