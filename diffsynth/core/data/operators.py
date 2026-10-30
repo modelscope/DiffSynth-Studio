@@ -304,7 +304,12 @@ class LoadAudioWithTorchaudio(DataProcessingOperator, FrameSamplerByRateMixin):
             reader = self.get_reader(data)
             num_frames = self.get_num_frames(reader)
             duration = num_frames / self.frame_rate
-            waveform, sample_rate = self.audio_loader(data)
+            try:
+                waveform, sample_rate = self.audio_loader(data)
+            except Exception as e:
+                # Fallback for environments where torchaudio's decoding backend
+                # (torchcodec) is unavailable, e.g. missing FFmpeg dev libraries.
+                waveform, sample_rate = self.load_audio_with_av(data)
             target_samples = int(duration * sample_rate)
             current_samples = waveform.shape[-1]
             if current_samples > target_samples:
@@ -316,6 +321,24 @@ class LoadAudioWithTorchaudio(DataProcessingOperator, FrameSamplerByRateMixin):
         except Exception as e:
             warnings.warn(f"Cannot load audio in {data} due to {e}. The audio will be `None`.")
             return None
+
+    def load_audio_with_av(self, data: str):
+        import av
+        import numpy as np
+        container = av.open(data)
+        stream = container.streams.audio[0]
+        sample_rate = stream.rate
+        arrays = []
+        for frame in container.decode(stream):
+            arr = frame.to_ndarray()
+            if arr.ndim == 1:
+                arr = arr[None, :]
+            arrays.append(arr.astype(np.float32))
+        container.close()
+        if len(arrays) == 0:
+            raise ValueError(f"No audio stream decoded from {data}.")
+        waveform = np.concatenate(arrays, axis=-1)
+        return torch.from_numpy(waveform), sample_rate
 
 
 class LoadPureAudioWithTorchaudio(DataProcessingOperator):
@@ -345,50 +368,3 @@ class LoadPureAudioWithTorchaudio(DataProcessingOperator):
         except Exception as e:
             print(f"Cannot load audio in {data} due to {e}. The audio will be `None`.")
             return None
-
-
-class LoadMultiTrackAudio(DataProcessingOperator):
-    def __init__(self, target_sample_rate=48000, max_audio_duration=None, division_factor=1):
-        self.target_sample_rate = target_sample_rate
-        self.max_audio_duration = max_audio_duration
-        self.division_factor = division_factor
-        import torchaudio
-        self.audio_loader = torchaudio.load
-        self.audio_resampler = torchaudio.functional.resample
-
-    def load_audio(self, path):
-        waveform, sample_rate = self.audio_loader(path)
-        if len(waveform.shape) == 2 and waveform.shape[0] == 1:
-            waveform = repeat(waveform, "c l -> (n c) l", n=2)
-        if self.target_sample_rate is not None and sample_rate != self.target_sample_rate:
-            waveform = self.audio_resampler(waveform, sample_rate, self.target_sample_rate)
-            sample_rate = self.target_sample_rate
-        if self.max_audio_duration is not None and waveform.shape[1] > sample_rate * self.max_audio_duration:
-            waveform = waveform[:, :int(sample_rate * self.max_audio_duration)]
-        if self.division_factor is not None:
-            waveform = waveform[:, :waveform.shape[1] // self.division_factor * self.division_factor]
-        return waveform
-
-    def load_latents(self, path):
-        latents = torch.load(path, weights_only=True, map_location="cpu")
-        return latents
-
-    def load_single_data(self, path):
-        if path is None:
-            return None
-        elif path.endswith(".pth"):
-            return self.load_latents(path)
-        else:
-            return self.load_audio(path)
-
-    def __call__(self, data):
-        if isinstance(data, str):
-            return self.load_single_data(data)
-        else:
-            audio = {}
-            for name, path in data.items():
-                audio[name] = self.load_single_data(path)
-            min_length = min([audio[name].shape[1] for name in audio if audio[name] is not None])
-            min_length = min_length // self.division_factor * self.division_factor
-            audio = {name: audio[name][:, :min_length] for name in audio}
-        return audio
