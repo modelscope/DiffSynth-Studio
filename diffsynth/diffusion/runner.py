@@ -86,6 +86,13 @@ def launch_training_task(
     scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
 
+    sequence_parallel = getattr(model, "sequence_parallel_size", 1) > 1
+    if sequence_parallel:
+        if enable_model_cpu_offload:
+            raise ValueError("Sequence parallel training does not support OffloadTrainingManager.")
+        from .sequence_parallel import prepare_sequence_parallel_dataloader
+        dataloader = prepare_sequence_parallel_dataloader(accelerator, dataloader)
+
     if enable_model_cpu_offload:
         optimizer, dataloader, scheduler = accelerator.prepare(optimizer, dataloader, scheduler)
         model.pipe.device = accelerator.device
@@ -93,7 +100,15 @@ def launch_training_task(
     else:
         model.to(device=accelerator.device)
         exclude_quantized_params_from_ddp_sync(accelerator, model)
-        model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
+        if sequence_parallel:
+            model, optimizer, scheduler = accelerator.prepare(model, optimizer, scheduler)
+            # SP ranks jointly process one sample; scheduler steps must not be
+            # multiplied by world size as they are for data-parallel batches.
+            from accelerate.scheduler import AcceleratedScheduler
+            if isinstance(scheduler, AcceleratedScheduler):
+                scheduler.split_batches = True
+        else:
+            model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
 
     initialize_deepspeed_gradient_checkpointing(accelerator)
     for epoch_id in range(num_epochs):

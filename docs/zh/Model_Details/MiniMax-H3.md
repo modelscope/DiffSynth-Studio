@@ -218,6 +218,7 @@ MiniMax-H3 系列模型统一通过 [`examples/minimax_h3/model_training/train.p
         * `--max_pixels`: 最大像素面积，动态分辨率时大于此值的图片会被缩小。
         * `--num_frames`: 视频的帧数。
 * MiniMax-H3 专有参数
+    * `--sequence_parallel_size`: 实验性的训练序列并行，默认为 1（关闭）。启用前请阅读[支持范围、梯度约定和验证命令](../../../examples/minimax_h3/model_training/sequence_parallel.md)。
     * `--processor_path`: Qwen3-VL processor 的路径，支持 `model_id:origin_file_pattern` 形式，用于对 prompt 进行 tokenize。
     * `--initialize_model_on_cpu`: 是否在 CPU 上初始化模型。
     * `--silent_on_missing_audio`: 视频数据不含音轨时，是否以静音音频作为兜底。
