@@ -10,6 +10,22 @@ def _is_url(path):
     return isinstance(path, str) and path.startswith(("http://", "https://"))
 
 
+def _load_audio_waveform(path):
+    """Load (waveform [C, T], sample_rate), preferring torchaudio.
+
+    torchaudio.load requires torchcodec, whose native libs are CUDA-only;
+    on ROCm fall back to soundfile (wav/flac/ogg). Same return contract.
+    """
+    import torchaudio
+    try:
+        return torchaudio.load(path)
+    except Exception:
+        import soundfile as sf
+        data, sample_rate = sf.read(path, always_2d=True)
+        waveform = torch.from_numpy(data.T).to(dtype=torch.float32)
+        return waveform, sample_rate
+
+
 def _load_image_from_url(url, timeout=30, max_retries=3):
     request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; DiffSynth-Studio)"})
     last_error = None
@@ -296,8 +312,7 @@ class LoadAudioWithTorchaudio(DataProcessingOperator, FrameSamplerByRateMixin):
 
     def __init__(self, num_frames=121, time_division_factor=8, time_division_remainder=1, frame_rate=24, fix_frame_rate=True):
         FrameSamplerByRateMixin.__init__(self, num_frames, time_division_factor, time_division_remainder, frame_rate, fix_frame_rate)
-        import torchaudio
-        self.audio_loader = torchaudio.load
+        self.audio_loader = _load_audio_waveform
 
     def __call__(self, data: str):
         try:
@@ -353,7 +368,7 @@ class LoadMultiTrackAudio(DataProcessingOperator):
         self.max_audio_duration = max_audio_duration
         self.division_factor = division_factor
         import torchaudio
-        self.audio_loader = torchaudio.load
+        self.audio_loader = _load_audio_waveform
         self.audio_resampler = torchaudio.functional.resample
 
     def load_audio(self, path):

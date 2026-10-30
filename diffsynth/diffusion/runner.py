@@ -83,7 +83,10 @@ def launch_training_task(
 
     optimizer_class = get_optimizer_class(customized_optimizer)
     optimizer = optimizer_class(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
-    scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
+    # Constant at the configured learning rate from the first step. A bare
+    # ConstantLR(optimizer) uses torch defaults (factor=1/3, total_iters=5),
+    # silently training the first 5 steps at a third of --learning_rate.
+    scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer, factor=1.0, total_iters=0)
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
 
     if enable_model_cpu_offload:

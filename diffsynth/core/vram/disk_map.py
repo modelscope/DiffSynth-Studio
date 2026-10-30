@@ -43,6 +43,21 @@ class DiskMap:
                 self.name_map[name] = file_id
         self.rename_dict = self.fetch_rename_dict(state_dict_converter)
         
+    def __getstate__(self):
+        # Open file handles cannot cross pickle/deepcopy boundaries, and
+        # disk-offload transient compute deepcopies wrapped modules holding
+        # this map. Drop the handles; each copy reopens its own from paths
+        # (~2 ms per copy on the 22B LTX-2.5 transformer), so a copy's
+        # flush_files never rebinds another copy's handles.
+        state = self.__dict__.copy()
+        state["files"] = []
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.files = []
+        self.flush_files()
+
     def flush_files(self):
         if len(self.files) == 0:
             for path in self.path:
