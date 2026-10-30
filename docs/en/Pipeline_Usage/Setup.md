@@ -20,6 +20,7 @@ To keep the framework lightweight, the base installation only installs the neces
 * `[quant]`: For parameter quantization, enabling precisions such as NF4, INT8, NVFP4.
 * `[training]`: For distributed large-scale pretraining.
 * `[logger]`: To enable training loggers such as TensorBoard, SwanLab, etc.
+* `[amd]`: For AMD GPUs on Windows, reading the VRAM used by the whole GPU through ADLX.
 * `[npu]`: For Ascend NPU devices with x86 architecture.
 * `[npu_aarch64]`: For Ascend NPU devices with aarch64/ARM architecture.
 * Dependencies of specific models
@@ -43,6 +44,13 @@ You need to install the `torch` package with ROCm support. Taking ROCm 6.4 (as o
 
 ```shell
 pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6.4
+```
+
+On Windows, install AMD's ROCm 10 `torch` packages instead (as of October 30, 2026), replacing `gfx1201` with your GPU's architecture, or with `all` if you are not sure. Then install the `[amd]` dependencies, which include `amd-adlx`, so that `vram_limit` accounts for the VRAM used by other programs and the desktop:
+
+```shell
+pip install --index-url https://stable.repo.amd.com/rocm/whl-next/ "torch[device-gfx1201]==2.14.0+rocm10.1.0" "torchvision[device-gfx1201]==0.29.0a0+rocm10.1.0"
+pip install -e ".[amd]"
 ```
 
 ### Apple Silicon
