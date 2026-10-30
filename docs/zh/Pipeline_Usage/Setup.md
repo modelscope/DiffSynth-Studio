@@ -20,6 +20,7 @@ pip install diffsynth
 * `[quant]`: 用于参数量化，启用 NF4、INT8、NVFP4 等精度
 * `[training]`: 用于分布式大规模预训练
 * `[logger]`: 用于启用 TensorBoard、SwanLab 等训练日志记录器
+* `[amd]`: 用于 Windows 系统上的 AMD GPU，通过 ADLX 读取整个 GPU 的显存占用
 * `[npu]`: 用于 x86 架构的 Ascend NPU 设备
 * `[npu_aarch64]`: 用于 aarch64/ARM 架构的 Ascend NPU 设备
 * 特定模型的依赖
@@ -43,6 +44,13 @@ pip install diffsynth
 
 ```shell
 pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6.4
+```
+
+在 Windows 系统上，请改为安装 AMD 提供的 ROCm 10 `torch` 包（本文更新于 2026 年 10 月 30 日），并将 `gfx1201` 替换为你的 GPU 架构，不确定时可使用 `all`。然后安装 `[amd]` 依赖（包含 `amd-adlx`），使 `vram_limit` 能够计入其他程序和桌面占用的显存：
+
+```shell
+pip install --index-url https://stable.repo.amd.com/rocm/whl-next/ "torch[device-gfx1201]==2.14.0+rocm10.1.0" "torchvision[device-gfx1201]==0.29.0a0+rocm10.1.0"
+pip install -e ".[amd]"
 ```
 
 ### Apple Silicon
