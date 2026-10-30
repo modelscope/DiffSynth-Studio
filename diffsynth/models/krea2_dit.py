@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 from torch import Tensor
-from torch.nn.attention import SDPBackend, sdpa_kernel
+from ..core.attention import attention_forward
 from ..core.gradient import gradient_checkpoint_forward
 
 
@@ -38,10 +38,15 @@ def attention(
     scale: float | None = None,
     gqa: bool = False,
 ) -> Tensor:
-    with sdpa_kernel(SDPBackend.CUDNN_ATTENTION):
-        x = F.scaled_dot_product_attention(
-            q, k, v, attn_mask=mask, scale=scale, enable_gqa=gqa
-        )
+    x = attention_forward(
+        q, k, v,
+        q_pattern="b n s d",
+        k_pattern="b n s d",
+        v_pattern="b n s d",
+        out_pattern="b n s d",
+        attn_mask=mask,
+        scale=scale,
+    )
     return rearrange(x, "B H L D -> B L (H D)")
 
 
