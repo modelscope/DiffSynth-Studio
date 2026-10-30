@@ -1,4 +1,5 @@
 import torch, warnings
+from contextlib import nullcontext
 
 
 class GeneralLoRALoader:
@@ -63,8 +64,15 @@ class GeneralLoRALoader:
                     weight_lora = alpha * torch.mm(weight_up, weight_down).unsqueeze(2).unsqueeze(3)
                 else:
                     weight_lora = alpha * torch.mm(weight_up, weight_down)
-                state_dict_base = module.state_dict()
-                state_dict_base["weight"] = state_dict_base["weight"].to(device=self.device, dtype=self.torch_dtype) + weight_lora
-                module.load_state_dict(state_dict_base)
+                partitioned_params = [param for param in module.parameters() if hasattr(param, "ds_id")]
+                if partitioned_params:
+                    import deepspeed
+                    gather_context = deepspeed.zero.GatheredParameters(partitioned_params, modifier_rank=0)
+                else:
+                    gather_context = nullcontext()
+                with gather_context:
+                    state_dict_base = module.state_dict()
+                    state_dict_base["weight"] = state_dict_base["weight"].to(device=self.device, dtype=self.torch_dtype) + weight_lora
+                    module.load_state_dict(state_dict_base)
                 updated_num += 1
         print(f"{updated_num} tensors are fused by LoRA. Fused LoRA layers cannot be cleared by `pipe.clear_lora()`.")
