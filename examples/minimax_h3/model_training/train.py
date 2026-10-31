@@ -2,7 +2,7 @@ import torch, os, argparse, accelerate
 from diffsynth.core import UnifiedDataset
 from diffsynth.core.data.operators import LoadAudioWithTorchaudio, ToAbsolutePath
 from diffsynth.utils.data.minimax_h3 import MiniMaxH3ReferenceLoader
-from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
+from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, MiniMaxH3Unit_PromptEmbedder, MiniMaxH3Unit_PackedSequenceBuilder, ModelConfig
 from diffsynth.diffusion import *
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -48,7 +48,7 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         self.pipe = self.split_pipeline_units(
             task, self.pipe, trainable_models, lora_base_model,
             remove_unnecessary_params=True,
-            force_remove_params_shared=("video_latents", "audio_latents"),
+            loss_recomputed_params=("video_latents", "audio_latents"),
             force_remove_params_nega=("prompt_embeds", "text_token_tags", "packed") if training_cfg_scale == 1.0 else (),
         )
         self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
@@ -136,10 +136,29 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
         return inputs_shared, inputs_posi, inputs_nega
 
+    def validate_cached_inputs(self, unit, inputs):
+        inputs_shared, inputs_posi, inputs_nega = inputs
+        missing = []
+        if isinstance(unit, MiniMaxH3Unit_PromptEmbedder):
+            if "prompt" not in inputs_posi:
+                missing.append("prompt")
+            if self.training_cfg_scale > 1 and "negative_prompt" not in inputs_nega:
+                missing.append("negative_prompt")
+        elif isinstance(unit, MiniMaxH3Unit_PackedSequenceBuilder):
+            missing.extend(name for name in ("video_latents", "audio_latents") if name not in inputs_shared)
+        if missing:
+            raise ValueError(
+                f"Cached H3 training inputs are missing {', '.join(missing)} required by {type(unit).__name__}. "
+                "Rebuild the cache with sft:data_process using the same trainable models and template configuration."
+            )
+
     def forward(self, data, inputs=None):
+        cached_training = inputs is not None and self.task == "sft:train"
         if inputs is None: inputs = self.get_pipeline_inputs(data)
         inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)
         for unit in self.pipe.units:
+            if cached_training:
+                self.validate_cached_inputs(unit, inputs)
             inputs = self.pipe.unit_runner(unit, self.pipe, *inputs)
         loss = self.task_to_loss[self.task](self.pipe, *inputs)
         return loss
