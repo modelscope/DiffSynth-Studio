@@ -9,7 +9,7 @@
 [![GitHub latest commit](https://badgen.net/github/last-commit/modelscope/DiffSynth-Studio)](https://GitHub.com/modelscope/DiffSynth-Studio/commit/)
 [![Discord](https://badgen.net//discord/members/Mm9suEeUDc)](https://discord.gg/Mm9suEeUDc)
 
-[切换到中文版](./README_zh.md)
+[切换到中文版](./README_zh.md) | [繁體中文](./README_zh.zh-TW.md)
 
 ## Introduction
 
