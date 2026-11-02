@@ -23,7 +23,7 @@ def model_fn_student(self: BasePipeline, cfg_scale, inputs_shared, inputs_posi, 
     return model_output
 
 
-def fetch_trajectory(self: BasePipeline, model_fn, inputs, sigmas, timesteps, cfg_scale, latents=None, progress_bar_cmd=lambda x: x, return_first_output=False):
+def fetch_trajectory(self: BasePipeline, model_fn, inputs, sigmas, timesteps, cfg_scale, latents=None, progress_bar_cmd=lambda x: x, return_first_output=False, return_last_output=False):
     # Inputs
     # (Some computations are identical between the student and teacher, but their overhead is negligible. We skip optimizing them to keep the framework general.)
     inputs_shared, inputs_posi, inputs_nega = inputs
@@ -45,11 +45,13 @@ def fetch_trajectory(self: BasePipeline, model_fn, inputs, sigmas, timesteps, cf
             return noise_pred
         inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
     trajectory.append(inputs_shared["latents"])
+    if return_last_output:
+        return trajectory, noise_pred
     return trajectory
 
 
 class OPDTrainingModule(MOSSImageTrainingModule):
-    def __init__(self, teacher_sigmas, teacher_timesteps, teacher_cfg, student_sigmas, student_timesteps, student_cfg, num_distill_steps=1, min_distill_idx=0, **kwargs):
+    def __init__(self, teacher_sigmas, teacher_timesteps, teacher_cfg, student_sigmas, student_timesteps, student_cfg, num_distill_steps=1, min_distill_idx=0, strict_interval_matching=True, **kwargs):
         super().__init__(**kwargs)
         self.teacher_sigmas = self.parse_float_list(teacher_sigmas)
         self.teacher_timesteps = self.parse_float_list(teacher_timesteps)
@@ -59,6 +61,7 @@ class OPDTrainingModule(MOSSImageTrainingModule):
         self.student_cfg = student_cfg
         self.num_distill_steps = num_distill_steps
         self.min_distill_idx = min_distill_idx
+        self.strict_interval_matching = strict_interval_matching
         # Copy DiT as the frozen teacher model
         self.pipe.dit_teacher = deepcopy(self.pipe.dit)
         self.pipe.dit_teacher.requires_grad_(False)
@@ -109,15 +112,19 @@ class OPDTrainingModule(MOSSImageTrainingModule):
             aligned_sigmas, aligned_timesteps = self.align_sigmas(self.teacher_sigmas, self.teacher_timesteps, self.student_sigmas, self.student_timesteps, idx)
             latents = trajectory[idx]
 
-            # Fetch student output
-            self.switch_model("student")
-            student_output = fetch_trajectory(self.pipe, model_fn_student, deepcopy(inputs), aligned_sigmas, aligned_timesteps, self.student_cfg, latents=latents, return_first_output=True)
-
             # Fetch teacher output
             self.switch_model("teacher")
             with torch.no_grad():
-                teacher_trajectory = fetch_trajectory(self.pipe, model_fn_teacher, deepcopy(inputs), aligned_sigmas, aligned_timesteps, self.teacher_cfg, latents=latents)
-            teacher_output = self.pipe.scheduler.return_to_timestep(self.pipe.scheduler.timesteps[0], latents, teacher_trajectory[-1])
+                teacher_trajectory, last_model_output = fetch_trajectory(self.pipe, model_fn_teacher, deepcopy(inputs), aligned_sigmas, aligned_timesteps, self.teacher_cfg, latents=latents, return_last_output=True)
+            if self.strict_interval_matching:
+                sigma_end = self.student_sigmas[idx + 1] if idx + 1 < len(self.student_sigmas) else 0
+                teacher_output = (teacher_trajectory[-1] + sigma_end * last_model_output - latents) / (sigma_end - aligned_sigmas[0])
+            else:
+                teacher_output = self.pipe.scheduler.return_to_timestep(self.pipe.scheduler.timesteps[0], latents, teacher_trajectory[-1])
+
+            # Fetch student output
+            self.switch_model("student")
+            student_output = fetch_trajectory(self.pipe, model_fn_student, deepcopy(inputs), aligned_sigmas, aligned_timesteps, self.student_cfg, latents=latents, return_first_output=True)
 
             # Loss
             loss = loss + torch.nn.functional.mse_loss(student_output.float(), teacher_output.float())
@@ -133,6 +140,7 @@ def OPD_parser(parser):
     parser.add_argument("--opd_student_cfg", type=float, default=1.0, help="CFG scale of the student model.")
     parser.add_argument("--opd_num_distill_steps", type=int, default=1, help="How many steps (in student trajectory) are selected for training.")
     parser.add_argument("--opd_min_distill_idx", type=int, default=0, help="How many high-noise steps to ignore (num_distill_steps <= len(student_sigmas) - min_distill_idx).")
+    parser.add_argument("--disable_strict_interval_matching", action="store_true", help="Disable strict matching of the teacher endpoint and velocity target to the next student sigma.")
     return parser
 
 
@@ -166,6 +174,7 @@ if __name__ == "__main__":
         student_cfg=args.opd_student_cfg,
         num_distill_steps=args.opd_num_distill_steps,
         min_distill_idx=args.opd_min_distill_idx,
+        strict_interval_matching=not args.disable_strict_interval_matching,
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
         tokenizer_path=args.tokenizer_path,
