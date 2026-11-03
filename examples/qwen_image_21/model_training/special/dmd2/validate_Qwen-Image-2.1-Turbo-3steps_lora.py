@@ -16,7 +16,6 @@ pipe = QwenImage21Pipeline.from_pretrained(
 
 pipe.load_lora(pipe.dit, lora_checkpoint)
 
-prompt = "a dog"
-sigmas = [1.0, 0.6080472469329834, 0.020000040531158447]
-image = pipe(prompt, height=1024, width=1024, seed=0, num_inference_steps=3, sigmas=sigmas, cfg_scale=1.0)
+prompt = "dog,white and brown dog, sitting on wall, under pink flowers"
+image = pipe(prompt, height=1024, width=1024, seed=0, num_inference_steps=3, cfg_scale=1.0)
 image.save("image_qwen_image21_turbo_dmd2_lora_3steps.png")

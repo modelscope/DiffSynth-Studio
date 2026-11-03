@@ -16,6 +16,6 @@ pipe = Flux2ImagePipeline.from_pretrained(
 
 pipe.load_lora(pipe.dit, lora_checkpoint)
 
-prompt = "a dog"
+prompt = "dog,white and brown dog, sitting on wall, under pink flowers"
 image = pipe(prompt, height=1024, width=1024, seed=0, num_inference_steps=8, cfg_scale=1.0)
 image.save("image_flux2_dmd2_lora_8steps.jpg")

@@ -18,7 +18,6 @@ pipe = QwenImage21Pipeline.from_pretrained(
 state_dict = load_state_dict(checkpoint_path, torch_dtype=torch.bfloat16)
 pipe.dit.load_state_dict(state_dict, strict=False)
 
-prompt = "a dog"
-sigmas = [1.0, 0.9160239696502686, 0.8200457692146301, 0.7092946171760559, 0.5800749063491821, 0.42734700441360474, 0.24405395984649658, 0.019999980926513672]
-image = pipe(prompt, height=1024, width=1024, seed=0, num_inference_steps=8, sigmas=sigmas, cfg_scale=1.0)
+prompt = "dog,white and brown dog, sitting on wall, under pink flowers"
+image = pipe(prompt, height=1024, width=1024, seed=0, num_inference_steps=8, cfg_scale=1.0)
 image.save("image_qwen_image21_dmd2_full_8steps.png")
