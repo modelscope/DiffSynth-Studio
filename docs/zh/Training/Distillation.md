@@ -27,13 +27,15 @@ Direct Distill 是我们设计的端到端直接蒸馏训练方案，用原模�
 
 ## DMD2
 
-[DMD2](https://arxiv.org/abs/2405.14867)（Distribution Matching Distillation）是一种结合分布匹配与 GAN 的模型蒸馏训练方案。训练时，冻结的教师模型提供目标分布的预测，fake-score 模型估计学生的生成分布，两者共同构造学生的分布匹配梯度；GAN 损失进一步利用真实图像提供训练信号，使学生能够以少量采样步骤生成图像。
+[DMD2](https://arxiv.org/abs/2405.14867)（Distribution Matching Distillation）是一种结合分布匹配与 GAN 的模型蒸馏训练方案。训练时，冻结的教师模型提供目标分布的预测，fake-score 模型估计学生的生成分布，两者共同构造学生的分布匹配梯度；GAN 损失进一步利用真实图像提供训练信号，提升蒸馏模型生成图像的细节。
 
 训练中包含三种模型角色：
 
 * 学生模型（student）：通过普通 Euler 轨迹生成样本，只对随机选中的采样步骤保留梯度，优化分布匹配和 GAN 损失。
 * 教师模型（teacher）：冻结参数，提供目标分布的预测，并使用 `--dmd2_teacher_cfg` 控制 CFG。
 * fake-score 模型：在学生生成样本上学习去噪，追踪学生的生成分布。GAN 分类头连接到 fake-score 模型的中间特征，训练时同时区分真实图像和学生生成图像。
+
+真实图像只用于 GAN，为恢复图像细节提供训练信号，不参与分布匹配损失。关闭 GAN 时，数据集中的图像仅作为 `height` 和 `width` 的占位，用于确定生成尺寸，不会被编码，其像素内容也不会参与训练。
 
 以 FLUX.2、Qwen-Image-2.1、MOSS-Image 和 FLUX.3 为例，我们提供了以下训练及验证代码：
 
