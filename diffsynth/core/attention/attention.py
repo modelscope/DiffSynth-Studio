@@ -15,7 +15,7 @@ def initialize_attention_priority():
     if os.environ.get('DIFFSYNTH_ATTENTION_IMPLEMENTATION') is not None:
         return os.environ.get('DIFFSYNTH_ATTENTION_IMPLEMENTATION').strip().lower()
     else:
-        for name in ["customized_fa_kernel", "flash_attention_4", "flash_attention_3", "flash_attention_2", "sage_attention", "xformers"]:
+        for name in ["customized_fa_kernel", "flash_attention_4", "flash_attention_3", "flash_attention_2", "xformers"]:
             if name in list_attention_implementations():
                 return name
         return "torch"

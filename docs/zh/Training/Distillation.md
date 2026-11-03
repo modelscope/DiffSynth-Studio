@@ -77,6 +77,10 @@ loss = torch.nn.functional.mse(student_output, teacher_output)
 
 在 DiffusionOPD 变体中，`input = trajectory[randint]` 被替换为一个 for 循环，用轨迹中的每一个点进行训练；在 DanceOPD 变体中，`input` 仅在低噪声含量阶段进行采样，避免模型训练后的输出出现较大差异。在我们的样例代码中，可通过参数 `--opd_num_distill_steps` 和 `--opd_min_distill_idx` 分别实现这两个变体。
 
+> 如何将多步的 teacher 模型输出合成为一个输出？
+> 
+> 假设当前 student 模型的 sigma 区间为 [`sigma_start`, `sigma_end`]，teacher 模型会在这个区间内做多步推理。参数 `--opd_align_at_sigma_zero` 控制 teacher 监督目标对齐到哪个端点：默认情况下，目标对齐到区间的右端点 `sigma_end`，让 student 在这一步的更新恰好到达教师的区间终点（`x_teacher(sigma_end)` 由 teacher 轨迹的最后一步外推得到）；开启参数 `--opd_align_at_sigma_zero` 后，端点改为 `sigma=0`，也就是用"当前噪声样本到干净样本"的平均速度作为监督信号。该参数只改变 teacher 的监督目标，不改变 student 前向；由于最后一个区间的 `sigma_end` 本身就是 0，两种设置在该区间上等价。
+
 与 Direct Distill 相比，OPD 从学生模型出发进行采样和更新，而不是预先用教师模型生成轨迹，这让训练出来的模型效果更好；与 DMD2 相比，OPD 不需要根据模型结构设计判别器模型，因此通用型很强，且不需要谨慎地调整各种超参数。我们以 FLUX.2、Qwen-Image-2.1 和 MOSS-Image 为例，提供了 OPD 训练的样例代码：
 
 |基础模型|可训练参数|训练代码|训练后验证|蒸馏前步数|蒸馏后步数|
