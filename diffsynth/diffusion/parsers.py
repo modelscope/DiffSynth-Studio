@@ -43,6 +43,7 @@ def add_training_config(parser: argparse.ArgumentParser):
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay.")
     parser.add_argument("--task", type=str, default="sft", required=False, help="Task type.")
     parser.add_argument("--customized_optimizer", type=str, default=None, help="Customized optimizer, e.g., `bitsandbytes.optim.Adam8bit` and `torch.optim.Adam`. The default optimizer is `torch.optim.AdamW`.")
+    parser.add_argument("--warm_up_steps", type=int, default=5, help="Number of optimizer steps for linear learning rate warm-up. The learning rate ramps from `learning_rate / warm_up_steps` up to `learning_rate`. 0 disables warm-up. Steps are counted in optimizer updates, so the ramp is independent of `gradient_accumulation_steps` and the number of data-parallel processes.")
     return parser
 
 def add_output_config(parser: argparse.ArgumentParser):
