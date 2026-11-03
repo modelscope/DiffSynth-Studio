@@ -14,7 +14,8 @@ class Flux3DMD2TrainingModule(DMD2TrainingModule):
         student_sigmas, student_timesteps, teacher_cfg=3.5,
         min_timestep_dmd=20, max_timestep_dmd=981,
         model_paths=None, model_id_with_origin_paths=None, processor_path=None,
-        lora_base_model="dit", lora_target_modules="", lora_rank=128, lora_dtype=None, lora_checkpoint=None,
+        trainable_models=None,
+        lora_base_model=None, lora_target_modules="", lora_rank=128, lora_dtype=None, lora_checkpoint=None,
         preset_lora_path=None, preset_lora_model=None,
         use_gan=True, generator_gan_loss_weight=0.005, discriminator_gan_loss_weight=0.01,
         classifier_channels=1280, feature_module_of_dit_for_gan="single_blocks.13",
@@ -41,6 +42,7 @@ class Flux3DMD2TrainingModule(DMD2TrainingModule):
             preset_lora_path, preset_lora_model,
             use_gan, generator_gan_loss_weight, discriminator_gan_loss_weight,
             classifier_channels, feature_module_of_dit_for_gan,
+            trainable_models,
         )
 
         self.use_gradient_checkpointing = use_gradient_checkpointing
@@ -121,6 +123,7 @@ if __name__ == "__main__":
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
         processor_path=args.processor_path,
+        trainable_models=args.trainable_models,
         lora_base_model=args.lora_base_model,
         lora_target_modules=args.lora_target_modules,
         lora_rank=args.lora_rank,

@@ -44,53 +44,61 @@ class DMD2TrainingModule(DiffusionTrainingModule):
         self, pipe,
         student_sigmas, student_timesteps, teacher_cfg=3.,
         min_timestep_dmd=20, max_timestep_dmd=981,
-        lora_base_model="dit", lora_target_modules="", lora_rank=128, lora_dtype=None, lora_checkpoint=None,
+        lora_base_model=None, lora_target_modules="", lora_rank=128, lora_dtype=None, lora_checkpoint=None,
         preset_lora_path=None, preset_lora_model=None,
         use_gan=True, generator_gan_loss_weight=0.005, discriminator_gan_loss_weight=0.01,
         classifier_channels=1280, feature_module_of_dit_for_gan=None,
+        trainable_models=None,
     ):
-        from peft.tuners.tuners_utils import BaseTunerLayer
-
         # Training config
         self.gan = use_gan
         self.teacher_cfg = teacher_cfg
         self.lora_base_model = lora_base_model
+        self.trainable_models = trainable_models
         self.generator_gan_loss_weight = generator_gan_loss_weight
         self.discriminator_gan_loss_weight = discriminator_gan_loss_weight
         self.min_timestep_dmd = min_timestep_dmd
         self.max_timestep_dmd = max_timestep_dmd
-        if not lora_base_model:
-            raise ValueError("DMD2 LoRA training requires lora_base_model.")
+        if lora_base_model is None and trainable_models is None:
+            raise ValueError("DMD2 requires trainable_models or lora_base_model.")
 
         # Freeze models
-        pipe.freeze_except([])
-
-        # Add LoRA
+        pipe.freeze_except([] if trainable_models is None else trainable_models.split(","))
         if preset_lora_path is not None:
             pipe.load_lora(getattr(pipe, preset_lora_model), preset_lora_path)
-        model = getattr(pipe, lora_base_model)
-        lora_dtype = pipe.torch_dtype if lora_dtype is None else {"bf16": torch.bfloat16, "fp32": torch.float32}[lora_dtype]
-        model = self.add_lora_to_model(model, lora_target_modules, lora_rank, upcast_dtype=lora_dtype)
-        model = self.add_lora_to_model(model, lora_target_modules, lora_rank, upcast_dtype=lora_dtype, adapter_name="fake")
-        setattr(pipe, lora_base_model, model)
+        model = getattr(pipe, lora_base_model or trainable_models)
+        self.adapter_layers = []
 
-        # Load student LoRA
-        if lora_checkpoint is not None:
-            if isinstance(lora_checkpoint, str):
-                lora = load_state_dict(lora_checkpoint)
-            else:
-                lora = lora_checkpoint
-            lora_loader = pipe.lora_loader(torch_dtype=pipe.torch_dtype, device=pipe.device)
-            lora = lora_loader.convert_state_dict(lora)
-            lora = self.mapping_lora_state_dict(lora)
-            load_result = model.load_state_dict(lora, strict=False)
-            print(f"LoRA checkpoint loaded. Total {len(lora)} keys")
-            if len(load_result[1]) > 0:
-                print(f"Warning, LoRA key mismatch! Unexpected keys in LoRA checkpoint: {load_result[1]}")
+        if self.trainable_models is not None:
+            from copy import deepcopy
+            self.fake_model = deepcopy(model)
+            self.teacher_model = deepcopy(model).eval().requires_grad_(False)
 
-        self.adapter_layers = [layer for layer in model.modules() if isinstance(layer, BaseTunerLayer)]
-        for layer in self.adapter_layers:
-            layer.set_adapter(["default", "fake"])
+        # Add LoRA
+        if lora_base_model is not None:
+            from peft.tuners.tuners_utils import BaseTunerLayer
+            lora_dtype = pipe.torch_dtype if lora_dtype is None else {"bf16": torch.bfloat16, "fp32": torch.float32}[lora_dtype]
+            model = self.add_lora_to_model(model, lora_target_modules, lora_rank, upcast_dtype=lora_dtype)
+            model = self.add_lora_to_model(model, lora_target_modules, lora_rank, upcast_dtype=lora_dtype, adapter_name="fake")
+            setattr(pipe, lora_base_model, model)
+
+            # Load student LoRA
+            if lora_checkpoint is not None:
+                if isinstance(lora_checkpoint, str):
+                    lora = load_state_dict(lora_checkpoint)
+                else:
+                    lora = lora_checkpoint
+                lora_loader = pipe.lora_loader(torch_dtype=pipe.torch_dtype, device=pipe.device)
+                lora = lora_loader.convert_state_dict(lora)
+                lora = self.mapping_lora_state_dict(lora)
+                load_result = model.load_state_dict(lora, strict=False)
+                print(f"LoRA checkpoint loaded. Total {len(lora)} keys")
+                if len(load_result[1]) > 0:
+                    print(f"Warning, LoRA key mismatch! Unexpected keys in LoRA checkpoint: {load_result[1]}")
+
+            self.adapter_layers = [layer for layer in model.modules() if isinstance(layer, BaseTunerLayer)]
+            for layer in self.adapter_layers:
+                layer.set_adapter(["default", "fake"])
 
         # Initialize GAN
         self.classifier = self.feature_extractor = None
@@ -98,7 +106,7 @@ class DMD2TrainingModule(DiffusionTrainingModule):
             if feature_module_of_dit_for_gan is None:
                 raise ValueError("GAN training requires feature_module_of_dit_for_gan.")
             self.classifier = DMD2ClassifierHead(self.gan_feature_channels, classifier_channels).to(pipe.device)
-            self.feature_extractor = DMD2FeatureExtractor(model, feature_module_of_dit_for_gan)
+            self.feature_extractor = DMD2FeatureExtractor(self.fake_model if self.trainable_models is not None else model, feature_module_of_dit_for_gan)
 
         # Set student schedule
         pipe.scheduler.sigmas = self.parse_float_list(student_sigmas)
@@ -124,18 +132,25 @@ class DMD2TrainingModule(DiffusionTrainingModule):
         return torch.tensor(list(map(float, x.split(",")))) if isinstance(x, str) else x
 
     def select_model(self, model_role):
+        if self.trainable_models is not None:
+            return {"generator": getattr(self.pipe, self.trainable_models), "fake": self.fake_model, "teacher": self.teacher_model}[model_role]
         adapter = {"generator": "default", "fake": "fake", "teacher": []}[model_role]
         for layer in self.adapter_layers:
             layer.set_adapter(adapter)
         return getattr(self.pipe, self.lora_base_model)
 
     def generator_parameters(self):
+        if self.trainable_models is not None:
+            return list(getattr(self.pipe, self.trainable_models).parameters())
         model = getattr(self.pipe, self.lora_base_model)
         return [p for name, p in model.named_parameters() if ".lora_A.default." in name or ".lora_B.default." in name]
 
     def critic_parameters(self):
-        model = getattr(self.pipe, self.lora_base_model)
-        parameters = [p for name, p in model.named_parameters() if ".lora_A.fake." in name or ".lora_B.fake." in name]
+        if self.trainable_models is not None:
+            parameters = list(self.fake_model.parameters())
+        else:
+            model = getattr(self.pipe, self.lora_base_model)
+            parameters = [p for name, p in model.named_parameters() if ".lora_A.fake." in name or ".lora_B.fake." in name]
         return parameters + (list(self.classifier.parameters()) if self.gan else [])
 
     def prepare_batch(self, data):
@@ -143,10 +158,11 @@ class DMD2TrainingModule(DiffusionTrainingModule):
         raise NotImplementedError("Implement prepare_batch in the model's training module.")
 
     def predict(self, x, timestep, inputs, model_role, features=False):
-        self.select_model(model_role)
+        model = self.select_model(model_role)
         inputs_shared, inputs_posi, inputs_nega = inputs
         inputs_shared = dict(inputs_shared, latents=x.to(self.pipe.torch_dtype))
         models = {name: getattr(self.pipe, name) for name in self.pipe.in_iteration_models}
+        models[self.lora_base_model or self.trainable_models] = model
         if features:
             output = self.feature_extractor.run(self.pipe.model_fn, **models, **inputs_shared, **inputs_posi, timestep=timestep)
             output = self.reshape_gan_features(output, inputs_shared)
@@ -196,15 +212,12 @@ class DMD2TrainingModule(DiffusionTrainingModule):
         return self.classifier(features)
 
     def export_trainable_state_dict(self, state_dict, remove_prefix=None):
-        weights = {}
-        prefix = f"pipe.{self.lora_base_model}."
-        for name, value in state_dict.items():
-            if not name.startswith(prefix) or not (".lora_A.default." in name or ".lora_B.default." in name):
-                continue
-            name = name.removeprefix(prefix)
-            name = name.replace(".lora_A.default.weight", ".lora_down.weight").replace(".lora_B.default.weight", ".lora_up.weight")
-            weights[f"diffusion_model.{name}"] = value.float().contiguous()
-        return weights
+        generator_param_ids = {id(param) for param in self.generator_parameters()}
+        trainable_param_names = {name for name, param in self.named_parameters() if id(param) in generator_param_ids}
+        state_dict = {name: param for name, param in state_dict.items() if name in trainable_param_names}
+        if remove_prefix is not None:
+            state_dict = {name.removeprefix(remove_prefix): param for name, param in state_dict.items()}
+        return state_dict
 
     def distribution_matching_loss(self, student_sample, teacher, fake):
         with torch.no_grad():
