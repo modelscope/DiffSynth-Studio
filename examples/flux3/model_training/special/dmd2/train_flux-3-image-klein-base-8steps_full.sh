@@ -1,7 +1,10 @@
+# Download datasets
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux3/flux-3-image-klein-base/*" --local_dir ./data/diffsynth_example_dataset
 
+# Calculate the sigmas and timesteps, and fill them into the script below.
 python examples/dev_tools/compute_dmd2_sigmas.py --scheduler_name "FLUX.3" --num_inference_steps 8 --extra_kwargs '{"alpha": 6.93}'
 
+# Start training
 accelerate launch examples/flux3/model_training/special/dmd2/train.py \
   --dataset_base_path data/diffsynth_example_dataset/flux3/flux-3-image-klein-base \
   --dataset_metadata_path data/diffsynth_example_dataset/flux3/flux-3-image-klein-base/metadata.csv \
@@ -10,10 +13,10 @@ accelerate launch examples/flux3/model_training/special/dmd2/train.py \
   --dataset_repeat 50 \
   --model_id_with_origin_paths "black-forest-labs/flux-3-image-klein-base:model.safetensors,black-forest-labs/flux-3-image-klein:text_encoder/*.safetensors,black-forest-labs/flux-3-image-klein:vae/diffusion_pytorch_model.safetensors" \
   --processor_path "black-forest-labs/flux-3-image-klein:text_encoder/" \
-  --trainable_models dit \
   --learning_rate 5e-6 \
   --num_epochs 5 \
-  --output_path "workspace/$(date -u +%Y%m%d_%H%M%S)_flux3_klein_base_dmd2_full_8steps" \
+  --output_path "./models/train/flux-3-image-klein-base_dmd2_full_8steps" \
+  --trainable_models dit \
   --remove_prefix_in_ckpt "pipe.dit." \
   --use_gradient_checkpointing \
   --gradient_accumulation_steps 2 \

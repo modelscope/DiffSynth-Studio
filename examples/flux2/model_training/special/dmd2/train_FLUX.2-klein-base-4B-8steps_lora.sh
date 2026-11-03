@@ -1,6 +1,3 @@
-# Run this script in the base path of DiffSynth-Studio:
-# PYTHONPATH="./" bash examples/flux2/model_training/special/dmd2/train_FLUX.2-klein-base-4B-8steps_lora.sh
-
 # Download datasets
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux2/FLUX.2-klein-base-4B/*" --local_dir ./data/diffsynth_example_dataset
 

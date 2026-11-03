@@ -1,7 +1,10 @@
+# Download datasets
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "qwen_image_21/Qwen-Image-2.1/*" --local_dir ./data/diffsynth_example_dataset
 
+# Calculate the sigmas and timesteps, and fill them into the script below.
 python examples/dev_tools/compute_dmd2_sigmas.py --scheduler_name "Qwen-Image" --num_inference_steps 3 --extra_kwargs '{"dynamic_shift_len": 4096}'
 
+# Start training
 accelerate launch examples/qwen_image_21/model_training/special/dmd2/train.py \
   --dataset_base_path data/diffsynth_example_dataset/qwen_image_21/Qwen-Image-2.1 \
   --dataset_metadata_path data/diffsynth_example_dataset/qwen_image_21/Qwen-Image-2.1/metadata.csv \
@@ -9,10 +12,10 @@ accelerate launch examples/qwen_image_21/model_training/special/dmd2/train.py \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
   --model_id_with_origin_paths "Qwen/Qwen-Image-2.1-Turbo:transformer/diffusion_pytorch_model*.safetensors,Qwen/Qwen-Image-2.1:text_encoder/model*.safetensors,Qwen/Qwen-Image-2.1:vae/diffusion_pytorch_model*.safetensors" \
-  --trainable_models dit \
   --learning_rate 5e-6 \
   --num_epochs 5 \
-  --output_path "workspace/$(date -u +%Y%m%d_%H%M%S)_qwen_image21_turbo_dmd2_full_3steps" \
+  --output_path "./models/train/Qwen-Image-2.1-Turbo_dmd2_full_3steps" \
+  --trainable_models dit \
   --remove_prefix_in_ckpt "pipe.dit." \
   --use_gradient_checkpointing \
   --gradient_accumulation_steps 2 \

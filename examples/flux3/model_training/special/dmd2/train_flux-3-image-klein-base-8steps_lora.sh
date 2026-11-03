@@ -1,6 +1,3 @@
-# Run this script in the base path of DiffSynth-Studio:
-# PYTHONPATH="./" bash examples/flux3/model_training/special/dmd2/train_flux-3-image-klein-base-8steps_lora.sh
-
 # Download datasets
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux3/flux-3-image-klein-base/*" --local_dir ./data/diffsynth_example_dataset
 

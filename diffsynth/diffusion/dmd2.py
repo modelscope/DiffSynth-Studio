@@ -274,7 +274,7 @@ class DMD2TrainingModule(DiffusionTrainingModule):
 def launch_dmd2_training_task(
     accelerator, dataset, model, model_logger,
     learning_rate=1e-4, weight_decay=0.01, num_workers=0, save_steps=None, num_epochs=1,
-    enable_model_cpu_offload=False, customized_optimizer=None,
+    enable_model_cpu_offload=False, customized_optimizer=None, warm_up_steps=5,
     fake_updates_per_generator=5, fake_warmup_steps=100, fake_learning_rate=None,
     args=None, **kwargs,
 ):
@@ -286,6 +286,7 @@ def launch_dmd2_training_task(
         num_epochs = args.num_epochs
         enable_model_cpu_offload = args.enable_model_cpu_offload
         customized_optimizer = args.customized_optimizer
+        warm_up_steps = getattr(args, "warm_up_steps", warm_up_steps)
         fake_updates_per_generator = args.dmd2_fake_updates_per_generator
         fake_warmup_steps = args.dmd2_fake_warmup_steps
         fake_learning_rate = args.dmd2_fake_learning_rate
@@ -308,13 +309,13 @@ def launch_dmd2_training_task(
     fake_learning_rate = learning_rate if fake_learning_rate is None else fake_learning_rate
     generator_optimizer = optimizer_class(generator_params, lr=learning_rate, weight_decay=weight_decay)
     critic_optimizer = optimizer_class(critic_params, lr=fake_learning_rate, weight_decay=weight_decay)
-    generator_scheduler = torch.optim.lr_scheduler.ConstantLR(generator_optimizer, factor=1.0)
-    critic_scheduler = torch.optim.lr_scheduler.ConstantLR(critic_optimizer, factor=1.0)
+    generator_scheduler = torch.optim.lr_scheduler.LambdaLR(generator_optimizer, lambda s: min(1.0, (s + 1) / max(1, warm_up_steps)))
+    critic_scheduler = torch.optim.lr_scheduler.LambdaLR(critic_optimizer, lambda s: min(1.0, (s + 1) / max(1, warm_up_steps)))
 
     model.to(device=accelerator.device)
     exclude_quantized_params_from_ddp_sync(accelerator, model)
-    model, generator_optimizer, critic_optimizer, dataloader, generator_scheduler, critic_scheduler = accelerator.prepare(
-        model, generator_optimizer, critic_optimizer, dataloader, generator_scheduler, critic_scheduler,
+    model, generator_optimizer, critic_optimizer, dataloader = accelerator.prepare(
+        model, generator_optimizer, critic_optimizer, dataloader,
     )
 
     for epoch in range(num_epochs):
@@ -338,9 +339,11 @@ def launch_dmd2_training_task(
 
                 if update_generator:
                     generator_optimizer.step()
-                    generator_scheduler.step()
+                    if accelerator.sync_gradients and not getattr(generator_optimizer, "step_was_skipped", False):
+                        generator_scheduler.step()
                 critic_optimizer.step()
-                critic_scheduler.step()
+                if accelerator.sync_gradients and not getattr(critic_optimizer, "step_was_skipped", False):
+                    critic_scheduler.step()
                 generator_optimizer.zero_grad(set_to_none=True)
                 critic_optimizer.zero_grad(set_to_none=True)
                 if accelerator.sync_gradients:

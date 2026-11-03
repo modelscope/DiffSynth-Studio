@@ -1,7 +1,10 @@
+# Download datasets
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "flux2/FLUX.2-klein-base-4B/*" --local_dir ./data/diffsynth_example_dataset
 
+# Calculate the sigmas and timesteps, and fill them into the script below.
 python examples/dev_tools/compute_dmd2_sigmas.py --scheduler_name "FLUX.2" --num_inference_steps 8 --extra_kwargs '{"dynamic_shift_len": 4096}'
 
+# Start training
 accelerate launch examples/flux2/model_training/special/dmd2/train.py \
   --dataset_base_path data/diffsynth_example_dataset/flux2/FLUX.2-klein-base-4B \
   --dataset_metadata_path data/diffsynth_example_dataset/flux2/FLUX.2-klein-base-4B/metadata.csv \
@@ -11,10 +14,10 @@ accelerate launch examples/flux2/model_training/special/dmd2/train.py \
   --dataset_repeat 50 \
   --model_id_with_origin_paths "black-forest-labs/FLUX.2-klein-4B:text_encoder/*.safetensors,black-forest-labs/FLUX.2-klein-base-4B:transformer/*.safetensors,black-forest-labs/FLUX.2-klein-4B:vae/diffusion_pytorch_model.safetensors" \
   --tokenizer_path "black-forest-labs/FLUX.2-klein-4B:tokenizer/" \
-  --trainable_models dit \
   --learning_rate 5e-6 \
   --num_epochs 5 \
-  --output_path "workspace/$(date -u +%Y%m%d_%H%M%S)_flux2_klein_base4b_dmd2_full_8steps" \
+  --output_path "./models/train/FLUX.2-klein-base-4B_dmd2_full_8steps" \
+  --trainable_models dit \
   --remove_prefix_in_ckpt "pipe.dit." \
   --use_gradient_checkpointing \
   --gradient_accumulation_steps 2 \

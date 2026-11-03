@@ -1,6 +1,3 @@
-# Run this script in the base path of DiffSynth-Studio:
-# PYTHONPATH="./" bash examples/moss_image/model_training/special/dmd2/train_MOSS-Image-SFT-8steps_lora.sh
-
 # Download datasets
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "moss_image/MOSS-Image-SFT/*" --local_dir ./data/diffsynth_example_dataset
 
