@@ -1,5 +1,5 @@
 # Run this script in the base path of DiffSynth-Studio:
-# PYTHONPATH="./" bash examples/moss_image/model_training/special/dmd2_trainer/train_MOSS-Image-SFT-8steps_lora.sh
+# PYTHONPATH="./" bash examples/moss_image/model_training/special/dmd2/train_MOSS-Image-SFT-8steps_lora.sh
 
 # Download datasets
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "moss_image/MOSS-Image-SFT/*" --local_dir ./data/diffsynth_example_dataset
@@ -8,7 +8,7 @@ modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --inclu
 python examples/dev_tools/compute_dmd2_sigmas.py --scheduler_name "MOSS-Image" --num_inference_steps 8 --extra_kwargs '{"shift": 5.0}'
 
 # Start training
-accelerate launch examples/moss_image/model_training/special/dmd2_trainer/train.py \
+accelerate launch examples/moss_image/model_training/special/dmd2/train.py \
   --dataset_base_path data/diffsynth_example_dataset/moss_image/MOSS-Image-SFT \
   --dataset_metadata_path data/diffsynth_example_dataset/moss_image/MOSS-Image-SFT/metadata.csv \
   --data_file_keys image \
@@ -29,4 +29,4 @@ accelerate launch examples/moss_image/model_training/special/dmd2_trainer/train.
   --dmd2_teacher_cfg 3 \
   --dmd2_student_sigmas "1.0, 0.9679999947547913, 0.9259999990463257, 0.8709999918937683, 0.7910000085830688, 0.6710000038146973, 0.46300002932548523, 0.024000000208616257" \
   --dmd2_student_timesteps "1000.0, 968.0, 926.0, 871.0, 791.0, 671.0, 463.0000305175781, 24.0" \
-  --feature_module_of_dit_for_gan layers.21
+  --dmd2_feature_module_of_dit_for_gan layers.21

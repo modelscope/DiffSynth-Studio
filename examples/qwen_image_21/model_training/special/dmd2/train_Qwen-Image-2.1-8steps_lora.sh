@@ -1,5 +1,5 @@
 # Run this script in the base path of DiffSynth-Studio:
-# PYTHONPATH="./" bash examples/qwen_image_21/model_training/special/dmd2_trainer/train_Qwen-Image-2.1-8steps_lora.sh
+# PYTHONPATH="./" bash examples/qwen_image_21/model_training/special/dmd2/train_Qwen-Image-2.1-8steps_lora.sh
 
 # Download datasets
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "qwen_image_21/Qwen-Image-2.1/*" --local_dir ./data/diffsynth_example_dataset
@@ -9,7 +9,7 @@ python examples/dev_tools/compute_dmd2_sigmas.py --scheduler_name "Qwen-Image" -
 
 # Start training
 accelerate launch \
-  examples/qwen_image_21/model_training/special/dmd2_trainer/train.py \
+  examples/qwen_image_21/model_training/special/dmd2/train.py \
   --dataset_base_path data/diffsynth_example_dataset/qwen_image_21/Qwen-Image-2.1 \
   --dataset_metadata_path data/diffsynth_example_dataset/qwen_image_21/Qwen-Image-2.1/metadata.csv \
   --dataset_repeat 50 \
@@ -22,9 +22,9 @@ accelerate launch \
   --dmd2_student_sigmas "1.0, 0.9160239696502686, 0.8200457692146301, 0.7092946171760559, 0.5800749063491821, 0.42734700441360474, 0.24405395984649658, 0.019999980926513672" \
   --dmd2_student_timesteps "1000.0, 916.0239868164062, 820.0457763671875, 709.2946166992188, 580.0748901367188, 427.3470153808594, 244.053955078125, 19.999980926513672" \
   --dmd2_teacher_cfg 1 \
-  --feature_module_of_dit_for_gan transformer_blocks.16 \
+  --dmd2_feature_module_of_dit_for_gan transformer_blocks.16 \
   --gradient_accumulation_steps 2 \
   --learning_rate 5e-6 \
   --save_steps 100 \
   --use_gradient_checkpointing --find_unused_parameters \
-  --output_path "./models/train/Qwen-Image-2.1_dmd2_lora_8steps"
+  --output_path "./models/train/Qwen-Image-2.1_dmd2_lora_8steps"0

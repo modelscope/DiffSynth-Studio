@@ -1,37 +1,35 @@
-import os, torch, accelerate
+import os, torch, accelerate, argparse
 from diffsynth.core import UnifiedDataset
-from diffsynth.diffusion import ModelLogger
-from diffsynth.diffusion.dmd2_trainer import DMD2TrainingModule, DMD2_parser, launch_dmd2_training_task
-from diffsynth.pipelines.flux3_image import Flux3ImagePipeline, ModelConfig
-from examples.flux3.model_training.train import flux3_parser
+from diffsynth.diffusion import ModelLogger, add_general_config, add_image_size_config, add_dmd2_config
+from diffsynth.diffusion.dmd2 import DMD2TrainingModule, launch_dmd2_training_task
+from diffsynth.pipelines.qwen_image_21 import QwenImage21Pipeline, ModelConfig
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
-class Flux3DMD2TrainingModule(DMD2TrainingModule):
+class QwenImage21DMD2TrainingModule(DMD2TrainingModule):
     def __init__(
         self,
-        student_sigmas, student_timesteps, teacher_cfg=3.5,
+        student_sigmas, student_timesteps, teacher_cfg=1.,
         min_timestep_dmd=20, max_timestep_dmd=981,
         model_paths=None, model_id_with_origin_paths=None, processor_path=None,
         trainable_models=None,
         lora_base_model=None, lora_target_modules="", lora_rank=128, lora_dtype=None, lora_checkpoint=None,
         preset_lora_path=None, preset_lora_model=None,
         use_gan=True, generator_gan_loss_weight=0.005, discriminator_gan_loss_weight=0.01,
-        classifier_channels=1280, feature_module_of_dit_for_gan="single_blocks.13",
+        classifier_channels=1280, feature_module_of_dit_for_gan="transformer_blocks.16",
         use_gradient_checkpointing=False, use_gradient_checkpointing_offload=False,
         extra_inputs=None, device="cpu",
+        noise_sampling="uniform",
     ):
         super().__init__()
 
         # Load models
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, device=device)
-        processor_config = self.parse_path_or_model_id(processor_path, default_value=ModelConfig(model_id="black-forest-labs/flux-3-image-klein", origin_file_pattern="text_encoder/"))
-        self.pipe = Flux3ImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, processor_config=processor_config)
-        if self.pipe.dit.flow_map:
-            raise ValueError("Euler DMD2 training requires flux-3-image-klein-base, not the two-time flow-map model.")
+        processor_config = ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="processor/") if processor_path is None else ModelConfig(processor_path)
+        self.pipe = QwenImage21Pipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, processor_config=processor_config)
         if use_gan and self.pipe.vae is None:
-            raise ValueError("FLUX.3 GAN training requires VAE weights.")
+            raise ValueError("Qwen Image 2.1 GAN training requires VAE weights.")
 
         # Training mode
         self.switch_pipe_to_dmd2_training_mode(
@@ -43,6 +41,7 @@ class Flux3DMD2TrainingModule(DMD2TrainingModule):
             use_gan, generator_gan_loss_weight, discriminator_gan_loss_weight,
             classifier_channels, feature_module_of_dit_for_gan,
             trainable_models,
+            noise_sampling=noise_sampling,
         )
 
         self.use_gradient_checkpointing = use_gradient_checkpointing
@@ -51,15 +50,19 @@ class Flux3DMD2TrainingModule(DMD2TrainingModule):
 
     def get_pipeline_inputs(self, data):
         inputs_posi = {"prompt": data["prompt"]}
-        inputs_nega = {"negative_prompt": ""}
+        inputs_nega = {"negative_prompt": " "}
         inputs_shared = {
-            "input_image": data["image"],
-            "height": data["image"].size[1],
-            "width": data["image"].size[0],
             "cfg_scale": 1,
             "rand_device": self.pipe.device,
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
+            "use_flex_attention": False,
+            "tiled": False,
+            "tile_size": 256,
+            "tile_stride": 192,
+            "input_image": data["image"],
+            "height": data["image"].size[1],
+            "width": data["image"].size[0],
         }
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
         return inputs_shared, inputs_posi, inputs_nega
@@ -67,6 +70,7 @@ class Flux3DMD2TrainingModule(DMD2TrainingModule):
     def prepare_batch(self, data):
         inputs_shared, inputs_posi, inputs_nega = self.get_pipeline_inputs(data)
         inputs_shared["cfg_scale"] = self.teacher_cfg
+        inputs_shared["use_kv_cache"] = False
         if not self.gan:
             inputs_shared["input_image"] = None
         inputs = self.transfer_data_to_device((inputs_shared, inputs_posi, inputs_nega), self.pipe.device, self.pipe.torch_dtype)
@@ -74,27 +78,28 @@ class Flux3DMD2TrainingModule(DMD2TrainingModule):
             inputs = self.pipe.unit_runner(unit, self.pipe, *inputs)
         return inputs
 
-    def sample_noise(self, clean, distribution_matching, min_timestep_dmd=20, max_timestep_dmd=981):
-        # Packed latents have no batch axis; all image tokens share one noise level.
-        noisy, level, noise = super().sample_noise(clean.unsqueeze(0), distribution_matching, min_timestep_dmd, max_timestep_dmd)
-        return noisy[0], level, noise[0]
-
-    def distribution_matching_loss(self, student_sample, teacher, fake):
-        return super().distribution_matching_loss(student_sample.unsqueeze(0), teacher.unsqueeze(0), fake.unsqueeze(0))
-
     @property
     def gan_feature_channels(self):
-        return self.pipe.dit.emb_in["image"].out_features
+        return self.pipe.dit.inner_dim
 
     def reshape_gan_features(self, features, inputs_shared):
-        height, width = inputs_shared["height"] // 16, inputs_shared["width"] // 16
-        # The packed single-stream sequence starts with the target image tokens.
-        return features[:height * width].transpose(0, 1).reshape(1, -1, height, width)
+        batch, _, height, width = inputs_shared["noise"].shape
+        # Text and reference images precede the target image tokens.
+        return features[:, -height * width:].transpose(1, 2).reshape(batch, -1, height, width)
+
+
+def qwen_image_21_parser():
+    parser = argparse.ArgumentParser(description="Simple example of a training script.")
+    parser = add_general_config(parser)
+    parser = add_image_size_config(parser)
+    parser.add_argument("--processor_path", type=str, default=None, help="Path to the processor. If provided, the processor will be used instead of the remote one.")
+    parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
+    return parser
 
 
 if __name__ == "__main__":
-    parser = DMD2_parser(flux3_parser())
-    parser.set_defaults(dmd2_teacher_cfg=3.5, feature_module_of_dit_for_gan="single_blocks.13")
+    parser = add_dmd2_config(qwen_image_21_parser())
+    parser.set_defaults(dmd2_teacher_cfg=1., dmd2_feature_module_of_dit_for_gan="transformer_blocks.16")
     args = parser.parse_args()
     accelerator = accelerate.Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
@@ -110,16 +115,23 @@ if __name__ == "__main__":
             max_pixels=args.max_pixels,
             height=args.height,
             width=args.width,
-            height_division_factor=16,
-            width_division_factor=16,
+            height_division_factor=32,
+            width_division_factor=32,
+            convert_RGB=False,
+            convert_RGBA=True,
         ),
     )
-    model = Flux3DMD2TrainingModule(
+    model = QwenImage21DMD2TrainingModule(
         student_sigmas=args.dmd2_student_sigmas,
         student_timesteps=args.dmd2_student_timesteps,
         teacher_cfg=args.dmd2_teacher_cfg,
-        min_timestep_dmd=args.min_timestep_dmd,
-        max_timestep_dmd=args.max_timestep_dmd,
+        min_timestep_dmd=args.dmd2_min_timestep,
+        max_timestep_dmd=args.dmd2_max_timestep,
+        use_gan=args.dmd2_gan,
+        generator_gan_loss_weight=args.dmd2_generator_gan_loss_weight,
+        discriminator_gan_loss_weight=args.dmd2_discriminator_gan_loss_weight,
+        classifier_channels=args.dmd2_classifier_channels,
+        feature_module_of_dit_for_gan=args.dmd2_feature_module_of_dit_for_gan,
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
         processor_path=args.processor_path,
@@ -127,18 +139,14 @@ if __name__ == "__main__":
         lora_base_model=args.lora_base_model,
         lora_target_modules=args.lora_target_modules,
         lora_rank=args.lora_rank,
-        lora_dtype=args.lora_dtype,
+        lora_dtype=args.dmd2_lora_dtype,
         lora_checkpoint=args.lora_checkpoint,
         preset_lora_path=args.preset_lora_path,
         preset_lora_model=args.preset_lora_model,
-        use_gan=args.gan,
-        generator_gan_loss_weight=args.generator_gan_loss_weight,
-        discriminator_gan_loss_weight=args.discriminator_gan_loss_weight,
-        classifier_channels=args.classifier_channels,
-        feature_module_of_dit_for_gan=args.feature_module_of_dit_for_gan,
         use_gradient_checkpointing=args.use_gradient_checkpointing,
         use_gradient_checkpointing_offload=args.use_gradient_checkpointing_offload,
         extra_inputs=args.extra_inputs,
+        noise_sampling=args.dmd2_noise_sampling,
         device=accelerator.device,
     )
     model.resume_from_checkpoint(args.resume_from_checkpoint, args.remove_prefix_in_ckpt)
