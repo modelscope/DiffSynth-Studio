@@ -89,13 +89,13 @@ def launch_training_task(
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
 
     if enable_model_cpu_offload:
-        optimizer, dataloader, scheduler = accelerator.prepare(optimizer, dataloader, scheduler)
+        optimizer, dataloader = accelerator.prepare(optimizer, dataloader)
         model.pipe.device = accelerator.device
         offload_manager = OffloadTrainingManager(model, accelerator.device, enable_optimizer_cpu_offload, cpu_offload_split_threshold)
     else:
         model.to(device=accelerator.device)
         exclude_quantized_params_from_ddp_sync(accelerator, model)
-        model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
+        model, optimizer, dataloader = accelerator.prepare(model, optimizer, dataloader)
 
     initialize_deepspeed_gradient_checkpointing(accelerator)
     for epoch_id in range(num_epochs):
@@ -109,7 +109,8 @@ def launch_training_task(
                 if enable_model_cpu_offload:
                     offload_manager.after_backward()
                 optimizer.step()
-                scheduler.step()
+                if accelerator.sync_gradients and not getattr(optimizer, "step_was_skipped", False):
+                    scheduler.step()
                 optimizer.zero_grad()
                 model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
         if save_steps is None:
