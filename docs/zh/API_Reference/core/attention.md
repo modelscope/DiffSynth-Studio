@@ -43,11 +43,11 @@ output_1 = attention(query, key, value)
 * Flash Attention 4: [GitHub](https://github.com/Dao-AILab/flash-attention)、[论文](https://arxiv.org/abs/2603.05451)
 * Flash Attention 3：[GitHub](https://github.com/Dao-AILab/flash-attention)、[论文](https://arxiv.org/abs/2407.08608)
 * Flash Attention 2：[GitHub](https://github.com/Dao-AILab/flash-attention)、[论文](https://arxiv.org/abs/2307.08691)
-* Sage Attention：[GitHub](https://github.com/thu-ml/SageAttention)、[论文](https://arxiv.org/abs/2505.11594)
+* Sage Attention：[GitHub](https://github.com/thu-ml/SageAttention)、[论文](https://arxiv.org/abs/2505.11594)（因反向传播误差较大，不自动启用，详见下文）
 * xFormers：[GitHub](https://github.com/facebookresearch/xformers)、[文档](https://facebookresearch.github.io/xformers/components/ops.html#module-xformers.ops)
 * PyTorch：[GitHub](https://github.com/pytorch/pytorch)、[文档](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html)
 
-如需调用除 `PyTorch` 外的其他注意力实现，请按照其 GitHub 页面的指引安装对应的包。`DiffSynth-Studio` 会自动根据 Python 环境中的可用包路由到对应的实现上，也可通过[环境变量](../../Pipeline_Usage/Environment_Variables.md#diffsynth_attention_implementation)控制。
+如需调用除 `PyTorch` 外的其他注意力实现，请按照其 GitHub 页面的指引安装对应的包。`DiffSynth-Studio` 会根据 Python 环境中的可用包自动路由到对应的实现（Sage Attention 需显式指定，见下文），也可通过[环境变量](../../Pipeline_Usage/Environment_Variables.md#diffsynth_attention_implementation)控制。
 
 ```python
 from diffsynth.core.attention import attention_forward
@@ -77,9 +77,10 @@ print((output_1 - output_2).abs().mean())
 2. `flash_attention_4`
 3. `flash_attention_3`
 4. `flash_attention_2`
-5. `sage_attention`
-6. `xformers`
-7. `torch`
+5. `xformers`
+6. `torch`
+
+`sage_attention` 不在自动选择的序列中。Sage Attention 的梯度反向传播存在较大误差，会导致训练效果变差，因此我们不再自动启用它。如需使用，请显式设置[环境变量](../../Pipeline_Usage/Environment_Variables.md#diffsynth_attention_implementation) `DIFFSYNTH_ATTENTION_IMPLEMENTATION=sage_attention`；我们也不建议将其用于训练。
 
 当前已注册的实现可以通过如下代码查看：
 ```python
