@@ -45,6 +45,15 @@ loss = torch.nn.functional.mse(student_output, teacher_output)
 
 In the DiffusionOPD variant, `input = trajectory[randint]` is replaced with a for loop, using every point in the trajectory for training. In the DanceOPD variant, `input` is sampled only in the low-noise-content stage, avoiding a large divergence in the model's output after training. In our example code, these two variants can be implemented respectively via the parameters `--opd_num_distill_steps` and `--opd_min_distill_idx`.
 
+> **How do we combine the teacher model's multi-step outputs into a single target?**
+> 
+> Suppose the student model's current sigma interval is [`sigma_start`, `sigma_end`], and the teacher performs multiple inference steps within it. The flag `--opd_align_at_sigma_zero` controls which endpoint the teacher's supervision target aligns to:
+> 
+> - **By default**, the target aligns to the right endpoint, `sigma_end`. This forces the student's update in this step to exactly reach the end of the teacher's trajectory (where `x_teacher(sigma_end)` is obtained by extrapolating from the teacher's final step).
+> - **With `--opd_align_at_sigma_zero` enabled**, the target instead aligns to `sigma=0`, using the average velocity from the current noisy sample to the clean sample as the supervision signal.
+> 
+> This flag only changes the teacher's supervision target, not the student's forward pass. Since `sigma_end` is already 0 for the last interval, both settings are equivalent there.
+
 Compared with Direct Distill, OPD samples and updates starting from the student model rather than pre-generating trajectories with the teacher model, which makes the trained model perform better. Compared with DMD2, OPD does not require designing a discriminator model based on the model structure, so it is highly general and does not require careful tuning of various hyperparameters. Using FLUX.2, Qwen-Image-2.1, and MOSS-Image as examples, we provide example code for OPD training:
 
 |Base Model|Trainable Parameters|Training Code|Post-Training Validation|Steps Before Distillation|Steps After Distillation|
