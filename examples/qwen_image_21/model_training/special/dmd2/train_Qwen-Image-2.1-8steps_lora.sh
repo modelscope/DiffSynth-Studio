@@ -27,4 +27,4 @@ accelerate launch \
   --learning_rate 5e-6 \
   --save_steps 100 \
   --use_gradient_checkpointing --find_unused_parameters \
-  --output_path "./models/train/Qwen-Image-2.1_dmd2_lora_8steps"0
+  --output_path "./models/train/Qwen-Image-2.1_dmd2_lora_8steps"

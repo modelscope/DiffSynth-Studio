@@ -27,7 +27,39 @@ Direct Distill 是我们设计的端到端直接蒸馏训练方案，用原模�
 
 ## DMD2
 
-[DMD2](https://arxiv.org/abs/2405.14867)（Distribution Matching Distillation） 是将 Diffusion 与 GAN 两者理论结合起来的产物，其训练依赖手动构造的判别器模型，我们仅在 FLUX.2 模型上适配了 DMD2 训练，详见[样例代码](https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/flux2/model_training/special/dmd2)。
+[DMD2](https://arxiv.org/abs/2405.14867)（Distribution Matching Distillation）是一种结合分布匹配与 GAN 的模型蒸馏训练方案。训练时，冻结的教师模型提供目标分布的预测，fake-score 模型估计学生的生成分布，两者共同构造学生的分布匹配梯度；GAN 损失进一步利用真实图像提供训练信号，使学生能够以少量采样步骤生成图像。
+
+训练中包含三种模型角色：
+
+* 学生模型（student）：通过普通 Euler 轨迹生成样本，只对随机选中的采样步骤保留梯度，优化分布匹配和 GAN 损失。
+* 教师模型（teacher）：冻结参数，提供目标分布的预测，并使用 `--dmd2_teacher_cfg` 控制 CFG。
+* fake-score 模型：在学生生成样本上学习去噪，追踪学生的生成分布。GAN 分类头连接到 fake-score 模型的中间特征，训练时同时区分真实图像和学生生成图像。
+
+以 FLUX.2、Qwen-Image-2.1、MOSS-Image 和 FLUX.3 为例，我们提供了以下训练及验证代码：
+
+|基础模型|可训练参数|训练代码|训练后验证|蒸馏前步数|蒸馏后步数|
+|-|-|-|-|-|-|
+|[black-forest-labs/FLUX.2-klein-base-4B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-base-4B)|LoRA|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/special/dmd2/train_FLUX.2-klein-base-4B-8steps_lora.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/special/dmd2/validate_FLUX.2-klein-base-4B-8steps_lora.py)|50|8|
+|[black-forest-labs/FLUX.2-klein-base-4B](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-klein-base-4B)|Full|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/special/dmd2/train_FLUX.2-klein-base-4B-8steps_full.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux2/model_training/special/dmd2/validate_FLUX.2-klein-base-4B-8steps_full.py)|50|8|
+|[black-forest-labs/flux-3-image-klein-base](https://www.modelscope.cn/models/black-forest-labs/flux-3-image-klein-base)|LoRA|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux3/model_training/special/dmd2/train_flux-3-image-klein-base-8steps_lora.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux3/model_training/special/dmd2/validate_flux-3-image-klein-base-8steps_lora.py)|50|8|
+|[black-forest-labs/flux-3-image-klein-base](https://www.modelscope.cn/models/black-forest-labs/flux-3-image-klein-base)|Full|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux3/model_training/special/dmd2/train_flux-3-image-klein-base-8steps_full.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/flux3/model_training/special/dmd2/validate_flux-3-image-klein-base-8steps_full.py)|50|8|
+|[Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1)|LoRA|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/special/dmd2/train_Qwen-Image-2.1-8steps_lora.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/special/dmd2/validate_Qwen-Image-2.1-8steps_lora.py)|50|8|
+|[Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1)|Full|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/special/dmd2/train_Qwen-Image-2.1-8steps_full.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/special/dmd2/validate_Qwen-Image-2.1-8steps_full.py)|50|8|
+|[Qwen/Qwen-Image-2.1-Turbo](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1-Turbo)|LoRA|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/special/dmd2/train_Qwen-Image-2.1-Turbo-3steps_lora.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/special/dmd2/validate_Qwen-Image-2.1-Turbo-3steps_lora.py)|8|3|
+|[Qwen/Qwen-Image-2.1-Turbo](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1-Turbo)|Full|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/special/dmd2/train_Qwen-Image-2.1-Turbo-3steps_full.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_image_21/model_training/special/dmd2/validate_Qwen-Image-2.1-Turbo-3steps_full.py)|8|3|
+|[openmoss/MOSS-Image-SFT](https://www.modelscope.cn/models/openmoss/MOSS-Image-SFT)|LoRA|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/moss_image/model_training/special/dmd2/train_MOSS-Image-SFT-8steps_lora.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/moss_image/model_training/special/dmd2/validate_MOSS-Image-SFT-8steps_lora.py)|50|8|
+|[openmoss/MOSS-Image-SFT](https://www.modelscope.cn/models/openmoss/MOSS-Image-SFT)|Full|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/moss_image/model_training/special/dmd2/train_MOSS-Image-SFT-8steps_full.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/moss_image/model_training/special/dmd2/validate_MOSS-Image-SFT-8steps_full.py)|50|8|
+
+使用这些示例时，需要注意：
+
+* `--dmd2_student_sigmas` 和 `--dmd2_student_timesteps` 指定学生时间序列，两者应对应。可以使用 `examples/dev_tools/compute_dmd2_sigmas.py` 计算；验证时应使用与训练一致的时间表，学生采样使用 CFG=1。
+* `--dmd2_teacher_cfg` 控制教师预测的 CFG 强度，决定学生拟合的引导目标；设为 1 时不进行额外 CFG 引导。该参数只作用于教师，学生和 fake-score 的预测使用 CFG=1，验证时不需要沿用教师的 CFG。
+* `--dmd2_fake_warmup_steps` 控制初始 critic-only 更新次数，设为 0 可关闭 warmup；`--dmd2_fake_updates_per_generator` 控制 warmup 后的更新比例。这里的步数按完成梯度累积后的优化窗口计数。
+* `--learning_rate` 控制学生学习率；`--dmd2_fake_learning_rate` 控制 fake-score 和分类头学习率，未指定时跟随学生学习率。
+* 默认启用 GAN，训练数据需包含真实图像；`--dmd2_disable_gan` 可关闭 GAN，此时不编码真实图像。启用 GAN 时，`--dmd2_feature_module_of_dit_for_gan` 指定提取特征的主干层，`--dmd2_classifier_channels` 控制分类头宽度。不同模型的特征布局由各自的训练模块适配。
+* `--dmd2_noise_sampling` 支持 `uniform` 和 `beta`，后者使用 `Beta(2.5, 1)`，更侧重较大 sigma 对应的高噪声区间，并按 `--dmd2_min_timestep`、`--dmd2_max_timestep` 限制噪声范围。该选项作用于 DM 和 fake 去噪，GAN 始终使用均匀加噪。
+* checkpoint 只导出学生参数。LoRA 可通过 `--lora_checkpoint` 热启动，全量学生可通过 `--resume_from_checkpoint` 加载已有权重；这不恢复 fake-score、分类头、optimizer 或随机状态，不是完整断点续训。验证脚本中的 checkpoint 路径需替换为实际训练输出。
+* 当前 DMD2 训练不支持 DeepSpeed 和 `--enable_model_cpu_offload`。
 
 ## OPD
 

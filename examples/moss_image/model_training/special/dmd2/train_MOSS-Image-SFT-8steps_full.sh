@@ -9,7 +9,6 @@ accelerate launch examples/moss_image/model_training/special/dmd2/train.py \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
   --model_id_with_origin_paths "openmoss/MOSS-Image-SFT:transformer/diffusion_pytorch_model*.safetensors,openmoss/MOSS-Image-SFT:text_encoder/model*.safetensors,openmoss/MOSS-Image-SFT:vae/diffusion_pytorch_model.safetensors" \
-  --tokenizer_path "models/openmoss/MOSS-Image-SFT/tokenizer" \
   --trainable_models dit \
   --learning_rate 5e-6 \
   --num_epochs 5 \
