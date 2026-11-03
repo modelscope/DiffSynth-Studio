@@ -32,8 +32,17 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         audio_loss_weight=1.0,
         device="cpu",
         task="sft",
+        sequence_parallel_size=1,
     ):
         super().__init__()
+        self.sequence_parallel_size = sequence_parallel_size
+        if sequence_parallel_size < 1:
+            raise ValueError("sequence_parallel_size must be positive")
+        if sequence_parallel_size > 1:
+            if task not in ("sft", "sft:train"):
+                raise ValueError("Sequence parallelism is only supported for sft or sft:train.")
+            if not torch.distributed.is_initialized() or sequence_parallel_size != torch.distributed.get_world_size():
+                raise ValueError("Initialize exactly sequence_parallel_size ranks before loading H3.")
         if training_cfg_scale < 1.0:
             raise ValueError("training_cfg_scale must be at least 1.0")
         self.training_cfg_scale = training_cfg_scale
@@ -60,6 +69,10 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
             task=task,
         )
         self.pipe.scheduler_audio.set_timesteps(1000, training=True)
+        if sequence_parallel_size > 1:
+            if getattr(self.pipe, "controlnet", None) is not None:
+                raise ValueError("Sequence parallel training does not yet support H3 ControlNet.")
+            self.pipe.dit.enable_sequence_parallel(sequence_parallel_size)
 
         # Store other configs
         self.silent_on_missing_audio = silent_on_missing_audio
@@ -137,6 +150,13 @@ class MiniMaxH3TrainingModule(DiffusionTrainingModule):
         return inputs_shared, inputs_posi, inputs_nega
 
     def forward(self, data, inputs=None):
+        if self.sequence_parallel_size > 1:
+            from diffsynth.diffusion.sequence_parallel import sequence_parallel_inputs
+            with sequence_parallel_inputs(data, inputs, self.pipe.device) as (data, inputs):
+                return self._forward(data, inputs)
+        return self._forward(data, inputs)
+
+    def _forward(self, data, inputs=None):
         if inputs is None: inputs = self.get_pipeline_inputs(data)
         inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)
         for unit in self.pipe.units:
@@ -149,6 +169,7 @@ def minimax_h3_parser():
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser = add_general_config(parser)
     parser = add_video_size_config(parser)
+    parser.add_argument("--sequence_parallel_size", type=int, default=1, help="Experimental H3 Ulysses training. Must equal all launched ranks and divide the attention head count; 1 disables it.")
     parser.add_argument("--processor_path", type=str, default=None, help="Path or `model_id:pattern` of the Qwen3-VL processor.")
     parser.add_argument("--initialize_model_on_cpu", default=False, action="store_true", help="Whether to initialize models on CPU.")
     parser.add_argument("--silent_on_missing_audio", default=False, action="store_true", help="Whether to use silent audio as a fallback when no audio track is present in the video data.")
@@ -160,6 +181,15 @@ def minimax_h3_parser():
 if __name__ == "__main__":
     parser = minimax_h3_parser()
     args = parser.parse_args()
+    if args.sequence_parallel_size < 1:
+        raise ValueError("--sequence_parallel_size must be positive")
+    if args.sequence_parallel_size > 1:
+        if args.sequence_parallel_size != int(os.environ.get("WORLD_SIZE", "1")):
+            raise ValueError("Launch exactly --sequence_parallel_size ranks; SP+DP groups are not supported yet.")
+        if args.enable_model_cpu_offload:
+            raise ValueError("Sequence parallel training does not support --enable_model_cpu_offload.")
+        if args.task not in ("sft", "sft:train"):
+            raise ValueError("Sequence parallelism is only supported for sft or sft:train.")
     if args.num_frames % MINIMAX_H3_TIME_DIVISION_FACTOR != MINIMAX_H3_TIME_DIVISION_REMAINDER:
         raise ValueError(
             f"--num_frames must be {MINIMAX_H3_TIME_DIVISION_FACTOR}n+{MINIMAX_H3_TIME_DIVISION_REMAINDER} "
@@ -229,6 +259,7 @@ if __name__ == "__main__":
         silent_on_missing_audio=args.silent_on_missing_audio,
         training_cfg_scale=args.training_cfg_scale,
         audio_loss_weight=args.audio_loss_weight,
+        sequence_parallel_size=args.sequence_parallel_size,
         task=args.task,
         device="cpu" if (args.initialize_model_on_cpu or args.enable_model_cpu_offload) else accelerator.device,
     )

@@ -218,6 +218,7 @@ Models in the MiniMax-H3 series are trained uniformly via [`examples/minimax_h3/
         * `--max_pixels`: Maximum pixel area, images larger than this will be scaled down during dynamic resolution.
         * `--num_frames`: Number of frames for the video.
 * MiniMax-H3 Specific Parameters
+    * `--sequence_parallel_size`: Experimental training sequence parallelism; defaults to 1 (disabled). See the [scope, gradient convention and validation commands](../../../examples/minimax_h3/model_training/sequence_parallel.md) before enabling it.
     * `--processor_path`: Path of the Qwen3-VL processor, supports the `model_id:origin_file_pattern` form, used to tokenize the prompt.
     * `--initialize_model_on_cpu`: Whether to initialize models on CPU.
     * `--silent_on_missing_audio`: Whether to use silent audio as a fallback when no audio track is present in the video data.

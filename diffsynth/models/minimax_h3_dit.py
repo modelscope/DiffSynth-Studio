@@ -145,7 +145,11 @@ class MiniMaxH3Attention(nn.Module):
         if rope_freqs is not None:
             q = _apply_rope(q, rope_freqs)
             k = _apply_rope(k, rope_freqs)
-        out = _sdpa_varlen_attention(q, k, v, cu_seqlens=cu_seqlens, softmax_scale=self.softmax_scale)
+        sp = getattr(self, "sequence_parallel", None)
+        if sp is None:
+            out = _sdpa_varlen_attention(q, k, v, cu_seqlens=cu_seqlens, softmax_scale=self.softmax_scale)
+        else:
+            out = sp.attention(q, k, v, cu_seqlens, self.softmax_scale, attention_forward)
         out = out.reshape(total, self.num_heads * self.head_dim)
         return self.out_proj(out)
 
@@ -298,6 +302,20 @@ class MiniMaxH3DiT(nn.Module):
         )
         self.final_layer = MiniMaxH3FinalLayer(hidden_size, time_embed_dim, final_adaln_out_features, latents_dim, audio_latents_dim, patch_size, final_norm_eps)
 
+    def enable_sequence_parallel(self, size):
+        """Shard main DiT blocks across all ranks; requires identical inputs/loss."""
+        from .minimax_h3_sequence_parallel import MiniMaxH3SequenceParallel
+        if type(self) is not MiniMaxH3DiT:
+            raise ValueError("Sequence parallelism currently supports only the standard H3 DiT.")
+        if size < 2 or self.num_attention_heads % size:
+            raise ValueError("Sequence parallel size must divide the attention head count.")
+        for block in self.blocks:
+            if type(block.attn) is not MiniMaxH3Attention or getattr(block.attn.forward, "__func__", None) is not MiniMaxH3Attention.forward:
+                raise ValueError("Custom H3 attention implementations do not support this SP path.")
+        self.sequence_parallel = MiniMaxH3SequenceParallel(size)
+        for block in self.blocks:
+            block.attn.sequence_parallel = self.sequence_parallel
+
     def _embed(self, *, x, audio_x, text_embeddings_selected, unique_timesteps, img_pos, audio_pos, text_pos, refiner_cu_seqlens, refiner_max_seqlen, seq_len, device):
         dtype = text_embeddings_selected.dtype
         x_rows = x.view(-1, x.shape[-1]).index_select(0, img_pos).to(dtype)
@@ -356,6 +374,9 @@ class MiniMaxH3DiT(nn.Module):
             raise ValueError(f"x must be [1, S, C], got {list(x.shape)}")
         seq_len = int(x.shape[1])
         device = x.device
+        sp = getattr(self, "sequence_parallel", None)
+        if sp is not None and control_hints is not None:
+            raise ValueError("H3 sequence parallelism does not yet support ControlNet.")
 
         rope_freqs = self.rope(img_position_ids).to(device)
 
@@ -371,6 +392,12 @@ class MiniMaxH3DiT(nn.Module):
         inverse_indices = inverse_indices.to(device)
 
         hidden = decoder_input
+        if sp is not None:
+            hidden = sp.split(hidden)
+            rope_freqs = sp.split(rope_freqs)
+            combined_indices = sp.split(combined_indices)
+            inverse_indices = sp.split(inverse_indices)
+        del decoder_input
         cu_seqlens = cu_seqlens.to(device)
         for block_id, block in enumerate(self.blocks):
             hidden = gradient_checkpoint_forward(
@@ -388,6 +415,10 @@ class MiniMaxH3DiT(nn.Module):
                 hidden = hidden + control_hints[block_id].to(hidden.device, hidden.dtype)
 
         video_logits, audio_logits = self.final_layer(hidden, t_emb=t_emb, inverse_indices=inverse_indices)
+
+        if sp is not None:
+            video_logits = sp.gather(video_logits, seq_len)
+            audio_logits = sp.gather(audio_logits, seq_len)
 
         video_logits = video_logits.index_select(0, infer_out_pos.to(device))
         audio_logits = audio_logits.index_select(0, audio_pos.to(device))
