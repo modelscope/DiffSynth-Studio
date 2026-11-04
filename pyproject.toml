@@ -57,6 +57,9 @@ logger = [
     "swanlab",
     "wandb"
 ]
+amd = [
+    "amd-adlx; sys_platform == 'win32'"
+]
 npu = [
     "torch==2.7.1+cpu",
     "torch-npu==2.7.1",
