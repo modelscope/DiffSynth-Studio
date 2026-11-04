@@ -63,6 +63,7 @@ class MiniMaxH3Pipeline(BasePipeline):
         processor_config: ModelConfig = ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
         vram_limit: float = None,
         redirect_common_files: bool = True,
+        parallel_config=None,
     ):
         if redirect_common_files:
             redirect_dict = {
@@ -78,7 +79,7 @@ class MiniMaxH3Pipeline(BasePipeline):
                     print(f"The model is detected to be downloading from HuggingFace. {processor_config.model_id} is redirected to {redirect_dict[processor_config.model_id]}. You can use `redirect_common_files=False` to disable file redirection.")
                     processor_config.model_id = redirect_dict[processor_config.model_id]
         pipe = MiniMaxH3Pipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         pipe.text_encoder = model_pool.fetch_model("minimax_h3_text_encoder")
         pipe.dit = model_pool.fetch_model("minimax_h3_dit")
         pipe.video_vae = model_pool.fetch_model("minimax_h3_video_vae")

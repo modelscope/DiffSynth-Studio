@@ -65,10 +65,11 @@ class ZImagePipeline(BasePipeline):
         tokenizer_config: ModelConfig = ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"),
         vram_limit: float = None,
         enable_npu_patch: bool = True,
+        parallel_config=None,
     ):
         # Initialize pipeline
         pipe = ZImagePipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("z_image_text_encoder")

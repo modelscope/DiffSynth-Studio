@@ -102,12 +102,3 @@ class _AllGatherSequence(torch.autograd.Function):
         out = torch.empty((size, *grad.shape[1:]), dtype=grad.dtype, device=grad.device)
         dist.reduce_scatter_tensor(out, grad, group=ctx.group)
         return out.permute(perm).contiguous(), None, None
-
-
-def broadcast_tensor(tensor: torch.Tensor, group: dist.ProcessGroup) -> torch.Tensor:
-    """Broadcast a tensor from group rank 0."""
-    if dist.get_world_size(group) == 1:
-        return tensor
-    tensor = tensor.contiguous()
-    dist.broadcast(tensor, src=dist.get_global_rank(group, 0), group=group)
-    return tensor
