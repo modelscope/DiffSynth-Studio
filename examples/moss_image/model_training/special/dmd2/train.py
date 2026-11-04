@@ -12,7 +12,7 @@ class MOSSImageDMD2TrainingModule(DMD2TrainingModule):
         self,
         student_sigmas, student_timesteps, teacher_cfg=3.,
         min_timestep_dmd=20, max_timestep_dmd=981,
-        model_paths=None, model_id_with_origin_paths=None, tokenizer_path=None,
+        model_paths=None, model_id_with_origin_paths=None, tokenizer_path=None, quant_options=None,
         trainable_models=None,
         lora_base_model=None, lora_target_modules="", lora_rank=128, lora_dtype=None, lora_checkpoint=None,
         preset_lora_path=None, preset_lora_model=None,
@@ -25,7 +25,7 @@ class MOSSImageDMD2TrainingModule(DMD2TrainingModule):
         super().__init__()
 
         # Load models
-        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, device=device)
+        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, quant_options=quant_options, device=device)
         tokenizer_config = ModelConfig(model_id="openmoss/MOSS-Image-Base", origin_file_pattern="tokenizer/") if tokenizer_path is None else ModelConfig(tokenizer_path)
         self.pipe = MOSSImagePipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, tokenizer_config=tokenizer_config)
         if use_gan:
@@ -129,6 +129,7 @@ if __name__ == "__main__":
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
         tokenizer_path=args.tokenizer_path,
+        quant_options=args.quant_options,
         trainable_models=args.trainable_models,
         lora_base_model=args.lora_base_model,
         lora_target_modules=args.lora_target_modules,

@@ -12,7 +12,7 @@ class QwenImage21DMD2TrainingModule(DMD2TrainingModule):
         self,
         student_sigmas, student_timesteps, teacher_cfg=1.,
         min_timestep_dmd=20, max_timestep_dmd=981,
-        model_paths=None, model_id_with_origin_paths=None, processor_path=None,
+        model_paths=None, model_id_with_origin_paths=None, processor_path=None, quant_options=None,
         trainable_models=None,
         lora_base_model=None, lora_target_modules="", lora_rank=128, lora_dtype=None, lora_checkpoint=None,
         preset_lora_path=None, preset_lora_model=None,
@@ -25,7 +25,7 @@ class QwenImage21DMD2TrainingModule(DMD2TrainingModule):
         super().__init__()
 
         # Load models
-        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, device=device)
+        model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, quant_options=quant_options, device=device)
         processor_config = ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="processor/") if processor_path is None else ModelConfig(processor_path)
         self.pipe = QwenImage21Pipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, processor_config=processor_config)
         if use_gan and self.pipe.vae is None:
@@ -135,6 +135,7 @@ if __name__ == "__main__":
         model_paths=args.model_paths,
         model_id_with_origin_paths=args.model_id_with_origin_paths,
         processor_path=args.processor_path,
+        quant_options=args.quant_options,
         trainable_models=args.trainable_models,
         lora_base_model=args.lora_base_model,
         lora_target_modules=args.lora_target_modules,
