@@ -75,6 +75,9 @@ class MOSSImagePipeline(BasePipeline):
         # Steps
         num_inference_steps: int = 50,
         sigma_shift: float = 5.0,
+        # Extra text embeddings
+        text_embedding: torch.Tensor = None,
+        negative_text_embedding: torch.Tensor = None,
         # Progress bar
         progress_bar_cmd=tqdm,
     ):
@@ -82,8 +85,8 @@ class MOSSImagePipeline(BasePipeline):
         self.scheduler.set_timesteps(num_inference_steps=num_inference_steps, shift=sigma_shift)
 
         # Parameters
-        inputs_posi = {"prompt": prompt}
-        inputs_nega = {"negative_prompt": negative_prompt, "skip_layers": uncond_skip_layers}
+        inputs_posi = {"prompt": prompt, "text_embedding": text_embedding}
+        inputs_nega = {"negative_prompt": negative_prompt, "skip_layers": uncond_skip_layers, "text_embedding": negative_text_embedding}
         inputs_shared = {
             "height": height, "width": width,
             "seed": seed, "rand_device": rand_device,
@@ -132,14 +135,14 @@ class MOSSImageUnit_PromptEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
             seperate_cfg=True,
-            input_params_posi={"prompt": "prompt"},
-            input_params_nega={"prompt": "negative_prompt"},
+            input_params_posi={"prompt": "prompt", "text_embedding": "text_embedding"},
+            input_params_nega={"prompt": "negative_prompt", "text_embedding": "text_embedding"},
             input_params=("max_sequence_length",),
             output_params=("prompt_embeds", "prompt_embeds_mask"),
             onload_model_names=("text_encoder",)
         )
 
-    def encode_prompt(self, pipe: MOSSImagePipeline, prompt, max_sequence_length):
+    def encode_prompt(self, pipe: MOSSImagePipeline, prompt, max_sequence_length, text_embedding):
         formatted = pipe.tokenizer.apply_chat_template(
             [{"role": "user", "content": prompt}],
             tokenize=False, add_generation_prompt=True, enable_thinking=True,
@@ -148,13 +151,16 @@ class MOSSImageUnit_PromptEmbedder(PipelineUnit):
         inputs = {name: value.to(pipe.device) for name, value in inputs.items()}
         prompt_embeds = pipe.text_encoder(**inputs, use_cache=False).to(pipe.torch_dtype)
         prompt_embeds_mask = inputs["attention_mask"].bool()
+        if text_embedding is not None:
+            prompt_embeds = torch.concat([prompt_embeds, text_embedding.to(dtype=prompt_embeds.dtype, device=prompt_embeds.device)], dim=1)
+            prompt_embeds_mask = torch.concat([prompt_embeds_mask, torch.ones((1, text_embedding.shape[1]), dtype=prompt_embeds_mask.dtype, device=prompt_embeds_mask.device)], dim=1)
         return {"prompt_embeds": prompt_embeds, "prompt_embeds_mask": prompt_embeds_mask}
 
-    def process(self, pipe: MOSSImagePipeline, prompt, max_sequence_length):
+    def process(self, pipe: MOSSImagePipeline, prompt, max_sequence_length, text_embedding):
         pipe.load_models_to_device(self.onload_model_names)
         if pipe.text_encoder is None or pipe.tokenizer is None:
             return {}
-        return self.encode_prompt(pipe, prompt, max_sequence_length)
+        return self.encode_prompt(pipe, prompt, max_sequence_length, text_embedding)
 
 
 class MOSSImageUnit_NoiseInitializer(PipelineUnit):
