@@ -1,8 +1,8 @@
 from ..core.loader import load_model, hash_model_file
 from ..core.vram import AutoWrappedModule
 from ..core.quant import QuantizeConfig, MixedQuantizeConfig
-from ..core.distributed import install_sequence_parallel_on_models
-from ..configs import MODEL_CONFIGS, VRAM_MANAGEMENT_MODULE_MAPS, VERSION_CHECKER_MAPS, SEQUENCE_PARALLEL_IO_MAPS
+from ..core.distributed import install_sequence_parallel
+from ..configs import MODEL_CONFIGS, VRAM_MANAGEMENT_MODULE_MAPS, VERSION_CHECKER_MAPS
 import importlib, json, torch
 
 
@@ -91,7 +91,7 @@ class ModelPool:
             if config["model_hash"] == model_hash:
                 model = self.load_model_file(config, path, vram_config, vram_limit=vram_limit, state_dict=state_dict, quantize=quantize)
                 if clear_parameters: self.clear_parameters(model)
-                install_sequence_parallel_on_models([model], parallel_config, io_maps=SEQUENCE_PARALLEL_IO_MAPS)
+                install_sequence_parallel(model, parallel_config)
                 self.model.append(model)
                 model_name = config["model_name"]
                 self.model_name.append(model_name)

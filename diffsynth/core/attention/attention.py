@@ -1,4 +1,7 @@
 import os
+
+import torch
+
 from .registry import (
     get_attention_implementation,
     list_attention_implementations,
@@ -24,7 +27,23 @@ def initialize_attention_priority():
 ATTENTION_IMPLEMENTATION = initialize_attention_priority()
 
 
-def attention_forward(q, k, v, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, attn_mask=None, scale=None, is_causal=False, compatibility_mode=False, window_size=None, use_flex=False, score_mod=None):
+def local_attention_forward(q, k, v, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, attn_mask=None, scale=None, is_causal=False, compatibility_mode=False, window_size=None, use_flex=False, score_mod=None, cu_seqlens=None):
+    if cu_seqlens is not None:
+        # Packed stream: attend within each segment so the loop stays inside the
+        # sequence-parallel exchange and sees the global segment boundaries.
+        bounds = cu_seqlens.tolist()
+        # Token axis of each layout, e.g. "b n s d" -> 2.
+        q_dim, k_dim, v_dim, out_dim = (pattern.split().index("s") for pattern in (q_pattern, k_pattern, v_pattern, out_pattern))
+        segments = []
+        for start, stop in zip(bounds[:-1], bounds[1:]):
+            if stop == start:
+                continue
+            q_seg, k_seg, v_seg = (t.narrow(dim, start, stop - start) for t, dim in zip((q, k, v), (q_dim, k_dim, v_dim)))
+            seg_out = local_attention_forward(q_seg, k_seg, v_seg, q_pattern, k_pattern, v_pattern, out_pattern,
+                                              dims, attn_mask, scale, is_causal, compatibility_mode, window_size, use_flex, score_mod)
+            segments.append(seg_out)
+        return torch.cat(segments, dim=out_dim)
+
     if use_flex or score_mod is not None:
         return flex_attention(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale, score_mod=score_mod)
 
@@ -49,3 +68,24 @@ def attention_forward(q, k, v, q_pattern="b n s d", k_pattern="b n s d", v_patte
     if backend.supports_window:
         kwargs["window_size"] = window_size
     return backend.func(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, **kwargs)
+
+
+def attention_forward(q, k, v, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, attn_mask=None, scale=None, is_causal=False, compatibility_mode=False, window_size=None, use_flex=False, score_mod=None, cu_seqlens=None):
+    from ..distributed.sp_state import current_sequence_parallel_state
+
+    attn_kwargs = {
+        "dims": dims, "attn_mask": attn_mask, "scale": scale, "is_causal": is_causal,
+        "compatibility_mode": compatibility_mode, "window_size": window_size,
+        "use_flex": use_flex, "score_mod": score_mod, "cu_seqlens": cu_seqlens,
+    }
+    sp_state = current_sequence_parallel_state()
+    if sp_state is None or sp_state.no_exchange_depth:
+        # No sharded stack, or a replicated-K/V submodule inside one: run the local kernel.
+        return local_attention_forward(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, **attn_kwargs)
+
+    return sp_state.backend.forward(
+        q, k, v,
+        local_attention=local_attention_forward,
+        q_pattern=q_pattern, k_pattern=k_pattern, v_pattern=v_pattern, out_pattern=out_pattern,
+        **attn_kwargs,
+    )

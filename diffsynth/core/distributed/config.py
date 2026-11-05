@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .sequence_parallel import SEQUENCE_PARALLEL_BACKENDS
+from .sp_backend import SEQUENCE_PARALLEL_BACKENDS
 
 
 @dataclass(frozen=True)

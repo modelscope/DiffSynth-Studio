@@ -67,7 +67,7 @@ class _AllToAll4D(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad):
-        # The adjoint is the same exchange with the dims swapped.
+        # Backward runs the same exchange with the dims swapped.
         return _all_to_all_4d(grad, ctx.gather_dim, ctx.scatter_dim, ctx.group), None, None, None
 
 
@@ -91,8 +91,7 @@ class _AllGatherSequence(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad):
-        # Every rank holds a copy of the output, so all their gradients contribute:
-        # reduce_scatter sums the copies and returns this rank's own slice.
+        # Sum the gradient copies across ranks and return this rank's slice.
         if ctx.world_size == 1:
             return grad, None, None
         perm = list(range(grad.dim()))
