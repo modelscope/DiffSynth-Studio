@@ -4,6 +4,7 @@ from typing import Optional
 
 from .general_modules import RMSNorm
 from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 
 
@@ -72,6 +73,10 @@ class MOSSImageTextProjection(nn.Module):
         return x
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"x": 1, "rope": 1},
+    gather_dimensions_for_outputs=(1,),
+)
 class MOSSImageBlock(nn.Module):
     def __init__(self, dim: int, ffn_dim: int, heads: int):
         super().__init__()

@@ -34,15 +34,16 @@ def local_attention_forward(q, k, v, q_pattern="b n s d", k_pattern="b n s d", v
         bounds = cu_seqlens.tolist()
         # Token axis of each layout, e.g. "b n s d" -> 2.
         q_dim, k_dim, v_dim, out_dim = (pattern.split().index("s") for pattern in (q_pattern, k_pattern, v_pattern, out_pattern))
-        segments = []
+        # Allocate in the input layout: segments may not cover a padded tail.
+        out = torch.empty_like(q)
         for start, stop in zip(bounds[:-1], bounds[1:]):
             if stop == start:
                 continue
             q_seg, k_seg, v_seg = (t.narrow(dim, start, stop - start) for t, dim in zip((q, k, v), (q_dim, k_dim, v_dim)))
             seg_out = local_attention_forward(q_seg, k_seg, v_seg, q_pattern, k_pattern, v_pattern, out_pattern,
                                               dims, attn_mask, scale, is_causal, compatibility_mode, window_size, use_flex, score_mod)
-            segments.append(seg_out)
-        return torch.cat(segments, dim=out_dim)
+            out.narrow(out_dim, start, stop - start).copy_(seg_out)
+        return out
 
     if use_flex or score_mod is not None:
         return flex_attention(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale, score_mod=score_mod)
@@ -79,7 +80,7 @@ def attention_forward(q, k, v, q_pattern="b n s d", k_pattern="b n s d", v_patte
         "use_flex": use_flex, "score_mod": score_mod, "cu_seqlens": cu_seqlens,
     }
     sp_state = current_sequence_parallel_state()
-    if sp_state is None or sp_state.no_exchange_depth:
+    if sp_state is None or not sp_state.attention_parallel:
         # No sharded stack, or a replicated-K/V submodule inside one: run the local kernel.
         return local_attention_forward(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, **attn_kwargs)
 

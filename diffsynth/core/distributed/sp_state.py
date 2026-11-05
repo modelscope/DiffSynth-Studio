@@ -25,22 +25,28 @@ class SequenceParallelState:
 
     _local = threading.local()
 
-    def __init__(self, backend: "UlyssesBackend", local_length: int):
+    def __init__(self, backend: "UlyssesBackend", local_length: int, padding: int = 0):
         self.backend = backend
         self.local_length = local_length
+        self.padding = padding
         # Nesting depth inside `no_exchange_modules` submodules.
         self.no_exchange_depth = 0
+
+    @property
+    def attention_parallel(self) -> bool:
+        """Whether attention should exchange the current shard."""
+        return self.no_exchange_depth == 0
 
     @classmethod
     def current(cls) -> "SequenceParallelState | None":
         return getattr(cls._local, "current", None)
 
     @classmethod
-    def set_state(cls, backend: "UlyssesBackend", local_length: int) -> "SequenceParallelState":
+    def set_state(cls, backend: "UlyssesBackend", local_length: int, padding: int = 0) -> "SequenceParallelState":
         """Build a state and make it visible to `attention_forward` on this thread."""
         if cls.current() is not None:
             raise RuntimeError("sequence parallel state does not support nesting.")
-        state = cls(backend, local_length)
+        state = cls(backend, local_length, padding)
         cls._local.current = state
         return state
 

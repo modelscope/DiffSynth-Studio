@@ -43,8 +43,10 @@ it global). Only declared arguments are narrowed. The declaration also names
 to text), so their attention runs on the local query without exchanging;
 `no_exchange_depth` in the state marks when execution is inside one.
 
-A sequence not divisible by P is refused: padding would enter the softmax and
-change the result.
+A sequence not divisible by P is padded with zeros to the next multiple and the
+padding is trimmed at the stack exit. Padding takes part in attention, so dense
+blocks see it as extra zero keys and only match the unsharded run when the model
+masks it out; packed varlen streams do, since the padding has no segment.
 """
 
 from __future__ import annotations
@@ -175,9 +177,9 @@ class SequenceParallelStack:
     def _narrow(self, name, tensor):
         """Shard one declared input along the dimension it declares.
 
-        Three outcomes, all explicit: a global-length tensor is cut, an already-cut
-        one passes (loops re-supply the previous iteration's value), and anything
-        else is a bug in the declaration rather than something to guess about.
+        A global-length tensor is padded if needed and cut; an already-cut one passes
+        (loops re-supply the previous iteration's value). Anything else is a bug in
+        the declaration rather than something to guess about.
         """
         dim = self.token_inputs[name]
         if isinstance(tensor, (tuple, list)):
@@ -189,14 +191,22 @@ class SequenceParallelStack:
             return tensor
         local_length = self._state.local_length
         length = tensor.shape[dim]
-        group = get_parallel_group()
-        sp_size = dist.get_world_size(group)
         if length == local_length:
             return tensor
-        if length == local_length * sp_size:
-            return tensor.narrow(dim, dist.get_rank(group) * local_length, local_length)
-        raise ValueError(f"{self.block_class.__name__}.{name}: token length {length} on dim {dim}, "
-                         f"expected {local_length * sp_size} (global) or {local_length} (local)")
+        group = get_parallel_group()
+        padding = self._state.padding
+        if length + padding != local_length * dist.get_world_size(group):
+            raise ValueError(f"{self.block_class.__name__}.{name}: token length {length} on dim {dim}, "
+                             f"expected {local_length * dist.get_world_size(group) - padding} (global) or {local_length} (local)")
+        tensor = self._pad(tensor, dim, padding)
+        return tensor.narrow(dim, dist.get_rank(group) * local_length, local_length)
+
+    @staticmethod
+    def _pad(tensor, dim, padding):
+        if padding == 0:
+            return tensor
+        shape = tensor.shape[:dim] + (padding,) + tensor.shape[dim + 1:]
+        return torch.cat([tensor, tensor.new_zeros(shape)], dim=dim)
 
     def _make_pre_hook(self, is_first):
         def pre_hook(module, args, kwargs):
@@ -229,18 +239,17 @@ class SequenceParallelStack:
                              f"its declared token inputs {tuple(self.token_inputs)}")
         length = tensor.shape[dim]
         sp_size = dist.get_world_size(sequence_group)
-        if length % sp_size != 0:
-            raise ValueError(f"{self.block_class.__name__} got {length} tokens, not "
-                             f"divisible by the {sp_size} sequence-parallel ranks")
-        self._state = SequenceParallelState.set_state(self.backend, length // sp_size)
+        padding = (-length) % sp_size
+        self._state = SequenceParallelState.set_state(self.backend, (length + padding) // sp_size, padding)
         return True
 
     def _exit(self, module, args, kwargs, output):
         if self._state is None:
             return output
+        output = self._gather_outputs(output)
         SequenceParallelState.deactivate()
         self._state = None
-        return self._gather_outputs(output)
+        return output
 
     def _gather_outputs(self, output):
         outputs = output if isinstance(output, (tuple, list)) else (output,)
@@ -251,7 +260,10 @@ class SequenceParallelStack:
         for item, dim in zip(outputs, self.output_dims):
             if not torch.is_tensor(item):
                 raise TypeError(f"sequence-parallel stacks expect the last block to return tensors, got {type(item).__name__}")
-            gathered.append(all_gather_sequence(item, dim=dim, group=group))
+            item = all_gather_sequence(item, dim=dim, group=group)
+            if self._state.padding:
+                item = item.narrow(dim, 0, item.shape[dim] - self._state.padding)
+            gathered.append(item)
         if not isinstance(output, (tuple, list)):
             return gathered[0]
         return type(output)(*gathered) if hasattr(output, "_fields") else type(output)(gathered)
