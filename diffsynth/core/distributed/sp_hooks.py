@@ -20,8 +20,8 @@ Lifecycle of one stack forward
         find stacks of blocks declared with `sequence_parallel_recipe`, group them by
         parent container, and register hooks on the block objects
 
-    first block, pre-hook   `_open`: record this rank's local token count from the
-                            primary input length, set the current SP state
+    first block, pre-hook   `_open`: record local lengths and padding per input,
+                            set the current SP state
     every block, pre-hook   `_narrow` each declared input to the local slice
     attention calls         read the scope, exchange through the backend
     last block, post-hook   `_exit`: close the scope, all-gather the output
@@ -43,10 +43,10 @@ it global). Only declared arguments are narrowed. The declaration also names
 to text), so their attention runs on the local query without exchanging;
 `no_exchange_depth` in the state marks when execution is inside one.
 
-A sequence not divisible by P is padded with zeros to the next multiple and the
-padding is trimmed at the stack exit. Padding takes part in attention, so dense
-blocks see it as extra zero keys and only match the unsharded run when the model
-masks it out; packed varlen streams do, since the padding has no segment.
+Each declared input is independently padded to a multiple of P. An ordered output
+map associates each returned tensor with the input whose padding is trimmed at
+stack exit. Dense attention can change when padded tokens participate; varlen
+streams exclude them by keeping the original segment boundaries.
 """
 
 from __future__ import annotations
@@ -70,29 +70,95 @@ _ClassT = TypeVar("_ClassT", bound=type)
 
 def sequence_parallel_recipe(
     split_dimensions_for_inputs: dict[str, int],
-    gather_dimensions_for_outputs: tuple[int, ...] = (),
+    gather_dimensions_for_outputs: dict[str, int] | None = None,
     no_exchange_modules: tuple[str, ...] = (),
 ) -> Callable[[_ClassT], _ClassT]:
-    """Declare how one block participates in sequence parallelism.
+    """Declare the input shards and output gathers of a block stack.
 
-    `split_dimensions_for_inputs` maps token-aligned arguments of `forward` to the
-    dimension that carries their tokens. The first entry is the block's token
-    stream: its length defines the layout, and it is the input the stack splits and
-    gathers. The others are per-token companions narrowed together with it.
+    Inputs
+    ------
+    `split_dimensions_for_inputs` maps forward-argument names to their token
+    dimensions. Every tensor-bearing argument is padded and split independently:
+    its own length determines its local length and padding, not the first input's
+    length. Undeclared arguments remain untouched. None and other non-tensors pass
+    through without length entries and must remain tensor-free throughout the stack.
+    Tuple/list inputs, including namedtuples, are traversed recursively; all tensor
+    leaves under one argument must share its declared token dimension and length.
+    Container types and non-tensor elements are preserved.
 
-    `gather_dimensions_for_outputs` lists, in order, the token dimension of each
-    value the last block returns. A block returning one tensor declares `(1,)`; the
-    tuple is positional, so a block returning several values declares one dimension
-    per value.
+    The first block receives full inputs. Later blocks may receive local tensors
+    from the previous block and full companion tensors re-passed by the caller.
+    Hooks distinguish them by length. A stream of at most one token has equal
+    global and local lengths; it is padded and re-cut on every block, which only
+    rewrites padded positions that the exit trims.
 
-    `no_exchange_modules` lists submodules whose K/V is already replicated (for
-    example cross-attention to text). Their attention runs on the local query
-    without an exchange.
+    Outputs
+    -------
+    `gather_dimensions_for_outputs` is an ordered mapping of input names to output
+    token dimensions. Insertion order matches return-value order, NOT input order
+    or namedtuple field names. Each key identifies the input whose padding is
+    removed after gathering that output; each value gives the gather dimension,
+    which may differ from the input's split dimension. Every key must appear in the
+    input map and refer to a tensor-bearing argument at stack entry.
+
+    A single tensor requires one entry. A flat tuple/list of tensors, including a
+    namedtuple, requires one entry per returned tensor and preserves its type.
+    Dict returns, nested output containers, and repeated outputs associated with
+    the same input name are not represented by this mapping. Omitting the output
+    map stores an empty map; it does not infer output dimensions.
+
+    For one stream with a companion RoPE table:
+
+        @sequence_parallel_recipe(
+            split_dimensions_for_inputs={"x": 1, "rope": 0},
+            gather_dimensions_for_outputs={"x": 1},
+        )
+        class Block(nn.Module):
+            def forward(self, x, rope):
+                return x
+
+    For two streams returned in the reverse of their input order:
+
+        @sequence_parallel_recipe(
+            split_dimensions_for_inputs={"image": 1, "text": 1},
+            gather_dimensions_for_outputs={"text": 1, "image": 1},
+        )
+        class Block(nn.Module):
+            def forward(self, image, text):
+                return text, image
+
+    With two ranks and image/text lengths 7/10, their local lengths are 4/5 and
+    padding counts are 1/0. The first output gathers text with no trimming; the
+    second gathers image and removes one trailing token.
+
+    Scope and attention
+    -------------------
+    The decorator records a declaration on this class only; it is not inherited.
+    Installation groups consecutive, same-class blocks into stacks. Splitting
+    happens on entry, companion inputs are narrowed per block, and outputs are
+    gathered only at the last block. Without enabled SP and a multi-rank group,
+    or inside `sequence_parallel_disabled()`, hooks leave the forward unchanged.
+
+    `no_exchange_modules` names submodules with replicated K/V. Their attention
+    runs on the local query without exchange. Other attention inside the stack
+    uses the SP backend, which requires supported, divisible head counts.
+
+    Padding adds no attention mask: dense attention can differ from an unsharded
+    run. Packed varlen attention must retain the original global segment boundaries
+    and preserve the padded output length. Multi-stream models must align local
+    Q/K/V with their own RoPE tables and masks. This declaration does not split a
+    combined RoPE table into its constituent streams, reorder masks, or implement
+    replicated-text joint attention.
     """
+    output_dims = dict(gather_dimensions_for_outputs or {})
+    for name in output_dims:
+        if name not in split_dimensions_for_inputs:
+            raise ValueError(f"gather output {name!r} is not declared in split_dimensions_for_inputs")
+
     def decorate(cls: _ClassT) -> _ClassT:
         cls._sequence_parallel_recipe = {
             "split_dimensions_for_inputs": dict(split_dimensions_for_inputs),
-            "gather_dimensions_for_outputs": tuple(gather_dimensions_for_outputs),
+            "gather_dimensions_for_outputs": dict(output_dims),
             "no_exchange_modules": tuple(no_exchange_modules),
         }
         return cls
@@ -108,15 +174,18 @@ class SequenceParallelStack:
         full x -> [split] -> block 0 -> block 1 -> ... -> block N -> [gather] -> full x
                              |---------- local tokens throughout ----------|
 
-    Each block's pre-hook also cuts the global-length inputs its caller re-passes,
-    such as RoPE tables. Blocks must run in order, each feeding the next.
+    Each declared input has its own length and padding. Each block's pre-hook also
+    cuts full companion tensors re-passed by the caller, such as RoPE tables.
+    Blocks must run in order, each feeding its local outputs into the corresponding
+    named inputs of the next block. The last block's outputs are gathered in output
+    declaration order and trimmed with the padding of their associated inputs.
     """
 
     def __init__(self, block_class, declaration, backend="ulysses"):
         self.backend = SEQUENCE_PARALLEL_BACKENDS[backend]()
         self.block_class = block_class
         self.token_inputs = dict(declaration["split_dimensions_for_inputs"])
-        self.output_dims = tuple(declaration.get("gather_dimensions_for_outputs", ()))
+        self.output_dims = dict(declaration.get("gather_dimensions_for_outputs", {}))
         self.no_exchange_modules = tuple(declaration.get("no_exchange_modules", ()))
         self._state = None
         # Positional parameter names of the declared forward, in declaration order.
@@ -178,8 +247,10 @@ class SequenceParallelStack:
         """Shard one declared input along the dimension it declares.
 
         A global-length tensor is padded if needed and cut; an already-cut one passes
-        (loops re-supply the previous iteration's value). Anything else is a bug in
-        the declaration rather than something to guess about.
+        (loops re-supply the previous iteration's value), except a stream of at most
+        one token, whose global and local lengths coincide and is cut from the global
+        side. Anything else is a bug in the declaration rather than something to
+        guess about.
         """
         dim = self.token_inputs[name]
         if isinstance(tensor, (tuple, list)):
@@ -189,17 +260,20 @@ class SequenceParallelStack:
             return type(tensor)(*items) if hasattr(tensor, "_fields") else type(tensor)(items)
         if not torch.is_tensor(tensor):
             return tensor
-        local_length = self._state.local_length
+        local_length = self._state.local_lengths[name]
         length = tensor.shape[dim]
-        if length == local_length:
-            return tensor
         group = get_parallel_group()
-        padding = self._state.padding
-        if length + padding != local_length * dist.get_world_size(group):
-            raise ValueError(f"{self.block_class.__name__}.{name}: token length {length} on dim {dim}, "
-                             f"expected {local_length * dist.get_world_size(group) - padding} (global) or {local_length} (local)")
-        tensor = self._pad(tensor, dim, padding)
-        return tensor.narrow(dim, dist.get_rank(group) * local_length, local_length)
+        padding = self._state.paddings[name]
+        global_length = local_length * dist.get_world_size(group) - padding
+        # Local output from the previous block.
+        if length == local_length and length != global_length:
+            return tensor
+        # Full tensor from the caller; pad and cut this rank's slice.
+        if length == global_length:
+            tensor = self._pad(tensor, dim, padding)
+            return tensor.narrow(dim, dist.get_rank(group) * local_length, local_length)
+        raise ValueError(f"{self.block_class.__name__}.{name}: token length {length} on dim {dim}, "
+                         f"expected {global_length} (global) or {local_length} (local)")
 
     @staticmethod
     def _pad(tensor, dim, padding):
@@ -226,21 +300,33 @@ class SequenceParallelStack:
 
         return pre_hook
 
+    def _token_length(self, name, value):
+        if torch.is_tensor(value):
+            return value.shape[self.token_inputs[name]]
+        if not isinstance(value, (tuple, list)):
+            return None
+        lengths = {self._token_length(name, item) for item in value} - {None}
+        if len(lengths) > 1:
+            raise ValueError(f"{self.block_class.__name__}.{name}: container tensors have different token lengths {sorted(lengths)}")
+        return next(iter(lengths), None)
+
     def _open(self, args, kwargs):
         sequence_group = get_parallel_group()
         if SequenceParallelState.is_disabled() or sequence_group is None or dist.get_world_size(sequence_group) == 1:
             return False
-        for name, dim in self.token_inputs.items():
-            tensor = self._fetch(name, args, kwargs)
-            if torch.is_tensor(tensor):
-                break
-        else:
-            raise ValueError(f"{self.block_class.__name__} was called without any of "
-                             f"its declared token inputs {tuple(self.token_inputs)}")
-        length = tensor.shape[dim]
         sp_size = dist.get_world_size(sequence_group)
-        padding = (-length) % sp_size
-        self._state = SequenceParallelState.set_state(self.backend, (length + padding) // sp_size, padding)
+        local_lengths, paddings = {}, {}
+        for name in self.token_inputs:
+            length = self._token_length(name, self._fetch(name, args, kwargs))
+            if length is not None:
+                paddings[name] = (-length) % sp_size
+                local_lengths[name] = (length + paddings[name]) // sp_size
+        if not local_lengths:
+            raise ValueError(f"{self.block_class.__name__} was called without any of its declared token inputs {tuple(self.token_inputs)}")
+        for name in self.output_dims:
+            if name not in local_lengths:
+                raise ValueError(f"{self.block_class.__name__}: gather output {name!r} has no tensor-bearing input at stack entry")
+        self._state = SequenceParallelState.set_state(self.backend, local_lengths, paddings)
         return True
 
     def _exit(self, module, args, kwargs, output):
@@ -257,12 +343,11 @@ class SequenceParallelStack:
             raise ValueError(f"{self.block_class.__name__} returned {len(outputs)} values but declared {len(self.output_dims)} gather dimensions")
         group = get_parallel_group()
         gathered = []
-        for item, dim in zip(outputs, self.output_dims):
+        for item, (name, dim) in zip(outputs, self.output_dims.items()):
             if not torch.is_tensor(item):
                 raise TypeError(f"sequence-parallel stacks expect the last block to return tensors, got {type(item).__name__}")
             item = all_gather_sequence(item, dim=dim, group=group)
-            if self._state.padding:
-                item = item.narrow(dim, 0, item.shape[dim] - self._state.padding)
+            item = item.narrow(dim, 0, item.shape[dim] - self._state.paddings[name])
             gathered.append(item)
         if not isinstance(output, (tuple, list)):
             return gathered[0]
@@ -353,7 +438,8 @@ def install_sequence_parallel(model, parallel_config):
     Does nothing when `parallel_config` is absent or disables SP, or the group is
     missing or has one rank.
 
-    Stacks are refused when their sequence is not divisible by the number of ranks.
+    Each input is padded independently when its token length is not divisible by
+    the number of ranks; each output is trimmed through its associated input name.
     """
     if parallel_config is None or not parallel_config.sp_enabled:
         return

@@ -5,8 +5,8 @@
 signature in any model has to change. A block stack enters the scope on its first
 block and leaves it on its last; outside a scope attention runs exactly as on one
 device.
-The state carries the backend, this rank's `local_length`, and `no_exchange_depth`
-(inside a submodule whose K/V is replicated).
+The state carries the backend, per-input `local_lengths` and `paddings`, and
+`attention_parallel` for selecting local or distributed attention.
 """
 
 from __future__ import annotations
@@ -19,16 +19,21 @@ class SequenceParallelState:
     """State of one sharded stack forward, plus the per-thread activation.
 
     Each thread holds at most one active instance: the stack activates it on its
-    first block and deactivates it on its last. `attention_forward` reads it to know
-    it is running on a shard.
+    first block and deactivates it after gathering its last block's outputs.
+    `attention_forward` reads `backend` and `attention_parallel` for dispatch.
+
+    `local_lengths` and `paddings` are keyed by declared forward-input names. Each
+    tensor-bearing input has its own local token count and global tail-padding
+    count; tensor-free inputs have no entries. Output gathering looks up padding
+    through the input name specified in `gather_dimensions_for_outputs`.
     """
 
     _local = threading.local()
 
-    def __init__(self, backend: "UlyssesBackend", local_length: int, padding: int = 0):
+    def __init__(self, backend: "UlyssesBackend", local_lengths: dict[str, int], paddings: dict[str, int]):
         self.backend = backend
-        self.local_length = local_length
-        self.padding = padding
+        self.local_lengths = local_lengths
+        self.paddings = paddings
         # Nesting depth inside `no_exchange_modules` submodules.
         self.no_exchange_depth = 0
 
@@ -42,11 +47,11 @@ class SequenceParallelState:
         return getattr(cls._local, "current", None)
 
     @classmethod
-    def set_state(cls, backend: "UlyssesBackend", local_length: int, padding: int = 0) -> "SequenceParallelState":
-        """Build a state and make it visible to `attention_forward` on this thread."""
+    def set_state(cls, backend: "UlyssesBackend", local_lengths: dict[str, int], paddings: dict[str, int]) -> "SequenceParallelState":
+        """Activate a state with per-input local lengths and padding counts."""
         if cls.current() is not None:
             raise RuntimeError("sequence parallel state does not support nesting.")
-        state = cls(backend, local_length, padding)
+        state = cls(backend, local_lengths, paddings)
         cls._local.current = state
         return state
 

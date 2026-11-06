@@ -60,10 +60,29 @@ class UlyssesBackend:
         q, k, v = rearrange_qkv(q, k, v, q_pattern, k_pattern, v_pattern, required, dims)
         q, k, v = self._exchange_qkv(q, k, v)
 
+        # Cut the tail tokens the mask leaves out, so the padding never reaches attention.
+        query_padding, key_padding = self._mask_padding(q, k, attn_kwargs)
+        if query_padding:
+            q = q[:, :-query_padding]
+        if key_padding:
+            k, v = k[:, :-key_padding], v[:, :-key_padding]
+
         out = local_attention(q, k, v, required, required, required, required, **attn_kwargs)
 
+        if query_padding:
+            out = torch.cat((out, out.new_zeros(out.shape[0], query_padding, *out.shape[2:])), dim=1)
         out = all_to_all_4d(out, scatter_dim=1, gather_dim=2, group=get_parallel_group())
         return rearrange_out(out, out_pattern, required, dims)
+
+    @staticmethod
+    def _mask_padding(q, k, attn_kwargs):
+        """Trailing tokens of q and k that the mask leaves out; (0, 0) without a tensor mask."""
+        mask = attn_kwargs.get("attn_mask")
+        if not torch.is_tensor(mask):
+            return 0, 0
+        query_padding = q.shape[1] - mask.shape[-2] if mask.dim() >= 3 and mask.shape[-2] > 1 else 0
+        key_padding = k.shape[1] - mask.shape[-1]
+        return max(query_padding, 0), max(key_padding, 0)
 
 
 SEQUENCE_PARALLEL_BACKENDS = {"ulysses": UlyssesBackend}
