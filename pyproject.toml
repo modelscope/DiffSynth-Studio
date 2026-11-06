@@ -23,6 +23,7 @@ dependencies = [
     "pandas",
     "accelerate",
     "peft",
+    "entropack>=0.1.7",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -95,7 +96,6 @@ all = [
     "tensorboard",
     "swanlab",
     "wandb",
-    "entropack>=0.1.7",
 ]
 
 [tool.setuptools]
