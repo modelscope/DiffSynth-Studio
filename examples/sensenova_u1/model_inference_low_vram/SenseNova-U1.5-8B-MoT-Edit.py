@@ -2,16 +2,18 @@ from diffsynth.pipelines.sensenova_u1_image import SenseNovaU1ImagePipeline, Mod
 from modelscope import dataset_snapshot_download
 from PIL import Image
 import torch
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": "disk",
-    "onload_device": "disk",
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 
 pipe = SenseNovaU1ImagePipeline.from_pretrained(

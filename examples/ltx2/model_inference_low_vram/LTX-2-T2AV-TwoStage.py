@@ -1,16 +1,18 @@
 import torch
 from diffsynth.pipelines.ltx2_audio_video import LTX2AudioVideoPipeline, ModelConfig
 from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
-    "offload_dtype": torch.float8_e5m2,
+    "offload_dtype": torch.bfloat16,
     "offload_device": "cpu",
-    "onload_dtype": torch.float8_e5m2,
+    "onload_dtype": torch.bfloat16,
     "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e5m2,
+    "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 """
 Offical model repo: https://www.modelscope.cn/models/Lightricks/LTX-2

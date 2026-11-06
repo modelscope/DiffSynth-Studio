@@ -3,16 +3,18 @@ from PIL import Image
 from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
 from diffsynth.utils.data.audio_video import write_video_audio, read_audio, read_video_audio
 from modelscope import dataset_snapshot_download
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": "disk",
-    "onload_device": "disk",
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 pipe = MiniMaxH3Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

@@ -5,12 +5,13 @@ from diffsynth.utils.data.audio_video import write_video_audio
 from diffsynth.core.data.operators import ImageCropAndResize
 from modelscope import snapshot_download
 from PIL import Image
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": "disk",
-    "onload_device": "disk",
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,

@@ -4,6 +4,7 @@ from modelscope import snapshot_download
 from PIL import Image
 import numpy as np
 import torch
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -14,6 +15,7 @@ vram_config = {
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw", exclude_modules=["self_attn.out_proj", "attention.out_proj", "final_layer2.linear", "x_embedder.proj1", "x_embedder.proj2", "t_embedder1.mlp.0", "t_embedder1.mlp.2", "linear_fc1", "linear_fc2", "mlp.gate_proj", "mlp.up_proj", "mlp.down_proj"]),
 }
 pipe = HiDreamO1ImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
