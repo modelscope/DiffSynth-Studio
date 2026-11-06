@@ -95,7 +95,7 @@ all = [
     "deepspeed",
     "tensorboard",
     "swanlab",
-    "wandb",
+    "wandb"
 ]
 
 [tool.setuptools]
