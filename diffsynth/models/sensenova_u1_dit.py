@@ -609,7 +609,7 @@ class SenseNovaU1TimestepEmbedder(nn.Module):
 
     def forward(self, t):
         t_freq = self.timestep_embedding(t, self.frequency_embedding_size)
-        return self.mlp(t_freq.to(self.mlp[0].weight.dtype))
+        return self.mlp(t_freq.to(t.dtype))
 
 
 class SenseNovaU1ConvDecoder(nn.Module):

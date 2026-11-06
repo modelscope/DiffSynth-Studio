@@ -46,7 +46,6 @@ audio = [
 quant = [
     "bitsandbytes",
     "comfy-kitchen",
-    "entropack[cuda13]",
     "torchao>=0.16"
 ]
 training = [
@@ -91,12 +90,12 @@ all = [
     "librosa",
     "bitsandbytes",
     "comfy-kitchen",
-    "entropack[cuda13]",
     "torchao>=0.16",
     "deepspeed",
     "tensorboard",
     "swanlab",
-    "wandb"
+    "wandb",
+    "entropack>=0.1.7",
 ]
 
 [tool.setuptools]

@@ -82,7 +82,7 @@ class MiniMaxH3ControlNet(nn.Module):
             raise ValueError(f"control_rows carry {control_rows.shape[-1]} columns but control_in_dim={self.control_in_dim} expects {expected}")
         if control_rows.shape[0] != img_pos.shape[0]:
             raise ValueError(f"control_rows hold {control_rows.shape[0]} rows but the packed sequence has {img_pos.shape[0]} video rows; one control row per video row is required, in the same order")
-        control_embeds = self.control_patch_proj(control_rows.to(self.control_patch_proj.weight.dtype))
+        control_embeds = self.control_patch_proj(control_rows)
         c = embeddings.index_copy(0, img_pos, control_embeds.to(embeddings.dtype))
         for block in self.blocks:
             c = gradient_checkpoint_forward(

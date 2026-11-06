@@ -304,7 +304,7 @@ def model_fn_sensenova_u1_image(
 
     image_input = patchify(latents, dit.patch_size, channel_first=True)
     image_embeds = dit.extract_gen_feature(image_input.flatten(0, 1), grid_hw).view(latents.shape[0], num_tokens, -1)
-    image_embeds = image_embeds + dit.embed_timestep(t, noise_scale, num_tokens, batch_size=latents.shape[0])
+    image_embeds = image_embeds + dit.embed_timestep(t.to(image_embeds.dtype), noise_scale, num_tokens, batch_size=latents.shape[0])
 
     x_pred = dit(
         image_embeds=image_embeds,

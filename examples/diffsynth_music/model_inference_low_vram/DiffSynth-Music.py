@@ -4,16 +4,18 @@ from diffsynth.diffusion.template import TemplatePipeline
 from diffsynth.core.data.operators import LoadMultiTrackAudio
 from diffsynth.utils.music_tools import extract_prosody, generate_click
 from modelscope import snapshot_download
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": "disk",
-    "onload_device": "disk",
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 vram_config_cpu = {
     "offload_dtype": torch.bfloat16,

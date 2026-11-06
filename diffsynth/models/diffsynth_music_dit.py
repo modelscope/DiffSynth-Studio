@@ -182,7 +182,8 @@ class DiffSynthMusicDiTModel(torch.nn.Module):
         use_gradient_checkpointing_offload: bool = False,
         **kwargs,
     ):
-        x = torch.concat([self.placeholder_audio[:, :x.shape[1]], torch.ones_like(x), x], dim=-1)
+        placeholder = self.placeholder_audio[:, :x.shape[1]].to(device=x.device, dtype=x.dtype)
+        x = torch.concat([placeholder, torch.ones_like(x), x], dim=-1)
         x = self.x_emb(x)
         y = self.condition_emb(y)
         timestep = torch.zeros((1,), dtype=x.dtype, device=x.device)
@@ -216,7 +217,8 @@ class DiffSynthMusicDiTModel(torch.nn.Module):
         use_gradient_checkpointing_offload: bool = False,
         **kwargs,
     ):
-        x = torch.concat([self.placeholder_audio[:, :x.shape[1]], torch.ones_like(x), x], dim=-1)
+        placeholder = self.placeholder_audio[:, :x.shape[1]].to(device=x.device, dtype=x.dtype)
+        x = torch.concat([placeholder, torch.ones_like(x), x], dim=-1)
         x = self.x_emb(x)
         y = self.condition_emb(y)
         final_timestep_emb, timestep_emb = self.timestep_emb(timestep)

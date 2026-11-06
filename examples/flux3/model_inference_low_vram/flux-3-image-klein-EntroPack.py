@@ -29,14 +29,15 @@ import torch
 
 from diffsynth.configs import MODEL_CONFIGS
 from diffsynth.pipelines.flux3_image import Flux3ImagePipeline, ModelConfig
+from diffsynth.core.quant import QuantizeConfig
 
 prequant_model_id = "DiffSynth-Studio/flux-3-image-klein-entropack"
 dit_package = "models/dit_4bit.safetensors"
 text_encoder_package = "models/text_encoder_4bit.safetensors"
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
     "onload_dtype": torch.bfloat16,
     "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,

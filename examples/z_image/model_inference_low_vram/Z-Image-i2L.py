@@ -6,6 +6,7 @@ from modelscope import snapshot_download
 from safetensors.torch import save_file
 import torch
 from PIL import Image
+from diffsynth.core.quant import QuantizeConfig
 
 # Use `vram_config` to enable LoRA hot-loading
 vram_config = {
@@ -17,6 +18,7 @@ vram_config = {
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw", exclude_modules=["self_attn.out_proj", "attention.out_proj"]),
 }
 
 # Load models

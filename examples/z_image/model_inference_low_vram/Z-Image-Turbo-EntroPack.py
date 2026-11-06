@@ -32,16 +32,17 @@ import torch
 
 from diffsynth.configs import MODEL_CONFIGS
 from diffsynth.pipelines.z_image import ZImagePipeline, ModelConfig
+from diffsynth.core.quant import QuantizeConfig
 
 prequant_model_id = "DiffSynth-Studio/EntroPackPreQuants"
 dit_package = "models/Z-Image-Turbo/dit_4bpp.safetensors"
 text_encoder_package = "models/Z-Image-Turbo/text_encoder_4bpp.safetensors"
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": "disk",
-    "onload_device": "disk",
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
