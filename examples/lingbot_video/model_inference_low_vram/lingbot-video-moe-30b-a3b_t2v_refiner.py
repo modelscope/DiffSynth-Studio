@@ -3,16 +3,18 @@ import json
 from diffsynth.utils.data import save_video, VideoData
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": torch.float8_e4m3fn,
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
     "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 
 dataset_snapshot_download(
@@ -33,7 +35,7 @@ pipe = LingBotVideoPipeline.from_pretrained(
         ModelConfig(model_id="Robbyant/lingbot-video-moe-30b-a3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
     ],
     processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 5,
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 16,
 )
 
 input_video = VideoData(f"{base}/video_1.mp4", height=1088, width=1920)

@@ -45,13 +45,13 @@ if ENTROPACK_AVAILABLE:
     @dataclass
     class EntroPackINT8CodedConfig(BackendConfig, ep.LatticeRANSConfig):
         linear_cls = ep.CompressedINT8Linear
-        use_convrot: bool = False
+        use_convrot: bool = True
         convrot_groupsize: int = 256
 
     @dataclass
     class EntroPackINT8RawConfig(BackendConfig, ep.RawConfig):
         linear_cls = ep.CompressedINT8Linear
-        use_convrot: bool = False
+        use_convrot: bool = True
         convrot_groupsize: int = 256
 
 

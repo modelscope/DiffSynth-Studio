@@ -5,6 +5,7 @@ from diffsynth.utils.data import save_video, VideoData
 from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
 from typing import List
+from diffsynth.core.quant import QuantizeConfig
 
 
 # This model doesn't support fine-grained VRAM Management due to its special architecture.
@@ -13,11 +14,12 @@ vram_config = {
     "offload_dtype": torch.bfloat16,
     "offload_device": "cpu",
     "onload_dtype": torch.bfloat16,
-    "onload_device": "cuda",
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 pipe = WanVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

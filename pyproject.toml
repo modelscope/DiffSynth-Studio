@@ -23,6 +23,7 @@ dependencies = [
     "pandas",
     "accelerate",
     "peft",
+    "entropack>=0.1.7",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -46,7 +47,6 @@ audio = [
 quant = [
     "bitsandbytes",
     "comfy-kitchen",
-    "entropack[cuda13]",
     "torchao>=0.16"
 ]
 training = [
@@ -91,7 +91,6 @@ all = [
     "librosa",
     "bitsandbytes",
     "comfy-kitchen",
-    "entropack[cuda13]",
     "torchao>=0.16",
     "deepspeed",
     "tensorboard",

@@ -115,6 +115,9 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "diffsynth.models.wan_video_animate_adapter.ConvLayer": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.wan_video_animate_adapter.FusedLeakyReLU": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.wan_video_animate_adapter.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.wan_video_animate_adapter.Blur": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.wan_video_animate_adapter.EqualConv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.wan_video_animate_adapter.Direction": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
@@ -150,6 +153,7 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.wan_video_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.MultiheadAttention": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.wan_video_image_encoder.WanImageEncoder": {
         "diffsynth.models.wan_video_image_encoder.VisionTransformer": "diffsynth.core.vram.layers.AutoWrappedModule",

@@ -53,6 +53,7 @@ from PIL import Image
 from diffsynth.configs import MODEL_CONFIGS
 from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelConfig
 from diffsynth.utils.data.audio_video import write_video_audio
+from diffsynth.core.quant import QuantizeConfig
 
 prequant_model_id = "DiffSynth-Studio/EntroPackPreQuants"
 prequant_root = f"./models/{prequant_model_id}"
@@ -63,10 +64,10 @@ ref2va_dit_package = "models/MiniMax-H3/REF2VA/dit_4bpp.safetensors"
 reference_package = "assets/minimax_h3_ref2va_reference_woman.png"
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": "disk",
-    "onload_device": "disk",
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,

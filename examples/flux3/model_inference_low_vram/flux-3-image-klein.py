@@ -2,17 +2,19 @@ from PIL import Image
 import torch
 
 from diffsynth.pipelines.flux3_image import Flux3ImagePipeline, ModelConfig
+from diffsynth.core.quant import QuantizeConfig
 
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
     "onload_dtype": torch.bfloat16,
     "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 
 # `black-forest-labs/flux-3-image-klein` is an access-request-only model. To download it:

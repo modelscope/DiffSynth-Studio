@@ -333,7 +333,6 @@ class ErnieImageDiT(nn.Module):
         ], dim=1)[:, None, None, :]
 
         sample = self.time_proj(timestep.to(dtype))
-        sample = sample.to(self.time_embedding.linear_1.weight.dtype)
         c = self.time_embedding(sample)
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = [
             t.unsqueeze(0).expand(S, -1, -1).contiguous()

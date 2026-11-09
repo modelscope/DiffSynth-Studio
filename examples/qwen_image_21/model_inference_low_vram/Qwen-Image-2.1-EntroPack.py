@@ -33,16 +33,17 @@ from PIL import Image
 
 from diffsynth.configs import MODEL_CONFIGS
 from diffsynth.pipelines.qwen_image_21 import QwenImage21Pipeline, ModelConfig
+from diffsynth.core.quant import QuantizeConfig
 
 prequant_model_id = "DiffSynth-Studio/EntroPackPreQuants"
 dit_package = "models/Qwen-Image-2.1/dit_4bpp.safetensors"
 text_encoder_package = "models/Qwen-Image-2.1/text_encoder_4bpp.safetensors"
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": "disk",
-    "onload_device": "disk",
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
