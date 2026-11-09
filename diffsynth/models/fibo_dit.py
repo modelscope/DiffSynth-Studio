@@ -125,10 +125,9 @@ def compute_gist_count(text_lengths, min_gist, max_gist, gist_step, min_text_len
 
 
 class FiboAttention(nn.Module):
-    def __init__(self, query_dim, heads, dim_head, kv_dim=None, eps=1e-5, no_parallel=False):
+    def __init__(self, query_dim, heads, dim_head, kv_dim=None, eps=1e-5):
         super().__init__()
         self.heads = heads
-        self.no_parallel = no_parallel
         kv_dim = kv_dim or query_dim
         self.to_q = nn.Linear(query_dim, heads * dim_head, bias=False)
         self.to_k = nn.Linear(kv_dim, heads * dim_head, bias=False)
@@ -161,12 +160,16 @@ class FiboAttention(nn.Module):
         hidden_states = attention_forward(
             query, key, value,
             q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
-            attn_mask=attention_mask, no_parallel=self.no_parallel,
+            attn_mask=attention_mask,
         )
         return self.to_out[0](hidden_states.flatten(2, 3))
 
 
-@sequence_parallel_recipe(split_dimensions_for_inputs={"x": 1, "freqs_cis": 1, "noise_mask": 1})
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"x": 1, "freqs_cis": 1, "noise_mask": 1},
+    gather_dimensions_for_outputs={"x": 1},
+    no_exchange_modules=("cross_attention",),
+)
 class FiboTransformerBlock(nn.Module):
     def __init__(self, dim, n_heads, norm_eps, cross_attention_dim=None):
         super().__init__()
@@ -179,9 +182,7 @@ class FiboTransformerBlock(nn.Module):
         self.adaLN_modulation = nn.Sequential(nn.Linear(min(dim, ADALN_EMBED_DIM), 4 * dim, bias=True))
         if cross_attention_dim is not None:
             self.cross_attn_norm1 = RMSNorm(dim, eps=norm_eps)
-            self.cross_attention = FiboAttention(
-                dim, n_heads, dim // n_heads, kv_dim=cross_attention_dim, eps=norm_eps, no_parallel=True
-            )
+            self.cross_attention = FiboAttention(dim, n_heads, dim // n_heads, kv_dim=cross_attention_dim, eps=norm_eps)
             self.cross_attn_norm2 = RMSNorm(dim, eps=norm_eps)
             self.cross_attn_gate = nn.Parameter(torch.zeros(1))
         else:

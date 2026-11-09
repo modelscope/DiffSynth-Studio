@@ -209,7 +209,7 @@ class MiniMaxH3TokenRefiner(nn.Module):
 
 @sequence_parallel_recipe(
     split_dimensions_for_inputs={"x": 0, "rope_freqs": 0, "combined_indices": 0},
-    gather_dimensions_for_outputs=(0,),
+    gather_dimensions_for_outputs={"x": 0},
 )
 class MiniMaxH3DiTBlock(nn.Module):
     def __init__(self, hidden_size, num_attention_heads, attention_head_dim, ffn_hidden_size, time_embed_dim, adaln_out_features, norm_eps, qk_norm_eps):

@@ -2,42 +2,9 @@ import torch, math, functools
 import torch.nn as nn
 from typing import Tuple, Optional, Union, List
 from einops import rearrange
+from ..core.attention import attention_forward
+from ..core.distributed import current_sequence_parallel_state, sequence_parallel_recipe
 from .general_modules import TimestepEmbeddings, RMSNorm, AdaLayerNorm
-
-try:
-    import flash_attn_interface
-    FLASH_ATTN_3_AVAILABLE = True
-except ModuleNotFoundError:
-    FLASH_ATTN_3_AVAILABLE = False
-
-
-def qwen_image_flash_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, num_heads: int, attention_mask = None, enable_fp8_attention: bool = False):
-    if FLASH_ATTN_3_AVAILABLE and attention_mask is None:
-        if not enable_fp8_attention:
-            q = rearrange(q, "b n s d -> b s n d", n=num_heads)
-            k = rearrange(k, "b n s d -> b s n d", n=num_heads)
-            v = rearrange(v, "b n s d -> b s n d", n=num_heads)
-            x = flash_attn_interface.flash_attn_func(q, k, v)
-            if isinstance(x, tuple):
-                x = x[0]
-            x = rearrange(x, "b s n d -> b s (n d)", n=num_heads)
-        else:
-            origin_dtype = q.dtype
-            q_std, k_std, v_std = q.std(), k.std(), v.std()
-            q, k, v = (q / q_std).to(torch.float8_e4m3fn), (k / k_std).to(torch.float8_e4m3fn), (v / v_std).to(torch.float8_e4m3fn)
-            q = rearrange(q, "b n s d -> b s n d", n=num_heads)
-            k = rearrange(k, "b n s d -> b s n d", n=num_heads)
-            v = rearrange(v, "b n s d -> b s n d", n=num_heads)
-            x = flash_attn_interface.flash_attn_func(q, k, v, softmax_scale=q_std * k_std / math.sqrt(q.size(-1)))
-            if isinstance(x, tuple):
-                x = x[0]
-            x = x.to(origin_dtype) * v_std
-            x = rearrange(x, "b s n d -> b s (n d)", n=num_heads)
-    else:
-        x = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=attention_mask)
-        x = rearrange(x, "b n s d -> b s (n d)", n=num_heads)
-    return x
-
 
 class ApproximateGELU(nn.Module):
     def __init__(self, dim_in: int, dim_out: int, bias: bool = True):
@@ -392,7 +359,6 @@ class QwenDoubleStreamAttention(nn.Module):
         text: torch.FloatTensor,
         image_rotary_emb: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
         attention_mask: Optional[torch.FloatTensor] = None,
-        enable_fp8_attention: bool = False,
         kv_cache = None,
     ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         img_q, img_k, img_v = self.to_q(image), self.to_k(image), self.to_v(image)
@@ -436,7 +402,12 @@ class QwenDoubleStreamAttention(nn.Module):
             if attention_mask is not None:
                 attention_mask = torch.nn.functional.pad(attention_mask, (0, template_length), value=0.0)
 
-        joint_attn_out = qwen_image_flash_attention(joint_q, joint_k, joint_v, num_heads=joint_q.shape[1], attention_mask=attention_mask, enable_fp8_attention=enable_fp8_attention).to(joint_q.dtype)
+        joint_attn_out = attention_forward(
+            joint_q, joint_k, joint_v,
+            q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b s n d",
+            attn_mask=attention_mask,
+        )
+        joint_attn_out = rearrange(joint_attn_out, "b s n d -> b s (n d)")
 
         txt_attn_output = joint_attn_out[:, :seq_txt, :]
         img_attn_output = joint_attn_out[:, seq_txt:, :]
@@ -447,6 +418,10 @@ class QwenDoubleStreamAttention(nn.Module):
         return img_attn_output, txt_attn_output
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"image": 1, "text": 1, "image_rotary_emb": 0, "text_rotary_emb": 0, "modulate_index": 1},
+    gather_dimensions_for_outputs={"text": 1, "image": 1},
+)
 class QwenImageTransformerBlock(nn.Module):
     def __init__(
         self, 
@@ -521,12 +496,14 @@ class QwenImageTransformerBlock(nn.Module):
         image: torch.Tensor,  
         text: torch.Tensor,
         temb: torch.Tensor, 
-        image_rotary_emb: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+        image_rotary_emb: Optional[torch.Tensor] = None,
+        text_rotary_emb: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
-        enable_fp8_attention = False,
         modulate_index: Optional[List[int]] = None,
         kv_cache = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        if current_sequence_parallel_state() is not None and (attention_mask is not None or kv_cache is not None):
+            raise NotImplementedError("Qwen-Image sequence parallelism does not support attention masks or KV caches")
 
         img_mod_attn, img_mod_mlp = self.img_mod(temb).chunk(2, dim=-1)  # [B, 3*dim] each
         if modulate_index is not None:
@@ -539,12 +516,12 @@ class QwenImageTransformerBlock(nn.Module):
         txt_normed = self.txt_norm1(text)
         txt_modulated, txt_gate = self._modulate(txt_normed, txt_mod_attn)
 
+        image_rotary_emb = (image_rotary_emb, text_rotary_emb)
         img_attn_out, txt_attn_out = self.attn(
             image=img_modulated,
             text=txt_modulated,
             image_rotary_emb=image_rotary_emb,
             attention_mask=attention_mask,
-            enable_fp8_attention=enable_fp8_attention,
             kv_cache=kv_cache,
         )
         
@@ -689,7 +666,7 @@ class QwenImageDiT(torch.nn.Module):
 
         conditioning = self.time_text_embed(timestep, image.dtype)
 
-        image_rotary_emb = self.pos_embed(img_shapes, txt_seq_lens, device=latents.device)
+        image_rotary_emb, text_rotary_emb = self.pos_embed(img_shapes, txt_seq_lens, device=latents.device)
 
         for block in self.transformer_blocks:
             text, image = block(
@@ -697,6 +674,7 @@ class QwenImageDiT(torch.nn.Module):
                 text=text,
                 temb=conditioning,
                 image_rotary_emb=image_rotary_emb,
+                text_rotary_emb=text_rotary_emb,
             )
         
         image = self.norm_out(image, conditioning)

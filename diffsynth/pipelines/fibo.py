@@ -59,9 +59,10 @@ class FiboPipeline(BasePipeline):
         processor_config: ModelConfig = ModelConfig(model_id="briaai/Fibo-2.0-dev", origin_file_pattern="processor/"),
         font_config: ModelConfig = ModelConfig(model_id="briaai/Fibo-2.0-dev", origin_file_pattern="fonts/"),
         vram_limit: float = None,
+        parallel_config=None,
     ):
         pipe = FiboPipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         # Fibo and Krea-2 share the same Qwen3-VL-4B text encoder structure.
         pipe.text_encoder = model_pool.fetch_model("krea2_text_encoder")
         pipe.dit = model_pool.fetch_model("fibo_dit")

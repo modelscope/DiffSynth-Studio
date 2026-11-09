@@ -75,7 +75,7 @@ class MOSSImageTextProjection(nn.Module):
 
 @sequence_parallel_recipe(
     split_dimensions_for_inputs={"x": 1, "rope": 1},
-    gather_dimensions_for_outputs=(1,),
+    gather_dimensions_for_outputs={"x": 1},
 )
 class MOSSImageBlock(nn.Module):
     def __init__(self, dim: int, ffn_dim: int, heads: int):

@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from einops import rearrange
 
 from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 
 
@@ -345,6 +346,10 @@ class RMSNorm(nn.Module):
         return output
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"img": 1, "txt": 1, "vis_freqs_cis": 0, "txt_freqs_cis": 0},
+    gather_dimensions_for_outputs={"img": 1, "txt": 1},
+)
 class MMDoubleStreamBlock(nn.Module):
     """
     A multimodal dit block with separate modulation for

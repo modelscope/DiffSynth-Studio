@@ -156,7 +156,7 @@ def select_per_token(
 
 @sequence_parallel_recipe(
     split_dimensions_for_inputs={"x": 1, "freqs_cis": 1, "noise_mask": 1},
-    gather_dimensions_for_outputs=(1,),
+    gather_dimensions_for_outputs={"x": 1},
 )
 class ZImageTransformerBlock(nn.Module):
     def __init__(

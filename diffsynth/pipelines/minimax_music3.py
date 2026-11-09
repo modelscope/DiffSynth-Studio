@@ -46,6 +46,7 @@ class MiniMaxMusic3Pipeline(BasePipeline):
         tokenizer_config: ModelConfig = None,
         vram_limit: float = None,
         redirect_common_files: bool = True,
+        parallel_config=None,
     ):
         if redirect_common_files:
             redirect_dict = {
@@ -61,7 +62,7 @@ class MiniMaxMusic3Pipeline(BasePipeline):
                     print(f"The model is detected to be downloading from HuggingFace. {tokenizer_config.model_id} is redirected to {redirect_dict[tokenizer_config.model_id]}. You can use `redirect_common_files=False` to disable file redirection.")
                     tokenizer_config.model_id = redirect_dict[tokenizer_config.model_id]
         pipe = MiniMaxMusic3Pipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         pipe.text_encoder = model_pool.fetch_model("minimax_music3_text_encoder")
         pipe.rvq_depth_decoder = model_pool.fetch_model("minimax_music3_rvq_depth_decoder")
         pipe.condition_encoder = model_pool.fetch_model("minimax_music3_condition_encoder")

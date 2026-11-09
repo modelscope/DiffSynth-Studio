@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 
 
@@ -82,6 +83,10 @@ class MiniMaxMusic3Attention(nn.Module):
         return self.to_out[0](hidden_states)
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"hidden_states": 1, "rotary_emb": 0},
+    gather_dimensions_for_outputs={"hidden_states": 1},
+)
 class MiniMaxMusic3TransformerBlock(nn.Module):
     def __init__(self, dim: int, heads: int, head_dim: int, ff_inner_dim: int):
         super().__init__()

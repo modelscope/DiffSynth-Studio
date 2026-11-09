@@ -1,11 +1,13 @@
 import torch
+from ..core.attention import attention_forward
+from ..core.distributed import current_sequence_parallel_state, sequence_parallel_recipe
 from .general_modules import TimestepEmbeddings, AdaLayerNorm, RMSNorm
 from einops import rearrange
 
 
 def interact_with_ipadapter(hidden_states, q, ip_k, ip_v, scale=1.0):
     batch_size, num_tokens = hidden_states.shape[0:2]
-    ip_hidden_states = torch.nn.functional.scaled_dot_product_attention(q, ip_k, ip_v)
+    ip_hidden_states = attention_forward(q, ip_k, ip_v, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d")
     ip_hidden_states = ip_hidden_states.transpose(1, 2).reshape(batch_size, num_tokens, -1)
     hidden_states = hidden_states + scale * ip_hidden_states
     return hidden_states
@@ -90,7 +92,7 @@ class FluxJointAttention(torch.nn.Module):
 
         q, k = self.apply_rope(q, k, image_rotary_emb)
 
-        hidden_states = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask)
+        hidden_states = attention_forward(q, k, v, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", attn_mask=attn_mask)
         hidden_states = hidden_states.transpose(1, 2).reshape(batch_size, -1, self.num_heads * self.head_dim)
         hidden_states = hidden_states.to(q.dtype)
         hidden_states_b, hidden_states_a = hidden_states[:, :hidden_states_b.shape[1]], hidden_states[:, hidden_states_b.shape[1]:]
@@ -105,6 +107,10 @@ class FluxJointAttention(torch.nn.Module):
 
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"hidden_states_a": 1, "hidden_states_b": 1, "image_rotary_emb": 2, "text_rotary_emb": 2},
+    gather_dimensions_for_outputs={"hidden_states_a": 1, "hidden_states_b": 1},
+)
 class FluxJointTransformerBlock(torch.nn.Module):
     def __init__(self, dim, num_attention_heads):
         super().__init__()
@@ -128,7 +134,10 @@ class FluxJointTransformerBlock(torch.nn.Module):
         )
 
 
-    def forward(self, hidden_states_a, hidden_states_b, temb, image_rotary_emb, attn_mask=None, ipadapter_kwargs_list=None):
+    def forward(self, hidden_states_a, hidden_states_b, temb, image_rotary_emb, text_rotary_emb=None, attn_mask=None, ipadapter_kwargs_list=None):
+        if current_sequence_parallel_state() is not None and (attn_mask is not None or ipadapter_kwargs_list is not None):
+            raise NotImplementedError("Flux sequence parallelism does not support attention masks or IP-Adapter")
+        image_rotary_emb = torch.cat((text_rotary_emb, image_rotary_emb), dim=2)
         norm_hidden_states_a, gate_msa_a, shift_mlp_a, scale_mlp_a, gate_mlp_a = self.norm1_a(hidden_states_a, emb=temb)
         norm_hidden_states_b, gate_msa_b, shift_mlp_b, scale_mlp_b, gate_mlp_b = self.norm1_b(hidden_states_b, emb=temb)
 
@@ -179,7 +188,7 @@ class FluxSingleAttention(torch.nn.Module):
 
         q, k = self.apply_rope(q_a, k_a, image_rotary_emb)
 
-        hidden_states = torch.nn.functional.scaled_dot_product_attention(q, k, v)
+        hidden_states = attention_forward(q, k, v, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d")
         hidden_states = hidden_states.transpose(1, 2).reshape(batch_size, -1, self.num_heads * self.head_dim)
         hidden_states = hidden_states.to(q.dtype)
         return hidden_states
@@ -202,6 +211,10 @@ class AdaLayerNormSingle(torch.nn.Module):
 
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"hidden_states_a": 1, "hidden_states_b": 1, "image_rotary_emb": 2},
+    gather_dimensions_for_outputs={"hidden_states_a": 1, "hidden_states_b": 1},
+)
 class FluxSingleTransformerBlock(torch.nn.Module):
     def __init__(self, dim, num_attention_heads):
         super().__init__()
@@ -234,7 +247,9 @@ class FluxSingleTransformerBlock(torch.nn.Module):
 
         q, k = self.apply_rope(q, k, image_rotary_emb)
 
-        hidden_states = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask)
+        hidden_states = attention_forward(q, k, v,
+            q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d",
+            attn_mask=attn_mask)
         hidden_states = hidden_states.transpose(1, 2).reshape(batch_size, -1, self.num_heads * self.head_dim)
         hidden_states = hidden_states.to(q.dtype)
         if ipadapter_kwargs_list is not None:
@@ -243,6 +258,8 @@ class FluxSingleTransformerBlock(torch.nn.Module):
 
 
     def forward(self, hidden_states_a, hidden_states_b, temb, image_rotary_emb, attn_mask=None, ipadapter_kwargs_list=None):
+        if current_sequence_parallel_state() is not None and (attn_mask is not None or ipadapter_kwargs_list is not None):
+            raise NotImplementedError("Flux sequence parallelism does not support attention masks or IP-Adapter")
         residual = hidden_states_a
         norm_hidden_states, gate = self.norm(hidden_states_a, emb=temb)
         hidden_states_a = self.to_qkv_mlp(norm_hidden_states)

@@ -67,10 +67,11 @@ class QwenImagePipeline(BasePipeline):
         tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
         processor_config: ModelConfig = None,
         vram_limit: float = None,
+        parallel_config=None,
     ):
         # Initialize pipeline
         pipe = QwenImagePipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("qwen_image_text_encoder")
@@ -724,7 +725,6 @@ def model_fn_qwen_image(
     layer_input_latents=None,
     layer_num=None,
     context_latents=None,
-    enable_fp8_attention=False,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     edit_rope_interpolation=False,
@@ -792,6 +792,7 @@ def model_fn_qwen_image(
         blockwise_controlnet_conditioning = blockwise_controlnet.preprocess(
             blockwise_controlnet_inputs, blockwise_controlnet_conditioning)
 
+    image_rotary_emb, text_rotary_emb = image_rotary_emb
     for block_id, block in enumerate(dit.transformer_blocks):
         text, image = gradient_checkpoint_forward(
             block,
@@ -801,8 +802,8 @@ def model_fn_qwen_image(
             text=text,
             temb=conditioning,
             image_rotary_emb=image_rotary_emb,
+            text_rotary_emb=text_rotary_emb,
             attention_mask=attention_mask,
-            enable_fp8_attention=enable_fp8_attention,
             modulate_index=modulate_index,
             kv_cache=None if kv_cache is None else kv_cache.get(f"block_{block_id}"),
         )
