@@ -1,0 +1,36 @@
+env_clone_source: "diffsynth"
+
+# 统一的项目目录结构（基于 packages/{model-name}/）
+#
+# packages/{model-name}/
+# ├── {target-library}/          # 目标模型库
+# │   └── models/                # 真实目录
+# │       └── model-owner/
+# │           └── Model-Name/ → ~/.cache/modelscope/hub/models/model-owner/Model-Name
+# ├── DiffSynth-Studio/         # DiffSynth 框架
+# │   └── models/                # 真实目录
+# │       └── model-owner/
+# │           └── Model-Name/ → ~/.cache/modelscope/hub/models/model-owner/Model-Name
+# └── .sisyphus/                # 中间报告和日志
+#     ├── plans/                # Plan 文件（执行前制定）
+#     ├── skill_work_report/    # 渐进式步骤报告
+#     ├── user_report/          # 向用户报告
+#     ├── execution-logs/       # 执行日志（scripts/, outputs/, checkpoints/）
+#     ├── tests/                # 测试结果 + 输出审查
+#     ├── integration-blueprints/  # 蓝图报告 + 可行性分析
+#     ├── code-reports/         # 代码阅读报告
+#     ├── reports/              # Pipeline 设计蓝图
+#     ├── pr/                   # PR 描述
+#     └── pr-review/            # PR Review 反馈
+#
+# 模型软链接结构：
+#   models/ 是真实目录，内部每个模型 repo 单独软链接到 ~/.cache/modelscope/hub/models/
+#   目标库和 DiffSynth 各自拥有独立的 models/，但软链接指向同一个缓存路径
+#
+# 路径说明：
+# - diffsynth_root: packages/{model-name}/DiffSynth-Studio/
+# - target_path: packages/{model-name}/{target-library}/（从蓝图报告获取）
+# - sisyphus_root: packages/{model-name}/.sisyphus/
+#
+# 这些路径在运行时通过对话上下文中的 {model-name} 动态确定
+# DiffSynth-Studio clone URL: https://github.com/modelscope/DiffSynth-Studio.git
