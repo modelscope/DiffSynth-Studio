@@ -231,7 +231,7 @@ See also:
 
 - **December 18, 2024** We propose ArtAug, a method to improve text-to-image models through synthesis-understanding interaction. We trained an ArtAug enhancement module for FLUX.1-dev in LoRA format. This model incorporates the aesthetic understanding of Qwen2-VL-72B into FLUX.1-dev, thereby improving the quality of generated images.
   - Paper: https://arxiv.org/abs/2412.12888
-  - Example: https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/ArtAug
+  - Example: https://github.com/modelscope/DiffSynth-Studio/blob/main/docs/en/Training/Differential_LoRA.md
   - Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1), [HuggingFace](https://huggingface.co/ECNU-CILab/ArtAug-lora-FLUX.1dev-v1)
   - Demo: [ModelScope](https://modelscope.cn/aigc/imageGeneration?tab=advanced&versionId=7228&modelType=LoRA&sdVersion=FLUX_1&modelUrl=modelscope%3A%2F%2FDiffSynth-Studio%2FArtAug-lora-FLUX.1dev-v1%3Frevision%3Dv1.0), HuggingFace (coming soon)
 
@@ -545,7 +545,7 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 > A single LoRA that significantly enhances detail and aesthetics.
 
-- Detailed Page: [./examples/ArtAug/](./examples/ArtAug/)
+- Detailed Page: [docs/en/Training/Differential_LoRA.md](./docs/en/Training/Differential_LoRA.md)
 - Paper: [ArtAug: Enhancing Text-to-Image Generation through Synthesis-Understanding Interaction](https://arxiv.org/abs/2412.12888)
 - Model: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1), [HuggingFace](https://huggingface.co/ECNU-CILab/ArtAug-lora-FLUX.1dev-v1)
 - Online Experience: [ModelScope AIGC Tab](https://www.modelscope.cn/aigc/imageGeneration?tab=advanced&versionId=7228&modelType=LoRA&sdVersion=FLUX_1&modelUrl=modelscope%3A%2F%2FDiffSynth-Studio%2FArtAug-lora-FLUX.1dev-v1%3Frevision%3Dv1.0)
