@@ -15,7 +15,7 @@ accelerate launch examples/minimax_h3_image/model_training/train.py \
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/MiniMax-H3-Image-split-cache" \
   --lora_base_model "dit" \
-  --lora_target_modules "" \
+  --lora_target_modules "attn.qkv_proj,attn.out_proj,mlp.fc1,mlp.fc2" \
   --lora_rank 32 \
   --use_gradient_checkpointing \
   --task "sft:data_process" \
@@ -34,7 +34,7 @@ accelerate launch examples/minimax_h3_image/model_training/train.py \
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/MiniMax-H3-Image-split-lora" \
   --lora_base_model "dit" \
-  --lora_target_modules "" \
+  --lora_target_modules "attn.qkv_proj,attn.out_proj,mlp.fc1,mlp.fc2" \
   --lora_rank 32 \
   --use_gradient_checkpointing \
   --task "sft:train" \
@@ -60,7 +60,7 @@ accelerate launch examples/minimax_h3_image/model_training/train.py \
 #   --remove_prefix_in_ckpt "pipe.dit." \
 #   --output_path "./models/train/MiniMax-H3-Image-Edit-split-cache" \
 #   --lora_base_model "dit" \
-#   --lora_target_modules "" \
+#   --lora_target_modules "attn.qkv_proj,attn.out_proj,mlp.fc1,mlp.fc2" \
 #   --lora_rank 32 \
 #   --use_gradient_checkpointing \
 #   --task "sft:data_process" \
@@ -78,7 +78,7 @@ accelerate launch examples/minimax_h3_image/model_training/train.py \
 #   --remove_prefix_in_ckpt "pipe.dit." \
 #   --output_path "./models/train/MiniMax-H3-Image-Edit-split-lora" \
 #   --lora_base_model "dit" \
-#   --lora_target_modules "" \
+#   --lora_target_modules "attn.qkv_proj,attn.out_proj,mlp.fc1,mlp.fc2" \
 #   --lora_rank 32 \
 #   --use_gradient_checkpointing \
 #   --task "sft:train" \
