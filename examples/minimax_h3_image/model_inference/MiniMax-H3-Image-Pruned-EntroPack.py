@@ -19,6 +19,7 @@ Available packages:
         models/dit_6bit_int8.safetensors      int8 gemm, 6 bit
         models/dit_4p5bit_int8.safetensors    int8 gemm, 4.5 bit
     text encoder (shared by every MiniMax-H3 model):
+        models/MiniMax-H3/text_encoder_3bpp.safetensors  3 bit
         models/MiniMax-H3/text_encoder_4bpp.safetensors  4 bit
         models/MiniMax-H3/text_encoder_5bpp.safetensors  5 bit
         models/MiniMax-H3/text_encoder_6bpp.safetensors  6 bit
@@ -39,7 +40,7 @@ from PIL import Image
 dit_model_id = "DiffSynth-Studio/MiniMax-H3-Image-EntroPack"
 text_encoder_model_id = "DiffSynth-Studio/EntroPackPreQuants"
 dit_package = "models/dit_extreme_3bpp.safetensors"
-text_encoder_package = "models/MiniMax-H3/text_encoder_4bpp.safetensors"
+text_encoder_package = "models/MiniMax-H3/text_encoder_3bpp.safetensors"
 
 
 def register_prequantized(model_id, package_pattern):
