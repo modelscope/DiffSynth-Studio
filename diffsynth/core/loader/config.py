@@ -1,4 +1,4 @@
-import torch, glob, os, sys
+import torch, glob, os, sys, json
 from typing import Optional, Union, Dict
 from dataclasses import dataclass
 from typing import Optional
@@ -43,6 +43,8 @@ class ModelConfig:
     path: Union[str, list[str]] = None
     model_id: str = None
     origin_file_pattern: Union[str, list[str]] = None
+    origin_config_file: str = None
+    config_file: str = None
     download_source: str = None
     local_model_path: str = None
     skip_download: bool = None
@@ -91,8 +93,9 @@ class ModelConfig:
         else:
             return self.skip_download
 
-    def download(self):
-        origin_file_pattern = self.parse_original_file_pattern()
+    def download(self, origin_file_pattern=None):
+        if origin_file_pattern is None:
+            origin_file_pattern = self.parse_original_file_pattern()
         downloaded_files = glob.glob(origin_file_pattern, root_dir=os.path.join(self.local_model_path, self.model_id))
         download_source = self.parse_download_source()
         if download_source.lower() == "modelscope":
@@ -127,6 +130,20 @@ class ModelConfig:
             self.local_model_path = os.environ.get('DIFFSYNTH_MODEL_BASE_PATH')
         elif self.local_model_path is None:
             self.local_model_path = "./models"
+
+    def register_model(self):
+        if self.origin_config_file is not None and self.config_file is None:
+            self.reset_local_model_path()
+            self.config_file = os.path.join(self.local_model_path, self.model_id, self.origin_config_file)
+            if not self.parse_skip_download() and not os.path.exists(self.config_file):
+                self.download(self.origin_config_file)
+        if self.config_file is None:
+            return
+        from ...configs import MODEL_CONFIGS
+        with open(self.config_file) as handle:
+            entry = json.load(handle)
+        if not any(config.get("model_hash") == entry["model_hash"] for config in MODEL_CONFIGS):
+            MODEL_CONFIGS.append(entry)
 
     def check_download_source(self):
         download_source = self.parse_download_source().lower()
@@ -163,6 +180,7 @@ class ModelConfig:
                 self.path = glob.glob(os.path.join(self.local_model_path, self.model_id, self.origin_file_pattern))
         if isinstance(self.path, list) and len(self.path) == 1:
             self.path = self.path[0]
+        self.register_model()
 
     def vram_config(self):
         return {

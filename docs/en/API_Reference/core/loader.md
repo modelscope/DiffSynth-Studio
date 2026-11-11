@@ -49,6 +49,71 @@ config = ModelConfig(path=[
 ])
 ```
 
+### Loading Pre-quantized Models
+
+A pre-quantized checkpoint is usually published together with a JSON file that describes how to rebuild the model (an entry of `MODEL_CONFIGS` with the matching `quant_config`). Fill in `origin_file_pattern` for the weights and `origin_config_file` for the JSON file. After calling `download_if_necessary`, the JSON file is downloaded to `config.config_file` and its entry is registered automatically, so the checkpoint can be loaded like an ordinary model:
+
+```python
+from diffsynth.core import ModelConfig
+
+config = ModelConfig(
+    model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack",
+    origin_file_pattern="models/dit_extreme_3bpp.safetensors",
+    origin_config_file="models/dit_extreme_3bpp.json",
+)
+config.download_if_necessary()
+print(config.path, config.config_file)
+```
+
+If the JSON file is already available locally, pass it as `config_file` and call `config.register_prequantized()` before loading the model.
+
+#### Config File Format
+
+The JSON file contains one JSON object, which is exactly one `MODEL_CONFIGS` entry:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `model_hash` | Yes | Hash of the quantized checkpoint, computed by [`hash_model_file`](#model-hash) (MD5 over the tensor names and shapes). The loader uses it to detect the model type, so it must match the checkpoint. |
+| `model_name` | Yes | Name used by pipelines to fetch the model, e.g. `qwen_image_dit`. |
+| `model_class` | Yes | Import path of the model class, e.g. `diffsynth.models.qwen_image_dit.QwenImageDiT`. |
+| `quant_config` | Yes | Keyword arguments of [`QuantizeConfig`](../../Pipeline_Usage/Quantization.md). `load_prequantized` must be `true`, and the other fields must match the quantization used when the checkpoint was saved. |
+| `state_dict_converter` | No | Import path of a state dict converter, see [Integrating Your Model](../../Developer_Guide/Integrating_Your_Model.md). |
+| `extra_kwargs` | No | Extra keyword arguments passed to the model constructor. |
+
+When the checkpoint is quantized with a single method, `quant_config` holds that method and its arguments:
+
+```json
+{
+    "model_hash": "8c6f5ccfe9ffe861675ca0da95bb9295",
+    "model_name": "minimax_h3_text_encoder",
+    "model_class": "diffsynth.models.minimax_h3_text_encoder.MiniMaxH3TextEncoder",
+    "quant_config": {
+        "method": "entropack_lossy_quant",
+        "load_prequantized": true,
+        "backend_config_kwargs": {"target_bpp": 4.0, "row_rdo_iterations": 2, "row_rdo_candidates": 20}
+    }
+}
+```
+
+When different modules use different methods, use `configs` instead of `method`; each item is a `QuantizeConfig` selecting its modules with `target_modules` / `exclude_modules`, all items share the same `mode`, and `load_prequantized` is set on the outer object:
+
+```json
+{
+    "model_hash": "adab44d835193ce1b2bd0f85f0586f0e",
+    "model_name": "minimax_h3_image_dit",
+    "model_class": "diffsynth.models.minimax_h3_image_dit.MiniMaxH3ImageDiTPruned",
+    "quant_config": {
+        "load_prequantized": true,
+        "configs": [
+            {"method": "entropack_lossy_quant", "backend_config_kwargs": {"target_bpp": 2.91}, "exclude_modules": ["video_patch_proj", "condition_proj"]},
+            {"method": "entropack_lossy_quant", "backend_config_kwargs": {"target_bpp": 8.5}, "target_modules": ["video_patch_proj", "condition_proj"]}
+        ]
+    }
+}
+```
+
+The file name is arbitrary; naming it after the checkpoint (`model.safetensors` → `model.json`) is a common convention. If an entry with the same `model_hash` is already in `MODEL_CONFIGS`, the entry in the file is ignored.
+
 ### VRAM Management Configuration
 
 `ModelConfig` also contains VRAM management configuration information. See [VRAM Management](../../Pipeline_Usage/VRAM_management.md#more-usage-methods) for details.
