@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 
 from ..core.gradient import gradient_checkpoint_forward
-from ..core.vram.initialization import skip_model_initialization
 from .minimax_h3_dit import (
     MINIMAX_H3_ADALN_MODALITY_NUM,
     MiniMaxH3AdalnProj,
@@ -380,13 +379,12 @@ class MiniMaxH3ImageDiTPruned(MiniMaxH3ImageDiT):
     """
 
     def __init__(self, **kwargs):
-        with skip_model_initialization():
-            super().__init__(**kwargs)
-            for block in self.blocks:
-                block.adaln_proj = _to_adaln_table(block.adaln_proj)
-            self.final_layer.adaln_proj = _to_adaln_table(self.final_layer.adaln_proj)
-            del self.final_layer.video_out
-            self.time_embedder = None
+        super().__init__(**kwargs)
+        for block in self.blocks:
+            block.adaln_proj = _to_adaln_table(block.adaln_proj)
+        self.final_layer.adaln_proj = _to_adaln_table(self.final_layer.adaln_proj)
+        del self.final_layer.video_out
+        self.time_embedder = None
 
     def forward(
         self,
