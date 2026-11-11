@@ -38,7 +38,7 @@ from PIL import Image
 
 dit_model_id = "DiffSynth-Studio/MiniMax-H3-Image-EntroPack"
 text_encoder_model_id = "DiffSynth-Studio/EntroPackPreQuants"
-dit_package = "models/dit_7bit_int8.safetensors"
+dit_package = "models/dit_extreme_3bpp.safetensors"
 text_encoder_package = "models/MiniMax-H3/text_encoder_4bpp.safetensors"
 
 vram_config = {
