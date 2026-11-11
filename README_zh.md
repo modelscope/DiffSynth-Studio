@@ -41,7 +41,7 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
-- **2026年11月10日** 现已支持 MiniMax-H3-Image，这是 MiniMax-H3 家族中的图像模型，支持文生图与参考图编辑的统一推理、低显存推理，以及全量与 LoRA 训练。该模型被蒸馏到 6 步采样，Transformer 每一步对应一个独立输出头，无需超分即可直接生成约 1600 万像素的图像。详情请见[文档](/docs/zh/Model_Details/MiniMax-H3-Image.md)与[示例代码](/examples/minimax_h3_image/)。
+- **2026年11月10日** 现已支持 MiniMax-H3-Image，这是 MiniMax-H3 家族中的图像模型，支持文生图与参考图编辑的统一推理、低显存推理，以及全量与 LoRA 训练。该模型被蒸馏到 6 步采样，Transformer 每一步对应一个独立输出头，无需超分即可直接生成约 1600 万像素的图像。此外，我们还提供了 AdaLN 剪枝版 Transformer 的 [EntroPack 量化模型](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-EntroPack)，覆盖 8bit 到极限 3bit 多档，每档均提供 INT8 GEMM 版本；极限 3bit 档把 DiT 从 bf16 的 40.2 GB 压缩到仅 7.67 GB。详情请见[文档](/docs/zh/Model_Details/MiniMax-H3-Image.md)与[示例代码](/examples/minimax_h3_image/)。
 
 - **2026年10月21日** 我们已支持 Fibo 2.0，包含统一的文生图与图像编辑推理、掩码编辑、多参考图像编辑、文字渲染、低显存推理，以及 [Fibo-2.0-dev](https://www.modelscope.cn/models/briaai/Fibo-2.0-dev) 在文生图和图像编辑任务上的 LoRA 与全量训练。详情请参考[文档](/docs/zh/Model_Details/Fibo.md)和[示例代码](/examples/fibo/)。
 
