@@ -16,7 +16,7 @@ pip install -e .
 
 ## 快速开始
 
-运行以下代码即可先用文本生成一张图像，再对刚生成的图像做一次编辑。该脚本把全部组件都放在显卡上，总共需要约 135 GB 显存（文本编码器 66.7 GB、Transformer 66.3 GB、图像 VAE 2.3 GB）；显存不够时请使用[低显存示例](/examples/minimax_h3_image/model_inference_low_vram/MiniMax-H3-Image.py)，它把文本编码器与 VAE 按磁盘流式加载、把 Transformer 以 int8 存放在主机内存。
+运行以下代码即可先用文本生成一张图像，再对刚生成的图像做一次编辑。该脚本把全部组件都放在显卡上，总共需要约 135 GB 显存（文本编码器 66.7 GB、Transformer 66.3 GB、图像 VAE 2.3 GB）；显存不够时请使用[低显存示例](/examples/minimax_h3_image/model_inference_low_vram/MiniMax-H3-Image.py)，它把文本编码器与 VAE 按磁盘流式加载、把 Transformer 以 int8 存放在主机内存。面向 24GB 消费级显卡与数据中心部署，参见[不同硬件上的推理方案](#不同硬件上的推理方案)。
 
 ```python
 import torch
@@ -113,6 +113,198 @@ image.save("MiniMax-H3-Image-Edit.jpg")
 - `distilled=False` 配合 `num_inference_steps=N` 会切换到普通 flow-match 采样；此时 Transformer 的 6 个输出头按噪声水平就近选择，而不是按步序号。
 
 在单张 H20（96 GB）上实测：快速开始的脚本把文本编码器、Transformer 与 VAE 全部驻留在显卡上，共需约 135 GB 显存，因此单张 96 GB 显卡放不下；低显存示例把文本编码器与 VAE 改为磁盘流式、把 Transformer 与每步输出头以 int8 存放在主机内存，生成一张 4096×4096 图像再对其做一次编辑，含模型加载共约 4.5 分钟，显存峰值约 38 GiB。
+
+## 不同硬件上的推理方案
+
+MiniMax-H3-Image 的模型参数量非常大，针对不同的硬件条件，我们提供了多种推理方案。
+
+### 消费级 NVIDIA GPU RTX 4090
+
+以 RTX 4090 为例，GPU 显存只有 24G，因此需要对模型进行量化压缩，我们推荐使用 DiffSynth + EntroPack 进行推理。
+
+安装 Python 环境：
+
+```shell
+pip install diffsynth==2.2.2
+pip install cupy-cuda12x  # or cupy-cuda13x
+```
+
+#### 方案一：24GB 显存 + 32GB 内存
+
+开启 INT8 量化 + ConvRot 提升精度，DiT 部分开启动态 CPU Offload，Text Encoder 部分开启 Disk Offload 流式加载和推理，图像生成质量几乎无损。
+
+```python
+import torch
+from diffsynth.pipelines.minimax_h3_image import MiniMaxH3ImagePipeline, ModelConfig
+
+quant_vram_config = {
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+offload_vram_config = {
+    # 如果有更多内存，可以设置 offload_vram_config = quant_vram_config
+    "offload_dtype": "disk",
+    "offload_device": "disk",
+    "onload_dtype": "disk",
+    "onload_device": "disk",
+    "preparing_dtype": torch.bfloat16,
+    "preparing_device": "cuda",
+    "computation_dtype": torch.bfloat16,
+    "computation_device": "cuda",
+}
+pipe = MiniMaxH3ImagePipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(
+            model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack",
+            origin_file_pattern="models/dit_8bit_int8.safetensors",
+            origin_config_file="models/dit_8bit_int8.json",
+            **quant_vram_config,
+        ),
+        ModelConfig(
+            model_id="DiffSynth-Studio/EntroPackPreQuants",
+            origin_file_pattern="models/MiniMax-H3/text_encoder_int8_convrot.safetensors",
+            origin_config_file="models/MiniMax-H3/text_encoder_int8_convrot.json",
+            **offload_vram_config,
+        ),
+        ModelConfig(
+            model_id="MiniMax/MiniMax-H3-Image",
+            origin_file_pattern="pdd_fused_heads.safetensors",
+            **quant_vram_config,
+        ),
+        ModelConfig(
+            model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack",
+            origin_file_pattern="models/vae_int8.safetensors",
+            **quant_vram_config,
+        ),
+    ],
+    processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="processor/"),
+    vram_limit=20,
+)
+prompt = "A cat is sitting on the table. A book is on the table."
+image = pipe(prompt=prompt, height=4096, width=4096, seed=42)
+image.save("MiniMax-H3-Image-Pruned-EntroPack.jpg")
+```
+
+#### 方案二：24GB 显存 + 8GB 内存
+
+以 8.5bit、5bit 和 2.9bit 混合量化到 3bit 的平均精度，无任何 Offload，生成大量图片时速度最快。
+
+```python
+import torch
+from diffsynth.pipelines.minimax_h3_image import MiniMaxH3ImagePipeline, ModelConfig
+
+pipe = MiniMaxH3ImagePipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(
+            model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack",
+            origin_file_pattern="models/dit_extreme_3bpp.safetensors",
+            origin_config_file="models/dit_extreme_3bpp.json",
+        ),
+        ModelConfig(
+            model_id="DiffSynth-Studio/EntroPackPreQuants",
+            origin_file_pattern="models/MiniMax-H3/text_encoder_3bpp.safetensors",
+            origin_config_file="models/MiniMax-H3/text_encoder_3bpp.json",
+        ),
+        ModelConfig(
+            model_id="MiniMax/MiniMax-H3-Image",
+            origin_file_pattern="pdd_fused_heads.safetensors",
+        ),
+        ModelConfig(
+            model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack",
+            origin_file_pattern="models/vae_int8.safetensors",
+        ),
+    ],
+    processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="processor/"),
+)
+prompt = "A cat is sitting on the table. A book is on the table."
+image = pipe(prompt=prompt, height=4096, width=4096, seed=42)
+image.save("MiniMax-H3-Image-Pruned-EntroPack.jpg")
+```
+
+### NVIDIA GPU H20
+
+H20 是目前广泛用于数据中心服务器上的低成本推理 GPU，使用 DiffSynth + EntroPack，首先使用 DiffSynth 中的自定义注意力算子，启用 Sage Attention 中量化后的注意力算子（以下代码需要在 `import diffsynth` 之前执行）。
+
+```python
+import os
+os.environ["DIFFSYNTH_ATTENTION_IMPLEMENTATION"] = "sage_attention_h20_fast"
+from sageattention import sageattn_qk_int8_pv_fp8_cuda_sm90
+from diffsynth.core.attention.common import rearrange_out, rearrange_qkv
+from diffsynth.core.attention.registry import register_attention_implementation
+
+def sage_attention_h20_fast(q, k, v, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, scale=None):
+    required_in_pattern, required_out_pattern = "b s n d", "b s n d"
+    q, k, v = rearrange_qkv(q, k, v, q_pattern, k_pattern, v_pattern, required_in_pattern, dims)
+    q, k, v = q.contiguous(), k.contiguous(), v.contiguous()
+    out = sageattn_qk_int8_pv_fp8_cuda_sm90(
+        q, k, v,
+        tensor_layout="NHD",
+        qk_quant_gran="per_warp",
+        pv_accum_dtype="fp32+fp32",
+        smooth_k=False,
+        is_causal=False,
+        sm_scale=scale,
+    )
+    out = rearrange_out(out, out_pattern, required_out_pattern, dims)
+    return out
+
+register_attention_implementation(
+    "sage_attention_h20_fast",
+    sage_attention_h20_fast,
+    supports_causal=False,
+    supports_window=False,
+    supports_mask=False,
+)
+```
+
+启用 INT8 量化 + ConvRot 提升精度 + 编译加速，开始模型推理：
+
+```python
+import torch
+from diffsynth.pipelines.minimax_h3_image import MiniMaxH3ImagePipeline, ModelConfig
+
+pipe = MiniMaxH3ImagePipeline.from_pretrained(
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+    model_configs=[
+        ModelConfig(
+            model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack",
+            origin_file_pattern="models/dit_8bit_int8.safetensors",
+            origin_config_file="models/dit_8bit_int8.json",
+        ),
+        ModelConfig(
+            model_id="DiffSynth-Studio/EntroPackPreQuants",
+            origin_file_pattern="models/MiniMax-H3/text_encoder_int8_convrot.safetensors",
+            origin_config_file="models/MiniMax-H3/text_encoder_int8_convrot.json",
+        ),
+        ModelConfig(
+            model_id="MiniMax/MiniMax-H3-Image",
+            origin_file_pattern="pdd_fused_heads.safetensors",
+        ),
+        ModelConfig(
+            model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack",
+            origin_file_pattern="models/vae_int8.safetensors",
+        ),
+    ],
+    processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="processor/"),
+)
+pipe.compile_pipeline()
+prompt = "A cat is sitting on the table. A book is on the table."
+image = pipe(prompt=prompt, height=4096, width=4096, seed=42)
+image.save("MiniMax-H3-Image-Pruned-EntroPack.jpg")
+```
+
+这个推理方案需要约 50GB 显存，首次推理有减速效果，其后每次推理都会加速，适合部署线上推理服务。
 
 ## 模型训练
 
