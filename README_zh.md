@@ -335,6 +335,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 模型一览：
 
 - 图像生成
+    - MiniMax-H3-Image：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/MiniMax-H3-Image.html)、[样例代码](/examples/minimax_h3_image/)
     - Fibo 2.0：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Fibo.html)、[样例代码](/examples/fibo/)
     - MOSS-Image：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/MOSS-Image.html)、[样例代码](/examples/moss_image/)
     - FLUX.3：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/FLUX.3.html)、[样例代码](/examples/flux3/)

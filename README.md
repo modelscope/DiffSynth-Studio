@@ -348,6 +348,7 @@ Quick start: experience popular and the latest models:
 Model overview:
 
 - Image generation
+    - MiniMax-H3-Image: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/MiniMax-H3-Image.html), [Example code](/examples/minimax_h3_image/)
     - Fibo 2.0: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/Fibo.html), [Example code](/examples/fibo/)
     - MOSS-Image: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/MOSS-Image.html), [Example code](/examples/moss_image/)
     - FLUX.3: [Documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Model_Details/FLUX.3.html), [Example code](/examples/flux3/)

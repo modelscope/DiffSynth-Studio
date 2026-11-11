@@ -105,9 +105,10 @@ image.save("MiniMax-H3-Image-Edit.jpg")
 
 ### 采样
 
-- 模型在固定的 sigma 网格上进行 6 步采样，Transformer 每一步对应一个独立输出头，因此采样步数固定：`num_inference_steps` 只能是 6。
-- 模型已蒸馏引导，因此没有 `negative_prompt`，也没有 `cfg_scale`。
+- 模型在固定的 sigma 网格上进行 6 步采样，Transformer 每一步对应一个独立输出头：`distilled=True`（默认）时 `num_inference_steps` 必须是 6。
 - 图像 VAE 以重叠分块（256 像素、至少 64 像素重叠）编解码并线性混合。分块是官方输出的组成部分，因此 `tiling=True`（默认）可以复现参考结果；`tiling=False` 会整图解码，显存占用高得多。
+- 支持 `cfg_scale` 与 `negative_prompt`。该模型经过引导蒸馏，默认值（`cfg_scale=1.0`、空的 `negative_prompt`）即复现官方行为；`cfg_scale` 大于 1 会额外执行一次无条件分支，并按 `uncond + cfg_scale * (cond - uncond)` 合并，仅用于实验——蒸馏权重并未针对这种用法训练。
+- `distilled=False` 配合 `num_inference_steps=N` 会切换到普通 flow-match 采样；此时 Transformer 的 6 个输出头按噪声水平就近选择，而不是按步序号。
 
 在单张 H20（96 GB）上实测：快速开始的脚本把文本编码器、Transformer 与 VAE 全部驻留在显卡上，共需约 135 GB 显存，因此单张 96 GB 显卡放不下；低显存示例把文本编码器与 VAE 改为磁盘流式、把 Transformer 与每步输出头以 int8 存放在主机内存，生成一张 4096×4096 图像再对其做一次编辑，含模型加载共约 4.5 分钟，显存峰值约 38 GiB。
 

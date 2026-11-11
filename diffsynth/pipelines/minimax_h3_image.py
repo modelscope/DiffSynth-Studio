@@ -48,6 +48,7 @@ class MiniMaxH3ImagePipeline(BasePipeline):
         self.in_iteration_models = ("dit", "pdd_heads")
         self.units = [
             MiniMaxH3ImageUnit_ShapeChecker(),
+            MiniMaxH3ImageUnit_EditImageResize(),
             MiniMaxH3ImageUnit_PromptEmbedder(),
             MiniMaxH3ImageUnit_InputImageEmbedder(),
             MiniMaxH3ImageUnit_NoiseInitializer(),
@@ -97,6 +98,8 @@ class MiniMaxH3ImagePipeline(BasePipeline):
         self,
         # Prompt
         prompt: str = "",
+        negative_prompt: str = "",
+        cfg_scale: float = 1.0,
         max_sequence_length: int = MINIMAX_H3_IMAGE_MAX_SEQUENCE_LENGTH,
         # Image editing
         images: Image.Image = None,
@@ -121,9 +124,9 @@ class MiniMaxH3ImagePipeline(BasePipeline):
 
         # Parameters
         inputs_posi = {"prompt": prompt}
-        inputs_nega = {}
+        inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
-            "prompt": prompt,
+            "cfg_scale": cfg_scale,
             "images": images,
             "height": height, "width": width, "min_generation_area": min_generation_area,
             "max_sequence_length": max_sequence_length,
@@ -138,15 +141,24 @@ class MiniMaxH3ImagePipeline(BasePipeline):
         # Denoise
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
-        for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
-            unique_timesteps, timestep_indices = inputs_shared["row_timestep_plan"][progress_id]
-            noise_pred = self.model_fn(
-                **models, **inputs_shared,
+
+        def denoise_step(branch, timestep, progress_id):
+            unique_timesteps, timestep_indices = branch["row_timestep_plan"][progress_id]
+            # The six output heads are distilled for the six-step grid; any other schedule picks the nearest head.
+            step_index = progress_id if distilled else None
+            return self.model_fn(
+                **models, **inputs_shared, **branch,
                 timestep=timestep,
                 unique_timesteps=unique_timesteps,
                 timestep_indices=timestep_indices,
-                pdd_step_index=progress_id,
+                pdd_step_index=step_index,
             )
+
+        for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
+            noise_pred = denoise_step(inputs_posi, timestep, progress_id)
+            if cfg_scale != 1.0:
+                noise_pred_nega = denoise_step(inputs_nega, timestep, progress_id)
+                noise_pred = noise_pred_nega + cfg_scale * (noise_pred - noise_pred_nega)
             inputs_shared["latents"] = self.step(self.scheduler, inputs_shared["latents"], progress_id, noise_pred=noise_pred)
 
         # Decode
@@ -188,13 +200,15 @@ class MiniMaxH3ImageUnit_ShapeChecker(PipelineUnit):
         }
 
 
-class MiniMaxH3ImageUnit_PromptEmbedder(PipelineUnit):
+class MiniMaxH3ImageUnit_EditImageResize(PipelineUnit):
+    """Resizes the reference images of an edit, once for the VAE and once for the text encoder.
+
+    Both copies are consumed by more than one branch (prompt and negative prompt), so the resizing lives in a shared
+    unit rather than in the prompt embedder.
+    """
+
     def __init__(self):
-        super().__init__(
-            input_params=("prompt", "images", "max_sequence_length"),
-            output_params=("prompt_embeds", "text_token_tags", "reference_images"),
-            onload_model_names=("text_encoder",),
-        )
+        super().__init__(input_params=("images",), output_params=("reference_images", "vision_images"))
 
     def resize_reference_image(self, image, min_short_edge, max_short_edge):
         # A reference image is not resized when its short edge is within the consumer's bounds; otherwise it is
@@ -213,6 +227,31 @@ class MiniMaxH3ImageUnit_PromptEmbedder(PipelineUnit):
             return image
         return image.resize(size, Image.LANCZOS)
 
+    def process(self, pipe: MiniMaxH3ImagePipeline, images):
+        if images is None:
+            return {"reference_images": None, "vision_images": None}
+        images = images if isinstance(images, list) else [images]
+        images = [ImageOps.exif_transpose(image).convert("RGB") for image in images]
+        for image in images:
+            if min(image.size) < MINIMAX_H3_IMAGE_CANVAS_MULTIPLE:
+                raise ValueError(f"A reference image needs at least {MINIMAX_H3_IMAGE_CANVAS_MULTIPLE} pixels on each side, but got {image.size}.")
+        return {
+            "reference_images": [self.resize_reference_image(image, MINIMAX_H3_IMAGE_REFERENCE_MIN_SHORT_EDGE, MINIMAX_H3_IMAGE_REFERENCE_MAX_SHORT_EDGE) for image in images],
+            "vision_images": [self.resize_reference_image(image, MINIMAX_H3_IMAGE_VISION_MIN_SHORT_EDGE, MINIMAX_H3_IMAGE_VISION_MAX_SHORT_EDGE) for image in images],
+        }
+
+
+class MiniMaxH3ImageUnit_PromptEmbedder(PipelineUnit):
+    def __init__(self):
+        super().__init__(
+            seperate_cfg=True,
+            input_params_posi={"prompt": "prompt"},
+            input_params_nega={"prompt": "negative_prompt"},
+            input_params=("vision_images", "max_sequence_length"),
+            output_params=("prompt_embeds", "text_token_tags"),
+            onload_model_names=("text_encoder",),
+        )
+
     def build_reference_tokens(self, pipe: MiniMaxH3ImagePipeline, images, max_sequence_length):
         tokenizer = pipe.tokenizer
         vision = pipe.processor.image_processor(images=images, return_tensors="pt")
@@ -228,23 +267,15 @@ class MiniMaxH3ImageUnit_PromptEmbedder(PipelineUnit):
             token_tags += [MINIMAX_H3_IMAGE_TEXT_TAG] * len(label_ids) + [MINIMAX_H3_IMAGE_IMAGE_TAG] * len(vision_ids)
         return token_ids, token_tags, vision["pixel_values"], vision["image_grid_thw"]
 
-    def process(self, pipe: MiniMaxH3ImagePipeline, prompt, images, max_sequence_length):
-        if not isinstance(prompt, str) or prompt == "":
-            raise ValueError(f"MiniMax-H3-Image packs one request into one sequence, so prompt must be a single non-empty string, but got {prompt!r}.")
-        if images is not None:
-            images = images if isinstance(images, list) else [images]
-            images = [ImageOps.exif_transpose(image).convert("RGB") for image in images]
-            for image in images:
-                if min(image.size) < MINIMAX_H3_IMAGE_CANVAS_MULTIPLE:
-                    raise ValueError(f"A reference image needs at least {MINIMAX_H3_IMAGE_CANVAS_MULTIPLE} pixels on each side, but got {image.size}.")
-            reference_images = [self.resize_reference_image(image, MINIMAX_H3_IMAGE_REFERENCE_MIN_SHORT_EDGE, MINIMAX_H3_IMAGE_REFERENCE_MAX_SHORT_EDGE) for image in images]
-            vision_images = [self.resize_reference_image(image, MINIMAX_H3_IMAGE_VISION_MIN_SHORT_EDGE, MINIMAX_H3_IMAGE_VISION_MAX_SHORT_EDGE) for image in images]
+    def process(self, pipe: MiniMaxH3ImagePipeline, prompt, vision_images, max_sequence_length):
+        # An empty prompt is allowed: the unconditional branch of classifier-free guidance usually is one.
+        prompt = " " if not prompt else prompt
+        if vision_images is not None:
             token_ids, token_tags, pixel_values, image_grid_thw = self.build_reference_tokens(pipe, vision_images, max_sequence_length)
             prompt_ids = pipe.tokenizer(prompt, add_special_tokens=False)["input_ids"][:max_sequence_length]
             token_ids += prompt_ids
             token_tags += [MINIMAX_H3_IMAGE_TEXT_TAG] * len(prompt_ids)
         else:
-            reference_images = None
             pixel_values, image_grid_thw = None, None
             token_ids = pipe.tokenizer(prompt, add_special_tokens=False)["input_ids"][:max_sequence_length]
             token_tags = [MINIMAX_H3_IMAGE_TEXT_TAG] * len(token_ids)
@@ -258,7 +289,6 @@ class MiniMaxH3ImageUnit_PromptEmbedder(PipelineUnit):
         return {
             "prompt_embeds": prompt_embeds.to(pipe.torch_dtype),
             "text_token_tags": torch.tensor(token_tags, dtype=torch.long),
-            "reference_images": reference_images,
         }
 
 
@@ -375,7 +405,10 @@ class MiniMaxH3ImageUnit_TimestepPlanner(PipelineUnit):
 
     def __init__(self):
         super().__init__(
-            input_params=("position_ids", "image_indices", "num_reference_rows"),
+            seperate_cfg=True,
+            input_params_posi={"position_ids": "position_ids", "image_indices": "image_indices"},
+            input_params_nega={"position_ids": "position_ids", "image_indices": "image_indices"},
+            input_params=("num_reference_rows",),
             output_params=("row_timestep_plan",),
         )
 
@@ -398,8 +431,11 @@ class MiniMaxH3ImageUnit_PackedSequenceBuilder(PipelineUnit):
 
     def __init__(self):
         super().__init__(
-            input_params=("text_token_tags", "reference_grids", "latent_height", "latent_width"),
-            output_params=("position_ids", "token_tags", "image_indices", "text_indices", "num_reference_rows"),
+            seperate_cfg=True,
+            input_params_posi={"text_token_tags": "text_token_tags"},
+            input_params_nega={"text_token_tags": "text_token_tags"},
+            input_params=("reference_grids", "latent_height", "latent_width"),
+            output_params=("position_ids", "token_tags", "image_indices", "text_indices"),
         )
 
     @classmethod
@@ -452,7 +488,7 @@ class MiniMaxH3ImageUnit_PackedSequenceBuilder(PipelineUnit):
         return position_ids, token_tags, image_indices, text_indices, num_reference_rows
 
     def process(self, pipe: MiniMaxH3ImagePipeline, text_token_tags, reference_grids, latent_height, latent_width):
-        position_ids, token_tags, image_indices, text_indices, num_reference_rows = self.build_packed_sequence(
+        position_ids, token_tags, image_indices, text_indices, _ = self.build_packed_sequence(
             text_token_tags, reference_grids, latent_height, latent_width,
         )
         return {
@@ -460,7 +496,6 @@ class MiniMaxH3ImageUnit_PackedSequenceBuilder(PipelineUnit):
             "token_tags": token_tags.to(pipe.device),
             "image_indices": image_indices.to(pipe.device),
             "text_indices": text_indices.to(pipe.device),
-            "num_reference_rows": num_reference_rows,
         }
 
 
@@ -500,9 +535,11 @@ def model_fn_minimax_h3_image(
         unique_timesteps = (1.0 - timestep.float().view(-1) / 1000).to(device=rows.device)
         timestep_indices = torch.zeros(position_ids.shape[1], dtype=torch.long, device=rows.device)
     if pdd_step_index is None:
-        # Training: the output head of the sampled noise level is the one the checkpoint distilled for it.
+        # Off the distilled grid (training, or a non-distilled schedule): use the head of the nearest noise level. The
+        # transformer consumes `t = 1 - sigma`, while the head grid is stored in sigma.
         sample_sigmas = torch.tensor(MINIMAX_H3_IMAGE_SAMPLE_SIGMAS, dtype=torch.float32, device=unique_timesteps.device)
-        pdd_step_index = int(torch.argmin((sample_sigmas - unique_timesteps[0].float()).abs()))
+        sigma = 1.0 - unique_timesteps[0].float()
+        pdd_step_index = int(torch.argmin((sample_sigmas - sigma).abs()))
 
     velocity_rows = dit(
         x=rows,

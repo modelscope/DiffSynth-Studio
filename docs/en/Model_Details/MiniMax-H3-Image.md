@@ -105,9 +105,10 @@ The prompt refers to the reference images in order as `<Picture 1>`, `<Picture 2
 
 ### Sampling
 
-- The checkpoint samples in six steps over a fixed sigma grid, and the transformer holds one output head per step, so the sampling loop is fixed: `num_inference_steps` may only be 6.
-- The model is guidance-distilled, so there is no `negative_prompt` and no `cfg_scale`.
+- The checkpoint samples in six steps over a fixed sigma grid, and the transformer holds one output head per step: with `distilled=True` (the default) `num_inference_steps` must be 6.
 - The image VAE works on overlapping tiles (256 px, at least 64 px of overlap) and blends them back together. Tiling is part of the released output, so `tiling=True` (the default) reproduces the reference results; `tiling=False` decodes the whole image at once and needs far more VRAM.
+- `cfg_scale` and `negative_prompt` are supported. The checkpoint is guidance-distilled, so the defaults (`cfg_scale=1.0` with an empty `negative_prompt`) reproduce the released behaviour; a larger `cfg_scale` runs the unconditional branch as well and combines the two as `uncond + cfg_scale * (cond - uncond)`, which is for experimentation only — the distilled weights were not trained for it.
+- `distilled=False` with `num_inference_steps=N` switches to an ordinary flow-match schedule; the transformer's six output heads are then selected by the nearest noise level instead of by step index.
 
 Measured on a single H20 (96 GB): the quick start script keeps the text encoder, the transformer and the VAE resident on the accelerator, which needs about 135 GB of VRAM and therefore does not fit on one 96 GB card. The low VRAM example streams the text encoder and the VAE from disk and stores the transformer and the per-step output heads as int8 in host memory: generating a 4096×4096 image and then editing it takes about 4.5 minutes in total including model loading, and peaks at about 38 GiB of VRAM.
 
