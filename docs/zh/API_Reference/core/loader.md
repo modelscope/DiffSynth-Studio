@@ -49,6 +49,71 @@ config = ModelConfig(path=[
 ])
 ```
 
+### 加载预量化模型
+
+预量化模型通常会随权重一起发布一个 JSON 文件，用于描述重建模型所需的信息（即 `MODEL_CONFIGS` 中包含 `quant_config` 的条目）。在 `ModelConfig` 中用 `origin_file_pattern` 填写权重文件，用 `origin_config_file` 填写该 JSON 文件；调用 `download_if_necessary` 后，JSON 文件会被下载到 `config.config_file`，其中的条目也会自动注册，此后该预量化模型可以像普通模型一样加载：
+
+```python
+from diffsynth.core import ModelConfig
+
+config = ModelConfig(
+    model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack",
+    origin_file_pattern="models/dit_extreme_3bpp.safetensors",
+    origin_config_file="models/dit_extreme_3bpp.json",
+)
+config.download_if_necessary()
+print(config.path, config.config_file)
+```
+
+如果该 JSON 文件已经在本地，则填入 `config_file`，并在加载模型前调用 `config.register_prequantized()`。
+
+#### 配置文件格式
+
+该 JSON 文件包含一个对象，即一个 `MODEL_CONFIGS` 条目：
+
+| 字段 | 是否必填 | 说明 |
+| --- | --- | --- |
+| `model_hash` | 是 | 量化权重文件的 hash，由 [`hash_model_file`](#模型哈希) 计算（张量名与形状的 MD5）。加载器用它识别模型类型，必须与权重文件一致。 |
+| `model_name` | 是 | 模型名称，pipeline 用它取用模型，例如 `qwen_image_dit`。 |
+| `model_class` | 是 | 模型类的导入路径，例如 `diffsynth.models.qwen_image_dit.QwenImageDiT`。 |
+| `quant_config` | 是 | 传递给 [`QuantizeConfig`](../../Pipeline_Usage/Quantization.md) 的参数，其中 `load_prequantized` 必须为 `true`，其余字段需与保存权重时的量化配置一致。 |
+| `state_dict_converter` | 否 | 权重格式转换器的导入路径，详见[模型集成](../../Developer_Guide/Integrating_Your_Model.md)。 |
+| `extra_kwargs` | 否 | 模型构造函数的额外参数。 |
+
+只使用一种量化方法时，`quant_config` 直接填写该方法及其参数：
+
+```json
+{
+    "model_hash": "8c6f5ccfe9ffe861675ca0da95bb9295",
+    "model_name": "minimax_h3_text_encoder",
+    "model_class": "diffsynth.models.minimax_h3_text_encoder.MiniMaxH3TextEncoder",
+    "quant_config": {
+        "method": "entropack_lossy_quant",
+        "load_prequantized": true,
+        "backend_config_kwargs": {"target_bpp": 4.0, "row_rdo_iterations": 2, "row_rdo_candidates": 20}
+    }
+}
+```
+
+混合量化时用 `configs` 代替 `method`，每一项是一个 `QuantizeConfig`，通过 `target_modules` / `exclude_modules` 选择它负责的模块；所有子项需使用相同的 `mode`，`load_prequantized` 只写在外层：
+
+```json
+{
+    "model_hash": "adab44d835193ce1b2bd0f85f0586f0e",
+    "model_name": "minimax_h3_image_dit",
+    "model_class": "diffsynth.models.minimax_h3_image_dit.MiniMaxH3ImageDiTPruned",
+    "quant_config": {
+        "load_prequantized": true,
+        "configs": [
+            {"method": "entropack_lossy_quant", "backend_config_kwargs": {"target_bpp": 2.91}, "exclude_modules": ["video_patch_proj", "condition_proj"]},
+            {"method": "entropack_lossy_quant", "backend_config_kwargs": {"target_bpp": 8.5}, "target_modules": ["video_patch_proj", "condition_proj"]}
+        ]
+    }
+}
+```
+
+文件名没有限制，通常按权重文件名命名（如 `model.safetensors` 对应 `model.json`）。如果 `MODEL_CONFIGS` 中已经存在相同 `model_hash` 的条目，文件中的条目会被忽略。
+
 ### 显存管理配置
 
 `ModelConfig` 也包含了显存管理配置信息，详见[显存管理](../../Pipeline_Usage/VRAM_management.md#更多使用方式)。

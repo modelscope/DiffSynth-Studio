@@ -448,6 +448,8 @@ from diffsynth.configs import MODEL_CONFIGS
 MODEL_CONFIGS.append(config_entry)
 ```
 
+如果该条目随量化权重一起以 JSON 文件的形式发布，也可以交给 `ModelConfig` 自动注册：把该 JSON 文件的路径填入 `origin_config_file`，调用 `download_if_necessary` 时会自动下载并追加条目（详见[配置文件格式](../API_Reference/core/loader.md#配置文件格式)）。
+
 **方式二：写入配置文件（永久生效）**。把上面的条目添加到 `diffsynth/configs/model_configs.py` 的 `MODEL_CONFIGS` 列表中，这样在本地无需再手动注册。如果你的量化权重已经公开发布，也欢迎把这个条目提交 PR 给我们，让其他用户可以直接加载。
 
 ### 第三步：加载推理
