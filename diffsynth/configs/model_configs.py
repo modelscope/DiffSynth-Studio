@@ -1593,11 +1593,11 @@ minimax_h3_series = [
         "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["qkv", "proj", "linear_fc1", "linear_fc2"]},
     },
     {
-        # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack", origin_file_pattern="models/text_encoder_8bit.safetensors")
-        "model_hash": "5e498d14ba9ab4f230685ca419f43949",
+        # Example: ModelConfig(model_id="DiffSynth-Studio/EntroPackPreQuants", origin_file_pattern="models/MiniMax-H3/text_encoder_4bpp.safetensors")
+        "model_hash": "8c6f5ccfe9ffe861675ca0da95bb9295",
         "model_name": "minimax_h3_text_encoder",
         "model_class": "diffsynth.models.minimax_h3_text_encoder.MiniMaxH3TextEncoder",
-        "quant_config": {"method": "entropack_lossy_quant", "load_prequantized": True, "backend_config_kwargs": {"target_bpp": 8.0, "row_rdo_iterations": 2, "row_rdo_candidates": 20}},
+        "quant_config": {"method": "entropack_lossy_quant", "load_prequantized": True, "backend_config_kwargs": {"target_bpp": 4.0, "row_rdo_iterations": 2, "row_rdo_candidates": 20}},
     },
     {
         # Example: ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/transformer/model*.safetensors")

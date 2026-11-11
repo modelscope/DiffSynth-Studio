@@ -1,11 +1,12 @@
 """
 MiniMax-H3-Image (AdaLN-pruned) — EntroPack pre-quantized inference example.
 
-Downloads the pre-quantized packages and their json sidecars from the
-`DiffSynth-Studio/MiniMax-H3-Image-EntroPack` model repo (each json is a ready-to-use
-`MODEL_CONFIGS` entry), then runs the distilled six-step pipeline.
+Downloads the pre-quantized packages and their json sidecars (each json is a ready-to-use
+`MODEL_CONFIGS` entry), then runs the distilled six-step pipeline. The DiT packages come from
+`DiffSynth-Studio/MiniMax-H3-Image-EntroPack`, the shared text encoder from
+`DiffSynth-Studio/EntroPackPreQuants`.
 
-Available packages (paths inside the prequant model repo):
+Available packages:
 
     dit:
         models/dit_8bit.safetensors           8 bit, sensitive layers held at 8.5 bpp
@@ -17,7 +18,7 @@ Available packages (paths inside the prequant model repo):
         models/dit_6bit_int8.safetensors      int8 gemm, 6 bit
         models/dit_4p5bit_int8.safetensors    int8 gemm, 4.5 bit
     text encoder (shared by every MiniMax-H3 model):
-        models/text_encoder_8bit.safetensors  8 bit
+        models/MiniMax-H3/text_encoder_4bpp.safetensors  4 bit
 
 `dit_package` and `text_encoder_package` are chosen independently: any combination works.
 The int8 packages need Triton and a CUDA GPU of SM 8.0+.
@@ -30,16 +31,17 @@ from diffsynth.configs import MODEL_CONFIGS
 from diffsynth.pipelines.minimax_h3_image import MiniMaxH3ImagePipeline, ModelConfig
 from PIL import Image
 
-prequant_model_id = "DiffSynth-Studio/MiniMax-H3-Image-EntroPack"
+dit_model_id = "DiffSynth-Studio/MiniMax-H3-Image-EntroPack"
+text_encoder_model_id = "DiffSynth-Studio/EntroPackPreQuants"
 dit_package = "models/dit_7bit_int8.safetensors"
-text_encoder_package = "models/text_encoder_8bit.safetensors"
+text_encoder_package = "models/MiniMax-H3/text_encoder_4bpp.safetensors"
 
 
-def register_prequantized(package_pattern):
+def register_prequantized(model_id, package_pattern):
     """Download the pre-quantized package and its json sidecar (a ready-to-use MODEL_CONFIGS entry), return a loadable ModelConfig."""
-    package = ModelConfig(model_id=prequant_model_id, origin_file_pattern=package_pattern)
+    package = ModelConfig(model_id=model_id, origin_file_pattern=package_pattern)
     package.download_if_necessary()
-    sidecar = ModelConfig(model_id=prequant_model_id, origin_file_pattern=package_pattern.replace(".safetensors", ".json"))
+    sidecar = ModelConfig(model_id=model_id, origin_file_pattern=package_pattern.replace(".safetensors", ".json"))
     sidecar.download_if_necessary()
     with open(sidecar.path) as handle:
         entry = json.load(handle)
@@ -52,8 +54,8 @@ pipe = MiniMaxH3ImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        register_prequantized(dit_package),
-        register_prequantized(text_encoder_package),
+        register_prequantized(dit_model_id, dit_package),
+        register_prequantized(text_encoder_model_id, text_encoder_package),
         ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="pdd_fused_heads.safetensors"),
         ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
