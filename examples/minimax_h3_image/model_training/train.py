@@ -31,7 +31,7 @@ class MiniMaxH3ImageTrainingModule(DiffusionTrainingModule):
         self.pipe = self.split_pipeline_units(
             task, self.pipe, trainable_models, lora_base_model,
             remove_unnecessary_params=True,
-            force_remove_params_shared=("latents", "images"),
+            force_remove_params_shared=("latents", "edit_image"),
         )
         self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
 
@@ -57,21 +57,17 @@ class MiniMaxH3ImageTrainingModule(DiffusionTrainingModule):
         inputs_posi = {}
         inputs_nega = {}
         inputs_shared = {
+            "cfg_scale": 1.0,
             "prompt": data["prompt"],
             "input_image": data["image"],
             "height": data["image"].size[1],
             "width": data["image"].size[0],
-            # Train at the size the dataset operator produced instead of the 4-megapixel canvas inference defaults to.
             "min_generation_area": 1024,
             "tiling": True,
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
         }
         inputs_shared = self.parse_extra_inputs(data, self.extra_inputs, inputs_shared)
-        # The dataset calls an editing reference `reference`; the pipeline takes its references as `images`.
-        if "reference" in inputs_shared:
-            reference = inputs_shared.pop("reference")
-            inputs_shared["images"] = reference if isinstance(reference, list) else [reference]
         return inputs_shared, inputs_posi, inputs_nega
 
     def forward(self, data, inputs=None):

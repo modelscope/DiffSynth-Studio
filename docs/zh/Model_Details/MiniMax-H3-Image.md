@@ -49,7 +49,7 @@ image.save("MiniMax-H3-Image.jpg")
 prompt = "Change the color of the tomato in <Picture 1> to green."
 image = pipe(
     prompt=prompt, height=4096, width=4096, seed=43,
-    images=[Image.open("MiniMax-H3-Image.jpg")],
+    edit_image=[Image.open("MiniMax-H3-Image.jpg")],
 )
 image.save("MiniMax-H3-Image-Edit.jpg")
 ```
@@ -62,7 +62,7 @@ image.save("MiniMax-H3-Image-Edit.jpg")
 
 ## 模型推理
 
-MiniMax-H3-Image 有两种工作模式：文生图，以及基于参考图的图像编辑。二者都通过 `MiniMaxH3ImagePipeline` 完成，由 `images` 参数选择具体模式，因此同一份脚本即可覆盖两种用法。提示词会被原样使用，不套用对话模板，建议使用较长且完整的描述。
+MiniMax-H3-Image 有两种工作模式：文生图，以及基于参考图的图像编辑。二者都通过 `MiniMaxH3ImagePipeline` 完成，由 `edit_image` 参数选择具体模式，因此同一份脚本即可覆盖两种用法。提示词会被原样使用，不套用对话模板，建议使用较长且完整的描述。
 
 ### 文生图
 
@@ -96,7 +96,7 @@ from PIL import Image
 prompt = "Change the color of the tomato in <Picture 1> to green."
 image = pipe(
     prompt=prompt, height=4096, width=4096, seed=43,
-    images=[Image.open("MiniMax-H3-Image.jpg")],
+    edit_image=[Image.open("MiniMax-H3-Image.jpg")],
 )
 image.save("MiniMax-H3-Image-Edit.jpg")
 ```
@@ -164,6 +164,6 @@ accelerate launch examples/minimax_h3_image/model_training/train.py \
   --offload_models "MiniMax/MiniMax-H3:FL2VA/text_encoder/model*.safetensors,MiniMax/MiniMax-H3-Image:vae/diffusion_pytorch_model.safetensors"
 ```
 
-编辑数据集的训练方式相同：在 `metadata.csv` 中增加一列 `reference` 记录参考图路径，并在 `--data_file_keys` 与 `--extra_inputs` 中都追加 `reference`，参考图会与目标图一同被缓存。
+编辑训练以注释形式附在 LoRA 与全量脚本的末尾：取消注释并删掉上方的文生图两阶段即可。它使用 `minimax_h3_image/MiniMax-H3-Image-Edit` 数据集，其 `metadata.csv` 多出一列 `edit_image` 记录参考图路径，`edit_image` 同时出现在 `--data_file_keys` 与 `--extra_inputs` 中，参考图会与目标图一同被缓存。
 
 正是两阶段拆分让训练能够放进单张显卡：整个流程中 Transformer、文本编码器与 VAE 从不同时驻留。训练脚本使用 `--max_pixels 1048576`，把每个样本缩放到约 100 万像素；验证脚本则以与低显存示例相同的卸载配置加载训练产物。推荐训练脚本见上文「模型总览」表格。关于如何编写模型训练脚本，请参考[模型训练](../Pipeline_Usage/Model_Training.md)。

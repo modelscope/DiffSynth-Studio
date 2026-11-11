@@ -102,7 +102,7 @@ class MiniMaxH3ImagePipeline(BasePipeline):
         cfg_scale: float = 1.0,
         max_sequence_length: int = MINIMAX_H3_IMAGE_MAX_SEQUENCE_LENGTH,
         # Image editing
-        images: Image.Image = None,
+        edit_image: Image.Image = None,
         # Shape
         height: int = 2048,
         width: int = 2048,
@@ -127,7 +127,7 @@ class MiniMaxH3ImagePipeline(BasePipeline):
         inputs_nega = {"negative_prompt": negative_prompt}
         inputs_shared = {
             "cfg_scale": cfg_scale,
-            "images": images,
+            "edit_image": edit_image,
             "height": height, "width": width, "min_generation_area": min_generation_area,
             "max_sequence_length": max_sequence_length,
             "seed": seed, "rand_device": rand_device,
@@ -208,7 +208,7 @@ class MiniMaxH3ImageUnit_EditImageResize(PipelineUnit):
     """
 
     def __init__(self):
-        super().__init__(input_params=("images",), output_params=("reference_images", "vision_images"))
+        super().__init__(input_params=("edit_image",), output_params=("reference_images", "vision_images"))
 
     def resize_reference_image(self, image, min_short_edge, max_short_edge):
         # A reference image is not resized when its short edge is within the consumer's bounds; otherwise it is
@@ -227,17 +227,17 @@ class MiniMaxH3ImageUnit_EditImageResize(PipelineUnit):
             return image
         return image.resize(size, Image.LANCZOS)
 
-    def process(self, pipe: MiniMaxH3ImagePipeline, images):
-        if images is None:
+    def process(self, pipe: MiniMaxH3ImagePipeline, edit_image):
+        if edit_image is None:
             return {"reference_images": None, "vision_images": None}
-        images = images if isinstance(images, list) else [images]
-        images = [ImageOps.exif_transpose(image).convert("RGB") for image in images]
-        for image in images:
+        edit_image = edit_image if isinstance(edit_image, list) else [edit_image]
+        edit_image = [ImageOps.exif_transpose(image).convert("RGB") for image in edit_image]
+        for image in edit_image:
             if min(image.size) < MINIMAX_H3_IMAGE_CANVAS_MULTIPLE:
                 raise ValueError(f"A reference image needs at least {MINIMAX_H3_IMAGE_CANVAS_MULTIPLE} pixels on each side, but got {image.size}.")
         return {
-            "reference_images": [self.resize_reference_image(image, MINIMAX_H3_IMAGE_REFERENCE_MIN_SHORT_EDGE, MINIMAX_H3_IMAGE_REFERENCE_MAX_SHORT_EDGE) for image in images],
-            "vision_images": [self.resize_reference_image(image, MINIMAX_H3_IMAGE_VISION_MIN_SHORT_EDGE, MINIMAX_H3_IMAGE_VISION_MAX_SHORT_EDGE) for image in images],
+            "reference_images": [self.resize_reference_image(image, MINIMAX_H3_IMAGE_REFERENCE_MIN_SHORT_EDGE, MINIMAX_H3_IMAGE_REFERENCE_MAX_SHORT_EDGE) for image in edit_image],
+            "vision_images": [self.resize_reference_image(image, MINIMAX_H3_IMAGE_VISION_MIN_SHORT_EDGE, MINIMAX_H3_IMAGE_VISION_MAX_SHORT_EDGE) for image in edit_image],
         }
 
 
@@ -252,9 +252,9 @@ class MiniMaxH3ImageUnit_PromptEmbedder(PipelineUnit):
             onload_model_names=("text_encoder",),
         )
 
-    def build_reference_tokens(self, pipe: MiniMaxH3ImagePipeline, images, max_sequence_length):
+    def build_reference_tokens(self, pipe: MiniMaxH3ImagePipeline, vision_images, max_sequence_length):
         tokenizer = pipe.tokenizer
-        vision = pipe.processor.image_processor(images=images, return_tensors="pt")
+        vision = pipe.processor.image_processor(images=vision_images, return_tensors="pt")
         merge_size = int(pipe.processor.image_processor.merge_size) ** 2
         vision_start = tokenizer.convert_tokens_to_ids("<|vision_start|>")
         image_pad = tokenizer.convert_tokens_to_ids("<|image_pad|>")

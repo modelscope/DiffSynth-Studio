@@ -49,7 +49,7 @@ image.save("MiniMax-H3-Image.jpg")
 prompt = "Change the color of the tomato in <Picture 1> to green."
 image = pipe(
     prompt=prompt, height=4096, width=4096, seed=43,
-    images=[Image.open("MiniMax-H3-Image.jpg")],
+    edit_image=[Image.open("MiniMax-H3-Image.jpg")],
 )
 image.save("MiniMax-H3-Image-Edit.jpg")
 ```
@@ -62,7 +62,7 @@ image.save("MiniMax-H3-Image-Edit.jpg")
 
 ## Model Inference
 
-MiniMax-H3-Image has two workflows: text-to-image, and editing conditioned on reference images. Both run through `MiniMaxH3ImagePipeline`, and the workflow is selected by the `images` argument, so one script covers both. The prompt is used verbatim, with no chat template, and long, complete descriptions work best.
+MiniMax-H3-Image has two workflows: text-to-image, and editing conditioned on reference images. Both run through `MiniMaxH3ImagePipeline`, and the workflow is selected by the `edit_image` argument, so one script covers both. The prompt is used verbatim, with no chat template, and long, complete descriptions work best.
 
 ### Text-to-Image
 
@@ -96,7 +96,7 @@ from PIL import Image
 prompt = "Change the color of the tomato in <Picture 1> to green."
 image = pipe(
     prompt=prompt, height=4096, width=4096, seed=43,
-    images=[Image.open("MiniMax-H3-Image.jpg")],
+    edit_image=[Image.open("MiniMax-H3-Image.jpg")],
 )
 image.save("MiniMax-H3-Image-Edit.jpg")
 ```
@@ -164,6 +164,6 @@ accelerate launch examples/minimax_h3_image/model_training/train.py \
   --offload_models "MiniMax/MiniMax-H3:FL2VA/text_encoder/model*.safetensors,MiniMax/MiniMax-H3-Image:vae/diffusion_pytorch_model.safetensors"
 ```
 
-An editing dataset trains the same way: give `metadata.csv` a `reference` column that holds the reference image path, append `reference` to both `--data_file_keys` and `--extra_inputs`, and the references are cached alongside the targets.
+Editing training is provided as a commented variant at the end of both the LoRA and the full script: uncomment it and drop the text-to-image stages above. Its dataset is `minimax_h3_image/MiniMax-H3-Image-Edit`, whose `metadata.csv` carries an extra `edit_image` column that holds the reference image path, and `edit_image` is listed in both `--data_file_keys` and `--extra_inputs` so that the references are cached alongside the targets.
 
 The two-stage split is what makes training fit on one accelerator: at no point are the transformer, the text encoder and the VAE resident together. The training scripts use `--max_pixels 1048576` so that every sample is resized to about one megapixel, and the validation scripts load the trained weights with the same offloading configuration as the low VRAM example. We provide recommended training scripts, please refer to the table in "Model Overview" above. For guidance on writing model training scripts, see [Model Training](../Pipeline_Usage/Model_Training.md).

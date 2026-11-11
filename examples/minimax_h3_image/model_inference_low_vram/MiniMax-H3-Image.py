@@ -49,6 +49,6 @@ image.save("MiniMax-H3-Image.jpg")
 prompt = "Change the color of the tomato in <Picture 1> to green."
 image = pipe(
     prompt=prompt, height=4096, width=4096, seed=43,
-    images=[Image.open("MiniMax-H3-Image.jpg")],
+    edit_image=[Image.open("MiniMax-H3-Image.jpg")],
 )
 image.save("MiniMax-H3-Image-Edit.jpg")
