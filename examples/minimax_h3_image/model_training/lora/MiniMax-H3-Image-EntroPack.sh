@@ -6,7 +6,7 @@ accelerate launch examples/minimax_h3_image/model_training/train.py \
   --data_file_keys "image" \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
-  --model_id_with_origin_paths "DiffSynth-Studio/MiniMax-H3-Image-EntroPack:models/dit_7bit.safetensors,DiffSynth-Studio/EntroPackPreQuants:models/MiniMax-H3/text_encoder_4bpp.safetensors,MiniMax/MiniMax-H3-Image:pdd_fused_heads.safetensors,MiniMax/MiniMax-H3-Image:vae/diffusion_pytorch_model.safetensors" \
+  --model_id_with_origin_paths "DiffSynth-Studio/MiniMax-H3-Image-EntroPack:models/dit_7bit.safetensors,DiffSynth-Studio/EntroPackPreQuants:models/MiniMax-H3/text_encoder_4bpp.safetensors,MiniMax/MiniMax-H3-Image:pdd_fused_heads.safetensors,DiffSynth-Studio/MiniMax-H3-Image-EntroPack:models/vae_int8.safetensors" \
   --learning_rate 1e-4 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \

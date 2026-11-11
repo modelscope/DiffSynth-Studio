@@ -13,6 +13,7 @@ Available packages:
         models/dit_7bit.safetensors           7 bit, sensitive layers held at 8.5 bpp
         models/dit_6bit.safetensors           6 bit, sensitive layers held at 8.5 bpp
         models/dit_4p5bit.safetensors         4.5 bit, sensitive layers held at 8.5 bpp
+        models/dit_extreme_3bpp.safetensors   extreme quantization, mixed allocation (sensitive layers 8.5 / 5.0 bpp)
         models/dit_8bit_int8.safetensors      int8 gemm, raw int8 weights (no lattice re-coding)
         models/dit_7bit_int8.safetensors      int8 gemm, 7 bit
         models/dit_6bit_int8.safetensors      int8 gemm, 6 bit
@@ -68,7 +69,7 @@ pipe = MiniMaxH3ImagePipeline.from_pretrained(
         register_prequantized(dit_model_id, dit_package),
         register_prequantized(text_encoder_model_id, text_encoder_package),
         ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="pdd_fused_heads.safetensors", **vram_config),
-        ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors", **vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack", origin_file_pattern="models/vae_int8.safetensors", **vram_config),
     ],
     processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="processor/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,

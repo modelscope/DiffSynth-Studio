@@ -1784,6 +1784,13 @@ minimax_h3_image_series = [
         "model_class": "diffsynth.models.minimax_h3_image_vae.MiniMaxH3ImageVAE",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_image_vae.MiniMaxH3ImageVAEStateDictConverter",
     },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack", origin_file_pattern="models/vae_int8.safetensors")
+        "model_hash": "14b7df9252600e262f14869446c77dfb",
+        "model_name": "minimax_h3_image_vae",
+        "model_class": "diffsynth.models.minimax_h3_image_vae.MiniMaxH3ImageVAE",
+        "quant_config": {"method": "entropack_lossy_quant_int8_raw", "load_prequantized": True, "backend_config_kwargs": {"use_convrot": True, "convrot_groupsize": 256}},
+    },
 ]
 
 sensenova_u1_series = [
