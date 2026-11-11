@@ -20,6 +20,10 @@ Available packages:
         models/dit_4p5bit_int8.safetensors    int8 gemm, 4.5 bit
     text encoder (shared by every MiniMax-H3 model):
         models/MiniMax-H3/text_encoder_4bpp.safetensors  4 bit
+        models/MiniMax-H3/text_encoder_5bpp.safetensors  5 bit
+        models/MiniMax-H3/text_encoder_6bpp.safetensors  6 bit
+        models/MiniMax-H3/text_encoder_7bpp.safetensors  7 bit
+        models/MiniMax-H3/text_encoder_8bpp.safetensors  8 bit
 
 `dit_package` and `text_encoder_package` are chosen independently: any combination works.
 The int8 packages need Triton and a CUDA GPU of SM 8.0+.
