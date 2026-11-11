@@ -334,3 +334,113 @@ class MiniMaxH3ImageDiT(nn.Module):
         # float32 while the block stack follows the checkpoint dtype, so align the activation with them.
         output = pdd_heads(hidden.to(pdd_heads.dtype), pdd_step_index)
         return output.index_select(0, img_pos)
+
+
+# The distilled schedule visits six sigma-grid timesteps plus the reference-image level; one AdaLN table row each.
+MINIMAX_H3_IMAGE_ADALN_TABLE_ROWS = 7
+
+
+class MiniMaxH3ImageAdalnTable(nn.Module):
+    """Table of precomputed AdaLN outputs, one row per distilled timestep.
+
+    `forward` takes the table row of every distinct timestep instead of a timestep embedding: row `i` holds the
+    `expand_ratio` chunks of the distilled schedule's step `i`, laid out as `MiniMaxH3AdalnProj` lays out its
+    projection output. The last row belongs to the reference-image level.
+    """
+
+    def __init__(self, hidden_size, modality_num, expand_ratio, num_timesteps):
+        super().__init__()
+        self.expand_ratio = expand_ratio
+        self.modality_num = modality_num
+        self.hidden_size = hidden_size
+        # A parameter, not a buffer: disk offload only restores parameters of the modules in the VRAM map.
+        self.table = nn.Parameter(
+            torch.empty(num_timesteps, modality_num, expand_ratio, hidden_size, dtype=torch.bfloat16),
+            requires_grad=False,
+        )
+
+    def forward(self, timestep_rows):
+        x = self.table.index_select(0, timestep_rows).reshape(-1, self.expand_ratio * self.hidden_size)
+        return tuple(x.chunk(self.expand_ratio, dim=-1))
+
+
+def _to_adaln_table(proj: MiniMaxH3AdalnProj) -> MiniMaxH3ImageAdalnTable:
+    return MiniMaxH3ImageAdalnTable(
+        proj.hidden_size, proj.modality_num, proj.expand_ratio, MINIMAX_H3_IMAGE_ADALN_TABLE_ROWS
+    )
+
+
+class MiniMaxH3ImageDiTPruned(MiniMaxH3ImageDiT):
+    """`MiniMaxH3ImageDiT` with every AdaLN projection replaced by a lookup table.
+
+    The tables hold the AdaLN outputs of the distilled schedule's timesteps (six grid steps plus the reference-image
+    level), so the `2688 -> 96768` projections and the timestep embedder are gone. Step `i` reads row `i` and the
+    reference rows read the last row, which makes the model inference-only on the distilled six-step schedule.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        for block in self.blocks:
+            block.adaln_proj = _to_adaln_table(block.adaln_proj)
+        self.final_layer.adaln_proj = _to_adaln_table(self.final_layer.adaln_proj)
+        del self.final_layer.video_out
+        self.time_embedder = None
+
+    def forward(
+        self,
+        x,
+        prompt_embeds,
+        position_ids,
+        unique_timesteps,
+        timestep_indices,
+        token_tags,
+        img_pos,
+        text_pos,
+        pdd_heads: MiniMaxH3ImagePDDHeads | None = None,
+        pdd_step_index: int = 0,
+        use_gradient_checkpointing: bool = False,
+        use_gradient_checkpointing_offload: bool = False,
+    ) -> torch.Tensor:
+        """Same contract as `MiniMaxH3ImageDiT.forward`, with the AdaLN tables read by step index."""
+        if use_gradient_checkpointing or use_gradient_checkpointing_offload:
+            raise ValueError("MiniMaxH3ImageDiTPruned is inference-only and does not support gradient checkpointing.")
+        if x.dim() != 2:
+            raise ValueError(f"x must be [N_img, patch_dim], got {list(x.shape)}")
+        if pdd_heads is None:
+            pdd_heads = getattr(self, "pdd_heads", None)
+        if pdd_heads is None:
+            raise ValueError("MiniMaxH3ImageDiTPruned has no usable output head: pass `pdd_heads`.")
+
+        device = x.device
+        seq_len = int(position_ids.shape[1])
+        img_pos = img_pos.view(-1).to(device=device, dtype=torch.long)
+        text_pos = text_pos.view(-1).to(device=device, dtype=torch.long)
+        timestep_indices = timestep_indices.view(-1).to(device=device, dtype=torch.long)
+        token_tags = token_tags.view(-1).to(device=device, dtype=torch.long)
+
+        rope_freqs = self.rope(position_ids.to(device))
+        hidden = self._embed(
+            x=x, prompt_embeds=prompt_embeds, seq_len=seq_len,
+            img_pos=img_pos, text_pos=text_pos, device=device,
+        )
+
+        # Where the released model embeds the timesteps, the pruned one picks table rows: the step's own row, and the
+        # last row for the reference-image level.
+        timestep_rows = torch.full(
+            (unique_timesteps.shape[0],), int(pdd_step_index), dtype=torch.long, device=device
+        )
+        timestep_rows[1:] = MINIMAX_H3_IMAGE_ADALN_TABLE_ROWS - 1
+
+        combined_indices = (timestep_indices * MINIMAX_H3_ADALN_MODALITY_NUM + token_tags.clamp(min=0)).to(device)
+        cu_seqlens = torch.tensor([0, seq_len], dtype=torch.int32, device=device)
+
+        for block in self.blocks:
+            hidden = block(
+                hidden, t_emb=timestep_rows, combined_indices=combined_indices,
+                rope_freqs=rope_freqs, cu_seqlens=cu_seqlens, max_seqlen=seq_len,
+            )
+
+        hidden = self.final_layer(hidden, t_emb=timestep_rows, timestep_indices=timestep_indices)
+
+        output = pdd_heads(hidden.to(pdd_heads.dtype), pdd_step_index)
+        return output.index_select(0, img_pos)
