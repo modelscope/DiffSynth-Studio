@@ -1743,6 +1743,29 @@ minimax_music3_series = [
     },
 ]
 
+minimax_h3_image_series = [
+    {
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="transformer/model*.safetensors")
+        # Example: ModelConfig(path="./models/train/MiniMax-H3-Image-full-split/epoch-4.safetensors")
+        "model_hash": "cbc654a2ff91b53b57e2556904bdbc5e",
+        "model_name": "minimax_h3_image_dit",
+        "model_class": "diffsynth.models.minimax_h3_image_dit.MiniMaxH3ImageDiT",
+    },
+    {
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="pdd_fused_heads.safetensors")
+        "model_hash": "af836167abebf4a4701ab436f291a972",
+        "model_name": "minimax_h3_image_pdd_heads",
+        "model_class": "diffsynth.models.minimax_h3_image_dit.MiniMaxH3ImagePDDHeads",
+    },
+    {
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "e16b57e3180a14235ffcaad014ce2772",
+        "model_name": "minimax_h3_image_vae",
+        "model_class": "diffsynth.models.minimax_h3_image_vae.MiniMaxH3ImageVAE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_image_vae.MiniMaxH3ImageVAEStateDictConverter",
+    },
+]
+
 sensenova_u1_series = [
     {
         # Example: ModelConfig(model_id="SenseNova/SenseNova-U1.5-8B-MoT", origin_file_pattern="model*.safetensors")
@@ -1857,5 +1880,5 @@ MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + qwen_video_edit_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
     + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series + minimax_h3_series + minimax_music3_series + sensenova_u1_series
-    + yue2_series + qwen_image_21_series + flux3_series + moss_image_series + fibo_series
+    + yue2_series + qwen_image_21_series + flux3_series + moss_image_series + fibo_series + minimax_h3_image_series
 )
