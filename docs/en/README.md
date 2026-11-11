@@ -62,6 +62,7 @@ This section introduces the Diffusion models supported by `DiffSynth-Studio`. So
 * [Boogu-Image](./Model_Details/Boogu-Image.md)
 * [LingBot-Video](./Model_Details/LingBot-Video.md)
 * [MiniMax-H3](./Model_Details/MiniMax-H3.md)
+* [MiniMax-H3-Image](./Model_Details/MiniMax-H3-Image.md)
 * [MiniMax-Music3](./Model_Details/MiniMax-Music3.md)
 * [SenseNova-U1](./Model_Details/SenseNova-U1.md)
 * [YuE2](./Model_Details/YuE2.md)

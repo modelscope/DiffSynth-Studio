@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "MOSS-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2", "Fibo"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "MOSS-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-H3-Image", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2", "Fibo"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -23,6 +23,7 @@ class FlowMatchScheduler():
             "Krea-2": FlowMatchScheduler.set_timesteps_krea2,
             "Boogu": FlowMatchScheduler.set_timesteps_boogu,
             "MiniMax-H3": FlowMatchScheduler.set_timesteps_minimax_h3,
+            "MiniMax-H3-Image": FlowMatchScheduler.set_timesteps_minimax_h3_image,
             "MiniMax-Music3": FlowMatchScheduler.set_timesteps_minimax_music3,
             "LingBot-Video": FlowMatchScheduler.set_timesteps_lingbot_video,
             "SenseNova-U1": FlowMatchScheduler.set_timesteps_sensenova_u1,
@@ -392,6 +393,20 @@ class FlowMatchScheduler():
         sigmas = shift * base / (1 + (shift - 1) * base)
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_minimax_h3_image(num_inference_steps=50, denoising_strength=1.0, shift=2.22, distilled=False):
+        if distilled:
+            num_train_timesteps = 1000
+            sample_sigmas = torch.tensor([
+                1.0, 0.9675236940383911, 0.8875485062599182, 0.75, 0.5327739119529724, 0.23200887441635132, 0.0,
+            ], dtype=torch.float32)
+            timesteps = 1.0 - sample_sigmas[:-1]
+            sigmas = 1.0 - timesteps
+            timesteps = sigmas * num_train_timesteps
+            return sigmas, timesteps
+        else:
+            return FlowMatchScheduler.set_timesteps_minimax_h3(num_inference_steps=num_inference_steps, denoising_strength=denoising_strength, shift=shift)
 
     @staticmethod
     def set_timesteps_minimax_music3(num_inference_steps=30, denoising_strength=1.0):

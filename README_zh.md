@@ -41,6 +41,8 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年11月10日** 现已支持 MiniMax-H3-Image，这是 MiniMax-H3 家族中的图像模型，支持文生图与参考图编辑的统一推理、低显存推理，以及全量与 LoRA 训练。该模型被蒸馏到 6 步采样，Transformer 每一步对应一个独立输出头，无需超分即可直接生成约 1600 万像素的图像。详情请见[文档](/docs/zh/Model_Details/MiniMax-H3-Image.md)与[示例代码](/examples/minimax_h3_image/)。
+
 - **2026年10月21日** 我们已支持 Fibo 2.0，包含统一的文生图与图像编辑推理、掩码编辑、多参考图像编辑、文字渲染、低显存推理，以及 [Fibo-2.0-dev](https://www.modelscope.cn/models/briaai/Fibo-2.0-dev) 在文生图和图像编辑任务上的 LoRA 与全量训练。详情请参考[文档](/docs/zh/Model_Details/Fibo.md)和[示例代码](/examples/fibo/)。
 
 - **2026年10月20日** 我们已支持 MOSS-Image，包含 [MOSS-Image-Base](https://modelscope.cn/models/openmoss/MOSS-Image-Base) 和 [MOSS-Image-SFT](https://modelscope.cn/models/openmoss/MOSS-Image-SFT) 的推理和训练。另外，我们也提供了 [EntroPack 低位量化模型](https://www.modelscope.cn/models/DiffSynth-Studio/MOSS-Image-EntroPack)，最低支持 4G 显存运行 3.5bit 的量化压缩模型；以及通过 [OPD 蒸馏加速](https://diffsynth-studio-doc.readthedocs.io/en/latest/Training/Distillation.html)训练的[加速模型](https://modelscope.cn/models/DiffSynth-Studio/MOSS-Image-SFT-TurboLoRA)，支持 8 步极速推理。
@@ -153,8 +155,8 @@
   - [文档](/docs/zh/README.md)上线：我们的文档还在持续优化更新中
   - [显存管理](/docs/zh/Pipeline_Usage/VRAM_management.md)模块升级，支持 Layer 级别的 Disk Offload，同时释放内存与显存
   - 新模型支持
-    - Z-Image Turbo: [模型](https://www.modelscope.ai/models/Tongyi-MAI/Z-Image-Turbo)、[文档](/docs/zh/Model_Details/Z-Image.md)、[代码](/examples/z_image/)
-    - FLUX.2-dev: [模型](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-dev)、[文档](/docs/zh/Model_Details/FLUX2.md)、[代码](/examples/flux2/)
+    - Z-Image Turbo: [模型](https://www.modelscope.ai/models/Tongyi-MAI/Z-Image-Turbo)、[文档](/docs/zh/Model_Details/Z-Image.md)、[code](/examples/z_image/)
+    - FLUX.2-dev: [模型](https://www.modelscope.cn/models/black-forest-labs/FLUX.2-dev)、[文档](/docs/zh/Model_Details/FLUX2.md)、[code](/examples/flux2/)
   - 训练框架升级
     - [拆分训练](/docs/zh/Training/Split_Training.md)：支持自动化地将训练过程拆分为数据处理和训练两阶段（即使训练的是 ControlNet 或其他任意模型），在数据处理阶段进行文本编码、VAE 编码等不需要梯度回传的计算，在训练阶段处理其他计算。速度更快，显存需求更少。
     - [差分 LoRA 训练](/docs/zh/Training/Differential_LoRA.md)：这是我们曾在 [ArtAug](https://www.modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1) 中使用的训练技术，目前已可用于任意模型的 LoRA 训练。
@@ -318,6 +320,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 
 | 基础架构 | 模型 ID | 推理 | 低显存推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
 |-|-|-|-|-|-|-|-|
+| MiniMax-H3-Image | [MiniMax/MiniMax-H3-Image](https://www.modelscope.cn/models/MiniMax/MiniMax-H3-Image) | [code](/examples/minimax_h3_image/model_inference/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_inference_low_vram/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_training/full/MiniMax-H3-Image.sh) | [code](/examples/minimax_h3_image/model_training/validate_full/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_training/lora/MiniMax-H3-Image.sh) | [code](/examples/minimax_h3_image/model_training/validate_lora/MiniMax-H3-Image.py) |
 | Fibo 2.0 | [briaai/Fibo-2.0-dev](https://www.modelscope.cn/models/briaai/Fibo-2.0-dev) | [code](/examples/fibo/model_inference/Fibo-2.0-dev.py) | [code](/examples/fibo/model_inference_low_vram/Fibo-2.0-dev.py) | [code](/examples/fibo/model_training/full/Fibo-2.0-dev-T2I.sh) | [code](/examples/fibo/model_training/validate_full/Fibo-2.0-dev-T2I.py) | [code](/examples/fibo/model_training/lora/Fibo-2.0-dev-T2I.sh) | [code](/examples/fibo/model_training/validate_lora/Fibo-2.0-dev-T2I.py) |
 | Fibo 2.0 | [briaai/Fibo-2.0-edit-turbo](https://www.modelscope.cn/models/briaai/Fibo-2.0-edit-turbo) | [code](/examples/fibo/model_inference/Fibo-2.0-edit-turbo.py) | [code](/examples/fibo/model_inference_low_vram/Fibo-2.0-edit-turbo.py) | - | - | - | - |
 | Qwen-Image-2.1 | [Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1) | [code](/examples/qwen_image_21/model_inference/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_training/full/Qwen-Image-2.1.sh) | [code](/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1.sh) | [code](/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1.py) |
@@ -593,6 +596,7 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 
 | 基础架构 | 模型 ID | 推理 | 低显存推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
 |-|-|-|-|-|-|-|-|
+| MiniMax-H3-Image | [MiniMax/MiniMax-H3-Image](https://www.modelscope.cn/models/MiniMax/MiniMax-H3-Image) | [code](/examples/minimax_h3_image/model_inference/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_inference_low_vram/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_training/full/MiniMax-H3-Image.sh) | [code](/examples/minimax_h3_image/model_training/validate_full/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_training/lora/MiniMax-H3-Image.sh) | [code](/examples/minimax_h3_image/model_training/validate_lora/MiniMax-H3-Image.py) |
 | Fibo 2.0 | [briaai/Fibo-2.0-dev](https://www.modelscope.cn/models/briaai/Fibo-2.0-dev) | [code](/examples/fibo/model_inference/Fibo-2.0-dev.py) | [code](/examples/fibo/model_inference_low_vram/Fibo-2.0-dev.py) | [code](/examples/fibo/model_training/full/Fibo-2.0-dev-T2I.sh) | [code](/examples/fibo/model_training/validate_full/Fibo-2.0-dev-T2I.py) | [code](/examples/fibo/model_training/lora/Fibo-2.0-dev-T2I.sh) | [code](/examples/fibo/model_training/validate_lora/Fibo-2.0-dev-T2I.py) |
 | Fibo 2.0 | [briaai/Fibo-2.0-edit-turbo](https://www.modelscope.cn/models/briaai/Fibo-2.0-edit-turbo) | [code](/examples/fibo/model_inference/Fibo-2.0-edit-turbo.py) | [code](/examples/fibo/model_inference_low_vram/Fibo-2.0-edit-turbo.py) | - | - | - | - |
 | MOSS-Image | [openmoss/MOSS-Image-Base](https://www.modelscope.cn/models/openmoss/MOSS-Image-Base) | [code](/examples/moss_image/model_inference/MOSS-Image-Base.py) | [code](/examples/moss_image/model_inference_low_vram/MOSS-Image-Base.py) | [code](/examples/moss_image/model_training/full/MOSS-Image-Base.sh) | [code](/examples/moss_image/model_training/validate_full/MOSS-Image-Base.py) | [code](/examples/moss_image/model_training/lora/MOSS-Image-Base.sh) | [code](/examples/moss_image/model_training/validate_lora/MOSS-Image-Base.py) |
