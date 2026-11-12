@@ -173,11 +173,12 @@ class QwenEmbedRope(nn.Module):
 
         vid_freqs = []
         max_vid_index = 0
+        frame_0, height_0, width_0 = video_fhw[0]
         for idx, fhw in enumerate(video_fhw):
             frame, height, width = fhw
             rope_key = f"{idx}_{height}_{width}"
-            if idx > 0 and f"{0}_{height}_{width}" not in self.rope_cache:
-                frame_0, height_0, width_0 = video_fhw[0]
+            if idx > 0 and (height, width) != (height_0, width_0):
+                rope_key = f"{rope_key}_sampled_{height_0}_{width_0}"
 
                 rope_key_0 = f"0_{height_0}_{width_0}"
                 spatial_freqs_0 = self.rope_cache[rope_key_0].reshape(frame_0, height_0, width_0, -1)
