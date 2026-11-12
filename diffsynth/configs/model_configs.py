@@ -1772,6 +1772,21 @@ minimax_h3_image_series = [
         "quant_config": {"load_prequantized": True, "configs": [{"method": "entropack_lossy_quant", "backend_config_kwargs": {"target_bpp": 6.937816964285715, "row_rdo_iterations": 2, "row_rdo_candidates": 20}, "exclude_modules": ["video_patch_proj", "condition_proj", "token_refiner.blocks.0.attn.qkv_proj", "token_refiner.blocks.0.attn.out_proj", "token_refiner.blocks.0.mlp.fc1", "token_refiner.blocks.0.mlp.fc2", "token_refiner.blocks.1.attn.qkv_proj", "token_refiner.blocks.1.attn.out_proj", "token_refiner.blocks.1.mlp.fc1", "token_refiner.blocks.1.mlp.fc2"]}, {"method": "entropack_lossy_quant", "backend_config_kwargs": {"target_bpp": 8.5, "row_rdo_iterations": 2, "row_rdo_candidates": 20}, "target_modules": ["video_patch_proj", "condition_proj", "token_refiner.blocks.0.attn.qkv_proj", "token_refiner.blocks.0.attn.out_proj", "token_refiner.blocks.0.mlp.fc1", "token_refiner.blocks.0.mlp.fc2", "token_refiner.blocks.1.attn.qkv_proj", "token_refiner.blocks.1.attn.out_proj", "token_refiner.blocks.1.mlp.fc1", "token_refiner.blocks.1.mlp.fc2"]}]},
     },
     {
+        # Example: ModelConfig(model_id="Comfy-Org/MiniMax-H3-Image", origin_file_pattern="diffusion_models/minimax_h3_image_pruned_bf16.safetensors")
+        "model_hash": "c8d712f7ceeac803a52fd2a0c5900356",
+        "model_name": "minimax_h3_image_dit",
+        "model_class": "diffsynth.models.minimax_h3_image_dit_comfy.MiniMaxH3ImageDiTComfyPruned",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_image_dit.MiniMaxH3ImageDiTComfyStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Comfy-Org/MiniMax-H3-Image", origin_file_pattern="diffusion_models/minimax_h3_image_pruned_int8_convrot.safetensors")
+        "model_hash": "f4559d2cb6a7ca48162d36736555ea22",
+        "model_name": "minimax_h3_image_dit",
+        "model_class": "diffsynth.models.minimax_h3_image_dit_comfy.MiniMaxH3ImageDiTComfyPruned",
+        "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["video_patch_proj", "condition_proj", "adaln_proj.linear", "final_layer.video_out", "token_refiner.blocks.0.attn.qkv_proj", "token_refiner.blocks.0.attn.out_proj", "token_refiner.blocks.0.mlp.fc1", "token_refiner.blocks.0.mlp.fc2", "token_refiner.blocks.1.attn.qkv_proj", "token_refiner.blocks.1.attn.out_proj", "token_refiner.blocks.1.mlp.fc1", "token_refiner.blocks.1.mlp.fc2"]},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_image_dit.MiniMaxH3ImageDiTComfyStateDictConverter",
+    },
+    {
         # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="pdd_fused_heads.safetensors")
         "model_hash": "af836167abebf4a4701ab436f291a972",
         "model_name": "minimax_h3_image_pdd_heads",
