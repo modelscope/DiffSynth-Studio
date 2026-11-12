@@ -40,6 +40,8 @@ def exclude_quantized_params_from_ddp_sync(accelerator: Accelerator, model: Diff
         ignored = [
             f"{name}.weight" for name, module in model.named_modules()
             if any(quantize.is_quantized_linear(module) for quantize in quant_configs)
+            # Offloaded models can have their parameters cleared, leaving `weight = None`.
+            and getattr(module, "weight", None) is not None
             and not module.weight.requires_grad and is_traceable_wrapper_subclass(module.weight)
         ]
         if len(ignored) > 0:
