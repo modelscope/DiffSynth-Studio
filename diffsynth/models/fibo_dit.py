@@ -7,6 +7,7 @@ import torch.nn.functional as F
 
 from .general_modules import RMSNorm
 from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 
 
@@ -164,6 +165,11 @@ class FiboAttention(nn.Module):
         return self.to_out[0](hidden_states.flatten(2, 3))
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"x": 1, "freqs_cis": 1, "noise_mask": 1},
+    gather_dimensions_for_outputs={"x": 1},
+    no_exchange_modules=("cross_attention",),
+)
 class FiboTransformerBlock(nn.Module):
     def __init__(self, dim, n_heads, norm_eps, cross_attention_dim=None):
         super().__init__()

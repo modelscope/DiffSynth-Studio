@@ -132,10 +132,11 @@ class LTX2AudioVideoPipeline(BasePipeline):
         stage2_lora_config: Optional[ModelConfig] = None,
         stage2_lora_strength: float = 0.8,
         vram_limit: float = None,
+        parallel_config=None,
     ):
         # Initialize pipeline
         pipe = LTX2AudioVideoPipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
 
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("ltx2_text_encoder")

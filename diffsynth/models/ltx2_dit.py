@@ -8,6 +8,7 @@ import torch
 from einops import rearrange
 from .ltx2_common import rms_norm, Modality
 from ..core.attention.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core import gradient_checkpoint_forward
 
 
@@ -901,6 +902,11 @@ class TransformerConfig:
     ff_bias: bool = True
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"video_x": 1, "audio_x": 1, "video_timesteps": 1, "audio_timesteps": 1, "video_positional_embeddings": 2, "audio_positional_embeddings": 2, "video_cross_positional_embeddings": 2, "audio_cross_positional_embeddings": 2},
+    gather_dimensions_for_outputs={"video_x": 1, "audio_x": 1},
+    no_exchange_modules=("attn2", "audio_attn2"),
+)
 class BasicAVTransformerBlock(torch.nn.Module):
     def __init__(
         self,
@@ -1062,9 +1068,29 @@ class BasicAVTransformerBlock(torch.nn.Module):
         video: TransformerArgs | None,
         audio: TransformerArgs | None,
         perturbations: BatchedPerturbationConfig | None = None,
-    ) -> tuple[TransformerArgs | None, TransformerArgs | None]:
+        video_x: torch.Tensor | None = None,
+        video_timesteps: torch.Tensor | None = None,
+        video_positional_embeddings: torch.Tensor | None = None,
+        video_cross_positional_embeddings: torch.Tensor | None = None,
+        audio_x: torch.Tensor | None = None,
+        audio_timesteps: torch.Tensor | None = None,
+        audio_positional_embeddings: torch.Tensor | None = None,
+        audio_cross_positional_embeddings: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor | None, torch.Tensor | None]:
         if video is None and audio is None:
             raise ValueError("At least one of video or audio must be provided")
+        if video is not None:
+            video = replace(
+                video, x=video_x, timesteps=video_timesteps,
+                positional_embeddings=video_positional_embeddings,
+                cross_positional_embeddings=video_cross_positional_embeddings,
+            )
+        if audio is not None:
+            audio = replace(
+                audio, x=audio_x, timesteps=audio_timesteps,
+                positional_embeddings=audio_positional_embeddings,
+                cross_positional_embeddings=audio_cross_positional_embeddings,
+            )
 
         batch_size = (video or audio).x.shape[0]
 
@@ -1246,7 +1272,7 @@ class BasicAVTransformerBlock(torch.nn.Module):
 
             del ashift_mlp, ascale_mlp, agate_mlp, ax_scaled
 
-        return replace(video, x=vx) if video is not None else None, replace(audio, x=ax) if audio is not None else None
+        return vx, ax
 
 
 def apply_cross_attention_adaln(
@@ -1638,14 +1664,34 @@ class LTXModel(torch.nn.Module):
 
         # Process transformer blocks
         for block in self.transformer_blocks:
-            video, audio = gradient_checkpoint_forward(
+            block_kwargs = {}
+            if video is not None:
+                block_kwargs.update(
+                    video_x=video.x,
+                    video_timesteps=video.timesteps,
+                    video_positional_embeddings=video.positional_embeddings,
+                    video_cross_positional_embeddings=video.cross_positional_embeddings,
+                )
+            if audio is not None:
+                block_kwargs.update(
+                    audio_x=audio.x,
+                    audio_timesteps=audio.timesteps,
+                    audio_positional_embeddings=audio.positional_embeddings,
+                    audio_cross_positional_embeddings=audio.cross_positional_embeddings,
+                )
+            vx, ax = gradient_checkpoint_forward(
                 block,
                 use_gradient_checkpointing,
                 use_gradient_checkpointing_offload,
                 video=video,
                 audio=audio,
                 perturbations=perturbations,
+                **block_kwargs,
             )
+            if video is not None:
+                video = replace(video, x=vx)
+            if audio is not None:
+                audio = replace(audio, x=ax)
 
         return video, audio
 
