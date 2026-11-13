@@ -1,13 +1,8 @@
 import torch
 from einops import rearrange, repeat
 from .flux_dit import RoPEEmbedding, TimestepEmbeddings, FluxJointTransformerBlock, FluxSingleTransformerBlock, RMSNorm
-# from .utils import hash_state_dict_keys, init_weights_on_device
+from ..core.loader.file import hash_state_dict_keys
 from contextlib import contextmanager
-
-def hash_state_dict_keys(state_dict, with_shape=True):
-    keys_str = convert_state_dict_keys_to_single_str(state_dict, with_shape=with_shape)
-    keys_str = keys_str.encode(encoding="UTF-8")
-    return hashlib.md5(keys_str).hexdigest()
 
 @contextmanager
 def init_weights_on_device(device = torch.device("meta"), include_buffers :bool = False):
