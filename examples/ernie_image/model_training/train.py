@@ -98,7 +98,7 @@ if __name__ == "__main__":
         data_file_keys=args.data_file_keys.split(","),
         main_data_operator=lambda x: x,
         special_operator_map={
-            "image": ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16),
+            "image": ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, args.min_pixels, 16, 16),
         },
     )
     model = ErnieImageTrainingModule(
