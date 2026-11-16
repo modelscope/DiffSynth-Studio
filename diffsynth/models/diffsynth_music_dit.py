@@ -1,6 +1,7 @@
 import math, torch
 from ..core import gradient_checkpoint_forward
 from ..core.attention.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from einops import rearrange
 from transformers.models.qwen3.modeling_qwen3 import Qwen3RotaryEmbedding
 
@@ -113,6 +114,11 @@ class MLP(torch.nn.Module):
         return self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"x": 1, "pos_emb": 1},
+    gather_dimensions_for_outputs={"x": 1},
+    no_exchange_modules=("cross_attn",),
+)
 class DiffSynthMusicDiTLayer(torch.nn.Module):
     def __init__(self, dim=2560, num_heads_q=32, num_heads_kv=8, head_dim=128, dim_mlp=9728, window_size=None):
         super().__init__()

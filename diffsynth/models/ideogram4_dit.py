@@ -5,6 +5,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
+
 from ..core.gradient import gradient_checkpoint_forward
 from ..core.quant import QuantBackend, BackendConfig, register_quant_backend, register_quant_method
 
@@ -230,9 +233,11 @@ class Ideogram4Attention(nn.Module):
 
         q, k = _apply_rotary_pos_emb(q, k, cos, sin)
 
-        attn_mask = (segment_ids.unsqueeze(2) == segment_ids.unsqueeze(1)).unsqueeze(1)
+        ids = segment_ids[0]
+        changes = torch.nonzero(ids[1:] != ids[:-1]).flatten() + 1
+        cu_seqlens = torch.cat((ids.new_zeros(1), changes, ids.new_tensor([ids.shape[0]]))).to(torch.int32)
 
-        out = F.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask)
+        out = attention_forward(q, k, v, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", cu_seqlens=cu_seqlens)
         out = out.transpose(1, 2).reshape(batch_size, seq_len, self.hidden_size)
         return self.o(out)
 
@@ -248,6 +253,10 @@ class Ideogram4MLP(nn.Module):
         return self.w2(F.silu(self.w1(x)) * self.w3(x))
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"x": 1, "cos": 1, "sin": 1},
+    gather_dimensions_for_outputs={"x": 1},
+)
 class Ideogram4TransformerBlock(nn.Module):
     def __init__(
         self,

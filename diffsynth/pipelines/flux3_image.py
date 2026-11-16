@@ -44,10 +44,11 @@ class Flux3ImagePipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         processor_config: ModelConfig = ModelConfig(model_id="black-forest-labs/flux-3-image-klein", origin_file_pattern="text_encoder/"),
         vram_limit: float = None,
+        parallel_config=None,
     ):
         # Initialize pipeline
         pipe = Flux3ImagePipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("krea2_text_encoder")
         pipe.dit = model_pool.fetch_model("flux3_dit")

@@ -6,7 +6,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 from torch import Tensor
-from torch.nn.attention import SDPBackend, sdpa_kernel
+
+from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 
 
@@ -28,21 +30,6 @@ def ropeapply(xq: Tensor, xk: Tensor, freqs: Tensor) -> tuple[Tensor, Tensor]:
     xq_ = freqs[..., 0] * xq_[..., 0] + freqs[..., 1] * xq_[..., 1]
     xk_ = freqs[..., 0] * xk_[..., 0] + freqs[..., 1] * xk_[..., 1]
     return xq_.reshape(*xq.shape).to(xq.dtype), xk_.reshape(*xk.shape).to(xk.dtype)
-
-
-def attention(
-    q: Tensor,
-    k: Tensor,
-    v: Tensor,
-    mask: Tensor | None = None,
-    scale: float | None = None,
-    gqa: bool = False,
-) -> Tensor:
-    with sdpa_kernel(SDPBackend.CUDNN_ATTENTION):
-        x = F.scaled_dot_product_attention(
-            q, k, v, attn_mask=mask, scale=scale, enable_gqa=gqa
-        )
-    return rearrange(x, "B H L D -> B L (H D)")
 
 
 def _mask(mask: Tensor) -> Tensor:
@@ -185,7 +172,6 @@ class Attention(torch.nn.Module):
         self.wv = torch.nn.Linear(dim, self.headdim * self.kvheads, bias=bias)
         self.gate = torch.nn.Linear(dim, dim, bias=bias)
         self.qknorm = QKNorm(self.headdim)
-        self.gqa = self.heads != self.kvheads
         self.wo = torch.nn.Linear(dim, dim, bias=bias)
 
     def forward(
@@ -200,7 +186,12 @@ class Attention(torch.nn.Module):
         q, k, v = self.qknorm(q, k, v)
         if freqs is not None:
             q, k = ropeapply(q, k, freqs)
-        out = self.wo(attention(q, k, v, mask=mask, gqa=self.gqa) * F.sigmoid(gate))
+        x = attention_forward(
+            q, k, v,
+            q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b s (n d)",
+            attn_mask=mask,
+        )
+        out = self.wo(x * F.sigmoid(gate))
         return out
 
 
@@ -283,6 +274,10 @@ class TextFusionTransformer(torch.nn.Module):
         return x
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"x": 1, "freqs": 1},
+    gather_dimensions_for_outputs={"x": 1},
+)
 class SingleStreamBlock(nn.Module):
     def __init__(
         self,
@@ -394,15 +389,14 @@ class SingleStreamDiT(nn.Module):
                 use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
             )
             context = self.txtmlp(context)
-        txtlen, imglen = context.shape[1], img.shape[1]
+        imglen = img.shape[1]
         combined = torch.cat((context, img), dim=1)
-        fulllen = combined.shape[1]
-        _padlen = (-fulllen) % 256
-        if _padlen > 0:
-            combined = F.pad(combined, (0, 0, 0, _padlen))
-            mask = F.pad(mask, (0, _padlen), value=False)
-            pos = F.pad(pos, (0, 0, 0, _padlen))
-        mask = _mask(mask)
+        # The text mask leaves a padding hole before the image suffix; pack the valid
+        # tokens into one contiguous sequence (math-equivalent to the valid-set mask)
+        # so the sharded stack sees no padding inside the sequence.
+        keep = mask[0].bool().nonzero(as_tuple=True)[0]
+        combined, pos = combined[:, keep], pos[:, keep]
+        mask = torch.ones((combined.shape[0], 1, 1, combined.shape[1]), dtype=torch.bool, device=combined.device)
         freqs = self.posemb(pos)
         for block in self.blocks:
             combined = gradient_checkpoint_forward(
@@ -415,5 +409,4 @@ class SingleStreamDiT(nn.Module):
                 mask=mask,
             )
         final = self.last(combined, t)
-        output = final[:, txtlen : txtlen + imglen, :]
-        return output
+        return final[:, -imglen:, :]
