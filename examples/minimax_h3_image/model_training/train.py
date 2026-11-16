@@ -54,11 +54,10 @@ class MiniMaxH3ImageTrainingModule(DiffusionTrainingModule):
         }
 
     def get_pipeline_inputs(self, data):
-        inputs_posi = {}
+        inputs_posi = {"prompt": data["prompt"]}
         inputs_nega = {}
         inputs_shared = {
             "cfg_scale": 1.0,
-            "prompt": data["prompt"],
             "input_image": data["image"],
             "height": data["image"].size[1],
             "width": data["image"].size[0],
