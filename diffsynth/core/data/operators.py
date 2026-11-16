@@ -94,8 +94,8 @@ class LoadImage(DataProcessingOperator):
 
 class ImageCropAndResize(DataProcessingOperator):
     def __init__(self, height=None, width=None, max_pixels=None, min_pixels=None, height_division_factor=1, width_division_factor=1):
-        if max_pixels is not None and min_pixels is not None and max_pixels <= min_pixels:
-            raise ValueError(f"max_pixels ({max_pixels}) must be greater than min_pixels ({min_pixels}).")
+        if max_pixels is not None and min_pixels is not None and max_pixels < min_pixels:
+            raise ValueError(f"max_pixels ({max_pixels}) must be greater than or equal to min_pixels ({min_pixels}).")
         self.height = height
         self.width = width
         self.max_pixels = max_pixels
