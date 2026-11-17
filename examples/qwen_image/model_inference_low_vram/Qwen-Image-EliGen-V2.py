@@ -3,6 +3,7 @@ import random
 from PIL import Image, ImageDraw, ImageFont
 from modelscope import dataset_snapshot_download, snapshot_download
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
+from diffsynth.core.quant import QuantizeConfig
 
 def visualize_masks(image, masks, mask_prompts, output_path, font_size=35, use_random_colors=False):
     # Create a blank image for overlays
@@ -83,14 +84,15 @@ def example(pipe, seeds, example_id, global_prompt, entity_prompts):
 
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": torch.float8_e4m3fn,
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
     "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 pipe = QwenImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

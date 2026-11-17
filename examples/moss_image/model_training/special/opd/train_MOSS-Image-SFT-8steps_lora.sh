@@ -10,12 +10,12 @@ python examples/moss_image/model_training/special/opd/compute_sigmas.py --schedu
 
 # Start training
 accelerate launch examples/moss_image/model_training/special/opd/train_opd_lora.py \
-  --dataset_base_path data/diffsynth_example_dataset/moss_image/MOSS-Image-Base \
-  --dataset_metadata_path data/diffsynth_example_dataset/moss_image/MOSS-Image-Base/metadata.csv \
+  --dataset_base_path data/diffsynth_example_dataset/moss_image/MOSS-Image-SFT \
+  --dataset_metadata_path data/diffsynth_example_dataset/moss_image/MOSS-Image-SFT/metadata.csv \
   --max_pixels 1048576 \
   --dataset_repeat 50 \
   --model_id_with_origin_paths "openmoss/MOSS-Image-SFT:transformer/diffusion_pytorch_model*.safetensors,openmoss/MOSS-Image-SFT:text_encoder/model*.safetensors,openmoss/MOSS-Image-SFT:vae/diffusion_pytorch_model.safetensors" \
-  --learning_rate 1e-4 \
+  --learning_rate 2e-5 \
   --num_epochs 5 \
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/MOSS-Image-SFT_opd_lora_8steps" \

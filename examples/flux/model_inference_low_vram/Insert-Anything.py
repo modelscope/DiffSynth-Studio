@@ -2,16 +2,18 @@ import torch
 from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 from PIL import Image
 from modelscope import dataset_snapshot_download
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
-    "offload_dtype": torch.float8_e4m3fn,
+    "offload_dtype": torch.bfloat16,
     "offload_device": "cpu",
-    "onload_dtype": torch.float8_e4m3fn,
+    "onload_dtype": torch.bfloat16,
     "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e4m3fn,
+    "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw", exclude_modules=["self_attn.out_proj", "attention.out_proj"]),
 }
 
 pipe = FluxImagePipeline.from_pretrained(

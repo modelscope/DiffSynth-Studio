@@ -330,7 +330,7 @@ class TimestepEmbedder(nn.Module):
         )
         args = t.float().unsqueeze(-1) * freqs.unsqueeze(0)
         emb = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
-        return self.mlp(emb.to(next(self.parameters()).dtype))
+        return self.mlp(emb.to(t.dtype))
 
 
 class AudioPositionEmbedding(nn.Module):
@@ -638,7 +638,7 @@ class YuE2ForCausalLM(YuE2PreTrainedModel, GenerationMixin):
             v_pred: [T_lat, D] predicted velocity
         """
         device = tokens.device
-        dtype = next(self.parameters()).dtype
+        dtype = x_t.dtype
         B, S = tokens.shape
 
         # 1. Token embeddings

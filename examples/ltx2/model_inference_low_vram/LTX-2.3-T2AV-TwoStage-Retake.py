@@ -4,16 +4,18 @@ from diffsynth.utils.data.media_io_ltx2 import write_video_audio_ltx2
 from diffsynth.utils.data.audio import read_audio
 from modelscope import dataset_snapshot_download
 from diffsynth.utils.data import VideoData
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
-    "offload_dtype": torch.float8_e5m2,
+    "offload_dtype": torch.bfloat16,
     "offload_device": "cpu",
-    "onload_dtype": torch.float8_e5m2,
+    "onload_dtype": torch.bfloat16,
     "onload_device": "cpu",
-    "preparing_dtype": torch.float8_e5m2,
+    "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 pipe = LTX2AudioVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

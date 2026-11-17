@@ -2,6 +2,7 @@ from diffsynth.pipelines.joyai_image import JoyAIImagePipeline, ModelConfig
 import torch
 from PIL import Image
 from modelscope import dataset_snapshot_download
+from diffsynth.core.quant import QuantizeConfig
 
 # Download dataset
 dataset_snapshot_download(
@@ -19,6 +20,7 @@ vram_config = {
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 
 pipe = JoyAIImagePipeline.from_pretrained(

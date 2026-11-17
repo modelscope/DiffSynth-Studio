@@ -1,6 +1,7 @@
 import torch
 from diffsynth.core import ModelConfig
 from diffsynth.pipelines.stable_diffusion_xl import StableDiffusionXLPipeline
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
     "offload_dtype": torch.float32,
@@ -11,6 +12,7 @@ vram_config = {
     "preparing_device": "cuda",
     "computation_dtype": torch.float32,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 pipe = StableDiffusionXLPipeline.from_pretrained(
     torch_dtype=torch.float32,

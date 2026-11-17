@@ -3,6 +3,7 @@ from modelscope import dataset_snapshot_download
 from diffsynth.core import ModelConfig
 from diffsynth.pipelines.qwen_video_edit import QwenVideoEditPipeline
 from diffsynth.utils.data import VideoData, save_video
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -13,6 +14,7 @@ vram_config = {
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 
 dataset_snapshot_download(

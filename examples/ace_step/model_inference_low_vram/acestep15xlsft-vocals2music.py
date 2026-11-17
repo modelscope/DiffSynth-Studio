@@ -3,6 +3,7 @@ from diffsynth.diffusion.template import TemplatePipeline
 from diffsynth.utils.data.audio import save_audio, read_audio
 from modelscope import snapshot_download
 import torch
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -13,6 +14,7 @@ vram_config = {
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw", exclude_modules=["tokenizer.quantizer.project_out"]),
 }
 pipe = AceStepPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

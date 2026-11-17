@@ -2,16 +2,18 @@ import torch
 from PIL import Image
 from diffsynth.utils.data.audio_video import write_video_audio
 from diffsynth.pipelines.mova_audio_video import MovaAudioVideoPipeline, ModelConfig
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
     "offload_device": "cpu",
     "onload_dtype": torch.bfloat16,
-    "onload_device": "cuda",
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 pipe = MovaAudioVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

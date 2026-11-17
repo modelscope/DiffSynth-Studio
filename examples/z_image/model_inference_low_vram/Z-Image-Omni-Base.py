@@ -1,6 +1,7 @@
 from diffsynth.pipelines.z_image import ZImagePipeline, ModelConfig
 from PIL import Image
 import torch
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -11,6 +12,7 @@ vram_config = {
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
+    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
 pipe = ZImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,

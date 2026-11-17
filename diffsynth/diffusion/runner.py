@@ -40,6 +40,8 @@ def exclude_quantized_params_from_ddp_sync(accelerator: Accelerator, model: Diff
         ignored = [
             f"{name}.weight" for name, module in model.named_modules()
             if any(quantize.is_quantized_linear(module) for quantize in quant_configs)
+            # Offloaded models can have their parameters cleared, leaving `weight = None`.
+            and getattr(module, "weight", None) is not None
             and not module.weight.requires_grad and is_traceable_wrapper_subclass(module.weight)
         ]
         if len(ignored) > 0:
@@ -64,6 +66,7 @@ def launch_training_task(
     enable_optimizer_cpu_offload: bool = False,
     cpu_offload_split_threshold: int = None,
     customized_optimizer: str = None,
+    warm_up_steps: int = 5,
     args = None,
     **kwargs,
 ):
@@ -77,23 +80,24 @@ def launch_training_task(
         enable_optimizer_cpu_offload = args.enable_optimizer_cpu_offload
         cpu_offload_split_threshold = args.cpu_offload_split_threshold
         customized_optimizer = args.customized_optimizer
+        warm_up_steps = getattr(args, "warm_up_steps", warm_up_steps)
 
     if accelerator.is_main_process:
         save_training_args(args)
 
     optimizer_class = get_optimizer_class(customized_optimizer)
     optimizer = optimizer_class(model.trainable_modules(), lr=learning_rate, weight_decay=weight_decay)
-    scheduler = torch.optim.lr_scheduler.ConstantLR(optimizer)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda s: min(1.0, (s + 1) / max(1, warm_up_steps)))
     dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, collate_fn=lambda x: x[0], num_workers=num_workers)
 
     if enable_model_cpu_offload:
-        optimizer, dataloader, scheduler = accelerator.prepare(optimizer, dataloader, scheduler)
+        optimizer, dataloader = accelerator.prepare(optimizer, dataloader)
         model.pipe.device = accelerator.device
         offload_manager = OffloadTrainingManager(model, accelerator.device, enable_optimizer_cpu_offload, cpu_offload_split_threshold)
     else:
         model.to(device=accelerator.device)
         exclude_quantized_params_from_ddp_sync(accelerator, model)
-        model, optimizer, dataloader, scheduler = accelerator.prepare(model, optimizer, dataloader, scheduler)
+        model, optimizer, dataloader = accelerator.prepare(model, optimizer, dataloader)
 
     initialize_deepspeed_gradient_checkpointing(accelerator)
     for epoch_id in range(num_epochs):
@@ -107,7 +111,8 @@ def launch_training_task(
                 if enable_model_cpu_offload:
                     offload_manager.after_backward()
                 optimizer.step()
-                scheduler.step()
+                if accelerator.sync_gradients and not getattr(optimizer, "step_was_skipped", False):
+                    scheduler.step()
                 optimizer.zero_grad()
                 model_logger.on_step_end(accelerator, model, save_steps, loss=loss)
         if save_steps is None:

@@ -10,6 +10,37 @@ flux_general_vram_config = {
 }
 
 VRAM_MANAGEMENT_MODULE_MAPS = {
+    "diffsynth.models.minimax_h3_image_dit.MiniMaxH3ImageDiT": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.minimax_h3_image_dit.MiniMaxH3ImageDiTPruned": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_h3_image_dit.MiniMaxH3ImageAdalnTable": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.minimax_h3_image_dit_comfy.MiniMaxH3ImageDiTComfy": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.minimax_h3_image_dit_comfy.MiniMaxH3ImageDiTComfyPruned": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.minimax_h3_image_dit.MiniMaxH3ImagePDDHeads": {
+        "diffsynth.models.minimax_h3_image_dit._MiniMaxH3ImagePDDHeadParameters": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.minimax_h3_image_vae.MiniMaxH3ImageVAE": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.GroupNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_h3_video_vae.BaseConv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_h3_video_vae.WarpedTensor": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.minimax_h3_video_vae.TemporalIsolatedSpatialGroupNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
     "diffsynth.models.minimax_h3_dit.MiniMaxH3DiT": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
@@ -115,6 +146,9 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "diffsynth.models.wan_video_animate_adapter.ConvLayer": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.wan_video_animate_adapter.FusedLeakyReLU": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.wan_video_animate_adapter.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.wan_video_animate_adapter.Blur": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.wan_video_animate_adapter.EqualConv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.wan_video_animate_adapter.Direction": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv1d": "diffsynth.core.vram.layers.AutoWrappedModule",
@@ -150,6 +184,7 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.wan_video_dit.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.MultiheadAttention": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
     "diffsynth.models.wan_video_image_encoder.WanImageEncoder": {
         "diffsynth.models.wan_video_image_encoder.VisionTransformer": "diffsynth.core.vram.layers.AutoWrappedModule",

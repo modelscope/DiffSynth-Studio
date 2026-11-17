@@ -43,11 +43,11 @@ Note that the dimension of the Attention Score in the attention mechanism ( $\te
 * Flash Attention 4: [GitHub](https://github.com/Dao-AILab/flash-attention), [Paper](https://arxiv.org/abs/2603.05451)
 * Flash Attention 3: [GitHub](https://github.com/Dao-AILab/flash-attention), [Paper](https://arxiv.org/abs/2407.08608)
 * Flash Attention 2: [GitHub](https://github.com/Dao-AILab/flash-attention), [Paper](https://arxiv.org/abs/2307.08691)
-* Sage Attention: [GitHub](https://github.com/thu-ml/SageAttention), [Paper](https://arxiv.org/abs/2505.11594)
+* Sage Attention: [GitHub](https://github.com/thu-ml/SageAttention), [Paper](https://arxiv.org/abs/2505.11594) (not enabled automatically due to its large backward-pass error, see below)
 * xFormers: [GitHub](https://github.com/facebookresearch/xformers), [Documentation](https://facebookresearch.github.io/xformers/components/ops.html#module-xformers.ops)
 * PyTorch: [GitHub](https://github.com/pytorch/pytorch), [Documentation](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html)
 
-To call attention implementations other than `PyTorch`, please follow the instructions on their GitHub pages to install the corresponding packages. `DiffSynth-Studio` will automatically route to the corresponding implementation based on available packages in the Python environment, or can be controlled through [environment variables](../../Pipeline_Usage/Environment_Variables.md#diffsynth_attention_implementation).
+To call attention implementations other than `PyTorch`, please follow the instructions on their GitHub pages to install the corresponding packages. `DiffSynth-Studio` routes to the corresponding implementation based on the packages available in the Python environment (Sage Attention has to be selected explicitly, see below), or this can be controlled through [environment variables](../../Pipeline_Usage/Environment_Variables.md#diffsynth_attention_implementation).
 
 ```python
 from diffsynth.core.attention import attention_forward
@@ -77,9 +77,10 @@ Please note that acceleration will introduce errors, but in most cases, the erro
 2. `flash_attention_4`
 3. `flash_attention_3`
 4. `flash_attention_2`
-5. `sage_attention`
-6. `xformers`
-7. `torch`
+5. `xformers`
+6. `torch`
+
+`sage_attention` is not part of the automatic selection order. The gradient backward pass of Sage Attention has a relatively large error that degrades training quality, so we no longer enable it automatically. To use it, set the [environment variable](../../Pipeline_Usage/Environment_Variables.md#diffsynth_attention_implementation) `DIFFSYNTH_ATTENTION_IMPLEMENTATION=sage_attention` explicitly; we do not recommend using it for training either.
 
 The currently registered implementations can be printed with:
 ```python

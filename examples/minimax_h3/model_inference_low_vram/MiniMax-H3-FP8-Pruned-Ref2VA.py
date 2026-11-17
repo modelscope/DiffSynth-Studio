@@ -4,6 +4,7 @@ from diffsynth.pipelines.minimax_h3_audio_video import MiniMaxH3Pipeline, ModelC
 from diffsynth.utils.data.audio_video import write_video_audio, read_video_audio
 from diffsynth.utils.data.audio import read_audio
 from modelscope import dataset_snapshot_download
+from diffsynth.core.quant import QuantizeConfig
 
 def align_frame_count(frame_count):
     current = max(int(frame_count), 1)
@@ -12,10 +13,10 @@ def align_frame_count(frame_count):
     return current
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
-    "onload_dtype": "disk",
-    "onload_device": "disk",
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
+    "onload_dtype": torch.bfloat16,
+    "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
     "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16,

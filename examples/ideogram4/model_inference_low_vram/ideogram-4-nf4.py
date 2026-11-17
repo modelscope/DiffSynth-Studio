@@ -1,10 +1,11 @@
 from diffsynth.pipelines.ideogram4 import Ideogram4Pipeline
 from diffsynth.core import ModelConfig
 import torch
+from diffsynth.core.quant import QuantizeConfig
 
 vram_config = {
-    "offload_dtype": "disk",
-    "offload_device": "disk",
+    "offload_dtype": torch.bfloat16,
+    "offload_device": "cpu",
     "onload_dtype": torch.bfloat16,
     "onload_device": "cpu",
     "preparing_dtype": torch.bfloat16,
