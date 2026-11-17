@@ -54,7 +54,6 @@ class MiniMaxH3ImagePipeline(BasePipeline):
             MiniMaxH3ImageUnit_NoiseInitializer(),
             MiniMaxH3ImageUnit_ReferenceEncoder(),
             MiniMaxH3ImageUnit_PackedSequenceBuilder(),
-            MiniMaxH3ImageUnit_TimestepPlanner(),
         ]
         self.model_fn = model_fn_minimax_h3_image
         self.compilable_models = ["dit"]
@@ -141,25 +140,14 @@ class MiniMaxH3ImagePipeline(BasePipeline):
         # Denoise
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
-
-        def denoise_step(branch, timestep, progress_id):
-            unique_timesteps, timestep_indices = branch["row_timestep_plan"][progress_id]
-            # The six output heads are distilled for the six-step grid; any other schedule picks the nearest head.
-            step_index = progress_id if distilled else None
-            return self.model_fn(
-                **models, **inputs_shared, **branch,
-                timestep=timestep,
-                unique_timesteps=unique_timesteps,
-                timestep_indices=timestep_indices,
-                pdd_step_index=step_index,
-            )
-
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
-            noise_pred = denoise_step(inputs_posi, timestep, progress_id)
-            if cfg_scale != 1.0:
-                noise_pred_nega = denoise_step(inputs_nega, timestep, progress_id)
-                noise_pred = noise_pred_nega + cfg_scale * (noise_pred - noise_pred_nega)
-            inputs_shared["latents"] = self.step(self.scheduler, inputs_shared["latents"], progress_id, noise_pred=noise_pred)
+            timestep = timestep.to(dtype=torch.float32)
+            noise_pred = self.cfg_guided_model_fn(
+                self.model_fn, cfg_scale,
+                inputs_shared, inputs_posi, inputs_nega,
+                **models, timestep=timestep,
+            )
+            inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
 
         # Decode
         self.load_models_to_device(["vae"])
@@ -395,34 +383,6 @@ class MiniMaxH3ImageUnit_InputImageEmbedder(PipelineUnit):
         return {"input_latents": latents[:, :, None]}
 
 
-class MiniMaxH3ImageUnit_TimestepPlanner(PipelineUnit):
-    """Plans the noise level of every row at every sampling step.
-
-    Step `i` runs the transformer's output head `i`, so the generated rows follow the fixed six-step grid, while the
-    reference rows of an edit stay at the conditioning level `0.999` for the whole loop and every step sees the same
-    pair of distinct timesteps.
-    """
-
-    def __init__(self):
-        super().__init__(
-            seperate_cfg=True,
-            input_params_posi={"position_ids": "position_ids", "image_indices": "image_indices"},
-            input_params_nega={"position_ids": "position_ids", "image_indices": "image_indices"},
-            input_params=("num_reference_rows",),
-            output_params=("row_timestep_plan",),
-        )
-
-    def process(self, pipe: MiniMaxH3ImagePipeline, position_ids, image_indices, num_reference_rows):
-        sequence_length = int(position_ids.shape[1])
-        row_timestep_plan = []
-        for step_id in range(len(pipe.scheduler.timesteps)):
-            row_timesteps = torch.full((sequence_length,), float(1.0 - pipe.scheduler.sigmas[step_id]), dtype=torch.float32, device=pipe.device)
-            if num_reference_rows > 0:
-                row_timesteps[image_indices[:num_reference_rows]] = MINIMAX_H3_IMAGE_REFERENCE_NOISE_AUG
-            row_timestep_plan.append(torch.unique(row_timesteps, sorted=True, return_inverse=True))
-        return {"row_timestep_plan": row_timestep_plan}
-
-
 class MiniMaxH3ImageUnit_PackedSequenceBuilder(PipelineUnit):
     """Lays the text rows, the reference-image rows and the generated rows into one packed sequence.
 
@@ -511,9 +471,6 @@ def model_fn_minimax_h3_image(
     reference_latents=None,
     num_reference_rows=0,
     timestep=None,
-    unique_timesteps=None,
-    timestep_indices=None,
-    pdd_step_index=None,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
     **kwargs,
@@ -529,25 +486,16 @@ def model_fn_minimax_h3_image(
     rows.append(patchify_video(latents))
     rows = torch.cat(rows) if len(rows) > 1 else rows[0]
 
-    if unique_timesteps is None:
-        # Training: the generated rows sit at the timestep the loss sampled, the reference rows stay at the
-        # conditioning level. The level order is the sampler's: step first, reference last.
-        level = (1.0 - timestep.float().view(-1) / 1000).to(device=rows.device)
-        timestep_indices = torch.zeros(position_ids.shape[1], dtype=torch.long, device=rows.device)
-        if num_reference_rows > 0:
-            unique_timesteps = torch.cat([
-                level[:1],
-                torch.full((1,), MINIMAX_H3_IMAGE_REFERENCE_NOISE_AUG, dtype=level.dtype, device=level.device),
-            ])
-            timestep_indices[image_indices.view(-1)[:num_reference_rows]] = 1
-        else:
-            unique_timesteps = level
-    if pdd_step_index is None:
-        # Off the distilled grid (training, or a non-distilled schedule): use the head of the nearest noise level. The
-        # transformer consumes `t = 1 - sigma`, while the head grid is stored in sigma.
-        sample_sigmas = torch.tensor(MINIMAX_H3_IMAGE_SAMPLE_SIGMAS, dtype=torch.float32, device=unique_timesteps.device)
-        sigma = 1.0 - unique_timesteps[0].float()
-        pdd_step_index = int(torch.argmin((sample_sigmas - sigma).abs()))
+    # This step's noise level, plus the reference-image conditioning level when reference rows are present.
+    unique_timesteps = (1.0 - timestep.float().view(-1)[:1] / 1000).to(device=rows.device)
+    timestep_indices = torch.zeros(position_ids.shape[1], dtype=torch.long, device=rows.device)
+    if num_reference_rows > 0:
+        unique_timesteps = torch.cat([unique_timesteps, unique_timesteps.new_full((1,), MINIMAX_H3_IMAGE_REFERENCE_NOISE_AUG)])
+        timestep_indices[image_indices.view(-1)[:num_reference_rows]] = 1
+    # The output head of the nearest sigma grid point; the transformer takes `t = 1 - sigma`, the grid stores sigma.
+    sample_sigmas = torch.tensor(MINIMAX_H3_IMAGE_SAMPLE_SIGMAS, dtype=torch.float32, device=unique_timesteps.device)
+    sigma = 1.0 - unique_timesteps[0].float()
+    pdd_step_index = int(torch.argmin((sample_sigmas - sigma).abs()))
 
     velocity_rows = dit(
         x=rows,
