@@ -14,6 +14,7 @@ accelerate launch examples/minimax_h3_image/model_training/train.py \
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/MiniMax-H3-Image-Pruned-full-split-cache" \
   --trainable_models "dit" \
+  --use_gradient_checkpointing \
   --task "sft:data_process" \
   --offload_models "DiffSynth-Studio/MiniMax-H3-Image-EntroPack:models/bf16_table_pruned.safetensors,MiniMax/MiniMax-H3-Image:pdd_fused_heads.safetensors"
 
@@ -31,6 +32,7 @@ accelerate launch --config_file examples/minimax_h3_image/model_training/full/ac
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/MiniMax-H3-Image-Pruned-full-split" \
   --trainable_models "dit" \
+  --use_gradient_checkpointing \
   --task "sft:train" \
   --offload_models "MiniMax/MiniMax-H3:FL2VA/text_encoder/model*.safetensors,MiniMax/MiniMax-H3-Image:vae/diffusion_pytorch_model.safetensors"
 
@@ -55,6 +57,7 @@ accelerate launch --config_file examples/minimax_h3_image/model_training/full/ac
 #   --remove_prefix_in_ckpt "pipe.dit." \
 #   --output_path "./models/train/MiniMax-H3-Image-Pruned-Edit-full-split-cache" \
 #   --trainable_models "dit" \
+#   --use_gradient_checkpointing \
 # #   --task "sft:data_process" \
 #   --offload_models "DiffSynth-Studio/MiniMax-H3-Image-EntroPack:models/bf16_table_pruned.safetensors,MiniMax/MiniMax-H3-Image:pdd_fused_heads.safetensors"
 #
@@ -72,5 +75,6 @@ accelerate launch --config_file examples/minimax_h3_image/model_training/full/ac
 #   --remove_prefix_in_ckpt "pipe.dit." \
 #   --output_path "./models/train/MiniMax-H3-Image-Pruned-Edit-full-split" \
 #   --trainable_models "dit" \
+#   --use_gradient_checkpointing \
 # #   --task "sft:train" \
 #   --offload_models "MiniMax/MiniMax-H3:FL2VA/text_encoder/model*.safetensors,MiniMax/MiniMax-H3-Image:vae/diffusion_pytorch_model.safetensors"
