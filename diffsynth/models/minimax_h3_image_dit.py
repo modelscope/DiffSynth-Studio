@@ -375,7 +375,7 @@ class MiniMaxH3ImageDiTPruned(MiniMaxH3ImageDiT):
 
     The tables hold the AdaLN outputs of the distilled schedule's timesteps (six grid steps plus the reference-image
     level), so the `2688 -> 96768` projections and the timestep embedder are gone. Step `i` reads row `i` and the
-    reference rows read the last row, which makes the model inference-only on the distilled six-step schedule.
+    reference rows read the last row, which pins the modulation to the distilled six-step schedule.
     """
 
     def __init__(self, **kwargs):
@@ -402,8 +402,6 @@ class MiniMaxH3ImageDiTPruned(MiniMaxH3ImageDiT):
         use_gradient_checkpointing_offload: bool = False,
     ) -> torch.Tensor:
         """Same contract as `MiniMaxH3ImageDiT.forward`, with the AdaLN tables read by step index."""
-        if use_gradient_checkpointing or use_gradient_checkpointing_offload:
-            raise ValueError("MiniMaxH3ImageDiTPruned is inference-only and does not support gradient checkpointing.")
         if x.dim() != 2:
             raise ValueError(f"x must be [N_img, patch_dim], got {list(x.shape)}")
         if pdd_heads is None:
@@ -435,9 +433,16 @@ class MiniMaxH3ImageDiTPruned(MiniMaxH3ImageDiT):
         cu_seqlens = torch.tensor([0, seq_len], dtype=torch.int32, device=device)
 
         for block in self.blocks:
-            hidden = block(
-                hidden, t_emb=timestep_rows, combined_indices=combined_indices,
-                rope_freqs=rope_freqs, cu_seqlens=cu_seqlens, max_seqlen=seq_len,
+            hidden = gradient_checkpoint_forward(
+                block,
+                use_gradient_checkpointing,
+                use_gradient_checkpointing_offload,
+                hidden,
+                t_emb=timestep_rows,
+                combined_indices=combined_indices,
+                rope_freqs=rope_freqs,
+                cu_seqlens=cu_seqlens,
+                max_seqlen=seq_len,
             )
 
         hidden = self.final_layer(hidden, t_emb=timestep_rows, timestep_indices=timestep_indices)

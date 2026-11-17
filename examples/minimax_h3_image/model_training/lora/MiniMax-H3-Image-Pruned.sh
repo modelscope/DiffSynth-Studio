@@ -23,6 +23,7 @@ accelerate launch examples/minimax_h3_image/model_training/train.py \
   --lora_base_model "dit" \
   --lora_target_modules "attn.qkv_proj,attn.out_proj,mlp.fc1,mlp.fc2" \
   --lora_rank 32 \
+  --use_gradient_checkpointing \
   --task "sft:data_process" \
   --offload_models "DiffSynth-Studio/MiniMax-H3-Image-EntroPack:models/bf16_table_pruned.safetensors,MiniMax/MiniMax-H3-Image:pdd_fused_heads.safetensors"
 
@@ -42,6 +43,7 @@ accelerate launch examples/minimax_h3_image/model_training/train.py \
   --lora_base_model "dit" \
   --lora_target_modules "attn.qkv_proj,attn.out_proj,mlp.fc1,mlp.fc2" \
   --lora_rank 32 \
+  --use_gradient_checkpointing \
   --task "sft:train" \
   --offload_models "MiniMax/MiniMax-H3:FL2VA/text_encoder/model*.safetensors,MiniMax/MiniMax-H3-Image:vae/diffusion_pytorch_model.safetensors"
 
