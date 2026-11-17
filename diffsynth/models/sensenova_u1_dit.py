@@ -3,6 +3,7 @@ import torch.nn as nn
 from transformers.cache_utils import DynamicCache
 
 from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_disabled, sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 from .sensenova_u1_common import build_abs_positions_from_grid_hw
 
@@ -227,6 +228,11 @@ class SenseNovaU1Attention(nn.Module):
         )
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"hidden_states": 1, "indexes": 1},
+    gather_dimensions_for_outputs={"hidden_states": 1},
+    kv_prefix_inputs={"kv_prefix": 2},
+)
 class SenseNovaU1DecoderLayer(nn.Module):
 
     def __init__(
@@ -313,7 +319,7 @@ class SenseNovaU1DecoderLayer(nn.Module):
 
     def forward(
         self, hidden_states, exist_non_image_gen_tokens, exist_image_gen_tokens,
-        indexes, attention_mask, past_key_values=None, update_cache=True,
+        indexes, attention_mask, past_key_values=None, update_cache=True, kv_prefix=None,
     ):
         if exist_non_image_gen_tokens and not exist_image_gen_tokens:
             return self.forward_und(
@@ -404,6 +410,9 @@ class SenseNovaU1Model(nn.Module):
             past_key_values = DynamicCache()
 
         hidden_states = inputs_embeds
+        kv_prefix = None
+        if past_key_values is not None and not update_cache and len(past_key_values.layers) > 0:
+            kv_prefix = past_key_values.layers[0].keys
         for decoder_layer in self.layers:
             hidden_states = gradient_checkpoint_forward(
                 decoder_layer,
@@ -416,6 +425,7 @@ class SenseNovaU1Model(nn.Module):
                 attention_mask=attention_mask,
                 past_key_values=past_key_values,
                 update_cache=update_cache,
+                kv_prefix=kv_prefix,
             )
 
         if not exist_image_gen_tokens:
@@ -760,6 +770,7 @@ class SenseNovaU1DiT(nn.Module):
             embeddings = embeddings + noise_embeddings.view(batch_size, num_tokens, -1)
         return embeddings
 
+    @sequence_parallel_disabled()
     def encode_prefix(
         self,
         input_ids=None,
@@ -817,6 +828,7 @@ class SenseNovaU1DiT(nn.Module):
             logits_to_keep=1,
         )
 
+    @sequence_parallel_disabled()
     @torch.no_grad()
     def generate_think(
         self,

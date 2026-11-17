@@ -72,6 +72,7 @@ def sequence_parallel_recipe(
     split_dimensions_for_inputs: dict[str, int],
     gather_dimensions_for_outputs: dict[str, int] | None = None,
     no_exchange_modules: tuple[str, ...] = (),
+    kv_prefix_inputs: dict[str, int] | None = None,
 ) -> Callable[[_ClassT], _ClassT]:
     """Declare the input shards and output gathers of a block stack.
 
@@ -143,6 +144,13 @@ def sequence_parallel_recipe(
     runs on the local query without exchange. Other attention inside the stack
     uses the SP backend, which requires supported, divisible head counts.
 
+    `kv_prefix_inputs` maps replicated (unsharded) input names to their sequence
+    dimension, just like `split_dimensions_for_inputs`. Their lengths are summed into
+    a K/V-only prefix that the block appends in front of the sharded suffix inside
+    attention. The backend exchanges only the suffix and head-slices the replicated
+    prefix by KV heads. Named inputs must be tensors and must not appear in
+    `split_dimensions_for_inputs`.
+
     Padding adds no attention mask: dense attention can differ from an unsharded
     run. Packed varlen attention must retain the original global segment boundaries
     and preserve the padded output length. Multi-stream models must align local
@@ -154,12 +162,17 @@ def sequence_parallel_recipe(
     for name in output_dims:
         if name not in split_dimensions_for_inputs:
             raise ValueError(f"gather output {name!r} is not declared in split_dimensions_for_inputs")
+    kv_prefix_dims = dict(kv_prefix_inputs or {})
+    for name in kv_prefix_dims:
+        if name in split_dimensions_for_inputs:
+            raise ValueError(f"kv_prefix input {name!r} must be a replicated (unsharded) input")
 
     def decorate(cls: _ClassT) -> _ClassT:
         cls._sequence_parallel_recipe = {
             "split_dimensions_for_inputs": dict(split_dimensions_for_inputs),
             "gather_dimensions_for_outputs": dict(output_dims),
             "no_exchange_modules": tuple(no_exchange_modules),
+            "kv_prefix_inputs": kv_prefix_dims,
         }
         return cls
     return decorate
@@ -187,6 +200,7 @@ class SequenceParallelStack:
         self.token_inputs = dict(declaration["split_dimensions_for_inputs"])
         self.output_dims = dict(declaration.get("gather_dimensions_for_outputs", {}))
         self.no_exchange_modules = tuple(declaration.get("no_exchange_modules", ()))
+        self.kv_prefix_inputs = dict(declaration.get("kv_prefix_inputs", {}))
         self._state = None
         # Positional parameter names of the declared forward, in declaration order.
         self.arg_order = tuple(
@@ -326,7 +340,8 @@ class SequenceParallelStack:
         for name in self.output_dims:
             if name not in local_lengths:
                 raise ValueError(f"{self.block_class.__name__}: gather output {name!r} has no tensor-bearing input at stack entry")
-        self._state = SequenceParallelState.set_state(self.backend, local_lengths, paddings)
+        kv_prefix_len = sum(self._fetch(name, args, kwargs).shape[dim] for name, dim in self.kv_prefix_inputs.items())
+        self._state = SequenceParallelState.set_state(self.backend, local_lengths, paddings, kv_prefix_len)
         return True
 
     def _exit(self, module, args, kwargs, output):
@@ -369,7 +384,7 @@ def _declared_class(module):
     return None
 
 
-def _find_block_stacks(model):
+def _find_block_stacks(model, gather_between_blocks=False):
     """Group the model's declared blocks into stacks.
 
     Stacks are discovered from structure, never declared by the model. A module is a
@@ -417,8 +432,8 @@ def _find_block_stacks(model):
         run = []
         for position, module in sorted(entries):
             cls = _declared_class(module)
-            # A gap or a class change starts a new stack.
-            if run and (position != run[-1][0] + 1 or cls is not run[-1][2]):
+            # A gap, a class change, or per-block granularity starts a new stack.
+            if run and (gather_between_blocks or position != run[-1][0] + 1 or cls is not run[-1][2]):
                 runs.append(run)
                 run = []
             run.append((position, module, cls))
@@ -447,5 +462,5 @@ def install_sequence_parallel(model, parallel_config):
     if sequence_group is None or dist.get_world_size(sequence_group) == 1:
         return
 
-    for blocks, block_class, declaration in _find_block_stacks(model):
+    for blocks, block_class, declaration in _find_block_stacks(model, parallel_config.sequence.gather_between_blocks):
         SequenceParallelStack(block_class, declaration, parallel_config.sequence.backend).install(blocks)

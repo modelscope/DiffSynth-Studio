@@ -7,10 +7,12 @@ size/rank are looked up on every call, never cached.
 from __future__ import annotations
 
 import torch
+import torch.distributed as dist
 
 from ..attention.common import rearrange_out, rearrange_qkv
 from .collectives import all_to_all_4d
 from .context import get_parallel_group
+from .sp_state import current_sequence_parallel_state
 
 
 class UlyssesBackend:
@@ -55,10 +57,34 @@ class UlyssesBackend:
             all_to_all_4d(v, scatter_dim=2, gather_dim=1, group=group),
         )
 
+    def _exchange_with_kv_prefix(self, q, k, v, kv_prefix):
+        """K/V = [replicated prefix | sharded suffix]; Q = suffix only.
+
+        Exchange only the suffix; the prefix already sits in full on every rank, so
+        it is head-sliced locally (by KV heads for GQA) and re-attached in front.
+        """
+        group = get_parallel_group()
+        k_rep, k_suf = k[:, :kv_prefix], k[:, kv_prefix:]
+        v_rep, v_suf = v[:, :kv_prefix], v[:, kv_prefix:]
+        q = all_to_all_4d(q, scatter_dim=2, gather_dim=1, group=group)
+        k_suf = all_to_all_4d(k_suf, scatter_dim=2, gather_dim=1, group=group)
+        v_suf = all_to_all_4d(v_suf, scatter_dim=2, gather_dim=1, group=group)
+        rank = dist.get_rank(group)
+        kv_local = k_rep.shape[2] // dist.get_world_size(group)
+        k_rep = k_rep[:, :, rank * kv_local:(rank + 1) * kv_local]
+        v_rep = v_rep[:, :, rank * kv_local:(rank + 1) * kv_local]
+        return q, torch.cat([k_rep, k_suf], dim=1), torch.cat([v_rep, v_suf], dim=1)
+
     def forward(self, q, k, v, *, local_attention, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, **attn_kwargs):
         required = "b s n d"
         q, k, v = rearrange_qkv(q, k, v, q_pattern, k_pattern, v_pattern, required, dims)
-        q, k, v = self._exchange_qkv(q, k, v)
+        kv_prefix = current_sequence_parallel_state().kv_prefix_len
+        if kv_prefix:
+            if attn_kwargs.get("attn_mask") is not None:
+                raise ValueError("replicated-KV-prefix exchange does not support attn_mask")
+            q, k, v = self._exchange_with_kv_prefix(q, k, v, kv_prefix)
+        else:
+            q, k, v = self._exchange_qkv(q, k, v)
 
         # Cut the tail tokens the mask leaves out, so the padding never reaches attention.
         query_padding, key_padding = self._mask_padding(q, k, attn_kwargs)

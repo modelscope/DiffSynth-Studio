@@ -30,10 +30,11 @@ class SequenceParallelState:
 
     _local = threading.local()
 
-    def __init__(self, backend: "UlyssesBackend", local_lengths: dict[str, int], paddings: dict[str, int]):
+    def __init__(self, backend: "UlyssesBackend", local_lengths: dict[str, int], paddings: dict[str, int], kv_prefix_len: int = 0):
         self.backend = backend
         self.local_lengths = local_lengths
         self.paddings = paddings
+        self.kv_prefix_len = kv_prefix_len
         # Nesting depth inside `no_exchange_modules` submodules.
         self.no_exchange_depth = 0
 
@@ -47,11 +48,11 @@ class SequenceParallelState:
         return getattr(cls._local, "current", None)
 
     @classmethod
-    def set_state(cls, backend: "UlyssesBackend", local_lengths: dict[str, int], paddings: dict[str, int]) -> "SequenceParallelState":
+    def set_state(cls, backend: "UlyssesBackend", local_lengths: dict[str, int], paddings: dict[str, int], kv_prefix_len: int = 0) -> "SequenceParallelState":
         """Activate a state with per-input local lengths and padding counts."""
         if cls.current() is not None:
             raise RuntimeError("sequence parallel state does not support nesting.")
-        state = cls(backend, local_lengths, paddings)
+        state = cls(backend, local_lengths, paddings, kv_prefix_len)
         cls._local.current = state
         return state
 
@@ -95,5 +96,3 @@ def sequence_parallel_disabled():
     """
     with SequenceParallelState.disabled():
         yield
-
-

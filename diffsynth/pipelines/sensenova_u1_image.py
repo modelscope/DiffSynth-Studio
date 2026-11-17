@@ -45,9 +45,10 @@ class SenseNovaU1ImagePipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="SenseNova/SenseNova-U1.5-8B-MoT", origin_file_pattern="./"),
         vram_limit: float = None,
+        parallel_config=None,
     ):
         pipe = SenseNovaU1ImagePipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         pipe.dit = model_pool.fetch_model("sensenova_u1_dit")
         if tokenizer_config is not None:
             tokenizer_config.download_if_necessary()

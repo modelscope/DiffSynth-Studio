@@ -8,6 +8,8 @@ from .sp_backend import SEQUENCE_PARALLEL_BACKENDS
 @dataclass(frozen=True)
 class SequenceParallelConfig:
     backend: str | None = "ulysses"
+    # Shard and gather each block independently (full sequences between blocks) instead of one persistent stack.
+    gather_between_blocks: bool = False
 
     def __post_init__(self):
         if self.backend is not None and self.backend not in SEQUENCE_PARALLEL_BACKENDS:

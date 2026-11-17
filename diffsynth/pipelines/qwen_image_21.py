@@ -46,9 +46,10 @@ class QwenImage21Pipeline(BasePipeline):
         model_configs: list[ModelConfig] = None,
         processor_config: ModelConfig = None,
         vram_limit: float = None,
+        parallel_config=None,
     ):
         pipe = QwenImage21Pipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs or [], vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs or [], vram_limit, parallel_config=parallel_config)
         pipe.text_encoder = model_pool.fetch_model("qwen_image_21_text_encoder")
         pipe.dit = model_pool.fetch_model("qwen_image_21_dit")
         pipe.vae = model_pool.fetch_model("qwen_image_21_vae")
