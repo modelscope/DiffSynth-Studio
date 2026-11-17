@@ -142,6 +142,7 @@ if __name__ == "__main__":
         main_data_operator=UnifiedDataset.default_video_operator(
             base_path=args.dataset_base_path,
             max_pixels=args.max_pixels,
+            min_pixels=args.min_pixels,
             height=args.height,
             width=args.width,
             height_division_factor=16,
@@ -151,7 +152,7 @@ if __name__ == "__main__":
             time_division_remainder=1 if not args.framewise_decoding else 0,
         ),
         special_operator_map={
-            "animate_face_video": ToAbsolutePath(args.dataset_base_path) >> LoadVideo(args.num_frames, 4, 1, frame_processor=ImageCropAndResize(512, 512, None, 16, 16)),
+            "animate_face_video": ToAbsolutePath(args.dataset_base_path) >> LoadVideo(args.num_frames, 4, 1, frame_processor=ImageCropAndResize(512, 512, None, None, 16, 16)),
             "input_audio": ToAbsolutePath(args.dataset_base_path) >> LoadAudio(sr=16000),
             "wantodance_music_path": ToAbsolutePath(args.dataset_base_path),
         }

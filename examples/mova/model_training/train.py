@@ -147,6 +147,7 @@ if __name__ == "__main__":
     video_processor = UnifiedDataset.default_video_operator(
         base_path=args.dataset_base_path,
         max_pixels=args.max_pixels,
+        min_pixels=args.min_pixels,
         height=args.height,
         width=args.width,
         height_division_factor=16,

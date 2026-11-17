@@ -68,6 +68,7 @@ Training scripts typically include the following parameters:
     * `--height`: Height of images or videos. Leave `height` and `width` blank to enable dynamic resolution.
     * `--width`: Width of images or videos. Leave `height` and `width` blank to enable dynamic resolution.
     * `--max_pixels`: Maximum pixel area of images or video frames. When dynamic resolution is enabled, images with resolution larger than this value will be scaled down, and images with resolution smaller than this value will remain unchanged.
+    * `--min_pixels`: Minimum pixel area of images or video frames. When dynamic resolution is enabled, images with resolution smaller than this value will be scaled up with the aspect ratio preserved. Disabled by default; when set, it must not be greater than `--max_pixels`.
 
 Some models' training scripts also contain additional parameters. See [the documentation for each model](../README.md#section-2-model-details), or run `python xxx/train.py -h` to view the supported script parameters.
 
