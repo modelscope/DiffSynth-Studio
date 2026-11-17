@@ -530,10 +530,18 @@ def model_fn_minimax_h3_image(
     rows = torch.cat(rows) if len(rows) > 1 else rows[0]
 
     if unique_timesteps is None:
-        # Training: every row of the sequence sits at the timestep the loss sampled, and the output head of that noise
-        # level is the one the checkpoint distilled for it.
-        unique_timesteps = (1.0 - timestep.float().view(-1) / 1000).to(device=rows.device)
+        # Training: the generated rows sit at the timestep the loss sampled, the reference rows stay at the
+        # conditioning level. The level order is the sampler's: step first, reference last.
+        level = (1.0 - timestep.float().view(-1) / 1000).to(device=rows.device)
         timestep_indices = torch.zeros(position_ids.shape[1], dtype=torch.long, device=rows.device)
+        if num_reference_rows > 0:
+            unique_timesteps = torch.cat([
+                level[:1],
+                torch.full((1,), MINIMAX_H3_IMAGE_REFERENCE_NOISE_AUG, dtype=level.dtype, device=level.device),
+            ])
+            timestep_indices[image_indices.view(-1)[:num_reference_rows]] = 1
+        else:
+            unique_timesteps = level
     if pdd_step_index is None:
         # Off the distilled grid (training, or a non-distilled schedule): use the head of the nearest noise level. The
         # transformer consumes `t = 1 - sigma`, while the head grid is stored in sigma.
