@@ -66,9 +66,10 @@ class MiniMaxH3ImagePipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         processor_config: ModelConfig = None,
         vram_limit: float = None,
+        parallel_config=None,
     ):
         pipe = MiniMaxH3ImagePipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         pipe.text_encoder = model_pool.fetch_model("minimax_h3_text_encoder")
         pipe.dit = model_pool.fetch_model("minimax_h3_image_dit")
         pipe.pdd_heads = model_pool.fetch_model("minimax_h3_image_pdd_heads")
