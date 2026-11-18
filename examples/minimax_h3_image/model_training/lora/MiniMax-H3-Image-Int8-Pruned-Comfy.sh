@@ -47,16 +47,16 @@ accelerate launch examples/minimax_h3_image/model_training/train.py \
   --find_unused_parameters \
   --task "sft:train"
 
-# Image editing LoRA: the same two stages on an editing dataset, whose `metadata.csv` carries an extra
+# Image editing LoRA: the same two stages on an editing dataset, whose `metadata.json` carries an extra
 # `edit_image` column (`image,prompt,edit_image`). `edit_image` is listed in both `--data_file_keys` and
 # `--extra_inputs`, so the references are cached next to the target latents.
 # Uncomment the blocks below and drop the two stages above to train on edits instead of text-to-image.
 #
-# modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "minimax_h3_image/MiniMax-H3-Image-Edit/*" --local_dir ./data/diffsynth_example_dataset
+# modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "qwen_image/Qwen-Image-Edit-2511/*" --local_dir ./data/diffsynth_example_dataset
 #
 # accelerate launch examples/minimax_h3_image/model_training/train.py \
-#   --dataset_base_path ./data/diffsynth_example_dataset/minimax_h3_image/MiniMax-H3-Image-Edit \
-#   --dataset_metadata_path ./data/diffsynth_example_dataset/minimax_h3_image/MiniMax-H3-Image-Edit/metadata.csv \
+#   --dataset_base_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Edit-2511 \
+#   --dataset_metadata_path data/diffsynth_example_dataset/qwen_image/Qwen-Image-Edit-2511/metadata.json \
 #   --data_file_keys "image,edit_image" \
 #   --extra_inputs "edit_image" \
 #   --max_pixels 16777216 \
