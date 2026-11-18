@@ -2,6 +2,16 @@ import torch
 
 ALIGNMENT = 64
 
+
+def _is_accelerator_tensor(tensor: torch.Tensor) -> bool:
+    """True when the tensor lives on an accelerator (cuda / npu / musa / xpu / ...).
+
+    `non_blocking` is only meaningful for host<->device copies, so gate on "not CPU"
+    instead of the CUDA-specific `device.type == "cuda"` check.
+    """
+    return tensor.device.type != "cpu"
+
+
 def _align_up(x: int, alignment: int = ALIGNMENT) -> int:
     return (x + alignment - 1) // alignment * alignment
 
@@ -69,7 +79,7 @@ class PinnedBuffer:
         self._ensure_allocated()
         view = self._buf.narrow(0, self._offset, num_bytes).view(tensor.dtype).reshape(tuple(tensor.shape))
         if copy:
-            view.copy_(tensor, non_blocking=bool(non_blocking and tensor.device.type == "cuda"))
+            view.copy_(tensor, non_blocking=bool(non_blocking and _is_accelerator_tensor(tensor)))
         self._offset = _align_up(self._offset + num_bytes)
         return view
 
