@@ -1,3 +1,4 @@
+# Recommended: train MiniMax-H3-Image on images larger than 2048x2048 resolution (--min_pixels 4194304).
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "minimax_h3_image/MiniMax-H3-Image/*" --local_dir ./data/diffsynth_example_dataset
 
 # Optional: fuse the DeCFG training adapter into the DiT while training, for a better optimization landscape on this CFG-distilled base. Training only -- do not load it at inference.
