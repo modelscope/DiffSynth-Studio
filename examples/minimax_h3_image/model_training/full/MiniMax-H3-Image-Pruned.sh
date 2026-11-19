@@ -1,3 +1,4 @@
+# Recommended: train MiniMax-H3-Image on images larger than 2048x2048 resolution (--min_pixels 4194304).
 modelscope download --dataset DiffSynth-Studio/diffsynth_example_dataset --include "minimax_h3_image/MiniMax-H3-Image/*" --local_dir ./data/diffsynth_example_dataset
 
 # Stage 1 of the split training: cache the deterministic preprocessing outputs with the transformer offloaded to disk.
