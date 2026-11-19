@@ -13,6 +13,12 @@ def torch_sdpa(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n
 
     required_in_pattern, required_out_pattern = "b n s d", "b n s d"
     q, k, v = rearrange_qkv(q, k, v, q_pattern, k_pattern, v_pattern, required_in_pattern, dims)
+    orig_dtype = q.dtype
+    sm75_bf16_bridge = orig_dtype == torch.bfloat16 and q.is_cuda and torch.cuda.get_device_capability(q.device)[0] < 8
+    if sm75_bf16_bridge:
+        q, k, v = q.half(), k.half(), v.half()
+        if attn_mask is not None and attn_mask.dtype == torch.bfloat16:
+            attn_mask = attn_mask.half()
     if q.shape[1] != k.shape[1] or q.shape[1] != v.shape[1]:
         # Grouped Query Attention
         if TORCH_SUPPORT_GQA:
@@ -24,6 +30,8 @@ def torch_sdpa(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n
             out = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask, scale=scale, is_causal=is_causal)
     else:
         out = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask, scale=scale, is_causal=is_causal)
+    if sm75_bf16_bridge:
+        out = out.to(orig_dtype)
     out = rearrange_out(out, out_pattern, required_out_pattern, dims)
     return out
 

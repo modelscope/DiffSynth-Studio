@@ -1,3 +1,5 @@
+import ctypes
+import ctypes.util
 from dataclasses import dataclass, fields
 
 import torch
@@ -61,6 +63,101 @@ def _patch_compile_graph_breaks():
             cls.forward = torch._dynamo.disable(cls.forward)
 
 
+_CUBLAS_LIB = None
+_SM75_PATCHED = False
+
+
+def _get_cublas_lib():
+    global _CUBLAS_LIB
+    if _CUBLAS_LIB is None:
+        for name in ("libcublas.so.12", "libcublas.so.11", "libcublas.so", ctypes.util.find_library("cublas")):
+            if not name:
+                continue
+            try:
+                lib = ctypes.CDLL(name)
+                lib.cublasGemmEx.argtypes = [
+                    ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
+                    ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                    ctypes.c_void_p,
+                    ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
+                    ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
+                    ctypes.c_void_p,
+                    ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
+                    ctypes.c_int, ctypes.c_int,
+                ]
+                lib.cublasGemmEx.restype = ctypes.c_int
+                _CUBLAS_LIB = lib
+                break
+            except OSError:
+                continue
+        if _CUBLAS_LIB is None:
+            raise RuntimeError("Could not load libcublas for sm_75 INT8 Tensor Core GEMM.")
+    return _CUBLAS_LIB
+
+
+def _cublas_int8_gemm_sm75(activation, codes, activation_scale, weight_scale, bias, out_dtype):
+    a = activation.contiguous()
+    b = codes.contiguous()
+    m, k = a.shape
+    n = b.shape[0]
+    out_i32 = torch.empty((m, n), dtype=torch.int32, device=a.device)
+    alpha = ctypes.c_int32(1)
+    beta = ctypes.c_int32(0)
+    handle = torch.cuda.current_blas_handle()
+    # CUBLAS_OP_T=1, CUBLAS_OP_N=0, CUDA_R_8I=3, CUDA_R_32I=10, CUBLAS_COMPUTE_32I=72, CUBLAS_GEMM_DEFAULT_TENSOR_OP=99
+    status = _get_cublas_lib().cublasGemmEx(
+        ctypes.c_void_p(handle), 1, 0,
+        n, m, k,
+        ctypes.byref(alpha),
+        ctypes.c_void_p(b.data_ptr()), 3, k,
+        ctypes.c_void_p(a.data_ptr()), 3, k,
+        ctypes.byref(beta),
+        ctypes.c_void_p(out_i32.data_ptr()), 10, n,
+        72, 99,
+    )
+    if status != 0:
+        raise RuntimeError(f"cublasGemmEx(INT8) failed with status={status} for shape ({m}, {n}, {k})")
+    out = out_i32.float()
+    out.mul_(activation_scale.unsqueeze(1)).mul_(weight_scale.unsqueeze(0))
+    if bias is not None:
+        out.add_(bias.float().unsqueeze(0))
+    return out.to(out_dtype)
+
+
+def _patch_sm75_int8_support():
+    """Enable CompressedINT8Linear on Turing (sm_75, e.g. Tesla T4) via cuBLAS INT8 Tensor Cores."""
+    global _SM75_PATCHED
+    if _SM75_PATCHED or not torch.cuda.is_available():
+        return
+    if torch.cuda.get_device_capability(0)[0] >= 8:
+        _SM75_PATCHED = True
+        return
+    if ep.CompressedINT8Linear.min_capability > (7, 5):
+        ep.CompressedINT8Linear.min_capability = (7, 5)
+    try:
+        from entropack.linear import utils as ep_utils
+        qk = ep_utils.load_quant_kernels()
+        if qk is not None:
+            orig_int8_gemm = qk.int8_gemm
+            orig_quantize_rows = qk.quantize_rows
+
+            def _patched_int8_gemm(activation, codes, activation_scale, weight_scale, bias, out_dtype):
+                if activation.is_cuda and torch.cuda.get_device_capability(activation.device)[0] < 8:
+                    return _cublas_int8_gemm_sm75(activation, codes, activation_scale, weight_scale, bias, out_dtype)
+                return orig_int8_gemm(activation, codes, activation_scale, weight_scale, bias, out_dtype)
+
+            def _patched_quantize_rows(tensor, code_dtype, code_max, rounds_to_integer):
+                if tensor.is_cuda and tensor.dtype == torch.bfloat16 and torch.cuda.get_device_capability(tensor.device)[0] < 8:
+                    tensor = tensor.float()
+                return orig_quantize_rows(tensor, code_dtype, code_max, rounds_to_integer)
+
+            qk.int8_gemm = _patched_int8_gemm
+            qk.quantize_rows = _patched_quantize_rows
+    except Exception:
+        pass
+    _SM75_PATCHED = True
+
+
 @register_quant_backend("entropack")
 class EntroPackQuantBackend(QuantBackend):
     """Adapter over entropack's `CompressedLinear` family; a method's config is the config its layers get."""
@@ -76,6 +173,7 @@ class EntroPackQuantBackend(QuantBackend):
                 'or `pip install "diffsynth[quant]"`.'
             ) from _ENTROPACK_IMPORT_ERROR
         _patch_compile_graph_breaks()
+        _patch_sm75_int8_support()
 
     def capabilities(self):
         return {
