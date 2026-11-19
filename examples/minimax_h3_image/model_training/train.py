@@ -41,7 +41,8 @@ class MiniMaxH3ImageTrainingModule(DiffusionTrainingModule):
             preset_lora_path, preset_lora_model,
             task=task,
         )
-
+        self.pipe.scheduler.set_timesteps(6, training=True, distilled=True)
+        self.pipe.scheduler.linear_timesteps_weights.fill_(1.0)
         self.use_gradient_checkpointing = use_gradient_checkpointing
         self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
         self.extra_inputs = extra_inputs.split(",") if extra_inputs is not None else []
