@@ -49,6 +49,19 @@ def get_device_name() -> str:
     return f"{get_device_type()}:{get_device_id()}"
 
 
+def resolve_device(device) -> torch.device:
+    """Resolve an unnumbered device to the current device index."""
+    try:
+        device = torch.device(device)
+    except (RuntimeError, TypeError):
+        return device
+    if device.index is None and device.type in ("cuda", "npu", "xpu", "mps"):
+        namespace = getattr(torch, device.type, None)
+        if namespace is not None and hasattr(namespace, "current_device"):
+            device = torch.device(device.type, namespace.current_device())
+    return device
+
+
 def synchronize() -> None:
     """Execute torch synchronize operation."""
     get_torch_device().synchronize()
