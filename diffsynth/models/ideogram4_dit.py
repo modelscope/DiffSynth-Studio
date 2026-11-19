@@ -219,6 +219,8 @@ class Ideogram4Attention(nn.Module):
         sin: torch.Tensor,
     ) -> torch.Tensor:
         batch_size, seq_len, _ = x.shape
+        if batch_size != 1:
+            raise ValueError("Ideogram4 attention derives segment boundaries from one sample and requires batch size 1")
 
         qkv = self.qkv(x)
         qkv = qkv.view(batch_size, seq_len, 3, self.num_heads, self.head_dim)

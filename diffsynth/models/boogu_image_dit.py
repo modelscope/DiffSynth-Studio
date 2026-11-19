@@ -8,7 +8,7 @@ import torch.nn as nn
 from einops import rearrange
 
 from ..core.attention import attention_forward
-from ..core.distributed import sequence_parallel_recipe
+from ..core.distributed import current_sequence_parallel_state, sequence_parallel_recipe
 from torch.nn import RMSNorm
 import math
 import torch.nn.functional as F
@@ -2951,6 +2951,8 @@ class BooguImageDiT(torch.nn.Module):
         )
 
         enable_taylorseer = getattr(self, "enable_taylorseer", False)
+        if current_sequence_parallel_state() is not None and (self.enable_teacache or enable_taylorseer):
+            raise NotImplementedError("Boogu sequence parallelism does not support TeaCache or TaylorSeer")
 
         if attention_kwargs is not None:
             attention_kwargs = attention_kwargs.copy()
