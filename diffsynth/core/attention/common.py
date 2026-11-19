@@ -1,4 +1,5 @@
 import inspect
+import os
 
 import torch
 from einops import rearrange
@@ -7,6 +8,24 @@ try:
     TORCH_SUPPORT_GQA = "enable_gqa" in inspect.signature(torch.nn.functional.scaled_dot_product_attention).parameters
 except Exception:
     TORCH_SUPPORT_GQA = False
+
+_PRE_SM80_CACHE = {}
+
+
+def is_pre_sm80_cuda(device: torch.device) -> bool:
+    if device.type != "cuda":
+        return False
+    idx = device.index if device.index is not None else torch.cuda.current_device()
+    cached = _PRE_SM80_CACHE.get(idx)
+    if cached is None:
+        cached = torch.cuda.get_device_capability(idx)[0] < 8
+        _PRE_SM80_CACHE[idx] = cached
+    return cached
+
+
+def is_bf16_attn_bridge_disabled() -> bool:
+    val = os.environ.get("DIFFSYNTH_DISABLE_BF16_ATTN_BRIDGE")
+    return val is not None and val.strip().lower() in ("1", "true", "yes", "on")
 
 
 def rearrange_qkv(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", required_in_pattern="b n s d", dims=None):

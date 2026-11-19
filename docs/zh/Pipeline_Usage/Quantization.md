@@ -90,7 +90,7 @@ image.save("image_z_image_nf4.jpg")
 - **LoRA 训练**：只有表中"支持 LoRA 训练"为 ✅ 的方法可用于量化 + LoRA 训练。
 - `comfy_kitchen_*` 方法读写的是 ComfyUI 的量化权重格式，可与 ComfyUI 生态互通。comfy-kitchen 需要 CUDA 13.0 及以上。
 - MXFP8 / MXFP4 / NVFP4 等格式对计算硬件有要求，具体兼容性请查阅 [torchao](https://github.com/pytorch/ao) 文档。
-- entropack 需要 Python 3.10 及以上和 CUDA 版 PyTorch 2.10 及以上；安装命令中的 `cuda13` 按环境换成 `cuda12`。`entropack_lossy_quant_fp8*` 需要 SM8.9 及以上，`entropack_lossy_quant_int8*` 需要 SM8.0 及以上。
+- entropack 需要 Python 3.10 及以上和 CUDA 版 PyTorch 2.10 及以上；安装命令中的 `cuda13` 按环境换成 `cuda12`。`entropack_lossy_quant_fp8*` 需要 SM8.9 及以上，`entropack_lossy_quant_int8*` 需要 SM7.5 及以上（SM7.5 通过 cuBLAS INT8 Tensor Core 运行）。
 - 要无损选 `entropack_lossless_df11`（BF16）或 `entropack_lossless_tile_ans`（BF16 / FP16 / FP8 / INT8 等）；要控制体积选 `entropack_lossy_quant`，`target_bpp` 在 0.001–11 之间连续取值（默认 4.0；Z-Image-Turbo 的 276 个线性层上 3 bpp 约 14%、4 bpp 约 7% 权重 rel-L2）。`entropack_lossy_quant_fp8*` / `entropack_lossy_quant_int8*` 是 W8A8 方法，`*_raw` 直接存储量化码，另两个再对量化码做熵编码，其 `target_bpp` 上限为 8（超出会被截到 8）。
 - 请用 `target_modules` / `exclude_modules` 明确要量化的层；实际 bpp 记录在 checkpoint options 中。参数与更多用法见 [entropack](https://github.com/modelscope/entropack)。
 - `deep_gemm_fp8_w8a8` 把权重存为 fp8 E4M3（每 128x128 分块一个 scale），每次 forward 用一个融合 kernel 按 token 量化激活，再由 DeepGEMM 的 FP8 kernel 在 SM90/SM100 的 Tensor Core 上完成矩阵乘，因此需要 SM90/SM100 显卡、CUDA 12.9 及以上，以及从源码编译的 DeepGEMM（见[安装依赖](#安装依赖)）。首次 forward 会针对实际形状编译 kernel（数秒，之后缓存在 `~/.dj`）。输入或输出尺寸不是 128 整数倍的层（例如部分模型的 patch embedding 投影）会保持原精度。

@@ -1,4 +1,6 @@
 import os
+import torch
+from .common import is_bf16_attn_bridge_disabled, is_pre_sm80_cuda
 from .registry import (
     get_attention_implementation,
     list_attention_implementations,
@@ -29,6 +31,12 @@ def attention_forward(q, k, v, q_pattern="b n s d", k_pattern="b n s d", v_patte
         return flex_attention(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale, score_mod=score_mod)
 
     if compatibility_mode:
+        return torch_sdpa(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale, is_causal=is_causal, window_size=window_size)
+
+    if is_pre_sm80_cuda(q.device) and (
+        (q.dtype == torch.bfloat16 and not is_bf16_attn_bridge_disabled())
+        or ATTENTION_IMPLEMENTATION in ("flash_attention_2", "flash_attention_3", "flash_attention_4")
+    ):
         return torch_sdpa(q, k, v, q_pattern, k_pattern, v_pattern, out_pattern, dims, attn_mask=attn_mask, scale=scale, is_causal=is_causal, window_size=window_size)
 
     backend = get_attention_implementation(ATTENTION_IMPLEMENTATION)
