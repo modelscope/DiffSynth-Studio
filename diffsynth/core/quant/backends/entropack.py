@@ -100,24 +100,42 @@ def _cublas_int8_gemm_sm75(activation, codes, activation_scale, weight_scale, bi
     b = codes.contiguous()
     m, k = a.shape
     n = b.shape[0]
-    out_i32 = torch.empty((m, n), dtype=torch.int32, device=a.device)
+    handle = torch.cuda.current_blas_handle()
+    lib = _get_cublas_lib()
     alpha = ctypes.c_int32(1)
     beta = ctypes.c_int32(0)
-    handle = torch.cuda.current_blas_handle()
-    # CUBLAS_OP_T=1, CUBLAS_OP_N=0, CUDA_R_8I=3, CUDA_R_32I=10, CUBLAS_COMPUTE_32I=72, CUBLAS_GEMM_DEFAULT_TENSOR_OP=99
-    status = _get_cublas_lib().cublasGemmEx(
-        ctypes.c_void_p(handle), 1, 0,
-        n, m, k,
-        ctypes.byref(alpha),
-        ctypes.c_void_p(b.data_ptr()), 3, k,
-        ctypes.c_void_p(a.data_ptr()), 3, k,
-        ctypes.byref(beta),
-        ctypes.c_void_p(out_i32.data_ptr()), 10, n,
-        72, 99,
-    )
-    if status != 0:
-        raise RuntimeError(f"cublasGemmEx(INT8) failed with status={status} for shape ({m}, {n}, {k})")
-    out = out_i32.float()
+
+    def _run_cublas_chunk(a_chunk):
+        cm = a_chunk.shape[0]
+        out_i32 = torch.empty((cm, n), dtype=torch.int32, device=a.device)
+        # CUBLAS_OP_T=1, CUBLAS_OP_N=0, CUDA_R_8I=3, CUDA_R_32I=10, CUBLAS_COMPUTE_32I=72, CUBLAS_GEMM_DEFAULT_TENSOR_OP=99
+        st = lib.cublasGemmEx(
+            ctypes.c_void_p(handle), 1, 0,
+            n, cm, k,
+            ctypes.byref(alpha),
+            ctypes.c_void_p(b.data_ptr()), 3, k,
+            ctypes.c_void_p(a_chunk.data_ptr()), 3, k,
+            ctypes.byref(beta),
+            ctypes.c_void_p(out_i32.data_ptr()), 10, n,
+            72, 99,
+        )
+        return st, out_i32
+
+    # Turing cublasGemmEx(INT8) can return status=15 for m >= 65536; chunk along m <= 32768
+    if m <= 32768:
+        status, out_i32 = _run_cublas_chunk(a)
+        if status == 0:
+            out = out_i32.float()
+        else:
+            out = torch.matmul(a.float(), b.float().t())
+    else:
+        chunks = []
+        for start in range(0, m, 32768):
+            ac = a[start : start + 32768]
+            st, ci32 = _run_cublas_chunk(ac)
+            chunks.append(ci32.float() if st == 0 else torch.matmul(ac.float(), b.float().t()))
+        out = torch.cat(chunks, dim=0)
+
     out.mul_(activation_scale.unsqueeze(1)).mul_(weight_scale.unsqueeze(0))
     if bias is not None:
         out.add_(bias.float().unsqueeze(0))
