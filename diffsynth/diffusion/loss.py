@@ -12,8 +12,7 @@ def FlowMatchSFTLoss(pipe: BasePipeline, **inputs):
     min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
 
     timestep_id = torch.randint(min_timestep_boundary, max_timestep_boundary, (1,))
-    # Keep schedule precision for noise and weight lookup; BF16 can round to another step.
-    timestep = pipe.scheduler.timesteps[timestep_id].to(device=pipe.device)
+    timestep = pipe.scheduler.timesteps[timestep_id].to(dtype=pipe.torch_dtype, device=pipe.device)
     
     noise = torch.randn_like(inputs["input_latents"]) * inputs.get("noise_scale", 1.0)
     inputs["latents"] = pipe.scheduler.add_noise(inputs["input_latents"], noise, timestep)
@@ -23,7 +22,7 @@ def FlowMatchSFTLoss(pipe: BasePipeline, **inputs):
         inputs["latents"][:, :, 0:1] = inputs["first_frame_latents"]
     
     models = {name: getattr(pipe, name) for name in pipe.in_iteration_models}
-    noise_pred = pipe.model_fn(**models, **inputs, timestep=timestep.to(dtype=pipe.torch_dtype))
+    noise_pred = pipe.model_fn(**models, **inputs, timestep=timestep)
     
     if "first_frame_latents" in inputs:
         noise_pred = noise_pred[:, :, 1:]
@@ -39,7 +38,7 @@ def FlowMatchSFTAudioVideoLoss(pipe: BasePipeline, **inputs):
     min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
 
     timestep_id = torch.randint(min_timestep_boundary, max_timestep_boundary, (1,))
-    timestep = pipe.scheduler.timesteps[timestep_id].to(device=pipe.device)
+    timestep = pipe.scheduler.timesteps[timestep_id].to(dtype=pipe.torch_dtype, device=pipe.device)
     
     # video
     noise = torch.randn_like(inputs["input_latents"])
@@ -53,7 +52,7 @@ def FlowMatchSFTAudioVideoLoss(pipe: BasePipeline, **inputs):
         training_target_audio = pipe.scheduler.training_target(inputs["audio_input_latents"], audio_noise, timestep)
 
     models = {name: getattr(pipe, name) for name in pipe.in_iteration_models}
-    noise_pred, noise_pred_audio = pipe.model_fn(**models, **inputs, timestep=timestep.to(dtype=pipe.torch_dtype))
+    noise_pred, noise_pred_audio = pipe.model_fn(**models, **inputs, timestep=timestep)
 
     loss = torch.nn.functional.mse_loss(noise_pred.float(), training_target.float())
     loss = loss * pipe.scheduler.training_weight(timestep)
