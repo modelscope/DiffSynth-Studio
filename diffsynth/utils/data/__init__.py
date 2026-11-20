@@ -35,8 +35,7 @@ def split_file_name(file_name):
             result.append(i)
     if number != -1:
         result.append(number)
-    result = tuple(result)
-    return result
+    return tuple((0, token) if isinstance(token, int) else (1, token) for token in result)
 
 
 def search_for_images(folder):
