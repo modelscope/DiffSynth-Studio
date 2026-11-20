@@ -133,8 +133,8 @@ write_video_audio(
 * `ref_image_short_edge`: 参考图像的短边目标长度，默认值为 2048。参考图像保持长宽比缩放至该短边（允许放大），两轴各自向最近的 32 倍数取整，不受面积上限约束。
 * `ref_video_short_edge`: 参考视频的短边目标长度，默认值为 768。
 * `ref_video_max_pixels`: 参考视频的面积软上限，默认值为 `768 * 1344`。参考视频先按短边定标，若面积超过该上限则等比缩回，最后两轴各自取整到 32 的倍数。宽于 16:9 的素材通常会触发该上限。
-* `control_video`: 控制视频帧列表（PIL 图像），用于 ControlNet 条件控制生成，支持 canny / depth / hed / mlsd / pose 等控制模式（由控制视频的内容决定），生成结果会跟随控制视频的画面结构。帧列表须已是 24fps，不足 `num_frames` 帧时会重复最后一帧补齐，多出的部分会被截断。使用该参数前，需在 `model_configs` 中加载 `PAI/MiniMax-H3-Fun-Controlnet-Union` 的 ControlNet 权重。
-* `control_scale`: ControlNet 控制强度，默认值为 1.0。增大该值会加强控制视频对生成结构的约束。
+* `control_video`: 控制视频帧列表（PIL 图像），用于 ControlNet 条件控制生成，支持 canny / depth / hed / mlsd / pose 等控制模式（由控制视频的内容决定），生成结果会跟随控制视频的画面结构。帧列表须已是 24fps，不足 `num_frames` 帧时会重复最后一帧补齐，多出的部分会被截断。使用该参数前，需在 `model_configs` 中加载 `PAI/MiniMax-H3-Fun-Controlnet-Union` 的 ControlNet 权重。若在 `model_configs` 中加载了多个 ControlNet，则需传入帧列表的列表，按加载顺序为每个 ControlNet 各提供一个控制视频，参考 [MiniMax-H3-Fun-Controlnet-Union-Multi.py](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-Fun-Controlnet-Union-Multi.py)。
+* `control_scale`: ControlNet 控制强度，默认值为 1.0。增大该值会加强控制视频对生成结构的约束。加载多个 ControlNet 时，可传入列表为每个 ControlNet 分别指定强度，传入单个浮点数则所有 ControlNet 共用。多个 ControlNet 的输出会直接相加，因此通常需要适当调低每个 ControlNet 的强度。
 * `retake_video`: 视频重绘（retake）的源视频帧列表，必须已经是 24fps。帧会被缩放到目标画幅并截取前 `num_frames` 帧。由于 `num_frames` 会先向上对齐到最近的 `17n+5`，源视频常常会差几帧（例如 121 帧的素材对应对齐后的 124 帧），此时会重复最后一帧补齐，且补出的尾部会被重新生成而非冻结。源素材帧数不少于 `num_frames` 即可避免。
 * `frame_regions_to_retake`: `retake_video` 中需要重新生成的**帧号**区间，左闭右开、帧从 0 计数，例如 `[(17, 51)]`。区间之外的内容会从源视频原样保留。一个 VAE clip 的 17 帧在隐空间是耦合的，重绘 clip 内任何一帧就等于重绘整个 clip，因此区间会向外扩展到 clip 边界；传 17 的倍数即可得到与请求完全一致的范围。不传该参数（或传入空列表）时整段源视频都会被保留，此时 `retake_video` 相当于视频驱动的音频生成。
 * `retake_audio`: 音频重绘（retake）的源波形 `Tensor[C, L]`。会被转为立体声并重采样到音频 VAE 的采样率，再按视频时长截断或补齐。
