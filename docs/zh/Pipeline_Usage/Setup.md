@@ -49,6 +49,34 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6
 
 在 Apple Silicon 设备上，无需修改安装步骤。但由于显存和内存是统一的，请将代码中的 `"cuda"` 全部修改为 `"mps"` 或 `"cpu"`。
 
+### Moore Threads MUSA GPU
+
+请先按照 [torch_musa](https://github.com/MooreThreads/torch_musa) 的说明准备匹配的摩尔线程 GPU 驱动、MUSA SDK 与 MUSA 版 PyTorch，或使用预装这些组件的摩尔线程容器镜像。保留与 `torch_musa` 匹配的 PyTorch，不要将其替换为普通 CUDA 版本。
+
+安装 [torchada](https://github.com/MooreThreads/torchada) 适配层，并从官方仓库安装 DiffSynth-Studio：
+
+```shell
+pip install "torchada>=0.1.106" --index-url https://pypi.org/simple
+git clone https://github.com/modelscope/DiffSynth-Studio.git
+cd DiffSynth-Studio
+pip install -e .
+```
+
+#### 可选：MUSA FlashAttention-3 加速
+
+`torchada` 本身不要求安装 FlashAttention-3。若使用 MUSA FlashAttention-3，建议同时升级配套的接口包、MATE 与 MATE-MUBIN 算子库：
+
+```shell
+pip install -U "mate[all]>=0.2.8.post1" "mate-mubin>=0.2.8.post1" \
+    "flash_attn_3>=0.2.8.post1" \
+    --index-url https://dl.mthreads.com/repo/api/pypi/pypi/simple \
+    --extra-index-url https://pypi.org/simple
+```
+
+已验证的组合为 `flash_attn_3==0.2.8.post1+musa`、`mate==0.2.8.post1` 与 `mate-mubin==0.2.8.post1`。旧版 MATE 可能存在注意力前反向或 JIT 编译问题；以上最低版本要求不表示所有后续版本都经过验证。若基础镜像中的其他算子包固定依赖旧版 MATE，请检查升级日志及 `pip check` 的结果，按对应包的兼容要求处理依赖冲突。安装这些包也不保证当前框架一定能检测并选中 FA3，实际后端可通过 `diffsynth.core.attention.list_attention_implementations()` 检查。
+
+自动导入行为与启动前的设备检测设置，请参考 [MUSA GPU 支持](GPU_support.md#moore-threads-musa-gpu)。模型专用依赖仍需按对应模型文档安装。
+
 ### Ascend NPU
 
 1. 通过官方文档安装 [CANN](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/softwareinst/instg/instg_quick.html?Mode=PmIns&InstallType=local&OS=openEuler&Software=cannToolKit)
