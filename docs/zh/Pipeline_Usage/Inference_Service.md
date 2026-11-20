@@ -40,38 +40,23 @@
 
 ## 环境准备
 
-推荐从已安装 PyTorch 的环境 clone，避免重复安装重型依赖：
+安装：
 
 ```shell
-conda create -n diffsynth_service --clone <your-pytorch-env> -y
-conda activate diffsynth_service
-cd DiffSynth-Studio
-pip install -e .
+pip install -U diffsynth cupy bitsandbytes
 ```
 
 DiffSynth-Studio 会自动从 ModelScope 下载模型。建议把模型统一放在共享存储上，并通过环境变量指定缓存目录：
 
 ```shell
-export DIFFSYNTH_MODEL_BASE_PATH=/path/to/diffsynth_models/
+export DIFFSYNTH_MODEL_BASE_PATH=/path/to/models/
 ```
 
-首次启动时各服务会自动下载所需权重。如果希望在部署前一次性预热模型缓存，可以运行：
+在 H20 GPU 上，推荐安装 Sage Attention，并注册到框架中，以下代码需要在首次 import diffsynth 前执行：
 
-```shell
-export DIFFSYNTH_MODEL_BASE_PATH=/path/to/diffsynth_models/
-python data/diffsynth_service_tests/tools/download_models.py
-```
-
-如果使用 EntroPack 的量化权重（`deploy_mode` 1 / 2 以及 `MiniMaxH3Image`），需要安装 CuPy：
-
-```shell
-pip install cupy
-```
-
-`deploy_mode` 0 中的 NF4 权重（`MiniMaxH3FL2VA`、`MiniMaxH3Ref2VA`）还需要 `bitsandbytes`：
-
-```shell
-pip install bitsandbytes
+```python
+from services.utils import register_attention
+register_attention()
 ```
 
 ## 快速开始
@@ -98,6 +83,9 @@ image.save("output.png")
 ```
 
 `load_models` 只需要在服务启动时调用一次。之后每个请求直接调用 `infer`，模型权重会常驻显存。
+
+<details>
+<summary>查看更多</summary>
 
 不同输出类型的处理方式：
 
@@ -132,8 +120,6 @@ service.infer(prompt="...", seed=0, num_inference_steps=50,
               height=480, width=832, num_frames=124, output_path="output.mp4")
 ```
 
-### 多图编辑
-
 `edit_image` 统一使用 `list[PIL.Image]`：
 
 ```python
@@ -155,8 +141,6 @@ image = service.infer(
 image.save("group.png")
 ```
 
-### LoRA
-
 大多数服务支持请求级 LoRA。传入 `(path, scale, keyword)` 列表即可，推理结束后服务会自动清空 LoRA，不影响下一个请求：
 
 ```python
@@ -165,6 +149,8 @@ image = service.infer(
     loras=[("path/to/lora.safetensors", 1.0, "lora_keyword")],
 )
 ```
+
+</details>
 
 ## deploy_mode 说明
 
@@ -179,10 +165,10 @@ image = service.infer(
 不同服务的 mode 覆盖情况：
 
 - 大多数图像、音频服务支持 mode 0 / 1 / 2；
-- `MiniMaxH3FL2VA`、`MiniMaxH3Ref2VA` 支持 mode 0（NF4 权重）和 mode 1（int8 量化）；
-- `MiniMaxH3Image` 只提供 mode 0（权重已经是 EntroPack 8bit / int8，加载后直接编译）。
+- `MiniMaxH3FL2VA`、`MiniMaxH3Ref2VA` 由于模型太大，只支持 mode 0（NF4 权重）和 mode 1（int8 量化）；
+- `MiniMaxH3Image` 为实现更高效的推理，只提供 mode 0（权重已经是 EntroPack 8bit / int8，加载后直接编译）。
 
-`run_tests` 会从 mode 0 开始逐个尝试，直到某个 mode 抛出 `NotImplementedError` 为止。
+`run_tests` 会从 mode 0 开始逐个尝试，测试每一个 `deploy_mode` 的计算资源占用情况。
 
 ## 在 H20 单卡集群上部署
 
@@ -191,7 +177,7 @@ image = service.infer(
 H20 单卡机器的典型启动方式：
 
 ```shell
-export DIFFSYNTH_MODEL_BASE_PATH=/path/to/diffsynth_models/
+export DIFFSYNTH_MODEL_BASE_PATH=/path/to/models/
 export CUDA_VISIBLE_DEVICES=0
 # 下面 FastAPI 示例中的 app.py
 uvicorn app:app --host 0.0.0.0 --port 8000
@@ -241,26 +227,13 @@ CUDA_VISIBLE_DEVICES=0 uvicorn app:app --host 0.0.0.0 --port 8000
 
 ### 集群部署建议
 
-- **一个 GPU 一个进程。** H20 单卡机器只暴露一张卡；如果一台机器有多张卡，用 `CUDA_VISIBLE_DEVICES` 给每个进程分配一张卡，不要在一个进程里做多卡并行，模型服务本身不需要分布式。
+- **一个 GPU 一个进程。** H20 单卡机器只暴露一张卡；如果一台机器有多张卡，用 `CUDA_VISIBLE_DEVICES` 给每个进程分配一张卡。
 - **模型缓存放共享存储。** 所有节点设置相同的 `DIFFSYNTH_MODEL_BASE_PATH`，首次启动时下载一次，之后各节点直接读缓存。
 - **启动时预热。** `load_models` 之后先跑一次小分辨率推理，把 `torch.compile`、CuPy kernel 和显存池初始化好，避免第一个真实请求超时。
 - **按显存选 deploy_mode。** 先用 `run_tests` 在目标机器上测出每个模型的显存占用，再决定 mode。H20 96GB 下，大部分图像模型在 mode 0 可以放下，视频模型和大文本编码器模型通常需要 mode 1 或 mode 2。
 - **控制并发。** 单个 GPU 进程建议串行处理请求（并发数为 1），通过网关排队；同时跑多个请求会争抢显存，容易 OOM。
 - **健康检查。** 健康检查只调用一个空的 `infer` 或检查 `service.pipe` 是否已加载，不要在健康检查里加载模型。
 - **优雅退出。** 进程退出前把 `service.pipe = None`，释放显存和 CPU 内存。
-
-### 模型与节点映射
-
-AIGC 专区通常按模型维度做路由：网关记录“模型 → 服务实例地址”，每个实例在启动时注册自己支持的模型和服务类。推荐的部署方式是：
-
-| 模型 | 单卡部署 | 说明 |
-|------|----------|------|
-| 图像模型（Qwen-Image、FLUX.2、Z-Image、Fibo、MOSS、Krea 等） | 1 卡 / 实例 | 优先 mode 0，显存不足时 mode 1 |
-| 视频模型（MiniMax-H3） | 1 卡 / 实例 | 建议 mode 1 或 mode 2 |
-| 音频模型（ACE-Step、MiniMax-Music3） | 1 卡 / 实例 | 可与图像模型混部在不同节点 |
-| MiniMax-H3-Image | 1 卡 / 实例 | 只用 mode 0 |
-
-节点故障时，网关把请求重新路由到其他同模型实例即可；模型服务本身无状态（LoRA 在请求结束后会清空）。
 
 ## 运行测试
 
@@ -307,26 +280,11 @@ data/diffsynth_service_tests/
 
 ### 测试输入文件
 
-部分样例需要输入图片或音视频。所有输入统一放在 `data/diffsynth_service_tests/assets/`：
-
-```
-assets/
-├── fibo/                 # 编辑输入图和蒙版
-├── flux2/                # 图片编辑输入图
-├── hidream_o1/           # 图片编辑输入图
-├── minimax_h3/           # 首尾帧、参考图、参考视频、参考音频
-├── minimax_h3_image/     # 图片编辑输入图
-├── qwen_image/           # 单图/多图编辑输入图
-└── qwen_image_21/        # 双人合影编辑输入图（RGBA）
-```
-
-这些文件来自 DiffSynth-Studio 的示例数据集，或由示例脚本中的“先生成再编辑”流程预先生成。重新生成：
+下载测试输入文件
 
 ```shell
-CUDA_VISIBLE_DEVICES=0 python data/diffsynth_service_tests/tools/make_assets.py
+modelscope download --dataset DiffSynth-Studio/diffsynth_service_tests --local_dir ./data/diffsynth_service_tests
 ```
-
-`run_tests.py` 和 `make_assets.py` 都应在 **DiffSynth-Studio 仓库根目录**下执行，因为服务代码中的输入路径是相对仓库根目录的。
 
 ## 常见问题
 
@@ -349,10 +307,7 @@ A：安装 `bitsandbytes`：`pip install bitsandbytes`。
 A：mode 2 会把自回归语言模型 offload 到 CPU，而音乐生成需要逐 token 解码，CPU 推理会慢到不可接受。MiniMax-Music3 建议使用 mode 0 或 mode 1。
 
 **Q：模型下载很慢或没有网络？**
-A：提前把模型放到 `DIFFSYNTH_MODEL_BASE_PATH` 下，或设置 `DIFFSYNTH_SKIP_DOWNLOAD=true` 只使用本地缓存。
-
-**Q：视频服务为什么不返回文件？**
-A：`MiniMaxH3FL2VA`、`MiniMaxH3Ref2VA` 的 `infer` 直接把视频写到 `output_path`，返回值是 `None`。请求方传入自己的输出路径即可。
+A：提前把模型放到 `DIFFSYNTH_MODEL_BASE_PATH` 下，然后 `DIFFSYNTH_SKIP_DOWNLOAD=true` 只使用本地缓存，即可跳过所有下载请求。
 
 ## 相关文档
 

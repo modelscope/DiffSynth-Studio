@@ -40,38 +40,23 @@ Unlike the one-shot scripts under `examples/`, each class in `services/` is a **
 
 ## Environment
 
-Clone an existing PyTorch environment to avoid reinstalling heavy dependencies:
+Install:
 
 ```shell
-conda create -n diffsynth_service --clone <your-pytorch-env> -y
-conda activate diffsynth_service
-cd DiffSynth-Studio
-pip install -e .
+pip install -U diffsynth cupy bitsandbytes
 ```
 
 DiffSynth-Studio downloads models from ModelScope automatically. Put the weights on shared storage and point the environment variable at the cache directory:
 
 ```shell
-export DIFFSYNTH_MODEL_BASE_PATH=/path/to/diffsynth_models/
+export DIFFSYNTH_MODEL_BASE_PATH=/path/to/models/
 ```
 
-Each service downloads its weights on first start. To warm the model cache before deployment, run:
+On H20 GPUs, we recommend installing Sage Attention and registering it with the framework. The following code must run before `diffsynth` is imported for the first time:
 
-```shell
-export DIFFSYNTH_MODEL_BASE_PATH=/path/to/diffsynth_models/
-python data/diffsynth_service_tests/tools/download_models.py
-```
-
-EntroPack quantized weights (`deploy_mode` 1 / 2 and `MiniMaxH3Image`) need CuPy:
-
-```shell
-pip install cupy
-```
-
-NF4 weights in `deploy_mode` 0 (`MiniMaxH3FL2VA`, `MiniMaxH3Ref2VA`) additionally need `bitsandbytes`:
-
-```shell
-pip install bitsandbytes
+```python
+from services.utils import register_attention
+register_attention()
 ```
 
 ## Quick Start
@@ -98,6 +83,9 @@ image.save("output.png")
 ```
 
 Call `load_models` once at startup. Every request then calls `infer` directly; the weights stay resident on the GPU.
+
+<details>
+<summary>Show more</summary>
 
 Handling the different output types:
 
@@ -132,8 +120,6 @@ service.infer(prompt="...", seed=0, num_inference_steps=50,
               height=480, width=832, num_frames=124, output_path="output.mp4")
 ```
 
-### Multi-image editing
-
 `edit_image` is always a `list[PIL.Image]`:
 
 ```python
@@ -155,8 +141,6 @@ image = service.infer(
 image.save("group.png")
 ```
 
-### LoRA
-
 Most services accept per-request LoRAs as a list of `(path, scale, keyword)`. The service clears them after inference, so they never leak into the next request:
 
 ```python
@@ -165,6 +149,8 @@ image = service.infer(
     loras=[("path/to/lora.safetensors", 1.0, "lora_keyword")],
 )
 ```
+
+</details>
 
 ## deploy_mode
 
@@ -179,10 +165,10 @@ image = service.infer(
 Coverage differs per service:
 
 - most image and audio services support modes 0 / 1 / 2;
-- `MiniMaxH3FL2VA` and `MiniMaxH3Ref2VA` support mode 0 (NF4 weights) and mode 1 (int8 quantization);
-- `MiniMaxH3Image` only provides mode 0 (weights are already EntroPack 8-bit / int8 and the pipeline is compiled after loading).
+- `MiniMaxH3FL2VA` and `MiniMaxH3Ref2VA` are too large and only support mode 0 (NF4 weights) and mode 1 (int8 quantization);
+- `MiniMaxH3Image` provides only mode 0 for more efficient inference (weights are already EntroPack 8-bit / int8 and the pipeline is compiled after loading).
 
-`run_tests` tries modes starting from 0 until a mode raises `NotImplementedError`.
+`run_tests` tries modes starting from 0 and reports the compute resource usage of every `deploy_mode`.
 
 ## Deploying on a Single-GPU H20 Cluster
 
@@ -191,7 +177,7 @@ Coverage differs per service:
 A typical startup command on a single-GPU H20 machine:
 
 ```shell
-export DIFFSYNTH_MODEL_BASE_PATH=/path/to/diffsynth_models/
+export DIFFSYNTH_MODEL_BASE_PATH=/path/to/models/
 export CUDA_VISIBLE_DEVICES=0
 # app.py from the FastAPI example below
 uvicorn app:app --host 0.0.0.0 --port 8000
@@ -241,26 +227,13 @@ CUDA_VISIBLE_DEVICES=0 uvicorn app:app --host 0.0.0.0 --port 8000
 
 ### Cluster recommendations
 
-- **One process per GPU.** A single-GPU H20 machine exposes one device. On multi-GPU machines, assign one device per process with `CUDA_VISIBLE_DEVICES`; never do multi-GPU parallelism inside one process, the service does not need distribution.
+- **One process per GPU.** A single-GPU H20 machine exposes one device. On multi-GPU machines, assign one device per process with `CUDA_VISIBLE_DEVICES`.
 - **Share the model cache.** Set the same `DIFFSYNTH_MODEL_BASE_PATH` on every node. The first start downloads once; later starts read the cache directly.
 - **Warm up at startup.** After `load_models`, run one small inference to initialize `torch.compile`, CuPy kernels and the VRAM pool; otherwise the first real request may time out.
 - **Pick deploy_mode by VRAM.** Run `run_tests` on the target hardware first, then choose the mode. On a 96GB H20 most image models fit in mode 0, while video models and large text-encoder models usually need mode 1 or 2.
 - **Limit concurrency.** Process requests serially per GPU process (concurrency 1) and queue at the gateway; concurrent requests compete for VRAM and easily OOM.
 - **Health checks.** Check that `service.pipe` is loaded or run an empty `infer`; never load weights inside a health check.
 - **Graceful shutdown.** Set `service.pipe = None` before exit to release GPU and CPU memory.
-
-### Model-to-node mapping
-
-The AIGC Zone routes by model: the gateway records "model → service instance address", and every instance registers the models and service classes it serves at startup. A recommended layout:
-
-| Model | Deployment | Notes |
-|-------|------------|-------|
-| Image models (Qwen-Image, FLUX.2, Z-Image, Fibo, MOSS, Krea, ...) | 1 GPU / instance | prefer mode 0, fall back to mode 1 |
-| Video models (MiniMax-H3) | 1 GPU / instance | prefer mode 1 or 2 |
-| Audio models (ACE-Step, MiniMax-Music3) | 1 GPU / instance | can share machines with image services |
-| MiniMax-H3-Image | 1 GPU / instance | mode 0 only |
-
-When a node fails, the gateway reroutes requests to another instance of the same model. The services themselves are stateless (LoRAs are cleared after each request).
 
 ## Running Tests
 
@@ -307,26 +280,11 @@ data/diffsynth_service_tests/
 
 ### Test inputs
 
-Some samples need input images or media. All inputs live under `data/diffsynth_service_tests/assets/`:
-
-```
-assets/
-├── fibo/                 # edit input image and mask
-├── flux2/                # edit input image
-├── hidream_o1/           # edit input image
-├── minimax_h3/           # first/last frames, reference image, video, audio
-├── minimax_h3_image/     # edit input image
-├── qwen_image/           # single/multi-image edit inputs
-└── qwen_image_21/        # two-person edit inputs (RGBA)
-```
-
-The files come from DiffSynth-Studio example datasets, or are pre-generated from the "generate then edit" flow used by the examples. Regenerate them with:
+Download the test input files:
 
 ```shell
-CUDA_VISIBLE_DEVICES=0 python data/diffsynth_service_tests/tools/make_assets.py
+modelscope download --dataset DiffSynth-Studio/diffsynth_service_tests --local_dir ./data/diffsynth_service_tests
 ```
-
-Run both `run_tests.py` and `make_assets.py` from the **repository root**, because the input paths in the services are relative to it.
 
 ## FAQ
 
@@ -349,10 +307,7 @@ A: Install `bitsandbytes`: `pip install bitsandbytes`.
 A: Mode 2 offloads its autoregressive language model to the CPU, and music generation decodes token by token, so CPU inference is impractically slow. Use mode 0 or mode 1 for MiniMax-Music3.
 
 **Q: Model download is slow or there is no network.**
-A: Pre-populate `DIFFSYNTH_MODEL_BASE_PATH`, or set `DIFFSYNTH_SKIP_DOWNLOAD=true` to use only the local cache.
-
-**Q: Why do video services not return a file?**
-A: `MiniMaxH3FL2VA` and `MiniMaxH3Ref2VA` write the video to `output_path` and return `None`. The caller supplies the output path.
+A: Pre-populate `DIFFSYNTH_MODEL_BASE_PATH`, then set `DIFFSYNTH_SKIP_DOWNLOAD=true` to use only the local cache and skip all download requests.
 
 ## See Also
 
