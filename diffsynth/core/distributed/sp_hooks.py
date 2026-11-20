@@ -338,7 +338,7 @@ class SequenceParallelStack:
         if not local_lengths:
             raise ValueError(f"{self.block_class.__name__} was called without any of its declared token inputs {tuple(self.token_inputs)}")
         for name in self.output_dims:
-            if name not in local_lengths:
+            if name not in local_lengths and self._fetch(name, args, kwargs) is not None:
                 raise ValueError(f"{self.block_class.__name__}: gather output {name!r} has no tensor-bearing input at stack entry")
         kv_prefix_len = sum(self._fetch(name, args, kwargs).shape[dim] for name, dim in self.kv_prefix_inputs.items())
         self._state = SequenceParallelState.set_state(self.backend, local_lengths, paddings, kv_prefix_len)
@@ -359,6 +359,9 @@ class SequenceParallelStack:
         group = get_parallel_group()
         gathered = []
         for item, (name, dim) in zip(outputs, self.output_dims.items()):
+            if name not in self._state.local_lengths:
+                gathered.append(item)
+                continue
             if not torch.is_tensor(item):
                 raise TypeError(f"sequence-parallel stacks expect the last block to return tensors, got {type(item).__name__}")
             item = all_gather_sequence(item, dim=dim, group=group)

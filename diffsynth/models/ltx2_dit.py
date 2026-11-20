@@ -903,7 +903,7 @@ class TransformerConfig:
 
 
 @sequence_parallel_recipe(
-    split_dimensions_for_inputs={"video_x": 1, "audio_x": 1, "video_timesteps": 1, "audio_timesteps": 1, "video_positional_embeddings": 2, "audio_positional_embeddings": 2, "video_cross_positional_embeddings": 2, "audio_cross_positional_embeddings": 2},
+    split_dimensions_for_inputs={"video_x": 1, "audio_x": 1, "video_timesteps": 1, "audio_timesteps": 1, "video_positional_embeddings": 2, "audio_positional_embeddings": 2, "video_cross_positional_embeddings": 2, "audio_cross_positional_embeddings": 2, "video_cross_scale_shift_timestep": 1, "audio_cross_scale_shift_timestep": 1},
     gather_dimensions_for_outputs={"video_x": 1, "audio_x": 1},
     no_exchange_modules=("attn2", "audio_attn2"),
 )
@@ -1076,6 +1076,8 @@ class BasicAVTransformerBlock(torch.nn.Module):
         audio_timesteps: torch.Tensor | None = None,
         audio_positional_embeddings: torch.Tensor | None = None,
         audio_cross_positional_embeddings: torch.Tensor | None = None,
+        video_cross_scale_shift_timestep: torch.Tensor | None = None,
+        audio_cross_scale_shift_timestep: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor | None, torch.Tensor | None]:
         if video is None and audio is None:
             raise ValueError("At least one of video or audio must be provided")
@@ -1085,12 +1087,16 @@ class BasicAVTransformerBlock(torch.nn.Module):
                 positional_embeddings=video_positional_embeddings,
                 cross_positional_embeddings=video_cross_positional_embeddings,
             )
+            if video_cross_scale_shift_timestep is not None:
+                video = replace(video, cross_scale_shift_timestep=video_cross_scale_shift_timestep)
         if audio is not None:
             audio = replace(
                 audio, x=audio_x, timesteps=audio_timesteps,
                 positional_embeddings=audio_positional_embeddings,
                 cross_positional_embeddings=audio_cross_positional_embeddings,
             )
+            if audio_cross_scale_shift_timestep is not None:
+                audio = replace(audio, cross_scale_shift_timestep=audio_cross_scale_shift_timestep)
 
         batch_size = (video or audio).x.shape[0]
 
@@ -1671,6 +1677,7 @@ class LTXModel(torch.nn.Module):
                     video_timesteps=video.timesteps,
                     video_positional_embeddings=video.positional_embeddings,
                     video_cross_positional_embeddings=video.cross_positional_embeddings,
+                    video_cross_scale_shift_timestep=video.cross_scale_shift_timestep if self.use_tokenwise_av_ca_scale_shift else None,
                 )
             if audio is not None:
                 block_kwargs.update(
@@ -1678,6 +1685,7 @@ class LTXModel(torch.nn.Module):
                     audio_timesteps=audio.timesteps,
                     audio_positional_embeddings=audio.positional_embeddings,
                     audio_cross_positional_embeddings=audio.cross_positional_embeddings,
+                    audio_cross_scale_shift_timestep=audio.cross_scale_shift_timestep if self.use_tokenwise_av_ca_scale_shift else None,
                 )
             vx, ax = gradient_checkpoint_forward(
                 block,

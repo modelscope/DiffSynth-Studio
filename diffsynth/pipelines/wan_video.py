@@ -1727,6 +1727,7 @@ def model_fn_wan_video(
             return custom_forward
         
         # Block
+        t_mod_seq = t_mod if t_mod.ndim == 4 else None
         for block_id, block in enumerate(dit.blocks):
             if skip_9th_layer:
                 # This is only used in WanToDance
@@ -1753,7 +1754,8 @@ def model_fn_wan_video(
                     block,
                     use_gradient_checkpointing,
                     use_gradient_checkpointing_offload,
-                    x, context, t_mod, freqs
+                    x, context, t_mod if t_mod_seq is None else None, freqs,
+                    t_mod_seq=t_mod_seq,
                 )
               
             

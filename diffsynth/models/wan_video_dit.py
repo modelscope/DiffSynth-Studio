@@ -187,7 +187,7 @@ class GateModule(nn.Module):
         return x + gate * residual
 
 @sequence_parallel_recipe(
-    split_dimensions_for_inputs={"x": 1, "freqs": 0},
+    split_dimensions_for_inputs={"x": 1, "freqs": 0, "t_mod_seq": 1},
     gather_dimensions_for_outputs={"x": 1},
     no_exchange_modules=("cross_attn",),
 )
@@ -209,7 +209,9 @@ class DiTBlock(nn.Module):
         self.modulation = nn.Parameter(torch.randn(1, 6, dim) / dim**0.5)
         self.gate = GateModule()
 
-    def forward(self, x, context, t_mod, freqs):
+    def forward(self, x, context, t_mod, freqs, t_mod_seq=None):
+        if t_mod_seq is not None:
+            t_mod = t_mod_seq
         has_seq = len(t_mod.shape) == 4
         chunk_dim = 2 if has_seq else 1
         # msa: multi-head self-attention  mlp: multi-layer perceptron
