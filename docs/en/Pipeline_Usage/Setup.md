@@ -31,6 +31,8 @@ To keep the framework lightweight, the base installation only installs the neces
 
 You can install multiple sets of dependencies with `pip install -e ".[audio,quant]"` or `pip install diffsynth[audio,quant]`.
 
+EntroPack is an optional dependency. Before running quantization or low-VRAM examples that use `entropack_*` methods, install the matching backend as described in the [quantization guide](Quantization.md). For example, use `python -m pip install "entropack[cuda13]>=0.1.7"` for CUDA 13, or replace `cuda13` with `cuda12` for CUDA 12. This also applies to NVIDIA GPU users.
+
 ## GPU/NPU Support
 
 ### NVIDIA GPU
@@ -63,6 +65,14 @@ On Apple Silicon devices, no changes to the installation steps are needed. Howev
    pip install -e .[npu] --extra-index-url "https://download.pytorch.org/whl/cpu"
    ```
 When using Ascend NPU, please replace `"cuda"` with `"npu"` in your Python code. For details, see [NPU Support](../Pipeline_Usage/GPU_support.md#ascend-npu).
+
+### Moore Threads MUSA
+
+Install matching `torch`, `torch_musa`, and `torchvision` builds from a MUSA image or vendor distribution first, then run `python -m pip install -e .` with that environment's Python. The base installation reuses installed packages that satisfy its requirements; do not add `--upgrade`.
+
+`entropack>=0.1.7` requires `torch>=2.10`, so it is only included in `[quant]` / `[all]`. Do not install those extras in MUSA environments using torch 2.7.1 / 2.9.1. Quantization and low-VRAM examples using EntroPack still require a separately installed compatible backend; the base installation does not provide those features.
+
+Reuse the audio and training packages validated in your image. If you need `[audio]` / `[training]`, protect the installed framework versions with an environment-specific constraints file and inspect the plan with `python -m pip install --dry-run -c <constraints.txt> -e ".[audio,training]"` first. In particular, audio dependencies must not replace the MUSA torch build.
 
 ## Other Installation Issues
 
