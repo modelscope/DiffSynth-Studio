@@ -75,10 +75,11 @@ image.save("image_ideogram-4-fp8.jpg")
 
 ## Model Overview
 
-|Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
-|-|-|-|-|-|-|-|
-|[ideogram-ai/ideogram-4-fp8](https://www.modelscope.cn/models/ideogram-ai/ideogram-4-fp8)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference/ideogram-4-fp8.py)|-|-|-|-|-|
-|[DiffSynth-Studio/ideogram-4-bf16-repackage](https://www.modelscope.cn/models/DiffSynth-Studio/ideogram-4-bf16-repackage)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference/ideogram-4-bf16-repackage.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference_low_vram/ideogram-4-bf16-repackage.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_training/full/Ideogram-4-bf16-repackage.sh)|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_training/lora/Ideogram-4-bf16-repackage.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_training/validate_lora/Ideogram-4-bf16-repackage.py)|
+|Model ID|Inference|Low VRAM Inference|Parallel Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
+|-|-|-|-|-|-|-|-|
+|[ideogram-ai/ideogram-4-fp8](https://www.modelscope.cn/models/ideogram-ai/ideogram-4-fp8)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference/ideogram-4-fp8.py)|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference_parallel/ideogram-4-fp8.py)|-|-|-|-|
+|[DiffSynth-Studio/ideogram-4-bf16-repackage](https://www.modelscope.cn/models/DiffSynth-Studio/ideogram-4-bf16-repackage)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference/ideogram-4-bf16-repackage.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference_low_vram/ideogram-4-bf16-repackage.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference_parallel/ideogram-4-bf16-repackage.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_training/full/Ideogram-4-bf16-repackage.sh)|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_training/lora/Ideogram-4-bf16-repackage.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_training/validate_lora/Ideogram-4-bf16-repackage.py)|
+|[ideogram-ai/ideogram-4-nf4](https://www.modelscope.cn/models/ideogram-ai/ideogram-4-nf4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference/ideogram-4-nf4.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference_low_vram/ideogram-4-nf4.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference_parallel/ideogram-4-nf4.py)|-|-|-|-|
 
 ## Model Inference
 
