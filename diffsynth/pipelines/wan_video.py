@@ -1632,8 +1632,8 @@ def model_fn_wan_video(
         x_vap = rearrange(x_vap, 'b c f h w -> b (f h w) c').contiguous()
         # Timestep
         clean_timestep = torch.ones(timestep.shape, device=timestep.device).to(timestep.dtype)
-        t = vap.time_embedding(sinusoidal_embedding_1d(vap.freq_dim, clean_timestep))
-        t_mod_vap = vap.time_projection(t).unflatten(1, (6, vap.dim))
+        t_vap = vap.time_embedding(sinusoidal_embedding_1d(vap.freq_dim, clean_timestep))
+        t_mod_vap = vap.time_projection(t_vap).unflatten(1, (6, vap.dim))
 
         # rope
         freqs_vap = vap.compute_freqs_mot(f,h,w).to(x.device)
