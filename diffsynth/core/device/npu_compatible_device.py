@@ -9,6 +9,7 @@ def is_torch_npu_available():
 
 IS_CUDA_AVAILABLE = torch.cuda.is_available()
 IS_NPU_AVAILABLE = is_torch_npu_available() and torch.npu.is_available()
+IS_MUSA_AVAILABLE = hasattr(torch, "musa") and torch.musa.is_available()
 
 if IS_NPU_AVAILABLE:
     import torch_npu
@@ -17,11 +18,13 @@ if IS_NPU_AVAILABLE:
 
 
 def get_device_type() -> str:
-    """Get device type based on current machine, currently only support CPU, CUDA, NPU."""
+    """Get device type based on current machine, currently support CPU, CUDA, NPU and MUSA."""
     if IS_CUDA_AVAILABLE:
         device = "cuda"
     elif IS_NPU_AVAILABLE:
         device = "npu"
+    elif IS_MUSA_AVAILABLE:
+        device = "musa"
     else:
         device = "cpu"
 
@@ -65,6 +68,8 @@ def get_nccl_backend() -> str:
         return "nccl"
     elif IS_NPU_AVAILABLE:
         return "hccl"
+    elif IS_MUSA_AVAILABLE:
+        return "mccl"
     else:
         raise RuntimeError(f"No available distributed communication backend found on device type {get_device_type()}.")
 
@@ -81,6 +86,9 @@ def enable_high_precision_for_bf16():
         torch.npu.matmul.allow_tf32 = False
         torch.npu.matmul.allow_bf16_reduced_precision_reduction = False
 
+    if IS_MUSA_AVAILABLE:
+        torch.backends.mudnn.allow_tf32 = False
+
 
 def parse_device_type(device):
     if isinstance(device, torch.device):
@@ -89,6 +97,8 @@ def parse_device_type(device):
         # `torch.device("npu")` raises when torch_npu is not installed, so keep npu ahead of the generic parse.
         if device.startswith("npu"):
             return "npu"
+        elif device.startswith("musa"):
+            return "musa"
         try:
             return torch.device(device).type
         except RuntimeError:
@@ -101,6 +111,8 @@ def parse_nccl_backend(device_type):
         return "nccl"
     elif device_type == "npu":
         return "hccl"
+    elif device_type == "musa":
+        return "mccl"
     else:
         raise RuntimeError(f"No available distributed communication backend found on device type {device_type}.")
 
