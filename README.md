@@ -41,7 +41,7 @@ See also:
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
-- **November 19, 2026** We open-sourced the inference service code ([`services/`](/services/)) used by the ModelScope [AIGC Zone](https://modelscope.cn/aigc/home). Targeting clusters built from single-GPU H20 machines, it wraps many image, video, and audio model services with multi-level `deploy_mode` strategies and a unified `run_tests` benchmark. See the [documentation](/docs/en/Pipeline_Usage/Inference_Service.md).
+- **November 20, 2026** We open-sourced the inference service code ([`services/`](/services/)) used by the ModelScope [AIGC Zone](https://modelscope.cn/aigc/home). Targeting clusters built from single-GPU H20 machines, it wraps many image, video, and audio model services with multi-level `deploy_mode` strategies and a unified `run_tests` benchmark. See the [documentation](/docs/en/Pipeline_Usage/Inference_Service.md).
 
 - **November 19, 2026** We trained a [MiniMax-H3-Image Training Adapter](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-TrainingAdapter) for the CFG-distilled MiniMax-H3-Image base, a DeCFG LoRA training adapter. The training data comes from the self-generated [MiniMax-H3-Image-Self-Generated-Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/MiniMax-H3-Image-Self-Generated-Dataset). Based on this adapter, we trained a toy model, [MiniMax-H3-Image-Songyu-LoRA](https://www.modelscope.cn/models/mibei0804/MiniMax-H3-Image-Songyu-LoRA) (character identity), as a reference for inference and fine-tuning. In addition, for MiniMax-H3-Image we recommend training on images larger than 2048×2048 resolution.
 
@@ -54,6 +54,9 @@ See also:
 - **October 16, 2026** flux-3-image-klein open-sourced, welcome a new member to the image model family! Support includes text-to-image generation, multi-reference editing, layout control, low VRAM inference, and Base training capabilities. For details, please refer to the [documentation](/docs/en/Model_Details/FLUX.3.md) and [example code](/examples/flux3/). We quantized the model with [EntroPack](https://github.com/modelscope/entropack), providing pre-quantized models in 3-bit, 4-bit, and 6-bit versions at [DiffSynth-Studio/flux-3-image-klein-entropack](https://www.modelscope.cn/models/DiffSynth-Studio/flux-3-image-klein-entropack).
 
 - **October 12, 2026** We now support distillation accelerated training based on OPD (On-Policy Distillation), which enables distillation acceleration of models at an extremely low cost. For details, please refer to [Distillation Accelerated Training](/docs/en/Training/Distillation.md).
+
+<details>
+<summary>More</summary>
 
 - **September 29, 2026** We are excited to open-source EntroPack, a general-purpose tensor compression library for PyTorch that provides lossless compression with exact recovery and rate-controlled lossy compression, with GPU encoding and decoding. It is integrated into DiffSynth-Studio as a quantization backend, compressing model weights at arbitrary target bitrates in both inference and LoRA training. For more information, please refer to:
 
@@ -84,9 +87,6 @@ See also:
 - **August 25, 2026** We have open-sourced [DiffSynth-WebUI](https://github.com/modelscope/DiffSynth-WebUI), enabling one-click private deployment of LoRA training services. Combined with the model quantization feature, you can train large models even with consumer-grade GPUs.
 
 - **August 19, 2026** We have released the model quantization feature. It provides a unified `QuantizeConfig` entry point supporting multiple quantization backends including bitsandbytes, torchao, and comfy-kitchen, with capabilities such as online quantization, loading pre-quantized weights, mixed quantization, saving quantized models, and quantization + LoRA training. For details, please refer to the [documentation](/docs/en/Pipeline_Usage/Quantization.md).
-
-<details>
-<summary>More</summary>
 
 - **August 17, 2026** MiniMax-Music3 open-sourced, welcome a new member to the audio model family! Support includes text-to-music generation and low VRAM inference. For details, please refer to the [documentation](/docs/en/Model_Details/MiniMax-Music3.md) and [example code](/examples/minimax_music3/).
 

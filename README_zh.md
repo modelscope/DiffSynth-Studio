@@ -41,7 +41,7 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
-- **2026年11月19日** 我们开源了魔搭社区 [AIGC 专区](https://modelscope.cn/aigc/home) 的推理服务代码（[`services/`](/services/)），面向 H20 单 GPU 机器组成的集群，统一封装了一系列图像、视频、音频模型的推理服务，提供 `deploy_mode` 多级显存部署策略和 `run_tests` 基准测试。详情请参考[文档](/docs/zh/Pipeline_Usage/Inference_Service.md)。
+- **2026年11月20日** 我们开源了魔搭社区 [AIGC 专区](https://modelscope.cn/aigc/home) 的推理服务代码（[`services/`](/services/)），面向 H20 单 GPU 机器组成的集群，统一封装了一系列图像、视频、音频模型的推理服务，提供 `deploy_mode` 多级显存部署策略和 `run_tests` 基准测试。详情请参考[文档](/docs/zh/Pipeline_Usage/Inference_Service.md)。
 
 - **2026年11月19日** 我们为 CFG 蒸馏的 MiniMax-H3-Image 基座训练了 [MiniMax-H3-Image Training Adapter](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-TrainingAdapter)，这是一个 DeCFG LoRA 训练 Adapter。训练数据来自自生成数据集 [MiniMax-H3-Image-Self-Generated-Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/MiniMax-H3-Image-Self-Generated-Dataset)。基于该 Adapter，我们训练了 toy 模型 [MiniMax-H3-Image-Songyu-LoRA](https://www.modelscope.cn/models/mibei0804/MiniMax-H3-Image-Songyu-LoRA)（角色身份），供推理与微调参考。此外，对于 MiniMax-H3-Image 模型，我们推荐使用大于 2048×2048 分辨率的图像进行训练。
 
@@ -54,6 +54,9 @@
 - **2026年10月16日** flux-3-image-klein 开源，欢迎加入图像生成模型家族！支持文生图、多参考图像编辑、布局控制、低显存推理和 Base 训练能力。详情请参考[文档](/docs/zh/Model_Details/FLUX.3.md)和[示例代码](/examples/flux3/)。我们使用 [EntroPack](https://github.com/modelscope/entropack) 对模型进行了量化，提供了 3bit、4bit、6bit 几个版本的预量化模型：[DiffSynth-Studio/flux-3-image-klein-entropack](https://www.modelscope.cn/models/DiffSynth-Studio/flux-3-image-klein-entropack)。
 
 - **2026年10月12日** 我们已支持基于 OPD（On-Policy Distillation）的蒸馏加速训练，现在能够以极低的成本对模型进行蒸馏加速，详见[蒸馏加速训练](./docs/zh/Training/Distillation.md)。
+
+<details>
+<summary>更多</summary>
 
 - **2026年9月29日** 我们开源了 EntroPack——面向 PyTorch 的通用张量压缩库，支持逐位精确恢复的无损压缩和按目标码率控制体积的有损压缩，并提供 GPU 编解码能力。它已作为量化后端接入 DiffSynth-Studio，可在推理与 LoRA 训练中按任意目标码率压缩模型权重。更多信息请参考：
 
@@ -84,9 +87,6 @@
 - **2026年8月25日** 我们开源了 [DiffSynth-WebUI](https://github.com/modelscope/DiffSynth-WebUI)，一键私有化部署 LoRA 训练服务，与模型参数量化功能结合，用消费级 GPU 也能训练超大模型。
 
 - **2026年8月19日** 我们发布了模型量化功能。它提供了统一的 `QuantizeConfig` 入口，支持 bitsandbytes、torchao、comfy-kitchen 等多种量化后端，具备在线量化、加载预量化权重、混合量化、保存量化模型、量化 + LoRA 训练等能力。详情请参考[文档](/docs/zh/Pipeline_Usage/Quantization.md)。
-
-<details>
-<summary>更多</summary>
 
 - **2026年8月17日** MiniMax-Music3 开源，欢迎加入音频生成模型家族！支持文生音乐推理和低显存推理能力。详情请参考[文档](/docs/zh/Model_Details/MiniMax-Music3.md)和[示例代码](/examples/minimax_music3/)。
 
