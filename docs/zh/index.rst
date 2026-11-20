@@ -20,6 +20,7 @@
    Pipeline_Usage/Environment_Variables
    Pipeline_Usage/GPU_support
    Pipeline_Usage/Inference_WebUI
+   Pipeline_Usage/Inference_Service
 
 .. toctree::
    :maxdepth: 2

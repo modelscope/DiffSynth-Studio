@@ -41,6 +41,8 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年11月19日** 我们开源了面向魔搭社区 [AIGC 专区](https://modelscope.cn/aigc/home) 的推理服务代码（[`services/`](/services/)），面向 H20 单 GPU 机器组成的集群，统一封装了 24 个图像、视频、音频模型的推理服务，提供 `deploy_mode` 多级显存部署策略和 `run_tests` 基准测试。详情请参考[文档](/docs/zh/Pipeline_Usage/Inference_Service.md)。
+
 - **2026年11月19日** 我们为 CFG 蒸馏的 MiniMax-H3-Image 基座训练了 [MiniMax-H3-Image Training Adapter](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-TrainingAdapter)，这是一个 DeCFG LoRA 训练 Adapter。训练数据来自自生成数据集 [MiniMax-H3-Image-Self-Generated-Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/MiniMax-H3-Image-Self-Generated-Dataset)。基于该 Adapter，我们训练了 toy 模型 [MiniMax-H3-Image-Songyu-LoRA](https://www.modelscope.cn/models/mibei0804/MiniMax-H3-Image-Songyu-LoRA)（角色身份），供推理与微调参考。此外，对于 MiniMax-H3-Image 模型，我们推荐使用大于 2048×2048 分辨率的图像进行训练。
 
 - **2026年11月10日** 现已支持 MiniMax-H3-Image，这是 MiniMax-H3 家族中的图像模型，支持文生图与参考图编辑的统一推理、低显存推理，以及全量与 LoRA 训练。该模型被蒸馏到 6 步采样，Transformer 每一步对应一个独立输出头，无需超分即可直接生成约 1600 万像素的图像。此外，我们还提供了 AdaLN 剪枝版 Transformer 的 [EntroPack 量化模型](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-EntroPack)，覆盖 8bit 到极限 3bit 多档，每档均提供 INT8 GEMM 版本；极限 3bit 档把 DiT 从 bf16 的 40.2 GB 压缩到仅 7.67 GB。详情请见[文档](/docs/zh/Model_Details/MiniMax-H3-Image.md)与[示例代码](/examples/minimax_h3_image/)。

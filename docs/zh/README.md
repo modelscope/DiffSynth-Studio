@@ -36,6 +36,7 @@ graph LR;
 * [环境变量](./Pipeline_Usage/Environment_Variables.md)
 * [GPU/NPU 支持](./Pipeline_Usage/GPU_support.md)
 * [推理 WebUI](./Pipeline_Usage/Inference_WebUI.md)
+* [部署推理服务](./Pipeline_Usage/Inference_Service.md)
 
 ## Section 2: 模型详解
 

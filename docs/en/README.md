@@ -36,6 +36,7 @@ This section introduces the basic usage of `DiffSynth-Studio`, including how to 
 * [Environment Variables](./Pipeline_Usage/Environment_Variables.md)
 * [GPU/NPU Support](./Pipeline_Usage/GPU_support.md)
 * [Inference WebUI](./Pipeline_Usage/Inference_WebUI.md)
+* [Deploying Inference Services](./Pipeline_Usage/Inference_Service.md)
 
 ## Section 2: Model Details
 
