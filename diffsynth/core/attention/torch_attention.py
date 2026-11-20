@@ -1,8 +1,34 @@
 import torch
 from einops import repeat
 
-from .common import TORCH_SUPPORT_GQA, rearrange_qkv, rearrange_out
+from .common import (
+    TORCH_SUPPORT_GQA,
+    is_bf16_attn_bridge_disabled,
+    is_pre_sm80_cuda,
+    rearrange_out,
+    rearrange_qkv,
+)
 from .registry import register_attention_implementation
+
+
+class _SafeBF16ToFP16(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x: torch.Tensor) -> torch.Tensor:
+        f16_max = torch.finfo(torch.float16).max
+        return x.clamp(-f16_max, f16_max).half()
+
+    @staticmethod
+    def backward(ctx, grad_output: torch.Tensor) -> torch.Tensor:
+        return grad_output.to(torch.bfloat16)
+
+
+def _cast_to_fp16_safe(x: torch.Tensor) -> torch.Tensor:
+    if x.dtype == torch.float16:
+        return x
+    if x.dtype == torch.bfloat16 and x.requires_grad and torch.is_grad_enabled():
+        return _SafeBF16ToFP16.apply(x)
+    f16_max = torch.finfo(torch.float16).max
+    return x.clamp(-f16_max, f16_max).half()
 
 
 def torch_sdpa(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d", dims=None, attn_mask=None, scale=None, is_causal=False, window_size=None):
@@ -13,6 +39,18 @@ def torch_sdpa(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n
 
     required_in_pattern, required_out_pattern = "b n s d", "b n s d"
     q, k, v = rearrange_qkv(q, k, v, q_pattern, k_pattern, v_pattern, required_in_pattern, dims)
+    orig_dtype = q.dtype
+    sm75_bf16_bridge = (
+        orig_dtype == torch.bfloat16
+        and is_pre_sm80_cuda(q.device)
+        and not is_bf16_attn_bridge_disabled()
+    )
+    if sm75_bf16_bridge:
+        q = _cast_to_fp16_safe(q)
+        k = _cast_to_fp16_safe(k)
+        v = _cast_to_fp16_safe(v)
+        if attn_mask is not None and attn_mask.is_floating_point():
+            attn_mask = _cast_to_fp16_safe(attn_mask)
     if q.shape[1] != k.shape[1] or q.shape[1] != v.shape[1]:
         # Grouped Query Attention
         if TORCH_SUPPORT_GQA:
@@ -24,6 +62,8 @@ def torch_sdpa(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, q_pattern="b n
             out = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask, scale=scale, is_causal=is_causal)
     else:
         out = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask, scale=scale, is_causal=is_causal)
+    if sm75_bf16_bridge:
+        out = out.to(orig_dtype)
     out = rearrange_out(out, out_pattern, required_out_pattern, dims)
     return out
 
