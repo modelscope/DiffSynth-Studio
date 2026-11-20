@@ -41,7 +41,7 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
-- **2026年11月19日** 我们开源了面向魔搭社区 [AIGC 专区](https://modelscope.cn/aigc/home) 的推理服务代码（[`services/`](/services/)），面向 H20 单 GPU 机器组成的集群，统一封装了 24 个图像、视频、音频模型的推理服务，提供 `deploy_mode` 多级显存部署策略和 `run_tests` 基准测试。详情请参考[文档](/docs/zh/Pipeline_Usage/Inference_Service.md)。
+- **2026年11月19日** 我们开源了魔搭社区 [AIGC 专区](https://modelscope.cn/aigc/home) 的推理服务代码（[`services/`](/services/)），面向 H20 单 GPU 机器组成的集群，统一封装了一系列图像、视频、音频模型的推理服务，提供 `deploy_mode` 多级显存部署策略和 `run_tests` 基准测试。详情请参考[文档](/docs/zh/Pipeline_Usage/Inference_Service.md)。
 
 - **2026年11月19日** 我们为 CFG 蒸馏的 MiniMax-H3-Image 基座训练了 [MiniMax-H3-Image Training Adapter](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-TrainingAdapter)，这是一个 DeCFG LoRA 训练 Adapter。训练数据来自自生成数据集 [MiniMax-H3-Image-Self-Generated-Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/MiniMax-H3-Image-Self-Generated-Dataset)。基于该 Adapter，我们训练了 toy 模型 [MiniMax-H3-Image-Songyu-LoRA](https://www.modelscope.cn/models/mibei0804/MiniMax-H3-Image-Songyu-LoRA)（角色身份），供推理与微调参考。此外，对于 MiniMax-H3-Image 模型，我们推荐使用大于 2048×2048 分辨率的图像进行训练。
 
