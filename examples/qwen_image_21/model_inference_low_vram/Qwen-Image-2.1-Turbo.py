@@ -45,9 +45,6 @@ image_3.save("image3.png")
 # Enable KV-Cache compression to reduce memory.
 image_4 = pipe(
     prompt, edit_image=edit_image, seed=1, sigmas=sigmas,
-    kv_compress_config=[
-        {"method": "cholesky_qr", "rank": 1024, "layout": "joint"},
-        {"method": "entropack", "target_bpp": 6.0},
-    ],
+    kv_compress_config=[{"method": "entropack", "target_bpp": 4.0}],
 )
 image_4.save("image4.png")
