@@ -62,9 +62,9 @@ save_video(video, "video_Qwen-Video-Edit.mp4", fps=16)
 
 ## Model Overview
 
-| Model ID | Inference | Low VRAM Inference | Full Training | Validation After Full Training | LoRA Training | Validation After LoRA Training |
-| - | - | - | - | - | - | - |
-| [yunpeng1998/Qwen-Video-Edit](https://www.modelscope.cn/models/yunpeng1998/Qwen-Video-Edit) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_inference/Qwen-Video-Edit.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_inference_low_vram/Qwen-Video-Edit.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/full/Qwen-Video-Edit.sh) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/validate_full/Qwen-Video-Edit.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/lora/Qwen-Video-Edit.sh) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/validate_lora/Qwen-Video-Edit.py) |
+| Model ID | Inference | Low VRAM Inference |Parallel Inference| Full Training | Validation After Full Training | LoRA Training | Validation After LoRA Training |
+| - | - | - |-| - | - | - | - |
+| [yunpeng1998/Qwen-Video-Edit](https://www.modelscope.cn/models/yunpeng1998/Qwen-Video-Edit) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_inference/Qwen-Video-Edit.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_inference_low_vram/Qwen-Video-Edit.py) |[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_inference_parallel/Qwen-Video-Edit.py)| [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/full/Qwen-Video-Edit.sh) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/validate_full/Qwen-Video-Edit.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/lora/Qwen-Video-Edit.sh) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/validate_lora/Qwen-Video-Edit.py) |
 
 ## Model Inference
 

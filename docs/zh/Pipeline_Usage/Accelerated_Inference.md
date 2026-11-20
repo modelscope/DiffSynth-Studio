@@ -8,49 +8,7 @@
 注意力机制的加速细节请参考 [注意力机制实现](../API_Reference/core/attention.md)。
 
 ## 多卡并行推理
-DiffSynth-Studio 采用统一序列并行的多卡推理方案。在 DiT 中将 token 序列拆分至多张显卡进行并行处理。底层基于 [xDiT](https://github.com/xdit-project/xDiT) 实现。需要注意，统一序列并行会引入额外通信开销，实际加速比通常低于显卡数量。
-
-目前 DiffSynth-Studio 已支持 [Wan](../Model_Details/Wan.md) 和 [MOVA](../Model_Details/Wan.md) 模型的统一序列并行加速。
-
-首先安装 `xDiT` 依赖。
-```bash
-pip install "xfuser[flash-attn]>=0.4.3"
-```
-
-然后使用 `torchrun` 启动多卡推理。
-```bash
-torchrun --standalone --nproc_per_node=8 examples/wanvideo/acceleration/unified_sequence_parallel.py
-```
-
-构建 pipeline 时配置 `usp=True` 即可实现 USP 并行推理。代码示例如下。
-```python
-import torch
-from PIL import Image
-from diffsynth.utils.data import save_video
-from diffsynth.pipelines.wan_video import WanVideoPipeline, ModelConfig
-import torch.distributed as dist
-
-pipe = WanVideoPipeline.from_pretrained(
-    torch_dtype=torch.bfloat16,
-    device="cuda",
-    use_usp=True,
-    model_configs=[
-        ModelConfig(model_id="Wan-AI/Wan2.1-T2V-14B", origin_file_pattern="diffusion_pytorch_model*.safetensors"),
-        ModelConfig(model_id="Wan-AI/Wan2.1-T2V-14B", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth"),
-        ModelConfig(model_id="Wan-AI/Wan2.1-T2V-14B", origin_file_pattern="Wan2.1_VAE.pth"),
-    ],
-    tokenizer_config=ModelConfig(model_id="Wan-AI/Wan2.1-T2V-1.3B", origin_file_pattern="google/umt5-xxl/"),
-)
-
-# Text-to-video
-video = pipe(
-    prompt="一名宇航员身穿太空服，面朝镜头骑着一匹机械马在火星表面驰骋。红色的荒凉地表延伸至远方，点缀着巨大的陨石坑和奇特的岩石结构。机械马的步伐稳健，扬起微弱的尘埃，展现出未来科技与原始探索的完美结合。宇航员手持操控装置，目光坚定，仿佛正在开辟人类的新疆域。背景是深邃的宇宙和蔚蓝的地球，画面既科幻又充满希望，让人不禁畅想未来的星际生活。",
-    negative_prompt="色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
-    seed=0, tiled=True,
-)
-if dist.get_rank() == 0:
-    save_video(video, "video1.mp4", fps=15, quality=5)
-```
+使用方法请参考[并行推理](Parallel_Inference.md)。
 
 ## 计算图编译
 PyTorch 2.0 提供了自动计算图编译接口 [torch.compile](https://docs.pytorch.org/tutorials/intermediate/torch_compile_tutorial.html)，能够将 PyTorch 代码即时编译为优化内核，从而提升运行速度。由于扩散模型的推理耗时集中在 DiT 的多步去噪阶段，且 DiT 主要由基础模块堆叠而成，为缩短编译时间，DiffSynth 的 compile 功能采用仅针对基础 Transformer 模块的 [区域编译](https://docs.pytorch.org/tutorials/recipes/regional_compilation.html) 策略。

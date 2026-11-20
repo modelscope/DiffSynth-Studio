@@ -62,10 +62,10 @@ save_audio(audio, 48000, "YuE2.wav")
 
 ## Model Overview
 
-|Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
-|-|-|-|-|-|-|-|
-|[m-a-p/YuE2-3B](https://www.modelscope.cn/models/m-a-p/YuE2-3B)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference/YuE2.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference_low_vram/YuE2.py)|—|—|—|—|
-|[m-a-p/YuE2-3B: Edit](https://www.modelscope.cn/models/m-a-p/YuE2-3B)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference/YuE2-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference_low_vram/YuE2-Edit.py)|—|—|—|—|
+|Model ID|Inference|Low VRAM Inference|Parallel Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
+|-|-|-|-|-|-|-|-|
+|[m-a-p/YuE2-3B](https://www.modelscope.cn/models/m-a-p/YuE2-3B)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference/YuE2.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference_low_vram/YuE2.py)|-|—|—|—|—|
+|[m-a-p/YuE2-3B: Edit](https://www.modelscope.cn/models/m-a-p/YuE2-3B)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference/YuE2-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference_low_vram/YuE2-Edit.py)|-|—|—|—|—|
 
 ## Model Inference
 

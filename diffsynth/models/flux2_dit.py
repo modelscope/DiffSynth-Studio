@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from ..core.attention import attention_forward
+from ..core.distributed import current_sequence_parallel_state, sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 
 
@@ -572,6 +573,10 @@ class Flux2ParallelSelfAttention(torch.nn.Module):
         return hidden_states
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"hidden_states": 1, "image_rotary_emb": 0},
+    gather_dimensions_for_outputs={"hidden_states": 1},
+)
 class Flux2SingleTransformerBlock(nn.Module):
     def __init__(
         self,
@@ -612,6 +617,8 @@ class Flux2SingleTransformerBlock(nn.Module):
         text_seq_len: Optional[int] = None,
         kv_cache = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        if current_sequence_parallel_state() is not None and (encoder_hidden_states is not None or split_hidden_states or kv_cache is not None):
+            raise NotImplementedError("Flux2 single-stream SP requires concatenated inputs, an unsplit output and no KV cache")
         # If encoder_hidden_states is None, hidden_states is assumed to have encoder_hidden_states already
         # concatenated
         if encoder_hidden_states is not None:
@@ -642,6 +649,10 @@ class Flux2SingleTransformerBlock(nn.Module):
             return hidden_states
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"hidden_states": 1, "encoder_hidden_states": 1, "image_rotary_emb": 0, "text_rotary_emb": 0},
+    gather_dimensions_for_outputs={"encoder_hidden_states": 1, "hidden_states": 1},
+)
 class Flux2TransformerBlock(nn.Module):
     def __init__(
         self,
@@ -683,10 +694,14 @@ class Flux2TransformerBlock(nn.Module):
         temb_mod_params_img: Tuple[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], ...],
         temb_mod_params_txt: Tuple[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], ...],
         image_rotary_emb: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+        text_rotary_emb: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
         joint_attention_kwargs: Optional[Dict[str, Any]] = None,
         kv_cache = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         joint_attention_kwargs = joint_attention_kwargs or {}
+        if current_sequence_parallel_state() is not None and (kv_cache is not None or joint_attention_kwargs.get("attention_mask") is not None):
+            raise NotImplementedError("Flux2 sequence parallelism does not support KV caches or attention masks")
+        image_rotary_emb = tuple(torch.cat((text, image), dim=0) for text, image in zip(text_rotary_emb, image_rotary_emb))
 
         # Modulation parameters shape: [1, 1, self.dim]
         (shift_msa, scale_msa, gate_msa), (shift_mlp, scale_mlp, gate_mlp) = temb_mod_params_img
@@ -970,7 +985,8 @@ class Flux2DiT(torch.nn.Module):
                 encoder_hidden_states=encoder_hidden_states,
                 temb_mod_params_img=double_stream_mod_img,
                 temb_mod_params_txt=double_stream_mod_txt,
-                image_rotary_emb=concat_rotary_emb,
+                image_rotary_emb=image_rotary_emb,
+                text_rotary_emb=text_rotary_emb,
                 joint_attention_kwargs=joint_attention_kwargs,
                 kv_cache=None if kv_cache is None else kv_cache.get(f"double_{block_id}"),
             )

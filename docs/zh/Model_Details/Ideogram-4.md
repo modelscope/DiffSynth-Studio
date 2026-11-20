@@ -75,10 +75,11 @@ image.save("image_ideogram-4-fp8.jpg")
 
 ## 模型总览
 
-|模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
-|-|-|-|-|-|-|-|
-|[ideogram-ai/ideogram-4-fp8](https://www.modelscope.cn/models/ideogram-ai/ideogram-4-fp8)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference/ideogram-4-fp8.py)|-|-|-|-|-|
-|[DiffSynth-Studio/ideogram-4-bf16-repackage](https://www.modelscope.cn/models/DiffSynth-Studio/ideogram-4-bf16-repackage)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference/ideogram-4-bf16-repackage.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference_low_vram/ideogram-4-bf16-repackage.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_training/full/Ideogram-4-bf16-repackage.sh)|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_training/lora/Ideogram-4-bf16-repackage.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_training/validate_lora/Ideogram-4-bf16-repackage.py)|
+|模型 ID|推理|低显存推理|并行推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
+|-|-|-|-|-|-|-|-|
+|[ideogram-ai/ideogram-4-fp8](https://www.modelscope.cn/models/ideogram-ai/ideogram-4-fp8)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference/ideogram-4-fp8.py)|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference_parallel/ideogram-4-fp8.py)|-|-|-|-|
+|[DiffSynth-Studio/ideogram-4-bf16-repackage](https://www.modelscope.cn/models/DiffSynth-Studio/ideogram-4-bf16-repackage)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference/ideogram-4-bf16-repackage.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference_low_vram/ideogram-4-bf16-repackage.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference_parallel/ideogram-4-bf16-repackage.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_training/full/Ideogram-4-bf16-repackage.sh)|-|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_training/lora/Ideogram-4-bf16-repackage.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_training/validate_lora/Ideogram-4-bf16-repackage.py)|
+|[ideogram-ai/ideogram-4-nf4](https://www.modelscope.cn/models/ideogram-ai/ideogram-4-nf4)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference/ideogram-4-nf4.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference_low_vram/ideogram-4-nf4.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/ideogram4/model_inference_parallel/ideogram-4-nf4.py)|-|-|-|-|
 
 ## 模型推理
 

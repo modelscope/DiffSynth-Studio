@@ -60,10 +60,10 @@ image.save("image.jpg")
 
 ## 模型总览
 
-|模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
-|-|-|-|-|-|-|-|
-|[briaai/Fibo-2.0-dev](https://www.modelscope.cn/models/briaai/Fibo-2.0-dev)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_inference/Fibo-2.0-dev.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_inference_low_vram/Fibo-2.0-dev.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_training/full/Fibo-2.0-dev-T2I.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_training/validate_full/Fibo-2.0-dev-T2I.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_training/lora/Fibo-2.0-dev-T2I.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_training/validate_lora/Fibo-2.0-dev-T2I.py)|
-|[briaai/Fibo-2.0-edit-turbo](https://www.modelscope.cn/models/briaai/Fibo-2.0-edit-turbo)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_inference/Fibo-2.0-edit-turbo.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_inference_low_vram/Fibo-2.0-edit-turbo.py)|-|-|-|-|
+|模型 ID|推理|低显存推理|并行推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
+|-|-|-|-|-|-|-|-|
+|[briaai/Fibo-2.0-dev](https://www.modelscope.cn/models/briaai/Fibo-2.0-dev)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_inference/Fibo-2.0-dev.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_inference_low_vram/Fibo-2.0-dev.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_inference_parallel/Fibo-2.0-dev.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_training/full/Fibo-2.0-dev-T2I.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_training/validate_full/Fibo-2.0-dev-T2I.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_training/lora/Fibo-2.0-dev-T2I.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_training/validate_lora/Fibo-2.0-dev-T2I.py)|
+|[briaai/Fibo-2.0-edit-turbo](https://www.modelscope.cn/models/briaai/Fibo-2.0-edit-turbo)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_inference/Fibo-2.0-edit-turbo.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_inference_low_vram/Fibo-2.0-edit-turbo.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/fibo/model_inference_parallel/Fibo-2.0-edit-turbo.py)|-|-|-|-|
 
 表格中的训练列指向文生图脚本，Fibo 2.0 Dev 还支持图像编辑训练，见[模型训练](#模型训练)。
 
