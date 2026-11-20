@@ -2,7 +2,7 @@ import torch, copy
 from typing import Union
 from .initialization import skip_model_initialization
 from .disk_map import DiskMap
-from ..device import parse_device_type, get_device_name, IS_NPU_AVAILABLE
+from ..device import parse_device_type, get_device_name, IS_NPU_AVAILABLE, mem_get_info
 
 
 class AutoTorchModule(torch.nn.Module):
@@ -67,6 +67,8 @@ class AutoTorchModule(torch.nn.Module):
             allocated = torch.mps.current_allocated_memory()
             recommended_max = torch.mps.recommended_max_memory()
             gpu_mem_state = (recommended_max - allocated, recommended_max)
+        elif self.computation_device_type == "cuda":
+            gpu_mem_state = mem_get_info(self.computation_device)
         else:
             device = self.computation_device if not IS_NPU_AVAILABLE else get_device_name()
             gpu_mem_state = getattr(torch, self.computation_device_type).mem_get_info(device)
