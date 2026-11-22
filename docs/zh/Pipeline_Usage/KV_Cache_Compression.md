@@ -2,7 +2,7 @@
 
 部分模型采用 KV-Cache 存储输入的文本和图像信息，在多图编辑等任务中占用极大的显存。DiffSynth-Studio 框架提供通用的 KV-Cache 压缩接口，能够大幅减少 KV-Cache 所占用的显存。
 
-> 目前 KV-Cache 压缩仅适配 Qwen-Image-2.1 和 Qwen-Image-2.1-Turbo。
+> 目前 KV-Cache 压缩仅适配 Qwen-Image-2.1、Qwen-Image-2.1-Turbo、Wan-AI/Wan2.2-Animate-2-14B。
 
 ## 启用 KV-Cache 压缩
 

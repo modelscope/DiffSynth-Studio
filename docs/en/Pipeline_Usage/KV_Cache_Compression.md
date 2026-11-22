@@ -4,7 +4,7 @@ Some models use a KV-Cache to store the text and image information of the input,
 large amount of VRAM in multi-image editing and similar tasks. DiffSynth-Studio provides a general
 KV-Cache compression interface that greatly reduces the VRAM used by the KV-Cache.
 
-> KV-Cache compression currently only supports Qwen-Image-2.1 and Qwen-Image-2.1-Turbo.
+> KV-Cache compression currently only supports Qwen-Image-2.1, Qwen-Image-2.1-Turbo and Wan-AI/Wan2.2-Animate-2-14B.
 
 ## Enabling KV-Cache Compression
 
