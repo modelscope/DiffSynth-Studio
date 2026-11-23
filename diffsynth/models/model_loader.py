@@ -1,6 +1,7 @@
 from ..core.loader import load_model, hash_model_file
 from ..core.vram import AutoWrappedModule
 from ..core.quant import QuantizeConfig, MixedQuantizeConfig
+from ..core.distributed import install_sequence_parallel
 from ..configs import MODEL_CONFIGS, VRAM_MANAGEMENT_MODULE_MAPS, VERSION_CHECKER_MAPS
 import importlib, json, torch
 
@@ -54,7 +55,7 @@ class ModelPool:
             quantize=quantize,
         )
         return model
-    
+
     def default_vram_config(self):
         vram_config = {
             "offload_dtype": None,
@@ -80,7 +81,7 @@ class ModelPool:
             return QuantizeConfig(**registered)
         return quantize
 
-    def auto_load_model(self, path, vram_config=None, vram_limit=None, clear_parameters=False, state_dict=None, quantize=None):
+    def auto_load_model(self, path, vram_config=None, vram_limit=None, clear_parameters=False, state_dict=None, quantize=None, parallel_config=None):
         print(f"Loading models from: {json.dumps(path, indent=4)}")
         if vram_config is None:
             vram_config = self.default_vram_config()
@@ -90,6 +91,7 @@ class ModelPool:
             if config["model_hash"] == model_hash:
                 model = self.load_model_file(config, path, vram_config, vram_limit=vram_limit, state_dict=state_dict, quantize=quantize)
                 if clear_parameters: self.clear_parameters(model)
+                install_sequence_parallel(model, parallel_config)
                 self.model.append(model)
                 model_name = config["model_name"]
                 self.model_name.append(model_name)

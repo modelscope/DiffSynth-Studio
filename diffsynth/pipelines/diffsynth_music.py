@@ -51,9 +51,10 @@ class DiffSynthMusicPipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="DiffSynth-Studio/DiffSynth-Music-Tools", origin_file_pattern="text_encoder/"),
         vram_limit: float = None,
+        parallel_config=None,
     ):
         pipe = DiffSynthMusicPipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
 
         pipe.text_encoder = model_pool.fetch_model("ace_step_text_encoder")
         pipe.conditioner = model_pool.fetch_model("ace_step_conditioner")

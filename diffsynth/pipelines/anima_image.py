@@ -50,10 +50,11 @@ class AnimaImagePipeline(BasePipeline):
         tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen3-0.6B", origin_file_pattern="./"),
         tokenizer_t5xxl_config: ModelConfig = ModelConfig(model_id="stabilityai/stable-diffusion-3.5-large", origin_file_pattern="tokenizer_3/"),
         vram_limit: float = None,
+        parallel_config=None,
     ):
         # Initialize pipeline
         pipe = AnimaImagePipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("z_image_text_encoder")

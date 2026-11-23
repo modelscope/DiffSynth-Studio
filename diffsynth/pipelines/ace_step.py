@@ -62,9 +62,10 @@ class AceStepPipeline(BasePipeline):
         text_tokenizer_config: ModelConfig = ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="Qwen3-Embedding-0.6B/"),
         silence_latent_config: ModelConfig = ModelConfig(model_id="ACE-Step/Ace-Step1.5", origin_file_pattern="acestep-v15-turbo/silence_latent.pt"),
         vram_limit: float = None,
+        parallel_config=None,
     ):
         pipe = AceStepPipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
 
         pipe.text_encoder = model_pool.fetch_model("ace_step_text_encoder")
         pipe.conditioner = model_pool.fetch_model("ace_step_conditioner")

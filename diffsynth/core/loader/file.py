@@ -1,5 +1,6 @@
 from safetensors import safe_open
 import torch, hashlib, json
+from ..device import resolve_device
 
 
 def load_state_dict(file_path, torch_dtype=None, device="cpu", pin_memory=False, verbose=0):
@@ -25,7 +26,7 @@ def load_state_dict(file_path, torch_dtype=None, device="cpu", pin_memory=False,
 
 def load_state_dict_from_safetensors(file_path, torch_dtype=None, device="cpu"):
     state_dict = {}
-    with safe_open(file_path, framework="pt", device=str(device)) as f:
+    with safe_open(file_path, framework="pt", device=str(resolve_device(device))) as f:
         for k in f.keys():
             state_dict[k] = f.get_tensor(k)
             if torch_dtype is not None:

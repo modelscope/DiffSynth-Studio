@@ -49,10 +49,11 @@ class QwenVideoEditPipeline(BasePipeline):
         tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
         processor_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/"),
         vram_limit: float = None,
+        parallel_config=None,
     ):
         # Initialize pipeline
         pipe = QwenVideoEditPipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
 
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("qwen_image_text_encoder")
@@ -340,13 +341,14 @@ def model_fn_qwen_video_edit(
         torch.tensor([0]).to(device=image.device, dtype=torch.long),
     )
     text = dit.txt_in(dit.txt_norm(prompt_emb))
-    image_rotary_emb = dit.pos_embed(img_shapes, prompt_emb_mask.sum(dim=1).tolist(), device=image.device)
+    image_rotary_emb, text_rotary_emb = dit.pos_embed(img_shapes, prompt_emb_mask.sum(dim=1).tolist(), device=image.device)
 
     for block in dit.transformer_blocks:
         text, image = gradient_checkpoint_forward(
             block, use_gradient_checkpointing, use_gradient_checkpointing_offload,
             image=image, text=text, temb=conditioning,
-            image_rotary_emb=image_rotary_emb, attention_mask=None, modulate_index=modulate_index,
+            image_rotary_emb=image_rotary_emb, text_rotary_emb=text_rotary_emb,
+            attention_mask=None, modulate_index=modulate_index,
         )
 
     if zero_cond_t:

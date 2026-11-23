@@ -8,6 +8,7 @@ from torch.nn.utils.rnn import pad_sequence
 
 from .general_modules import RMSNorm
 from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core.device.npu_compatible_device import IS_NPU_AVAILABLE, get_device_type
 from ..core.gradient import gradient_checkpoint_forward
 
@@ -153,6 +154,10 @@ def select_per_token(
     )
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"x": 1, "freqs_cis": 1, "noise_mask": 1},
+    gather_dimensions_for_outputs={"x": 1},
+)
 class ZImageTransformerBlock(nn.Module):
     def __init__(
         self,

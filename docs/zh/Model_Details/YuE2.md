@@ -62,10 +62,10 @@ save_audio(audio, 48000, "YuE2.wav")
 
 ## 模型总览
 
-|模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
-|-|-|-|-|-|-|-|
-|[m-a-p/YuE2-3B](https://www.modelscope.cn/models/m-a-p/YuE2-3B)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference/YuE2.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference_low_vram/YuE2.py)|—|—|—|—|
-|[m-a-p/YuE2-3B: Edit](https://www.modelscope.cn/models/m-a-p/YuE2-3B)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference/YuE2-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference_low_vram/YuE2-Edit.py)|—|—|—|—|
+|模型 ID|推理|低显存推理|并行推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
+|-|-|-|-|-|-|-|-|
+|[m-a-p/YuE2-3B](https://www.modelscope.cn/models/m-a-p/YuE2-3B)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference/YuE2.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference_low_vram/YuE2.py)|-|—|—|—|—|
+|[m-a-p/YuE2-3B: Edit](https://www.modelscope.cn/models/m-a-p/YuE2-3B)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference/YuE2-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/yue2/model_inference_low_vram/YuE2-Edit.py)|-|—|—|—|—|
 
 ## 模型推理
 
