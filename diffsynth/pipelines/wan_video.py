@@ -14,6 +14,7 @@ from transformers import Wav2Vec2Processor
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
 from ..core import ModelConfig, gradient_checkpoint_forward
+from ..core.context_compress import CompressedKVCacheBlock, KVCompressor
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 
 from ..models.wan_video_dit import WanModel, sinusoidal_embedding_1d
@@ -238,6 +239,7 @@ class WanVideoPipeline(BasePipeline):
         animate2_refert_images: list[Image.Image] = None,
         animate2_offload_kv: bool = False,
         animate2_log_scale: float = 0.0,
+        kv_compress_config: Union[list, dict, KVCompressor] = None,
         # VAP
         vap_video: list[Image.Image] = None,
         vap_prompt: str = " ",
@@ -316,6 +318,7 @@ class WanVideoPipeline(BasePipeline):
             "input_audio": input_audio, "audio_sample_rate": audio_sample_rate, "s2v_pose_video": s2v_pose_video, "audio_embeds": audio_embeds, "s2v_pose_latents": s2v_pose_latents, "motion_video": motion_video,
             "animate_pose_video": animate_pose_video, "animate_face_video": animate_face_video, "animate_inpaint_video": animate_inpaint_video, "animate_mask_video": animate_mask_video,
             "animate2_prompt_ref": animate2_prompt_ref, "animate2_reference_image": animate2_reference_image, "animate2_reference_video": animate2_reference_video, "animate2_refert_images": animate2_refert_images, "animate2_offload_kv": animate2_offload_kv, "animate2_log_scale": animate2_log_scale,
+            "kv_compress_config": kv_compress_config,
             "vap_video": vap_video, 
             "wantodance_music_path": wantodance_music_path, "wantodance_reference_image": wantodance_reference_image, "wantodance_fps": wantodance_fps,
             "wantodance_keyframes": wantodance_keyframes, "wantodance_keyframes_mask": wantodance_keyframes_mask,
@@ -1293,16 +1296,25 @@ class WanVideoUnit_Animate2VAEEmbedder(PipelineUnit):
 class WanVideoUnit_Animate2RefKVCacheEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("animate2_reference_video", "condition_latents", "condition_y", "context_ref", "clip_fea_ref", "grid_sizes", "seq_len_ref", "animate2_offload_kv", "use_gradient_checkpointing", "use_gradient_checkpointing_offload", "use_unified_sequence_parallel"),
+            input_params=("animate2_reference_video", "condition_latents", "condition_y", "context_ref", "clip_fea_ref", "grid_sizes", "seq_len_ref", "animate2_offload_kv", "use_gradient_checkpointing", "use_gradient_checkpointing_offload", "use_unified_sequence_parallel", "kv_compress_config"),
             output_params=("animate2_k_cache", "animate2_v_cache"),
             onload_model_names=("dit",)
         )
 
-    def process(self, pipe: WanVideoPipeline, animate2_reference_video, condition_latents, condition_y, context_ref, clip_fea_ref, grid_sizes, seq_len_ref, animate2_offload_kv, use_gradient_checkpointing, use_gradient_checkpointing_offload, use_unified_sequence_parallel):
+    def process(self, pipe: WanVideoPipeline, animate2_reference_video, condition_latents, condition_y, context_ref, clip_fea_ref, grid_sizes, seq_len_ref, animate2_offload_kv, use_gradient_checkpointing, use_gradient_checkpointing_offload, use_unified_sequence_parallel, kv_compress_config):
         if animate2_reference_video is None or pipe.scheduler.training:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
-        animate2_k_cache, animate2_v_cache = {}, {}
+        if kv_compress_config is not None and not isinstance(kv_compress_config, KVCompressor):
+            kv_compress_config = KVCompressor(kv_compress_config)
+        if kv_compress_config is None:
+            animate2_k_cache, animate2_v_cache = {}, {}
+        else:
+            # Keep the reference K/V compressed on the GPU; it is decoded per block as the
+            # denoising steps read it, which replaces the CPU offload path.
+            animate2_k_cache = CompressedKVCacheBlock(kv_compress_config)
+            animate2_v_cache = CompressedKVCacheBlock(kv_compress_config)
+            animate2_offload_kv = False
         t = pipe.scheduler.timesteps[0]
         timestep = t.unsqueeze(0).to(dtype=pipe.torch_dtype, device=pipe.device)
         pipe.dit.forward_ref(
