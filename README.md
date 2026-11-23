@@ -41,6 +41,8 @@ See also:
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
+- **November 23, 2026** **DiffSynth-Studio now supports unified multi-GPU parallel inference, covering most models within the framework.** Provided you have sufficient hardware resources, fully unleash the potential of your GPUs! Please refer to the [documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Pipeline_Usage/Parallel_Inference.html).
+
 - **November 23, 2026** The framework has added a KV-Cache compression module. Currently supported compression methods include [EntroPack](https://github.com/modelscope/entropack), SVD, and Cholesky-QR, among which EntroPack delivers the best performance. It can be used to reduce the VRAM required by the KV-Cache, and is applicable to Qwen-Image-2.1, Qwen-Image-2.1-Turbo, and Wan2.2-Animate-2-14B. For details, see the [documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Pipeline_Usage/KV_Cache_Compression.html).
 
 - **November 23, 2026** We trained an image super-resolution model, DetailScale-SR, which integrates multiple model capabilities such as text rendering, transparent backgrounds, and detail intensity control. The model architecture adopts LoRA + [Diffusion Template](https://arxiv.org/abs/2604.24351). Now you can confidently feed blurry images into the model to render high-definition images with rich details.
