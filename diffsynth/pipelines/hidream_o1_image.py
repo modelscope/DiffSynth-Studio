@@ -44,9 +44,10 @@ class HiDreamO1ImagePipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         processor_config: ModelConfig = ModelConfig(model_id="HiDream-ai/HiDream-O1-Image-Dev", origin_file_pattern="./"),
         vram_limit: float = None,
+        parallel_config=None,
     ):
         pipe = HiDreamO1ImagePipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         pipe.dit = model_pool.fetch_model("hidream_o1_image_dit")
         if processor_config is not None:
             from transformers import AutoProcessor

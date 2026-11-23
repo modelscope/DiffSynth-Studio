@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from typing import Optional, Tuple
 
 from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 from .flux2_dit import Timesteps, TimestepEmbedding
 
@@ -180,6 +181,10 @@ class ErnieImageRMSNorm(nn.Module):
         return hidden_states.to(input_dtype)
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"x": 0, "rotary_pos_emb": 1, "temb": 0},
+    gather_dimensions_for_outputs={"x": 0},
+)
 class ErnieImageSharedAdaLNBlock(nn.Module):
     def __init__(
         self,
@@ -332,7 +337,7 @@ class ErnieImageDiT(nn.Module):
             valid_text
         ], dim=1)[:, None, None, :]
 
-        sample = self.time_proj(timestep.to(dtype))
+        sample = self.time_proj(timestep.to(dtype)).to(dtype)
         c = self.time_embedding(sample)
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = [
             t.unsqueeze(0).expand(S, -1, -1).contiguous()

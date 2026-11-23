@@ -1,4 +1,5 @@
 import sys
+from dataclasses import replace
 import torch, types
 from PIL import Image
 from typing import Optional, Union
@@ -69,6 +70,7 @@ class MovaAudioVideoPipeline(BasePipeline):
         tokenizer_config: ModelConfig = ModelConfig(model_id="openmoss/MOVA-720p", origin_file_pattern="tokenizer/"),
         use_usp: bool = False,
         vram_limit: float = None,
+        parallel_config=None,
     ):
         if use_usp:
             from ..utils.xfuser import initialize_usp
@@ -79,7 +81,11 @@ class MovaAudioVideoPipeline(BasePipeline):
                 device = get_device_name()
         # Initialize pipeline
         pipe = MovaAudioVideoPipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        if use_usp and parallel_config is not None:
+            raise ValueError("use_usp (xfuser) and parallel_config (native sequence parallel) are mutually exclusive; disable one of them.")
+        if parallel_config is not None and parallel_config.sp_enabled:
+            parallel_config = replace(parallel_config, sequence=replace(parallel_config.sequence, gather_between_blocks=True))
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
 
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("wan_video_text_encoder")

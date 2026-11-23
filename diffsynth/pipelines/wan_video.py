@@ -127,6 +127,7 @@ class WanVideoPipeline(BasePipeline):
         redirect_common_files: bool = True,
         use_usp: bool = False,
         vram_limit: float = None,
+        parallel_config=None,
     ):
         # Redirect model path
         if redirect_common_files:
@@ -153,7 +154,7 @@ class WanVideoPipeline(BasePipeline):
                 device = get_device_name()
         # Initialize pipeline
         pipe = WanVideoPipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("wan_video_text_encoder")
@@ -1738,6 +1739,7 @@ def model_fn_wan_video(
             return custom_forward
         
         # Block
+        t_mod_seq = t_mod if t_mod.ndim == 4 else None
         for block_id, block in enumerate(dit.blocks):
             if skip_9th_layer:
                 # This is only used in WanToDance
@@ -1764,7 +1766,8 @@ def model_fn_wan_video(
                     block,
                     use_gradient_checkpointing,
                     use_gradient_checkpointing_offload,
-                    x, context, t_mod, freqs
+                    x, context, t_mod if t_mod_seq is None else None, freqs,
+                    t_mod_seq=t_mod_seq,
                 )
               
             

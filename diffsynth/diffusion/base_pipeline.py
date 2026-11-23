@@ -1,5 +1,6 @@
 from PIL import Image
 import torch
+import torch.distributed as dist
 import numpy as np
 from einops import repeat, reduce
 from typing import Union
@@ -9,6 +10,7 @@ from ..utils.lora import GeneralLoRALoader
 from ..models.model_loader import ModelPool
 from ..utils.controlnet import ControlNetInput
 from ..core.device import get_device_name, IS_NPU_AVAILABLE
+from ..core.distributed import get_parallel_group, init_parallel
 from .template import load_template_model, load_template_data_processor
 
 
@@ -79,6 +81,7 @@ class BasePipeline(torch.nn.Module):
         self.time_division_remainder = time_division_remainder
         # VRAM management
         self.vram_management_enabled = False
+        self.parallel_config = None
         # Pipeline Unit Runner
         self.unit_runner = PipelineUnitRunner()
         # LoRA Loader
@@ -182,6 +185,10 @@ class BasePipeline(torch.nn.Module):
 
     def generate_noise(self, shape, seed=None, rand_device="cpu", rand_torch_dtype=torch.float32, device=None, torch_dtype=None):
         # Initialize Gaussian noise
+        if seed is None and self.parallel_config is not None and get_parallel_group() is not None:
+            seeds = [torch.Generator().seed()]
+            dist.broadcast_object_list(seeds, src=0, group=get_parallel_group())
+            seed = seeds[0]
         generator = None if seed is None else torch.Generator(rand_device).manual_seed(seed)
         noise = torch.randn(shape, generator=generator, device=rand_device, dtype=rand_torch_dtype)
         noise = noise.to(dtype=torch_dtype or self.torch_dtype, device=device or self.device)
@@ -302,7 +309,10 @@ class BasePipeline(torch.nn.Module):
             print(f"{cleared_num} LoRA layers are cleared.")
         
     
-    def download_and_load_models(self, model_configs: list[ModelConfig] = [], vram_limit: float = None):
+    def download_and_load_models(self, model_configs: list[ModelConfig] = [], vram_limit: float = None, parallel_config=None):
+        self.parallel_config = parallel_config
+        if parallel_config is not None:
+            init_parallel(parallel_config.timeout_seconds)
         model_pool = ModelPool()
         for model_config in model_configs:
             model_config.download_if_necessary()
@@ -316,6 +326,7 @@ class BasePipeline(torch.nn.Module):
                 clear_parameters=model_config.clear_parameters,
                 state_dict=model_config.state_dict,
                 quantize=model_config.quantize,
+                parallel_config=parallel_config,
             )
         return model_pool
     

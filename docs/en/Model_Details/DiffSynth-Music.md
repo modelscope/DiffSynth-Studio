@@ -138,9 +138,9 @@ A low VRAM version is available at [examples/diffsynth_music/model_inference_low
 
 ## Model Overview
 
-|Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
-|-|-|-|-|-|-|-|
-| [DiffSynth-Studio/DiffSynth-Music](https://www.modelscope.cn/models/DiffSynth-Studio/DiffSynth-Music) | [code](/examples/diffsynth_music/model_inference/DiffSynth-Music.py) | [code](/examples/diffsynth_music/model_inference_low_vram/DiffSynth-Music.py) | [code](/examples/diffsynth_music/model_training/full/DiffSynth-Music.sh) | [code](/examples/diffsynth_music/model_training/validate_full/DiffSynth-Music.py) | - | - |
+|Model ID|Inference|Low VRAM Inference|Parallel Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
+|-|-|-|-|-|-|-|-|
+| [DiffSynth-Studio/DiffSynth-Music](https://www.modelscope.cn/models/DiffSynth-Studio/DiffSynth-Music) | [code](/examples/diffsynth_music/model_inference/DiffSynth-Music.py) | [code](/examples/diffsynth_music/model_inference_low_vram/DiffSynth-Music.py) |-| [code](/examples/diffsynth_music/model_training/full/DiffSynth-Music.sh) | [code](/examples/diffsynth_music/model_training/validate_full/DiffSynth-Music.py) | - | - |
 
 ## Model Inference
 

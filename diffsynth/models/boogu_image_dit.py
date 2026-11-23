@@ -6,6 +6,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 from einops import rearrange
+
+from ..core.attention import attention_forward
+from ..core.distributed import current_sequence_parallel_state, sequence_parallel_recipe
 from torch.nn import RMSNorm
 import math
 import torch.nn.functional as F
@@ -1364,8 +1367,10 @@ class BooguImageAttnProcessor:
         key = key.repeat_interleave(query.size(-3) // key.size(-3), -3)
         value = value.repeat_interleave(query.size(-3) // value.size(-3), -3)
 
-        hidden_states = F.scaled_dot_product_attention(
-            query, key, value, attn_mask=attention_mask, scale=softmax_scale
+        hidden_states = attention_forward(
+            query, key, value,
+            q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d",
+            attn_mask=attention_mask, scale=softmax_scale,
         )
         hidden_states = hidden_states.transpose(1, 2).reshape(
             batch_size, -1, attn.heads * head_dim
@@ -1387,7 +1392,6 @@ class BooguImageDoubleStreamSelfAttnProcessor(nn.Module):
     - Instruction and image features are processed separately to generate QKV
     - QKV are concatenated and processed together for cross-modal attention
     - Uses PyTorch's scaled_dot_product_attention for computation
-    - Supports both standard and causal attention masks
 
     Args:
         head_dim: Dimension of each attention head
@@ -1585,7 +1589,6 @@ class BooguImageDoubleStreamSelfAttnProcessor(nn.Module):
         attn: Attention,
         img_hidden_states: torch.Tensor,
         instruct_hidden_states: torch.Tensor,
-        joint_attention_mask: Optional[torch.Tensor] = None,
         rotary_emb: Optional[torch.Tensor] = None,
         encoder_seq_lengths: List[
             int
@@ -1600,7 +1603,6 @@ class BooguImageDoubleStreamSelfAttnProcessor(nn.Module):
             attn: Attention module
             img_hidden_states: Image hidden states tensor [B, L_img, D]
             instruct_hidden_states: Instruction hidden states tensor [B, L_instruct, D]
-            joint_attention_mask: Combined attention mask [B, L_total]
             rotary_emb: Rotary embeddings for the joint sequence
             encoder_seq_lengths: Instruction sequence lengths for each sample [B]
             seq_lengths: Total sequence lengths for each sample [B]
@@ -1696,21 +1698,6 @@ class BooguImageDoubleStreamSelfAttnProcessor(nn.Module):
         else:
             softmax_scale = attn.scale
 
-        # scaled_dot_product_attention expects attention_mask shape to be
-        # (batch, heads, source_length, target_length)
-        if joint_attention_mask is not None:
-            joint_attention_mask = joint_attention_mask.bool()
-            if joint_attention_mask.dim() == 2:
-                # Standard mask [B, seq_len] -> [B, 1, 1, seq_len]
-                joint_attention_mask = joint_attention_mask.view(batch_size, 1, 1, -1)
-            elif joint_attention_mask.dim() == 3:
-                # Causal mask [B, seq_len, seq_len] -> [B, 1, seq_len, seq_len]
-                joint_attention_mask = joint_attention_mask.unsqueeze(1)
-            else:
-                raise ValueError(
-                    f"Unsupported joint_attention_mask shape: {joint_attention_mask.shape}"
-                )
-
         query = query.transpose(1, 2)
         key = key.transpose(1, 2)
         value = value.transpose(1, 2)
@@ -1719,8 +1706,10 @@ class BooguImageDoubleStreamSelfAttnProcessor(nn.Module):
         key = key.repeat_interleave(query.size(-3) // key.size(-3), -3)
         value = value.repeat_interleave(query.size(-3) // value.size(-3), -3)
 
-        hidden_states = F.scaled_dot_product_attention(
-            query, key, value, attn_mask=joint_attention_mask, scale=softmax_scale
+        hidden_states = attention_forward(
+            query, key, value,
+            q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d",
+            scale=softmax_scale,
         )
         hidden_states = hidden_states.transpose(1, 2).reshape(
             batch_size, -1, attn.heads * head_dim
@@ -1867,6 +1856,10 @@ class PromptEmbedding(torch.nn.Module):
         return instance
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"hidden_states": 1, "image_rotary_emb": 1},
+    gather_dimensions_for_outputs={"hidden_states": 1},
+)
 class BooguImageTransformerBlock(nn.Module):
     """
     Basic Boogu-Image transformer block: attention + MLP + RMSNorm.
@@ -2050,6 +2043,10 @@ class BooguImageTransformerBlock(nn.Module):
         return hidden_states
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"img_hidden_states": 1, "instruct_hidden_states": 1, "image_rotary_emb": 1, "text_rotary_emb": 1},
+    gather_dimensions_for_outputs={"img_hidden_states": 1, "instruct_hidden_states": 1},
+)
 class BooguImageDoubleStreamTransformerBlock(nn.Module):
     """
     Boogu-Image double-stream block.
@@ -2213,14 +2210,9 @@ class BooguImageDoubleStreamTransformerBlock(nn.Module):
         img_hidden_states: torch.Tensor,  # [B, L_img, D] - Image tokens (ref_img + noise_img)
         instruct_hidden_states: torch.Tensor,  # [B, L_instruct, D] - Instruction tokens
         img_attention_mask: torch.Tensor,  # [B, L_img] - Attention mask for [ref_img + noise_img]
-        joint_attention_mask: torch.Tensor,  # [B, L_total] - Combined attention mask for [instruct + img]
         image_rotary_emb: torch.Tensor,  # [B, L_img, head_dim] - Rotary embeddings for [ref_img + noise_img]
-        rotary_emb: torch.Tensor,  # [B, L_total, head_dim] - Rotary embeddings for [instruct + img]
+        text_rotary_emb: torch.Tensor,
         temb: Optional[torch.Tensor] = None,  # [B, 1024] - Timestep embeddings
-        encoder_seq_lengths: List[
-            int
-        ] = None,  # [B] - Instruction sequence lengths for each sample
-        seq_lengths: List[int] = None,  # [B] - Total sequence lengths for each sample
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Run one dual-stream (double-stream) block step.
@@ -2245,6 +2237,9 @@ class BooguImageDoubleStreamTransformerBlock(nn.Module):
         L_img = img_hidden_states.shape[
             1
         ]  # Image sequence length (ref_img + noise_img)
+        encoder_seq_lengths = [L_instruct]
+        seq_lengths = [L_instruct + L_img]
+        rotary_emb = torch.cat((text_rotary_emb, image_rotary_emb), dim=1)
 
         if self.modulation:
             # Step 1: modulation for both streams.
@@ -2270,7 +2265,6 @@ class BooguImageDoubleStreamTransformerBlock(nn.Module):
                 attn=self.img_instruct_attn,
                 img_hidden_states=img_norm1_out,
                 instruct_hidden_states=instruct_norm1_out,
-                joint_attention_mask=joint_attention_mask,
                 rotary_emb=rotary_emb,
                 encoder_seq_lengths=encoder_seq_lengths,
                 seq_lengths=seq_lengths,
@@ -2346,7 +2340,6 @@ class BooguImageDoubleStreamTransformerBlock(nn.Module):
                 attn=self.img_instruct_attn,
                 img_hidden_states=img_norm1_out,
                 instruct_hidden_states=instruct_norm1_out,
-                joint_attention_mask=joint_attention_mask,
                 rotary_emb=rotary_emb,
                 encoder_seq_lengths=encoder_seq_lengths,
                 seq_lengths=seq_lengths,
@@ -2958,6 +2951,8 @@ class BooguImageDiT(torch.nn.Module):
         )
 
         enable_taylorseer = getattr(self, "enable_taylorseer", False)
+        if current_sequence_parallel_state() is not None and (self.enable_teacache or enable_taylorseer):
+            raise NotImplementedError("Boogu sequence parallelism does not support TeaCache or TaylorSeer")
 
         if attention_kwargs is not None:
             attention_kwargs = attention_kwargs.copy()
@@ -3151,12 +3146,9 @@ class BooguImageDiT(torch.nn.Module):
                         img_hidden_states,
                         instruct_hidden_states,
                         img_attention_mask,
-                        joint_attention_mask,
                         combined_img_rotary_emb,
-                        rotary_emb,
+                        context_rotary_emb,
                         temb,
-                        encoder_seq_lengths,
-                        seq_lengths,
                     )
 
                 if enable_double_stream_teacache:
