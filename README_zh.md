@@ -381,6 +381,17 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 我们相信，一个完善的开源代码框架能够降低技术探索的门槛，我们基于这个代码库搞出了不少有意思的技术。或许你也有许多天马行空的构想，借助 DiffSynth-Studio，你可以快速实现这些想法。
 
 <details>
+<summary>DetailScale-SR：真实场景超分辨率的连续细节控制</summary>
+
+> 让图像超分辨率模型集齐文本渲染、透明背景、细节强度控制等多种模型能力。
+
+* 论文：[DetailScale-SR: Decoupling Restoration and Continuous Detail Control for Real-World Super-Resolution](https://arxiv.org/abs/2611.24212)
+* 模型：[ModelScope](https://modelscope.cn/models/DiffSynth-Studio/Qwen-Image-2.1-SR)
+* 示例代码：[Qwen-Image-2.1-SR](/examples/qwen_image_21/model_inference/Qwen-Image-2.1-SR.py)
+
+</details>
+
+<details>
 <summary>EntroPack: 面向 PyTorch 的通用张量压缩库</summary>
 
 > 按任意目标码率压缩模型权重，GPU 编解码，压缩后的权重可直接用于推理与 LoRA 训练。
@@ -620,6 +631,7 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 | FLUX.3 | [DiffSynth-Studio/flux-3-image-klein-entropack](https://www.modelscope.cn/models/DiffSynth-Studio/flux-3-image-klein-entropack) | [code](/examples/flux3/model_inference/flux-3-image-klein-EntroPack.py) | [code](/examples/flux3/model_inference_low_vram/flux-3-image-klein-EntroPack.py) | - | - | [code](/examples/flux3/model_training/lora/flux-3-image-klein-entropack.sh) | [code](/examples/flux3/model_training/validate_lora/flux-3-image-klein-entropack.py) |
 | Qwen-Image-2.1 | [Qwen/Qwen-Image-2.1](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1) | [code](/examples/qwen_image_21/model_inference/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_training/full/Qwen-Image-2.1.sh) | [code](/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1.py) | [code](/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1.sh) | [code](/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1.py) |
 | Qwen-Image-2.1 | [Qwen/Qwen-Image-2.1-Turbo](https://www.modelscope.cn/models/Qwen/Qwen-Image-2.1-Turbo) | [code](/examples/qwen_image_21/model_inference/Qwen-Image-2.1-Turbo.py) | [code](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-Turbo.py) | [code](/examples/qwen_image_21/model_training/full/Qwen-Image-2.1-Turbo.sh) | [code](/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1-Turbo.py) | [code](/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1-Turbo.sh) | [code](/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1-Turbo.py) |
+| Qwen-Image-2.1 | [DiffSynth-Studio/Qwen-Image-2.1-SR](https://www.modelscope.cn/models/DiffSynth-Studio/Qwen-Image-2.1-SR) | [code](/examples/qwen_image_21/model_inference/Qwen-Image-2.1-SR.py) | [code](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-SR.py) | [code](/examples/qwen_image_21/model_training/full/Qwen-Image-2.1-SR.sh) | [code](/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1-SR.py) | [code](/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1-SR.sh) | [code](/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1-SR.py) |
 | Qwen-Image-2.1 | [PAI/Qwen-Image-2.1-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/Qwen-Image-2.1-Fun-Controlnet-Union) | [code](/examples/qwen_image_21/model_inference/Qwen-Image-2.1-Fun-Controlnet-Union.py) | [code](/examples/qwen_image_21/model_inference_low_vram/Qwen-Image-2.1-Fun-Controlnet-Union.py) | [code](/examples/qwen_image_21/model_training/full/Qwen-Image-2.1-Fun-Controlnet-Union.sh) | [code](/examples/qwen_image_21/model_training/validate_full/Qwen-Image-2.1-Fun-Controlnet-Union.py) | [code](/examples/qwen_image_21/model_training/lora/Qwen-Image-2.1-Fun-Controlnet-Union.sh) | [code](/examples/qwen_image_21/model_training/validate_lora/Qwen-Image-2.1-Fun-Controlnet-Union.py) |
 | SenseNova-U1 | [SenseNova/SenseNova-U1.5-8B-MoT: T2I](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT) | [code](/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT.py) | [code](/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT.py) | [code](/examples/sensenova_u1/model_training/full/SenseNova-U1.5-8B-MoT.sh) | [code](/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.5-8B-MoT.py) | [code](/examples/sensenova_u1/model_training/lora/SenseNova-U1.5-8B-MoT.sh) | [code](/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.5-8B-MoT.py) |
 | SenseNova-U1 | [SenseNova/SenseNova-U1.5-8B-MoT: Edit](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.5-8B-MoT) | [code](/examples/sensenova_u1/model_inference/SenseNova-U1.5-8B-MoT-Edit.py) | [code](/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.5-8B-MoT-Edit.py) | [code](/examples/sensenova_u1/model_training/full/SenseNova-U1.5-8B-MoT-Edit.sh) | [code](/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.5-8B-MoT-Edit.py) | [code](/examples/sensenova_u1/model_training/lora/SenseNova-U1.5-8B-MoT-Edit.sh) | [code](/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.5-8B-MoT-Edit.py) |
