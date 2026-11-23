@@ -41,9 +41,20 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年11月23日** 框架新增了 KV-Cache 压缩模块，目前支持的压缩方案包括 [EntroPack](https://github.com/modelscope/entropack)、SVD、Cholesky-QR，其中 EntroPack 的效果最好，可用于减少 KV-Cache 所占的显存，适用于 Qwen-Image-2.1、Qwen-Image-2.1-Turbo、Wan2.2-Animate-2-14B，详见[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Pipeline_Usage/KV_Cache_Compression.html)。
+
+- **2026年11月23日** 我们训练了一个集齐文本渲染、透明背景、细节强度控制等多种模型能力的图像超分辨率模型 DetailScale-SR，模型结构采用 LoRA + [Diffution Template](https://arxiv.org/abs/2604.24351)，现在你可以放心大胆地把模糊图片交给模型，渲染出细节丰富的高清图像。
+
+  * 论文：[DetailScale-SR: Decoupling Restoration and Continuous Detail Control for Real-World Super-Resolution](https://arxiv.org/abs/2611.24212)
+  * 模型：[ModelScope](https://modelscope.cn/models/DiffSynth-Studio/Qwen-Image-2.1-SR)
+  * 示例代码：[Qwen-Image-2.1-SR](/examples/qwen_image_21/model_inference/Qwen-Image-2.1-SR.py)
+
 - **2026年11月19日** 我们为 CFG 蒸馏的 MiniMax-H3-Image 基座训练了 [MiniMax-H3-Image Training Adapter](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-TrainingAdapter)，这是一个 DeCFG LoRA 训练 Adapter。训练数据来自自生成数据集 [MiniMax-H3-Image-Self-Generated-Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/MiniMax-H3-Image-Self-Generated-Dataset)。基于该 Adapter，我们训练了 toy 模型 [MiniMax-H3-Image-Songyu-LoRA](https://www.modelscope.cn/models/mibei0804/MiniMax-H3-Image-Songyu-LoRA)（角色身份），供推理与微调参考。此外，对于 MiniMax-H3-Image 模型，我们推荐使用大于 2048×2048 分辨率的图像进行训练。
 
 - **2026年11月10日** 现已支持 MiniMax-H3-Image，这是 MiniMax-H3 家族中的图像模型，支持文生图与参考图编辑的统一推理、低显存推理，以及全量与 LoRA 训练。该模型被蒸馏到 6 步采样，Transformer 每一步对应一个独立输出头，无需超分即可直接生成约 1600 万像素的图像。此外，我们还提供了 AdaLN 剪枝版 Transformer 的 [EntroPack 量化模型](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-EntroPack)，覆盖 8bit 到极限 3bit 多档，每档均提供 INT8 GEMM 版本；极限 3bit 档把 DiT 从 bf16 的 40.2 GB 压缩到仅 7.67 GB。详情请见[文档](/docs/zh/Model_Details/MiniMax-H3-Image.md)与[示例代码](/examples/minimax_h3_image/)。
+
+<details>
+<summary>更多</summary>
 
 - **2026年10月21日** 我们已支持 Fibo 2.0，包含统一的文生图与图像编辑推理、掩码编辑、多参考图像编辑、文字渲染、低显存推理，以及 [Fibo-2.0-dev](https://www.modelscope.cn/models/briaai/Fibo-2.0-dev) 在文生图和图像编辑任务上的 LoRA 与全量训练。详情请参考[文档](/docs/zh/Model_Details/Fibo.md)和[示例代码](/examples/fibo/)。
 
@@ -82,9 +93,6 @@
 - **2026年8月25日** 我们开源了 [DiffSynth-WebUI](https://github.com/modelscope/DiffSynth-WebUI)，一键私有化部署 LoRA 训练服务，与模型参数量化功能结合，用消费级 GPU 也能训练超大模型。
 
 - **2026年8月19日** 我们发布了模型量化功能。它提供了统一的 `QuantizeConfig` 入口，支持 bitsandbytes、torchao、comfy-kitchen 等多种量化后端，具备在线量化、加载预量化权重、混合量化、保存量化模型、量化 + LoRA 训练等能力。详情请参考[文档](/docs/zh/Pipeline_Usage/Quantization.md)。
-
-<details>
-<summary>更多</summary>
 
 - **2026年8月17日** MiniMax-Music3 开源，欢迎加入音频生成模型家族！支持文生音乐推理和低显存推理能力。详情请参考[文档](/docs/zh/Model_Details/MiniMax-Music3.md)和[示例代码](/examples/minimax_music3/)。
 

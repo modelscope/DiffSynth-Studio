@@ -41,9 +41,20 @@ See also:
 
 > Currently, the development personnel of this project are limited, with most of the work handled by [Artiprocher](https://github.com/Artiprocher) and [mi804](https://github.com/mi804). Therefore, the progress of new feature development will be relatively slow, and the speed of responding to and resolving issues is limited. We apologize for this and ask developers to understand.
 
+- **November 23, 2026** The framework has added a KV-Cache compression module. Currently supported compression methods include [EntroPack](https://github.com/modelscope/entropack), SVD, and Cholesky-QR, among which EntroPack delivers the best performance. It can be used to reduce the VRAM required by the KV-Cache, and is applicable to Qwen-Image-2.1, Qwen-Image-2.1-Turbo, and Wan2.2-Animate-2-14B. For details, see the [documentation](https://diffsynth-studio-doc.readthedocs.io/en/latest/Pipeline_Usage/KV_Cache_Compression.html).
+
+- **November 23, 2026** We trained an image super-resolution model, DetailScale-SR, which integrates multiple model capabilities such as text rendering, transparent backgrounds, and detail intensity control. The model architecture adopts LoRA + [Diffusion Template](https://arxiv.org/abs/2604.24351). Now you can confidently feed blurry images into the model to render high-definition images with rich details.
+
+  * Paper: [DetailScale-SR: Decoupling Restoration and Continuous Detail Control for Real-World Super-Resolution](https://arxiv.org/abs/2611.24212)
+  * Model: [ModelScope](https://modelscope.cn/models/DiffSynth-Studio/Qwen-Image-2.1-SR)
+  * Example code: [Qwen-Image-2.1-SR](/examples/qwen_image_21/model_inference/Qwen-Image-2.1-SR.py)
+
 - **November 19, 2026** We trained a [MiniMax-H3-Image Training Adapter](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-TrainingAdapter) for the CFG-distilled MiniMax-H3-Image base, a DeCFG LoRA training adapter. The training data comes from the self-generated [MiniMax-H3-Image-Self-Generated-Dataset](https://www.modelscope.cn/datasets/DiffSynth-Studio/MiniMax-H3-Image-Self-Generated-Dataset). Based on this adapter, we trained a toy model, [MiniMax-H3-Image-Songyu-LoRA](https://www.modelscope.cn/models/mibei0804/MiniMax-H3-Image-Songyu-LoRA) (character identity), as a reference for inference and fine-tuning. In addition, for MiniMax-H3-Image we recommend training on images larger than 2048×2048 resolution.
 
 - **November 10, 2026** We now support MiniMax-H3-Image, the image model of the MiniMax-H3 family, including unified text-to-image and reference-image editing inference, low VRAM inference, and full/LoRA training. The checkpoint is distilled to six sampling steps with one transformer output head per step, and it generates about 16-megapixel images without an upscaler. In addition, we provide [EntroPack quantized models](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-EntroPack) for the AdaLN-pruned transformer, from 8-bit down to an extreme 3-bit quantization, each level with an INT8 GEMM counterpart; the extreme 3-bit package shrinks the DiT from 40.2 GB in bfloat16 to 7.67 GB. See the [documentation](/docs/en/Model_Details/MiniMax-H3-Image.md) and [example code](/examples/minimax_h3_image/).
+
+<details>
+<summary>More</summary>
 
 - **October 21, 2026** We now support Fibo 2.0, including unified text-to-image and image editing inference, masked and multi-reference editing, text rendering, low VRAM inference, and full/LoRA training for both text-to-image and image editing on [Fibo-2.0-dev](https://www.modelscope.cn/models/briaai/Fibo-2.0-dev). See the [documentation](/docs/en/Model_Details/Fibo.md) and [example code](/examples/fibo/).
 
@@ -82,9 +93,6 @@ See also:
 - **August 25, 2026** We have open-sourced [DiffSynth-WebUI](https://github.com/modelscope/DiffSynth-WebUI), enabling one-click private deployment of LoRA training services. Combined with the model quantization feature, you can train large models even with consumer-grade GPUs.
 
 - **August 19, 2026** We have released the model quantization feature. It provides a unified `QuantizeConfig` entry point supporting multiple quantization backends including bitsandbytes, torchao, and comfy-kitchen, with capabilities such as online quantization, loading pre-quantized weights, mixed quantization, saving quantized models, and quantization + LoRA training. For details, please refer to the [documentation](/docs/en/Pipeline_Usage/Quantization.md).
-
-<details>
-<summary>More</summary>
 
 - **August 17, 2026** MiniMax-Music3 open-sourced, welcome a new member to the audio model family! Support includes text-to-music generation and low VRAM inference. For details, please refer to the [documentation](/docs/en/Model_Details/MiniMax-Music3.md) and [example code](/examples/minimax_music3/).
 
