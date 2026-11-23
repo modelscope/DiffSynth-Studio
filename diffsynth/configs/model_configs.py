@@ -1692,6 +1692,14 @@ minimax_h3_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_controlnet.MiniMaxH3ControlNetStateDictConverter"
     },
     {
+        # Diffutoon-2 ControlNet modules (line-art / color). Example:
+        # ModelConfig(model_id="DiffSynth-Studio/Diffutoon-2", origin_file_pattern="line-art_module.safetensors")
+        "model_hash": "7ce9cb814682481d6281db7c7d0983bc",
+        "model_name": "minimax_h3_controlnet",
+        "model_class": "diffsynth.models.minimax_h3_controlnet.MiniMaxH3ControlNet",
+        "extra_kwargs": {'control_layers': (0, 5, 10, 15, 20, 25, 30, 35, 40), 'control_in_dim': 49, 'control_apply_audio': False, 'hidden_size': 5376, 'num_attention_heads': 56, 'attention_head_dim': 128, 'ffn_hidden_size': 14336, 'time_embed_dim': 2688, 'adaln_out_features': 96768, 'patch_size': (1, 2, 2), 'norm_eps': 1e-05, 'qk_norm_eps': 1e-05},
+    },
+    {
         # Example: ModelConfig(model_id="WarmBloodAban/Minimax-h3_Singularity", origin_file_pattern="Minimax-h3_Singularity_ref2va_Pruned_v1.3_int8.safetensors")
         "model_hash": "c00577940e5a11f0fb5a0a754ac6003d",
         "model_name": "minimax_h3_dit",

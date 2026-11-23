@@ -62,6 +62,7 @@ graph LR;
 * [Boogu-Image](./Model_Details/Boogu-Image.md)
 * [LingBot-Video](./Model_Details/LingBot-Video.md)
 * [MiniMax-H3](./Model_Details/MiniMax-H3.md)
+* [Diffutoon-2](./Model_Details/Diffutoon-2.md)
 * [MiniMax-H3-Image](./Model_Details/MiniMax-H3-Image.md)
 * [DiffSynth-Music](./Model_Details/DiffSynth-Music.md)
 * [MiniMax-Music3](./Model_Details/MiniMax-Music3.md)
