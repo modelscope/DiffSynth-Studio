@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 from ..core.device.npu_compatible_device import get_device_type
 
@@ -175,7 +176,7 @@ class LingBotVideoAttention(nn.Module):
         self.norm_k = LingBotVideoRMSNorm(self.head_dim, norm_eps)
         self.to_out = nn.Linear(hidden_size, hidden_size, bias=out_bias)
 
-    def forward(self, x, rotary_emb, attention_mask=None):
+    def forward(self, x, rotary_emb, cu_seqlens=None):
         q = self.to_q(x).unflatten(2, (self.num_heads, self.head_dim))
         k = self.to_k(x).unflatten(2, (self.num_heads, self.head_dim))
         v = self.to_v(x).unflatten(2, (self.num_heads, self.head_dim))
@@ -185,7 +186,7 @@ class LingBotVideoAttention(nn.Module):
         out = attention_forward(
             q, k, v,
             q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d", out_pattern="b s n d",
-            attn_mask=attention_mask,
+            cu_seqlens=cu_seqlens,
         )
         return self.to_out(out.flatten(2, 3).type_as(x))
 
@@ -392,6 +393,10 @@ class LingBotVideoSparseMoeBlock(nn.Module):
         return out
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"x": 1, "temb6": 0, "rotary_emb": 1},
+    gather_dimensions_for_outputs={"x": 1},
+)
 class LingBotVideoBlock(nn.Module):
     def __init__(self, hidden_size, num_attention_heads, intermediate_size, norm_eps, qkv_bias, out_bias,
                  num_experts, num_experts_per_tok, moe_intermediate_size, decoder_sparse_step, mlp_only_layers,
@@ -414,7 +419,7 @@ class LingBotVideoBlock(nn.Module):
             self.ffn = LingBotVideoMLP(h, intermediate_size)
         self.norm_post_ffn = LingBotVideoRMSNorm(h, norm_eps)
 
-    def forward(self, x, temb6, rotary_emb, attention_mask=None, moe_padding_mask=None):
+    def forward(self, x, temb6, rotary_emb, moe_padding_mask=None, cu_seqlens=None):
         expected_tokens = x.shape[0] * x.shape[1]
         if temb6.ndim != 2 or temb6.shape[0] != expected_tokens:
             raise ValueError(
@@ -428,7 +433,7 @@ class LingBotVideoBlock(nn.Module):
 
         bulk_dtype = x.dtype
         attn_in = (self.norm1(x) * scale_msa + shift_msa).to(bulk_dtype)
-        attn_out = self.attn(attn_in, rotary_emb, attention_mask)
+        attn_out = self.attn(attn_in, rotary_emb, cu_seqlens)
         x = x + (gate_msa * self.norm_post_attn(attn_out)).to(x.dtype)
 
         ffn_in = (self.norm2(x) * scale_mlp + shift_mlp).to(bulk_dtype)
@@ -560,26 +565,20 @@ class LingBotVideoDiT(nn.Module):
         else:
             rotary = torch.stack(rotary_parts, dim=0)  # (B, S, head_dim/2) complex64
 
-        attention_mask = None
         moe_padding_mask = None
         if packed_batch:
-            # Block-diagonal mask so packed samples only attend within their own block.
             sample_seq_lens = [n_video + tl for tl in text_lens_list]
-            total = sum(sample_seq_lens)
-            block_mask = torch.zeros((total, total), dtype=torch.bool, device=device)
-            start = 0
+            bounds = [0]
             for slen in sample_seq_lens:
-                block_mask[start:start + slen, start:start + slen] = True
-                start += slen
-            attention_mask = block_mask[None, None, :, :]  # (1,1,total,total)
+                bounds.append(bounds[-1] + slen)
+            cu_seqlens = torch.tensor(bounds, dtype=torch.int32, device=device)
         else:
             has_padding = encoder_attention_mask is not None and bool((text_lens < L).any())
             if has_padding:
-                key_mask = torch.cat(
-                    [torch.ones(B, n_video, dtype=torch.bool, device=device), encoder_attention_mask.bool()], dim=1
-                )
-                attention_mask = key_mask[:, None, None, :]      # (B,1,1,S) -> SDPA broadcast
-                moe_padding_mask = key_mask.reshape(-1).float()  # (B*S,)
+                valid_len = n_video + text_lens_list[0]
+                joint, rotary = joint[:, :valid_len], rotary[:, :valid_len]
+                joint_seq_len = joint.shape[1]
+            cu_seqlens = torch.tensor([0, joint_seq_len], dtype=torch.int32, device=device)
 
         # Timestep -> per-token modulation.
         timestep_proj = self.time_proj(timestep.float())
@@ -599,7 +598,7 @@ class LingBotVideoDiT(nn.Module):
                 use_gradient_checkpointing=use_gradient_checkpointing,
                 use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
                 x=joint, temb6=temb6, rotary_emb=rotary,
-                attention_mask=attention_mask, moe_padding_mask=moe_padding_mask,
+                moe_padding_mask=moe_padding_mask, cu_seqlens=cu_seqlens,
             )
 
         final_mod = self.norm_out_modulation(temb_input.reshape(joint.shape[0] * joint.shape[1], -1))

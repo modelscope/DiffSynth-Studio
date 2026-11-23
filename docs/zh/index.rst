@@ -14,6 +14,7 @@
    Pipeline_Usage/Setup
    Pipeline_Usage/Model_Inference
    Pipeline_Usage/Accelerated_Inference
+   Pipeline_Usage/Parallel_Inference
    Pipeline_Usage/VRAM_management
    Pipeline_Usage/Quantization
    Pipeline_Usage/KV_Cache_Compression
@@ -77,6 +78,7 @@
    Developer_Guide/Integrating_Your_Model
    Developer_Guide/Building_a_Pipeline
    Developer_Guide/Enabling_VRAM_management
+   Developer_Guide/Enabling_Parallel_Inference
    Developer_Guide/Training_Diffusion_Models
    Developer_Guide/Integrating_Quantization_Backend
 
@@ -86,6 +88,7 @@
 
    API_Reference/core/attention
    API_Reference/core/data
+   API_Reference/core/distributed
    API_Reference/core/gradient
    API_Reference/core/loader
    API_Reference/core/quant

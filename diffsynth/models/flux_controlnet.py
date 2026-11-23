@@ -1,6 +1,7 @@
 import torch
 from einops import rearrange, repeat
 from .flux_dit import RoPEEmbedding, TimestepEmbeddings, FluxJointTransformerBlock, FluxSingleTransformerBlock, RMSNorm
+from ..core.distributed import current_sequence_parallel_state
 # from .utils import hash_state_dict_keys, init_weights_on_device
 from contextlib import contextmanager
 
@@ -118,6 +119,8 @@ class FluxControlNet(torch.nn.Module):
         tiled=False, tile_size=128, tile_stride=64,
         **kwargs
     ):
+        if current_sequence_parallel_state() is not None:
+            raise NotImplementedError("Flux ControlNet does not support sequence parallelism")
         if image_ids is None:
             image_ids = self.prepare_image_ids(hidden_states)
 
@@ -139,8 +142,10 @@ class FluxControlNet(torch.nn.Module):
         hidden_states = hidden_states + self.controlnet_x_embedder(controlnet_conditioning) # Different from FluxDiT
 
         controlnet_res_stack = []
+        text_rotary_emb = image_rotary_emb[:, :, :prompt_emb.shape[1]]
+        image_stream_rotary_emb = image_rotary_emb[:, :, prompt_emb.shape[1]:]
         for block, controlnet_block in zip(self.blocks, self.controlnet_blocks):
-            hidden_states, prompt_emb = block(hidden_states, prompt_emb, conditioning, image_rotary_emb)
+            hidden_states, prompt_emb = block(hidden_states, prompt_emb, conditioning, image_stream_rotary_emb, text_rotary_emb=text_rotary_emb)
             controlnet_res_stack.append(controlnet_block(hidden_states))
 
         controlnet_single_res_stack = []

@@ -46,9 +46,10 @@ class Krea2Pipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
         vram_limit: float = None,
+        parallel_config=None,
     ):
         pipe = Krea2Pipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         pipe.text_encoder = model_pool.fetch_model("krea2_text_encoder")
         pipe.dit = model_pool.fetch_model("krea2_dit")
         pipe.vae = model_pool.fetch_model("qwen_image_vae")

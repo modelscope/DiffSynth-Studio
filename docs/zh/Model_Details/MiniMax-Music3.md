@@ -66,9 +66,9 @@ save_audio(audio, 44100, "MiniMax-Music3.wav")
 
 ## 模型总览
 
-|模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
-|-|-|-|-|-|-|-|
-|[MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_music3/model_inference/MiniMax-Music3.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_music3/model_inference_low_vram/MiniMax-Music3.py)|—|—|—|—|
+|模型 ID|推理|低显存推理|并行推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
+|-|-|-|-|-|-|-|-|
+|[MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_music3/model_inference/MiniMax-Music3.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_music3/model_inference_low_vram/MiniMax-Music3.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_music3/model_inference_parallel/MiniMax-Music3.py)|—|—|—|—|
 
 ## 模型推理
 

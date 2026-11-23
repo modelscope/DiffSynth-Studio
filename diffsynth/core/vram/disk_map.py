@@ -1,6 +1,8 @@
 from safetensors import safe_open
 import torch, os
 
+from ..device import resolve_device
+
 
 class SafetensorsCompatibleTensor:
     def __init__(self, tensor):
@@ -29,7 +31,7 @@ class DiskMap:
 
     def __init__(self, path, device, torch_dtype=None, state_dict_converter=None, buffer_size=10**9):
         self.path = path if isinstance(path, list) else [path]
-        self.device = device
+        self.device = resolve_device(device)
         self.torch_dtype = torch_dtype
         if os.environ.get('DIFFSYNTH_DISK_MAP_BUFFER_SIZE') is not None:
             self.buffer_size = int(os.environ.get('DIFFSYNTH_DISK_MAP_BUFFER_SIZE'))

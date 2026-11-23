@@ -26,6 +26,7 @@ from torch import Tensor
 
 from ..core.attention.attention import attention_forward
 from ..core import gradient_checkpoint_forward
+from ..core.distributed import sequence_parallel_recipe
 
 from transformers.modeling_utils import PreTrainedModel
 from transformers.configuration_utils import PretrainedConfig
@@ -699,6 +700,10 @@ class Qwen3VLTextMLP(nn.Module):
         return down_proj
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"hidden_states": 1, "position_embeddings": 1, "token_types": 1},
+    gather_dimensions_for_outputs={"hidden_states": 1},
+)
 class Qwen3VLTextDecoderLayer(nn.Module):
     def __init__(self, config, layer_idx: int):
         super().__init__()
@@ -1036,9 +1041,11 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
         hidden_states = inputs_embeds
         mid_results = [] if return_mid_results_layers else None
 
-        def _flash_layer_forward(hidden_states, decoder_layer, cos, sin, idx_ar):
+        def _flash_layer_forward(hidden_states, decoder_layer, cos, sin, idx_ar, token_types):
             """Flash attention layer with two-pass approach using DiffSynth attention_forward."""
             original_attn_forward = decoder_layer.self_attn.forward
+            ar_total = idx_ar.numel()
+            seq_len = token_types.shape[1]
 
             def _custom_flash_attn(hidden_states, position_embeddings, attention_mask=None, **kwargs):
                 attn = decoder_layer.self_attn
@@ -1071,31 +1078,26 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
                     k_bn = k_bn.repeat_interleave(n_rep, dim=1)
                     v_bn = v_bn.repeat_interleave(n_rep, dim=1)
 
-                # Two-pass attention using attention_forward
+                # Two-pass attention using attention_forward.
+                cu_ar = torch.tensor([0, ar_total], dtype=torch.int32, device=q_bn.device)
+                cu_full = torch.tensor([0, seq_len], dtype=torch.int32, device=q_bn.device)
                 # Pass 1: causal attention on AR tokens only
-                q_ar = q_bn[:, :, idx_ar].contiguous()
-                k_ar = k_bn[:, :, idx_ar].contiguous()
-                v_ar = v_bn[:, :, idx_ar].contiguous()
                 out_ar = attention_forward(
-                    q_ar, k_ar, v_ar,
+                    q_bn, k_bn, v_bn,
                     q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d",
                     out_pattern="b n s d",
-                    is_causal=True,
-                    scale=softmax_scale,
+                    is_causal=True, cu_seqlens=cu_ar, scale=softmax_scale,
                 )
-
                 # Pass 2: full (bidirectional) attention on all tokens
                 out_full = attention_forward(
                     q_bn, k_bn, v_bn,
                     q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d",
                     out_pattern="b n s d",
-                    is_causal=False,
-                    scale=softmax_scale,
+                    is_causal=False, cu_seqlens=cu_full, scale=softmax_scale,
                 )
-
                 # Replace AR positions with causal result, rearrange back to [B, S, H, D]
-                out_full = out_full.clone()
-                out_full[:, :, idx_ar] = out_ar
+                local_ar = ~kwargs.get("token_types", token_types)[0].bool()
+                out_full = torch.where(local_ar[None, None, :, None], out_ar, out_full)
                 out_full = out_full.transpose(1, 2).contiguous()
 
                 attn_output = out_full.reshape(*input_shape, -1).contiguous()
@@ -1107,6 +1109,7 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
                 hidden_states = decoder_layer(
                     hidden_states,
                     position_embeddings=(cos, sin),
+                    token_types=token_types,
                 )
             finally:
                 decoder_layer.self_attn.forward = original_attn_forward
@@ -1123,6 +1126,7 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
                 cos=cos,
                 sin=sin,
                 idx_ar=idx_ar,
+                token_types=token_types,
             )
 
             if return_mid_results_layers is not None and layer_idx in return_mid_results_layers:

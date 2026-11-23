@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 
 from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 
 
@@ -63,16 +64,13 @@ def layernorm_modulation(x: Tensor, scale: Tensor, shift: Tensor) -> Tensor:
 
 def packed_attention(q: Tensor, k: Tensor, v: Tensor, bounds: list[tuple[int, int]]) -> Tensor:
     _, heads, length, dim = q.shape
-    out = torch.zeros(length, heads * dim, device=q.device, dtype=q.dtype)
-    for start, end in bounds:
-        if start == end:
-            continue
-        chunk = attention_forward(
-            q[:, :, start:end], k[:, :, start:end], v[:, :, start:end],
-            q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d",
-        )
-        out[start:end] = chunk[0].transpose(0, 1).reshape(end - start, heads * dim)
-    return out
+    stops = [end for start, end in bounds if end > start]
+    out = attention_forward(
+        q, k, v,
+        q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d",
+        cu_seqlens=torch.tensor([0] + stops, dtype=torch.int32) if stops else None,
+    )
+    return out[0].transpose(0, 1).reshape(length, heads * dim)
 
 
 class RMSNorm(nn.Module):
@@ -121,6 +119,10 @@ class LastLayer(nn.Module):
         return self.linear(layernorm_modulation(x, scale, shift))
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"x": 0, "freqs": 2, "mod": 0},
+    gather_dimensions_for_outputs={"x": 0},
+)
 class Block(nn.Module):
     def __init__(self, hidden: int, heads: int, mlp_ratio: float):
         super().__init__()
@@ -188,12 +190,13 @@ class Flux3DiT(nn.Module):
         single = {m: self.single_stream_modulations[mod_key(m)](vec[m]) for m in MODES}
         x = {m: (self.txt_in if m == "text" else self.emb_in[m])(data[m]) for m in MODES}
         freqs = {m: rope_embed(ids[m][None]) for m in MODES}
-        for d in range(5):
-            for m in ("image", "image_cond"):
+        for m in ("image", "image_cond"):
+            for d in range(5):
                 x[m] = gradient_checkpoint_forward(
                     self.content_mode_blocks[m][d], use_gradient_checkpointing, use_gradient_checkpointing_offload,
                     x[m], freqs[m], packed.mode_indices[m], early[m],
                 )
+        for d in range(5):
             x["text"] = gradient_checkpoint_forward(
                 self.txt_mode_blocks[d], use_gradient_checkpointing, use_gradient_checkpointing_offload,
                 x["text"], freqs["text"], packed.mode_indices["text"], early["text"],

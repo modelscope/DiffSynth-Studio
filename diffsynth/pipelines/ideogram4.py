@@ -44,9 +44,10 @@ class Ideogram4Pipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = None,
         vram_limit: float = None,
+        parallel_config=None,
     ):
         pipe = Ideogram4Pipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
 
         transformers = model_pool.fetch_model("ideogram4_dit", index=2)
         if isinstance(transformers, list):

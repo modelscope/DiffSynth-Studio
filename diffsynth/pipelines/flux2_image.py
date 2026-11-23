@@ -53,10 +53,11 @@ class Flux2ImagePipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="black-forest-labs/FLUX.2-dev", origin_file_pattern="tokenizer/"),
         vram_limit: float = None,
+        parallel_config=None,
     ):
         # Initialize pipeline
         pipe = Flux2ImagePipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         
         # Fetch models
         pipe.text_encoder = model_pool.fetch_model("flux2_text_encoder")

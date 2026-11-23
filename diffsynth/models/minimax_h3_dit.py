@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 
 from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 
 MINIMAX_H3_ADALN_MODALITY_NUM = 3
@@ -68,17 +69,12 @@ def _modulate_gate(x, gate, other, indices):
 
 
 def _sdpa_varlen_attention(q, k, v, cu_seqlens, softmax_scale):
-    out = torch.empty_like(q)
-    bounds = cu_seqlens.tolist()
-    for start, stop in zip(bounds[:-1], bounds[1:]):
-        if stop == start:
-            continue
-        seg_q = q[start:stop].transpose(0, 1).unsqueeze(0)
-        seg_k = k[start:stop].transpose(0, 1).unsqueeze(0)
-        seg_v = v[start:stop].transpose(0, 1).unsqueeze(0)
-        seg_out = attention_forward(seg_q, seg_k, seg_v, scale=softmax_scale)
-        out[start:stop] = seg_out.squeeze(0).transpose(0, 1)
-    return out
+    out = attention_forward(
+        q.unsqueeze(0), k.unsqueeze(0), v.unsqueeze(0),
+        q_pattern="b s n d", k_pattern="b s n d", v_pattern="b s n d",
+        out_pattern="b s n d", scale=softmax_scale, cu_seqlens=cu_seqlens,
+    )
+    return out.squeeze(0)
 
 
 class MiniMaxH3Rope(nn.Module):
@@ -211,6 +207,10 @@ class MiniMaxH3TokenRefiner(nn.Module):
         return self.final_norm(x)
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"x": 0, "rope_freqs": 0, "combined_indices": 0},
+    gather_dimensions_for_outputs={"x": 0},
+)
 class MiniMaxH3DiTBlock(nn.Module):
     def __init__(self, hidden_size, num_attention_heads, attention_head_dim, ffn_hidden_size, time_embed_dim, adaln_out_features, norm_eps, qk_norm_eps):
         super().__init__()
