@@ -1459,6 +1459,15 @@ hidream_o1_image_series = [
     },
 ]
 
+hiuni_series = [
+    {
+        # Example: ModelConfig(model_id="ernie-research/HiUni", origin_file_pattern="model-*.safetensors")
+        "model_hash": "ffe610d4ae8f8a45f2a5a79cb7fb24ac",
+        "model_name": "hiuni_dit",
+        "model_class": "diffsynth.models.hiuni_dit.HiUniModel",
+    },
+]
+
 ideogram4_series = [
     {
         # Example: ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="transformer/diffusion_pytorch_model.safetensors")
@@ -1922,5 +1931,5 @@ MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + qwen_video_edit_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
     + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series + minimax_h3_series + minimax_music3_series + sensenova_u1_series
-    + yue2_series + qwen_image_21_series + flux3_series + moss_image_series + fibo_series + minimax_h3_image_series
+    + yue2_series + qwen_image_21_series + flux3_series + moss_image_series + fibo_series + minimax_h3_image_series + hiuni_series
 )

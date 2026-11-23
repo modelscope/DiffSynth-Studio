@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "MOSS-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-H3-Image", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2", "Fibo"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "MOSS-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-H3-Image", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2", "Fibo", "HiUni"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -29,6 +29,7 @@ class FlowMatchScheduler():
             "SenseNova-U1": FlowMatchScheduler.set_timesteps_sensenova_u1,
             "YuE2": FlowMatchScheduler.set_timesteps_yue2,
             "Fibo": FlowMatchScheduler.set_timesteps_fibo,
+            "HiUni": FlowMatchScheduler.set_timesteps_hiuni,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
@@ -272,6 +273,16 @@ class FlowMatchScheduler():
         sigmas = shift * sigmas / (1 + (shift - 1) * sigmas)
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_hiuni(num_inference_steps=50, denoising_strength=1.0, shift=None, **kwargs):
+        # Same sigma floor as FLUX.1, but N+1 points with the last dropped; step() then ends at sigma 0.
+        sigma_min = 0.003 / 1.002
+        shift = 4.0 if shift is None else shift
+        sigma_start = sigma_min + (1.0 - sigma_min) * denoising_strength
+        sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps + 1)[:-1]
+        sigmas = shift * sigmas / (1 + (shift - 1) * sigmas)
+        return sigmas, sigmas * 1000
 
     @staticmethod
     def set_timesteps_hidream_o1_image(num_inference_steps=28, denoising_strength=1.0, shift=None, special_case=None, **kwargs):

@@ -518,6 +518,17 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "diffsynth.models.hidream_o1_image_dit.Qwen3VLTextRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
         "diffsynth.models.hidream_o1_image_dit.Qwen3VLVisionModel": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.hiuni_dit.HiUniModel": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLTextRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        # The vision tower builds index tensors on the device of its pos_embed weight, so it is onloaded as a whole.
+        "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionModel": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.hiuni_dit.HiUniRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.hiuni_dit.HiUniRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
     "diffsynth.models.ideogram4_dit.Ideogram4DiT": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "diffsynth.models.ideogram4_dit.Ideogram4RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
