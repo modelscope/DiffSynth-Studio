@@ -3,7 +3,7 @@ from diffsynth.pipelines.ideogram4 import Ideogram4Pipeline
 from diffsynth.core import ModelConfig
 import torch
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 pipe = Ideogram4Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -16,7 +16,7 @@ pipe = Ideogram4Pipeline.from_pretrained(
         ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
     tokenizer_config=ModelConfig(model_id="ideogram-ai/ideogram-4-fp8", origin_file_pattern="tokenizer/"),
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 prompt = r"""
 {

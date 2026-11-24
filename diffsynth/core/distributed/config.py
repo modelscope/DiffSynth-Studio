@@ -1,39 +1,31 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .sp_backend import SEQUENCE_PARALLEL_BACKENDS
 
 
 @dataclass(frozen=True)
 class SequenceParallelConfig:
-    backend: str | None = "ulysses"
+    backend: str = "ulysses"
     # Shard and gather each block independently (full sequences between blocks) instead of one persistent stack.
     gather_between_blocks: bool = False
 
     def __post_init__(self):
-        if self.backend is not None and self.backend not in SEQUENCE_PARALLEL_BACKENDS:
+        if self.backend not in SEQUENCE_PARALLEL_BACKENDS:
             choices = ", ".join(repr(name) for name in SEQUENCE_PARALLEL_BACKENDS)
-            raise ValueError(f"unknown sequence backend {self.backend!r}; expected None or one of {choices}")
-
-    @property
-    def enabled(self) -> bool:
-        return self.backend is not None
+            raise ValueError(f"unknown sequence backend {self.backend!r}; expected one of {choices}")
 
 
 @dataclass(frozen=True)
 class CFGParallelConfig:
-    enabled: bool = False
-
-    @property
-    def size(self) -> int:
-        return 2 if self.enabled else 1
+    pass
 
 
 @dataclass(frozen=True)
 class ParallelConfig:
-    sequence: SequenceParallelConfig = field(default_factory=SequenceParallelConfig)
-    cfg: CFGParallelConfig = field(default_factory=CFGParallelConfig)
+    sequence: SequenceParallelConfig | None = None
+    cfg: CFGParallelConfig | None = None
     timeout_seconds: int = 1800
 
     def __post_init__(self):
@@ -41,9 +33,9 @@ class ParallelConfig:
             raise ValueError(f"timeout_seconds must be >= 1, got {self.timeout_seconds}")
 
     @property
-    def sp_enabled(self) -> bool:
-        return self.sequence.enabled
+    def sequence_enabled(self) -> bool:
+        return self.sequence is not None
 
     @property
     def cfg_enabled(self) -> bool:
-        return self.cfg.enabled
+        return self.cfg is not None

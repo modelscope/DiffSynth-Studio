@@ -1,16 +1,23 @@
 # Parallel Inference
 
-Parallel inference lets several GPUs compute **the same sample** together, shortening the generation time of a single image or video. It suits single-node multi-GPU setups where the DiT forward dominates the runtime, such as high-resolution images and long videos. For principles and model integration see [Enabling Parallel Inference for a Model](../Developer_Guide/Enabling_Parallel_Inference.md); for interfaces see [`diffsynth.core.distributed`](../API_Reference/core/distributed.md).
+Parallel inference lets several GPUs compute **the same sample** together, shortening the generation time of a single image or video. It suits single-node multi-GPU setups where the DiT forward dominates the runtime, such as high-resolution images and long videos.
+
+Two parallel axes can be stacked:
+
+* **Sequence parallelism** splits the token sequence of one sample across GPUs, parallelizing inside a single forward.
+* **CFG parallelism** puts the positive and negative classifier-free-guidance forwards on two groups of GPUs, each computing one branch. It applies to models that use guidance (`cfg_scale != 1`).
+
+For principles and model integration see [Enabling Parallel Inference for a Model](../Developer_Guide/Enabling_Parallel_Inference.md); for interfaces see [`diffsynth.core.distributed`](../API_Reference/core/distributed.md).
 
 ## Using the Ready-Made Scripts
 
-Supported models ship parallel examples under `examples/<series>/model_inference_parallel/`, one for each same-named script in `model_inference/`. They differ in only three ways: `parallel_config` is passed in, they are launched with `torchrun`, and results are saved on rank 0 only.
+Supported models ship parallel examples under `examples/<series>/model_inference_parallel/`, one for each same-named script in `model_inference/`. They differ in only three ways: `parallel_config` is passed in, they are launched with `torchrun`, and results are saved on rank 0 only. Scripts for models that use guidance already enable CFG parallelism.
 
 ```bash
 torchrun --standalone --nproc_per_node=6 examples/z_image/model_inference_parallel/Z-Image-Turbo.py
 ```
 
-The comment at the top of each script is its own launch command, with the GPU count already chosen for that model's head counts — copy it as is.
+The comment at the top of each script is its own launch command, with the GPU count and the split across the two axes already chosen for that model — copy it as is.
 
 ## Enabling It in Your Own Script
 
@@ -42,58 +49,67 @@ if dist.get_rank() == 0:
 torchrun --standalone --nproc_per_node=6 your_script.py
 ```
 
-* The number of sequence shards equals `--nproc_per_node`; it is not set in the configuration.
+* `--nproc_per_node` is the **total GPU count**, equal to the product of the axis sizes. The configuration only says which axes are on; the sizes follow from the total: with sequence parallelism alone it equals the total, and with both axes on the CFG axis takes 2 and the sequence axis takes half the total.
 * Every GPU computes the full result, so put saving and printing inside `if dist.get_rank() == 0:` to avoid several processes writing the same file.
 * Without `parallel_config` the single-GPU path is used. Pipelines within one process share the same communication group, which can be released with `destroy_parallel()` when finished.
 
 ## Configuring parallel_config
 
 ```python
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 parallel_config = ParallelConfig(
-    sequence=SequenceParallelConfig(backend="ulysses", gather_between_blocks=False),
+    sequence=SequenceParallelConfig(),
+    cfg=CFGParallelConfig(),
     timeout_seconds=1800,
 )
 ```
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `ParallelConfig.sequence` | `SequenceParallelConfig()` | Sequence parallelism configuration |
+| `ParallelConfig.sequence` | `None` | Sequence-parallel axis; enabled by passing `SequenceParallelConfig(...)` |
+| `ParallelConfig.cfg` | `None` | CFG-parallel axis; enabled by passing `CFGParallelConfig(...)` |
 | `ParallelConfig.timeout_seconds` | `1800` | Timeout in seconds for establishing the communication group |
 | `SequenceParallelConfig.backend` | `"ulysses"` | Exchange backend for sequence parallelism |
-| `SequenceParallelConfig.gather_between_blocks` | `False` | `False`: the whole run of blocks is split at its entry and restored at its exit, with shards passed between blocks. `True`: each block splits and restores on its own, so sequences are complete between blocks |
 
-`ParallelConfig()` is exactly the defaults above, equivalent to enabling Ulysses sequence parallelism. The number of shards is not part of the configuration; it follows `--nproc_per_node`.
+**Passing an axis's configuration enables that axis**; `ParallelConfig()` enables no parallelism. Axis sizes are not part of the configuration; they follow from `--nproc_per_node`.
 
-`gather_between_blocks` is for models with a side computation between blocks that operates on the full sequence, such as the bridge between MOVA's two towers. MOVA sets it automatically when sequence parallelism is enabled, so it usually needs no manual change. Turning it on adds one split and restore per block.
+`SequenceParallelConfig` also has `gather_between_blocks`, for models with a side computation between blocks that operates on the full sequence. Models that need it (such as MOVA) set it automatically when sequence parallelism is enabled; no manual configuration is required.
 
 ## Choosing the Number of GPUs
 
-The GPU count must divide the attention head counts: both Q heads and KV heads, with GQA models limited by their KV head count. Otherwise the run raises at the exchange.
+**Total GPUs = CFG axis size × sequence axis size.** With CFG parallelism on, the CFG axis is fixed at 2, so the total must be even and the sequence axis gets half.
 
-Maximum usable GPU counts up to 8, per series:
+**Head counts constrain only the sequence axis**: the Q and KV head counts taking part in the exchange must both be divisible by the sequence axis size, with GQA models limited by their KV head count. The CFG axis takes no part in the attention exchange and is independent of head counts. When the constraint fails, the run raises at the exchange, and the error message carries the actual head count.
 
-| series | Maximum GPUs |
+Maximum **sequence axis size** up to 8 GPUs, per series:
+
+| series | Maximum sequence axis size |
 | --- | --- |
 | boogu_image, fibo | 7 |
 | z_image, ideogram4, krea2, wanvideo (`Wan2.1-T2V-1.3B`, `Echo-Memory`) | 6 |
 | mova | 4 |
 | all other series | 8 |
 
-Divisors of the maximum work as well: a model capped at 6 can run on 1, 2, 3 or 6 GPUs.
+Divisors of the maximum work as well. Enabling CFG parallelism doubles the total GPU ceiling — a model whose sequence axis caps at 4 can use all 8 GPUs as `CFG2 × SP4`.
 
-Sequence parallelism suits long-sequence tasks best, such as video generation with MiniMax-H3 or Wan. The more GPUs, the larger the share of communication; for very short sequences (60 seconds of audio is only a few hundred tokens) parallel inference can be slower than a single GPU, and the single-GPU scripts are the better choice there.
+### How to Split the Two Axes
+
+**When the model uses guidance, give GPUs to the CFG axis first.** At equal GPU counts the CFG layout is usually faster: the CFG axis exchanges one prediction per step, while the sequence axis performs two activation all-to-alls at every block, so its communication share grows with its size. Measurements on 8 GPUs show `CFG2 × SP4` clearly ahead of `SP8`, and the latter gains almost nothing over `SP4`.
+
+Sequence parallelism suits long-sequence tasks best, such as video generation with MiniMax-H3 or Wan. For very short sequences (60 seconds of audio is only a few hundred tokens) sequence parallelism can be slower than a single GPU; there, enabling only the CFG axis is an option.
+
+**Do not enable CFG parallelism when `cfg_scale = 1`.** Distilled models usually have no negative branch, so the CFG axis has nothing to do and enabling it raises. Use a configuration with sequence parallelism alone.
 
 ## Coverage
 
-Pipelines whose `from_pretrained` accepts `parallel_config`: ace_step, anima, boogu_image, diffsynth_music, ernie_image, fibo, flux, flux2, flux3, hidream_o1_image, ideogram4, joyai_image, krea2, lingbot_video, ltx2, minimax_h3, minimax_h3_image, minimax_music3, moss_image, mova, qwen_image, qwen_image_21, qwen_video_edit, sensenova_u1, wan_video, z_image.
+**No parallel entry point**: `stable_diffusion`, `stable_diffusion_xl`, `yue2`.
+
+**Sequence parallelism only, no CFG parallelism**: `minimax_music3`, `qwen_video_edit`.
 
 The ready-made parallel scripts cover basic generation (text-to-image/video/audio, image-to-video), editing and reference images, and weight variants such as quantized, pruned and comfy checkpoints.
 
-Other paths differ from the basic scripts in model structure or loading, and their correctness under sequence parallelism has not been verified. Please open an issue if you run into a compatibility problem.
-
-`stable_diffusion`, `stable_diffusion_xl` and `yue2` have no parallel entry point.
+Other paths differ from the basic scripts in model structure or loading, and their correctness under parallelism has not been verified. Please open an issue if you run into a compatibility problem.
 
 ## Using It with VRAM Management
 

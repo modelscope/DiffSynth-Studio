@@ -1,10 +1,10 @@
-# torchrun --standalone --nproc_per_node=4 examples/mova/model_inference_parallel/MOVA-360p-I2AV.py
+# torchrun --standalone --nproc_per_node=8 examples/mova/model_inference_parallel/MOVA-360p-I2AV.py
 import torch
 from PIL import Image
 from diffsynth.pipelines.mova_audio_video import ModelConfig, MovaAudioVideoPipeline
 from diffsynth.utils.data.audio_video import write_video_audio
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -29,7 +29,7 @@ pipe = MovaAudioVideoPipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/Wan-Series-Converted-Safetensors", origin_file_pattern="models_t5_umt5-xxl-enc-bf16.safetensors", **vram_config),
     ],
     tokenizer_config=ModelConfig(model_id="openmoss/MOVA-720p", origin_file_pattern="tokenizer/"),
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 negative_prompt = (
     "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，"

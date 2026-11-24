@@ -50,8 +50,8 @@ class ParallelContext:
         if world_size == 1:
             return
 
-        cfg_size = parallel_config.cfg.size if parallel_config is not None else 1
-        sp_enabled = parallel_config.sp_enabled if parallel_config is not None else True
+        cfg_size = 2 if parallel_config is not None and parallel_config.cfg_enabled else 1
+        sequence_enabled = parallel_config is not None and parallel_config.sequence_enabled
         if world_size % cfg_size != 0:
             raise ValueError(f"world size {world_size} must be divisible by cfg size {cfg_size}")
         sp_size = world_size // cfg_size
@@ -63,7 +63,7 @@ class ParallelContext:
             )
         if cfg_size > 1:
             self.cfg = self.mesh["cfg"].get_group() if self.mesh is not None else self.world
-        if sp_enabled and sp_size > 1:
+        if sequence_enabled and sp_size > 1:
             self.sequence = self.mesh["sequence"].get_group() if self.mesh is not None else self.world
 
     def clear(self):

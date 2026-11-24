@@ -456,7 +456,7 @@ def install_sequence_parallel(model, parallel_config):
     Each input is padded independently when its token length is not divisible by
     the number of ranks; each output is trimmed through its associated input name.
     """
-    if parallel_config is None or not parallel_config.sp_enabled or parallel_context.get_sequence_group() is None:
+    if parallel_config is None or not parallel_config.sequence_enabled or parallel_context.get_sequence_group() is None:
         return
 
     for blocks, block_class, declaration in _find_block_stacks(model, parallel_config.sequence.gather_between_blocks):

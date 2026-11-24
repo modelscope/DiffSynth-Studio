@@ -1,8 +1,11 @@
 # `diffsynth.core.distributed`: 分布式并行
 
-`diffsynth.core.distributed` 提供分布式并行能力：进程组管理、集合通信原语，以及序列并行的配置与安装入口。
+`diffsynth.core.distributed` 提供分布式并行能力：进程组与并行轴的管理、集合通信原语，以及各轴的配置与安装入口。
 
-序列并行（Sequence Parallel，SP）把一条长序列的 token 切分到多张卡上计算，在注意力处通过 all-to-all 交换还原出完整序列。切分与还原由挂在 block 上的 forward hook 完成，模型侧只需在 block 类上声明 token 维；注意力通过 `attention_forward` 读取线程局部状态判断是否交换，签名不变。
+并行按**轴**组织，一个轴对应一种并行能力，各轴在自己的进程组上通信。当前有两个轴：
+
+* **序列并行**（Sequence Parallel，SP）把一条长序列的 token 切分到多张卡上计算，在注意力处通过 all-to-all 交换还原出完整序列。切分与还原由挂在 block 上的 forward hook 完成，模型侧只需在 block 类上声明 token 维；注意力通过 `attention_forward` 读取线程局部状态判断是否交换，签名不变。
+* **CFG 并行**把 classifier-free guidance 的正负两次前向分到两组卡上，各卡只算一支，再交换结果。它作用在 pipeline 的去噪循环上，模型侧不需要改动。
 
 启用方式与可并行的模型清单见[并行推理](../../Pipeline_Usage/Parallel_Inference.md)。
 
@@ -10,8 +13,8 @@
 
 | 模块 | 内容 | 归属 |
 | --- | --- | --- |
-| `config` | `ParallelConfig`、`SequenceParallelConfig` | 通用入口 / 序列并行 |
-| `context` | `init_parallel`、`get_parallel_group`、`destroy_parallel` | 通用 |
+| `config` | `ParallelConfig`、`SequenceParallelConfig`、`CFGParallelConfig` | 通用入口 / 各轴配置 |
+| `context` | `ParallelContext`、`parallel_context`、`init_parallel`、`destroy_parallel` | 通用 |
 | `collectives` | `all_to_all_4d`、`all_gather_sequence` | 通用 |
 | `sp_hooks` | `sequence_parallel_recipe`、`install_sequence_parallel`、`SequenceParallelStack` | 序列并行 |
 | `sp_state` | `SequenceParallelState`、`current_sequence_parallel_state`、`sequence_parallel_disabled` | 序列并行 |
@@ -19,51 +22,82 @@
 
 以上名称均可从 `diffsynth.core.distributed` 直接导入（`SEQUENCE_PARALLEL_BACKENDS` 除外，它在 `sp_backend` 中）。
 
-## 并行配置：`ParallelConfig`、`SequenceParallelConfig`
+## 并行配置：`ParallelConfig`
 
 ```python
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
-parallel_config = ParallelConfig()                                    # 默认启用 Ulysses 序列并行
-parallel_config = ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"))
-parallel_config = ParallelConfig(sequence=SequenceParallelConfig(backend=None))   # 关闭 SP
+parallel_config = ParallelConfig()                                    # 不启用任何并行
+parallel_config = ParallelConfig(sequence=SequenceParallelConfig())     # 只启用序列并行
+parallel_config = ParallelConfig(cfg=CFGParallelConfig())               # 只启用 CFG 并行
+parallel_config = ParallelConfig(sequence=SequenceParallelConfig(), cfg=CFGParallelConfig())   # 两个轴都启用
 ```
 
-`ParallelConfig` 是并行的统一配置对象，pipeline 的 `from_pretrained(..., parallel_config=...)` 接收它：
+`ParallelConfig` 是并行的统一配置对象，pipeline 的 `from_pretrained(..., parallel_config=...)` 接收它。各轴平级，**传入对应的轴配置才启用该轴**：
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `sequence` | `SequenceParallelConfig()` | 序列并行配置 |
+| `sequence` | `None` | 序列并行轴；传入 `SequenceParallelConfig(...)` 启用 |
+| `cfg` | `None` | CFG 并行轴；传入 `CFGParallelConfig(...)` 启用 |
 | `timeout_seconds` | `1800` | 进程组 rendezvous 超时，小于 1 时抛 `ValueError` |
 
-`ParallelConfig.sp_enabled` 是「序列并行是否启用」的便捷属性。
+`ParallelConfig.sequence_enabled` 与 `ParallelConfig.cfg_enabled` 分别是两个轴是否启用的便捷属性。
 
 `SequenceParallelConfig`：
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `backend` | `"ulysses"` | 交换后端名，取自 `SEQUENCE_PARALLEL_BACKENDS`；`None` 表示不启用序列并行。非法名在构造时抛 `ValueError` |
+| `backend` | `"ulysses"` | 交换后端名，取自 `SEQUENCE_PARALLEL_BACKENDS`。非法名在构造时抛 `ValueError` |
 | `gather_between_blocks` | `False` | `False`：整个 block 栈只在入口切分、出口还原，块间传递局部分片。`True`：每个 block 各自成一个栈，块间序列是完整的 |
 
-两个配置都是 `frozen=True` 的 dataclass，修改请用 `dataclasses.replace`。
+`CFGParallelConfig` 目前没有字段，传入即启用，该轴占 2 份，对应 guidance 的正负两支。
 
-## 进程组管理：`init_parallel`、`get_parallel_group`、`destroy_parallel`
+两个轴配置都是 `frozen=True` 的 dataclass，修改请用 `dataclasses.replace`。
+
+## 进程组与并行轴：`ParallelContext`、`init_parallel`、`destroy_parallel`
 
 ```python
-from diffsynth.core.distributed import init_parallel, get_parallel_group, destroy_parallel
+from diffsynth.core.distributed import init_parallel, destroy_parallel, parallel_context
 
-group = init_parallel()          # 初始化或复用进程组
-group = get_parallel_group()     # 未初始化时返回 None
-destroy_parallel()               # 释放本模块创建的通信组
+init_parallel(parallel_config=parallel_config)   # 初始化或复用进程组，并按配置划分各轴
+sp = parallel_context.get_sequence_group()       # 序列并行轴；该轴未启用时为 None
+cfg = parallel_context.get_cfg_group()           # CFG 轴；该轴未启用时为 None
+world = parallel_context.get_world_group()       # 全部 rank
+destroy_parallel()                               # 释放本模块创建的通信组
 ```
 
-* `init_parallel(timeout_seconds=1800)` 通过 `env://` rendezvous 建立进程组，因此需要 `RANK`、`WORLD_SIZE`、`MASTER_ADDR`、`MASTER_PORT` 环境变量，通常由 `torchrun` 提供。
+`parallel_context` 是模块级的唯一 `ParallelContext` 实例，导入即存在。它持有各轴的进程组，取组是它的方法：
+
+| 方法 | 返回 |
+| --- | --- |
+| `get_world_group()` | 全部 rank 的组；`init_parallel` 之前为 `None` |
+| `get_sequence_group()` | 序列并行轴的组；该轴未启用时为 `None` |
+| `get_cfg_group()` | CFG 轴的组；该轴未启用时为 `None` |
+| `get_sequence_rank()` / `get_sequence_world_size()` | 本进程在序列轴内的序号 / 该轴的 rank 数；轴未启用时为 `0` / `1` |
+| `get_cfg_rank()` / `get_cfg_world_size()` | 同上，针对 CFG 轴 |
+
+**轴未启用时组为 `None`**，而不是一个只有本进程的组。判断某个轴是否可用，直接判组是否为 `None`。
+
+* `init_parallel(timeout_seconds=1800, parallel_config=None)` 通过 `env://` rendezvous 建立进程组，因此需要 `RANK`、`WORLD_SIZE`、`MASTER_ADDR`、`MASTER_PORT` 环境变量，通常由 `torchrun` 提供。
 * 它会按 `LOCAL_RANK`（缺省用 `RANK`）调用 `set_device`，绑定本进程使用的卡。
 * 若 `torch.distributed` 已初始化，则复用现有组，不重复创建。
 * 通信后端按设备类型选择：`cuda → nccl`、`npu → hccl`。
 * `destroy_parallel()` 只在本模块创建了组时才真正销毁通信子；进程退出时不调用也可以。
 
 `init_parallel` 由 pipeline 的 `from_pretrained(..., parallel_config=...)` 内部调用。
+
+### 轴的划分
+
+两个轴都启用时，用命名维度的 `DeviceMesh` 划分，维度顺序为 `("cfg", "sequence")`：
+
+* **序列轴在最内层**，拿到相邻的 rank。它每个 block 都要做 all-to-all，通信最频繁。
+* **CFG 轴在外层**，rank 跨步。它每步只交换一次预测结果。
+
+`world_size = cfg_size × sp_size`。以 8 卡、`cfg_size=2` 为例：序列轴是 `[0,1,2,3]` 与 `[4,5,6,7]`，CFG 轴是 `[0,4]`、`[1,5]`、`[2,6]`、`[3,7]`。
+
+只有一个轴的 size 大于 1 时，那个轴覆盖全部 rank，直接用 world 组，不额外建子组。
+
+组的划分在 `init_parallel` 时一次完成，之后取组只是查表。各 rank 拿到的是**自己所属**的那个子组——`DeviceMesh` 按本进程的全局 rank 选定，调用方不需要判断。
 
 ## 集合通信原语：`all_to_all_4d`、`all_gather_sequence`
 
@@ -81,6 +115,8 @@ full = all_gather_sequence(local, dim=1, group=group)            # 按 rank 顺�
 | `all_gather_sequence` | 任意维；负数维按 `dim + tensor.dim()` 归一 | `reduce_scatter` 求和后取本 rank 分片 |
 
 两者都封装成 `autograd.Function`，可用于训练；卡数为 1 时直接返回原张量，不产生通信。
+
+`group` 必须显式传入，传 `None` 抛 `ValueError`。
 
 ## 序列并行
 
@@ -182,7 +218,7 @@ install_sequence_parallel(model, parallel_config)
 
 `model_loader` 对每个加载的模型调用它。行为：
 
-* `parallel_config` 为 `None`、`sp_enabled` 为假、进程组缺失或卡数为 1 时，**为空操作**。
+* `parallel_config` 为 `None`、`sequence_enabled` 为假、进程组缺失或卡数为 1 时，**为空操作**。
 * 栈是从结构里发现的，不由模型声明：一个模块的类（或 residency 包装内层的类）带有 recipe 声明，它就是一个 block；**同一容器下、索引连续、类相同**的最长一段构成一个栈。
 * 声明只认类自己的 `__dict__`，**不被继承**。因此继承已声明 block 的子类（例如某些 ControlNet block）不会自动成为 SP 栈。
 * `AutoWrappedNonRecurseModule` 这类包装会被拆一层：匹配取内层类，hook 挂在包装上，参数顺序取被声明类的 `forward` 签名。
@@ -258,3 +294,45 @@ from diffsynth.core.distributed.sp_backend import SEQUENCE_PARALLEL_BACKENDS   #
 | 序列长度 | 不整除时在尾部补零，出口按声明裁掉；补齐 token 会参与注意力计算 |
 | 复制 KV 前缀 | 不支持 `attn_mask`，传入抛 `ValueError` |
 | 声明一致性 | gather 输出的键必须在输入声明中；`kv_prefix_inputs` 的键不得出现在输入声明中；违反时装饰器抛 `ValueError` |
+
+## CFG 并行
+
+classifier-free guidance（CFG）每步要跑两次前向：一次带正 prompt，一次带负 prompt，再按 `nega + cfg_scale * (posi - nega)` 组合。CFG 并行把这两次前向分到 CFG 轴的两组卡上，每张卡只算一支。
+
+配置与取组见上文；实际调度在 `diffsynth.diffusion.BasePipeline.cfg_guided_model_fn`，它是 pipeline 去噪循环里 CFG 的统一入口。
+
+### 入口：`cfg_guided_model_fn`
+
+```python
+noise_pred = self.cfg_guided_model_fn(
+    model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega,
+    **models, timestep=timestep,
+)
+```
+
+| 参数 | 说明 |
+| --- | --- |
+| `model_fn` | 单次前向的可调用对象 |
+| `cfg_scale` | guidance 强度 |
+| `inputs_shared` | 两支共用的输入 |
+| `inputs_posi` / `inputs_nega` | 各支独有的输入 |
+| `**inputs_others` | 其余传给 `model_fn` 的关键字参数，两支共用 |
+
+每支的调用形态是 `model_fn(**inputs_branch, **inputs_shared, **inputs_others)`。**两支之间的任何差异都通过分支字典表达。**
+
+CFG 轴未启用时，两支在本进程顺序执行。启用时：
+
+1. `parallel_context.get_cfg_rank() == 0` 的卡算正支，其余算负支
+2. 沿 batch 维 `all_gather`，各卡都得到两支的预测
+3. 各卡本地按原式组合
+
+组合结果在所有卡上一致，因此 `scheduler.step` 也各自本地执行，不需要广播。
+
+### 约束与报错
+
+| 项 | 说明 |
+| --- | --- |
+| `cfg_scale` | CFG 轴启用时必须不等于 1，否则抛 `ValueError`——没有负分支可分给另一组卡 |
+| 头数整除 | 只约束序列轴的 size，与 CFG 轴和总卡数无关 |
+| 输出形状 | 两支的输出形状必须相同（输入长度可以不同），否则 `all_gather` 报错 |
+| 跨支共享的可变状态 | 两支在不同进程上执行，共享的缓存计数器会各自独立。此类状态需按分支分开保存 |

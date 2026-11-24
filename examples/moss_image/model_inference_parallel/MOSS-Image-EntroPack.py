@@ -37,7 +37,7 @@ import torch
 from diffsynth.configs import MODEL_CONFIGS
 from diffsynth.pipelines.moss_image import MOSSImagePipeline, ModelConfig
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 prequant_model_id = "DiffSynth-Studio/MOSS-Image-EntroPack"
 base_model_id = "openmoss/MOSS-Image-SFT"
@@ -67,7 +67,7 @@ pipe = MOSSImagePipeline.from_pretrained(
         ModelConfig(model_id=base_model_id, origin_file_pattern="vae/diffusion_pytorch_model.safetensors", computation_dtype=torch.float32),
     ],
     tokenizer_config=ModelConfig(model_id=base_model_id, origin_file_pattern="tokenizer/"),
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 
 # Optional: torch.compile acceleration.
