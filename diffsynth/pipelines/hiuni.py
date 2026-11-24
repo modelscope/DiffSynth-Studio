@@ -212,7 +212,7 @@ class HiUniPipeline(BasePipeline):
         return_raw: bool = False,
     ):
         # Image understanding and text chat. think_mode: "think" prefills "<think>\n", "empty" an empty think block,
-        # "none" nothing. Returns the answer after </think>, or the full decoded text with return_raw=True.
+        # "none" nothing. Returns the answer after the last </think>, or the full decoded text with return_raw=True.
         # Like training, there is no KV cache: each new token recomputes the whole sequence.
         images = [images] if isinstance(images, Image.Image) else list(images or [])
         prefill = THINK_PREFILLS[think_mode]
@@ -255,7 +255,7 @@ class HiUniPipeline(BasePipeline):
         raw = prefill + self.tokenizer.decode(new_tokens, skip_special_tokens=False)
         if return_raw:
             return raw
-        return (raw.split("</think>", 1)[1] if "</think>" in raw else raw).strip()
+        return raw.rsplit("</think>", 1)[-1].strip()
 
 
 def sample_token(logits, temperature, top_k, top_p, generator):

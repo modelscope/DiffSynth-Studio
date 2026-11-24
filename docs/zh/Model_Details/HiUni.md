@@ -99,7 +99,7 @@ answer = pipe.chat("Write a short poem about autumn.", think_mode="empty")
 * `max_new_tokens`: 最大生成 token 数，默认为 1024。
 * `temperature`、`top_k`、`top_p`、`seed`: 采样参数。默认 `temperature=0.0` 为贪心解码。
 * `min_pixels`、`max_pixels`: 输入图像的像素预算，默认为 262144 与 4194304。
-* `return_raw`: 返回包含推理块的完整解码文本。默认只返回 `</think>` 之后的回答。
+* `return_raw`: 返回包含推理块的完整解码文本。默认只返回最后一个 `</think>` 之后的回答。
 
 与训练一致，解码不使用 KV cache，每生成一个 token 都会重新计算整个序列。
 

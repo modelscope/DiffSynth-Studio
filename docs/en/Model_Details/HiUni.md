@@ -99,7 +99,7 @@ answer = pipe.chat("Write a short poem about autumn.", think_mode="empty")
 * `max_new_tokens`: Maximum number of generated tokens, defaults to 1024.
 * `temperature`, `top_k`, `top_p`, `seed`: Sampling options. The default `temperature=0.0` is greedy decoding.
 * `min_pixels`, `max_pixels`: Pixel budget for input images, defaulting to 262144 and 4194304.
-* `return_raw`: Return the full decoded text including the think block. By default only the answer after `</think>` is returned.
+* `return_raw`: Return the full decoded text including the think block. By default only the answer after the last `</think>` is returned.
 
 Decoding runs without a KV cache, as in training: every new token recomputes the whole sequence.
 
