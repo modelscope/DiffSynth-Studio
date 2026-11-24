@@ -21,7 +21,7 @@ vram_config = {
     "computation_device": "cuda",
     "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
 }
-dit_config = ModelConfig(model_id="multimodalart/MiniMax-H3-Pruned", origin_file_pattern="transformer/diffusion_pytorch_model-*.safetensors", download_source="huggingface", **vram_config)
+dit_config = ModelConfig(model_id="multimodalart/MiniMax-H3-Pruned", origin_file_pattern="transformer/diffusion_pytorch_model-*.safetensors", **vram_config)
 adapter_config = ModelConfig(model_id="Lakonik/pi-H3", origin_file_pattern=f"{adapter_name}/diffusion_pytorch_model.safetensors")
 
 # Combine the Pruned DiT weights with the pi-H3 adapter
@@ -36,7 +36,7 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
     pi_h3_adapter_config=adapter_config,
     model_configs=[
         dit_config,
-        ModelConfig(model_id="multimodalart/MiniMax-H3-Pruned", origin_file_pattern="text_encoder/model-*.safetensors", download_source="huggingface", **vram_config),
+        ModelConfig(model_id="multimodalart/MiniMax-H3-Pruned", origin_file_pattern="text_encoder/model-*.safetensors", **vram_config),
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **vram_config),
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/video_vae/source/model.safetensors", **vram_config),
     ],
