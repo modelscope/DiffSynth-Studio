@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-import math, torch
+import math
+
+import torch
 import torch.nn as nn
 
 from ..core.attention import attention_forward
