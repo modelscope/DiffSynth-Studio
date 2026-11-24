@@ -10,7 +10,7 @@ from ..utils.lora import GeneralLoRALoader
 from ..models.model_loader import ModelPool
 from ..utils.controlnet import ControlNetInput
 from ..core.device import get_device_name, IS_NPU_AVAILABLE
-from ..core.distributed import get_parallel_group, init_parallel
+from ..core.distributed import all_gather_sequence, init_parallel, parallel_context
 from .template import load_template_model, load_template_data_processor
 
 
@@ -185,9 +185,9 @@ class BasePipeline(torch.nn.Module):
 
     def generate_noise(self, shape, seed=None, rand_device="cpu", rand_torch_dtype=torch.float32, device=None, torch_dtype=None):
         # Initialize Gaussian noise
-        if seed is None and self.parallel_config is not None and get_parallel_group() is not None:
+        if seed is None and self.parallel_config is not None and parallel_context.get_world_group() is not None:
             seeds = [torch.Generator().seed()]
-            dist.broadcast_object_list(seeds, src=0, group=get_parallel_group())
+            dist.broadcast_object_list(seeds, src=0, group=parallel_context.get_world_group())
             seed = seeds[0]
         generator = None if seed is None else torch.Generator(rand_device).manual_seed(seed)
         noise = torch.randn(shape, generator=generator, device=rand_device, dtype=rand_torch_dtype)
@@ -312,7 +312,7 @@ class BasePipeline(torch.nn.Module):
     def download_and_load_models(self, model_configs: list[ModelConfig] = [], vram_limit: float = None, parallel_config=None):
         self.parallel_config = parallel_config
         if parallel_config is not None:
-            init_parallel(parallel_config.timeout_seconds)
+            init_parallel(parallel_config.timeout_seconds, parallel_config)
         model_pool = ModelPool()
         for model_config in model_configs:
             model_config.download_if_necessary()
@@ -339,7 +339,47 @@ class BasePipeline(torch.nn.Module):
         return vram_management_enabled
     
     
+    def _cfg_parallel_model_fn(self, model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, cfg_group, **inputs_others):
+        if cfg_scale == 1.0:
+            raise ValueError(
+                "CFG parallelism requires cfg_scale != 1; without guidance there is no negative branch "
+                "to run on the other ranks. Set cfg_scale > 1 or disable CFG parallelism."
+            )
+        if parallel_context.get_cfg_rank() == 0:
+            lora_key, inputs_branch = "positive_only_lora", inputs_posi
+        else:
+            lora_key, inputs_branch = "negative_only_lora", inputs_nega
+
+        lora = inputs_shared.get(lora_key, None)
+        if lora is not None:
+            self.load_lora(self.dit, state_dict=lora, verbose=0)
+        branch_pred = model_fn(**inputs_branch, **inputs_shared, **inputs_others)
+        if lora is not None:
+            self.clear_lora(verbose=0)
+
+        # Every rank ends up with both branches, so the combine and the scheduler step stay local.
+        noise_pred_posi, noise_pred_nega = self._exchange_cfg_branches(branch_pred, cfg_group)
+        if isinstance(noise_pred_posi, tuple):
+            return tuple(n + cfg_scale * (p - n) for p, n in zip(noise_pred_posi, noise_pred_nega))
+        return noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
+
+    def _exchange_cfg_branches(self, branch_pred, cfg_group):
+        """All-gather the branch this rank ran into the (positive, negative) pair."""
+        def exchange(pred):
+            gathered = all_gather_sequence(pred.contiguous(), dim=0, group=cfg_group)
+            return gathered.chunk(parallel_context.get_cfg_world_size(), dim=0)
+
+        if isinstance(branch_pred, tuple):
+            parts = [exchange(pred) for pred in branch_pred]
+            return tuple(p[0] for p in parts), tuple(p[1] for p in parts)
+        return exchange(branch_pred)
+
     def cfg_guided_model_fn(self, model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, **inputs_others):
+        cfg_group = parallel_context.get_cfg_group()
+        if cfg_group is not None:
+            return self._cfg_parallel_model_fn(
+                model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, cfg_group, **inputs_others
+            )
         # Positive side forward
         if inputs_shared.get("positive_only_lora", None) is not None:
             self.load_lora(self.dit, state_dict=inputs_shared["positive_only_lora"], verbose=0)

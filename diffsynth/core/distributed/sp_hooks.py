@@ -57,10 +57,9 @@ import inspect
 from typing import Callable, TypeVar
 
 import torch
-import torch.distributed as dist
 
 from .collectives import all_gather_sequence
-from .context import get_parallel_group
+from .context import parallel_context
 from .sp_backend import SEQUENCE_PARALLEL_BACKENDS
 from .sp_state import SequenceParallelState
 
@@ -276,16 +275,15 @@ class SequenceParallelStack:
             return tensor
         local_length = self._state.local_lengths[name]
         length = tensor.shape[dim]
-        group = get_parallel_group()
         padding = self._state.paddings[name]
-        global_length = local_length * dist.get_world_size(group) - padding
+        global_length = local_length * parallel_context.get_sequence_world_size() - padding
         # Local output from the previous block.
         if length == local_length and length != global_length:
             return tensor
         # Full tensor from the caller; pad and cut this rank's slice.
         if length == global_length:
             tensor = self._pad(tensor, dim, padding)
-            return tensor.narrow(dim, dist.get_rank(group) * local_length, local_length)
+            return tensor.narrow(dim, parallel_context.get_sequence_rank() * local_length, local_length)
         raise ValueError(f"{self.block_class.__name__}.{name}: token length {length} on dim {dim}, "
                          f"expected {global_length} (global) or {local_length} (local)")
 
@@ -325,10 +323,9 @@ class SequenceParallelStack:
         return next(iter(lengths), None)
 
     def _open(self, args, kwargs):
-        sequence_group = get_parallel_group()
-        if SequenceParallelState.is_disabled() or sequence_group is None or dist.get_world_size(sequence_group) == 1:
+        if SequenceParallelState.is_disabled() or parallel_context.get_sequence_group() is None:
             return False
-        sp_size = dist.get_world_size(sequence_group)
+        sp_size = parallel_context.get_sequence_world_size()
         local_lengths, paddings = {}, {}
         for name in self.token_inputs:
             length = self._token_length(name, self._fetch(name, args, kwargs))
@@ -356,7 +353,7 @@ class SequenceParallelStack:
         outputs = output if isinstance(output, (tuple, list)) else (output,)
         if len(outputs) != len(self.output_dims):
             raise ValueError(f"{self.block_class.__name__} returned {len(outputs)} values but declared {len(self.output_dims)} gather dimensions")
-        group = get_parallel_group()
+        sp_group = parallel_context.get_sequence_group()
         gathered = []
         for item, (name, dim) in zip(outputs, self.output_dims.items()):
             if name not in self._state.local_lengths:
@@ -364,7 +361,7 @@ class SequenceParallelStack:
                 continue
             if not torch.is_tensor(item):
                 raise TypeError(f"sequence-parallel stacks expect the last block to return tensors, got {type(item).__name__}")
-            item = all_gather_sequence(item, dim=dim, group=group)
+            item = all_gather_sequence(item, dim=dim, group=sp_group)
             item = item.narrow(dim, 0, item.shape[dim] - self._state.paddings[name])
             gathered.append(item)
         if not isinstance(output, (tuple, list)):
@@ -459,10 +456,7 @@ def install_sequence_parallel(model, parallel_config):
     Each input is padded independently when its token length is not divisible by
     the number of ranks; each output is trimmed through its associated input name.
     """
-    if parallel_config is None or not parallel_config.sp_enabled:
-        return
-    sequence_group = get_parallel_group()
-    if sequence_group is None or dist.get_world_size(sequence_group) == 1:
+    if parallel_config is None or not parallel_config.sp_enabled or parallel_context.get_sequence_group() is None:
         return
 
     for blocks, block_class, declaration in _find_block_stacks(model, parallel_config.sequence.gather_between_blocks):

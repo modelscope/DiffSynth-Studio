@@ -22,8 +22,18 @@ class SequenceParallelConfig:
 
 
 @dataclass(frozen=True)
+class CFGParallelConfig:
+    enabled: bool = False
+
+    @property
+    def size(self) -> int:
+        return 2 if self.enabled else 1
+
+
+@dataclass(frozen=True)
 class ParallelConfig:
     sequence: SequenceParallelConfig = field(default_factory=SequenceParallelConfig)
+    cfg: CFGParallelConfig = field(default_factory=CFGParallelConfig)
     timeout_seconds: int = 1800
 
     def __post_init__(self):
@@ -33,3 +43,7 @@ class ParallelConfig:
     @property
     def sp_enabled(self) -> bool:
         return self.sequence.enabled
+
+    @property
+    def cfg_enabled(self) -> bool:
+        return self.cfg.enabled
