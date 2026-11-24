@@ -51,9 +51,9 @@ image.save("image_HiUni.jpg")
 
 ## Model Overview
 
-|Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
-|-|-|-|-|-|-|-|
-|[ernie-research/HiUni](https://huggingface.co/ernie-research/HiUni)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/hiuni/model_inference/HiUni.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/hiuni/model_inference_low_vram/HiUni.py)|-|-|-|-|
+|Model ID|Inference|Low VRAM Inference|Parallel Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
+|-|-|-|-|-|-|-|-|
+|[ernie-research/HiUni](https://huggingface.co/ernie-research/HiUni)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/hiuni/model_inference/HiUni.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/hiuni/model_inference_low_vram/HiUni.py)|-|-|-|-|-|
 
 ## Model Inference
 
