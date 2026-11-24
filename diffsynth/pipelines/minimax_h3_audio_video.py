@@ -7,7 +7,6 @@ from transformers import AutoProcessor
 
 from ..core import ModelConfig
 from ..core.device.npu_compatible_device import get_device_type
-from ..core.vram.disk_map import DiskMap
 from ..diffusion import FlowMatchScheduler
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
 from ..models.minimax_h3_dit import MiniMaxH3DiT, patchify_video, unpatchify_video, pack_audio, unpack_audio
@@ -92,8 +91,6 @@ class MiniMaxH3Pipeline(BasePipeline):
         if vdn_branch is not None:
             enable_minimax_h3_vdn(pipe.dit, vdn_branch)
         if pi_h3_adapter_config is not None:
-            pi_h3_adapter_config.download_if_necessary()
-            pipe.load_lora(pipe.dit, state_dict=DiskMap(pi_h3_adapter_config.path, device="cpu"))
             pipe.pi_h3_dwd = model_pool.fetch_model("minimax_h3_pi_dwd")
             pipe.scheduler = FlowMatchScheduler("MiniMax-H3-Pi")
             pipe.scheduler_audio = FlowMatchScheduler("MiniMax-H3-Pi")

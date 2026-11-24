@@ -43,6 +43,7 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
     processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 2,
 )
+pipe.load_lora(pipe.dit, adapter_config.path)
 
 # Text -> Video + Audio
 prompt = "A girl is very happy, she is speaking in english: “I enjoy working with Diffsynth-Studio, it's a perfect framework.”"
