@@ -53,6 +53,12 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.minimax_h3_dwd.MiniMaxH3DWD": {
+        "diffsynth.models.minimax_h3_dwd.SolH3DWDHead": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
+        "diffsynth.models.minimax_h3_dwd.SolH3Block": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.LayerNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
     "diffsynth.models.minimax_h3_dit_vdn.MiniMaxH3VDNBranch": {
         "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
         "torch.nn.Conv2d": "diffsynth.core.vram.layers.AutoWrappedModule",

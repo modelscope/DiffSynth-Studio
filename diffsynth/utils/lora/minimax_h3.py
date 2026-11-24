@@ -1,3 +1,4 @@
+from ..state_dict_converters.minimax_h3_dit import minimax_h3_diffusers_parameter_name
 from .general import GeneralLoRALoader
 import torch
 
@@ -20,11 +21,18 @@ class MiniMaxH3LoRALoader(GeneralLoRALoader):
                 return True
         return False
 
+    @staticmethod
+    def is_pi_h3_adapter(state_dict):
+        suffixes = (".attn.to_out.0.lora_A.weight", ".ff.net.0.proj.lora_A.weight", ".ff.net.2.lora_A.weight")
+        return any(key.startswith("transformer_blocks.") and key.endswith(suffixes) for key in state_dict)
+
     def convert_state_dict(self, state_dict, suffix=".weight"):
         if self.is_lightx2v_format(state_dict):
             state_dict = MiniMaxH3LoRAConverter.align_to_diffsynth_format(state_dict)
         elif self.is_vdn_adapter(state_dict):
             state_dict = MiniMaxH3LoRAConverter.align_vdn_to_diffsynth_format(state_dict)
+        elif self.is_pi_h3_adapter(state_dict):
+            state_dict = MiniMaxH3LoRAConverter.align_pi_h3_to_diffsynth_format(state_dict)
         return super().convert_state_dict(state_dict, suffix=suffix)
 
 
@@ -186,4 +194,18 @@ class MiniMaxH3LoRAConverter:
                 raise ValueError(f"Unsupported LoRA target: {src}")
             converted[target + ".lora_A.default.weight"] = a
             converted[target + ".lora_B.default.weight"] = b
+        return converted
+
+    @staticmethod
+    def align_pi_h3_to_diffsynth_format(state_dict):
+        converted = {}
+        for source_name in state_dict:
+            if not source_name.endswith((".lora_A.weight", ".lora_B.weight")):
+                continue
+            name = minimax_h3_diffusers_parameter_name(source_name)
+            weight = state_dict[source_name]
+            if name.endswith(".mlp.fc1.lora_B.weight"):
+                up, gate = weight.chunk(2, dim=0)
+                weight = torch.cat((gate, up), dim=0)
+            converted[name] = weight
         return converted

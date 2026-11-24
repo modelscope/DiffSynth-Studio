@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "MOSS-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-H3-Image", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2", "Fibo"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "MOSS-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-H3-Pi", "MiniMax-H3-Image", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2", "Fibo"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -24,6 +24,7 @@ class FlowMatchScheduler():
             "Boogu": FlowMatchScheduler.set_timesteps_boogu,
             "MiniMax-H3": FlowMatchScheduler.set_timesteps_minimax_h3,
             "MiniMax-H3-Image": FlowMatchScheduler.set_timesteps_minimax_h3_image,
+            "MiniMax-H3-Pi": FlowMatchScheduler.set_timesteps_minimax_h3_pi,
             "MiniMax-Music3": FlowMatchScheduler.set_timesteps_minimax_music3,
             "LingBot-Video": FlowMatchScheduler.set_timesteps_lingbot_video,
             "SenseNova-U1": FlowMatchScheduler.set_timesteps_sensenova_u1,
@@ -393,6 +394,15 @@ class FlowMatchScheduler():
         sigmas = shift * base / (1 + (shift - 1) * base)
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
+
+    @staticmethod
+    def set_timesteps_minimax_h3_pi(num_inference_steps=4, shift=12.0, **kwargs):
+        max_raw_t = {2: 0.93, 4: 0.96}[num_inference_steps]
+        final_step_size_scale = 0.6
+        end = max_raw_t * final_step_size_scale / (num_inference_steps - 1 + final_step_size_scale)
+        raw = torch.from_numpy(np.linspace(max_raw_t, end, num_inference_steps, dtype=np.float32))
+        sigmas = shift * raw / (1 + (shift - 1) * raw)
+        return sigmas, sigmas * 1000
 
     @staticmethod
     def set_timesteps_minimax_h3_image(num_inference_steps=50, denoising_strength=1.0, shift=2.22, distilled=False):
