@@ -56,7 +56,7 @@ class MiniMaxH3ImagePipeline(BasePipeline):
             MiniMaxH3ImageUnit_PackedSequenceBuilder(),
         ]
         self.model_fn = model_fn_minimax_h3_image
-        self.compilable_models = ["dit"]
+        self.compilable_models = ["dit", "vae"]
 
     @staticmethod
     def from_pretrained(
@@ -81,12 +81,12 @@ class MiniMaxH3ImagePipeline(BasePipeline):
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
 
-    def decode_latents(self, latents, tiling=True):
+    def decode_latents(self, latents, tiling=True, tile_decode_batch_size=32):
         """Decodes `[1, C, 1, H, W]` latents into an image in the `[0, 1]` range."""
         latents_mean = self.vae.latents_mean.to(device=self.device, dtype=torch.float32).view(1, -1, 1, 1)
         latents_std = self.vae.latents_std.to(device=self.device, dtype=torch.float32).view(1, -1, 1, 1)
         latents = latents[:, :, 0].to(torch.float32) * latents_std + latents_mean
-        image = self.vae.decode(latents, tiling=tiling)
+        image = self.vae.decode(latents, tiling=tiling, tile_decode_batch_size=tile_decode_batch_size)
         pixel_mean = torch.tensor(MINIMAX_H3_IMAGE_PIXEL_MEAN, device=self.device).view(1, -1, 1, 1)
         pixel_std = torch.tensor(MINIMAX_H3_IMAGE_PIXEL_STD, device=self.device).view(1, -1, 1, 1)
         image = (image.float() * pixel_std + pixel_mean).clamp(0, 1)
@@ -108,6 +108,8 @@ class MiniMaxH3ImagePipeline(BasePipeline):
         width: int = 2048,
         min_generation_area: int = MINIMAX_H3_IMAGE_MIN_GENERATION_AREA,
         tiling: bool = True,
+        tile_decode_batch_size: int = 32,
+        tile_encode_batch_size: int = 4,
         # Randomness
         seed: int = 0,
         rand_device: str = "cpu",
@@ -133,6 +135,7 @@ class MiniMaxH3ImagePipeline(BasePipeline):
             "seed": seed, "rand_device": rand_device,
             "latents": latents, "reference_noise": reference_noise,
             "tiling": tiling,
+            "tile_encode_batch_size": tile_encode_batch_size,
         }
 
         for unit in self.units:
@@ -152,7 +155,7 @@ class MiniMaxH3ImagePipeline(BasePipeline):
 
         # Decode
         self.load_models_to_device(["vae"])
-        image = self.decode_latents(inputs_shared["latents"], tiling=tiling)
+        image = self.decode_latents(inputs_shared["latents"], tiling=tiling, tile_decode_batch_size=tile_decode_batch_size)
         if image.size != (inputs_shared["output_width"], inputs_shared["output_height"]):
             image = image.resize((inputs_shared["output_width"], inputs_shared["output_height"]), Image.LANCZOS)
         self.load_models_to_device([])
@@ -301,7 +304,7 @@ class MiniMaxH3ImageUnit_NoiseInitializer(PipelineUnit):
 class MiniMaxH3ImageUnit_ReferenceEncoder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("reference_images", "generator", "reference_noise", "tiling"),
+            input_params=("reference_images", "generator", "reference_noise", "tiling", "tile_encode_batch_size"),
             output_params=("reference_latents", "reference_grids", "num_reference_rows"),
             onload_model_names=("vae",),
         )
@@ -316,7 +319,7 @@ class MiniMaxH3ImageUnit_ReferenceEncoder(PipelineUnit):
         return posterior.mean + posterior.std * noise.to(posterior.mean.device)
 
     @torch.no_grad()
-    def encode_reference_image(self, pipe: MiniMaxH3ImagePipeline, image, generator=None, tiling=True):
+    def encode_reference_image(self, pipe: MiniMaxH3ImagePipeline, image, generator=None, tiling=True, tile_encode_batch_size=4):
         # The released recipe draws one posterior sample off the request's generator, rounds it to float16 and crops
         # the result to whole patches; the latents are then normalized by `latents_mean` / `latents_std`.
         ratio = pipe.vae.spatial_compression_ratio
@@ -329,17 +332,18 @@ class MiniMaxH3ImageUnit_ReferenceEncoder(PipelineUnit):
         pixels = torch.from_numpy(np.array(image)).to(pipe.device).permute(2, 0, 1)[None]
         pixels = pixels[..., : pixels.shape[-2] // ratio * ratio, : pixels.shape[-1] // ratio * ratio]
         pixels = (pixels.to(torch.float32).div(255.0) - pixel_mean) / pixel_std
-        posterior = pipe.vae.encode(pixels, tiling=tiling)
+        posterior = pipe.vae.encode(pixels, tiling=tiling, tile_encode_batch_size=tile_encode_batch_size)
         latents = self.sample_posterior(posterior, generator).to(torch.float16).float()
         latents = latents[..., : latents.shape[-2] // patch_h * patch_h, : latents.shape[-1] // patch_w * patch_w]
         return (latents - latents_mean) / latents_std
 
-    def process(self, pipe: MiniMaxH3ImagePipeline, reference_images, generator, reference_noise=None, tiling=True):
+    def process(self, pipe: MiniMaxH3ImagePipeline, reference_images, generator, reference_noise=None, tiling=True, tile_encode_batch_size=4):
         if reference_images is None:
             return {"reference_latents": None, "reference_grids": [], "num_reference_rows": 0}
+        tile_encode_batch_size = 4 if tile_encode_batch_size is None else tile_encode_batch_size
         reference_latents, reference_grids = [], []
         for index, image in enumerate(reference_images):
-            latent = self.encode_reference_image(pipe, image, generator=generator, tiling=tiling)
+            latent = self.encode_reference_image(pipe, image, generator=generator, tiling=tiling, tile_encode_batch_size=tile_encode_batch_size)
             if reference_noise is not None:
                 noise = reference_noise[index].to(pipe.device, torch.float32).reshape(latent.shape)
             else:
@@ -362,15 +366,16 @@ class MiniMaxH3ImageUnit_InputImageEmbedder(PipelineUnit):
 
     def __init__(self):
         super().__init__(
-            input_params=("input_image", "tiling"),
+            input_params=("input_image", "tiling", "tile_encode_batch_size"),
             output_params=("input_latents",),
             onload_model_names=("vae",),
         )
 
     @torch.no_grad()
-    def process(self, pipe: MiniMaxH3ImagePipeline, input_image, tiling=True):
+    def process(self, pipe: MiniMaxH3ImagePipeline, input_image, tiling=True, tile_encode_batch_size=4):
         if input_image is None:
             return {}
+        tile_encode_batch_size = 4 if tile_encode_batch_size is None else tile_encode_batch_size
         ratio = pipe.vae.spatial_compression_ratio
         pixel_mean = torch.tensor(MINIMAX_H3_IMAGE_PIXEL_MEAN, device=pipe.device).view(1, -1, 1, 1)
         pixel_std = torch.tensor(MINIMAX_H3_IMAGE_PIXEL_STD, device=pipe.device).view(1, -1, 1, 1)
@@ -379,7 +384,7 @@ class MiniMaxH3ImageUnit_InputImageEmbedder(PipelineUnit):
         pixels = torch.from_numpy(np.array(input_image)).to(pipe.device).permute(2, 0, 1)[None]
         pixels = pixels[..., : pixels.shape[-2] // ratio * ratio, : pixels.shape[-1] // ratio * ratio]
         pixels = (pixels.to(torch.float32).div(255.0) - pixel_mean) / pixel_std
-        latents = pipe.vae.encode(pixels, tiling=tiling).mode()
+        latents = pipe.vae.encode(pixels, tiling=tiling, tile_encode_batch_size=tile_encode_batch_size).mode()
         latents = (latents - latents_mean) / latents_std
         return {"input_latents": latents[:, :, None]}
 

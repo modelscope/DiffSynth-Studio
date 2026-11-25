@@ -214,6 +214,8 @@ class MiniMaxH3ImageVAE(nn.Module):
     with `tiling=False`.
     """
 
+    _repeated_blocks = ["MiniMaxH3ImageTransformerBlock", "MiniMaxH3ImageEncoder3d"]
+
     def __init__(self, in_channels=3, out_channels=3, latent_channels=24,
                  block_out_channels=(128, 256, 256, 512, 512, 1024), layers_per_block=2,
                  spatial_downsample_factors=(2, 2, 2, 2, 1, 1), temporal_downsample_factors=(1, 2, 2, 1, 1, 1),
@@ -319,9 +321,10 @@ class MiniMaxH3ImageVAE(nn.Module):
 
     def _encode_tile(self, x):
         # The encoder is a causal video encoder; an image is a single frame, i.e. a single latent frame.
-        return self.quant_conv(self.encoder(x[:, :, None]))[:, :, -1]
+        # Contiguous input keeps parent strides out of compile guards, avoiding recompiles across resolutions.
+        return self.quant_conv(self.encoder(x[:, :, None].contiguous()))[:, :, -1]
 
-    def _encode(self, x):
+    def _encode(self, x, tile_encode_batch_size=4):
         ratio = self.spatial_compression_ratio
         height, width = x.shape[-2], x.shape[-1]
         y_starts, y_lens, y_overlaps = self._split_tiles(height, self.tile_size, self.tile_overlap_min)
@@ -330,12 +333,17 @@ class MiniMaxH3ImageVAE(nn.Module):
         for i_pos, i_len in zip(y_starts, y_lens):
             row = []
             for j_pos, j_len in zip(x_starts, x_lens):
-                row.append(self._encode_tile(x[..., i_pos: i_pos + i_len, j_pos: j_pos + j_len]))
+                row.append(x[..., i_pos: i_pos + i_len, j_pos: j_pos + j_len])
             rows.append(row)
+        tiles = torch.cat([tile for row in rows for tile in row])
+        batch_size = max(1, tile_encode_batch_size)
+        moments = torch.cat([self._encode_tile(tiles[k: k + batch_size])
+                             for k in range(0, len(tiles), batch_size)])
+        rows = [list(part) for part in moments.unsqueeze(1).split([len(row) for row in rows])]
         return self._stitch_tiles(rows, [overlap // ratio for overlap in y_overlaps],
                                   [overlap // ratio for overlap in x_overlaps])
 
-    def _decode(self, z):
+    def _decode(self, z, tile_decode_batch_size=32):
         ratio = self.spatial_compression_ratio
         height, width = z.shape[-2] * ratio, z.shape[-1] * ratio
         y_starts, y_lens, y_overlaps = self._split_tiles(height, self.tile_size, self.tile_overlap_min)
@@ -346,25 +354,30 @@ class MiniMaxH3ImageVAE(nn.Module):
             for j_pos, j_len in zip(x_starts, x_lens):
                 tile = z[..., i_pos // ratio: i_pos // ratio + i_len // ratio,
                          j_pos // ratio: j_pos // ratio + j_len // ratio]
-                row.append(self.decoder(self.post_quant_conv(tile)))
+                row.append(tile)
             rows.append(row)
+        tiles = torch.cat([tile for row in rows for tile in row])
+        batch_size = max(1, tile_decode_batch_size)
+        pixels = torch.cat([self.decoder(self.post_quant_conv(tiles[k: k + batch_size]))
+                            for k in range(0, len(tiles), batch_size)])
+        rows = [list(part) for part in pixels.unsqueeze(1).split([len(row) for row in rows])]
         return self._stitch_tiles(rows, y_overlaps, x_overlaps)
 
-    def encode(self, x, tiling=True, sample=False, generator=None):
+    def encode(self, x, tiling=True, sample=False, generator=None, tile_encode_batch_size=4):
         if hasattr(self.encoder.conv_in, "computation_dtype") and hasattr(self.encoder.conv_in, "computation_device"):
             x = x.to(dtype=self.encoder.conv_in.computation_dtype, device=self.encoder.conv_in.computation_device)
         else:
             x = x.to(self.encoder.conv_in.weight.dtype)
-        moments = self._encode(x) if tiling else self._encode_tile(x)
+        moments = self._encode(x, tile_encode_batch_size) if tiling else self._encode_tile(x)
         posterior = DiagonalGaussianDistribution(moments)
         return posterior.sample(generator=generator) if sample else posterior
 
-    def decode(self, z, tiling=True):
+    def decode(self, z, tiling=True, tile_decode_batch_size=32):
         if hasattr(self.post_quant_conv, "computation_dtype") and hasattr(self.post_quant_conv, "computation_device"):
             z = z.to(dtype=self.post_quant_conv.computation_dtype, device=self.post_quant_conv.computation_device)
         else:
             z = z.to(self.post_quant_conv.weight.dtype)
-        return self._decode(z) if tiling else self.decoder(self.post_quant_conv(z))
+        return self._decode(z, tile_decode_batch_size) if tiling else self.decoder(self.post_quant_conv(z))
 
     def forward(self, x, tiling=True, sample=False, generator=None):
         posterior = self.encode(x, tiling=tiling)
