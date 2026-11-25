@@ -56,7 +56,7 @@ class MiniMaxH3ImagePipeline(BasePipeline):
             MiniMaxH3ImageUnit_PackedSequenceBuilder(),
         ]
         self.model_fn = model_fn_minimax_h3_image
-        self.compilable_models = ["dit"]
+        self.compilable_models = ["dit", "vae"]
 
     @staticmethod
     def from_pretrained(
@@ -81,12 +81,12 @@ class MiniMaxH3ImagePipeline(BasePipeline):
         pipe.vram_management_enabled = pipe.check_vram_management_state()
         return pipe
 
-    def decode_latents(self, latents, tiling=True):
+    def decode_latents(self, latents, tiling=True, tile_batch_size=32):
         """Decodes `[1, C, 1, H, W]` latents into an image in the `[0, 1]` range."""
         latents_mean = self.vae.latents_mean.to(device=self.device, dtype=torch.float32).view(1, -1, 1, 1)
         latents_std = self.vae.latents_std.to(device=self.device, dtype=torch.float32).view(1, -1, 1, 1)
         latents = latents[:, :, 0].to(torch.float32) * latents_std + latents_mean
-        image = self.vae.decode(latents, tiling=tiling)
+        image = self.vae.decode(latents, tiling=tiling, tile_batch_size=tile_batch_size)
         pixel_mean = torch.tensor(MINIMAX_H3_IMAGE_PIXEL_MEAN, device=self.device).view(1, -1, 1, 1)
         pixel_std = torch.tensor(MINIMAX_H3_IMAGE_PIXEL_STD, device=self.device).view(1, -1, 1, 1)
         image = (image.float() * pixel_std + pixel_mean).clamp(0, 1)
@@ -108,6 +108,7 @@ class MiniMaxH3ImagePipeline(BasePipeline):
         width: int = 2048,
         min_generation_area: int = MINIMAX_H3_IMAGE_MIN_GENERATION_AREA,
         tiling: bool = True,
+        tile_batch_size: int = 32,
         # Randomness
         seed: int = 0,
         rand_device: str = "cpu",
@@ -152,7 +153,7 @@ class MiniMaxH3ImagePipeline(BasePipeline):
 
         # Decode
         self.load_models_to_device(["vae"])
-        image = self.decode_latents(inputs_shared["latents"], tiling=tiling)
+        image = self.decode_latents(inputs_shared["latents"], tiling=tiling, tile_batch_size=tile_batch_size)
         if image.size != (inputs_shared["output_width"], inputs_shared["output_height"]):
             image = image.resize((inputs_shared["output_width"], inputs_shared["output_height"]), Image.LANCZOS)
         self.load_models_to_device([])

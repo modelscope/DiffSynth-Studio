@@ -27,6 +27,16 @@ PyTorch 2.0 提供了自动计算图编译接口 [torch.compile](https://docs.py
 - `fullgraph` 设为 `True` 时，底层会尝试将目标模型编译为单一计算图，若失败则报错。设为 `False` 时，底层会在无法连接处设置断点，将模型编译为多个独立计算图。开发者可开启 `True` 来优化编译性能，普通用户建议仅使用 `False`。
 - 其他参数配置请查阅 [PyTorch 的 API 文档](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)。
 
+### 为不同模型指定不同编译选项
+一次 `compile_pipeline` 调用的 `mode`, `dynamic`, `fullgraph` 会应用到该次调用涉及的**所有**模型。若不同模型需要不同选项，分多次调用并显式指定 `compile_models`：
+
+```python
+pipe.compile_pipeline(compile_models=["dit"])
+pipe.compile_pipeline(compile_models=["vae"], dynamic=False)
+```
+
+`compilable_models` 声明的是该 pipeline 支持编译的模型全集，裸调用 `pipe.compile_pipeline()` 会把同一套选项应用到全集。
+
 ### Compile 功能开发者文档
 若需为新接入的 pipeline 提供 compile 支持，应在 pipeline 中配置 `compilable_models` 属性以指定默认编译模型。针对该 pipeline 的 DiT 模型类，还需配置 `_repeated_blocks` 以指定参与区域编译的基础模块类型。
 

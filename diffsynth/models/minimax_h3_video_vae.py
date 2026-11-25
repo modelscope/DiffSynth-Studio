@@ -327,6 +327,8 @@ _VIDEO_LATENTS_STD = [1.2223774194717407, 1.2767263650894165, 1.6831774711608887
 
 
 class MiniMaxH3VideoVAE(nn.Module):
+    _repeated_blocks = ["TransformerBlock", "EncoderFCN3D"]
+
     def __init__(self, in_channels=3, out_ch=3, ch=128, embed_dim=24, z_channels=24, num_res_blocks=2,
                  ch_mult=(1, 2, 2, 4, 4, 8), space_down=(2, 2, 2, 2, 1, 1), time_down=(1, 2, 2, 1, 1, 1),
                  padding_mode="reflect", use_t_isolated_gn=True, causal_encoder=True,
@@ -360,7 +362,8 @@ class MiniMaxH3VideoVAE(nn.Module):
             qk_norm_affine=False, qk_norm_type="rms_norm", rope_dim_ratio=0.75, rope_theta=100.0)
 
     def encode(self, x):
-        return self.quant_conv(self.encoder(x))
+        # Contiguous input keeps parent strides out of compile guards, avoiding recompiles across resolutions.
+        return self.quant_conv(self.encoder(x.contiguous()))
 
     def decode(self, z):
         return self.decoder(self.post_quant_conv(z))

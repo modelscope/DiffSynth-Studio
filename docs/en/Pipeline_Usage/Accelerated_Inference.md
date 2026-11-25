@@ -30,6 +30,17 @@ The second type is the compilation strategy parameters. This covers `mode`, `dyn
   * `fullgraph`, when set to `True`, makes the underlying system attempt to compile the target model into a single computation graph, throwing an error if it fails. When set to `False`, the underlying system will set breakpoints where connections cannot be made, compiling the model into multiple independent computation graphs. Developers can set it to `True` to optimize compilation performance, but regular users are advised to only use `False`.
   * For other parameter configurations, please consult the [PyTorch API documentation](https://docs.pytorch.org/docs/stable/generated/torch.compile.html).
 
+### Different Compile Options for Different Models
+
+The `mode`, `dynamic`, and `fullgraph` arguments of a single `compile_pipeline` call apply to **every** model covered by that call. If different models need different options, make several calls and pass `compile_models` explicitly:
+
+```python
+pipe.compile_pipeline(compile_models=["dit"])
+pipe.compile_pipeline(compile_models=["vae"], dynamic=False)
+```
+
+`compilable_models` declares the full set of models a pipeline supports compiling; a bare `pipe.compile_pipeline()` applies one set of options to that whole set.
+
 ### Compile Feature Developer Documentation
 
 If you need to provide compile support for a newly integrated pipeline, you should configure the `compilable_models` attribute in the pipeline to specify the default models to compile. For the DiT model class of that pipeline, you also need to configure `_repeated_blocks` to specify the types of basic blocks that will participate in regional compilation.

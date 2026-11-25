@@ -52,7 +52,7 @@ class MiniMaxH3Pipeline(BasePipeline):
             MiniMaxH3Unit_ControlNetEncoder(),
         ]
         self.model_fn = model_fn_minimax_h3
-        self.compilable_models = ["dit"]
+        self.compilable_models = ["dit", "video_vae"]
         self.lora_loader = MiniMaxH3LoRALoader
 
     @staticmethod
