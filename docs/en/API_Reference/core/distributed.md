@@ -1,17 +1,20 @@
 # `diffsynth.core.distributed`: Distributed Parallelism
 
-`diffsynth.core.distributed` provides distributed parallelism: process group management, collective communication primitives, and the configuration and installation entry points for sequence parallelism.
+`diffsynth.core.distributed` provides distributed parallelism: process-group and parallel-axis management, collective primitives, and the configuration and installation entry points for each axis.
 
-Sequence parallelism (SP) splits the tokens of a long sequence across GPUs and restores the full sequence around attention through all-to-all exchanges. Splitting and restoration are performed by forward hooks attached to blocks; the model only declares the token dimension on its block class. Attention reads a thread-local state through `attention_forward` to decide whether to exchange, so its signature stays unchanged.
+Parallelism is organized by **axis**: one axis per capability, each communicating on its own process group, so axes compose. There are currently two:
 
-For usage and the list of supported models, see [Parallel Inference](../../Pipeline_Usage/Parallel_Inference.md).
+* **Sequence parallelism** (SP) splits the tokens of one long sequence across GPUs and restores the full sequence at attention through an all-to-all exchange. Splitting and gathering are done by forward hooks on the blocks, so the model only declares token dimensions on its block class; attention reads a thread-local state through `attention_forward` to decide whether to exchange, with its signature unchanged.
+* **CFG parallelism** puts the positive and negative classifier-free-guidance forwards on two groups of GPUs, each computing one branch, then exchanges the results. It acts on the pipeline's denoising loop; the model needs no changes.
+
+See [Parallel Inference](../../Pipeline_Usage/Parallel_Inference.md) for how to enable it and which models are covered.
 
 ## Module Layout
 
 | Module | Contents | Scope |
 | --- | --- | --- |
-| `config` | `ParallelConfig`, `SequenceParallelConfig` | Common entry / sequence parallelism |
-| `context` | `init_parallel`, `get_parallel_group`, `destroy_parallel` | Common |
+| `config` | `ParallelConfig`, `SequenceParallelConfig`, `CFGParallelConfig` | Common entry / per-axis config |
+| `context` | `ParallelContext`, `parallel_context`, `init_parallel`, `destroy_parallel` | Common |
 | `collectives` | `all_to_all_4d`, `all_gather_sequence` | Common |
 | `sp_hooks` | `sequence_parallel_recipe`, `install_sequence_parallel`, `SequenceParallelStack` | Sequence parallelism |
 | `sp_state` | `SequenceParallelState`, `current_sequence_parallel_state`, `sequence_parallel_disabled` | Sequence parallelism |
@@ -19,45 +22,63 @@ For usage and the list of supported models, see [Parallel Inference](../../Pipel
 
 All of these names can be imported directly from `diffsynth.core.distributed`, except `SEQUENCE_PARALLEL_BACKENDS`, which lives in `sp_backend`.
 
-## Parallel Configuration: `ParallelConfig`, `SequenceParallelConfig`
+## Parallel Configuration: `ParallelConfig`
 
 ```python
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
-parallel_config = ParallelConfig()                                    # Ulysses sequence parallelism by default
-parallel_config = ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"))
-parallel_config = ParallelConfig(sequence=SequenceParallelConfig(backend=None))   # SP disabled
+parallel_config = ParallelConfig()                                    # No parallelism
+parallel_config = ParallelConfig(sequence=SequenceParallelConfig())     # Sequence parallelism only
+parallel_config = ParallelConfig(cfg=CFGParallelConfig())               # CFG parallelism only
+parallel_config = ParallelConfig(sequence=SequenceParallelConfig(), cfg=CFGParallelConfig())   # Both axes
 ```
 
-`ParallelConfig` is the single configuration object for parallelism, accepted by a pipeline's `from_pretrained(..., parallel_config=...)`:
+`ParallelConfig` is the single configuration object accepted by a pipeline's `from_pretrained(..., parallel_config=...)`. The axes are peers, and **an axis is enabled by passing its configuration**:
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `sequence` | `SequenceParallelConfig()` | Sequence parallelism configuration |
-| `timeout_seconds` | `1800` | Process group rendezvous timeout; values below 1 raise `ValueError` |
+| `sequence` | `None` | Sequence-parallel axis; enabled by passing `SequenceParallelConfig(...)` |
+| `cfg` | `None` | CFG-parallel axis; enabled by passing `CFGParallelConfig(...)` |
+| `timeout_seconds` | `1800` | Process-group rendezvous timeout; below 1 raises `ValueError` |
 
-`ParallelConfig.sp_enabled` is a convenience property telling whether sequence parallelism is enabled.
+`ParallelConfig.sequence_enabled` and `ParallelConfig.cfg_enabled` report whether each axis is on.
 
 `SequenceParallelConfig`:
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `backend` | `"ulysses"` | Exchange backend name, taken from `SEQUENCE_PARALLEL_BACKENDS`; `None` disables sequence parallelism. Unknown names raise `ValueError` at construction |
-| `gather_between_blocks` | `False` | `False`: the whole block stack is split at its entry and gathered at its exit, with local shards passed between blocks. `True`: each block forms its own stack, so sequences are complete between blocks |
+| `backend` | `"ulysses"` | Exchange backend name from `SEQUENCE_PARALLEL_BACKENDS`. An unknown name raises `ValueError` at construction |
+| `gather_between_blocks` | `False` | `False`: the whole block stack splits on entry and gathers on exit, passing local shards between blocks. `True`: each block forms its own stack, so sequences are full between blocks |
 
-Both configurations are `frozen=True` dataclasses; use `dataclasses.replace` to modify them.
+`CFGParallelConfig` has no fields yet; passing it enables the axis, which takes 2 shares for the positive and negative guidance branches.
 
-## Process Group Management: `init_parallel`, `get_parallel_group`, `destroy_parallel`
+Both axis configs are `frozen=True` dataclasses; use `dataclasses.replace` to modify them.
+
+## Process Groups and Parallel Axes: `ParallelContext`, `init_parallel`, `destroy_parallel`
 
 ```python
-from diffsynth.core.distributed import init_parallel, get_parallel_group, destroy_parallel
+from diffsynth.core.distributed import init_parallel, destroy_parallel, parallel_context
 
-group = init_parallel()          # Initialize or reuse the process group
-group = get_parallel_group()     # None before initialization
-destroy_parallel()               # Release the communicator created by this module
+init_parallel(parallel_config=parallel_config)   # Initialize or reuse the process group, then lay out the axes
+sp = parallel_context.get_sequence_group()       # Sequence axis; None when that axis is off
+cfg = parallel_context.get_cfg_group()           # CFG axis; None when that axis is off
+world = parallel_context.get_world_group()       # Every rank
+destroy_parallel()                               # Release the communicator created by this module
 ```
 
-* `init_parallel(timeout_seconds=1800)` establishes the process group through an `env://` rendezvous, so it requires the `RANK`, `WORLD_SIZE`, `MASTER_ADDR` and `MASTER_PORT` environment variables, usually provided by `torchrun`.
+`parallel_context` is the module's single `ParallelContext` instance, created at import. It holds each axis's process group, and reaching an axis is a method on it:
+
+| Method | Returns |
+| --- | --- |
+| `get_world_group()` | The group spanning every rank; `None` before `init_parallel` |
+| `get_sequence_group()` | The sequence axis group; `None` when that axis is off |
+| `get_cfg_group()` | The CFG axis group; `None` when that axis is off |
+| `get_sequence_rank()` / `get_sequence_world_size()` | This process's index within the sequence axis / that axis's rank count; `0` / `1` when the axis is off |
+| `get_cfg_rank()` / `get_cfg_world_size()` | The same for the CFG axis |
+
+**A disabled axis has group `None`**, not a group containing only this process. To test whether an axis is usable, check the group for `None`.
+
+* `init_parallel(timeout_seconds=1800, parallel_config=None)` establishes the process group through an `env://` rendezvous, so it requires the `RANK`, `WORLD_SIZE`, `MASTER_ADDR` and `MASTER_PORT` environment variables, usually provided by `torchrun`.
 * It calls `set_device` with `LOCAL_RANK` (falling back to `RANK`), binding the GPU used by this process.
 * If `torch.distributed` is already initialized, the existing group is reused instead of creating a new one.
 * The communication backend follows the device type: `cuda → nccl`, `npu → hccl`.
@@ -65,22 +86,37 @@ destroy_parallel()               # Release the communicator created by this modu
 
 `init_parallel` is called internally by a pipeline's `from_pretrained(..., parallel_config=...)`.
 
+### How the Axes Are Laid Out
+
+With both axes on, a named-dimension `DeviceMesh` divides the ranks in the order `("cfg", "sequence")`:
+
+* **The sequence axis is innermost** and gets adjacent ranks. It performs an all-to-all at every block, so it communicates most often.
+* **The CFG axis is outer** and its ranks are strided. It exchanges one prediction per step.
+
+`world_size = cfg_size × sp_size`. With 8 GPUs and `cfg_size=2`, the sequence axis is `[0,1,2,3]` and `[4,5,6,7]`, and the CFG axis is `[0,4]`, `[1,5]`, `[2,6]`, `[3,7]`.
+
+When only one axis has size above 1, that axis spans every rank and uses the world group directly, without creating sub-groups.
+
+The layout is built once in `init_parallel`; reaching an axis afterwards is a lookup. Each rank receives the sub-group **it belongs to** — `DeviceMesh` selects it by this process's global rank, so callers need no test of their own.
+
 ## Collective Primitives: `all_to_all_4d`, `all_gather_sequence`
 
 ```python
 from diffsynth.core.distributed import all_to_all_4d, all_gather_sequence
 
 y = all_to_all_4d(x, scatter_dim=2, gather_dim=1, group=group)   # [B,S/P,H,D] -> [B,S,H/P,D]
-y = all_to_all_4d(x, scatter_dim=1, gather_dim=2, group=group)   # Reverse direction
+y = all_to_all_4d(x, scatter_dim=1, gather_dim=2, group=group)   # Reverse
 full = all_gather_sequence(local, dim=1, group=group)            # Concatenate in rank order
 ```
 
 | Function | Constraints | Backward |
 | --- | --- | --- |
-| `all_to_all_4d` | Must be 4-D; only `(scatter_dim, gather_dim)` of `(2, 1)` or `(1, 2)` is supported; the size of `scatter_dim` must be divisible by the number of ranks, otherwise `ValueError` | The same exchange with the two dimensions swapped |
-| `all_gather_sequence` | Any dimension; negative dimensions are normalized as `dim + tensor.dim()` | `reduce_scatter` sums the gradients and returns this rank's shard |
+| `all_to_all_4d` | Must be 4-D; only `(scatter_dim, gather_dim)` of `(2, 1)` or `(1, 2)`; the `scatter_dim` length must be divisible by the number of ranks, else `ValueError` | The same exchange with the dimensions swapped |
+| `all_gather_sequence` | Any dimension; negative dimensions normalize as `dim + tensor.dim()` | `reduce_scatter` sums the copies and takes this rank's shard |
 
-Both are wrapped as `autograd.Function` and can be used in training. With a single rank they return the input tensor unchanged and perform no communication.
+Both are wrapped as `autograd.Function` and can be used in training; with a single rank they return the input tensor unchanged and issue no communication.
+
+`group` must be passed explicitly; `None` raises `ValueError`.
 
 ## Sequence Parallelism
 
@@ -182,7 +218,7 @@ install_sequence_parallel(model, parallel_config)
 
 `model_loader` calls it for every loaded model. Behavior:
 
-* It is a **no-op** when `parallel_config` is `None`, `sp_enabled` is false, the process group is missing, or there is only one rank.
+* It is a **no-op** when `parallel_config` is `None`, `sequence_enabled` is false, the process group is missing, or there is only one rank.
 * Stacks are discovered from structure rather than declared by the model: a module whose class (or the class inside a residency wrapper) carries a recipe declaration is a block; the longest run of blocks **under one container, with consecutive indices and one class** forms a stack.
 * Only a class's own `__dict__` counts, so declarations are **not inherited**. A subclass of a declared block (some ControlNet blocks, for example) does not automatically become an SP stack.
 * Wrappers such as `AutoWrappedNonRecurseModule` are unwrapped one level: matching uses the inner class, hooks attach to the wrapper, and argument order comes from the declared class's `forward` signature.
@@ -258,3 +294,44 @@ To register a new backend, add a name-to-class mapping to `SEQUENCE_PARALLEL_BAC
 | Sequence length | When not divisible, zeros are appended at the tail and trimmed at the exit according to the declaration; padded tokens take part in attention |
 | Replicated KV prefix | `attn_mask` is not supported; passing one raises `ValueError` |
 | Declaration consistency | Keys of gather outputs must appear in the input declaration; keys of `kv_prefix_inputs` must not. Violations raise `ValueError` in the decorator |
+## CFG Parallelism
+
+Classifier-free guidance (CFG) runs two forwards per step: one conditioned on the positive prompt, one on the negative prompt, then combines them as `nega + cfg_scale * (posi - nega)`. CFG parallelism puts those two forwards on the two groups of the CFG axis, each GPU computing one branch.
+
+Configuration and axis access are covered above; the scheduling lives in `diffsynth.diffusion.BasePipeline.cfg_guided_model_fn`, the single CFG entry point in a pipeline's denoising loop.
+
+### Entry Point: `cfg_guided_model_fn`
+
+```python
+noise_pred = self.cfg_guided_model_fn(
+    model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega,
+    **models, timestep=timestep,
+)
+```
+
+| Argument | Description |
+| --- | --- |
+| `model_fn` | Callable performing one forward |
+| `cfg_scale` | Guidance strength |
+| `inputs_shared` | Inputs common to both branches |
+| `inputs_posi` / `inputs_nega` | Inputs specific to each branch |
+| `**inputs_others` | Remaining keyword arguments forwarded to `model_fn`, common to both branches |
+
+Each branch is invoked as `model_fn(**inputs_branch, **inputs_shared, **inputs_others)`. **Every difference between the branches is expressed through the branch dicts.**
+
+With the CFG axis off, both branches run sequentially in this process. With it on:
+
+1. GPUs at `parallel_context.get_cfg_rank() == 0` compute the positive branch, the others the negative branch
+2. `all_gather` along the batch dimension gives every GPU both predictions
+3. Every GPU combines them locally with the original expression
+
+The combined result is identical on every GPU, so `scheduler.step` also runs locally and no broadcast is needed.
+
+### Constraints and Errors
+
+| Item | Description |
+| --- | --- |
+| `cfg_scale` | Must not equal 1 while the CFG axis is on, else `ValueError` — there is no negative branch to hand to the other group |
+| Head divisibility | Constrains only the sequence axis size, independent of the CFG axis and the total GPU count |
+| Output shape | Both branches must return the same shape (input lengths may differ), else `all_gather` fails |
+| Mutable state shared across branches | The branches run in different processes, so a shared cache counter accumulates independently on each. Such state must be kept per branch |

@@ -12,6 +12,7 @@ from typing_extensions import Literal
 from transformers import Wav2Vec2Processor
 
 from ..core.device.npu_compatible_device import get_device_type
+from ..core.distributed import parallel_context
 from ..diffusion import FlowMatchScheduler
 from ..core import ModelConfig, gradient_checkpoint_forward
 from ..core.context_compress import CompressedKVCacheBlock, KVCompressor
@@ -342,15 +343,19 @@ class WanVideoPipeline(BasePipeline):
             timestep = timestep.unsqueeze(0).to(dtype=self.torch_dtype, device=self.device)
             
             # Inference
-            noise_pred_posi = self.model_fn(**models, **inputs_shared, **inputs_posi, timestep=timestep)
-            if cfg_scale != 1.0:
-                if cfg_merge:
+            if cfg_merge:
+                if parallel_context.get_cfg_group() is not None: raise ValueError("cfg_merge cannot be combined with CFG parallelism")
+                noise_pred_posi = self.model_fn(**models, **inputs_shared, **inputs_posi, timestep=timestep)
+                if cfg_scale != 1.0:
                     noise_pred_posi, noise_pred_nega = noise_pred_posi.chunk(2, dim=0)
+                    noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
                 else:
-                    noise_pred_nega = self.model_fn(**models, **inputs_shared, **inputs_nega, timestep=timestep)
-                noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
+                    noise_pred = noise_pred_posi
             else:
-                noise_pred = noise_pred_posi
+                noise_pred = self.cfg_guided_model_fn(
+                    self.model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega,
+                    **models, timestep=timestep
+                )
 
             # Scheduler
             inputs_shared["latents"] = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], inputs_shared["latents"])

@@ -1,9 +1,9 @@
-# torchrun --standalone --nproc_per_node=7 examples/fibo/model_inference_parallel/Fibo-2.0-dev.py
+# torchrun --standalone --nproc_per_node=8 examples/fibo/model_inference_parallel/Fibo-2.0-dev.py
 import torch, json
 from PIL import Image, ImageDraw
 from diffsynth.pipelines.fibo import FiboPipeline, ModelConfig
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 
 pipe = FiboPipeline.from_pretrained(
@@ -16,7 +16,7 @@ pipe = FiboPipeline.from_pretrained(
     ],
     processor_config=ModelConfig(model_id="briaai/Fibo-2.0-dev", origin_file_pattern="processor/"),
     font_config=ModelConfig(model_id="briaai/Fibo-2.0-dev", origin_file_pattern="fonts/"),
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 
 # Text-to-image

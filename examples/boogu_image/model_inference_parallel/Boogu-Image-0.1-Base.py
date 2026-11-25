@@ -1,8 +1,8 @@
-# torchrun --standalone --nproc_per_node=7 examples/boogu_image/model_inference_parallel/Boogu-Image-0.1-Base.py
+# torchrun --standalone --nproc_per_node=8 examples/boogu_image/model_inference_parallel/Boogu-Image-0.1-Base.py
 from diffsynth.pipelines.boogu_image import BooguImagePipeline, ModelConfig
 import torch
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 
 pipe = BooguImagePipeline.from_pretrained(
@@ -14,7 +14,7 @@ pipe = BooguImagePipeline.from_pretrained(
         ModelConfig(model_id="Boogu/Boogu-Image-0.1-Base", origin_file_pattern="vae/*.safetensors"),
     ],
     processor_config=ModelConfig(model_id="Boogu/Boogu-Image-0.1-Base", origin_file_pattern="mllm/"),
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 
 output = pipe(

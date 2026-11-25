@@ -83,7 +83,7 @@ class MovaAudioVideoPipeline(BasePipeline):
         pipe = MovaAudioVideoPipeline(device=device, torch_dtype=torch_dtype)
         if use_usp and parallel_config is not None:
             raise ValueError("use_usp (xfuser) and parallel_config (native sequence parallel) are mutually exclusive; disable one of them.")
-        if parallel_config is not None and parallel_config.sp_enabled:
+        if parallel_config is not None and parallel_config.sequence_enabled:
             parallel_config = replace(parallel_config, sequence=replace(parallel_config.sequence, gather_between_blocks=True))
         model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
 

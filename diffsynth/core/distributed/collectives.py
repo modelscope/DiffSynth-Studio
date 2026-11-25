@@ -8,6 +8,8 @@ def all_to_all_4d(tensor: torch.Tensor, scatter_dim: int, gather_dim: int, group
 
 
 def _all_to_all_4d(tensor: torch.Tensor, scatter_dim: int, gather_dim: int, group: dist.ProcessGroup) -> torch.Tensor:
+    if group is None:
+        raise ValueError("all_to_all_4d requires an explicit process group")
     if tensor.dim() != 4:
         raise ValueError(f"all_to_all_4d expects a 4-D tensor, got {tensor.dim()}-D")
     world_size = dist.get_world_size(group)
@@ -79,6 +81,8 @@ def all_gather_sequence(tensor: torch.Tensor, dim: int, group: dist.ProcessGroup
 class _AllGatherSequence(torch.autograd.Function):
     @staticmethod
     def forward(ctx, tensor, dim, group):
+        if group is None:
+            raise ValueError("all_gather_sequence requires an explicit process group")
         ctx.dim = dim if dim >= 0 else dim + tensor.dim()
         ctx.group = group
         ctx.world_size = dist.get_world_size(group)

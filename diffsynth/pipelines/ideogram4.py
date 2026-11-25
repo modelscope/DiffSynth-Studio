@@ -105,16 +105,13 @@ class Ideogram4Pipeline(BasePipeline):
             inputs_shared, inputs_posi, inputs_nega = self.unit_runner(unit, self, inputs_shared, inputs_posi, inputs_nega)
 
         self.load_models_to_device(self.in_iteration_models)
+        inputs_posi["dit"] = self.dit
+        inputs_nega["dit"] = self.dit_uncond if self.dit_uncond is not None else self.dit
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep = timestep.unsqueeze(0).to(dtype=torch.float32, device=self.device)
-            models = {"dit": self.dit}
-            noise_pred_posi = self.model_fn(timestep=timestep, **models, **inputs_shared, **inputs_posi)
-            if cfg_scale != 1:
-                models = {"dit": self.dit_uncond if self.dit_uncond is not None else self.dit}
-                noise_pred_nega = self.model_fn(timestep=timestep, **models, **inputs_shared, **inputs_nega)
-                noise_pred = noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
-            else:
-                noise_pred = noise_pred_posi
+            noise_pred = self.cfg_guided_model_fn(
+                self.model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, timestep=timestep
+            )
 
             inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id, noise_pred=noise_pred, **inputs_shared)
             

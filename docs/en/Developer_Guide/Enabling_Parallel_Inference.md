@@ -1,10 +1,19 @@
 # Enabling Parallel Inference for a Model
 
-This document describes the parallel framework of `DiffSynth-Studio` and its sequence parallelism, and how to enable parallel inference for an existing model. For interface details see the [`diffsynth.core.distributed` API reference](../API_Reference/core/distributed.md); for usage see [Parallel Inference](../Pipeline_Usage/Parallel_Inference.md).
+This document describes the parallel framework of `DiffSynth-Studio` and how to enable parallel inference for an existing model. For interface details see the [`diffsynth.core.distributed` API reference](../API_Reference/core/distributed.md); for usage see [Parallel Inference](../Pipeline_Usage/Parallel_Inference.md).
 
 ## 1. Parallel Framework Overview
 
-Parallel capabilities live in `diffsynth.core.distributed`, organized in three layers: configuration, foundation, and the parallel strategy itself. Splitting, communication and restoration are performed by the framework; the model only provides declarations.
+Parallel capabilities live in `diffsynth.core.distributed`, organized in three layers: configuration, foundation, and the parallel strategy itself.
+
+Parallelism is organized by **axis**: one axis per capability, each communicating only on its own process group, so axes compose. There are currently two:
+
+| Axis | What it splits | Where it acts | What the model must do |
+| --- | --- | --- | --- |
+| Sequence parallelism | The token sequence of one sample | The DiT block stack | Declare token dimensions on the block class |
+| CFG parallelism | The positive and negative guidance forwards | The pipeline's denoising loop | Nothing |
+
+The total GPU count is the product of the axis sizes. The axes communicate independently, so one branch issuing a different number of collectives than the other cannot block it.
 
 ```mermaid
 graph LR
@@ -16,19 +25,27 @@ graph LR
 
 ### 1.1 Configuration (`config.py`)
 
-`ParallelConfig` is the single entry point, accepted by a pipeline's `from_pretrained(parallel_config=...)`. Each parallel capability occupies one field; today that field is `sequence`.
+`ParallelConfig` is the single entry point, accepted by a pipeline's `from_pretrained(parallel_config=...)`. Each axis occupies one peer field: `sequence` and `cfg`, both defaulting to `None`. **An axis is enabled by passing its configuration.** Adding a parallel capability means adding an axis field.
 
-`SequenceParallelConfig` has two fields: `backend` (default `"ulysses"`, `None` disables sequence parallelism) and `gather_between_blocks` (default `False`, explained in 2.2). Both configurations are `frozen=True` dataclasses, modified with `dataclasses.replace`. `ParallelConfig.sp_enabled` tells whether sequence parallelism is enabled.
+`SequenceParallelConfig` has two fields: `backend` (default `"ulysses"`) and `gather_between_blocks` (default `False`, explained in 2.2).
+
+`CFGParallelConfig` has no fields yet; passing it enables the axis, whose size is 2 for the positive and negative guidance branches.
+
+The axis configurations are `frozen=True` dataclasses, modified with `dataclasses.replace`. `ParallelConfig.sequence_enabled` and `cfg_enabled` tell whether each axis is on.
 
 With no configuration passed, or with a single GPU, installation and dispatch are no-ops.
 
 ### 1.2 Foundation (`context.py`, `collectives.py`)
 
-`context.py` manages the process group and devices: `init_parallel` establishes or reuses the communication group through `env://` (environment variables provided by `torchrun`) and binds this process's GPU according to `LOCAL_RANK`; `get_parallel_group` returns the current group; `destroy_parallel` destroys only the group this module created.
+`context.py` manages the process group and devices: `init_parallel` establishes or reuses the communication group through `env://` (environment variables provided by `torchrun`), binds this process's GPU according to `LOCAL_RANK`, then lays out the axes from the configuration; `destroy_parallel` destroys only the group this module created.
+
+The axes are held by the module's single `ParallelContext` instance, `parallel_context`, and reaching one is a method on it: `get_world_group()` / `get_sequence_group()` / `get_cfg_group()`, with matching `get_*_rank()` and `get_*_world_size()`. **A disabled axis has group `None`.**
+
+With both axes on, a named-dimension `DeviceMesh` divides the ranks in the order `("cfg", "sequence")`: the sequence axis is innermost and gets adjacent ranks (it performs an all-to-all at every block), while the CFG axis is outer and strided (it exchanges one prediction per step). When only one axis has size above 1, that axis spans every rank and uses the world group.
 
 `collectives.py` provides differentiable collectives: `all_to_all_4d` (4-D tensors, only `(scatter_dim, gather_dim)` of `(2,1)` or `(1,2)`, the scattered dimension must be divisible by the number of ranks) and `all_gather_sequence` (any dimension, concatenated in rank order, i.e. process index order). Both are `autograd.Function`s whose backward passes are respectively the same exchange with dimensions swapped, and `reduce_scatter`. With a single rank they return the input tensor unchanged.
 
-### 1.3 Sequence Parallelism
+### 1.3 The Sequence-Parallel Axis
 
 Sequence parallelism distributes the token sequence of one sample across GPUs (principles in 2.1). Three submodules cooperate:
 
@@ -37,6 +54,11 @@ Sequence parallelism distributes the token sequence of one sample across GPUs (p
 | `sp_hooks` | Automatic sequence splitting framework: reads model declarations, finds runs of repeated blocks, splits at the run's entry and restores at its exit |
 | `sp_state` | Sequence parallel state: records whether execution is currently split, plus each input's local length and tail padding |
 | `sp_backend` | The sequence parallel node of attention: `attention_forward` performs the exchange here |
+
+### 1.4 The CFG-Parallel Axis
+
+CFG parallelism hands the two guidance forwards to two groups of GPUs (explained in 4.1). It leaves the model untouched; scheduling is concentrated in `BasePipeline.cfg_guided_model_fn`, the single CFG entry point in a pipeline's denoising loop. The model declares nothing, and the pipeline only has to route both forwards through that entry point.
+
 
 ## 2. Sequence Parallelism
 
@@ -83,7 +105,7 @@ At most one state instance is active per thread; nesting is not supported.
 
 In some structures the key/value is already complete on every rank, so exchanging it serves no purpose. The recipe expresses these cases with two optional parameters (see 3.2): while a submodule listed in `no_exchange_modules` executes, the state is marked as no-exchange and attention computes the local query against the full K/V directly; the length of a replicated prefix declared through `kv_prefix_inputs` (a KV cache, for instance) is recorded in the state, and `sp_backend` exchanges only the suffix while the prefix is sliced locally by KV heads and prepended, with a single softmax throughout.
 
-## 3. Integrating a Model
+## 3. Integrating Sequence Parallelism
 
 ### 3.1 Integration Steps
 
@@ -310,7 +332,7 @@ A block with self-attention runs on multiple GPUs once its token dimension is de
 ```python
 import torch
 from diffsynth.core.attention import attention_forward
-from diffsynth.core.distributed import ParallelConfig, init_parallel, install_sequence_parallel, sequence_parallel_recipe
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, init_parallel, install_sequence_parallel, sequence_parallel_recipe
 
 @sequence_parallel_recipe(
     split_dimensions_for_inputs={"x": 1},
@@ -337,10 +359,11 @@ class Model(torch.nn.Module):
         super().__init__()
         self.blocks = torch.nn.ModuleList([Block() for _ in range(4)])
 
-init_parallel()
+parallel_config = ParallelConfig(sequence=SequenceParallelConfig())
+init_parallel(parallel_config=parallel_config)
 torch.manual_seed(0)          # Weights must match across ranks; real models load one checkpoint
 model = Model().cuda()
-install_sequence_parallel(model, ParallelConfig())
+install_sequence_parallel(model, parallel_config)
 torch.manual_seed(1)
 x = torch.randn(1, 128, 64, device="cuda")
 for block in model.blocks:
@@ -351,3 +374,73 @@ print(x.shape)                # (1, 128, 64), the full sequence restored at the 
 ```bash
 torchrun --standalone --nproc_per_node=2 example.py
 ```
+## 4. CFG Parallelism
+
+### 4.1 What CFG Parallelism Is
+
+Classifier-free guidance (CFG) is a common sampling technique for diffusion models: each step runs two forwards on the same latent, one conditioned on the positive prompt and one on the negative prompt, giving `posi` and `nega`, then combines them as
+
+```
+noise_pred = nega + cfg_scale * (posi - nega)
+```
+
+into that step's prediction. A larger `cfg_scale` pulls the result closer to the positive prompt.
+
+The two forwards are independent of each other — same latent, same weights, only the conditioning inputs differ. CFG parallelism runs them on two groups of GPUs at the same time, each GPU computing one branch. It splits **two independent forwards**, whereas sequence parallelism splits **the tokens inside one forward**. These are different dimensions, so they stack: `cfg_size × sp_size` GPUs, each computing part of the tokens of one branch.
+
+### 4.2 Splitting and Combining the Branches
+
+The CFG axis has size 2; its rank layout is described in 1.2. One step proceeds as:
+
+1. The group at `cfg_rank == 0` computes the positive branch, the other group the negative branch
+2. `all_gather` along the batch dimension on the CFG axis gives both groups both predictions
+3. Every GPU combines them locally with the original expression
+
+`all_gather` is symmetric: each GPU contributes its own branch and receives both. So after the combine every GPU holds an identical `noise_pred`, `scheduler.step` runs locally on each, and no broadcast is needed anywhere.
+
+Choosing all_gather over "each GPU computes a weighted contribution and they are summed" keeps both original predictions available. Some models normalize using one branch after the combine, which is impossible without the raw values.
+
+The communication is one latent per step, negligible next to the two activation all-to-alls per block that sequence parallelism performs.
+
+### 4.3 Integrating a Pipeline
+
+Route the two hand-written forwards in the denoising loop through the single entry point:
+
+```python
+for progress_id, timestep in enumerate(self.scheduler.timesteps):
+    noise_pred = self.cfg_guided_model_fn(
+        self.model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega,
+        **models, timestep=timestep,
+    )
+    inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id,
+                                        noise_pred=noise_pred, **inputs_shared)
+```
+
+The entry point invokes each branch as `model_fn(**inputs_branch, **inputs_shared, **inputs_others)`. **Every difference between the branches is expressed through the branch dicts.**
+
+#### Case: The Branches Use Different Models
+
+Some models train a separate set of weights for the negative branch. The model object is itself a keyword argument of `model_fn`, so it goes into the branch dicts:
+
+```python
+inputs_posi["dit"] = self.dit
+inputs_nega["dit"] = self.dit_uncond if self.dit_uncond is not None else self.dit
+noise_pred = self.cfg_guided_model_fn(
+    self.model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, timestep=timestep
+)
+```
+
+The entry point picks the branch dict by `cfg_rank`, so each group naturally uses its own weights.
+
+#### Case: Both Branches Merged into One Batched Forward
+
+Some pipelines offer an option to concatenate the positive and negative conditions along the batch dimension and compute both branches in one forward. In that form there is only one forward to split, so the CFG axis has nothing to divide; the two are mutually exclusive and enabling both must raise explicitly.
+
+### 4.4 Constraints
+
+| Item | Description |
+| --- | --- |
+| `cfg_scale` | Must not equal 1. At 1 there is no negative branch, the other group has nothing to do, and the entry point raises `ValueError` |
+| Output shape | Both branches must return the same shape. Input lengths may differ — a shorter negative prompt, or no text tokens at all — as long as `model_fn` returns a latent prediction of the same shape |
+| Mutable state shared across branches | The branches run in different processes. A cache counter placed in the shared inputs accumulates independently on each, so skip decisions diverge from a single-GPU run. Such state must be kept per branch |
+| Head divisibility | Constrains only the sequence axis size. The CFG axis takes no part in the attention exchange and is independent of head counts |

@@ -1,10 +1,19 @@
 # 启用模型的并行推理能力
 
-本文档介绍 `DiffSynth-Studio` 的并行框架与序列并行，以及如何为已有模型启用并行推理。接口细节见 [`diffsynth.core.distributed` API 参考](../API_Reference/core/distributed.md)，使用方式见[并行推理](../Pipeline_Usage/Parallel_Inference.md)。
+本文档介绍 `DiffSynth-Studio` 的并行框架，以及如何为已有模型启用并行推理。接口细节见 [`diffsynth.core.distributed` API 参考](../API_Reference/core/distributed.md)，使用方式见[并行推理](../Pipeline_Usage/Parallel_Inference.md)。
 
 ## 1. 并行框架总览
 
-并行能力集中在 `diffsynth.core.distributed`，分为配置、底层、具体并行策略三层。切分、通信、还原由框架完成，模型只提供声明。
+并行能力集中在 `diffsynth.core.distributed`，分为配置、底层、具体并行策略三层。
+
+并行按**轴**组织：一个轴对应一种并行能力，各轴只在自己的进程组上通信，因此可以组合。当前有两个轴：
+
+| 轴 | 切分什么 | 作用位置 | 模型侧要做什么 |
+| --- | --- | --- | --- |
+| 序列并行 | 一条样本的 token 序列 | DiT 的 block 栈 | 在 block 类上声明 token 维 |
+| CFG 并行 | guidance 的正负两次前向 | pipeline 的去噪循环 | 无需改动 |
+
+总卡数是各轴 size 之积。两个轴各自独立通信，一支内部的 collective 次数与另一支不同也不会互相阻塞。
 
 ```mermaid
 graph LR
@@ -16,19 +25,27 @@ graph LR
 
 ### 1.1 配置（`config.py`）
 
-`ParallelConfig` 是统一入口，由 pipeline 的 `from_pretrained(parallel_config=...)` 接收，各类并行能力在其中各占一个字段，当前是 `sequence`。
+`ParallelConfig` 是统一入口，由 pipeline 的 `from_pretrained(parallel_config=...)` 接收，各轴在其中各占一个平级字段：`sequence` 与 `cfg`，默认都是 `None`，**传入对应的轴配置才启用该轴**。新增一种并行能力就是新增一个轴字段。
 
-`SequenceParallelConfig` 的字段：`backend`（默认 `"ulysses"`，`None` 表示关闭序列并行）、`gather_between_blocks`（默认 `False`，含义见 2.2）。两者都是 `frozen=True` 的 dataclass，修改用 `dataclasses.replace`；`ParallelConfig.sp_enabled` 表示序列并行是否启用。
+`SequenceParallelConfig` 的字段：`backend`（默认 `"ulysses"`）、`gather_between_blocks`（默认 `False`，含义见 2.2）。
+
+`CFGParallelConfig` 目前没有字段，传入即启用，该轴 size 为 2，对应 guidance 的正负两支。
+
+轴配置都是 `frozen=True` 的 dataclass，修改用 `dataclasses.replace`；`ParallelConfig.sequence_enabled` 与 `cfg_enabled` 分别表示两个轴是否启用。
 
 未传配置或卡数为 1 时，安装与分派为空操作。
 
 ### 1.2 底层（`context.py`、`collectives.py`）
 
-`context.py` 管进程组与设备：`init_parallel` 通过 `env://` 建立或复用通信组（环境变量由 `torchrun` 提供），并按 `LOCAL_RANK` 绑定本进程的卡；`get_parallel_group` 取当前组；`destroy_parallel` 只销毁本模块创建的组。
+`context.py` 管进程组与设备：`init_parallel` 通过 `env://` 建立或复用通信组（环境变量由 `torchrun` 提供），按 `LOCAL_RANK` 绑定本进程的卡，再按配置划分各轴；`destroy_parallel` 只销毁本模块创建的组。
+
+各轴由模块级唯一的 `ParallelContext` 实例 `parallel_context` 持有，取组是它的方法：`get_world_group()` / `get_sequence_group()` / `get_cfg_group()`，配套 `get_*_rank()` 与 `get_*_world_size()`。**轴未启用时组为 `None`**。
+
+两个轴都启用时用命名维度的 `DeviceMesh` 划分，顺序 `("cfg", "sequence")`：序列轴在最内层拿相邻 rank（它每个 block 都要 all-to-all），CFG 轴在外层跨步（它每步只交换一次预测）。只有一个轴 size 大于 1 时，该轴覆盖全部 rank，直接用 world 组。
 
 `collectives.py` 提供可微的集合通信：`all_to_all_4d`（4 维张量，只支持 `(scatter_dim, gather_dim)` 为 `(2,1)` 或 `(1,2)`，被切维长度须被卡数整除）与 `all_gather_sequence`（任意维，按 rank 即进程序号顺序拼接）。两者都是 `autograd.Function`，反向分别是交换维度重做、`reduce_scatter`；卡数为 1 时直接返回原张量。
 
-### 1.3 序列并行
+### 1.3 序列并行轴
 
 序列并行把一条样本的 token 序列分给多卡计算（原理见 2.1），由三个子模块协作实现：
 
@@ -37,6 +54,11 @@ graph LR
 | `sp_hooks` | 序列自动切分框架：读模型声明、找出重复的 block 段、在段的入口切分与出口还原 |
 | `sp_state` | 序列并行状态：记录当前是否处于切分中、各输入切分后的长度与尾部补齐量 |
 | `sp_backend` | attention 的序列并行节点：`attention_forward` 在此完成交换 |
+
+
+### 1.4 CFG 并行轴
+
+CFG 并行把 guidance 的两次前向分给两组卡（原理见 4.1）。它不改模型，调度集中在 `BasePipeline.cfg_guided_model_fn`——pipeline 去噪循环里 CFG 的统一入口。模型侧无需声明，pipeline 侧只要把两次前向交给这个入口。
 
 
 ## 2. 序列并行
@@ -84,7 +106,7 @@ ModuleList([Block, Other, Block, Block])   → 两个栈：[0] 与 [2,3]
 
 有些结构的 key/value 在各卡都是完整的，交换它们没有意义。recipe 用两个可选参数表达这类情况（写法见 3.2）：`no_exchange_modules` 列出的子模块执行期间，状态标记为不交换，注意力直接用本地 query 对完整 K/V 计算；`kv_prefix_inputs` 声明的复制前缀（如 KV cache）长度记在状态里，`sp_backend` 只交换后缀，前缀按 KV 头本地切片后拼回，全程一次 softmax。
 
-## 3. 接入模型
+## 3. 接入序列并行
 
 ### 3.1 接入步骤
 
@@ -312,7 +334,7 @@ denoise 遍正常分片，缓存 keys 由 `kv_prefix_inputs` 声明为复制前�
 ```python
 import torch
 from diffsynth.core.attention import attention_forward
-from diffsynth.core.distributed import ParallelConfig, init_parallel, install_sequence_parallel, sequence_parallel_recipe
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, init_parallel, install_sequence_parallel, sequence_parallel_recipe
 
 @sequence_parallel_recipe(
     split_dimensions_for_inputs={"x": 1},
@@ -339,10 +361,11 @@ class Model(torch.nn.Module):
         super().__init__()
         self.blocks = torch.nn.ModuleList([Block() for _ in range(4)])
 
-init_parallel()
+parallel_config = ParallelConfig(sequence=SequenceParallelConfig())
+init_parallel(parallel_config=parallel_config)
 torch.manual_seed(0)          # 各 rank 权重需一致；真实模型由同一份 checkpoint 加载
 model = Model().cuda()
-install_sequence_parallel(model, ParallelConfig())
+install_sequence_parallel(model, parallel_config)
 torch.manual_seed(1)
 x = torch.randn(1, 128, 64, device="cuda")
 for block in model.blocks:
@@ -353,3 +376,74 @@ print(x.shape)                # (1, 128, 64)，出口已还原完整序列
 ```bash
 torchrun --standalone --nproc_per_node=2 example.py
 ```
+
+## 4. CFG 并行
+
+### 4.1 CFG 并行是什么
+
+classifier-free guidance（CFG）是扩散模型常用的采样增强手段：每一步用同一个 latent 跑两次前向，一次条件于正 prompt、一次条件于负 prompt，得到 `posi` 与 `nega`，再按
+
+```
+noise_pred = nega + cfg_scale * (posi - nega)
+```
+
+组合出这一步的预测。`cfg_scale` 越大，生成结果越贴近正 prompt。
+
+这两次前向彼此独立——同一个 latent、同一份权重，只有条件输入不同。CFG 并行就是把它们分到两组卡上同时算，每张卡只跑一支。它切分的是**两次独立的前向**，与序列并行切分**一次前向内部的 token** 是不同维度，因此可以叠加：`cfg_size × sp_size` 张卡，每张卡跑一支的一部分 token。
+
+### 4.2 分支拆分与合并
+
+CFG 轴 size 为 2，两组的划分见 1.2。一步的流程：
+
+1. `cfg_rank == 0` 的那组卡算正支，另一组算负支
+2. 沿 batch 维在 CFG 轴上 `all_gather`，两组都拿到两支的预测
+3. 各卡本地按原式组合
+
+`all_gather` 是对称的：每张卡交出自己那支，也都收到全部两支。所以组合之后各卡的 `noise_pred` 完全一致，`scheduler.step` 也各自本地执行，全程不需要广播。
+
+选择 all_gather 而不是「各卡算加权贡献再求和」，是因为前者保住了两支的原始预测。有些模型在组合之后还要用其中一支做归一化，拿不到原始值就无法实现。
+
+通信量是每步一个 latent，相比序列并行每个 block 两次激活 all-to-all 可以忽略。
+
+### 4.3 接入 pipeline
+
+把去噪循环里手写的两次前向交给统一入口：
+
+```python
+for progress_id, timestep in enumerate(self.scheduler.timesteps):
+    noise_pred = self.cfg_guided_model_fn(
+        self.model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega,
+        **models, timestep=timestep,
+    )
+    inputs_shared["latents"] = self.step(self.scheduler, progress_id=progress_id,
+                                        noise_pred=noise_pred, **inputs_shared)
+```
+
+入口对每支的调用形态是 `model_fn(**inputs_branch, **inputs_shared, **inputs_others)`。**两支之间的差异全部通过分支字典表达。**
+
+#### 案例：两支用不同的模型
+
+有些模型给负支单独训了一份权重。模型对象本身也是 `model_fn` 的一个关键字参数，放进分支字典即可：
+
+```python
+inputs_posi["dit"] = self.dit
+inputs_nega["dit"] = self.dit_uncond if self.dit_uncond is not None else self.dit
+noise_pred = self.cfg_guided_model_fn(
+    self.model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, timestep=timestep
+)
+```
+
+入口按 `cfg_rank` 选分支字典，于是每组卡自然用到自己那份权重。
+
+#### 案例：把两支合成一次 batch 前向
+
+有的 pipeline 提供把正负条件沿 batch 维拼起来、一次前向算完两支的选项。这种形态下只有一次前向可分，CFG 轴没有可拆的对象，两者互斥，需要在启用时显式报错。
+
+### 4.4 约束
+
+| 项 | 说明 |
+| --- | --- |
+| `cfg_scale` | 必须不等于 1。等于 1 时没有负分支，另一组卡无事可做，入口直接抛 `ValueError` |
+| 输出形状 | 两支输出的形状必须相同。输入长度可以不同——例如负 prompt 更短、甚至没有文本 token——只要 `model_fn` 返回的是同形状的 latent 预测 |
+| 跨支共享的可变状态 | 两支在不同进程上执行。放在共用输入里的缓存计数器会各自独立累积，跳步决策随之与单卡不同。此类状态要按分支分开保存 |
+| 头数整除 | 只约束序列轴的 size。CFG 轴不参与 attention 的交换，与头数无关 |

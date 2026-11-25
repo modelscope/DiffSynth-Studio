@@ -4,7 +4,7 @@ from modelscope import dataset_snapshot_download
 from PIL import Image
 import torch
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 pipe = SenseNovaU1ImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -13,7 +13,7 @@ pipe = SenseNovaU1ImagePipeline.from_pretrained(
         ModelConfig(model_id="SenseNova/SenseNova-U1.5-8B-MoT", origin_file_pattern="model*.safetensors"),
     ],
     tokenizer_config=ModelConfig(model_id="SenseNova/SenseNova-U1.5-8B-MoT", origin_file_pattern="./"),
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 
 dataset_snapshot_download(

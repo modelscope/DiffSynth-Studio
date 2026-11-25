@@ -7,11 +7,10 @@ size/rank are looked up on every call, never cached.
 from __future__ import annotations
 
 import torch
-import torch.distributed as dist
 
 from ..attention.common import rearrange_out, rearrange_qkv
 from .collectives import all_to_all_4d
-from .context import get_parallel_group
+from .context import parallel_context
 from .sp_state import current_sequence_parallel_state
 
 
@@ -45,16 +44,16 @@ class UlyssesBackend:
     """
 
     def _exchange_qkv(self, q, k, v):
-        group = get_parallel_group()
+        sp_group = parallel_context.get_sequence_group()
         if q.shape == k.shape == v.shape:
             head_size = q.shape[-1]
             merged = torch.cat((q, k, v), dim=-1)
-            merged = all_to_all_4d(merged, scatter_dim=2, gather_dim=1, group=group)
+            merged = all_to_all_4d(merged, scatter_dim=2, gather_dim=1, group=sp_group)
             return merged.split(head_size, dim=-1)
         return (
-            all_to_all_4d(q, scatter_dim=2, gather_dim=1, group=group),
-            all_to_all_4d(k, scatter_dim=2, gather_dim=1, group=group),
-            all_to_all_4d(v, scatter_dim=2, gather_dim=1, group=group),
+            all_to_all_4d(q, scatter_dim=2, gather_dim=1, group=sp_group),
+            all_to_all_4d(k, scatter_dim=2, gather_dim=1, group=sp_group),
+            all_to_all_4d(v, scatter_dim=2, gather_dim=1, group=sp_group),
         )
 
     def _exchange_with_kv_prefix(self, q, k, v, kv_prefix):
@@ -63,14 +62,14 @@ class UlyssesBackend:
         Exchange only the suffix; the prefix already sits in full on every rank, so
         it is head-sliced locally (by KV heads for GQA) and re-attached in front.
         """
-        group = get_parallel_group()
+        sp_group = parallel_context.get_sequence_group()
         k_rep, k_suf = k[:, :kv_prefix], k[:, kv_prefix:]
         v_rep, v_suf = v[:, :kv_prefix], v[:, kv_prefix:]
-        q = all_to_all_4d(q, scatter_dim=2, gather_dim=1, group=group)
-        k_suf = all_to_all_4d(k_suf, scatter_dim=2, gather_dim=1, group=group)
-        v_suf = all_to_all_4d(v_suf, scatter_dim=2, gather_dim=1, group=group)
-        rank = dist.get_rank(group)
-        kv_local = k_rep.shape[2] // dist.get_world_size(group)
+        q = all_to_all_4d(q, scatter_dim=2, gather_dim=1, group=sp_group)
+        k_suf = all_to_all_4d(k_suf, scatter_dim=2, gather_dim=1, group=sp_group)
+        v_suf = all_to_all_4d(v_suf, scatter_dim=2, gather_dim=1, group=sp_group)
+        rank = parallel_context.get_sequence_rank()
+        kv_local = k_rep.shape[2] // parallel_context.get_sequence_world_size()
         k_rep = k_rep[:, :, rank * kv_local:(rank + 1) * kv_local]
         v_rep = v_rep[:, :, rank * kv_local:(rank + 1) * kv_local]
         return q, torch.cat([k_rep, k_suf], dim=1), torch.cat([v_rep, v_suf], dim=1)
@@ -97,7 +96,7 @@ class UlyssesBackend:
 
         if query_padding:
             out = torch.cat((out, out.new_zeros(out.shape[0], query_padding, *out.shape[2:])), dim=1)
-        out = all_to_all_4d(out, scatter_dim=1, gather_dim=2, group=get_parallel_group())
+        out = all_to_all_4d(out, scatter_dim=1, gather_dim=2, group=parallel_context.get_sequence_group())
         return rearrange_out(out, out_pattern, required, dims)
 
     @staticmethod
