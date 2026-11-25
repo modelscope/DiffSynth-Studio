@@ -1,16 +1,23 @@
 # 并行推理
 
-并行推理让多张卡合算**同一个样本**，缩短单张图或一段视频的生成时间。适用于单机多卡、DiT 前向占主要耗时的场景，例如高分辨率图像与长视频。原理与模型接入见[启用模型的并行推理能力](../Developer_Guide/Enabling_Parallel_Inference.md)，接口见 [`diffsynth.core.distributed`](../API_Reference/core/distributed.md)。
+并行推理让多张卡合算**同一个样本**，缩短单张图或一段视频的生成时间。适用于单机多卡、DiT 前向占主要耗时的场景，例如高分辨率图像与长视频。
+
+有两个可以叠加的并行轴：
+
+* **序列并行**把一条样本的 token 序列切给多卡，一次前向内部并行。
+* **CFG 并行**把 classifier-free guidance 的正负两次前向分给两组卡，每卡只算一支。适用于带 guidance（`cfg_scale != 1`）的模型。
+
+原理与模型接入见[启用模型的并行推理能力](../Developer_Guide/Enabling_Parallel_Inference.md)，接口见 [`diffsynth.core.distributed`](../API_Reference/core/distributed.md)。
 
 ## 用现成脚本
 
-已支持的模型都有并行示例，放在 `examples/<series>/model_inference_parallel/`，与 `model_inference/` 下的同名脚本一一对应，差别只有三处：传入 `parallel_config`、用 `torchrun` 启动、只在 rank0 保存结果。
+已支持的模型都有并行示例，放在 `examples/<series>/model_inference_parallel/`，与 `model_inference/` 下的同名脚本一一对应，差别只有三处：传入 `parallel_config`、用 `torchrun` 启动、只在 rank0 保存结果。带 guidance 的脚本已启用 CFG 并行。
 
 ```bash
 torchrun --standalone --nproc_per_node=6 examples/z_image/model_inference_parallel/Z-Image-Turbo.py
 ```
 
-每个脚本开头的注释就是它自己的启动命令，卡数已按该模型的头数选好，直接复制即可。
+每个脚本开头的注释就是它自己的启动命令，卡数与两个轴的划分已按该模型选好，直接复制即可。
 
 ## 在自己的脚本里启用
 
@@ -19,7 +26,7 @@ torchrun --standalone --nproc_per_node=6 examples/z_image/model_inference_parall
 ```python
 import torch
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
 from diffsynth.pipelines.z_image import ZImagePipeline, ModelConfig
 
 pipe = ZImagePipeline.from_pretrained(
@@ -31,7 +38,7 @@ pipe = ZImagePipeline.from_pretrained(
         ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
     tokenizer_config=ModelConfig(model_id="Tongyi-MAI/Z-Image-Turbo", origin_file_pattern="tokenizer/"),
-    parallel_config=ParallelConfig(),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig()),
 )
 image = pipe(prompt="a red cube on a white table", seed=0, num_inference_steps=8)
 if dist.get_rank() == 0:
@@ -42,58 +49,67 @@ if dist.get_rank() == 0:
 torchrun --standalone --nproc_per_node=6 your_script.py
 ```
 
-* 序列切分的份数等于 `--nproc_per_node`，在配置里不指定。
+* `--nproc_per_node` 是**总卡数**，等于各轴 size 之积。配置里只写启用哪些轴，份数由总卡数推出：只开序列并行时它等于总卡数；两个轴都开时 CFG 轴占 2，序列轴占总卡数的一半。
 * 每张卡都会算出完整结果，保存与打印放在 `if dist.get_rank() == 0:` 里，避免多进程写同一个文件。
 * 不传 `parallel_config` 就是单卡路径。同一进程内的多个 pipeline 复用同一个通信组，结束时可调用 `destroy_parallel()` 释放。
 
 ## 配置 parallel_config
 
 ```python
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 parallel_config = ParallelConfig(
-    sequence=SequenceParallelConfig(backend="ulysses", gather_between_blocks=False),
+    sequence=SequenceParallelConfig(),
+    cfg=CFGParallelConfig(),
     timeout_seconds=1800,
 )
 ```
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `ParallelConfig.sequence` | `SequenceParallelConfig()` | 序列并行配置 |
+| `ParallelConfig.sequence` | `None` | 序列并行轴；传入 `SequenceParallelConfig(...)` 启用 |
+| `ParallelConfig.cfg` | `None` | CFG 并行轴；传入 `CFGParallelConfig(...)` 启用 |
 | `ParallelConfig.timeout_seconds` | `1800` | 建立通信组的超时秒数 |
 | `SequenceParallelConfig.backend` | `"ulysses"` | 序列并行的交换后端 |
-| `SequenceParallelConfig.gather_between_blocks` | `False` | `False`：整段 block 只在入口切分、出口还原，块间传递分片；`True`：每个 block 各自切分与还原，块间序列完整 |
 
-`ParallelConfig()` 即上表的默认值，等价于启用 Ulysses 序列并行。切分份数不在配置里，由 `--nproc_per_node` 决定。
+**传入哪个轴的配置，就启用哪个轴**；`ParallelConfig()` 不启用任何并行。各轴份数不在配置里，由 `--nproc_per_node` 决定。
 
-`gather_between_blocks` 用于块间存在对完整序列运行的旁路计算的模型，例如 MOVA 双塔之间的桥；MOVA 在启用序列并行时自动置位，通常无需手动修改。开启后每个 block 都多一次切分与还原。
+`SequenceParallelConfig` 还有一个 `gather_between_blocks`，用于块间存在对完整序列运行的旁路计算的模型。需要它的模型（例如 MOVA）在启用序列并行时自动置位，无需手动配置。
 
 ## 选几张卡
 
-卡数必须整除注意力的头数：Q 头数与 KV 头数都要满足，GQA 模型由 KV 头数决定上限。不满足时启动后会在交换处报错。
+**总卡数 = CFG 轴份数 × 序列轴份数。** 启用 CFG 并行时 CFG 轴固定占 2，所以总卡数必须是偶数，序列轴拿到一半。
 
-各 series 在 8 卡以内的最大可用卡数：
+**头数只约束序列轴**：参与交换的 Q 头数与 KV 头数都要能被序列轴份数整除，GQA 模型由 KV 头数决定上限。CFG 轴不参与 attention 交换，与头数无关。不满足时启动后会在交换处报错，错误消息里带着真实头数。
 
-| series | 最大卡数 |
+各 series 在 8 卡以内的**序列轴最大份数**：
+
+| series | 序列轴最大份数 |
 | --- | --- |
 | boogu_image、fibo | 7 |
 | z_image、ideogram4、krea2、wanvideo（`Wan2.1-T2V-1.3B`、`Echo-Memory`） | 6 |
 | mova | 4 |
 | 其余 series | 8 |
 
-最大卡数的约数同样可用，例如上限 6 的模型可以跑 1、2、3、6 卡。
+最大份数的约数同样可用。启用 CFG 并行后总卡数上限翻倍——例如序列轴上限 4 的模型，`CFG2 × SP4` 可以用满 8 卡。
 
-序列并行更适合长序列任务，例如 MiniMax-H3、Wan 等视频生成场景。卡数越多，通信占比越高；序列很短时（例如 60 秒音频只有数百 token）并行可能比单卡更慢，这类场景建议直接用单卡脚本。
+### 怎么分配这两个轴
+
+**模型带 guidance 时，优先把卡分给 CFG 轴。** 同样卡数下 CFG 布局通常更快：CFG 轴每步只交换一次预测结果，而序列轴每个 block 都要做两次激活 all-to-all，份数越大通信占比越高。实测 8 卡上 `CFG2 × SP4` 明显快于 `SP8`，后者相对 `SP4` 几乎没有额外收益。
+
+序列并行更适合长序列任务，例如 MiniMax-H3、Wan 等视频生成场景。序列很短时（例如 60 秒音频只有数百 token）序列并行可能比单卡更慢，这类场景可以只开 CFG 轴。
+
+**`cfg_scale = 1` 时不要启用 CFG 并行。** 蒸馏模型通常没有负分支，此时 CFG 轴无事可做，启用会直接报错。用只开序列并行的配置。
 
 ## 支持范围
 
-`from_pretrained` 接受 `parallel_config` 的 pipeline：ace_step、anima、boogu_image、diffsynth_music、ernie_image、fibo、flux、flux2、flux3、hidream_o1_image、ideogram4、joyai_image、krea2、lingbot_video、ltx2、minimax_h3、minimax_h3_image、minimax_music3、moss_image、mova、qwen_image、qwen_image_21、qwen_video_edit、sensenova_u1、wan_video、z_image。
+**没有并行入口**：`stable_diffusion`、`stable_diffusion_xl`、`yue2`。
+
+**只支持序列并行，不支持 CFG 并行**：`minimax_music3`、`qwen_video_edit`。
 
 现成的并行脚本覆盖基础生成（文生图/视频/音频、图生视频）、编辑与参考图，以及量化、pruned、comfy 等权重变体。
 
-其余路径的模型结构或加载方式与基础脚本不同，序列并行的正确性未经验证，遇到兼容性问题请提 issue。
-
-`stable_diffusion`、`stable_diffusion_xl`、`yue2` 没有并行入口。
+其余路径的模型结构或加载方式与基础脚本不同，并行的正确性未经验证，遇到兼容性问题请提 issue。
 
 ## 与显存管理同用
 

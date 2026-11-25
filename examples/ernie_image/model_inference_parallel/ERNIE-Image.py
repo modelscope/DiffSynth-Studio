@@ -2,7 +2,7 @@
 from diffsynth.pipelines.ernie_image import ErnieImagePipeline, ModelConfig
 import torch
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 pipe = ErnieImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -13,7 +13,7 @@ pipe = ErnieImagePipeline.from_pretrained(
         ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
     tokenizer_config=ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="tokenizer/"),
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 
 image = pipe(

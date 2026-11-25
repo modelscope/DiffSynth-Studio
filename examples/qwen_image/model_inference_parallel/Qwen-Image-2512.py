@@ -2,7 +2,7 @@
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 import torch
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 
 pipe = QwenImagePipeline.from_pretrained(
@@ -14,7 +14,7 @@ pipe = QwenImagePipeline.from_pretrained(
         ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 prompt = "精致肖像，水下少女，蓝裙飘逸，发丝轻扬，光影透澈，气泡环绕，面容恬静，细节精致，梦幻唯美。"
 image = pipe(prompt, seed=0, num_inference_steps=40)

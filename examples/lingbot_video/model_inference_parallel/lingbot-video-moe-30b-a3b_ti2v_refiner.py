@@ -7,7 +7,7 @@ from diffsynth.utils.data import save_video, VideoData
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 vram_config = {
     "offload_dtype": torch.bfloat16,
@@ -40,7 +40,7 @@ pipe = LingBotVideoPipeline.from_pretrained(
     ],
     processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 5,
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 
 input_video = VideoData(os.path.join(base, "video_1.mp4"), height=1088, width=1920)

@@ -2,7 +2,7 @@
 from diffsynth.pipelines.anima_image import AnimaImagePipeline, ModelConfig
 import torch
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 
 pipe = AnimaImagePipeline.from_pretrained(
@@ -15,7 +15,7 @@ pipe = AnimaImagePipeline.from_pretrained(
     ],
     tokenizer_config=ModelConfig(model_id="Qwen/Qwen3-0.6B", origin_file_pattern="./"),
     tokenizer_t5xxl_config=ModelConfig(model_id="stabilityai/stable-diffusion-3.5-large", origin_file_pattern="tokenizer_3/"),
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 prompt = "Masterpiece, best quality, solo, long hair, wavy hair, silver hair, blue eyes, blue dress, medium breasts, dress, underwater, air bubble, floating hair, refraction, portrait."
 negative_prompt = "worst quality, low quality, monochrome, zombie, interlocked fingers, Aissist, cleavage, nsfw,"

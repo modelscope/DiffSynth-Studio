@@ -4,7 +4,7 @@ import torch
 
 from diffsynth.pipelines.flux3_image import Flux3ImagePipeline, ModelConfig
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 # `black-forest-labs/flux-3-image-klein-base` is an access-request-only model. To download it:
 # 1. Request access at https://modelscope.cn/models/black-forest-labs/flux-3-image-klein-base
@@ -18,7 +18,7 @@ pipe = Flux3ImagePipeline.from_pretrained(
         ModelConfig(model_id="black-forest-labs/flux-3-image-klein-base", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
     processor_config=ModelConfig(model_id="black-forest-labs/flux-3-image-klein-base", origin_file_pattern="text_encoder/"),
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 
 prompt = "Masterpiece, best quality. Cinematic photograph of a beautiful young woman with long black hair wearing a navy sailor-style school uniform with a green necktie, standing in a sunlit school corridor with large windows, warm afternoon light and soft bokeh in the background."

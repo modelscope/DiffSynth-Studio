@@ -2,7 +2,7 @@
 from diffsynth.pipelines.sensenova_u1_image import SenseNovaU1ImagePipeline, ModelConfig
 import torch
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 pipe = SenseNovaU1ImagePipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -11,7 +11,7 @@ pipe = SenseNovaU1ImagePipeline.from_pretrained(
         ModelConfig(model_id="SenseNova/SenseNova-U1.5-8B-MoT-SFT", origin_file_pattern="model*.safetensors"),
     ],
     tokenizer_config=ModelConfig(model_id="SenseNova/SenseNova-U1.5-8B-MoT-SFT", origin_file_pattern="./"),
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 
 prompt = "A neon bar sign that clearly reads \"OPEN LATE\", dark interior, moody reflections, easy text rendering. Any text in the image must be rendered exactly as written in quotation marks, with correct spelling, clean typography, and strong readability."

@@ -2,7 +2,7 @@
 import torch
 from diffsynth.pipelines.flux_image import FluxImagePipeline, ModelConfig
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 
 pipe = FluxImagePipeline.from_pretrained(
@@ -14,7 +14,7 @@ pipe = FluxImagePipeline.from_pretrained(
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="text_encoder_2/*.safetensors"),
         ModelConfig(model_id="black-forest-labs/FLUX.1-dev", origin_file_pattern="ae.safetensors"),
     ],
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 
 prompt = "An beautiful woman is riding a bicycle in a park, wearing a red dress"

@@ -7,7 +7,7 @@ from diffsynth.utils.data import save_video
 from diffsynth.pipelines.lingbot_video import LingBotVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
 import torch.distributed as dist
-from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig
+from diffsynth.core.distributed import ParallelConfig, SequenceParallelConfig, CFGParallelConfig
 
 pipe = LingBotVideoPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
@@ -18,7 +18,7 @@ pipe = LingBotVideoPipeline.from_pretrained(
         ModelConfig(model_id="Robbyant/lingbot-video-dense-1.3b", origin_file_pattern="vae/diffusion_pytorch_model.safetensors"),
     ],
     processor_config=ModelConfig(model_id="Qwen/Qwen3-VL-4B-Instruct", origin_file_pattern=""),
-    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses")),
+    parallel_config=ParallelConfig(sequence=SequenceParallelConfig(backend="ulysses"), cfg=CFGParallelConfig()),
 )
 
 # The condition first frame and its paired caption ship in the example dataset.
