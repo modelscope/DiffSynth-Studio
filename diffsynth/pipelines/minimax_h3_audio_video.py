@@ -33,6 +33,7 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.video_vae: MiniMaxH3VideoVAE = None
         self.audio_vae: MiniMaxH3AudioVAE = None
         self.controlnet: MiniMaxH3ControlNet = None
+        self.pi_h3_dwd = None
         self.tokenizer = None
         self.processor = None
         self.imgvid_cond_noise_aug = 0.999
@@ -64,6 +65,7 @@ class MiniMaxH3Pipeline(BasePipeline):
         vram_limit: float = None,
         redirect_common_files: bool = True,
         parallel_config=None,
+        pi_h3_adapter_config: ModelConfig = None,
     ):
         if redirect_common_files:
             redirect_dict = {
@@ -88,6 +90,10 @@ class MiniMaxH3Pipeline(BasePipeline):
         vdn_branch = model_pool.fetch_model("minimax_h3_vdn_linear_branch")
         if vdn_branch is not None:
             enable_minimax_h3_vdn(pipe.dit, vdn_branch)
+        if pi_h3_adapter_config is not None:
+            pipe.pi_h3_dwd = model_pool.fetch_model("minimax_h3_pi_dwd")
+            pipe.scheduler = FlowMatchScheduler("MiniMax-H3-Pi")
+            pipe.scheduler_audio = FlowMatchScheduler("MiniMax-H3-Pi")
         if processor_config is not None:
             processor_config.download_if_necessary()
             pipe.processor = AutoProcessor.from_pretrained(processor_config.path)
@@ -185,10 +191,12 @@ class MiniMaxH3Pipeline(BasePipeline):
         for progress_id, timestep_video in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep_video = timestep_video.unsqueeze(0).to(dtype=torch.float32, device=self.device)
             timestep_audio = self.scheduler_audio.timesteps[progress_id].unsqueeze(0).to(dtype=torch.float32, device=self.device)
-            noise_pred_video, noise_pred_audio = self.cfg_guided_model_fn(
+            prediction = self.cfg_guided_model_fn(
                 self.model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega,
                 **models, timestep_video=timestep_video, timestep_audio=timestep_audio,
+                return_video_features=self.pi_h3_dwd is not None and progress_id == num_inference_steps - 1,
             )
+            noise_pred_video, noise_pred_audio = prediction[:2]
             inputs_shared["video_latents"] = self.step(
                 self.scheduler, inputs_shared["video_latents"], progress_id, noise_pred=noise_pred_video,
                 inpaint_mask=inputs_shared.get("denoise_mask_video"), input_latents=inputs_shared.get("input_latents_video"),
@@ -199,8 +207,13 @@ class MiniMaxH3Pipeline(BasePipeline):
             )
 
         # 5. Decode
-        self.load_models_to_device(["video_vae"])
-        frames = self.video_vae.decode_video(inputs_shared["video_latents"], dtype=self.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap)
+        if self.pi_h3_dwd is not None:
+            self.load_models_to_device(["pi_h3_dwd"])
+            t, h, w = inputs_shared["video_latents"].shape[-3:]
+            frames = self.pi_h3_dwd(*prediction[2], (t, h // 2, w // 2))
+        else:
+            self.load_models_to_device(["video_vae"])
+            frames = self.video_vae.decode_video(inputs_shared["video_latents"], dtype=self.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap)
         video = self.vae_output_to_video(frames, min_value=0, max_value=1)
 
         self.load_models_to_device(["audio_vae"])
@@ -975,6 +988,7 @@ def model_fn_minimax_h3(
     control_scale=1.0,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
+    return_video_features=False,
     **kwargs,
 ):
     t_video = 1.0 - float(timestep_video) / 1000
@@ -1051,7 +1065,7 @@ def model_fn_minimax_h3(
     else:
         control_hints = None
 
-    v_video_rows, v_audio_rows = dit(
+    prediction = dit(
         x=x,
         audio_x=audio_x,
         img_position_ids=packed["img_position_ids"],
@@ -1070,11 +1084,15 @@ def model_fn_minimax_h3(
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
         control_hints=control_hints,
+        video_feature_positions=img_pos[cond_rows_count:] if return_video_features else None,
     )
 
+    v_video_rows, v_audio_rows = prediction[:2]
     v_video_rows = v_video_rows[cond_rows_count:]
     v_audio_rows = v_audio_rows[ref_audio_rows_count:]
 
     v_video = unpatchify_video(v_video_rows, f, h, w)
     v_audio = unpack_audio(v_audio_rows, audio_channel, audio_t)
+    if return_video_features:
+        return -v_video, -v_audio, prediction[2]
     return -v_video, -v_audio

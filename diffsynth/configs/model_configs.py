@@ -1714,6 +1714,34 @@ minimax_h3_series = [
         "model_class": "diffsynth.models.minimax_h3_dit_vdn.MiniMaxH3VDNBranch",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit_vdn.MiniMaxH3VDNBranchStateDictConverter",
     },
+    {
+        # Example: ModelConfig(model_id="multimodalart/MiniMax-H3-Pruned", origin_file_pattern="text_encoder/model-*.safetensors")
+        "model_hash": "8794f5cd5278a608e7a034b43814cf7f",
+        "model_name": "minimax_h3_text_encoder",
+        "model_class": "diffsynth.models.minimax_h3_text_encoder.MiniMaxH3TextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_text_encoder.MiniMaxH3TextEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lakonik/pi-H3", origin_file_pattern="pi_h3_4step_adapter/diffusion_pytorch_model.safetensors")
+        "model_hash": "466562b62f41289018f0b69f5485b1f1",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfyPruned",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit.MiniMaxH3DiTPrunedDiffusersStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lakonik/pi-H3", origin_file_pattern="pi_h3_4step_dwd_adapter/diffusion_pytorch_model.safetensors")
+        "model_hash": "78dba3532f326e17ddfe04af580cbf12",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfyPruned",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit.MiniMaxH3DiTPrunedDiffusersStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lakonik/pi-H3", origin_file_pattern="pi_h3_4step_dwd_adapter/diffusion_pytorch_model.safetensors")
+        "model_hash": "78dba3532f326e17ddfe04af580cbf12",
+        "model_name": "minimax_h3_pi_dwd",
+        "model_class": "diffsynth.models.minimax_h3_dwd.MiniMaxH3DWD",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit.MiniMaxH3PiDWDStateDictConverter",
+    },
 ]
 
 minimax_music3_series = [

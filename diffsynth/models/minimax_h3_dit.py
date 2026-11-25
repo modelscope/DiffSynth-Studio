@@ -337,7 +337,8 @@ class MiniMaxH3DiT(nn.Module):
         update_audio_mask=None,
         skip_mask_out_condition=False,
         control_hints=None,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+        video_feature_positions=None,
+    ):
         inverse_indices = inverse_indices.view(-1).to(torch.long)
         token_tags = token_tags.view(-1).to(torch.long)
         text_selected = prompt_embeds
@@ -398,4 +399,8 @@ class MiniMaxH3DiT(nn.Module):
             video_logits = video_logits * update_mask.unsqueeze(-1)
             if update_audio_mask is not None:
                 audio_logits = audio_logits * update_audio_mask.view(-1).unsqueeze(-1)
+        if video_feature_positions is not None:
+            time_indices = inverse_indices.index_select(0, video_feature_positions)
+            features = hidden.index_select(0, video_feature_positions)
+            return video_logits, audio_logits, (features, t_emb.index_select(0, time_indices))
         return video_logits, audio_logits
