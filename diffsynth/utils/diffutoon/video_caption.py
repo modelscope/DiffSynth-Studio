@@ -1,25 +1,33 @@
-"""Per-window captions for one long video, for window-by-window generation.
+"""Per-segment captions for one long video, for segment-by-segment generation.
 
-Handing every window the same whole-clip caption tells each one to perform the
+Handing every segment the same whole-clip caption tells each one to perform the
 entire arc, so a clip with a one-way trajectory (a flower opening) snaps back to
-the start of that arc at every seam. One caption per window instead: segment k is
+the start of that arc at every seam. One caption per segment instead: segment k is
 told what happens in segment k's own span. Measured on a 40s bloom with 56-frame
-windows, this roughly halves the mean seam discontinuity at every context length.
+segments, this roughly halves the mean seam discontinuity at every overlap.
 
-The whole clip is captioned first; each window then gets its own local caption
-with that global text as a naming reference only (including single-window short
-clips). Generation consumes the local caption. Handing a window its
+The whole clip is captioned first; each segment then gets its own local caption
+with that global text as a naming reference only (including single-segment short
+clips). Generation consumes the local caption. Handing a segment its
 *predecessor's* caption instead collapses the output -- greedy decoding copies
 a caption already nearly right for the shared frames.
 
-Windows are identified by their start frame g0 in output-FPS index space, so the
-caller owns the schedule and there is exactly one definition of it.
+Segments are given by the caller as half-open output-frame ranges
+`segments = [(s1, t1), (s2, t2), ...]`, where segment k covers frames
+[s_k, t_k): the same ranges the caller generates in, so there is exactly one
+definition of the schedule. Segment lengths may differ and consecutive segments
+may overlap.
 
-Run as a subprocess (`python -m diffsynth.utils.controlnet.video_caption in.mp4
-out.json --g0 0,344 --window 345 --context 1`) when a generation pipeline
-follows: the captioner is a 27B model and only process exit releases the GPU.
+Call it as a function: `caption_windows(video, output, segments)` captions every
+segment and returns `{s: caption}`. The captioner is a 27B model and is released
+when the call returns, but its GPU memory stays in PyTorch's cache, so run it in
+a separate process if the generation pipeline that follows needs that memory
+back.
+
+The captioner weights are fetched through `ModelConfig`, so they land in the
+framework's unified model directory (`./models` by default, overridable with
+`DIFFSYNTH_MODEL_BASE_PATH`) instead of a machine-specific path.
 """
-import argparse
 import json
 import os
 
@@ -27,7 +35,9 @@ import numpy as np
 import torch
 from PIL import Image
 
-MODEL_PATH = "/root/models/Qwen3.8-27B"
+from diffsynth.core import ModelConfig
+
+CAPTIONER_MODEL_ID = "Qwen/Qwen3.8-27B"
 NUM_FRAMES = 12          # frames sampled per caption; more frames, more tokens
 IMG_SHORT = 560          # short side each frame is scaled to, to cap tokens
 FPS = 24                 # output frame rate the g0 indices are expressed in
@@ -200,32 +210,57 @@ def _scale(img):
     return img
 
 
-def window_frames(frames, src_fps, g0, window, n_sample, total):
-    """Sample up to n_sample frames out of output-index window [g0, g0+window).
+def segment_frames(frames, src_fps, start, end, n_sample, total):
+    """Sample up to n_sample frames out of output-index range [start, end).
 
     Output frame k maps to source frame round(k*src_fps/FPS), the same mapping
     the generation loader uses; sampling the source uniformly instead would
-    drift against the frames the model actually renders for this window.
+    drift against the frames the model actually renders for this segment.
 
-    The span is clamped to what the file covers, and if that leaves fewer than
+    The range is clamped to what the file covers, and if that leaves fewer than
     n_sample frames, fewer are sampled rather than duplicated. A schedule whose
-    last window overruns the end would otherwise clamp most positions onto the
+    last segment overruns the end would otherwise clamp most positions onto the
     final frame and get described as static.
 
     Returns (images, span) where span is how many output frames they really
     cover -- what the prompt should be told the duration is.
     """
     T = frames.shape[0]
-    end = min(g0 + window - 1, total - 1)
-    n = min(n_sample, end - g0 + 1)
+    last = min(end - 1, total - 1)
+    if last < start:
+        raise ValueError(
+            f"segment [{start}, {end}) starts at or past the end of the video "
+            f"({total} frames at {FPS}fps)")
+    n = min(n_sample, last - start + 1)
     imgs = [_scale(Image.fromarray(frames[min(int(round(k * src_fps / FPS)), T - 1)]).convert("RGB"))
-            for k in np.linspace(g0, end, n, dtype=int)]
-    return imgs, end - g0 + 1
+            for k in np.linspace(start, last, n, dtype=int)]
+    return imgs, last - start + 1
 
 
 # ------------------------------------------------------------------- inference
-def load_captioner(model_path=MODEL_PATH, device="cuda"):
+def resolve_captioner_path(model_path=None):
+    """Local directory of the captioner, downloaded on first use.
+
+    `model_path` is an optional local override; by default the weights are
+    fetched from `CAPTIONER_MODEL_ID` through `ModelConfig`, which stores them
+    under the framework's unified model directory.
+    """
+    if model_path is None:
+        config = ModelConfig(model_id=CAPTIONER_MODEL_ID, origin_file_pattern="")
+    else:
+        config = ModelConfig(path=model_path)
+    config.download_if_necessary()
+    if config.path is None:
+        raise FileNotFoundError(
+            f"Captioner weights for {CAPTIONER_MODEL_ID} are missing; run without "
+            "DIFFSYNTH_SKIP_DOWNLOAD to fetch them or pass model_path."
+        )
+    return config.path
+
+
+def load_captioner(model_path=None, device="cuda"):
     from transformers import AutoModelForImageTextToText, AutoProcessor
+    model_path = resolve_captioner_path(model_path)
     processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True)
     model = AutoModelForImageTextToText.from_pretrained(
         model_path, torch_dtype=torch.bfloat16,
@@ -257,7 +292,7 @@ def caption_global(model, processor, frames, duration):
 
 
 def caption_frames(model, processor, frames, duration, global_caption=None, position=None):
-    """`global_caption` makes this window use the whole clip's naming;
+    """`global_caption` makes this segment use the whole clip's naming;
     `position` needs total_dur / start / end / index / count."""
     text = USER_PROMPT.format(n=len(frames), dur=f"{duration:.1f}")
     if position:
@@ -282,23 +317,58 @@ def parse_output(raw):
 
 
 # ------------------------------------------------------------------ the driver
-def caption_windows(video, output, g0_list, window, context=0,
-                    n_sample=NUM_FRAMES, model_path=MODEL_PATH, device="cuda"):
-    """Caption every window in `g0_list`, writing {g0: caption} to `output`.
+def check_segments(segments):
+    """Validate `segments` and return them as sorted [(s, t)] half-open ranges.
 
-    Each window's caption is sampled from the part of it that is actually
-    generated: with retake, the first `context` frames of every window after the
-    first are pinned to the previous segment's output, so they are skipped --
-    captioning them describes frames this segment does not draw, and since they
-    are also the previous window's tail they drag its state into this caption.
-
-    The json is rewritten after every window, so a crash keeps what is done.
+    A later segment may start before the previous one ends -- those head frames
+    are pinned to the previous segment's output -- but every start must be
+    unique (captions are keyed by start frame) and every segment must still
+    contain frames of its own.
     """
-    want = sorted({int(x) for x in g0_list})
+    spans = []
+    for item in segments:
+        try:
+            s, t = (int(v) for v in item)
+        except (TypeError, ValueError):
+            raise ValueError(f"segment {item!r} is not a (start, end) pair of frame ids") from None
+        if t <= s:
+            raise ValueError(f"segment ({s}, {t}) covers no frames; segments are "
+                             "half-open [start, end) output-frame ranges")
+        spans.append((s, t))
+    if not spans:
+        raise ValueError("segments is empty")
+    spans.sort()
+    for (s0, t0), (s1, t1) in zip(spans, spans[1:]):
+        if s1 == s0:
+            raise ValueError(f"two segments start at frame {s0}; captions are keyed "
+                             "by start frame")
+        if t1 <= t0:
+            raise ValueError(f"segment ({s1}, {t1}) lies within the previous segment, "
+                             f"which ends at {t0}; it has no frames of its own")
+    return spans
+
+
+def caption_windows(video, output, segments,
+                    n_sample=NUM_FRAMES, model_path=None, device="cuda"):
+    """Caption every segment in `segments`, writing {start_frame: caption} to `output`.
+
+    `segments` is `[(s1, t1), (s2, t2), ...]` of half-open output-frame ranges at
+    FPS: segment k spans [s_k, t_k), and that is also the window it is generated
+    in. Each segment's caption is sampled from the part of it that is actually
+    generated: if segment k starts before segment k-1 ends, those overlapping
+    head frames are pinned to the previous segment's output (retake), so they are
+    skipped -- captioning them describes frames this segment does not draw, and
+    since they are also the previous segment's tail they drag its state into this
+    caption. The overlap is read off the segments themselves, so there is no
+    separate window length or context to keep in sync with the schedule.
+
+    The json is rewritten after every segment, so a crash keeps what is done.
+    """
+    spans = check_segments(segments)
     frames, src_fps = read_all(video)
     total = available_frames(frames, src_fps)
     print(f"{os.path.basename(video)}: {frames.shape[0]} src frames @ {src_fps:g}fps "
-          f"-> {total} frames @ {FPS}fps; {len(want)} windows of {window} to caption", flush=True)
+          f"-> {total} frames @ {FPS}fps; {len(spans)} segment(s) to caption", flush=True)
 
     model, processor = load_captioner(model_path, device)
     print("captioner loaded", flush=True)
@@ -308,10 +378,11 @@ def caption_windows(video, output, g0_list, window, context=0,
     def flush():
         os.makedirs(os.path.dirname(os.path.abspath(output)), exist_ok=True)
         with open(output, "w") as fh:
-            json.dump({"window": window, "fps": FPS, "global_caption": global_caption,
-                       "captions": caps}, fh, ensure_ascii=False, indent=1)
+            json.dump({"segments": [list(p) for p in spans], "fps": FPS,
+                       "global_caption": global_caption, "captions": caps},
+                      fh, ensure_ascii=False, indent=1)
 
-    gimgs, gspan = window_frames(frames, src_fps, 0, total, n_sample, total)
+    gimgs, gspan = segment_frames(frames, src_fps, 0, total, n_sample, total)
     graw = caption_global(model, processor, gimgs, gspan / FPS)
     gcap = parse_output(graw)
     if gcap is None or "global_caption" not in gcap:
@@ -320,49 +391,31 @@ def caption_windows(video, output, g0_list, window, context=0,
     print(f"[global] ok ({len(global_caption)} chars, {len(gimgs)} frames over "
           f"{gspan})\n{global_caption}\n", flush=True)
 
-    # Always global then per-window local (including single-window short clips);
+    # Always global then per-segment local (including single-segment short clips);
     # the generation prompt uses the local caption.
-    for j, g0 in enumerate(want):
-        c0 = g0 if j == 0 else g0 + context
-        imgs, span = window_frames(frames, src_fps, c0, window - (c0 - g0), n_sample, total)
-        # Seconds are the real sampled interval, so `span` rather than `window`:
-        # the last window gets clamped to what the file covers.
+    prev_end = None
+    for j, (s, t) in enumerate(spans):
+        c0 = s if prev_end is None else max(s, prev_end)
+        prev_end = t
+        imgs, span = segment_frames(frames, src_fps, c0, t, n_sample, total)
+        # Seconds are the real sampled interval, so `span` rather than the
+        # nominal t - c0: the last segment gets clamped to what the file covers.
         raw = caption_frames(model, processor, imgs, span / FPS, global_caption=global_caption,
                              position={"total_dur": f"{total / FPS:.1f}", "start": f"{c0 / FPS:.1f}",
-                                       "end": f"{(c0 + span) / FPS:.1f}", "index": j + 1, "count": len(want)})
+                                       "end": f"{(c0 + span) / FPS:.1f}", "index": j + 1, "count": len(spans)})
         cap = parse_output(raw)
         if cap is None or "local_caption" not in cap:
-            failed.append(g0)
-            print(f"[{j+1}/{len(want)}] g0={g0} PARSE FAIL: {raw[:160]}", flush=True)
+            failed.append(s)
+            print(f"[{j+1}/{len(spans)}] segment=({s}, {t}) PARSE FAIL: {raw[:160]}", flush=True)
             continue
-        caps[str(g0)] = str(cap["local_caption"]).strip()
-        print(f"[{j+1}/{len(want)}] g0={g0} ok ({len(caps[str(g0)])} chars, "
-              f"{len(imgs)} frames over {span})", flush=True)
+        caps[str(s)] = str(cap["local_caption"]).strip()
+        print(f"[{j+1}/{len(spans)}] segment=({s}, {t}) ok ({len(caps[str(s)])} chars, "
+              f"{len(imgs)} frames over [{c0}, {c0 + span}))", flush=True)
         flush()
 
     flush()
-    print(f"wrote {len(caps)}/{len(want)} captions -> {output}"
+    print(f"wrote {len(caps)}/{len(spans)} captions -> {output}"
           + (f"  FAILED: {failed}" if failed else ""), flush=True)
     if failed:
-        raise RuntimeError(f"{len(failed)} window(s) failed to parse")
+        raise RuntimeError(f"{len(failed)} segment(s) failed to parse")
     return caps
-
-
-def main():
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("video")
-    p.add_argument("output")
-    p.add_argument("--g0", required=True, help="comma-separated window start frames")
-    p.add_argument("--window", type=int, required=True, help="frames per window")
-    p.add_argument("--context", type=int, default=0, help="pinned tail from the previous segment, skipped when sampling")
-    p.add_argument("--num-frames", type=int, default=NUM_FRAMES, help=f"frames sampled per window (default {NUM_FRAMES})")
-    p.add_argument("--model-path", default=MODEL_PATH)
-    p.add_argument("--device", default="cuda")
-    args = p.parse_args()
-    caption_windows(args.video, args.output, [x for x in args.g0.split(",") if x.strip()],
-                    args.window, context=args.context, n_sample=args.num_frames,
-                    model_path=args.model_path, device=args.device)
-
-
-if __name__ == "__main__":
-    main()
