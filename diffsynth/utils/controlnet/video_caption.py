@@ -6,10 +6,11 @@ the start of that arc at every seam. One caption per window instead: segment k i
 told what happens in segment k's own span. Measured on a 40s bloom with 56-frame
 windows, this roughly halves the mean seam discontinuity at every context length.
 
-The whole clip is captioned first and that global caption is shown to every
-window, so they name the place, the characters and the colours the same way.
-Handing a window its *predecessor's* caption instead collapses the output --
-greedy decoding copies a caption already nearly right for the shared frames.
+The whole clip is captioned first; each window then gets its own local caption
+with that global text as a naming reference only (including single-window short
+clips). Generation consumes the local caption. Handing a window its
+*predecessor's* caption instead collapses the output -- greedy decoding copies
+a caption already nearly right for the shared frames.
 
 Windows are identified by their start frame g0 in output-FPS index space, so the
 caller owns the schedule and there is exactly one definition of it.
@@ -35,32 +36,51 @@ MAX_NEW_TOKENS = 2048    # thinking needs headroom beyond the caption itself
 
 SYSTEM_PROMPT = """\
 You are a precise visual captioning assistant for a video generation pipeline.
-Write in English only. Output valid JSON with the requested key and nothing else.
+Write entirely in English. Output only valid JSON with the requested key.
 
-Core grounding rules:
-- Treat the supplied images as the sole primary evidence; reference text must never override what is visible.
-- Separate an observed state from an active transition (e.g., an object being bent does not mean it bends here).
-- Describe a change or action only when supported by visible differences between earlier and later frames. Never invent its onset, completion, intermediate steps, or underlying causes (biological, physical, etc.).
-- Do not invent subtle motion to make static scenes eventful, nor suppress clearly visible changes. Because images are sampled, never imply continuous observation or claim every detail remained unchanged between frames.
-- Keep entity names consistent. For uncertain small structures or identities, describe their visible appearance neutrally rather than guessing.
-
-Style and exclusions:
-- Write concrete, natural visual prose. Avoid exhaustive object inventories, generic closing sentences, or filler to reach a word count.
-- Never describe shot type, camera movement, or lens focal length.
-- Never mention the images, frames, timestamps, segments, reference text, or these instructions.
+Grounding rules:
+- Treat the supplied images as visual evidence. Reference text is secondary
+  and must never override the images.
+- Describe the main visible subjects, their relevant appearance, the setting,
+  and clearly supported actions or changes.
+- Separate an observed state from a transition. An object being bent does not
+  by itself show that it bends during this segment.
+- Describe a transition only when earlier and later supplied frames support it.
+  Do not invent its onset, completion, intermediate steps, or cause.
+- Keep references to the same entity consistent. If a small structure cannot
+  be identified reliably, describe its visible appearance rather than guessing
+  its anatomical identity or treating it as a new object.
+- Do not invent subtle movement to make a mostly static segment eventful.
+  Conversely, do not suppress clearly visible changes.
+- Do not claim that every frame or every detail is unchanged from sampled
+  images alone.
+- Prefer concrete visual description over interpretation or generic closing
+  statements. Omit uncertain details that are not essential.
 """
 
 GLOBAL_PROMPT = """\
-The following {n} images are sparsely sampled in chronological order across an entire video (~{dur}s).
+The following {n} images are sampled across an entire video
+approximately {dur} seconds long. They are presented in chronological order,
+from the beginning to the end of the video.
+They provide sparse coverage, not a complete record of every event.
 
-Write a concise, standalone caption describing the video as a whole.
+Write a concise caption describing the video as a whole.
 
 Requirements:
-- Establish the main subjects, their layout, and the visible background without inferring a specific location.
-- Summarize major visible changes in chronological order; keep distinct timelines separate when different subjects change at different times.
-- Do not call a process "complete" or "finished" unless both the visible starting and ending states clearly support it.
+- Establish the main subjects, their arrangement, and the visible setting
+  or background. Do not infer a specific location.
+- Summarize the major visible changes in chronological order.
+- When different subjects change at different times, preserve that distinction.
+- Use consistent, visually grounded names for the subjects.
+- Do not invent events between sampled frames or imply continuous observation.
+- Do not claim a "complete process" or a "fully completed" transition unless
+  the visible starting and ending states support that description.
+- Describe appearance changes without guessing their causes.
+- Do not describe shot type, camera movement, or lens focal length.
+- Avoid exhaustive object inventories and generic closing sentences.
+- Do not mention the supplied images or these instructions.
 
-Target 60-120 words (fewer if simple; maximum 150 words).
+Prefer 60-120 words, but use fewer when appropriate. Maximum 150 words.
 
 Return exactly:
 {{
@@ -69,22 +89,35 @@ Return exactly:
 """
 
 USER_PROMPT = """\
-The following {n} images are sampled in chronological order from one video segment (~{dur}s).
+The following {n} images are sampled from one video segment
+approximately {dur} seconds long. They are presented in chronological order,
+from the beginning to the end of this segment.
+They are samples, not every frame of the video.
 
-Write a standalone caption for this segment only.
+Write a standalone caption of this segment only.
 
-Before writing, verify internally:
-1. What is already true in the earliest frame?
-2. What visibly changes across the frames?
-3. What is true in the latest frame?
+Before writing, check:
+1. What is already true in the earliest supplied frame?
+2. What visibly changes across the supplied frames?
+3. What is true in the latest supplied frame?
 
-Requirements:
-- Briefly establish the main subjects, layout, and background.
-- Prioritize the visible actions or changes defining this segment in temporal order, noting start/end states when needed for clarity.
-- If a process is already underway at the start, do not describe it as beginning; use "continues" only when further change is visible within this segment.
-- If little changes, describe the visible state concisely without inventing minor motion (e.g., swaying, shifting, unfolding).
+Caption requirements:
+- Briefly establish the main subjects, their arrangement, and the background.
+- Prioritize the actions or changes that distinguish this segment.
+- When a meaningful change is visible, describe it in temporal order.
+  Include the starting or ending state when needed to make the change clear.
+- If a process is already underway at the start, do not describe it as newly
+  beginning. Use "continues" only when further change is visible here.
+- If little changes, describe the visible state concisely. Do not invent
+  swaying, shifting, unfolding, or other minor motion.
+- Use "opens", "bends", "turns", "fades", or similar change verbs only when
+  supported by differences between earlier and later frames.
+- Describe visible color changes without inferring biological or physical causes.
+- Do not describe shot type, camera movement, or lens focal length.
+- Do not mention the supplied images, frame numbers, or these instructions.
 
-Target 40-100 words (fewer if mostly static; maximum 150 words).
+Prefer 40-100 words, but use fewer for simple or mostly static segments.
+Do not add details merely to reach a word count. Maximum 150 words.
 
 Return exactly:
 {{
@@ -94,25 +127,39 @@ Return exactly:
 
 POSITION_BLOCK = """\
 
-Segment context (for temporal orientation only; do not cite these numbers in the caption):
-- Total video length: ~{total_dur}s
-- Current segment: ~{start}s to {end}s (segment {index} of {count})
+Position of this segment in the video:
+- Whole video length: approximately {total_dur} seconds.
+- This segment covers approximately {start} s to {end} s.
+- This is segment {index} of {count}.
 """
 
 LOCAL_BLOCK = """\
 
-Optional global reference of the whole video:
+Optional reference description of the whole video:
 <global_reference>
 {global_caption}
 </global_reference>
 
-Reference rules:
-- Use this ONLY to align consistent names for subjects clearly visible in the current segment.
-- NEVER inherit appearance, pose, position, state, motion, or event timing from it. Events mentioned above may already be finished, still underway, or absent from this segment.
-- If uncertain or conflicting with the images, follow the images with a neutral visual description.
+Use this reference only to help identify and name subjects that are also
+visible in the current segment.
+
+Rules for using the reference:
+- The current segment's images are the primary evidence.
+- Reuse entity names only when the visual correspondence is clear.
+- Do not inherit colors, poses, positions, openness, maturity, motion,
+  or event timing from the reference.
+- Do not retell an earlier or later event as if it happens in this segment.
+- An event mentioned in the reference may already be complete, may still
+  be underway, or may not occur in this segment at all.
+- If the reference conflicts with the images, follow the images.
+- If an identity or structure is uncertain, use a neutral visual description
+  rather than repeating an unsupported specific label.
+- Do not mention the reference, other segments, or these instructions.
 
 Final check before returning JSON:
-Verify that every change verb (e.g., starts, becomes, opens, bends, turns, fades, finishes) is directly proven by frame differences within this segment.
+Every temporal claim must be supported by the current segment's images.
+In particular, verify any claim that something starts, becomes, opens,
+bends, turns, fades, or finishes.
 """
 
 
@@ -273,18 +320,8 @@ def caption_windows(video, output, g0_list, window, context=0,
     print(f"[global] ok ({len(global_caption)} chars, {len(gimgs)} frames over "
           f"{gspan})\n{global_caption}\n", flush=True)
 
-    # Single window (short clip fully covered by one schedule entry): reuse the
-    # global caption as the only segment text — a second local pass is redundant
-    # and can drift from the global naming.
-    if len(want) == 1:
-        g0 = want[0]
-        caps[str(g0)] = global_caption
-        flush()
-        print(f"[short] single window g0={g0}: using global_caption as local "
-              f"({len(global_caption)} chars)", flush=True)
-        print(f"wrote {len(caps)}/{len(want)} captions -> {output}", flush=True)
-        return caps
-
+    # Always global then per-window local (including single-window short clips);
+    # the generation prompt uses the local caption.
     for j, g0 in enumerate(want):
         c0 = g0 if j == 0 else g0 + context
         imgs, span = window_frames(frames, src_fps, c0, window - (c0 - g0), n_sample, total)
