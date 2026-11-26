@@ -1,10 +1,10 @@
-# KV-Cache 压缩
+# 上下文压缩
 
-部分模型采用 KV-Cache 存储输入的文本和图像信息，在多图编辑等任务中占用极大的显存。DiffSynth-Studio 框架提供通用的 KV-Cache 压缩接口，能够大幅减少 KV-Cache 所占用的显存。
+部分模型会在推理过程中保存大尺寸的中间张量（context），例如多图编辑时用 KV-Cache 存储输入的文本和图像信息，或者为 ControlNet 的逐层输出单独维护一份缓存。这些张量在多图编辑、长视频生成等任务中会占用极大的显存。DiffSynth-Studio 框架提供通用的上下文压缩接口：张量写入缓存时压缩，读取时按需解压，能够大幅减少上下文张量所占用的显存。
 
-> 目前 KV-Cache 压缩仅适配 Qwen-Image-2.1、Qwen-Image-2.1-Turbo、Wan-AI/Wan2.2-Animate-2-14B。
+> 目前上下文压缩仅适配 Qwen-Image-2.1、Qwen-Image-2.1-Turbo、Wan-AI/Wan2.2-Animate-2-14B 的 KV-Cache，以及 MiniMax-H3 的 ControlNet 输出值。
 
-## 启用 KV-Cache 压缩
+## 启用上下文压缩
 
 ```python
 from diffsynth.pipelines.qwen_image_21 import QwenImage21Pipeline, ModelConfig

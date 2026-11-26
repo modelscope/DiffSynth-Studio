@@ -43,7 +43,7 @@
 
 - **2026年11月23日** **DiffSynth-Studio 现已支持统一多 GPU 并行推理，覆盖大部分框架内模型。**在硬件条件充裕的前提下，充分释放 GPU 的潜力！请参考[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Pipeline_Usage/Parallel_Inference.html)。
 
-- **2026年11月23日** 框架新增了 KV-Cache 压缩模块，目前支持的压缩方案包括 [EntroPack](https://github.com/modelscope/entropack)、SVD、Cholesky-QR，其中 EntroPack 的效果最好，可用于减少 KV-Cache 所占的显存，适用于 Qwen-Image-2.1、Qwen-Image-2.1-Turbo、Wan2.2-Animate-2-14B，详见[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Pipeline_Usage/KV_Cache_Compression.html)。
+- **2026年11月23日** 框架新增了上下文压缩模块，目前支持的压缩方案包括 [EntroPack](https://github.com/modelscope/entropack)、SVD、Cholesky-QR，其中 EntroPack 的效果最好，可用于减少 KV-Cache 等上下文张量所占的显存，适用于 Qwen-Image-2.1、Qwen-Image-2.1-Turbo、Wan2.2-Animate-2-14B，详见[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Pipeline_Usage/KV_Cache_Compression.html)。
 
 - **2026年11月23日** 我们训练了一个集齐文本渲染、透明背景、细节强度控制等多种模型能力的图像超分辨率模型 DetailScale-SR，模型结构采用 LoRA + [Diffusion Template](https://arxiv.org/abs/2604.24351)，现在你可以放心大胆地把模糊图片交给模型，渲染出细节丰富的高清图像。
 
@@ -389,6 +389,17 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 我们相信，一个完善的开源代码框架能够降低技术探索的门槛，我们基于这个代码库搞出了不少有意思的技术。或许你也有许多天马行空的构想，借助 DiffSynth-Studio，你可以快速实现这些想法。
 
 <details>
+<summary>Diffutoon-2：高分辨率动漫风格视频渲染 V2.0</summary>
+
+> 融合多个模型的能力，将任意视频渲染成精美的动漫风格视频。
+
+* 论文：[Diffutoon-2: Toon Shading with Video Diffusion Models](https://arxiv.org/abs/2611.30945)
+* 模型：[ModelScope](https://modelscope.cn/models/DiffSynth-Studio/Diffutoon-2)
+* 示例代码：[/examples/minimax_h3/model_inference/MiniMax-H3-Diffutoon-2.py](/examples/minimax_h3/model_inference/MiniMax-H3-Diffutoon-2.py)
+
+</details>
+
+<details>
 <summary>DetailScale-SR：真实场景超分辨率的连续细节控制</summary>
 
 > 让图像超分辨率模型集齐文本渲染、透明背景、细节强度控制等多种模型能力。
@@ -672,6 +683,7 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 | MiniMax-H3 | [lightx2v/Minimax-h3-Turbo: FL2VA 4steps](https://www.modelscope.cn/models/lightx2v/Minimax-h3-Turbo) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference/MiniMax-H3-FL2VA-Turbo.py) | [code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-FL2VA-Turbo.py) | - | - | - | - | - |
 | MiniMax-H3 | [DiffSynth-Studio/MiniMax-H3-Text-Embeddings](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Text-Embeddings) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Text-Embeddings.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Text-Embeddings.py) | - | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-Text-Embeddings.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Text-Embeddings.py) | - | - |
 | MiniMax-H3 | [PAI/MiniMax-H3-Fun-Controlnet-Union](https://www.modelscope.cn/models/PAI/MiniMax-H3-Fun-Controlnet-Union) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Fun-Controlnet-Union.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Fun-Controlnet-Union.py) | - | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-Fun-Controlnet-Union.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Fun-Controlnet-Union.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Fun-Controlnet-Union.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Fun-Controlnet-Union.py) |
+| MiniMax-H3 | [DiffSynth-Studio/Diffutoon-2](https://www.modelscope.cn/models/DiffSynth-Studio/Diffutoon-2) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-Diffutoon-2.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-Diffutoon-2.py) | - | [code](/examples/minimax_h3/model_training/full/MiniMax-H3-Diffutoon-2.sh) | [code](/examples/minimax_h3/model_training/validate_full/MiniMax-H3-Diffutoon-2.py) | [code](/examples/minimax_h3/model_training/lora/MiniMax-H3-Diffutoon-2.sh) | [code](/examples/minimax_h3/model_training/validate_lora/MiniMax-H3-Diffutoon-2.py) |
 | MiniMax-H3 | [OpenVDN/vdn-minimax-h3: VDN-H3 50 步](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-VDN-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-VDN-FL2VA.py) | - | - | - | - | - |
 | MiniMax-H3 | [OpenVDN/vdn-minimax-h3: VDN-H3 8 步](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-VDN-Turbo-FL2VA.py) | [code](/examples/minimax_h3/model_inference_low_vram/MiniMax-H3-VDN-Turbo-FL2VA.py) | - | - | - | - | - |
 | MiniMax-H3 | [OpenVDN/vdn-minimax-h3: VDN-H3 FP8](https://www.modelscope.cn/models/OpenVDN/vdn-minimax-h3) | [code](/examples/minimax_h3/model_inference/MiniMax-H3-VDN-FP8-FL2VA.py) | - | - | - | - | - | - |
