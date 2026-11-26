@@ -32,7 +32,7 @@ graph LR;
 * [加速推理](./Pipeline_Usage/Accelerated_Inference.md)
 * [显存管理](./Pipeline_Usage/VRAM_management.md)
 * [模型量化](./Pipeline_Usage/Quantization.md)
-* [KV-Cache 压缩](./Pipeline_Usage/KV_Cache_Compression.md)
+* [上下文压缩](./Pipeline_Usage/Context_Compression.md)
 * [模型训练](./Pipeline_Usage/Model_Training.md)
 * [环境变量](./Pipeline_Usage/Environment_Variables.md)
 * [GPU/NPU 支持](./Pipeline_Usage/GPU_support.md)

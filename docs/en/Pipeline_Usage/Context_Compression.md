@@ -1,12 +1,15 @@
-# KV-Cache Compression
+# Context Compression
 
-Some models use a KV-Cache to store the text and image information of the input, which takes up a
-large amount of VRAM in multi-image editing and similar tasks. DiffSynth-Studio provides a general
-KV-Cache compression interface that greatly reduces the VRAM used by the KV-Cache.
+Some models keep large intermediate tensors (the "context") during inference, for example a
+KV-Cache that stores the text and image information of the input, or an extra cache that holds the
+per-layer outputs of a ControlNet. In multi-image editing and long-video generation these tensors
+take up a large amount of VRAM. DiffSynth-Studio provides a general context compression interface: a
+tensor is compressed when it is written into a cache and decompressed on demand when it is read,
+which greatly reduces the VRAM used by the context.
 
-> KV-Cache compression currently only supports Qwen-Image-2.1, Qwen-Image-2.1-Turbo and Wan-AI/Wan2.2-Animate-2-14B.
+> Context compression currently only supports the KV-Cache of Qwen-Image-2.1, Qwen-Image-2.1-Turbo and Wan-AI/Wan2.2-Animate-2-14B, and the ControlNet outputs of MiniMax-H3.
 
-## Enabling KV-Cache Compression
+## Enabling Context Compression
 
 ```python
 from diffsynth.pipelines.qwen_image_21 import QwenImage21Pipeline, ModelConfig
