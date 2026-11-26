@@ -43,7 +43,7 @@
 
 - **2026年11月23日** **DiffSynth-Studio 现已支持统一多 GPU 并行推理，覆盖大部分框架内模型。**在硬件条件充裕的前提下，充分释放 GPU 的潜力！请参考[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Pipeline_Usage/Parallel_Inference.html)。
 
-- **2026年11月23日** 框架新增了上下文压缩模块，目前支持的压缩方案包括 [EntroPack](https://github.com/modelscope/entropack)、SVD、Cholesky-QR，其中 EntroPack 的效果最好，可用于减少 KV-Cache 等上下文张量所占的显存，适用于 Qwen-Image-2.1、Qwen-Image-2.1-Turbo、Wan2.2-Animate-2-14B，详见[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Pipeline_Usage/Context_Compression.html)。
+- **2026年11月23日** 框架新增了上下文压缩模块，目前支持的压缩方案包括 [EntroPack](https://github.com/modelscope/entropack)、SVD、Cholesky-QR，其中 EntroPack 的效果最好，可用于减少 KV-Cache 等上下文张量所占的显存，适用于 Qwen-Image-2.1、Qwen-Image-2.1-Turbo、Wan2.2-Animate-2-14B，详见[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Pipeline_Usage/KV_Cache_Compression.html)。
 
 - **2026年11月23日** 我们训练了一个集齐文本渲染、透明背景、细节强度控制等多种模型能力的图像超分辨率模型 DetailScale-SR，模型结构采用 LoRA + [Diffusion Template](https://arxiv.org/abs/2604.24351)，现在你可以放心大胆地把模糊图片交给模型，渲染出细节丰富的高清图像。
 

@@ -17,7 +17,7 @@ Welcome to DiffSynth-Studio's Documentation
    Pipeline_Usage/Parallel_Inference
    Pipeline_Usage/VRAM_management
    Pipeline_Usage/Quantization
-   Pipeline_Usage/Context_Compression
+   Pipeline_Usage/KV_Cache_Compression
    Pipeline_Usage/Model_Training
    Pipeline_Usage/Environment_Variables
    Pipeline_Usage/GPU_support

@@ -32,7 +32,7 @@ This section introduces the basic usage of `DiffSynth-Studio`, including how to 
 * [Accelerated Inference](./Pipeline_Usage/Accelerated_Inference.md)
 * [VRAM Management](./Pipeline_Usage/VRAM_management.md)
 * [Model Quantization](./Pipeline_Usage/Quantization.md)
-* [Context Compression](./Pipeline_Usage/Context_Compression.md)
+* [Context Compression](./Pipeline_Usage/KV_Cache_Compression.md)
 * [Model Training](./Pipeline_Usage/Model_Training.md)
 * [Environment Variables](./Pipeline_Usage/Environment_Variables.md)
 * [GPU/NPU Support](./Pipeline_Usage/GPU_support.md)
