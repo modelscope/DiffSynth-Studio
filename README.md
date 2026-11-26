@@ -403,6 +403,18 @@ We believe that a well-developed open-source code framework can lower the thresh
 
 <details>
 
+<summary>Diffutoon-2: High-Resolution Anime-Style Video Rendering V2.0</summary>
+
+> Fuse the capabilities of multiple models to render any video into a beautiful anime-style video.
+
+* Paper: [Diffutoon-2: Toon Shading with Video Diffusion Models](https://arxiv.org/abs/2611.30945)
+* Model: [ModelScope](https://modelscope.cn/models/DiffSynth-Studio/Diffutoon-2)
+* Example Code: [MiniMax-H3-Diffutoon-2](/examples/minimax_h3/model_inference/MiniMax-H3-Diffutoon-2.py)
+
+</details>
+
+<details>
+
 <summary>DetailScale-SR: Continuous Detail Control for Real-World Super-Resolution</summary>
 
 > Equip the image super-resolution model with a full set of capabilities such as text rendering, transparent backgrounds, and detail strength control.

@@ -389,6 +389,17 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 我们相信，一个完善的开源代码框架能够降低技术探索的门槛，我们基于这个代码库搞出了不少有意思的技术。或许你也有许多天马行空的构想，借助 DiffSynth-Studio，你可以快速实现这些想法。
 
 <details>
+<summary>Diffutoon-2：高分辨率动漫风格视频渲染 V2.0</summary>
+
+> 融合多个模型的能力，将任意视频渲染成精美的动漫风格视频。
+
+* 论文：[Diffutoon-2: Toon Shading with Video Diffusion Models](https://arxiv.org/abs/2611.30945)
+* 模型：[ModelScope](https://modelscope.cn/models/DiffSynth-Studio/Diffutoon-2)
+* 示例代码：[/examples/minimax_h3/model_inference/MiniMax-H3-Diffutoon-2.py](/examples/minimax_h3/model_inference/MiniMax-H3-Diffutoon-2.py)
+
+</details>
+
+<details>
 <summary>DetailScale-SR：真实场景超分辨率的连续细节控制</summary>
 
 > 让图像超分辨率模型集齐文本渲染、透明背景、细节强度控制等多种模型能力。
