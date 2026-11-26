@@ -23,7 +23,7 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/Diffutoon-2", origin_file_pattern="color_module.safetensors", **vram_config),
     ],
     processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
-    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 4,
+    vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 24, # Large memory required for cache
 )
 pipe.load_lora(pipe.dit, ModelConfig(model_id="lightx2v/Minimax-h3-Turbo", origin_file_pattern="minimax_h3_fl2v_turbo_4step_v1.0_768p_bf16.safetensors"))
 
