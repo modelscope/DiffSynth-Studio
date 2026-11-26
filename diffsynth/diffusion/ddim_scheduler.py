@@ -40,6 +40,9 @@ class DDIMScheduler():
 
 
     def set_timesteps(self, num_inference_steps, denoising_strength=1.0, training=False, **kwargs):
+        if getattr(self, "training", False) and not training:
+            # An inference call is about to replace the training schedule: keep a copy.
+            self._saved_training_schedule = self.timesteps
         # The timesteps are aligned to 999...0, which is different from other implementations,
         # but I think this implementation is more reasonable in theory.
         max_timestep = max(round(self.num_train_timesteps * denoising_strength) - 1, 0)
@@ -105,5 +108,11 @@ class DDIMScheduler():
             return target
         
     
+    def restore_training_schedule(self):
+        # Put the training schedule back after an inference call. Does nothing in plain training.
+        if hasattr(self, "_saved_training_schedule") and not self.training:
+            self.timesteps = self._saved_training_schedule
+            self.training = True
+
     def training_weight(self, timestep):
         return 1.0

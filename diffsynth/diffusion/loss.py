@@ -3,6 +3,7 @@ import torch
 
 
 def FlowMatchSFTLoss(pipe: BasePipeline, **inputs):
+    pipe.scheduler.restore_training_schedule()
     if "lora" in inputs:
         # Image-to-LoRA models need to load lora here.
         pipe.clear_lora(verbose=0)
@@ -34,6 +35,7 @@ def FlowMatchSFTLoss(pipe: BasePipeline, **inputs):
 
 
 def FlowMatchSFTAudioVideoLoss(pipe: BasePipeline, **inputs):
+    pipe.scheduler.restore_training_schedule()
     max_timestep_boundary = int(inputs.get("max_timestep_boundary", 1) * len(pipe.scheduler.timesteps))
     min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
 
@@ -64,6 +66,8 @@ def FlowMatchSFTAudioVideoLoss(pipe: BasePipeline, **inputs):
 
 
 def FlowMatchSFTMiniMaxH3AudioVideoLoss(pipe: BasePipeline, training_cfg_scale: float = 1.0, audio_loss_weight: float = 1.0, inputs_nega: dict | None = None, **inputs):
+    pipe.scheduler.restore_training_schedule()
+    pipe.scheduler_audio.restore_training_schedule()
     max_timestep_boundary = int(inputs.get("max_timestep_boundary", 1) * len(pipe.scheduler.timesteps))
     min_timestep_boundary = int(inputs.get("min_timestep_boundary", 0) * len(pipe.scheduler.timesteps))
 

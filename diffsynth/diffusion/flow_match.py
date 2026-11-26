@@ -448,6 +448,9 @@ class FlowMatchScheduler():
         self.linear_timesteps_weights = bsmntw_weighing
 
     def set_timesteps(self, num_inference_steps=100, denoising_strength=1.0, training=False, **kwargs):
+        if getattr(self, "training", False) and not training:
+            # An inference call is about to replace the training schedule: keep a copy.
+            self._saved_training_schedule = (self.sigmas, self.timesteps, self.linear_timesteps_weights)
         self.sigmas, self.timesteps = self.set_timesteps_fn(
             num_inference_steps=num_inference_steps,
             denoising_strength=denoising_strength,
@@ -458,6 +461,12 @@ class FlowMatchScheduler():
             self.training = True
         else:
             self.training = False
+
+    def restore_training_schedule(self):
+        # Put the training schedule back after an inference call. Does nothing in plain training.
+        if hasattr(self, "_saved_training_schedule") and not self.training:
+            self.sigmas, self.timesteps, self.linear_timesteps_weights = self._saved_training_schedule
+            self.training = True
 
     def step(self, model_output, timestep, sample, to_final=False, **kwargs):
         if isinstance(timestep, torch.Tensor):
