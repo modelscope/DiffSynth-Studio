@@ -57,6 +57,7 @@
    Model_Details/MOSS-Image
    Model_Details/Fibo
    Model_Details/Ming-Image
+   Model_Details/HiUni
 
 .. toctree::
    :maxdepth: 2

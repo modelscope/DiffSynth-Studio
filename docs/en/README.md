@@ -72,6 +72,7 @@ This section introduces the Diffusion models supported by `DiffSynth-Studio`. So
 * [MOSS-Image](./Model_Details/MOSS-Image.md)
 * [Fibo 2.0](./Model_Details/Fibo.md)
 * [Ming-Image](./Model_Details/Ming-Image.md)
+* [HiUni](./Model_Details/HiUni.md)
 
 ## Section 3: Training Framework
 
