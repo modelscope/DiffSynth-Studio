@@ -7,7 +7,7 @@ from tqdm import tqdm
 from transformers import AutoProcessor
 
 from ..core import ModelConfig
-from ..core.context_compress import KVCompressor
+from ..core.context_compress import KVCompressor, AccumulatingKVCacheBlock
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
@@ -43,18 +43,13 @@ class MiniMaxH3MultiControlNet(torch.nn.Module):
                 for block_id, hint in hints.items():
                     control_hints[block_id] = control_hints[block_id] + hint if block_id in control_hints else hint
             return control_hints
-        # Each ControlNet keeps its own compressed hints while it runs; the shared cache receives
-        # the decoded sum, compressed again. Summing in the compressed domain would need a decode
-        # and a re-encode per addition anyway, so one decode per layer is the cheaper contract.
+        # The ControlNets still run one after another; only their writes merge. The first fills the
+        # shared cache (one encode per hint) and every later one decodes that entry, adds its hint
+        # and stores the re-encoded sum, so the cache holds one hint per block however many
+        # ControlNets are loaded.
         for model, rows, scale in zip(self.models, control_rows, control_scale):
-            model_cache = create_hint_cache(getattr(hint_cache, "compressor", None))
-            model(embeddings, rows, img_pos, audio_pos, control_scale=scale, hint_cache=model_cache, **kwargs)
-            for block_id in model_cache:
-                # Reading decodes a hint, writing compresses it again.
-                hint = model_cache[block_id]
-                if block_id in hint_cache:
-                    hint = hint_cache[block_id] + hint
-                hint_cache[block_id] = hint
+            cache = hint_cache if not hint_cache else AccumulatingKVCacheBlock(hint_cache)
+            model(embeddings, rows, img_pos, audio_pos, control_scale=scale, hint_cache=cache, **kwargs)
         return hint_cache
 
 

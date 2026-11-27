@@ -20,13 +20,6 @@ cpu_offload_vram_config = {
     "preparing_dtype": torch.bfloat16, "preparing_device": "cuda",
     "computation_dtype": torch.bfloat16, "computation_device": "cuda",
 }
-quant_vram_config = {
-    "offload_dtype": torch.bfloat16, "offload_device": "cuda",
-    "onload_dtype": torch.bfloat16, "onload_device": "cuda",
-    "preparing_dtype": torch.bfloat16, "preparing_device": "cuda",
-    "computation_dtype": torch.bfloat16, "computation_device": "cuda",
-    "quantize": QuantizeConfig(method="entropack_lossy_quant_int8_raw"),
-}
 pipe = MiniMaxH3Pipeline.from_pretrained(
     torch_dtype=torch.bfloat16, device="cuda",
     model_configs=[
@@ -34,8 +27,8 @@ pipe = MiniMaxH3Pipeline.from_pretrained(
         ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-NF4", origin_file_pattern="minimax-h3-fl2va-nf4.safetensors", **offload_vram_config),
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/video_vae/source/model.safetensors", **cpu_offload_vram_config),
         ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/audio_vae/model.safetensors", **cpu_offload_vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/Diffutoon-2", origin_file_pattern="line-art_module.safetensors", **quant_vram_config),
-        ModelConfig(model_id="DiffSynth-Studio/Diffutoon-2", origin_file_pattern="color_module.safetensors", **quant_vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/Diffutoon-2", origin_file_pattern="line-art_module_int8_convrot.safetensors", origin_config_file="line-art_module_int8_convrot.json", **offload_vram_config),
+        ModelConfig(model_id="DiffSynth-Studio/Diffutoon-2", origin_file_pattern="color_module_int8_convrot.safetensors", origin_config_file="color_module_int8_convrot.json", **offload_vram_config),
     ],
     processor_config=ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 10, # Large memory required for cache

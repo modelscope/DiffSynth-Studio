@@ -19,7 +19,7 @@ from .pipeline import (
     register_scheme,
 )
 from .schemes import CholeskyQR, EntroPack, SVD
-from .kv_cache import CompressedKVCacheBlock, KVCompressionStats, KVCompressor, create_kv_cache_blocks
+from .kv_cache import CompressedKVCacheBlock, KVCompressionStats, KVCompressor, AccumulatingKVCacheBlock, create_kv_cache_blocks
 
 __all__ = [
     "CompressedTensor",
@@ -34,5 +34,6 @@ __all__ = [
     "KVCompressor",
     "KVCompressionStats",
     "CompressedKVCacheBlock",
+    "AccumulatingKVCacheBlock",
     "create_kv_cache_blocks",
 ]

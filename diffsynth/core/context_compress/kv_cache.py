@@ -16,7 +16,13 @@ import torch
 
 from .pipeline import CompressedTensor, CompressPipeline
 
-__all__ = ["KVCompressor", "KVCompressionStats", "CompressedKVCacheBlock", "create_kv_cache_blocks"]
+__all__ = [
+    "KVCompressor",
+    "KVCompressionStats",
+    "CompressedKVCacheBlock",
+    "AccumulatingKVCacheBlock",
+    "create_kv_cache_blocks",
+]
 
 
 @dataclass
@@ -146,6 +152,52 @@ class CompressedKVCacheBlock(dict):
 
     def get(self, name: str, default: Any = None):
         return self[name] if dict.__contains__(self, name) else default
+
+
+class AccumulatingKVCacheBlock(dict):
+    """A write-through view of another cache block that merges writes into its entries.
+
+    Use it when several writers produce the same keys one after another (one ControlNet per
+    checkpoint, say) and the cache should still hold *one* entry per key: writing decodes the
+    stored value, adds the new one and stores the re-compressed sum. Only ``target`` owns
+    tensors, so N writers keep N-independent-of-writers entries.
+    """
+
+    def __init__(self, target: dict, compressor: KVCompressor | None = None):
+        super().__init__()
+        self.target = target
+        self.compressor = compressor if compressor is not None else getattr(target, "compressor", None)
+
+    def __setitem__(self, name: str, value: Any) -> None:
+        if isinstance(value, torch.Tensor) and name in self.target:
+            # `target[name]` (not dict.__getitem__) so a CompressedKVCacheBlock decodes for us.
+            value = self.target[name] + value
+        # `target[name] = ...` compresses again and releases the previous stored value.
+        self.target[name] = value
+
+    def __getitem__(self, name: str):
+        return self.target[name]
+
+    def get(self, name: str, default: Any = None):
+        return self.target[name] if name in self.target else default
+
+    def __contains__(self, name: str) -> bool:
+        return name in self.target
+
+    def __iter__(self):
+        return iter(self.target)
+
+    def __len__(self) -> int:
+        return len(self.target)
+
+    def keys(self):
+        return self.target.keys()
+
+    def items(self):
+        return self.target.items()
+
+    def values(self):
+        return self.target.values()
 
 
 def create_kv_cache_blocks(num_blocks: int, compressor: KVCompressor | None) -> list[dict]:
