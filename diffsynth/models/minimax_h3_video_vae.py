@@ -403,7 +403,7 @@ class MiniMaxH3VideoVAE(nn.Module):
         tiles = torch.cat([x[..., i:i + il, j:j + jl] for i, il in zip(y_idx, y_len) for j, jl in zip(x_idx, x_len)])
         batch_size = max(1, tile_encode_batch_size)
         encoded = torch.cat([self.encode(tiles[k: k + batch_size]) for k in range(0, len(tiles), batch_size)])
-        rows = [[tile.to(x.device) for tile in part] for part in encoded.unsqueeze(1).split([j_max] * i_max)]
+        rows = [[tile.to(x.device) for tile in row] for row in encoded.unflatten(0, (i_max, j_max, x.shape[0]))]
         ly = [o // self.vae_ratio for o in y_ovlp]
         lx = [o // self.vae_ratio for o in x_ovlp]
         result_rows = []
@@ -428,7 +428,7 @@ class MiniMaxH3VideoVAE(nn.Module):
                            for i in range(i_max) for j in range(j_max)])
         batch_size = max(1, tile_decode_batch_size)
         decoded = torch.cat([self.decode(tiles[k: k + batch_size]) for k in range(0, len(tiles), batch_size)])
-        rows = [[tile.to(z.device) for tile in part] for part in decoded.unsqueeze(1).split([j_max] * i_max)]
+        rows = [[tile.to(z.device) for tile in row] for row in decoded.unflatten(0, (i_max, j_max, z.shape[0]))]
         result_rows = []
         for i, row in enumerate(rows):
             result_row = []

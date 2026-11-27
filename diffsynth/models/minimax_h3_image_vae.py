@@ -339,7 +339,7 @@ class MiniMaxH3ImageVAE(nn.Module):
         batch_size = max(1, tile_encode_batch_size)
         moments = torch.cat([self._encode_tile(tiles[k: k + batch_size])
                              for k in range(0, len(tiles), batch_size)])
-        rows = [list(part) for part in moments.unsqueeze(1).split([len(row) for row in rows])]
+        rows = [list(row) for row in moments.unflatten(0, (len(rows), len(rows[0]), x.shape[0]))]
         return self._stitch_tiles(rows, [overlap // ratio for overlap in y_overlaps],
                                   [overlap // ratio for overlap in x_overlaps])
 
@@ -360,7 +360,7 @@ class MiniMaxH3ImageVAE(nn.Module):
         batch_size = max(1, tile_decode_batch_size)
         pixels = torch.cat([self.decoder(self.post_quant_conv(tiles[k: k + batch_size]))
                             for k in range(0, len(tiles), batch_size)])
-        rows = [list(part) for part in pixels.unsqueeze(1).split([len(row) for row in rows])]
+        rows = [list(row) for row in pixels.unflatten(0, (len(rows), len(rows[0]), z.shape[0]))]
         return self._stitch_tiles(rows, y_overlaps, x_overlaps)
 
     def encode(self, x, tiling=True, sample=False, generator=None, tile_encode_batch_size=4):
