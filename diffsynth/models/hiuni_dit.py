@@ -2,6 +2,8 @@
 import math
 import torch
 import torch.nn.functional as F
+from ..core.attention import attention_forward
+from ..core.gradient import gradient_checkpoint_forward
 
 
 HIUNI_QWEN3_VL_CONFIG = {
@@ -112,7 +114,11 @@ class HiUniAttention(torch.nn.Module):
         n_rep = self.num_heads // self.num_kv_heads
         k = k[:, :, None].expand(b, self.num_kv_heads, n_rep, s, self.head_dim).reshape(b, self.num_heads, s, self.head_dim)
         v = v[:, :, None].expand(b, self.num_kv_heads, n_rep, s, self.head_dim).reshape(b, self.num_heads, s, self.head_dim)
-        out = F.scaled_dot_product_attention(q.contiguous(), k.contiguous(), v.contiguous(), attn_mask=attention_mask)
+        out = attention_forward(
+            q.contiguous(), k.contiguous(), v.contiguous(),
+            q_pattern="b n s d", k_pattern="b n s d", v_pattern="b n s d", out_pattern="b n s d",
+            attn_mask=attention_mask, compatibility_mode=True,
+        )
         return self.o_proj(out.transpose(1, 2).contiguous().view(b, s, -1))
 
 
@@ -183,6 +189,9 @@ class HiUniGate(torch.nn.Module):
 
 
 class HiUniModel(torch.nn.Module):
+
+    _repeated_blocks = ["HiUniDiffusionBlock"]
+
     # Keys follow the HiUni checkpoint: model.visual.*, model.language_model.*, time_token.*, time_embeddings.*,
     # diffusion_head_a.N.*, diffusion_head_b.*, pixel_proj.*, pixel_dit_gate.*. lm_head is tied to embed_tokens.
     def __init__(self, num_diffusion_layers=10, gate_inject_layer=3):
@@ -228,9 +237,25 @@ class HiUniModel(torch.nn.Module):
         output = self.model.visual(pixel_values.to(self.dtype), grid_thw=grid_thw)
         return output.pooler_output if hasattr(output, "pooler_output") else output[0]
 
-    def backbone(self, embeddings, attention_mask, position_ids):
-        return self.model.language_model(inputs_embeds=embeddings, attention_mask=attention_mask,
-                                         position_ids=position_ids, use_cache=False).last_hidden_state
+    def backbone(self, embeddings, attention_mask, position_ids,
+                 use_gradient_checkpointing=False, use_gradient_checkpointing_offload=False):
+        # Qwen3-VL's text stack is unrolled so that every decoder layer can be checkpointed. `attention_mask` is
+        # already the prepared 4D additive mask (transformers returns a 4D mask as-is), the 3-row M-RoPE
+        # `position_ids` yields no text position ids, and DeepStack is unused by this model.
+        language_model = self.model.language_model
+        position_embeddings = language_model.rotary_emb(embeddings, position_ids)
+        hidden_states = embeddings
+        for decoder_layer in language_model.layers:
+            hidden_states = gradient_checkpoint_forward(
+                decoder_layer,
+                use_gradient_checkpointing=use_gradient_checkpointing,
+                use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+                hidden_states=hidden_states,
+                position_embeddings=position_embeddings,
+                attention_mask=attention_mask,
+                past_key_values=None,
+            )
+        return language_model.norm(hidden_states)
 
     def text_logits(self, input_ids, position_ids, attention_mask, image_features=None, num_images=0):
         # Understanding / chat: clean images, time tokens embed t=0, logits of the last position.
@@ -244,7 +269,8 @@ class HiUniModel(torch.nn.Module):
         return F.linear(hidden[:, -1], self.model.language_model.embed_tokens.weight)
 
     def forward(self, input_ids, position_ids, attention_mask, latents, timestep, height, width,
-                ref_features=None, ref_raster=None, ref_height=None, ref_width=None):
+                ref_features=None, ref_raster=None, ref_height=None, ref_width=None,
+                use_gradient_checkpointing=False, use_gradient_checkpointing_offload=False):
         # One CFG branch. latents: raster patches [4*height*width, 768] where height/width count merged 32px blocks.
         # timestep is on the [0, 1000] scale. Returns predicted clean patches in the same layout (float32).
         dtype = self.dtype
@@ -263,7 +289,11 @@ class HiUniModel(torch.nn.Module):
         embeddings[gen_mask] = gen_features.to(embeddings.dtype)
         embeddings[input_ids.eq(HIUNI_TIME_TOKEN_ID)] = self.time_token(timestep).to(embeddings.dtype)
         # Generation runs without DeepStack injection, as in training.
-        hidden = self.backbone(embeddings, attention_mask, position_ids)
+        hidden = self.backbone(
+            embeddings, attention_mask, position_ids,
+            use_gradient_checkpointing=use_gradient_checkpointing,
+            use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+        )
         time_emb = self.time_embeddings(timestep).expand(height * width, -1)
         gen_high = self.pixel_proj(merge_patches(latents.to(dtype), height, width))
         ref_high = self.pixel_proj(merge_patches(ref_raster.to(dtype), ref_height, ref_width)) if has_ref else None
@@ -272,6 +302,11 @@ class HiUniModel(torch.nn.Module):
                 if ref_high is not None:
                     hidden[ref_mask] = self.pixel_dit_gate(hidden[ref_mask], ref_high).to(hidden.dtype)
                 hidden[gen_mask] = self.pixel_dit_gate(hidden[gen_mask], gen_high).to(hidden.dtype)
-            hidden = layer(hidden, attention_mask, position_ids)
+            hidden = gradient_checkpoint_forward(
+                layer,
+                use_gradient_checkpointing=use_gradient_checkpointing,
+                use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
+                hidden_states=hidden, attention_mask=attention_mask, position_ids=position_ids,
+            )
         output = self.diffusion_head_b(hidden, time_emb, gen_mask)[gen_mask]
         return unmerge_patches(output, height, width).float()
