@@ -884,7 +884,7 @@ class ZImageDiT(nn.Module):
                 noise_val = images_noise_mask[i][j] if j < len(images_noise_mask[i]) else 1
                 cap_out, cap_pos, cap_mask, cap_len, cap_nm = self._pad_with_ids(
                     cap_item,
-                    (len(cap_item) + (-len(cap_item)) % SEQ_MULTI_OF, 1, 1),
+                    (len(cap_item), 1, 1),
                     (cap_cu_len, 0, 0),
                     device,
                     noise_val,
