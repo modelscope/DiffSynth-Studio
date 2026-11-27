@@ -777,6 +777,25 @@ class QwenImageVAE(torch.nn.Module):
         x = x.squeeze(2)
         return x
 
+
+    def encode_ming(self, x, tiled=False, tile_size=128, tile_stride=64, **kwargs):
+        # Ming-Image latent convention: uniform scaling 8.0064, no per-channel mean/std
+        if tiled:
+            return self.tiled_forward(self.encode_ming, x, tile_size, tile_stride, input_scale=8, output_scale=1)
+        x = x.unsqueeze(2)
+        x = self.encoder(x)
+        x = self.quant_conv(x)
+        x = x[:, :16] * 8.0064
+        return x.squeeze(2)
+
+    def decode_ming(self, x, tiled=False, tile_size=128, tile_stride=64, **kwargs):
+        if tiled:
+            return self.tiled_forward(self.decode_ming, x, tile_size, tile_stride, input_scale=1, output_scale=8)
+        x = (x / 8.0064).unsqueeze(2)
+        x = self.post_quant_conv(x)
+        x = self.decoder(x)
+        return x.squeeze(2)
+
     def count_conv3d(self, model):
         return sum(1 for m in model.modules() if isinstance(m, QwenImageCausalConv3d))
 
