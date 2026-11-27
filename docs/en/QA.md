@@ -37,3 +37,11 @@ We support two loading methods for LoRA models. See [LoRA Loading](./Pipeline_Us
 ## How to reduce VRAM usage during training?
 
 The framework supports multiple methods to reduce VRAM usage during training, including Gradient Checkpointing, DeepSpeed, FP8, Two-Stage Split Training, and CPU Offload. Please refer to [Low VRAM Training](./Pipeline_Usage/Model_Training.md#low-vram-training).
+
+## How to generate images during training?
+
+This is a reasonable request, but it conflicts with the framework's long-term development direction.
+
+The framework currently provides many features, including VRAM management, parameter quantization, dynamic offloading, parallel computing, and two-stage split training. Most of these features are not compatible with inference and training at the same time. Therefore, we do not recommend switching to inference mode during training, to avoid introducing additional potential issues.
+
+In addition, in cluster training across multiple GPU machines, switching to inference mode midway would block the whole training process. Therefore, we recommend starting a separate inference process outside the training job to validate the training results.
