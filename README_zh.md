@@ -41,6 +41,8 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
+- **2026年11月27日** Ming-Image-0.2-Design 开源，欢迎加入图像生成模型家族！支持文生图推理、图像编辑、低显存推理、并行推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/Ming-Image.md)和[示例代码](/examples/ming_image/)。
+
 - **2026年11月23日** 我们已支持 [HiUni](https://modelscope.cn/models/ernie-research/HiUni)，这是 ERNIE Research 开源的统一多模态小模型，**同一个 checkpoint** 即可完成图像理解、文生图与指令图像编辑，轻量的像素空间扩散头直接以像素生成图像，无需 VAE。我们提供了推理、低显存推理与训练支持。详情请参考[文档](/docs/zh/Model_Details/HiUni.md)和[示例代码](/examples/hiuni/)。
 
 - **2026年11月23日** **DiffSynth-Studio 现已支持统一多 GPU 并行推理，覆盖大部分框架内模型。**在硬件条件充裕的前提下，充分释放 GPU 的潜力！请参考[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Pipeline_Usage/Parallel_Inference.html)。
@@ -242,7 +244,7 @@
 
 - **2024年12月18日** 我们提出 ArtAug，一种通过合成-理解交互来改进文生图模型的方法。我们以 LoRA 格式为 FLUX.1-dev 训练了一个 ArtAug 增强模块。该模型将 Qwen2-VL-72B 的美学理解融入 FLUX.1-dev，从而提升了生成图像的质量。
   - 论文: https://arxiv.org/abs/2412.12888
-  - 示例: https://github.com/modelscope/DiffSynth-Studio/tree/main/examples/ArtAug
+  - 示例: https://github.com/modelscope/DiffSynth-Studio/blob/main/docs/zh/Training/Differential_LoRA.md
   - 模型: [ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1), [HuggingFace](https://huggingface.co/ECNU-CILab/ArtAug-lora-FLUX.1dev-v1)
   - 演示: [ModelScope](https://modelscope.cn/aigc/imageGeneration?tab=advanced&versionId=7228&modelType=LoRA&sdVersion=FLUX_1&modelUrl=modelscope%3A%2F%2FDiffSynth-Studio%2FArtAug-lora-FLUX.1dev-v1%3Frevision%3Dv1.0), HuggingFace (即将上线)
 - **2024年10月25日** 我们提供了广泛的 FLUX ControlNet 支持。该项目支持许多不同的 ControlNet 模型，并且可以自由组合，即使它们的结构不同。此外，ControlNet 模型兼容高分辨率优化和分区控制技术，能够实现非常强大的可控图像生成。详见 [`./examples/ControlNet/`](./examples/ControlNet/)。
@@ -334,6 +336,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 
 | 基础架构 | 模型 ID | 推理 | 低显存推理 | 并行推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
 |-|-|-|-| - |-|-|-|-|
+| Ming-Image | [inclusionAI/Ming-Image-0.2-Design](https://www.modelscope.cn/models/inclusionAI/Ming-Image-0.2-Design) | [code](/examples/ming_image/model_inference/Ming-Image-0.2-Design.py) | [code](/examples/ming_image/model_inference_low_vram/Ming-Image-0.2-Design.py) | [code](/examples/ming_image/model_inference_parallel/Ming-Image-0.2-Design.py) | [code](/examples/ming_image/model_training/full/Ming-Image-0.2-Design.sh) | [code](/examples/ming_image/model_training/validate_full/Ming-Image-0.2-Design.py) | [code](/examples/ming_image/model_training/lora/Ming-Image-0.2-Design.sh) | [code](/examples/ming_image/model_training/validate_lora/Ming-Image-0.2-Design.py) |
 | MiniMax-H3-Image | [MiniMax/MiniMax-H3-Image](https://www.modelscope.cn/models/MiniMax/MiniMax-H3-Image) | [code](/examples/minimax_h3_image/model_inference/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_inference_low_vram/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_inference_parallel/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_training/full/MiniMax-H3-Image.sh) | [code](/examples/minimax_h3_image/model_training/validate_full/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_training/lora/MiniMax-H3-Image.sh) | [code](/examples/minimax_h3_image/model_training/validate_lora/MiniMax-H3-Image.py) |
 | MiniMax-H3-Image (AdaLN-pruned) | [DiffSynth-Studio/MiniMax-H3-Image-EntroPack](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-EntroPack) | [code](/examples/minimax_h3_image/model_inference/MiniMax-H3-Image-Pruned.py) | [code](/examples/minimax_h3_image/model_inference_low_vram/MiniMax-H3-Image-Pruned.py) | [code](/examples/minimax_h3_image/model_inference_parallel/MiniMax-H3-Image-Pruned.py) | [code](/examples/minimax_h3_image/model_training/full/MiniMax-H3-Image-Pruned.sh) | [code](/examples/minimax_h3_image/model_training/validate_full/MiniMax-H3-Image-Pruned.py) | [code](/examples/minimax_h3_image/model_training/lora/MiniMax-H3-Image-Pruned.sh) | [code](/examples/minimax_h3_image/model_training/validate_lora/MiniMax-H3-Image-Pruned.py) |
 | MiniMax-H3-Image (EntroPack) | [DiffSynth-Studio/MiniMax-H3-Image-EntroPack](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-EntroPack) | [code](/examples/minimax_h3_image/model_inference/MiniMax-H3-Image-Pruned-EntroPack.py) | [code](/examples/minimax_h3_image/model_inference_low_vram/MiniMax-H3-Image-Pruned-EntroPack.py) | [code](/examples/minimax_h3_image/model_inference_parallel/MiniMax-H3-Image-Pruned-EntroPack.py) | - | - | [code](/examples/minimax_h3_image/model_training/lora/MiniMax-H3-Image-EntroPack.sh) | [code](/examples/minimax_h3_image/model_training/validate_lora/MiniMax-H3-Image-EntroPack.py) |
@@ -353,6 +356,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 模型一览：
 
 - 图像生成
+    - Ming-Image：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Ming-Image.html)、[样例代码](/examples/ming_image/)
     - MiniMax-H3-Image：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/MiniMax-H3-Image.html)、[样例代码](/examples/minimax_h3_image/)
     - Fibo 2.0：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Fibo.html)、[样例代码](/examples/fibo/)
     - MOSS-Image：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/MOSS-Image.html)、[样例代码](/examples/moss_image/)
@@ -558,7 +562,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 
 > 一个 LoRA，大幅提升细节和美感。
 
-- 详细页面：[./examples/ArtAug/](./examples/ArtAug/)
+- 详细页面：[docs/zh/Training/Differential_LoRA.md](./docs/zh/Training/Differential_LoRA.md)
 - 论文：[ArtAug: Enhancing Text-to-Image Generation through Synthesis-Understanding Interaction](https://arxiv.org/abs/2412.12888)
 - 模型：[ModelScope](https://www.modelscope.cn/models/DiffSynth-Studio/ArtAug-lora-FLUX.1dev-v1), [HuggingFace](https://huggingface.co/ECNU-CILab/ArtAug-lora-FLUX.1dev-v1)
 - 在线体验：[ModelScope AIGC Tab](https://www.modelscope.cn/aigc/imageGeneration?tab=advanced&versionId=7228&modelType=LoRA&sdVersion=FLUX_1&modelUrl=modelscope%3A%2F%2FDiffSynth-Studio%2FArtAug-lora-FLUX.1dev-v1%3Frevision%3Dv1.0)
@@ -638,6 +642,7 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 
 | 基础架构 | 模型 ID | 推理 | 低显存推理 | 并行推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
 |-|-|-|-|-|-|-|-|-|
+| Ming-Image | [inclusionAI/Ming-Image-0.2-Design](https://www.modelscope.cn/models/inclusionAI/Ming-Image-0.2-Design) | [code](/examples/ming_image/model_inference/Ming-Image-0.2-Design.py) | [code](/examples/ming_image/model_inference_low_vram/Ming-Image-0.2-Design.py) | [code](/examples/ming_image/model_inference_parallel/Ming-Image-0.2-Design.py) | [code](/examples/ming_image/model_training/full/Ming-Image-0.2-Design.sh) | [code](/examples/ming_image/model_training/validate_full/Ming-Image-0.2-Design.py) | [code](/examples/ming_image/model_training/lora/Ming-Image-0.2-Design.sh) | [code](/examples/ming_image/model_training/validate_lora/Ming-Image-0.2-Design.py) |
 | MiniMax-H3-Image | [MiniMax/MiniMax-H3-Image](https://www.modelscope.cn/models/MiniMax/MiniMax-H3-Image) | [code](/examples/minimax_h3_image/model_inference/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_inference_low_vram/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_inference_parallel/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_training/full/MiniMax-H3-Image.sh) | [code](/examples/minimax_h3_image/model_training/validate_full/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_training/lora/MiniMax-H3-Image.sh) | [code](/examples/minimax_h3_image/model_training/validate_lora/MiniMax-H3-Image.py) |
 | MiniMax-H3-Image | [DiffSynth-Studio/MiniMax-H3-Image-EntroPack (AdaLN-pruned)](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-EntroPack) | [code](/examples/minimax_h3_image/model_inference/MiniMax-H3-Image-Pruned.py) | [code](/examples/minimax_h3_image/model_inference_low_vram/MiniMax-H3-Image-Pruned.py) | [code](/examples/minimax_h3_image/model_inference_parallel/MiniMax-H3-Image-Pruned.py) | [code](/examples/minimax_h3_image/model_training/full/MiniMax-H3-Image-Pruned.sh) | [code](/examples/minimax_h3_image/model_training/validate_full/MiniMax-H3-Image-Pruned.py) | [code](/examples/minimax_h3_image/model_training/lora/MiniMax-H3-Image-Pruned.sh) | [code](/examples/minimax_h3_image/model_training/validate_lora/MiniMax-H3-Image-Pruned.py) |
 | MiniMax-H3-Image | [DiffSynth-Studio/MiniMax-H3-Image-EntroPack (EntroPack)](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-EntroPack) | [code](/examples/minimax_h3_image/model_inference/MiniMax-H3-Image-Pruned-EntroPack.py) | [code](/examples/minimax_h3_image/model_inference_low_vram/MiniMax-H3-Image-Pruned-EntroPack.py) | [code](/examples/minimax_h3_image/model_inference_parallel/MiniMax-H3-Image-Pruned-EntroPack.py) | - | - | [code](/examples/minimax_h3_image/model_training/lora/MiniMax-H3-Image-EntroPack.sh) | [code](/examples/minimax_h3_image/model_training/validate_lora/MiniMax-H3-Image-EntroPack.py) |

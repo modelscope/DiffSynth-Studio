@@ -1963,9 +1963,36 @@ fibo_series = [
     },
 ]
 
+ming_image_series = [
+    {
+        # Example: ModelConfig(model_id="inclusionAI/Ming-Image-0.2-Design", origin_file_pattern="transformer/diffusion_pytorch_model*.safetensors")
+        "model_hash": "330a989419c237a20f28c83f2570f6d0",
+        "model_name": "ming_image_dit",
+        "model_class": "diffsynth.models.ming_image_dit.MingImageDiT",
+    },
+    {
+        # Example: ModelConfig(model_id="inclusionAI/Ming-Image-0.2-Design", origin_file_pattern="mllm/model*.safetensors")
+        "model_hash": "2a8501db09343e1af6decef6f0f017c8",
+        "model_name": "ming_image_text_encoder",
+        "model_class": "diffsynth.models.ming_image_text_encoder.MingImageTextEncoder",
+    },
+    {
+        # Example: ModelConfig(model_id="inclusionAI/Ming-Image-0.2-Design", origin_file_pattern="connector/model*.safetensors")
+        "model_hash": "45f44655737e6d8dea3b1fdd3c659b07",
+        "model_name": "ming_image_connector",
+        "model_class": "diffsynth.models.ming_image_connector.MingImageConnector",
+    },
+    {
+        # Example: ModelConfig(model_id="inclusionAI/Ming-Image-0.2-Design", origin_file_pattern="mlp/model.safetensors")
+        "model_hash": "5fb97956f34c70aab1359a33319cb3ac",
+        "model_name": "ming_image_condition_proj",
+        "model_class": "diffsynth.models.ming_image_condition_proj.MingImageConditionProj",
+    },
+]
+
 MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + qwen_video_edit_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
     + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series + minimax_h3_series + minimax_music3_series + sensenova_u1_series
-    + yue2_series + qwen_image_21_series + flux3_series + moss_image_series + fibo_series + minimax_h3_image_series + hiuni_series
+    + yue2_series + qwen_image_21_series + flux3_series + moss_image_series + fibo_series + minimax_h3_image_series + hiuni_series + ming_image_series
 )

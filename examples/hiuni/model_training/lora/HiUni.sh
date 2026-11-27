@@ -12,7 +12,7 @@ accelerate launch examples/hiuni/model_training/train.py \
   --remove_prefix_in_ckpt "pipe.dit." \
   --output_path "./models/train/HiUni_lora" \
   --lora_base_model "dit" \
-  --lora_target_modules "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj" \
+  --lora_target_modules "" \
   --lora_rank 32 \
   --use_gradient_checkpointing \
   --dataset_num_workers 8 \

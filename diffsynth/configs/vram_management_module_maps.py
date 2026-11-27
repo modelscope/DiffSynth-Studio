@@ -654,6 +654,30 @@ VRAM_MANAGEMENT_MODULE_MAPS = {
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionPatchEmbed": "diffsynth.core.vram.layers.AutoWrappedModule",
         "transformers.models.qwen3_vl.modeling_qwen3_vl.Qwen3VLVisionRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
     },
+    "diffsynth.models.ming_image_dit.MingImageDiT": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "diffsynth.models.ming_image_dit.MingImageRMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ming_image_dit.TimestepEmbedder": "diffsynth.core.vram.layers.AutoWrappedNonRecurseModule",
+    },
+    "diffsynth.models.ming_image_text_encoder.MingImageTextEncoder": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "torch.nn.Conv3d": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ming_image_text_encoder.BailingMoeV2RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ming_image_text_encoder.BailingMoeV2Gate": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ming_image_text_encoder.Qwen2RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ming_image_text_encoder.Qwen2_5_VisionRotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ming_image_text_encoder.BailingMoeV2RotaryEmbedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "diffsynth.models.ming_image_text_encoder.BailingMoeV2RotaryEmbedding3D": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.ming_image_connector.MingImageConnector": {
+        "torch.nn.Linear": "diffsynth.core.vram.layers.AutoWrappedLinear",
+        "torch.nn.Embedding": "diffsynth.core.vram.layers.AutoWrappedModule",
+        "transformers.models.qwen2.modeling_qwen2.Qwen2RMSNorm": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
+    "diffsynth.models.ming_image_condition_proj.MingImageConditionProj": {
+        "diffsynth.models.ming_image_condition_proj.MingImageConditionProj": "diffsynth.core.vram.layers.AutoWrappedModule",
+    },
 }
 
 def QwenImageTextEncoder_Module_Map_Updater():

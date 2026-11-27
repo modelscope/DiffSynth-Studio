@@ -72,6 +72,7 @@ graph LR;
 * [MOSS-Image](./Model_Details/MOSS-Image.md)
 * [Fibo 2.0](./Model_Details/Fibo.md)
 * [HiUni](./Model_Details/HiUni.md)
+* [Ming-Image](./Model_Details/Ming-Image.md)
 
 ## Section 3: 训练框架
 

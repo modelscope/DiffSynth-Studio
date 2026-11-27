@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 class FlowMatchScheduler():
 
-    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "MOSS-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-H3-Pi", "MiniMax-H3-Image", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2", "Fibo", "HiUni"] = "FLUX.1"):
+    def __init__(self, template: Literal["FLUX.1", "Wan", "Qwen-Image", "FLUX.2", "FLUX.3", "Z-Image", "LTX-2", "Qwen-Image-Lightning", "ERNIE-Image", "MOSS-Image", "ACE-Step", "Ideogram4", "Krea-2", "Boogu", "MiniMax-H3", "MiniMax-H3-Pi", "MiniMax-H3-Image", "MiniMax-Music3", "LingBot-Video", "SenseNova-U1", "YuE2", "Fibo", "HiUni", "Ming-Image"] = "FLUX.1"):
         self.set_timesteps_fn = {
             "FLUX.1": FlowMatchScheduler.set_timesteps_flux,
             "Wan": FlowMatchScheduler.set_timesteps_wan,
@@ -31,12 +31,13 @@ class FlowMatchScheduler():
             "YuE2": FlowMatchScheduler.set_timesteps_yue2,
             "Fibo": FlowMatchScheduler.set_timesteps_fibo,
             "HiUni": FlowMatchScheduler.set_timesteps_hiuni,
+            "Ming-Image": FlowMatchScheduler.set_timesteps_ming_image,
         }.get(template, FlowMatchScheduler.set_timesteps_flux)
         self.num_train_timesteps = 1000
 
     @staticmethod
-    def set_timesteps_flux(num_inference_steps=100, denoising_strength=1.0, shift=None):
-        sigma_min = 0.003/1.002
+    def set_timesteps_flux(num_inference_steps=100, denoising_strength=1.0, shift=None, sigma_min=None):
+        sigma_min = 0.003/1.002 if sigma_min is None else sigma_min
         sigma_max = 1.0
         shift = 3 if shift is None else shift
         num_train_timesteps = 1000
@@ -93,6 +94,11 @@ class FlowMatchScheduler():
         timesteps = sigmas * num_train_timesteps
         return sigmas, timesteps
     
+
+    @staticmethod
+    def set_timesteps_ming_image(num_inference_steps=12, denoising_strength=1.0, shift=6.0):
+        return FlowMatchScheduler.set_timesteps_flux(num_inference_steps, denoising_strength, shift=shift, sigma_min=0.0)
+
     @staticmethod
     def set_timesteps_lingbot_video(num_inference_steps=100, denoising_strength=1.0, shift=None, t_thresh=None, sigma_tail_steps=0):
         sigma_min = 0.0

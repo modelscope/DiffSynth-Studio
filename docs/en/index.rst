@@ -57,6 +57,7 @@ Welcome to DiffSynth-Studio's Documentation
    Model_Details/MOSS-Image
    Model_Details/Fibo
    Model_Details/HiUni
+   Model_Details/Ming-Image
 
 .. toctree::
    :maxdepth: 2
