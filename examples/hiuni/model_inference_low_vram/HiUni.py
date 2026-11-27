@@ -13,15 +13,14 @@ vram_config = {
     "computation_dtype": torch.bfloat16,
     "computation_device": "cuda",
 }
-
 pipe = HiUniPipeline.from_pretrained(
     torch_dtype=torch.bfloat16,
     device="cuda",
     model_configs=[
-        ModelConfig(model_id="ernie-research/HiUni", origin_file_pattern="model-*.safetensors", download_source="huggingface", **vram_config),
+        ModelConfig(model_id="ernie-research/HiUni", origin_file_pattern="model-*.safetensors", **vram_config),
     ],
-    tokenizer_config=ModelConfig(model_id="ernie-research/HiUni", origin_file_pattern="tokenizer*.json", download_source="huggingface"),
-    processor_config=ModelConfig(model_id="ernie-research/HiUni", origin_file_pattern="preprocessor_config.json", download_source="huggingface"),
+    tokenizer_config=ModelConfig(model_id="ernie-research/HiUni", origin_file_pattern="tokenizer*.json"),
+    processor_config=ModelConfig(model_id="ernie-research/HiUni", origin_file_pattern="preprocessor_config.json"),
     vram_limit=torch.cuda.mem_get_info("cuda")[1] / (1024 ** 3) - 0.5,
 )
 
@@ -31,7 +30,11 @@ image = pipe(prompt, height=2048, width=2048, seed=42, num_inference_steps=25, c
 image.save("image_HiUni.jpg")
 
 # Instruction-based image editing
-dataset_snapshot_download("DiffSynth-Studio/example_image_dataset", allow_file_pattern="edit/image1.jpg", local_dir="data/example_image_dataset")
+dataset_snapshot_download(
+    dataset_id="DiffSynth-Studio/example_image_dataset",
+    local_dir="./data/example_image_dataset",
+    allow_file_pattern="edit/image1.jpg",
+)
 edit_image = Image.open("data/example_image_dataset/edit/image1.jpg").convert("RGB")
 image = pipe("Change the background to a snowy mountain.", edit_image=edit_image, seed=42, num_inference_steps=25, cfg_scale=4.0)
 image.save("image_HiUni_edit.jpg")
