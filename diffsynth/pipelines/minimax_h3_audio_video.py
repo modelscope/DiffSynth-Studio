@@ -1,4 +1,5 @@
 import math
+from typing import Union
 import numpy as np
 import torch
 from PIL import Image
@@ -6,6 +7,7 @@ from tqdm import tqdm
 from transformers import AutoProcessor
 
 from ..core import ModelConfig
+from ..core.context_compress import KVCompressor, AccumulatingKVCacheBlock
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit
@@ -16,10 +18,39 @@ from ..models.minimax_h3_text_encoder import (
 )
 from ..models.minimax_h3_video_vae import MiniMaxH3VideoVAE
 from ..models.minimax_h3_audio_vae import MiniMaxH3AudioVAE
-from ..models.minimax_h3_controlnet import MiniMaxH3ControlNet
+from ..models.minimax_h3_controlnet import MiniMaxH3ControlNet, create_hint_cache
 from ..models.minimax_h3_dit_vdn import MiniMaxH3VDNLayout, enable_minimax_h3_vdn, initialize_vdn
 from ..utils.data.audio import convert_to_stereo, resample_waveform
 from ..utils.lora.minimax_h3 import MiniMaxH3LoRALoader
+
+
+
+class MiniMaxH3MultiControlNet(torch.nn.Module):
+    """Sums the hints of several ControlNets, one per loaded checkpoint, into one hint dict."""
+
+    def __init__(self, models: list):
+        super().__init__()
+        self.models = torch.nn.ModuleList(models)
+        # The ControlNets are VRAM managed separately; report it up so that `load_models_to_device`
+        # offloads / onloads the wrapper together with the models it owns.
+        self.vram_management_enabled = any(getattr(model, "vram_management_enabled", False) for model in models)
+
+    def forward(self, embeddings, control_rows, img_pos, audio_pos, control_scale, hint_cache=None, **kwargs):
+        if hint_cache is None:
+            control_hints = {}
+            for model, rows, scale in zip(self.models, control_rows, control_scale):
+                hints = model(embeddings, rows, img_pos, audio_pos, control_scale=scale, **kwargs)
+                for block_id, hint in hints.items():
+                    control_hints[block_id] = control_hints[block_id] + hint if block_id in control_hints else hint
+            return control_hints
+        # The ControlNets still run one after another; only their writes merge. The first fills the
+        # shared cache (one encode per hint) and every later one decodes that entry, adds its hint
+        # and stores the re-encoded sum, so the cache holds one hint per block however many
+        # ControlNets are loaded.
+        for model, rows, scale in zip(self.models, control_rows, control_scale):
+            cache = hint_cache if not hint_cache else AccumulatingKVCacheBlock(hint_cache)
+            model(embeddings, rows, img_pos, audio_pos, control_scale=scale, hint_cache=cache, **kwargs)
+        return hint_cache
 
 
 class MiniMaxH3Pipeline(BasePipeline):
@@ -32,7 +63,8 @@ class MiniMaxH3Pipeline(BasePipeline):
         self.dit: MiniMaxH3DiT = None
         self.video_vae: MiniMaxH3VideoVAE = None
         self.audio_vae: MiniMaxH3AudioVAE = None
-        self.controlnet: MiniMaxH3ControlNet = None
+        self.controlnet: MiniMaxH3ControlNet | MiniMaxH3MultiControlNet = None
+        self.pi_h3_dwd = None
         self.tokenizer = None
         self.processor = None
         self.imgvid_cond_noise_aug = 0.999
@@ -52,7 +84,7 @@ class MiniMaxH3Pipeline(BasePipeline):
             MiniMaxH3Unit_ControlNetEncoder(),
         ]
         self.model_fn = model_fn_minimax_h3
-        self.compilable_models = ["dit"]
+        self.compilable_models = ["dit", "video_vae"]
         self.lora_loader = MiniMaxH3LoRALoader
 
     @staticmethod
@@ -63,6 +95,8 @@ class MiniMaxH3Pipeline(BasePipeline):
         processor_config: ModelConfig = ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/processor/"),
         vram_limit: float = None,
         redirect_common_files: bool = True,
+        parallel_config=None,
+        pi_h3_adapter_config: ModelConfig = None,
     ):
         if redirect_common_files:
             redirect_dict = {
@@ -78,15 +112,20 @@ class MiniMaxH3Pipeline(BasePipeline):
                     print(f"The model is detected to be downloading from HuggingFace. {processor_config.model_id} is redirected to {redirect_dict[processor_config.model_id]}. You can use `redirect_common_files=False` to disable file redirection.")
                     processor_config.model_id = redirect_dict[processor_config.model_id]
         pipe = MiniMaxH3Pipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         pipe.text_encoder = model_pool.fetch_model("minimax_h3_text_encoder")
         pipe.dit = model_pool.fetch_model("minimax_h3_dit")
         pipe.video_vae = model_pool.fetch_model("minimax_h3_video_vae")
         pipe.audio_vae = model_pool.fetch_model("minimax_h3_audio_vae")
-        pipe.controlnet = model_pool.fetch_model("minimax_h3_controlnet")
+        controlnets = model_pool.fetch_model("minimax_h3_controlnet", index="all")
+        pipe.controlnet = MiniMaxH3MultiControlNet(controlnets) if isinstance(controlnets, list) else controlnets
         vdn_branch = model_pool.fetch_model("minimax_h3_vdn_linear_branch")
         if vdn_branch is not None:
             enable_minimax_h3_vdn(pipe.dit, vdn_branch)
+        if pi_h3_adapter_config is not None:
+            pipe.pi_h3_dwd = model_pool.fetch_model("minimax_h3_pi_dwd")
+            pipe.scheduler = FlowMatchScheduler("MiniMax-H3-Pi")
+            pipe.scheduler_audio = FlowMatchScheduler("MiniMax-H3-Pi")
         if processor_config is not None:
             processor_config.download_if_necessary()
             pipe.processor = AutoProcessor.from_pretrained(processor_config.path)
@@ -111,6 +150,8 @@ class MiniMaxH3Pipeline(BasePipeline):
         tiled: bool = True,
         tile_size: int = 256,
         tile_overlap: int = 64,
+        tile_decode_batch_size: int = 32,
+        tile_encode_batch_size: int = 4,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
         # Keyframe to Video
@@ -122,17 +163,21 @@ class MiniMaxH3Pipeline(BasePipeline):
         ref_video_short_edge: int = 768,
         ref_video_max_pixels: int = 768 * 1344,
         # ControlNet
-        control_video: list[Image.Image] = None,
-        control_scale: float = 1.0,
+        control_video: list[Image.Image] | list[list[Image.Image]] = None,
+        control_scale: float | list[float] = 1.0,
+        # Compress the ControlNet hint tensors with the KV-cache compression codecs.
+        controlnet_compress_config: Union[list, dict, KVCompressor] = None,
         # Video / Audio Retake
         retake_video: list[Image.Image] = None,
         frame_regions_to_retake: list[tuple[float, float]] = None,
+        pin_latents: torch.Tensor = None,
         retake_audio: torch.Tensor = None,
         retake_audio_sample_rate: int = 32000,
         seconds_regions_to_retake: list[tuple[float, float]] = None,
         progress_bar_cmd=tqdm,
         # Template inputs
         text_embedding: torch.Tensor = None,
+        return_latents: bool = False,
     ):
         """Generate a joint video + audio sample.
 
@@ -152,6 +197,12 @@ class MiniMaxH3Pipeline(BasePipeline):
                                     "audio": Tensor[C, L], "sample_rate": int}
 
         Input contract: `video` frame lists must ALREADY. be 24fps the pipeline never resamples frame rate.
+
+        `controlnet_compress_config` compresses the ControlNet hint tensors, which are the largest
+        intermediates of the control branch. It accepts a list of compression stages, a single dict,
+        or a `KVCompressor` instance; the default `None` keeps the hints dense. Each hint is
+        compressed as soon as its layer produces it and decoded only when the matching transformer
+        block adds it.
         """
         self.scheduler.set_timesteps(num_inference_steps, shift=flow_shift)
         self.scheduler_audio.set_timesteps(num_inference_steps, shift=audio_flow_shift)
@@ -163,12 +214,14 @@ class MiniMaxH3Pipeline(BasePipeline):
             "height": height, "width": width, "num_frames": num_frames,
             "seed": seed, "rand_device": rand_device,
             "tiled": tiled, "tile_size": tile_size, "tile_overlap": tile_overlap,
+            "tile_decode_batch_size": tile_decode_batch_size, "tile_encode_batch_size": tile_encode_batch_size,
             "use_gradient_checkpointing": use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": use_gradient_checkpointing_offload,
             "keyframes": keyframes, "keyframe_indices": keyframe_indices,
             "references": references, "ref_image_short_edge": ref_image_short_edge, "ref_video_short_edge": ref_video_short_edge, "ref_video_max_pixels": ref_video_max_pixels,
             "control_video": control_video, "control_scale": control_scale,
-            "retake_video": retake_video, "frame_regions_to_retake": frame_regions_to_retake,
+            "controlnet_compress": controlnet_compress_config,
+            "retake_video": retake_video, "frame_regions_to_retake": frame_regions_to_retake, "pin_latents": pin_latents,
             "retake_audio": (retake_audio, retake_audio_sample_rate) if retake_audio is not None else None, "seconds_regions_to_retake": seconds_regions_to_retake,
             "imgvid_cond_noise_aug": self.imgvid_cond_noise_aug, "audio_cond_noise_aug": self.audio_cond_noise_aug,
             "text_embedding": text_embedding,
@@ -184,10 +237,12 @@ class MiniMaxH3Pipeline(BasePipeline):
         for progress_id, timestep_video in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
             timestep_video = timestep_video.unsqueeze(0).to(dtype=torch.float32, device=self.device)
             timestep_audio = self.scheduler_audio.timesteps[progress_id].unsqueeze(0).to(dtype=torch.float32, device=self.device)
-            noise_pred_video, noise_pred_audio = self.cfg_guided_model_fn(
+            prediction = self.cfg_guided_model_fn(
                 self.model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega,
                 **models, timestep_video=timestep_video, timestep_audio=timestep_audio,
+                return_video_features=self.pi_h3_dwd is not None and progress_id == num_inference_steps - 1,
             )
+            noise_pred_video, noise_pred_audio = prediction[:2]
             inputs_shared["video_latents"] = self.step(
                 self.scheduler, inputs_shared["video_latents"], progress_id, noise_pred=noise_pred_video,
                 inpaint_mask=inputs_shared.get("denoise_mask_video"), input_latents=inputs_shared.get("input_latents_video"),
@@ -198,13 +253,20 @@ class MiniMaxH3Pipeline(BasePipeline):
             )
 
         # 5. Decode
-        self.load_models_to_device(["video_vae"])
-        frames = self.video_vae.decode_video(inputs_shared["video_latents"], dtype=self.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap)
+        if self.pi_h3_dwd is not None:
+            self.load_models_to_device(["pi_h3_dwd"])
+            t, h, w = inputs_shared["video_latents"].shape[-3:]
+            frames = self.pi_h3_dwd(*prediction[2], (t, h // 2, w // 2))
+        else:
+            self.load_models_to_device(["video_vae"])
+            frames = self.video_vae.decode_video(inputs_shared["video_latents"], dtype=self.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap, tile_decode_batch_size=tile_decode_batch_size)
         video = self.vae_output_to_video(frames, min_value=0, max_value=1)
 
         self.load_models_to_device(["audio_vae"])
         waveform = self.audio_vae.decode_audio(inputs_shared["audio_latents"], dtype=self.torch_dtype)
         audio = self.output_audio_format_check(waveform)
+        if return_latents:
+            return video, audio, inputs_shared["video_latents"]
         return video, audio
 
     @torch.no_grad()
@@ -366,28 +428,32 @@ class MiniMaxH3Unit_InputAudioEmbedder(PipelineUnit):
 class MiniMaxH3Unit_VideoRetakeEmbedder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("retake_video", "frame_regions_to_retake", "video_latents", "height", "width", "num_frames", "tiled", "tile_size", "tile_overlap"),
+            input_params=("retake_video", "frame_regions_to_retake", "pin_latents", "video_latents", "height", "width", "num_frames", "tiled", "tile_size", "tile_overlap"),
             output_params=("input_latents_video", "denoise_mask_video"),
             onload_model_names=("video_vae",)
         )
 
-    def process(self, pipe: MiniMaxH3Pipeline, retake_video, frame_regions_to_retake, video_latents, height, width, num_frames, tiled, tile_size, tile_overlap):
+    def process(self, pipe: MiniMaxH3Pipeline, retake_video, frame_regions_to_retake, pin_latents, video_latents, height, width, num_frames, tiled, tile_size, tile_overlap):
+        if pin_latents is not None:
+            n = pin_latents.shape[2]
+            input_latents = torch.zeros_like(video_latents)
+            input_latents[:, :, :n] = pin_latents.to(device=video_latents.device, dtype=video_latents.dtype)
+            mask = torch.ones(video_latents.shape[2], dtype=video_latents.dtype, device=video_latents.device)
+            mask[:n] = 0
+            return {"input_latents_video": input_latents, "denoise_mask_video": mask.view(1, 1, -1, 1, 1).expand(-1, -1, -1, *video_latents.shape[-2:])}
         if retake_video is None:
             return {}
-        assert len(retake_video) > 0, "retake_video must contain at least one frame"
         pipe.load_models_to_device(self.onload_model_names)
         frames = [f.convert("RGB").resize((width, height), Image.LANCZOS) for f in retake_video[:num_frames]]
         padded_frames = num_frames - len(frames)
         frames += [frames[-1]] * padded_frames
         frames_tensor = pipe.preprocess_video(frames, torch_dtype=torch.float32, min_value=0, device=pipe.device)
         latents = pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap).to(device=pipe.device, dtype=pipe.torch_dtype)
-        assert latents.shape == video_latents.shape, f"retake_video latents {tuple(latents.shape)} do not match the target shape {tuple(video_latents.shape)}"
-
         regions = list(frame_regions_to_retake or [])
         if padded_frames > 0:
             regions.append((num_frames - padded_frames, num_frames))
         clip_frames, latents_per_clip = pipe.video_vae.clip_length, pipe.video_vae.tokens_chunk_size
-        mask = torch.zeros(latents.shape[2], dtype=pipe.torch_dtype, device=pipe.device)  # 1 = regenerate
+        mask = torch.zeros(latents.shape[2], dtype=pipe.torch_dtype, device=pipe.device)
         for start, end in regions:
             if end > start:
                 mask[max(0, math.floor(start / clip_frames)) * latents_per_clip: math.ceil(end / clip_frames) * latents_per_clip] = 1
@@ -470,7 +536,7 @@ class MiniMaxH3Unit_KeyframeEncoder(PipelineUnit):
 class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("references", "seed", "video_latents", "num_frames", "ref_image_short_edge", "ref_video_short_edge", "ref_video_max_pixels"),
+            input_params=("references", "seed", "video_latents", "num_frames", "ref_image_short_edge", "ref_video_short_edge", "ref_video_max_pixels", "tile_encode_batch_size"),
             output_params=("ref_blocks", "ref_visual_anchor", "ref_audio_anchor"),
             onload_model_names=("video_vae", "audio_vae")
         )
@@ -495,19 +561,19 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
         assert used <= frame_count, f"cannot trim {frame_count} reference video frames down to a valid " f"length: at least {used} frames are required"
         return used
 
-    def _encode_image_ref(self, pipe, img: Image.Image, short_edge: int):
+    def _encode_image_ref(self, pipe, img: Image.Image, short_edge: int, tile_encode_batch_size: int = 4):
         target_w, target_h = self._resolve_reference_image_shape(pipe, *img.size, short_edge)
         img = img.convert("RGB").resize((target_w, target_h), Image.LANCZOS)
         img_tensor = pipe.preprocess_image(img, torch_dtype=torch.float32, min_value=0)
-        z = pipe.video_vae.encode_video(img_tensor.to(pipe.device), dtype=pipe.torch_dtype, process_image=True,)  # [1,24,1,H',W']
+        z = pipe.video_vae.encode_video(img_tensor.to(pipe.device), dtype=pipe.torch_dtype, process_image=True, tile_encode_batch_size=tile_encode_batch_size)  # [1,24,1,H',W']
         return patchify_video(z), z.shape[-2], z.shape[-1], img
 
-    def _encode_video_ref(self, pipe, frames, target_frame_count: int, short_edge: int, max_pixels: int):
+    def _encode_video_ref(self, pipe, frames, target_frame_count: int, short_edge: int, max_pixels: int, tile_encode_batch_size: int = 4):
         target_w, target_h = self._resolve_reference_video_shape(pipe, *frames[0].size, short_edge, max_pixels)
         frames = [f.resize((target_w, target_h), Image.LANCZOS).convert("RGB") for f in frames]
         frames = frames[: self._trim_reference_video_length(pipe, min(len(frames), target_frame_count))]
         frames_tensor = pipe.preprocess_video(frames, torch_dtype=torch.float32, min_value=0, device=pipe.device)
-        z = pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype, process_image=False,)  # [1,24,T',H',W']
+        z = pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype, process_image=False, tile_encode_batch_size=tile_encode_batch_size)  # [1,24,T',H',W']
         return patchify_video(z), int(z.shape[2]), int(z.shape[3]), int(z.shape[4]), frames
 
     def _encode_audio_ref(self, pipe, waveform, sample_rate: int):
@@ -523,16 +589,16 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
         assert value is not None, f"reference type {kind!r} requires field {key!r}"
         return value
 
-    def _build_block(self, pipe, ref, target_frame_count, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels):
+    def _build_block(self, pipe, ref, target_frame_count, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels, tile_encode_batch_size=4):
         kind = ref["type"]
         if kind == "image":
-            rows, lh, lw, prepared = self._encode_image_ref(pipe, self._require(ref, "image", kind), ref_image_short_edge)
+            rows, lh, lw, prepared = self._encode_image_ref(pipe, self._require(ref, "image", kind), ref_image_short_edge, tile_encode_batch_size)
             return {"kind": kind, "visual_clean": rows, "latent_t": 1, "latent_h": lh, "latent_w": lw, "prepared_image": prepared, "ref_audio_t": 0}
         if kind in ("video", "video_audio"):
             if kind == "video" and ref.get("audio") is not None:
                 raise ValueError("reference type 'video' is silent; use 'video_audio' to pass a soundtrack")
             frames = self._require(ref, "video", kind)
-            rows, lt, lh, lw, prepared = self._encode_video_ref(pipe, frames, target_frame_count, ref_video_short_edge, ref_video_max_pixels)
+            rows, lt, lh, lw, prepared = self._encode_video_ref(pipe, frames, target_frame_count, ref_video_short_edge, ref_video_max_pixels, tile_encode_batch_size)
             block = {"kind": kind, "visual_clean": rows, "latent_t": lt, "latent_h": lh, "latent_w": lw, "prepared_frames": prepared, "ref_audio_t": 0}
             if kind == "video_audio":
                 audio_waveform = self._require(ref, "audio", kind)
@@ -544,14 +610,15 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
             rows, ref_audio_t = self._encode_audio_ref(pipe, self._require(ref, "audio", kind), int(self._require(ref, "sample_rate", kind)))
             return {"kind": kind, "audio_clean": rows, "ref_audio_t": ref_audio_t}
 
-    def process(self, pipe: MiniMaxH3Pipeline, references, seed, video_latents, num_frames, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels):
+    def process(self, pipe: MiniMaxH3Pipeline, references, seed, video_latents, num_frames, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels, tile_encode_batch_size=4):
         if not references:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
         seed = int(seed) if seed is not None else 42
+        tile_encode_batch_size = 4 if tile_encode_batch_size is None else tile_encode_batch_size
         device = pipe.device
 
-        ref_blocks_out = [self._build_block(pipe, ref, num_frames, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels) for ref in references]
+        ref_blocks_out = [self._build_block(pipe, ref, num_frames, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels, tile_encode_batch_size) for ref in references]
         visual_blocks = [b for b in ref_blocks_out if "visual_clean" in b]
         imgvid_cond_num_frames = len(visual_blocks)
         visual_parts = []
@@ -853,8 +920,8 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
 class MiniMaxH3Unit_ControlNetEncoder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("control_video", "control_scale", "height", "width", "num_frames", "tiled", "tile_size", "tile_overlap"),
-            output_params=("control_rows", "control_scale"),
+            input_params=("control_video", "control_scale", "height", "width", "num_frames", "tiled", "tile_size", "tile_overlap", "controlnet_compress"),
+            output_params=("control_rows", "control_scale", "controlnet_compress"),
             onload_model_names=("video_vae",),
         )
 
@@ -865,13 +932,34 @@ class MiniMaxH3Unit_ControlNetEncoder(PipelineUnit):
         frames_tensor = pipe.preprocess_video(frames, torch_dtype=torch.float32, min_value=0, device=pipe.device)
         return pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap).to(device=pipe.device, dtype=pipe.torch_dtype)
 
-    def process(self, pipe: MiniMaxH3Pipeline, control_video, control_scale, height, width, num_frames, tiled, tile_size, tile_overlap):
+    def process(self, pipe: MiniMaxH3Pipeline, control_video, control_scale, height, width, num_frames, tiled, tile_size, tile_overlap, controlnet_compress):
+        # The ControlNet hints are the largest intermediates of the control branch; compress each
+        # hint as soon as its layer produces it and decode it when the matching block adds it.
+        if controlnet_compress is not None and not isinstance(controlnet_compress, KVCompressor):
+            controlnet_compress = KVCompressor(controlnet_compress)
+        if controlnet_compress is not None and controlnet_compress.layout == "head":
+            raise ValueError('ControlNet hints are 2-D; use layout="joint" or entropack in the compression config.')
         if control_video is None:
-            return {}
+            return {"controlnet_compress": controlnet_compress}
         pipe.load_models_to_device(self.onload_model_names)
         if control_scale is None:
             control_scale = 1
 
+        if isinstance(pipe.controlnet, MiniMaxH3MultiControlNet):
+            # Multi-ControlNet: one control video and one scale per loaded ControlNet, in loading order.
+            num_controlnets = len(pipe.controlnet.models)
+            if not isinstance(control_video[0], list) or len(control_video) != num_controlnets:
+                raise ValueError(f"{num_controlnets} ControlNets are loaded, so `control_video` must be a list of {num_controlnets} frame lists.")
+            if not isinstance(control_scale, list):
+                control_scale = [control_scale] * num_controlnets
+            if len(control_scale) != num_controlnets:
+                raise ValueError(f"{num_controlnets} ControlNets are loaded, but `control_scale` has {len(control_scale)} entries.")
+            control_rows = [self.encode_control_rows(pipe, video, height, width, num_frames, tiled, tile_size, tile_overlap) for video in control_video]
+        else:
+            control_rows = self.encode_control_rows(pipe, control_video, height, width, num_frames, tiled, tile_size, tile_overlap)
+        return {"control_rows": control_rows, "control_scale": control_scale, "controlnet_compress": controlnet_compress}
+
+    def encode_control_rows(self, pipe: MiniMaxH3Pipeline, control_video, height, width, num_frames, tiled, tile_size, tile_overlap):
         control_latents = self.encode_video_at_mode(pipe, control_video, height, width, num_frames, tiled, tile_size, tile_overlap)
         control_rows = patchify_video(control_latents)
 
@@ -881,7 +969,7 @@ class MiniMaxH3Unit_ControlNetEncoder(PipelineUnit):
             control_rows = torch.nn.functional.pad(control_rows, (0, expected_columns - control_rows.shape[-1]))
         elif control_rows.shape[-1] > expected_columns:
             raise ValueError(f"The control rows carry {control_rows.shape[-1]} columns but the checkpoint's control_in_dim ({control_in_dim}) expects {expected_columns}. A control-only checkpoint cannot read the inpaint channels.")
-        return {"control_rows": control_rows.to(device=pipe.device, dtype=pipe.torch_dtype), "control_scale": control_scale}
+        return control_rows.to(device=pipe.device, dtype=pipe.torch_dtype)
 
 
 def model_fn_minimax_h3_controlnet(
@@ -902,8 +990,10 @@ def model_fn_minimax_h3_controlnet(
     use_gradient_checkpointing_offload=False,
     controlnet=None,
     control_rows=None,
+    control_scale=1.0,
+    controlnet_compress=None,
     **kwargs,
-) -> tuple[torch.Tensor, torch.Tensor]:
+) -> dict[int, torch.Tensor]:
     inverse_indices = inverse_indices.view(-1).to(torch.long)
     token_tags = token_tags.view(-1).to(torch.long)
     text_selected = prompt_embeds
@@ -936,11 +1026,7 @@ def model_fn_minimax_h3_controlnet(
     inverse_indices = inverse_indices.to(device)
 
     cu_seqlens = cu_seqlens.to(device)
-    control_hints = controlnet(
-        decoder_input,
-        control_rows,
-        img_pos.to(device),
-        audio_pos.to(device),
+    controlnet_kwargs = dict(
         t_emb=t_emb,
         combined_indices=combined_indices,
         rope_freqs=rope_freqs,
@@ -949,7 +1035,11 @@ def model_fn_minimax_h3_controlnet(
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
     )
-    return control_hints
+    hint_cache = None if controlnet_compress is None else create_hint_cache(controlnet_compress)
+    return controlnet(
+        decoder_input, control_rows, img_pos.to(device), audio_pos.to(device),
+        control_scale=control_scale, hint_cache=hint_cache, **controlnet_kwargs,
+    )
 
 
 def model_fn_minimax_h3(
@@ -972,8 +1062,10 @@ def model_fn_minimax_h3(
     controlnet=None,
     control_rows=None,
     control_scale=1.0,
+    controlnet_compress=None,
     use_gradient_checkpointing=False,
     use_gradient_checkpointing_offload=False,
+    return_video_features=False,
     **kwargs,
 ):
     t_video = 1.0 - float(timestep_video) / 1000
@@ -1024,7 +1116,7 @@ def model_fn_minimax_h3(
 
     # ControlNet
     if control_rows is not None:
-        control_residual = model_fn_minimax_h3_controlnet(
+        control_hints = model_fn_minimax_h3_controlnet(
             dit,
             x,
             audio_x,
@@ -1042,15 +1134,13 @@ def model_fn_minimax_h3(
             use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
             controlnet=controlnet,
             control_rows=control_rows,
+            control_scale=control_scale,
+            controlnet_compress=controlnet_compress,
         )
-        control_hints = {}
-        for block_id in range(len(dit.blocks)):
-            if block_id in controlnet.control_layers_mapping:
-                control_hints[block_id] = control_residual[controlnet.control_layers_mapping[block_id]] * control_scale
     else:
         control_hints = None
 
-    v_video_rows, v_audio_rows = dit(
+    prediction = dit(
         x=x,
         audio_x=audio_x,
         img_position_ids=packed["img_position_ids"],
@@ -1069,11 +1159,15 @@ def model_fn_minimax_h3(
         use_gradient_checkpointing=use_gradient_checkpointing,
         use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
         control_hints=control_hints,
+        video_feature_positions=img_pos[cond_rows_count:] if return_video_features else None,
     )
 
+    v_video_rows, v_audio_rows = prediction[:2]
     v_video_rows = v_video_rows[cond_rows_count:]
     v_audio_rows = v_audio_rows[ref_audio_rows_count:]
 
     v_video = unpatchify_video(v_video_rows, f, h, w)
     v_audio = unpack_audio(v_audio_rows, audio_channel, audio_t)
+    if return_video_features:
+        return -v_video, -v_audio, prediction[2]
     return -v_video, -v_audio

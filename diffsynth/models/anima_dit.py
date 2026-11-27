@@ -9,6 +9,7 @@ from typing import Callable, Optional, Tuple, List
 import math
 from torchvision import transforms
 from ..core.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 
 
@@ -568,6 +569,11 @@ class FinalLayer(nn.Module):
         return x_B_T_H_W_O
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"x_B_T_H_W_D": 1, "emb_B_T_D": 1, "rope_emb_L_1_1_D": 1, "adaln_lora_B_T_3D": 1, "extra_per_block_pos_emb": 1},
+    gather_dimensions_for_outputs={"x_B_T_H_W_D": 1},
+    no_exchange_modules=("cross_attn",),
+)
 class Block(nn.Module):
     """
     A transformer block that combines self-attention, cross-attention and MLP layers with AdaLN modulation.
@@ -1035,6 +1041,8 @@ class MiniTrainDIT(nn.Module):
             fps=fps,
             padding_mask=padding_mask,
         )
+        num_frames, height, width = x_B_T_H_W_D.shape[1:4]
+        x_B_T_H_W_D = rearrange(x_B_T_H_W_D, "b t h w d -> b (t h w) 1 1 d")
 
         if timesteps_B_T.ndim == 1:
             timesteps_B_T = timesteps_B_T.unsqueeze(1)
@@ -1049,13 +1057,14 @@ class MiniTrainDIT(nn.Module):
         self.crossattn_emb = crossattn_emb
 
         if extra_pos_emb_B_T_H_W_D_or_T_H_W_B_D is not None:
-            assert (
-                x_B_T_H_W_D.shape == extra_pos_emb_B_T_H_W_D_or_T_H_W_B_D.shape
-            ), f"{x_B_T_H_W_D.shape} != {extra_pos_emb_B_T_H_W_D_or_T_H_W_B_D.shape}"
+            extra_pos_emb_B_T_H_W_D_or_T_H_W_B_D = rearrange(extra_pos_emb_B_T_H_W_D_or_T_H_W_B_D, "b t h w d -> b (t h w) 1 1 d")
+
+        def per_token(states):
+            return repeat(states.expand(-1, num_frames, -1), "b t c -> b (t h w) c", h=height, w=width)
 
         block_kwargs = {
             "rope_emb_L_1_1_D": rope_emb_L_1_1_D.unsqueeze(1).unsqueeze(0),
-            "adaln_lora_B_T_3D": adaln_lora_B_T_3D,
+            "adaln_lora_B_T_3D": per_token(adaln_lora_B_T_3D),
             "extra_per_block_pos_emb": extra_pos_emb_B_T_H_W_D_or_T_H_W_B_D,
             "transformer_options": kwargs.get("transformer_options", {}),
         }
@@ -1073,11 +1082,12 @@ class MiniTrainDIT(nn.Module):
                 use_gradient_checkpointing=use_gradient_checkpointing,
                 use_gradient_checkpointing_offload=use_gradient_checkpointing_offload,
                 x_B_T_H_W_D=x_B_T_H_W_D,
-                emb_B_T_D=t_embedding_B_T_D,
+                emb_B_T_D=per_token(t_embedding_B_T_D),
                 crossattn_emb=crossattn_emb,
                 **block_kwargs,
             )
 
+        x_B_T_H_W_D = rearrange(x_B_T_H_W_D, "b (t h w) 1 1 d -> b t h w d", t=num_frames, h=height, w=width)
         x_B_T_H_W_O = self.final_layer(x_B_T_H_W_D.to(crossattn_emb.dtype), t_embedding_B_T_D, adaln_lora_B_T_3D=adaln_lora_B_T_3D)
         x_B_C_Tt_Hp_Wp = self.unpatchify(x_B_T_H_W_O)[:, :, :orig_shape[-3], :orig_shape[-2], :orig_shape[-1]]
         return x_B_C_Tt_Hp_Wp

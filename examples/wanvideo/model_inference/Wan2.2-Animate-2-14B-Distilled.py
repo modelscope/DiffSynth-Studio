@@ -34,6 +34,10 @@ dataset_snapshot_download(
     allow_file_pattern="wanvideo/Wan2.2-Animate-2-14B-Distilled/*"
 )
 reference_image = Image.open("data/diffsynth_example_dataset/wanvideo/Wan2.2-Animate-2-14B-Distilled/refimage.jpg").convert("RGB")
+# Store the reference-branch KV cache compressed on the GPU instead of offloading it to the
+# CPU (`animate2_offload_kv=True`); set to None to keep the cache dense.
+kv_compress_config = [{"method": "entropack", "target_bpp": 6.0}]
+
 reference_video = VideoData("data/diffsynth_example_dataset/wanvideo/Wan2.2-Animate-2-14B-Distilled/refvideo.mp4").raw_data()
 
 # Example 1: single-clip generation
@@ -44,7 +48,7 @@ video = pipe(
     animate2_prompt_ref="视频中的人在做动作，背景静止",
     animate2_reference_image=reference_image,
     animate2_reference_video=reference_video[:num_frames],
-    animate2_offload_kv=True,
+    kv_compress_config=kv_compress_config,
     animate2_log_scale=-1.3,
     num_frames=num_frames, height=1280, width=720,
     num_inference_steps=10, cfg_scale=1.0,
@@ -106,7 +110,7 @@ long_video = generate_long_video(
     first_num=1,
     prompt="人物外观描述：一名长黑发女性，穿着白色半透明蕾丝长袖上衣，衣身带有花卉刺绣，下身搭配白色百褶短裙和黑色腰带，脚穿米白色厚底运动鞋。 背景描述：背景为现代室内空间，墙面和柜体以浅灰色为主，后方设有两扇深色落地窗或玻璃门，顶部安装长条形灯具，中央有一块浅色长方形台面。",
     animate2_prompt_ref="视频中的人在做动作，背景静止",
-    animate2_offload_kv=True,
+    kv_compress_config=kv_compress_config,
     animate2_log_scale=-1.3,
     height=1280, width=720,
     num_inference_steps=10, cfg_scale=1.0,

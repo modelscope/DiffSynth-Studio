@@ -448,6 +448,8 @@ from diffsynth.configs import MODEL_CONFIGS
 MODEL_CONFIGS.append(config_entry)
 ```
 
+If the entry is published as a JSON file next to the quantized weights, `ModelConfig` can register it automatically: fill in `origin_config_file` with the path of that JSON file, and `download_if_necessary` downloads it and appends the entry for you (see [the config file format](../API_Reference/core/loader.md#config-file-format)).
+
 **Option 2: write it into the config file (permanent).** Add the entry above to the `MODEL_CONFIGS` list in `diffsynth/configs/model_configs.py`, so you no longer need to register it manually. If your quantized weights are publicly released, you are also welcome to submit the entry to us as a PR, so other users can load them directly.
 
 ### Step 3: Load for Inference

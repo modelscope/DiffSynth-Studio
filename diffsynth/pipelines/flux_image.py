@@ -137,10 +137,11 @@ class FluxImagePipeline(BasePipeline):
         nexus_gen_processor_config: ModelConfig = ModelConfig(model_id="DiffSynth-Studio/Nexus-GenV2", origin_file_pattern="processor/"),
         step1x_processor_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen2.5-VL-7B-Instruct", origin_file_pattern=""),
         vram_limit: float = None,
+        parallel_config=None,
     ):
         # Initialize pipeline
         pipe = FluxImagePipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
         
         # Fetch models
         pipe.text_encoder_1 = model_pool.fetch_model("flux_text_encoder_clip")
@@ -1443,6 +1444,8 @@ def model_fn_flux_image(
         hidden_states = tea_cache.update(hidden_states)
     else:
         # Joint Blocks
+        text_rotary_emb = image_rotary_emb[:, :, :prompt_emb.shape[1]]
+        image_stream_rotary_emb = image_rotary_emb[:, :, prompt_emb.shape[1]:]
         for block_id, block in enumerate(dit.blocks):
             hidden_states, prompt_emb = gradient_checkpoint_forward(
                 block,
@@ -1451,7 +1454,8 @@ def model_fn_flux_image(
                 hidden_states,
                 prompt_emb,
                 conditioning,
-                image_rotary_emb,
+                image_stream_rotary_emb,
+                text_rotary_emb,
                 attention_mask,
                 ipadapter_kwargs_list=ipadapter_kwargs_list.get(block_id, None),
             )

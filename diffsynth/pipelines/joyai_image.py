@@ -45,9 +45,10 @@ class JoyAIImagePipeline(BasePipeline):
         processor_config: ModelConfig = None,
         # Optional
         vram_limit: float = None,
+        parallel_config=None,
     ):
         pipe = JoyAIImagePipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
 
         pipe.text_encoder = model_pool.fetch_model("qwen_image_21_text_encoder")
         pipe.dit = model_pool.fetch_model("joyai_image_dit")

@@ -1,5 +1,6 @@
 from PIL import Image
 import torch
+import torch.distributed as dist
 import numpy as np
 from einops import repeat, reduce
 from typing import Union
@@ -9,6 +10,7 @@ from ..utils.lora import GeneralLoRALoader
 from ..models.model_loader import ModelPool
 from ..utils.controlnet import ControlNetInput
 from ..core.device import get_device_name, IS_NPU_AVAILABLE
+from ..core.distributed import all_gather_sequence, init_parallel, parallel_context
 from .template import load_template_model, load_template_data_processor
 
 
@@ -79,6 +81,7 @@ class BasePipeline(torch.nn.Module):
         self.time_division_remainder = time_division_remainder
         # VRAM management
         self.vram_management_enabled = False
+        self.parallel_config = None
         # Pipeline Unit Runner
         self.unit_runner = PipelineUnitRunner()
         # LoRA Loader
@@ -118,7 +121,7 @@ class BasePipeline(torch.nn.Module):
     def preprocess_image(self, image, torch_dtype=None, device=None, pattern="B C H W", min_value=-1, max_value=1):
         # Transform a PIL.Image to torch.Tensor
         image = torch.Tensor(np.array(image, dtype=np.float32))
-        image = image.to(dtype=torch_dtype or self.torch_dtype, device=device or self.device)
+        image = image.to(device=device or self.device).to(dtype=torch_dtype or self.torch_dtype)
         image = image * ((max_value - min_value) / 255) + min_value
         image = repeat(image, f"H W C -> {pattern}", **({"B": 1} if "B" in pattern else {}))
         return image
@@ -136,7 +139,7 @@ class BasePipeline(torch.nn.Module):
         if pattern != "H W C":
             vae_output = reduce(vae_output, f"{pattern} -> H W C", reduction="mean")
         image = ((vae_output - min_value) * (255 / (max_value - min_value))).clip(0, 255)
-        image = image.to(device="cpu", dtype=torch.uint8)
+        image = image.to(dtype=torch.uint8).to(device="cpu")
         image = Image.fromarray(image.numpy())
         return image
 
@@ -182,6 +185,10 @@ class BasePipeline(torch.nn.Module):
 
     def generate_noise(self, shape, seed=None, rand_device="cpu", rand_torch_dtype=torch.float32, device=None, torch_dtype=None):
         # Initialize Gaussian noise
+        if seed is None and self.parallel_config is not None and parallel_context.get_world_group() is not None:
+            seeds = [torch.Generator().seed()]
+            dist.broadcast_object_list(seeds, src=0, group=parallel_context.get_world_group())
+            seed = seeds[0]
         generator = None if seed is None else torch.Generator(rand_device).manual_seed(seed)
         noise = torch.randn(shape, generator=generator, device=rand_device, dtype=rand_torch_dtype)
         noise = noise.to(dtype=torch_dtype or self.torch_dtype, device=device or self.device)
@@ -302,7 +309,10 @@ class BasePipeline(torch.nn.Module):
             print(f"{cleared_num} LoRA layers are cleared.")
         
     
-    def download_and_load_models(self, model_configs: list[ModelConfig] = [], vram_limit: float = None):
+    def download_and_load_models(self, model_configs: list[ModelConfig] = [], vram_limit: float = None, parallel_config=None):
+        self.parallel_config = parallel_config
+        if parallel_config is not None:
+            init_parallel(parallel_config.timeout_seconds, parallel_config)
         model_pool = ModelPool()
         for model_config in model_configs:
             model_config.download_if_necessary()
@@ -316,6 +326,7 @@ class BasePipeline(torch.nn.Module):
                 clear_parameters=model_config.clear_parameters,
                 state_dict=model_config.state_dict,
                 quantize=model_config.quantize,
+                parallel_config=parallel_config,
             )
         return model_pool
     
@@ -328,7 +339,47 @@ class BasePipeline(torch.nn.Module):
         return vram_management_enabled
     
     
+    def _cfg_parallel_model_fn(self, model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, cfg_group, **inputs_others):
+        if cfg_scale == 1.0:
+            raise ValueError(
+                "CFG parallelism requires cfg_scale != 1; without guidance there is no negative branch "
+                "to run on the other ranks. Set cfg_scale > 1 or disable CFG parallelism."
+            )
+        if parallel_context.get_cfg_rank() == 0:
+            lora_key, inputs_branch = "positive_only_lora", inputs_posi
+        else:
+            lora_key, inputs_branch = "negative_only_lora", inputs_nega
+
+        lora = inputs_shared.get(lora_key, None)
+        if lora is not None:
+            self.load_lora(self.dit, state_dict=lora, verbose=0)
+        branch_pred = model_fn(**inputs_branch, **inputs_shared, **inputs_others)
+        if lora is not None:
+            self.clear_lora(verbose=0)
+
+        # Every rank ends up with both branches, so the combine and the scheduler step stay local.
+        noise_pred_posi, noise_pred_nega = self._exchange_cfg_branches(branch_pred, cfg_group)
+        if isinstance(noise_pred_posi, tuple):
+            return tuple(n + cfg_scale * (p - n) for p, n in zip(noise_pred_posi, noise_pred_nega))
+        return noise_pred_nega + cfg_scale * (noise_pred_posi - noise_pred_nega)
+
+    def _exchange_cfg_branches(self, branch_pred, cfg_group):
+        """All-gather the branch this rank ran into the (positive, negative) pair."""
+        def exchange(pred):
+            gathered = all_gather_sequence(pred.contiguous(), dim=0, group=cfg_group)
+            return gathered.chunk(parallel_context.get_cfg_world_size(), dim=0)
+
+        if isinstance(branch_pred, tuple):
+            parts = [exchange(pred) for pred in branch_pred]
+            return tuple(p[0] for p in parts), tuple(p[1] for p in parts)
+        return exchange(branch_pred)
+
     def cfg_guided_model_fn(self, model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, **inputs_others):
+        cfg_group = parallel_context.get_cfg_group()
+        if cfg_group is not None:
+            return self._cfg_parallel_model_fn(
+                model_fn, cfg_scale, inputs_shared, inputs_posi, inputs_nega, cfg_group, **inputs_others
+            )
         # Positive side forward
         if inputs_shared.get("positive_only_lora", None) is not None:
             self.load_lora(self.dit, state_dict=inputs_shared["positive_only_lora"], verbose=0)

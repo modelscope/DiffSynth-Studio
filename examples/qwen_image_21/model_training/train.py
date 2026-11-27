@@ -19,6 +19,7 @@ class QwenImage21TrainingModule(DiffusionTrainingModule):
         fp8_models=None,
         offload_models=None,
         quant_options=None,
+        template_model_id_or_path=None,
         resume_from_checkpoint=None, remove_prefix_in_ckpt=None,
         device="cpu",
         task="sft",
@@ -28,6 +29,7 @@ class QwenImage21TrainingModule(DiffusionTrainingModule):
         model_configs = self.parse_model_configs(model_paths, model_id_with_origin_paths, fp8_models=fp8_models, offload_models=offload_models, quant_options=quant_options, device=device)
         processor_config = ModelConfig(model_id="Qwen/Qwen-Image-2.1", origin_file_pattern="processor/") if processor_path is None else ModelConfig(processor_path)
         self.pipe = QwenImage21Pipeline.from_pretrained(torch_dtype=torch.bfloat16, device=device, model_configs=model_configs, processor_config=processor_config)
+        self.pipe = self.load_training_template_model(self.pipe, template_model_id_or_path, use_gradient_checkpointing, use_gradient_checkpointing_offload)
         self.pipe = self.split_pipeline_units(task, self.pipe, trainable_models, lora_base_model)
         self.resume_from_checkpoint(resume_from_checkpoint, remove_prefix_in_ckpt)
 
@@ -105,6 +107,7 @@ if __name__ == "__main__":
         main_data_operator=UnifiedDataset.default_image_operator(
             base_path=args.dataset_base_path,
             max_pixels=args.max_pixels,
+            min_pixels=args.min_pixels,
             height=args.height,
             width=args.width,
             height_division_factor=32,
@@ -130,6 +133,7 @@ if __name__ == "__main__":
         fp8_models=args.fp8_models,
         offload_models=args.offload_models,
         quant_options=args.quant_options,
+        template_model_id_or_path=args.template_model_id_or_path,
         resume_from_checkpoint=args.resume_from_checkpoint,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         task=args.task,

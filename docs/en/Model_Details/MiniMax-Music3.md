@@ -66,9 +66,9 @@ save_audio(audio, 44100, "MiniMax-Music3.wav")
 
 ## Model Overview
 
-|Model ID|Inference|Low VRAM Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
-|-|-|-|-|-|-|-|
-|[MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_music3/model_inference/MiniMax-Music3.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_music3/model_inference_low_vram/MiniMax-Music3.py)|—|—|—|—|
+|Model ID|Inference|Low VRAM Inference|Parallel Inference|Full Training|Full Training Validation|LoRA Training|LoRA Training Validation|
+|-|-|-|-|-|-|-|-|
+|[MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_music3/model_inference/MiniMax-Music3.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_music3/model_inference_low_vram/MiniMax-Music3.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/minimax_music3/model_inference_parallel/MiniMax-Music3.py)|—|—|—|—|
 
 ## Model Inference
 

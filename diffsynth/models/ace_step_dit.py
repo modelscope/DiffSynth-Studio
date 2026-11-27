@@ -19,6 +19,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from ..core.attention.attention import attention_forward
+from ..core.distributed import sequence_parallel_recipe
 from ..core import gradient_checkpoint_forward
 
 from transformers.cache_utils import Cache, DynamicCache, EncoderDecoderCache
@@ -139,6 +140,11 @@ class AceStepAttention(nn.Module):
         return attn_output
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"hidden_states": 1, "position_embeddings": 1},
+    gather_dimensions_for_outputs={"hidden_states": 1},
+    no_exchange_modules=("cross_attn",),
+)
 class AceStepDiTLayer(nn.Module):
     def __init__(
         self,

@@ -138,9 +138,9 @@ torchaudio.save("audio_6_output.mp3", audio, 48000)
 
 ## 模型概览
 
-|模型 ID|推理|低显存推理|全量训练|全量训练验证|LoRA 训练|LoRA 训练验证|
-|-|-|-|-|-|-|-|
-| [DiffSynth-Studio/DiffSynth-Music](https://www.modelscope.cn/models/DiffSynth-Studio/DiffSynth-Music) | [code](/examples/diffsynth_music/model_inference/DiffSynth-Music.py) | [code](/examples/diffsynth_music/model_inference_low_vram/DiffSynth-Music.py) | [code](/examples/diffsynth_music/model_training/full/DiffSynth-Music.sh) | [code](/examples/diffsynth_music/model_training/validate_full/DiffSynth-Music.py) | - | - |
+|模型 ID|推理|低显存推理|并行推理|全量训练|全量训练验证|LoRA 训练|LoRA 训练验证|
+|-|-|-|-|-|-|-|-|
+| [DiffSynth-Studio/DiffSynth-Music](https://www.modelscope.cn/models/DiffSynth-Studio/DiffSynth-Music) | [code](/examples/diffsynth_music/model_inference/DiffSynth-Music.py) | [code](/examples/diffsynth_music/model_inference_low_vram/DiffSynth-Music.py) |-| [code](/examples/diffsynth_music/model_training/full/DiffSynth-Music.sh) | [code](/examples/diffsynth_music/model_training/validate_full/DiffSynth-Music.py) | - | - |
 
 ## 模型推理
 

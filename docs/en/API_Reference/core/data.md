@@ -48,14 +48,14 @@ We can compose functionally complete data pipelines, for example, the default vi
 ```python
 RouteByType(operator_map=[
     (str, ToAbsolutePath(base_path) >> RouteByExtensionName(operator_map=[
-        (("jpg", "jpeg", "png", "webp"), LoadImage() >> ImageCropAndResize(height, width, max_pixels, height_division_factor, width_division_factor) >> ToList()),
+        (("jpg", "jpeg", "png", "webp"), LoadImage() >> ImageCropAndResize(height, width, max_pixels, min_pixels, height_division_factor, width_division_factor) >> ToList()),
         (("gif",), LoadGIF(
             num_frames, time_division_factor, time_division_remainder,
-            frame_processor=ImageCropAndResize(height, width, max_pixels, height_division_factor, width_division_factor),
+            frame_processor=ImageCropAndResize(height, width, max_pixels, min_pixels, height_division_factor, width_division_factor),
         )),
         (("mp4", "avi", "mov", "wmv", "mkv", "flv", "webm"), LoadVideo(
             num_frames, time_division_factor, time_division_remainder,
-            frame_processor=ImageCropAndResize(height, width, max_pixels, height_division_factor, width_division_factor),
+            frame_processor=ImageCropAndResize(height, width, max_pixels, min_pixels, height_division_factor, width_division_factor),
         )),
     ])),
 ])
@@ -140,7 +140,7 @@ In the data processing flow, processing is done according to the following logic
 
 ```python
 special_operator_map={
-    "animate_face_video": ToAbsolutePath(args.dataset_base_path) >> LoadVideo(args.num_frames, 4, 1, frame_processor=ImageCropAndResize(512, 512, None, 16, 16)),
+    "animate_face_video": ToAbsolutePath(args.dataset_base_path) >> LoadVideo(args.num_frames, 4, 1, frame_processor=ImageCropAndResize(512, 512, None, None, 16, 16)),
 }
 ```
 

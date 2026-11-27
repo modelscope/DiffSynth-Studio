@@ -1593,6 +1593,13 @@ minimax_h3_series = [
         "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["qkv", "proj", "linear_fc1", "linear_fc2"]},
     },
     {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/EntroPackPreQuants", origin_file_pattern="models/MiniMax-H3/text_encoder_4bpp.safetensors")
+        "model_hash": "8c6f5ccfe9ffe861675ca0da95bb9295",
+        "model_name": "minimax_h3_text_encoder",
+        "model_class": "diffsynth.models.minimax_h3_text_encoder.MiniMaxH3TextEncoder",
+        "quant_config": {"method": "entropack_lossy_quant", "load_prequantized": True, "backend_config_kwargs": {"target_bpp": 4.0, "row_rdo_iterations": 2, "row_rdo_candidates": 20}},
+    },
+    {
         # Example: ModelConfig(model_id="MiniMax/MiniMax-H3", origin_file_pattern="FL2VA/transformer/model*.safetensors")
         "model_hash": "db0197b6919425a5c7102c54e73affc1",
         "model_name": "minimax_h3_dit",
@@ -1685,6 +1692,14 @@ minimax_h3_series = [
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_controlnet.MiniMaxH3ControlNetStateDictConverter"
     },
     {
+        # Diffutoon-2 ControlNet modules (line-art / color). Example:
+        # ModelConfig(model_id="DiffSynth-Studio/Diffutoon-2", origin_file_pattern="line-art_module.safetensors")
+        "model_hash": "7ce9cb814682481d6281db7c7d0983bc",
+        "model_name": "minimax_h3_controlnet",
+        "model_class": "diffsynth.models.minimax_h3_controlnet.MiniMaxH3ControlNet",
+        "extra_kwargs": {'control_layers': (0, 5, 10, 15, 20, 25, 30, 35, 40), 'control_in_dim': 49, 'control_apply_audio': False, 'hidden_size': 5376, 'num_attention_heads': 56, 'attention_head_dim': 128, 'ffn_hidden_size': 14336, 'time_embed_dim': 2688, 'adaln_out_features': 96768, 'patch_size': (1, 2, 2), 'norm_eps': 1e-05, 'qk_norm_eps': 1e-05},
+    },
+    {
         # Example: ModelConfig(model_id="WarmBloodAban/Minimax-h3_Singularity", origin_file_pattern="Minimax-h3_Singularity_ref2va_Pruned_v1.3_int8.safetensors")
         "model_hash": "c00577940e5a11f0fb5a0a754ac6003d",
         "model_name": "minimax_h3_dit",
@@ -1706,6 +1721,34 @@ minimax_h3_series = [
         "model_name": "minimax_h3_vdn_linear_branch",
         "model_class": "diffsynth.models.minimax_h3_dit_vdn.MiniMaxH3VDNBranch",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit_vdn.MiniMaxH3VDNBranchStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="multimodalart/MiniMax-H3-Pruned", origin_file_pattern="text_encoder/model-*.safetensors")
+        "model_hash": "8794f5cd5278a608e7a034b43814cf7f",
+        "model_name": "minimax_h3_text_encoder",
+        "model_class": "diffsynth.models.minimax_h3_text_encoder.MiniMaxH3TextEncoder",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_text_encoder.MiniMaxH3TextEncoderStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lakonik/pi-H3", origin_file_pattern="pi_h3_4step_adapter/diffusion_pytorch_model.safetensors")
+        "model_hash": "466562b62f41289018f0b69f5485b1f1",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfyPruned",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit.MiniMaxH3DiTPrunedDiffusersStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lakonik/pi-H3", origin_file_pattern="pi_h3_4step_dwd_adapter/diffusion_pytorch_model.safetensors")
+        "model_hash": "78dba3532f326e17ddfe04af580cbf12",
+        "model_name": "minimax_h3_dit",
+        "model_class": "diffsynth.models.minimax_h3_dit_comfy.MiniMaxH3DiTComfyPruned",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit.MiniMaxH3DiTPrunedDiffusersStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Lakonik/pi-H3", origin_file_pattern="pi_h3_4step_dwd_adapter/diffusion_pytorch_model.safetensors")
+        "model_hash": "78dba3532f326e17ddfe04af580cbf12",
+        "model_name": "minimax_h3_pi_dwd",
+        "model_class": "diffsynth.models.minimax_h3_dwd.MiniMaxH3DWD",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_dit.MiniMaxH3PiDWDStateDictConverter",
     },
 ]
 
@@ -1740,6 +1783,64 @@ minimax_music3_series = [
         "model_name": "minimax_music3_text_encoder",
         "model_class": "diffsynth.models.minimax_music3_text_encoder.MiniMaxMusic3TextEncoder",
         "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_music3_text_encoder.MiniMaxMusic3TextEncoderStateDictConverter",
+    },
+]
+
+minimax_h3_image_series = [
+    {
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="transformer/model*.safetensors")
+        # Example: ModelConfig(path="./models/train/MiniMax-H3-Image-full-split/epoch-4.safetensors")
+        "model_hash": "cbc654a2ff91b53b57e2556904bdbc5e",
+        "model_name": "minimax_h3_image_dit",
+        "model_class": "diffsynth.models.minimax_h3_image_dit.MiniMaxH3ImageDiT",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack", origin_file_pattern="models/bf16_table_pruned.safetensors")
+        "model_hash": "ea5bdf1b1bef81c9f3d1587ad0723908",
+        "model_name": "minimax_h3_image_dit",
+        "model_class": "diffsynth.models.minimax_h3_image_dit.MiniMaxH3ImageDiTPruned",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack", origin_file_pattern="models/dit_7bit.safetensors")
+        "model_hash": "9a07491167182716eccb303ded353b22",
+        "model_name": "minimax_h3_image_dit",
+        "model_class": "diffsynth.models.minimax_h3_image_dit.MiniMaxH3ImageDiTPruned",
+        "quant_config": {"load_prequantized": True, "configs": [{"method": "entropack_lossy_quant", "backend_config_kwargs": {"target_bpp": 6.937816964285715, "row_rdo_iterations": 2, "row_rdo_candidates": 20}, "exclude_modules": ["video_patch_proj", "condition_proj", "token_refiner.blocks.0.attn.qkv_proj", "token_refiner.blocks.0.attn.out_proj", "token_refiner.blocks.0.mlp.fc1", "token_refiner.blocks.0.mlp.fc2", "token_refiner.blocks.1.attn.qkv_proj", "token_refiner.blocks.1.attn.out_proj", "token_refiner.blocks.1.mlp.fc1", "token_refiner.blocks.1.mlp.fc2"]}, {"method": "entropack_lossy_quant", "backend_config_kwargs": {"target_bpp": 8.5, "row_rdo_iterations": 2, "row_rdo_candidates": 20}, "target_modules": ["video_patch_proj", "condition_proj", "token_refiner.blocks.0.attn.qkv_proj", "token_refiner.blocks.0.attn.out_proj", "token_refiner.blocks.0.mlp.fc1", "token_refiner.blocks.0.mlp.fc2", "token_refiner.blocks.1.attn.qkv_proj", "token_refiner.blocks.1.attn.out_proj", "token_refiner.blocks.1.mlp.fc1", "token_refiner.blocks.1.mlp.fc2"]}]},
+    },
+    {
+        # Example: ModelConfig(model_id="Comfy-Org/MiniMax-H3-Image", origin_file_pattern="diffusion_models/minimax_h3_image_pruned_bf16.safetensors")
+        "model_hash": "c8d712f7ceeac803a52fd2a0c5900356",
+        "model_name": "minimax_h3_image_dit",
+        "model_class": "diffsynth.models.minimax_h3_image_dit_comfy.MiniMaxH3ImageDiTComfyPruned",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_image_dit.MiniMaxH3ImageDiTComfyStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="Comfy-Org/MiniMax-H3-Image", origin_file_pattern="diffusion_models/minimax_h3_image_pruned_int8_convrot.safetensors")
+        "model_hash": "f4559d2cb6a7ca48162d36736555ea22",
+        "model_name": "minimax_h3_image_dit",
+        "model_class": "diffsynth.models.minimax_h3_image_dit_comfy.MiniMaxH3ImageDiTComfyPruned",
+        "quant_config": {"method": "comfy_kitchen_int8_w8a8", "load_prequantized": True, "exclude_modules": ["video_patch_proj", "condition_proj", "adaln_proj.linear", "final_layer.video_out", "token_refiner.blocks.0.attn.qkv_proj", "token_refiner.blocks.0.attn.out_proj", "token_refiner.blocks.0.mlp.fc1", "token_refiner.blocks.0.mlp.fc2", "token_refiner.blocks.1.attn.qkv_proj", "token_refiner.blocks.1.attn.out_proj", "token_refiner.blocks.1.mlp.fc1", "token_refiner.blocks.1.mlp.fc2"]},
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_image_dit.MiniMaxH3ImageDiTComfyStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="pdd_fused_heads.safetensors")
+        "model_hash": "af836167abebf4a4701ab436f291a972",
+        "model_name": "minimax_h3_image_pdd_heads",
+        "model_class": "diffsynth.models.minimax_h3_image_dit.MiniMaxH3ImagePDDHeads",
+    },
+    {
+        # Example: ModelConfig(model_id="MiniMax/MiniMax-H3-Image", origin_file_pattern="vae/diffusion_pytorch_model.safetensors")
+        "model_hash": "e16b57e3180a14235ffcaad014ce2772",
+        "model_name": "minimax_h3_image_vae",
+        "model_class": "diffsynth.models.minimax_h3_image_vae.MiniMaxH3ImageVAE",
+        "state_dict_converter": "diffsynth.utils.state_dict_converters.minimax_h3_image_vae.MiniMaxH3ImageVAEStateDictConverter",
+    },
+    {
+        # Example: ModelConfig(model_id="DiffSynth-Studio/MiniMax-H3-Image-EntroPack", origin_file_pattern="models/vae_int8.safetensors")
+        "model_hash": "14b7df9252600e262f14869446c77dfb",
+        "model_name": "minimax_h3_image_vae",
+        "model_class": "diffsynth.models.minimax_h3_image_vae.MiniMaxH3ImageVAE",
+        "quant_config": {"method": "entropack_lossy_quant_int8_raw", "load_prequantized": True, "backend_config_kwargs": {"use_convrot": True, "convrot_groupsize": 256}},
     },
 ]
 
@@ -1857,5 +1958,5 @@ MODEL_CONFIGS = (
     stable_diffusion_xl_series + stable_diffusion_series + qwen_image_series + qwen_video_edit_series + wan_series + flux_series + flux2_series + ernie_image_series
     + z_image_series + ltx2_series + anima_series + mova_series + joyai_image_series + boogu_image_series + ace_step_series + hidream_o1_image_series
     + image_metrics_series + ideogram4_series + krea2_series + lingbot_video_series + minimax_h3_series + minimax_music3_series + sensenova_u1_series
-    + yue2_series + qwen_image_21_series + flux3_series + moss_image_series + fibo_series
+    + yue2_series + qwen_image_21_series + flux3_series + moss_image_series + fibo_series + minimax_h3_image_series
 )

@@ -123,6 +123,7 @@ if __name__ == "__main__":
         main_data_operator=UnifiedDataset.default_image_operator(
             base_path=args.dataset_base_path,
             max_pixels=args.max_pixels,
+            min_pixels=args.min_pixels,
             height=args.height,
             width=args.width,
             height_division_factor=16,
@@ -130,13 +131,13 @@ if __name__ == "__main__":
         ),
         special_operator_map={
             # Qwen-Image-Layered
-            "layer_input_image": ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16),
+            "layer_input_image": ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, args.min_pixels, 16, 16),
             "image": RouteByType(operator_map=[
-                (str, ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16)),
-                (list, SequencialProcess(ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16))),
+                (str, ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, args.min_pixels, 16, 16)),
+                (list, SequencialProcess(ToAbsolutePath(args.dataset_base_path) >> LoadImage(convert_RGB=False, convert_RGBA=True) >> ImageCropAndResize(args.height, args.width, args.max_pixels, args.min_pixels, 16, 16))),
             ]),
             "context_image": RouteByType(operator_map=[
-                (str, ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, 16, 16)),
+                (str, ToAbsolutePath(args.dataset_base_path) >> LoadImage() >> ImageCropAndResize(args.height, args.width, args.max_pixels, args.min_pixels, 16, 16)),
                 (None, lambda x: None),
             ])
         }

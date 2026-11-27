@@ -48,9 +48,10 @@ class ErnieImagePipeline(BasePipeline):
         model_configs: list[ModelConfig] = [],
         tokenizer_config: ModelConfig = ModelConfig(model_id="PaddlePaddle/ERNIE-Image", origin_file_pattern="tokenizer/"),
         vram_limit: float = None,
+        parallel_config=None,
     ):
         pipe = ErnieImagePipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs, vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs, vram_limit, parallel_config=parallel_config)
 
         pipe.text_encoder = model_pool.fetch_model("ernie_image_text_encoder")
         pipe.dit = model_pool.fetch_model("ernie_image_dit")

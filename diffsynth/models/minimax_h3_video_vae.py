@@ -327,6 +327,8 @@ _VIDEO_LATENTS_STD = [1.2223774194717407, 1.2767263650894165, 1.6831774711608887
 
 
 class MiniMaxH3VideoVAE(nn.Module):
+    _repeated_blocks = ["TransformerBlock", "EncoderFCN3D"]
+
     def __init__(self, in_channels=3, out_ch=3, ch=128, embed_dim=24, z_channels=24, num_res_blocks=2,
                  ch_mult=(1, 2, 2, 4, 4, 8), space_down=(2, 2, 2, 2, 1, 1), time_down=(1, 2, 2, 1, 1, 1),
                  padding_mode="reflect", use_t_isolated_gn=True, causal_encoder=True,
@@ -360,7 +362,8 @@ class MiniMaxH3VideoVAE(nn.Module):
             qk_norm_affine=False, qk_norm_type="rms_norm", rope_dim_ratio=0.75, rope_theta=100.0)
 
     def encode(self, x):
-        return self.quant_conv(self.encoder(x))
+        # Contiguous input keeps parent strides out of compile guards, avoiding recompiles across resolutions.
+        return self.quant_conv(self.encoder(x.contiguous()))
 
     def decode(self, z):
         return self.decoder(self.post_quant_conv(z))
@@ -392,14 +395,15 @@ class MiniMaxH3VideoVAE(nn.Module):
             return torch.cat([blended, b.narrow(dim, blend_extent, b.shape[dim] - blend_extent)], dim=dim)
         return blended
 
-    def tiled_encode(self, x):
+    def tiled_encode(self, x, tile_encode_batch_size=4):
         H, W = x.shape[-2], x.shape[-1]
         y_idx, y_len, y_ovlp = self.split_tiles(H)
         x_idx, x_len, x_ovlp = self.split_tiles(W)
         i_max, j_max = len(y_idx), len(x_idx)
-        tiles = [x[..., i:i + il, j:j + jl] for i, il in zip(y_idx, y_len) for j, jl in zip(x_idx, x_len)]
-        encoded = [self.encode(t) for t in tiles]
-        rows = [[encoded[i * j_max + j].to(x.device) for j in range(j_max)] for i in range(i_max)]
+        tiles = torch.cat([x[..., i:i + il, j:j + jl] for i, il in zip(y_idx, y_len) for j, jl in zip(x_idx, x_len)])
+        batch_size = max(1, tile_encode_batch_size)
+        encoded = torch.cat([self.encode(tiles[k: k + batch_size]) for k in range(0, len(tiles), batch_size)])
+        rows = [[tile.to(x.device) for tile in row] for row in encoded.unflatten(0, (i_max, j_max, x.shape[0]))]
         ly = [o // self.vae_ratio for o in y_ovlp]
         lx = [o // self.vae_ratio for o in x_ovlp]
         result_rows = []
@@ -414,16 +418,17 @@ class MiniMaxH3VideoVAE(nn.Module):
             result_rows.append(torch.cat(result_row, dim=-1))
         return torch.cat(result_rows, dim=-2)
 
-    def tiled_decode(self, z):
+    def tiled_decode(self, z, tile_decode_batch_size=32):
         H, W = z.shape[-2] * self.vae_ratio, z.shape[-1] * self.vae_ratio
         y_idx, y_len, y_ovlp = self.split_tiles(H)
         x_idx, x_len, x_ovlp = self.split_tiles(W)
         i_max, j_max = len(y_idx), len(x_idx)
-        tiles = [z[..., y_idx[i] // self.vae_ratio:(y_idx[i] + y_len[i]) // self.vae_ratio,
-                     x_idx[j] // self.vae_ratio:(x_idx[j] + x_len[j]) // self.vae_ratio]
-                 for i in range(i_max) for j in range(j_max)]
-        decoded = [self.decode(t) for t in tiles]
-        rows = [[decoded[i * j_max + j].to(z.device) for j in range(j_max)] for i in range(i_max)]
+        tiles = torch.cat([z[..., y_idx[i] // self.vae_ratio:(y_idx[i] + y_len[i]) // self.vae_ratio,
+                             x_idx[j] // self.vae_ratio:(x_idx[j] + x_len[j]) // self.vae_ratio]
+                           for i in range(i_max) for j in range(j_max)])
+        batch_size = max(1, tile_decode_batch_size)
+        decoded = torch.cat([self.decode(tiles[k: k + batch_size]) for k in range(0, len(tiles), batch_size)])
+        rows = [[tile.to(z.device) for tile in row] for row in decoded.unflatten(0, (i_max, j_max, z.shape[0]))]
         result_rows = []
         for i, row in enumerate(rows):
             result_row = []
@@ -436,10 +441,10 @@ class MiniMaxH3VideoVAE(nn.Module):
             result_rows.append(torch.cat(result_row, dim=-1))
         return torch.cat(result_rows, dim=-2)
 
-    def encode_temporal(self, x):
+    def encode_temporal(self, x, tile_encode_batch_size=4):
         if x.shape[2] % self.clip_length != 0:
             x = torch.cat([x, x[:, :, -1:].repeat(1, 1, (-x.shape[2]) % self.clip_length, 1, 1)], dim=2)
-        z = torch.cat([self.tiled_encode(x[:, :, i * self.clip_length:(i + 1) * self.clip_length]) for i in range(x.shape[2] // self.clip_length)], dim=2)
+        z = torch.cat([self.tiled_encode(x[:, :, i * self.clip_length:(i + 1) * self.clip_length], tile_encode_batch_size) for i in range(x.shape[2] // self.clip_length)], dim=2)
         return z[:, :, :-self.token_drop] if self.token_drop > 0 else z
 
     def _decode_temporal_pad_frames(self, z, pad_tokens):
@@ -466,7 +471,7 @@ class MiniMaxH3VideoVAE(nn.Module):
         pad_frames = self._decode_temporal_pad_frames(z, pad_tokens)
         return int(total_frames), int(pad_frames), int(total_frames - pad_frames)
 
-    def _decode_temporal_streaming(self, z, num_chunks, pad_tokens):
+    def _decode_temporal_streaming(self, z, num_chunks, pad_tokens, tile_decode_batch_size=32):
         total_frames, pad_frames, output_frames = self._decode_temporal_output_frame_plan(z, num_chunks, pad_tokens)
         chunk_dec = self.tokens_chunk_size * self.vae_ratio_t
         split_count = int(self.token_drop > 0) + 1
@@ -488,7 +493,7 @@ class MiniMaxH3VideoVAE(nn.Module):
 
         for i in range(num_chunks):
             t_start = i * self.tokens_chunk_size
-            clip_dec = self.tiled_decode(z[:, :, t_start:t_start + self.tokens_chunk_size + self.token_overlap])
+            clip_dec = self.tiled_decode(z[:, :, t_start:t_start + self.tokens_chunk_size + self.token_overlap], tile_decode_batch_size)
             if clip_dec.device != z.device: clip_dec = clip_dec.to(z.device)
             for j in range(split_count):
                 f_start = j * chunk_dec
@@ -509,26 +514,26 @@ class MiniMaxH3VideoVAE(nn.Module):
             raise RuntimeError(f"decode_temporal frame plan mismatch: logical={logical_frames} total={total_frames} dropped={dropped_frames} pad={pad_frames} pos={write_pos} out={output_frames}")
         return dec
 
-    def decode_temporal(self, z):
+    def decode_temporal(self, z, tile_decode_batch_size=32):
         pseudo_total = z.shape[2] + self.token_drop
         pad_tokens = (self.tokens_chunk_size - pseudo_total % self.tokens_chunk_size) % self.tokens_chunk_size
         pseudo_total += pad_tokens
         num_chunks = pseudo_total // self.tokens_chunk_size - int(self.token_drop > 0)
         if pad_tokens > 0:
             z = torch.cat([z, z[:, :, -1:].repeat(1, 1, pad_tokens, 1, 1)], dim=2)
-        return self._decode_temporal_streaming(z, num_chunks, pad_tokens)
+        return self._decode_temporal_streaming(z, num_chunks, pad_tokens, tile_decode_batch_size)
 
     @torch.no_grad()
-    def encode_video(self, video, dtype=None, process_image=False, tiled=True, tile_size=256, tile_overlap=64):
+    def encode_video(self, video, dtype=None, process_image=False, tiled=True, tile_size=256, tile_overlap=64, tile_encode_batch_size=4):
         device, out_dtype = video.device, video.dtype
         x = self.processor.transform_tensor(video.to(torch.float32)).to(device=device, dtype=dtype or out_dtype)
         self.tile_size, self.tile_overlap_min = tile_size, tile_overlap
         if x.ndim == 4:
             x = x.unsqueeze(2)
         if process_image:
-            moments = self.tiled_encode(x)
+            moments = self.tiled_encode(x, tile_encode_batch_size)
         else:
-            moments = self.encode_temporal(x)
+            moments = self.encode_temporal(x, tile_encode_batch_size)
         z = torch.chunk(moments, 2, dim=1)[0]
         if process_image:
             z = z[:, :, :1]
@@ -537,17 +542,17 @@ class MiniMaxH3VideoVAE(nn.Module):
         return ((z.float() - mean) / std).to(out_dtype)
 
     @torch.no_grad()
-    def decode_video(self, latents, dtype=None, process_image=False, tiled=True, tile_size=256, tile_overlap=64):
+    def decode_video(self, latents, dtype=None, process_image=False, tiled=True, tile_size=256, tile_overlap=64, tile_decode_batch_size=32):
         device, out_dtype = latents.device, latents.dtype
         mean = torch.tensor(_VIDEO_LATENTS_MEAN, device=device, dtype=torch.float32).view(1, -1, 1, 1, 1)
         std = torch.tensor(_VIDEO_LATENTS_STD, device=device, dtype=torch.float32).view(1, -1, 1, 1, 1)
         z = (latents.to(device, torch.float32) * std + mean).to(dtype or out_dtype)
         self.tile_size, self.tile_overlap_min = tile_size, tile_overlap
         if process_image:
-            recon = self.tiled_decode(z)
+            recon = self.tiled_decode(z, tile_decode_batch_size)
             recon = recon.squeeze(2)
         else:
-            recon = self.decode_temporal(z)
+            recon = self.decode_temporal(z, tile_decode_batch_size)
         return self.processor.revert_tensor(recon.float()).to(out_dtype)
 
 

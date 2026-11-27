@@ -27,3 +27,10 @@ prompt = "Generate a group photo of these two characters."
 edit_image = [Image.open("image1.png"), Image.open("image2.png")]
 image_3 = pipe(prompt, edit_image=edit_image, seed=1)
 image_3.save("image3.png")
+
+# Enable KV-Cache compression to reduce memory.
+image_4 = pipe(
+    prompt, edit_image=edit_image, seed=1,
+    kv_compress_config=[{"method": "entropack", "target_bpp": 4.0}],
+)
+image_4.save("image4.png")

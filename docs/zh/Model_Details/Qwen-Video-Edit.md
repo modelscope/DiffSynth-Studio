@@ -62,9 +62,9 @@ save_video(video, "video_Qwen-Video-Edit.mp4", fps=16)
 
 ## 模型总览
 
-|模型 ID|推理|低显存推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
-|-|-|-|-|-|-|-|
-|[yunpeng1998/Qwen-Video-Edit](https://www.modelscope.cn/models/yunpeng1998/Qwen-Video-Edit)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_inference/Qwen-Video-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_inference_low_vram/Qwen-Video-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/full/Qwen-Video-Edit.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/validate_full/Qwen-Video-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/lora/Qwen-Video-Edit.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/validate_lora/Qwen-Video-Edit.py)|
+|模型 ID|推理|低显存推理|并行推理|全量训练|全量训练后验证|LoRA 训练|LoRA 训练后验证|
+|-|-|-|-|-|-|-|-|
+|[yunpeng1998/Qwen-Video-Edit](https://www.modelscope.cn/models/yunpeng1998/Qwen-Video-Edit)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_inference/Qwen-Video-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_inference_low_vram/Qwen-Video-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_inference_parallel/Qwen-Video-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/full/Qwen-Video-Edit.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/validate_full/Qwen-Video-Edit.py)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/lora/Qwen-Video-Edit.sh)|[code](https://github.com/modelscope/DiffSynth-Studio/blob/main/examples/qwen_video_edit/model_training/validate_lora/Qwen-Video-Edit.py)|
 
 ## 模型推理
 

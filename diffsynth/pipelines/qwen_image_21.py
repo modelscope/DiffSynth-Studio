@@ -6,6 +6,7 @@ from PIL import Image
 from tqdm import tqdm
 
 from ..core import ModelConfig
+from ..core.context_compress import KVCompressor, create_kv_cache_blocks
 from ..core.device.npu_compatible_device import get_device_type
 from ..diffusion import FlowMatchScheduler
 from ..diffusion.base_pipeline import BasePipeline, PipelineUnit, ControlNetInput
@@ -46,9 +47,10 @@ class QwenImage21Pipeline(BasePipeline):
         model_configs: list[ModelConfig] = None,
         processor_config: ModelConfig = None,
         vram_limit: float = None,
+        parallel_config=None,
     ):
         pipe = QwenImage21Pipeline(device=device, torch_dtype=torch_dtype)
-        model_pool = pipe.download_and_load_models(model_configs or [], vram_limit)
+        model_pool = pipe.download_and_load_models(model_configs or [], vram_limit, parallel_config=parallel_config)
         pipe.text_encoder = model_pool.fetch_model("qwen_image_21_text_encoder")
         pipe.dit = model_pool.fetch_model("qwen_image_21_dit")
         pipe.vae = model_pool.fetch_model("qwen_image_21_vae")
@@ -83,6 +85,7 @@ class QwenImage21Pipeline(BasePipeline):
         sigmas: list[float] = None,
         # KV cache
         use_kv_cache: bool = True,
+        kv_compress_config: Union[list, dict, KVCompressor] = None,
         # Template
         template_kv_cache: dict = None,
         negative_template_kv_cache: dict = None,
@@ -105,6 +108,7 @@ class QwenImage21Pipeline(BasePipeline):
             "seed": seed, "rand_device": rand_device,
             "tiled": tiled, "tile_size": tile_size, "tile_stride": tile_stride,
             "use_kv_cache": use_kv_cache,
+            "kv_compress_config": kv_compress_config,
             "use_flex_attention": use_flex_attention,
         }
         for unit in self.units:
@@ -390,13 +394,16 @@ class QwenImage21Unit_KVCacheInitializer(PipelineUnit):
         )
 
     def process(self, pipe, inputs_shared, inputs_posi, inputs_nega):
+        compressor = inputs_shared.get("kv_compress_config", None)
+        if compressor is not None and not isinstance(compressor, KVCompressor):
+            inputs_shared["kv_compress_config"] = compressor = KVCompressor(compressor)
         if getattr(pipe.scheduler, "training", False) or not inputs_shared["use_kv_cache"] or inputs_shared["controlnet_inputs"] is not None:
             inputs_posi["kv_cache"] = None
             inputs_nega["kv_cache"] = None
             return inputs_shared, inputs_posi, inputs_nega
-        inputs_posi["kv_cache"] = [{} for _ in pipe.dit.transformer_blocks]
+        inputs_posi["kv_cache"] = create_kv_cache_blocks(len(pipe.dit.transformer_blocks), compressor)
         if inputs_shared["cfg_scale"] != 1.0:
-            inputs_nega["kv_cache"] = [{} for _ in pipe.dit.transformer_blocks]
+            inputs_nega["kv_cache"] = create_kv_cache_blocks(len(pipe.dit.transformer_blocks), compressor)
         return inputs_shared, inputs_posi, inputs_nega
 
 

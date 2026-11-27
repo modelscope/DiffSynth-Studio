@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ..core.attention import FLEX_ATTN_AVAILABLE, attention_forward
+from ..core.distributed import current_sequence_parallel_state, sequence_parallel_disabled, sequence_parallel_recipe
 from ..core.gradient import gradient_checkpoint_forward
 
 
@@ -253,6 +254,13 @@ class QwenImage21AttnProcessor:
         key_valid: torch.Tensor | None = None,
         template_kv: tuple[torch.Tensor, torch.Tensor] | None = None,
     ) -> torch.Tensor:
+        if current_sequence_parallel_state() is not None and (
+            template_kv is not None or segments is not None or (BlockMask is not None and isinstance(attention_mask, BlockMask))
+        ):
+            raise ValueError(
+                "Qwen-Image-2.1 sequence parallelism supports only the kv-cache decode attention; "
+                "keep use_kv_cache=True and disable controlnet / use_flex_attention / template_kv_cache."
+            )
         query = attn.to_q(hidden_states)
         key = attn.to_k(hidden_states)
         value = attn.to_v(hidden_states)
@@ -350,6 +358,11 @@ class QwenImage21Attention(nn.Module):
         return self.processor(self, hidden_states, **kwargs)
 
 
+@sequence_parallel_recipe(
+    split_dimensions_for_inputs={"hidden_states": 1, "rotary_emb": 0, "target_token_mask": 0},
+    gather_dimensions_for_outputs={"hidden_states": 1},
+    kv_prefix_inputs={"kv_prefix": 1},
+)
 class QwenImage21TransformerBlock(nn.Module):
     def __init__(
         self,
@@ -388,6 +401,7 @@ class QwenImage21TransformerBlock(nn.Module):
         segments: list[tuple[int, int, bool]] | None = None,
         key_valid: torch.Tensor | None = None,
         template_kv: tuple[torch.Tensor, torch.Tensor] | None = None,
+        kv_prefix: torch.Tensor | None = None,
     ) -> torch.Tensor:
         mod1, mod2 = modulation.chunk(2, dim=-1)
 
@@ -529,7 +543,18 @@ class QwenImage21DiT(nn.Module):
         target_token_mask[image_positions[-block_lengths[-1] :]] = True
         return image_ids, target_token_mask
 
-    def forward(
+    def forward(self, *args, **kwargs):
+        kv_cache = kwargs.get("kv_cache")
+        if kv_cache is not None and len(kv_cache[0]) == 0:
+            return self._forward_unsplit(*args, **kwargs)
+        return self._forward(*args, **kwargs)
+
+    @sequence_parallel_disabled()
+    def _forward_unsplit(self, *args, **kwargs):
+        # The causal/segmented attention needs the whole joint stream, so this pass stays unsplit.
+        return self._forward(*args, **kwargs)
+
+    def _forward(
         self,
         hidden_states: torch.Tensor,
         encoder_hidden_states: torch.Tensor,
@@ -637,6 +662,7 @@ class QwenImage21DiT(nn.Module):
             block_template_kv = (
                 None if template_kv_cache is None else template_kv_cache.get(f"block_{index_block}")
             )
+            kv_prefix = block_kv_cache.get("key") if is_decode else None
             joint_hidden_states = gradient_checkpoint_forward(
                 block,
                 use_gradient_checkpointing,
@@ -651,6 +677,7 @@ class QwenImage21DiT(nn.Module):
                 segments=segments,
                 key_valid=joint_key_valid,
                 template_kv=block_template_kv,
+                kv_prefix=kv_prefix,
             )
             if control_hints is not None and index_block in control_hints:
                 joint_hidden_states = joint_hidden_states + control_hints[index_block].to(joint_hidden_states.device, joint_hidden_states.dtype)
