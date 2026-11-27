@@ -97,7 +97,14 @@ class FlowMatchScheduler():
 
     @staticmethod
     def set_timesteps_ming_image(num_inference_steps=12, denoising_strength=1.0, shift=6.0):
-        return FlowMatchScheduler.set_timesteps_flux(num_inference_steps, denoising_strength, shift=shift, sigma_min=0.0)
+        num_train_timesteps = 1000
+        sigma_min = 1 / num_train_timesteps
+        sigma_min = shift * sigma_min / (1 + (shift - 1) * sigma_min)
+        sigma_start = sigma_min + (1.0 - sigma_min) * denoising_strength
+        sigmas = torch.linspace(sigma_start, sigma_min, num_inference_steps, dtype=torch.float64)
+        sigmas = (shift * sigmas / (1 + (shift - 1) * sigmas)).to(torch.float32)
+        timesteps = sigmas * num_train_timesteps
+        return sigmas, timesteps
 
     @staticmethod
     def set_timesteps_lingbot_video(num_inference_steps=100, denoising_strength=1.0, shift=None, t_thresh=None, sigma_tail_steps=0):
