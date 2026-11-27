@@ -41,9 +41,9 @@
 
 > 目前本项目的开发人员有限，大部分工作由 [Artiprocher](https://github.com/Artiprocher) 和 [mi804](https://github.com/mi804) 负责，因此新功能的开发进展会比较缓慢，issue 的回复和解决速度有限，我们对此感到非常抱歉，请各位开发者理解。
 
-- **2026年11月27日** Ming-Image-0.2-Design 开源，欢迎加入图像生成模型家族！支持文生图推理、图像编辑、低显存推理、并行推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/Ming-Image.md)和[示例代码](/examples/ming_image/)。
+- **2026年11月27日** 我们已支持 [HiUni](https://modelscope.cn/models/ernie-research/HiUni)，这是 ERNIE Research 开源的统一多模态小模型，**同一个 checkpoint** 即可完成图像理解、文生图与指令图像编辑，轻量的像素空间扩散头直接以像素生成图像，无需 VAE。我们提供了推理、低显存推理与训练支持。详情请参考[文档](/docs/zh/Model_Details/HiUni.md)和[示例代码](/examples/hiuni/)。
 
-- **2026年11月23日** 我们已支持 [HiUni](https://modelscope.cn/models/ernie-research/HiUni)，这是 ERNIE Research 开源的统一多模态小模型，**同一个 checkpoint** 即可完成图像理解、文生图与指令图像编辑，轻量的像素空间扩散头直接以像素生成图像，无需 VAE。我们提供了推理、低显存推理与训练支持。详情请参考[文档](/docs/zh/Model_Details/HiUni.md)和[示例代码](/examples/hiuni/)。
+- **2026年11月27日** Ming-Image-0.2-Design 开源，欢迎加入图像生成模型家族！支持文生图推理、图像编辑、低显存推理、并行推理和训练能力。详情请参考[文档](/docs/zh/Model_Details/Ming-Image.md)和[示例代码](/examples/ming_image/)。
 
 - **2026年11月23日** **DiffSynth-Studio 现已支持统一多 GPU 并行推理，覆盖大部分框架内模型。**在硬件条件充裕的前提下，充分释放 GPU 的潜力！请参考[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Pipeline_Usage/Parallel_Inference.html)。
 
@@ -356,6 +356,7 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
 模型一览：
 
 - 图像生成
+    - HiUni：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/HiUni.html)、[样例代码](/examples/hiuni/)
     - Ming-Image：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Ming-Image.html)、[样例代码](/examples/ming_image/)
     - MiniMax-H3-Image：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/MiniMax-H3-Image.html)、[样例代码](/examples/minimax_h3_image/)
     - Fibo 2.0：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Fibo.html)、[样例代码](/examples/fibo/)
@@ -363,7 +364,6 @@ DiffSynth-Studio 作为基础的模型框架，为主流 Diffusion 模型重新�
     - FLUX.3：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/FLUX.3.html)、[样例代码](/examples/flux3/)
     - Qwen-Image-2.1：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Qwen-Image-2.1.html)、[样例代码](/examples/qwen_image_21/)
     - SenseNova-U1：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/SenseNova-U1.html)、[样例代码](/examples/sensenova_u1/)
-    - HiUni：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/HiUni.html)、[样例代码](/examples/hiuni/)
     - Boogu-Image：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Boogu-Image.html)、[样例代码](/examples/boogu_image/)
     - Krea-2：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Krea-2.html)、[样例代码](/examples/krea2/)
     - Ideogram 4：[文档](https://diffsynth-studio-doc.readthedocs.io/zh-cn/latest/Model_Details/Ideogram-4.html)、[样例代码](/examples/ideogram4/)
@@ -642,6 +642,7 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 
 | 基础架构 | 模型 ID | 推理 | 低显存推理 | 并行推理 | 全量训练 | 全量训练后验证 | LoRA 训练 | LoRA 训练后验证 |
 |-|-|-|-|-|-|-|-|-|
+| HiUni | [ernie-research/HiUni](https://modelscope.cn/models/ernie-research/HiUni) | [code](/examples/hiuni/model_inference/HiUni.py) | [code](/examples/hiuni/model_inference_low_vram/HiUni.py) | - | [code](/examples/hiuni/model_training/full/HiUni.sh) | [code](/examples/hiuni/model_training/validate_full/HiUni.py) | [code](/examples/hiuni/model_training/lora/HiUni.sh) | [code](/examples/hiuni/model_training/validate_lora/HiUni.py) |
 | Ming-Image | [inclusionAI/Ming-Image-0.2-Design](https://www.modelscope.cn/models/inclusionAI/Ming-Image-0.2-Design) | [code](/examples/ming_image/model_inference/Ming-Image-0.2-Design.py) | [code](/examples/ming_image/model_inference_low_vram/Ming-Image-0.2-Design.py) | [code](/examples/ming_image/model_inference_parallel/Ming-Image-0.2-Design.py) | [code](/examples/ming_image/model_training/full/Ming-Image-0.2-Design.sh) | [code](/examples/ming_image/model_training/validate_full/Ming-Image-0.2-Design.py) | [code](/examples/ming_image/model_training/lora/Ming-Image-0.2-Design.sh) | [code](/examples/ming_image/model_training/validate_lora/Ming-Image-0.2-Design.py) |
 | MiniMax-H3-Image | [MiniMax/MiniMax-H3-Image](https://www.modelscope.cn/models/MiniMax/MiniMax-H3-Image) | [code](/examples/minimax_h3_image/model_inference/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_inference_low_vram/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_inference_parallel/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_training/full/MiniMax-H3-Image.sh) | [code](/examples/minimax_h3_image/model_training/validate_full/MiniMax-H3-Image.py) | [code](/examples/minimax_h3_image/model_training/lora/MiniMax-H3-Image.sh) | [code](/examples/minimax_h3_image/model_training/validate_lora/MiniMax-H3-Image.py) |
 | MiniMax-H3-Image | [DiffSynth-Studio/MiniMax-H3-Image-EntroPack (AdaLN-pruned)](https://www.modelscope.cn/models/DiffSynth-Studio/MiniMax-H3-Image-EntroPack) | [code](/examples/minimax_h3_image/model_inference/MiniMax-H3-Image-Pruned.py) | [code](/examples/minimax_h3_image/model_inference_low_vram/MiniMax-H3-Image-Pruned.py) | [code](/examples/minimax_h3_image/model_inference_parallel/MiniMax-H3-Image-Pruned.py) | [code](/examples/minimax_h3_image/model_training/full/MiniMax-H3-Image-Pruned.sh) | [code](/examples/minimax_h3_image/model_training/validate_full/MiniMax-H3-Image-Pruned.py) | [code](/examples/minimax_h3_image/model_training/lora/MiniMax-H3-Image-Pruned.sh) | [code](/examples/minimax_h3_image/model_training/validate_lora/MiniMax-H3-Image-Pruned.py) |
@@ -670,7 +671,6 @@ https://github.com/Artiprocher/DiffSynth-Studio/assets/35051019/59fb2f7b-8de0-44
 | SenseNova-U1 | [SenseNova/SenseNova-U1.6-8B-MoT: Edit](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.6-8B-MoT) | [code](/examples/sensenova_u1/model_inference/SenseNova-U1.6-8B-MoT-Edit.py) | [code](/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.6-8B-MoT-Edit.py) | [code](/examples/sensenova_u1/model_inference_parallel/SenseNova-U1.6-8B-MoT-Edit.py)|[code](/examples/sensenova_u1/model_training/full/SenseNova-U1.6-8B-MoT-Edit.sh)|[code](/examples/sensenova_u1/model_training/validate_full/SenseNova-U1.6-8B-MoT-Edit.py)|[code](/examples/sensenova_u1/model_training/lora/SenseNova-U1.6-8B-MoT-Edit.sh)|[code](/examples/sensenova_u1/model_training/validate_lora/SenseNova-U1.6-8B-MoT-Edit.py) |
 | SenseNova-U1 | [SenseNova/SenseNova-U1.6-8B-MoT-LoRAs: 8-step](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.6-8B-MoT-LoRAs) | [code](/examples/sensenova_u1/model_inference/SenseNova-U1.6-8B-MoT-LoRA-8step.py) | [code](/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.6-8B-MoT-LoRA-8step.py) | -|-|-|-|- |
 | SenseNova-U1 | [SenseNova/SenseNova-U1.6-8B-MoT-LoRAs: 4-step](https://www.modelscope.cn/models/SenseNova/SenseNova-U1.6-8B-MoT-LoRAs) | [code](/examples/sensenova_u1/model_inference/SenseNova-U1.6-8B-MoT-LoRA-4step.py) | [code](/examples/sensenova_u1/model_inference_low_vram/SenseNova-U1.6-8B-MoT-LoRA-4step.py) | -|-|-|-|- |
-| HiUni | [ernie-research/HiUni](https://modelscope.cn/models/ernie-research/HiUni) | [code](/examples/hiuni/model_inference/HiUni.py) | [code](/examples/hiuni/model_inference_low_vram/HiUni.py) | - | [code](/examples/hiuni/model_training/full/HiUni.sh) | [code](/examples/hiuni/model_training/validate_full/HiUni.py) | [code](/examples/hiuni/model_training/lora/HiUni.sh) | [code](/examples/hiuni/model_training/validate_lora/HiUni.py) |
 | MiniMax-Music3 | [MiniMax/MiniMax-Music3](https://www.modelscope.cn/models/MiniMax/MiniMax-Music3) | [code](/examples/minimax_music3/model_inference/MiniMax-Music3.py) | [code](/examples/minimax_music3/model_inference_low_vram/MiniMax-Music3.py) | [code](/examples/minimax_music3/model_inference_parallel/MiniMax-Music3.py) | — | — | — | — |
 | YuE2 | [m-a-p/YuE2-3B](https://www.modelscope.cn/models/m-a-p/YuE2-3B) | [code](/examples/yue2/model_inference/YuE2.py) | [code](/examples/yue2/model_inference_low_vram/YuE2.py) | - | — | — | — | — |
 | DiffSynth-Music | [DiffSynth-Studio/DiffSynth-Music](https://www.modelscope.cn/models/DiffSynth-Studio/DiffSynth-Music) | [code](/examples/diffsynth_music/model_inference/DiffSynth-Music.py) | [code](/examples/diffsynth_music/model_inference_low_vram/DiffSynth-Music.py) | - | [code](/examples/diffsynth_music/model_training/full/DiffSynth-Music.sh) | [code](/examples/diffsynth_music/model_training/validate_full/DiffSynth-Music.py) | - | - |
