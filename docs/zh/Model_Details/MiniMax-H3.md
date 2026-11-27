@@ -117,6 +117,8 @@ write_video_audio(
 * `tiled`: 是否启用 VAE 分块推理，默认为 `True`。设置为 `True` 时可显著减少 VAE 编解码阶段的显存占用，会产生少许误差，以及少量推理时间延长。
 * `tile_size`: VAE 编解码阶段的分块大小，默认为 256。
 * `tile_overlap`: VAE 编解码阶段的分块重叠大小，默认为 64。
+* `tile_decode_batch_size`: VAE 解码时一次前向的分块数量，默认为 32，调大可加速解码，设为 1 即逐块串行。
+* `tile_encode_batch_size`: VAE 编码时一次前向的分块数量，默认为 4，调大可加速编码，设为 1 即逐块串行。
 * `keyframes`: 关键帧图像列表，用于首尾帧引导生成，图像会被缩放到目标画幅。
 * `keyframe_indices`: 关键帧在视频中的帧索引列表，取值为 `0`（首帧）或 `-1`（尾帧），与 `keyframes` 一一对应。
 * `references`: 参考条件列表，按请求顺序给出，每个元素为字典，支持以下四种形式：

@@ -155,6 +155,8 @@ class MiniMaxH3Pipeline(BasePipeline):
         tiled: bool = True,
         tile_size: int = 256,
         tile_overlap: int = 64,
+        tile_decode_batch_size: int = 32,
+        tile_encode_batch_size: int = 4,
         use_gradient_checkpointing: bool = False,
         use_gradient_checkpointing_offload: bool = False,
         # Keyframe to Video
@@ -217,6 +219,7 @@ class MiniMaxH3Pipeline(BasePipeline):
             "height": height, "width": width, "num_frames": num_frames,
             "seed": seed, "rand_device": rand_device,
             "tiled": tiled, "tile_size": tile_size, "tile_overlap": tile_overlap,
+            "tile_decode_batch_size": tile_decode_batch_size, "tile_encode_batch_size": tile_encode_batch_size,
             "use_gradient_checkpointing": use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": use_gradient_checkpointing_offload,
             "keyframes": keyframes, "keyframe_indices": keyframe_indices,
@@ -261,7 +264,7 @@ class MiniMaxH3Pipeline(BasePipeline):
             frames = self.pi_h3_dwd(*prediction[2], (t, h // 2, w // 2))
         else:
             self.load_models_to_device(["video_vae"])
-            frames = self.video_vae.decode_video(inputs_shared["video_latents"], dtype=self.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap)
+            frames = self.video_vae.decode_video(inputs_shared["video_latents"], dtype=self.torch_dtype, tiled=tiled, tile_size=tile_size, tile_overlap=tile_overlap, tile_decode_batch_size=tile_decode_batch_size)
         video = self.vae_output_to_video(frames, min_value=0, max_value=1)
 
         self.load_models_to_device(["audio_vae"])
@@ -538,7 +541,7 @@ class MiniMaxH3Unit_KeyframeEncoder(PipelineUnit):
 class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
     def __init__(self):
         super().__init__(
-            input_params=("references", "seed", "video_latents", "num_frames", "ref_image_short_edge", "ref_video_short_edge", "ref_video_max_pixels"),
+            input_params=("references", "seed", "video_latents", "num_frames", "ref_image_short_edge", "ref_video_short_edge", "ref_video_max_pixels", "tile_encode_batch_size"),
             output_params=("ref_blocks", "ref_visual_anchor", "ref_audio_anchor"),
             onload_model_names=("video_vae", "audio_vae")
         )
@@ -563,19 +566,19 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
         assert used <= frame_count, f"cannot trim {frame_count} reference video frames down to a valid " f"length: at least {used} frames are required"
         return used
 
-    def _encode_image_ref(self, pipe, img: Image.Image, short_edge: int):
+    def _encode_image_ref(self, pipe, img: Image.Image, short_edge: int, tile_encode_batch_size: int = 4):
         target_w, target_h = self._resolve_reference_image_shape(pipe, *img.size, short_edge)
         img = img.convert("RGB").resize((target_w, target_h), Image.LANCZOS)
         img_tensor = pipe.preprocess_image(img, torch_dtype=torch.float32, min_value=0)
-        z = pipe.video_vae.encode_video(img_tensor.to(pipe.device), dtype=pipe.torch_dtype, process_image=True,)  # [1,24,1,H',W']
+        z = pipe.video_vae.encode_video(img_tensor.to(pipe.device), dtype=pipe.torch_dtype, process_image=True, tile_encode_batch_size=tile_encode_batch_size)  # [1,24,1,H',W']
         return patchify_video(z), z.shape[-2], z.shape[-1], img
 
-    def _encode_video_ref(self, pipe, frames, target_frame_count: int, short_edge: int, max_pixels: int):
+    def _encode_video_ref(self, pipe, frames, target_frame_count: int, short_edge: int, max_pixels: int, tile_encode_batch_size: int = 4):
         target_w, target_h = self._resolve_reference_video_shape(pipe, *frames[0].size, short_edge, max_pixels)
         frames = [f.resize((target_w, target_h), Image.LANCZOS).convert("RGB") for f in frames]
         frames = frames[: self._trim_reference_video_length(pipe, min(len(frames), target_frame_count))]
         frames_tensor = pipe.preprocess_video(frames, torch_dtype=torch.float32, min_value=0, device=pipe.device)
-        z = pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype, process_image=False,)  # [1,24,T',H',W']
+        z = pipe.video_vae.encode_video(frames_tensor, dtype=pipe.torch_dtype, process_image=False, tile_encode_batch_size=tile_encode_batch_size)  # [1,24,T',H',W']
         return patchify_video(z), int(z.shape[2]), int(z.shape[3]), int(z.shape[4]), frames
 
     def _encode_audio_ref(self, pipe, waveform, sample_rate: int):
@@ -591,16 +594,16 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
         assert value is not None, f"reference type {kind!r} requires field {key!r}"
         return value
 
-    def _build_block(self, pipe, ref, target_frame_count, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels):
+    def _build_block(self, pipe, ref, target_frame_count, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels, tile_encode_batch_size=4):
         kind = ref["type"]
         if kind == "image":
-            rows, lh, lw, prepared = self._encode_image_ref(pipe, self._require(ref, "image", kind), ref_image_short_edge)
+            rows, lh, lw, prepared = self._encode_image_ref(pipe, self._require(ref, "image", kind), ref_image_short_edge, tile_encode_batch_size)
             return {"kind": kind, "visual_clean": rows, "latent_t": 1, "latent_h": lh, "latent_w": lw, "prepared_image": prepared, "ref_audio_t": 0}
         if kind in ("video", "video_audio"):
             if kind == "video" and ref.get("audio") is not None:
                 raise ValueError("reference type 'video' is silent; use 'video_audio' to pass a soundtrack")
             frames = self._require(ref, "video", kind)
-            rows, lt, lh, lw, prepared = self._encode_video_ref(pipe, frames, target_frame_count, ref_video_short_edge, ref_video_max_pixels)
+            rows, lt, lh, lw, prepared = self._encode_video_ref(pipe, frames, target_frame_count, ref_video_short_edge, ref_video_max_pixels, tile_encode_batch_size)
             block = {"kind": kind, "visual_clean": rows, "latent_t": lt, "latent_h": lh, "latent_w": lw, "prepared_frames": prepared, "ref_audio_t": 0}
             if kind == "video_audio":
                 audio_waveform = self._require(ref, "audio", kind)
@@ -612,14 +615,15 @@ class MiniMaxH3Unit_ReferenceEncoder(PipelineUnit):
             rows, ref_audio_t = self._encode_audio_ref(pipe, self._require(ref, "audio", kind), int(self._require(ref, "sample_rate", kind)))
             return {"kind": kind, "audio_clean": rows, "ref_audio_t": ref_audio_t}
 
-    def process(self, pipe: MiniMaxH3Pipeline, references, seed, video_latents, num_frames, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels):
+    def process(self, pipe: MiniMaxH3Pipeline, references, seed, video_latents, num_frames, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels, tile_encode_batch_size=4):
         if not references:
             return {}
         pipe.load_models_to_device(self.onload_model_names)
         seed = int(seed) if seed is not None else 42
+        tile_encode_batch_size = 4 if tile_encode_batch_size is None else tile_encode_batch_size
         device = pipe.device
 
-        ref_blocks_out = [self._build_block(pipe, ref, num_frames, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels) for ref in references]
+        ref_blocks_out = [self._build_block(pipe, ref, num_frames, ref_image_short_edge, ref_video_short_edge, ref_video_max_pixels, tile_encode_batch_size) for ref in references]
         visual_blocks = [b for b in ref_blocks_out if "visual_clean" in b]
         imgvid_cond_num_frames = len(visual_blocks)
         visual_parts = []

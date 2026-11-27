@@ -117,6 +117,8 @@ The input parameters for `MiniMaxH3Pipeline` inference include:
 * `tiled`: Whether to enable tiled VAE inference, defaults to `True`. Enabling it significantly reduces VRAM usage during VAE encoding/decoding, at the cost of a slight numerical error and a small increase in inference time.
 * `tile_size`: Tile size during VAE encoding/decoding, defaults to 256.
 * `tile_overlap`: Tile overlap during VAE encoding/decoding, defaults to 64.
+* `tile_decode_batch_size`: Number of tiles decoded per forward pass, defaults to 32; larger values speed up decoding, and 1 decodes tiles one by one.
+* `tile_encode_batch_size`: Number of tiles encoded per forward pass, defaults to 4; larger values speed up encoding, and 1 encodes tiles one by one.
 * `keyframes`: List of keyframe images for keyframe-guided generation. Images are resized onto the target canvas.
 * `keyframe_indices`: Frame indices of the keyframes in the video, either `0` (first frame) or `-1` (last frame), corresponding one-to-one with `keyframes`.
 * `references`: List of reference conditions in request order. Each element is a dict in one of the following four forms:
