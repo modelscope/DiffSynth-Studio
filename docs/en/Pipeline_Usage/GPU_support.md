@@ -16,6 +16,24 @@ AMD provides PyTorch packages based on ROCm, so most models can run without code
 
 On Apple Silicon devices, since VRAM and memory are unified, replace all `"cuda"` in the code with `"mps"` or `"cpu"`.
 
+## Moore Threads MUSA GPU
+
+Follow the [torch_musa](https://github.com/MooreThreads/torch_musa) instructions to install a matching Moore Threads GPU driver and MUSA-enabled PyTorch, then install the [torchada](https://github.com/MooreThreads/torchada) adapter:
+
+```shell
+pip install "torchada>=0.1.106" --index-url https://pypi.org/simple
+```
+
+DiffSynth-Studio automatically imports `torchada` when it detects a MUSA-enabled PyTorch build. The adapter redirects supported CUDA API calls to MUSA, so there is no need to repeat the import in individual models or examples or replace every `"cuda"` device string.
+
+By default, `torchada` preserves the original behavior of `torch.cuda.is_available()`. On MUSA, for entry points that rely on this check to select a device (including DiffSynth-Studio's automatic device detection), set the following before starting the process:
+
+```shell
+export TORCHADA_FORCE_CUDA_AVAILABLE=1
+```
+
+This must be set before `import diffsynth` so device detection is initialized correctly. CUDA-only third-party extensions still require corresponding MUSA implementations; `torchada` does not translate arbitrary CUDA kernels into MUSA kernels.
+
 ## Ascend NPU
 ### Inference
 When using Ascend NPU, you need to replace `"cuda"` with `"npu"` in your code.

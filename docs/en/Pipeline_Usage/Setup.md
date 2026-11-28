@@ -49,6 +49,34 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6
 
 On Apple Silicon devices, no changes to the installation steps are needed. However, since VRAM and memory are unified, replace all `"cuda"` in the code with `"mps"` or `"cpu"`.
 
+### Moore Threads MUSA GPU
+
+Follow the [torch_musa](https://github.com/MooreThreads/torch_musa) instructions to prepare a matching Moore Threads GPU driver, MUSA SDK, and MUSA-enabled PyTorch, or use a Moore Threads container image with these components preinstalled. Keep the PyTorch build matched to `torch_musa`; do not replace it with a standard CUDA build.
+
+Install the [torchada](https://github.com/MooreThreads/torchada) adapter and DiffSynth-Studio from the official repository:
+
+```shell
+pip install "torchada>=0.1.106" --index-url https://pypi.org/simple
+git clone https://github.com/modelscope/DiffSynth-Studio.git
+cd DiffSynth-Studio
+pip install -e .
+```
+
+#### Optional: MUSA FlashAttention-3 Acceleration
+
+FlashAttention-3 is not required by `torchada` itself. If using MUSA FlashAttention-3, upgrade the interface package and its companion MATE and MATE-MUBIN operator packages together:
+
+```shell
+pip install -U "mate[all]>=0.2.8.post1" "mate-mubin>=0.2.8.post1" \
+    "flash_attn_3>=0.2.8.post1" \
+    --index-url https://dl.mthreads.com/repo/api/pypi/pypi/simple \
+    --extra-index-url https://pypi.org/simple
+```
+
+The tested combination is `flash_attn_3==0.2.8.post1+musa`, `mate==0.2.8.post1`, and `mate-mubin==0.2.8.post1`. Older MATE releases may have attention forward/backward or JIT compilation issues; these minimum versions do not imply that every subsequent release has been tested. If other operator packages in the base image pin an older MATE version, inspect the upgrade logs and `pip check` output and resolve conflicts according to those packages' compatibility requirements. Installing these packages does not guarantee that the current framework detects and selects FA3; check the registered implementations with `diffsynth.core.attention.list_attention_implementations()`.
+
+For automatic import behavior and device-detection settings required before launch, see [MUSA GPU Support](GPU_support.md#moore-threads-musa-gpu). Install model-specific dependencies as described in the corresponding model documentation.
+
 ### Ascend NPU
 
 1. Install [CANN](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/softwareinst/instg/instg_quick.html?Mode=PmIns&InstallType=local&OS=openEuler&Software=cannToolKit) through official documentation.

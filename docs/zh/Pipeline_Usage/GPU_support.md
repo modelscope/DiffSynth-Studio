@@ -16,6 +16,24 @@ AMD 提供了基于 ROCm 的 torch 包，所以大多数模型无需修改代码
 
 在 Apple Silicon 设备上，由于显存和内存是统一的，请将代码中的 `"cuda"` 全部修改为 `"mps"` 或 `"cpu"`。
 
+## Moore Threads MUSA GPU
+
+请先按照 [torch_musa](https://github.com/MooreThreads/torch_musa) 的说明安装匹配的摩尔线程 GPU 驱动与 MUSA 版 PyTorch，再安装 [torchada](https://github.com/MooreThreads/torchada) 适配层：
+
+```shell
+pip install "torchada>=0.1.106" --index-url https://pypi.org/simple
+```
+
+DiffSynth-Studio 会在检测到 MUSA 版 PyTorch 时自动导入 `torchada`，由其将支持的 CUDA API 调用重定向至 MUSA，无需在各个模型或示例中重复导入，也无需逐处替换 `"cuda"`。
+
+`torchada` 默认保留 `torch.cuda.is_available()` 的原始行为。在 MUSA 环境中，对于依赖该判断选择设备的入口（包括 DiffSynth-Studio 的自动设备检测），请在启动进程前设置：
+
+```shell
+export TORCHADA_FORCE_CUDA_AVAILABLE=1
+```
+
+该设置必须早于 `import diffsynth`，以便初始化时正确检测设备。仅支持 CUDA 的第三方扩展仍需安装对应的 MUSA 实现；`torchada` 不会将任意 CUDA 内核转换为 MUSA 内核。
+
 ## Ascend NPU
 ### 推理
 使用 Ascend NPU 时，需把代码中的 `"cuda"` 改为 `"npu"`。
