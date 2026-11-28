@@ -31,6 +31,8 @@ pip install diffsynth
 
 你可以使用命令 `pip install -e ".[audio,quant]"` 或 `pip install diffsynth[audio,quant]` 来安装多组依赖包。
 
+EntroPack 现为可选依赖。运行使用 `entropack_*` 方法的量化或低显存示例前，请按[量化文档](Quantization.md)安装对应的后端；例如 CUDA 13 环境使用 `python -m pip install "entropack[cuda13]>=0.1.7"`，CUDA 12 环境使用 `cuda12`。这同样适用于 NVIDIA GPU 用户。
+
 ## GPU/NPU 支持
 
 ### NVIDIA GPU
@@ -64,6 +66,14 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6
    ```
 
 使用 Ascend NPU 时，请将 Python 代码中的 `"cuda"` 改为 `"npu"`，详见[NPU 支持](../Pipeline_Usage/GPU_support.md#ascend-npu)。
+
+### Moore Threads MUSA
+
+先使用 MUSA 镜像或厂商提供的匹配版本安装 `torch`、`torch_musa` 和 `torchvision`，再使用该环境的 Python 执行 `python -m pip install -e .`。基础安装复用已满足要求的包；不要加 `--upgrade`。
+
+`entropack>=0.1.7` 要求 `torch>=2.10`，因此仅放在 `[quant]` / `[all]` 中。已有 torch 2.7.1 / 2.9.1 的 MUSA 环境不要安装这两组依赖。使用 EntroPack 的量化和低显存示例仍需单独安装兼容的后端；基础安装不提供这些功能。
+
+音频和训练依赖应沿用镜像中验证过的版本。需要补装 `[audio]` / `[training]` 时，使用针对当前环境的 constraints 文件保护已有框架版本，先通过 `python -m pip install --dry-run -c <constraints.txt> -e ".[audio,training]"` 检查安装计划；尤其不要让音频包替换 MUSA 版 torch。
 
 ## 其他安装问题
 
